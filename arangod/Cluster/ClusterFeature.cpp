@@ -131,54 +131,127 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--cluster.require-persisted-id",
-      "if set to true, then the instance will only start if a UUID file is "
-      "found in the database on startup. Setting this option will make sure "
-      "the instance is started using an already existing database directory "
-      "and not a new one. For the first start, the UUID file must either be "
-      "created manually or the option must be set to false for the initial "
-      "startup",
+      "If set to `true`, then the instance only starts if a UUID file is found "
+      "in the database directory on startup. This ensures that the instance is "
+      "started using an already existing database directory and not a new one. "
+      "For the first start, you must either create the UUID file manually or "
+      "set the option to `false` for the initial startup.",
       new BooleanParameter(&_requirePersistedId));
 
-  options->addOption("--cluster.agency-endpoint",
-                     "agency endpoint to connect to",
-                     new VectorParameter<StringParameter>(&_agencyEndpoints),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnDBServer));
+  options
+      ->addOption("--cluster.agency-endpoint",
+                  "Agency endpoint(s) to connect to.",
+                  new VectorParameter<StringParameter>(&_agencyEndpoints),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setDeprecatedIn(std::string{
+          "You can specify this option multiple times to let the server use a "
+          "cluster of Agency servers.\n"
+          "\n"
+          "Endpoints have the following pattern:\n"
+          "- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4\n"
+          "- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6\n"
+          "- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL "
+          "encryption\n"
+          "- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL "
+          "encryption\n"
+          "\n"
+          "You must specify at least one endpoint or ArangoDB refuses to "
+          "start. It is recommended to specify at least two endpoints, so that "
+          "ArangoDB has an alternative endpoint if one of them becomes "
+          "unavailable:\n\n"
+          "`--cluster.agency-endpoint tcp://192.168.1.1:4001 "
+          "--cluster.agency-endpoint tcp://192.168.1.2:4002 ...`"});
 
-  options->addOption("--cluster.my-role", "this server's role",
-                     new StringParameter(&_myRole));
+  options
+      ->addOption("--cluster.my-role", "This server's role.",
+                  new StringParameter(&_myRole))
+      .setLongDescription(std::string{
+          "For a cluster, the possible values are `DBSERVER` (backend data "
+          "server) and `COORDINATOR` (frontend server for external and "
+          "application access).\n"
+          "\n"
+          "For Active Failover deployments, the role needs to be `SINGLE`."});
 
-  options->addOption("--cluster.my-address",
-                     "this server's endpoint (cluster internal)",
-                     new StringParameter(&_myEndpoint),
+  options
+      ->addOption("--cluster.my-address",
+                  "This server's endpoint for cluster-internal communication.",
+                  new StringParameter(&_myEndpoint),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(std::string{
+          "If specified, the endpoint needs to be in one of the following "
+          "formats:\n"
+          "- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4\n"
+          "- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6\n"
+          "- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL "
+          "encryption\n"
+          "- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL "
+          "encryption\n"
+          "\n"
+          "If you don't specify an endpoint, the server looks up its internal "
+          "endpoint address in the Agency. If no endpoint can be found in the "
+          "Agency for the server's ID, ArangoDB refuses to start.\n"
+          "\n"
+          "**Examples**\n"
+          "\n"
+          "Listen only on the interface with the address `192.168.1.1`:\n\n"
+          "`--cluster.my-address tcp://192.168.1.1:8530`\n"
+          "\n"
+          "Listen on all IPv4 and IPv6 addresses which are configured on port "
+          "`8530`:\n\n"
+          "`--cluster.my-address ssl://[::]:8530`\n"});
 
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnDBServer));
-
-  options->addOption("--cluster.my-advertised-endpoint",
-                     "this server's advertised endpoint (e.g. external IP "
-                     "address or load balancer, optional)",
-                     new StringParameter(&_myAdvertisedEndpoint),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnDBServer));
+  options
+      ->addOption("--cluster.my-advertised-endpoint",
+                  "This server's advertised endpoint for external "
+                  "communication (optional, e.g. aan external IP address or "
+                  "load balancer).",
+                  new StringParameter(&_myAdvertisedEndpoint),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(std::string{
+          "If specified, the endpoint needs to be in one of the following "
+          "formats:\n"
+          "- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4\n"
+          "- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6\n"
+          "- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL "
+          "encryption\n"
+          "- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL "
+          "encryption\n"
+          "\n"
+          "If you don't specify an advertised endpoint, no external endpoint "
+          "is advertised.\n"
+          "\n"
+          "**Examples**\n"
+          "\n"
+          "If an external interface is available to this server, you can "
+          "specify it to communicate with external software / drivers:\n\n"
+          "`--cluster.my-advertised-endpoint tcp://some.public.place:8530`\n"
+          "\n"
+          "All specifications of endpoints apply."});
 
   options
       ->addOption("--cluster.write-concern",
-                  "write concern used for writes to new collections",
+                  "The global default write concern used for writes to new "
+                  "collections.",
                   new UInt32Parameter(&_writeConcern),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setLongDescription(std::string{
+          "This value is used as the default write concern for databases, "
+          "which in turn is used as the default for collections."});
 
   options->addOption("--cluster.system-replication-factor",
-                     "default replication factor for system collections",
+                     "The default replication factor for system collections.",
                      new UInt32Parameter(&_systemReplicationFactor),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -186,54 +259,84 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--cluster.default-replication-factor",
-                  "default replication factor for non-system collections",
+                  "The default replication factor for non-system collections.",
                   new UInt32Parameter(&_defaultReplicationFactor),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setIntroducedIn(std::string{
+          "If you don't set this option, it defaults to the value of the "
+          "`--cluster.min-replication-factor` option. If set, the value must "
+          "be between the values of `--cluster.min-replication-factor` and "
+          "`--cluster.max-replication-factor`.\n"
+          "\n"
+          "Note that you can still adjust the replication factor per "
+          "collection. This value is only the default value used for new "
+          "collections if no replication factor is specified when creating a "
+          "collection."});
 
   options
       ->addOption("--cluster.min-replication-factor",
-                  "minimum replication factor for new collections",
+                  "The minimum replication factor for new collections.",
                   new UInt32Parameter(&_minReplicationFactor, /*base*/ 1,
                                       /*minValue*/ 1),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setLongDescription(std::string{
+          "If you change the value of this setting and restart servers, no "
+          "changes are applied to existing collections that would violate the "
+          "new setting."});
 
   options
-      ->addOption(
-          "--cluster.max-replication-factor",
-          "maximum replication factor for new collections (0 = unrestricted)",
-          // 10 is a hard-coded max value for the replication factor
-          new UInt32Parameter(&_maxReplicationFactor, /*base*/ 1,
-                              /*minValue*/ 0, /*maxValue*/ 10),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+      ->addOption("--cluster.max-replication-factor",
+                  "The maximum replication factor for new collections "
+                  "(0 = unrestricted).",
+                  // 10 is a hard-coded max value for the replication factor
+                  new UInt32Parameter(&_maxReplicationFactor, /*base*/ 1,
+                                      /*minValue*/ 0, /*maxValue*/ 10),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator))
+      .setIntroducedIn(30600)
+      .setLongDescription(std::string{
+          "If you change the value of this setting and restart servers, no "
+          "changes are applied to existing collections that would violate the "
+          "new setting."});
 
   options
       ->addOption(
           "--cluster.max-number-of-shards",
-          "maximum number of shards when creating new collections (0 = "
-          "unrestricted)",
+          "The maximum number of shards that can be configured when creating "
+          "new collections (0 = unrestricted).",
           new UInt32Parameter(&_maxNumberOfShards, /*base*/ 1, /*minValue*/ 1),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30501);
+      .setIntroducedIn(30501)
+      .setLongDescription(std::string{
+          "If you change the value of this setting and restart the servers, no "
+          "changes are applied to existing collections that would violate the "
+          "new setting."});
 
   options
       ->addOption("--cluster.force-one-shard",
-                  "force one-shard mode for all new collections",
+                  "Force the OneShard mode for all new collections.",
                   new BooleanParameter(&_forceOneShard),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30600);
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30600)
+      .setLongDescription(std::string{
+          "If set to `true`, forces the cluster into creating all future "
+          "collections with only a single shard and using the same DB-Server "
+          "as these collections' shards leader. All collections created this "
+          "way are eligible for specific AQL query optimizations that can "
+          "improve query performance and provide advanced transactional "
+          "guarantees."});
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -258,11 +361,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption(
           "--cluster.api-jwt-policy",
-          "access permissions required for accessing /_admin/cluster REST APIs "
-          "(jwt-all = JWT required to access all operations, jwt-write = JWT "
-          "required "
-          "for post/put/delete operations, jwt-compat = 3.7 compatibility "
-          "mode)",
+          "Controls the access permissions required for accessing "
+          "/_admin/cluster REST APIs (jwt-all = JWT required to access all "
+          "operations, jwt-write = JWT required for POST/PUT/DELETE "
+          "operations, jwt-compat = 3.7 compatibility mode)",
           new DiscreteValuesParameter<StringParameter>(
               &_apiJwtPolicy,
               std::unordered_set<std::string>{"jwt-all", "jwt-write",
@@ -270,16 +372,45 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(std::string{
+          "The possible values for the option are:\n"
+          "- `jwt-all`: requires a valid JWT for all accesses to "
+          "`/_admin/cluster` and its sub-routes. If you use this "
+          "configuration, the _CLUSTER_ and _NODES_ sections of the "
+          "web interface are disabled, as they rely on the ability to read "
+          "data from several cluster APIs.\n"
+          "- `jwt-write`: requires a valid JWT for write accesses (all HTTP "
+          "methods except GET) to `/_admin/cluster`. You can use this setting "
+          "to allow privileged users to read data from the cluster APIs, but "
+          "not to do any modifications. Modifications (carried out by write "
+          "accesses) are then only possible by requests with a valid JWT. "
+          "All existing permission checks for the cluster API routes are still "
+          "in effect with this setting, meaning that read operations without a "
+          "valid JWT may still require dedicated other permissions "
+          "(as in v3.7).\n"
+          "- `jwt-compat`: no **additional** access checks are in place for "
+          "the cluster APIs. However, all existing permissions checks for the "
+          "cluster API routes are still in effect with this setting, meaning "
+          "that all operations may still require dedicated other permissions "
+          "(as in v3.7).\n"
+          "\n"
+          "The default value is `jwt-compat`, which means that this option "
+          "does not cause any extra JWT checks compared to v3.7."});
   options
       ->addOption("--cluster.max-number-of-move-shards",
-                  "number of shards to be moved per rebalance operation. "
-                  "If value = 0, no shards will be moved",
+                  "The number of shards to be moved per rebalance operation. "
+                  "If set to 0, no shards are moved.",
                   new UInt32Parameter(&_maxNumberOfMoveShards),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
-      .setIntroducedIn(30900);
+      .setIntroducedIn(30900)
+      .setLongDescription(std::string{
+          "This option limits the maximum number of move shards operations "
+          "that can be made when the **Rebalance Shards** button is clicked in "
+          "the web interface. For backwards compatibility, the default value "
+          "is `10`. A value of `0` disables the button."});
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

@@ -120,8 +120,7 @@ void ReplicationFeature::collectOptions(
   options->addSection("replication", "replication");
   options->addOption(
       "--replication.auto-start",
-      "switch to enable or disable the automatic start "
-      "of replication appliers",
+      "Enable or disable the automatic start of replication appliers.",
       new BooleanParameter(&_replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 

@@ -63,8 +63,20 @@ ServerFeature::ServerFeature(Server& server, int* res)
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--console", "start a JavaScript emergency console",
-                     new BooleanParameter(&_console));
+  options
+      ->addOption("--console",
+                  "Start the server with a JavaScript emergency console.",
+                  new BooleanParameter(&_console))
+      .setLongDescription(std::string{
+          "In this exclusive emergency mode, all networking and HTTP "
+          "interfaces "
+          "of the server are disabled. No requests can be made to the server "
+          "in "
+          "this mode, and the only way to work with the server in this mode is "
+          "by using the emergency console.\n"
+          "\n"
+          "The server cannot be started in this mode if it is already running "
+          "in this or another mode."});
 
   options->addSection("server", "server features");
 

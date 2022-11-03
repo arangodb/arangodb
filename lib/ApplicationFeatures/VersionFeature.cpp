@@ -35,12 +35,15 @@ namespace arangodb {
 
 void VersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--version", "reports the version and exits",
+      "--version",
+      "Print the version and other related information, then exit.",
       new BooleanParameter(&_printVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Command));
 
   options
-      ->addOption("--version-json", "reports the version as JSON and exits",
+      ->addOption("--version-json",
+                  "Print the version and other related information in JSON "
+                  "format, then exit.",
                   new BooleanParameter(&_printVersionJson),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Command))

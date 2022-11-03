@@ -70,70 +70,85 @@ void CacheManagerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "in-memory hash cache");
 
-  options->addOption(
-      "--cache.size", "size of cache in bytes",
-      new UInt64Parameter(&_cacheSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options
+      ->addOption("--cache.size",
+                  "The global size limit for all caches (in bytes).",
+                  new UInt64Parameter(&_cacheSize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setLongDescription(std::string{
+          "The global caching system, all caches, and all the data contained "
+          "therein are constrained to this limit.\n"
+          "\n"
+          "If there is less than 4 GiB of RAM in the system, default value is "
+          "256 MiB. If there is more, the default is "
+          "`(system RAM size - 2 GiB) * 0.25`."});
 
   options->addOption(
       "--cache.rebalancing-interval",
-      "microseconds between rebalancing attempts",
+      "The time between cache rebalancing attempts (in microseconds). "
+      "The minimum value is 500000 (0.5 seconds).",
       new UInt64Parameter(
           &_rebalancingInterval, /*base*/ 1,
-          /*minValue*/ CacheManagerFeature::minRebalancingInterval));
-}
+          /*minValue*/ CacheManagerFeature::minRebalancingInterval))
+      setLongDescription(std::string{
+          "The server uses a cache system which pools memory across many "
+          "different cache tables. In order to provide intelligent internal "
+          "memory management, the system periodically reclaims memory from "
+          "caches which are used less often and reallocates it to caches which "
+          "get more activity."});
 
-void CacheManagerFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
-  if (_cacheSize > 0 && _cacheSize < Manager::kMinSize) {
-    LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--cache.size', need at least "
-        << Manager::kMinSize;
-    FATAL_ERROR_EXIT();
-  }
-}
-
-void CacheManagerFeature::start() {
-  if (ServerState::instance()->isAgent() || _cacheSize == 0) {
-    // we intentionally do not activate the cache on an agency node, as it
-    // is not needed there
-    return;
-  }
-
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    try {
-      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
-      return true;
-    } catch (...) {
-      return false;
+  void CacheManagerFeature::validateOptions(
+      std::shared_ptr<options::ProgramOptions>) {
+    if (_cacheSize > 0 && _cacheSize < Manager::kMinSize) {
+      LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
+          << "invalid value for `--cache.size', need at least "
+          << Manager::kMinSize;
+      FATAL_ERROR_EXIT();
     }
-  };
-
-  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-  _manager =
-      std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
-
-  _rebalancer = std::make_unique<CacheRebalancerThread>(
-      server(), _manager.get(), _rebalancingInterval);
-  _rebalancer->start();
-  LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
-}
-
-void CacheManagerFeature::beginShutdown() {
-  if (_manager != nullptr) {
-    _rebalancer->beginShutdown();
-    _manager->beginShutdown();
   }
-}
 
-void CacheManagerFeature::stop() {
-  if (_manager != nullptr) {
-    _rebalancer->shutdown();
-    _manager->shutdown();
+  void CacheManagerFeature::start() {
+    if (ServerState::instance()->isAgent() || _cacheSize == 0) {
+      // we intentionally do not activate the cache on an agency node, as it
+      // is not needed there
+      return;
+    }
+
+    auto scheduler = SchedulerFeature::SCHEDULER;
+    auto postFn = [scheduler](std::function<void()> fn) -> bool {
+      try {
+        scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+        return true;
+      } catch (...) {
+        return false;
+      }
+    };
+
+    SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
+    _manager =
+        std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
+
+    _rebalancer = std::make_unique<CacheRebalancerThread>(
+        server(), _manager.get(), _rebalancingInterval);
+    _rebalancer->start();
+    LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
   }
-}
 
-cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
+  void CacheManagerFeature::beginShutdown() {
+    if (_manager != nullptr) {
+      _rebalancer->beginShutdown();
+      _manager->beginShutdown();
+    }
+  }
+
+  void CacheManagerFeature::stop() {
+    if (_manager != nullptr) {
+      _rebalancer->shutdown();
+      _manager->shutdown();
+    }
+  }
+
+  cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 }  // namespace arangodb
