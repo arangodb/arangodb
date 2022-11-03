@@ -296,8 +296,7 @@ class RocksDBEngine final : public StorageEngine {
                                   LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection,
-                        bool doSync) override;
+                        LogicalCollection const& collection) override;
 
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                     LogicalCollection const& collection,
@@ -463,8 +462,9 @@ class RocksDBEngine final : public StorageEngine {
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);
   ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
-  ErrorCode saveReplicationApplierConfiguration(
-      RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
+  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                velocypack::Slice slice,
+                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();

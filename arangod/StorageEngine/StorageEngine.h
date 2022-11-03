@@ -261,8 +261,7 @@ class StorageEngine : public ArangodFeature {
   // not fail. the WAL entry for the propery change will be written *after* the
   // call to "changeCollection" returns
   virtual void changeCollection(TRI_vocbase_t& vocbase,
-                                LogicalCollection const& collection,
-                                bool doSync) = 0;
+                                LogicalCollection const& collection) = 0;
 
   // asks the storage engine to persist renaming of a collection
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,

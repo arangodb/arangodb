@@ -1655,8 +1655,7 @@ void StorageEngineMock::addRestHandlers(
 void StorageEngineMock::addV8Functions() { TRI_ASSERT(false); }
 
 void StorageEngineMock::changeCollection(
-    TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection,
-    bool doSync) {
+    TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {
   // NOOP, assume physical collection changed OK
 }
 

@@ -603,7 +603,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     StorageEngine& engine =
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this, /*doSync*/ false);
+    engine.changeCollection(vocbase(), *this);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -1041,7 +1041,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this, /*doSync*/ false);
+  engine.changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
