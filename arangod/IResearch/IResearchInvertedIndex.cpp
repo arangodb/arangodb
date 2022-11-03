@@ -462,13 +462,11 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexIterator(LogicalCollection* collection,
-                                 IResearchSnapshotState* state,
-                                 transaction::Methods* trx,
-                                 aql::AstNode const* condition,
-                                 IResearchInvertedIndexMeta const* meta,
-                                 aql::Variable const* variable,
-                                 int mutableConditionIdx)
+  IResearchInvertedIndexIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _projections(*meta) {}
@@ -577,13 +575,11 @@ class IResearchInvertedIndexIterator final
 class IResearchInvertedIndexMergeIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexMergeIterator(LogicalCollection* collection,
-                                      IResearchSnapshotState* state,
-                                      transaction::Methods* trx,
-                                      aql::AstNode const* condition,
-                                      IResearchInvertedIndexMeta const* meta,
-                                      aql::Variable const* variable,
-                                      int mutableConditionIdx)
+  IResearchInvertedIndexMergeIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _heap_it({meta->_sort, meta->_sort.size(), _segments}),
@@ -916,9 +912,10 @@ bool IResearchInvertedIndex::matchesDefinition(
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
-    LogicalCollection* collection, transaction::Methods* trx,
-    aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts, int mutableConditionIdx) {
+    ResourceMonitor& monitor, LogicalCollection* collection,
+    transaction::Methods* trx, aql::AstNode const* node,
+    aql::Variable const* reference, IndexIteratorOptions const& opts,
+    int mutableConditionIdx) {
   if (failQueriesOnOutOfSync() && isOutOfSync()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -953,11 +950,11 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     } else {
       return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     }
   } else {
@@ -967,7 +964,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     TRI_ASSERT(!_meta._sort.empty());
 
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        collection, &state, trx, node, &_meta, reference,
+        monitor, collection, &state, trx, node, &_meta, reference,
         transaction::Methods::kNoMutableConditionIdx);
   }
 }

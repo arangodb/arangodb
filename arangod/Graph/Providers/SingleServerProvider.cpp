@@ -22,7 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./SingleServerProvider.h"
+#include "SingleServerProvider.h"
 
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
@@ -84,7 +84,8 @@ SingleServerProvider<Step>::SingleServerProvider(
     arangodb::aql::QueryContext& queryContext,
     SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
-    : _trx(std::make_unique<arangodb::transaction::Methods>(
+    : _monitor(resourceMonitor),
+      _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
@@ -254,9 +255,14 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
-      trx(), _opts.tmpVar(), _opts.indexInformations().first,
+      monitor(), trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
       _opts.hasWeightMethod() /*, requiresFullDocument*/);
+}
+
+template<class Step>
+ResourceMonitor& SingleServerProvider<Step>::monitor() {
+  return _monitor;
 }
 
 template<class Step>

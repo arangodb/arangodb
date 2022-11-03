@@ -1,6 +1,15 @@
 devel
 -----
 
+* Improve performance and memory usage of IN list lookups for hash, skiplist
+  and persistent indexes.
+
+* Improve memory usage tracking for IN list lookups and other RocksDB-based
+  lookups.
+
+* Remove inactive query plan cache code (was only a stub and never enabled 
+  before).
+
 * Fixed BTS-441: Honor read only mode with disabled authentication
 
 * Obsolete startup option `--database.force-sync-properties`. This option

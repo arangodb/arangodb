@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
@@ -154,23 +155,34 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   };
 
  public:
-  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
+  RocksDBEdgeIndexLookupIterator(ResourceMonitor& monitor,
+                                 LogicalCollection* collection,
                                  transaction::Methods* trx,
                                  RocksDBEdgeIndex const* index,
                                  VPackBuilder&& keys,
                                  std::shared_ptr<cache::Cache> cache,
                                  ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
+        _resourceMonitor(monitor),
         _index(index),
         _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
         _builderIterator(VPackArrayIterator::Empty{}),
-        _lastKey(VPackSlice::nullSlice()) {
+        _lastKey(VPackSlice::nullSlice()),
+        _memoryUsage(0) {
     TRI_ASSERT(_keys.slice().isArray());
-
     TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
+    TRI_ASSERT(_builder.size() == 0);
+
+    ResourceUsageScope scope(_resourceMonitor, _keys.size());
+    // now we are responsible for tracking memory usage
+    _memoryUsage += scope.trackedAndSteal();
+  }
+
+  ~RocksDBEdgeIndexLookupIterator() override {
+    _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
   }
 
   std::string_view typeName() const noexcept final {
@@ -218,6 +230,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
 
+    size_t oldMemoryUsage = _keys.size();
+    TRI_ASSERT(_memoryUsage >= oldMemoryUsage);
+    _resourceMonitor.decreaseMemoryUsage(oldMemoryUsage);
+    _memoryUsage -= oldMemoryUsage;
+
     _keys.clear();
     TRI_ASSERT(_keys.isEmpty());
 
@@ -225,6 +242,10 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // a.b == value
       _index->fillLookupValue(_keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
+
+      size_t newMemoryUsage = _keys.size();
+      _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsage += newMemoryUsage;
       return true;
     }
 
@@ -233,6 +254,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // a.b IN values
       _index->fillInLookupValues(_trx, _keys, aap.value);
       _keysIterator = VPackArrayIterator(_keys.slice());
+
+      size_t newMemoryUsage = _keys.size();
+      _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsage += newMemoryUsage;
+
       return true;
     }
 
@@ -241,7 +267,14 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
  private:
-  void resetInplaceMemory() { _builder.clear(); }
+  void resetInplaceMemory() {
+    size_t memoryUsage = _builder.size();
+    TRI_ASSERT(_memoryUsage >= memoryUsage);
+    _resourceMonitor.decreaseMemoryUsage(memoryUsage);
+    _memoryUsage -= memoryUsage;
+
+    _builder.clear();
+  }
 
   /// internal retrieval loop
   template<typename F>
@@ -322,8 +355,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
           } else {
             // We need to copy it.
             // And then we just get back to beginning of the loop
-            _builder.clear();
+            resetInplaceMemory();
             _builder.add(cachedData);
+
+            size_t memoryUsage = _builder.size();
+            _resourceMonitor.increaseMemoryUsage(memoryUsage);
+            _memoryUsage += memoryUsage;
+
             TRI_ASSERT(_builder.slice().isArray());
             _builderIterator = VPackArrayIterator(_builder.slice());
             // Do not set limit
@@ -345,7 +383,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   void lookupInRocksDB(std::string_view fromTo) {
     // Bad (slow) case: read from RocksDB
-
     auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
 
     // create iterator only on demand, so we save the allocation in case
@@ -372,34 +409,45 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     // mitigated by that edge lookups are normally using the in-memory edge
     // cache, so we only hit this method when connections are not yet in the
     // cache.
-    std::unique_ptr<rocksdb::Iterator> iterator =
-        mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
-          ro.fill_cache = EdgeIndexFillBlockCache;
-          ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
-        });
+    ResourceUsageScope scope(_resourceMonitor, expectedIteratorMemoryUsage);
 
-    TRI_ASSERT(iterator != nullptr);
+    {
+      std::unique_ptr<rocksdb::Iterator> iterator =
+          mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
+            ro.fill_cache = EdgeIndexFillBlockCache;
+            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+          });
 
-    _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
-    rocksdb::Comparator const* cmp = _index->comparator();
-    auto end = _bounds.end();
+      TRI_ASSERT(iterator != nullptr);
 
-    resetInplaceMemory();
-    _builder.openArray(true);
-    for (iterator->Seek(_bounds.start());
-         iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
-         iterator->Next()) {
-      LocalDocumentId const docId = RocksDBKey::edgeDocumentId(iterator->key());
+      _bounds = RocksDBKeyBounds::EdgeIndexVertex(_index->objectId(), fromTo);
+      rocksdb::Comparator const* cmp = _index->comparator();
+      auto end = _bounds.end();
 
-      // adding documentId and _from or _to value
-      _builder.add(VPackValue(docId.id()));
-      std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValue(vertexId));
+      resetInplaceMemory();
+      _builder.openArray(true);
+      for (iterator->Seek(_bounds.start());
+           iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+           iterator->Next()) {
+        LocalDocumentId const docId =
+            RocksDBKey::edgeDocumentId(iterator->key());
+
+        // adding documentId and _from or _to value
+        _builder.add(VPackValue(docId.id()));
+        std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+        _builder.add(VPackValue(vertexId));
+      }
+      _builder.close();
+
+      // validate that Iterator is in a good shape and hasn't failed
+      rocksutils::checkIteratorStatus(*iterator);
     }
-    _builder.close();
+    // iterator not needed anymore
+    scope.decrease(expectedIteratorMemoryUsage);
 
-    // validate that Iterator is in a good shape and hasn't failed
-    rocksutils::checkIteratorStatus(*iterator);
+    scope.increase(_builder.size());
+    // now we are responsible for tracking the memory usage
+    _memoryUsage += scope.trackedAndSteal();
 
     if (_cache != nullptr) {
       // TODO Add cache retry on next call
@@ -414,6 +462,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _builderIterator = VPackArrayIterator(_builder.slice());
   }
 
+  // expected number of bytes that a RocksDB iterator will use.
+  // this is a guess and does not need to be fully accurate.
+  static constexpr size_t expectedIteratorMemoryUsage = 8192;
+
+  ResourceMonitor& _resourceMonitor;
   RocksDBEdgeIndex const* _index;
 
   std::shared_ptr<EdgeIndexCacheType> _cache;
@@ -426,6 +479,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   velocypack::Builder _builder;
   velocypack::ArrayIterator _builderIterator;
   velocypack::Slice _lastKey;
+  size_t _memoryUsage;
 };
 
 }  // namespace arangodb
@@ -612,9 +666,9 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
@@ -629,15 +683,16 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.useCache,
-                            readOwnWrites);
+    return createEqIterator(monitor, trx, aap.attribute, aap.value,
+                            opts.useCache, readOwnWrites);
   }
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // "in"-checks never needs to observe own writes
     TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
-      return createInIterator(trx, aap.attribute, aap.value, opts.useCache);
+      return createInIterator(monitor, trx, aap.attribute, aap.value,
+                              opts.useCache);
     }
 
     // a.b IN non-array
@@ -885,26 +940,27 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
-    aql::AstNode const* valNode, bool useCache,
-    ReadOwnWrites readOwnWrites) const {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
+    bool useCache, ReadOwnWrites readOwnWrites) const {
   VPackBuilder keys;
   fillLookupValue(keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
-      readOwnWrites);
+      monitor, &_collection, trx, this, std::move(keys),
+      useCache ? _cache : nullptr, readOwnWrites);
 }
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, aql::AstNode const* /*attrNode*/,
-    aql::AstNode const* valNode, bool useCache) const {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* /*attrNode*/, aql::AstNode const* valNode,
+    bool useCache) const {
   VPackBuilder keys;
   fillInLookupValues(trx, keys, valNode);
   // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
-      ReadOwnWrites::no);
+      monitor, &_collection, trx, this, std::move(keys),
+      useCache ? _cache : nullptr, ReadOwnWrites::no);
 }
 
 void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
