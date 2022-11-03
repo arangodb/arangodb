@@ -1471,14 +1471,14 @@ ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
 }
 
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice slice, bool doSync) {
+    velocypack::Slice slice, bool doSync) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync) {
+    RocksDBKey const& key, velocypack::Slice slice, bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::convertStatus(
@@ -1510,12 +1510,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
 }
 
 Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                VPackSlice const& slice) {
+                                                velocypack::Slice slice) {
   return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
 }
 
 Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
-                                          VPackSlice const& slice,
+                                          velocypack::Slice slice,
                                           RocksDBLogValue&& logValue) {
   RocksDBKey key;
   key.constructDatabase(id);
@@ -1534,7 +1534,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
 
 Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                   DataSourceId cid,
-                                                  VPackSlice const& slice,
+                                                  velocypack::Slice slice,
                                                   RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1956,8 +1956,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection,
-                                     bool doSync) {
+                                     LogicalCollection const& collection) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
