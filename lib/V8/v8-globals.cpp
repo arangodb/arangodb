@@ -312,6 +312,84 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;
 
+v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
+                                    v8::Handle<v8::Value> val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
+
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, std::string_view key) {
+  return obj
+      ->Has(context, TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(false);
+}
+
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, v8::Local<v8::String> key) {
+  return obj->Has(context, key).FromMaybe(false);
+}
+
+bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+                              v8::Isolate* isolate, v8::Local<v8::Object> obj,
+                              v8::Local<v8::String> key) {
+  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
+}
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     std::string_view key) {
+  return obj
+      ->Get(context, TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(v8::Local<v8::Value>());
+}
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     v8::Local<v8::String> key) {
+  return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
+}
+
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, std::string_view key) {
+  return obj
+      ->Delete(context,
+               TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(false);
+}
+
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, v8::Local<v8::Value> key) {
+  return obj->Delete(context, key).FromMaybe(false);
+}
+
+v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
+                                   v8::Handle<v8::Value> val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
+
+v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context>& context,
+                                         v8::Handle<v8::Value> val) {
+  return val->ToString(context).FromMaybe(v8::Local<v8::String>());
+}
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate,
+                               v8::MaybeLocal<v8::Value> val) {
+  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())
+                                       ->ToString(context)
+                                       .FromMaybe(v8::Local<v8::String>()));
+  return std::string(*x, x.length());
+}
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate,
+                               v8::Local<v8::String> val) {
+  v8::String::Utf8Value x(isolate, val);
+  return std::string(*x, x.length());
+}
+
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();

@@ -26,6 +26,8 @@
 #include <string.h>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -379,81 +381,47 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate,
 #define TRI_GET_STRING(VAL) \
   VAL->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
 
-inline v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
-                                           v8::Handle<v8::Value> const& val) {
-  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
-}
+v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
+                                    v8::Handle<v8::Value> val);
 
-inline bool TRI_HasProperty(v8::Local<v8::Context>& context,
-                            v8::Isolate* isolate,
-                            v8::Local<v8::Object> const& obj, char const* key) {
-  return obj->Has(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
-}
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, std::string_view key);
 
-inline bool TRI_HasProperty(v8::Local<v8::Context>& context,
-                            v8::Isolate* isolate,
-                            v8::Local<v8::Object> const& obj,
-                            v8::Local<v8::String> const& key) {
-  return obj->Has(context, key).FromMaybe(false);
-}
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, v8::Local<v8::String> key);
 
-inline bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+                              v8::Isolate* isolate, v8::Local<v8::Object> obj,
+                              v8::Local<v8::String> key);
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
                                      v8::Isolate* isolate,
-                                     v8::Local<v8::Object> const& obj,
-                                     v8::Local<v8::String> const& key) {
-  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
-}
+                                     v8::Local<v8::Object> obj,
+                                     std::string_view key);
 
-inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
-                                            v8::Isolate* isolate,
-                                            v8::Local<v8::Object> const& obj,
-                                            char const* key) {
-  return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key))
-      .FromMaybe(v8::Local<v8::Value>());
-}
-inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
-                                            v8::Isolate* isolate,
-                                            v8::Local<v8::Object> const& obj,
-                                            v8::Local<v8::String> const& key) {
-  return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
-}
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     v8::Local<v8::String> key);
 
-inline bool TRI_DeleteProperty(v8::Local<v8::Context>& context,
-                               v8::Isolate* isolate, v8::Local<v8::Object>& obj,
-                               char const* key) {
-  return obj->Delete(context, TRI_V8_ASCII_STRING(isolate, key))
-      .FromMaybe(false);
-}
-inline bool TRI_DeleteProperty(v8::Local<v8::Context>& context,
-                               v8::Isolate* isolate, v8::Local<v8::Object>& obj,
-                               v8::Local<v8::Value> const& key) {
-  return obj->Delete(context, key).FromMaybe(false);
-}
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, std::string_view key);
 
-inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
-                                          v8::Handle<v8::Value> const& val) {
-  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
-}
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, v8::Local<v8::Value> key);
 
-inline v8::Local<v8::String> TRI_ObjectToString(
-    v8::Local<v8::Context>& context, v8::Handle<v8::Value> const& val) {
-  return val->ToString(context).FromMaybe(v8::Local<v8::String>());
-}
-inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
-                                      v8::Isolate* isolate,
-                                      v8::MaybeLocal<v8::Value> const& val) {
-  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())
-                                       ->ToString(context)
-                                       .FromMaybe(v8::Local<v8::String>()));
-  return std::string(*x, x.length());
-}
+v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
+                                   v8::Handle<v8::Value> val);
 
-inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
-                                      v8::Isolate* isolate,
-                                      v8::Local<v8::String> const& val) {
-  v8::String::Utf8Value x(isolate, val);
-  return std::string(*x, x.length());
-}
+v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context>& context,
+                                         v8::Handle<v8::Value> val);
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate,
+                               v8::MaybeLocal<v8::Value> val);
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate, v8::Local<v8::String> val);
 
 /// @brief retrieve the instance of the TRI_v8_global_t of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.
