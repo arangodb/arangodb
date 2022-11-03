@@ -27,9 +27,15 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+
 #include <velocypack/Slice.h>
 
-using namespace arangodb::aql;
+namespace aql {
+namespace optimizer2::types {
+struct Variable;
+}
+}  // namespace aql
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id,
@@ -93,6 +99,24 @@ void Variable::toVelocyPack(VPackBuilder& builder) const {
     _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
                                 /*allowUnindexed*/ true);
   }
+}
+
+arangodb::aql::optimizer2::types::Variable Variable::toInspectable() const {
+  VPackBuilder builder;
+  {
+    if (type() == Variable::Type::Const) {
+      VPackObjectBuilder b(&builder);
+      builder.add(VPackValue("constantValue"));
+      constantValue().toVelocyPack(nullptr, builder, false, true);
+    }
+  }
+  return {.id = id,
+          .name = name,
+          .isFullDocumentFromCollection = isFullDocumentFromCollection,
+          .isDataFromCollection = isFullDocumentFromCollection,
+          .constantValue = builder.slice().isObject()
+                               ? std::optional<VPackBuilder>{builder}
+                               : std::optional<VPackBuilder>{std::nullopt}};
 }
 
 /// @brief replace a variable by another

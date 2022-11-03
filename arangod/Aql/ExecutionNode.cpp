@@ -76,6 +76,8 @@
 #include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
 #include "Aql/Optimizer2/PlanNodes/LimitNode.h"
 #include "Aql/Optimizer2/PlanNodes/FilterNode.h"
+// PlanNodesTypes
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 #include <velocypack/Iterator.h>
 
@@ -2545,24 +2547,8 @@ void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
 }
 
 optimizer2::nodes::FilterNode FilterNode::toInspectable() const {
-  VPackBuilder builder;
-  {
-    if (_inVariable->type() == Variable::Type::Const) {
-      VPackObjectBuilder b(&builder);
-      builder.add(VPackValue("constantValue"));
-      _inVariable->constantValue().toVelocyPack(nullptr, builder, false, true);
-    }
-  }
-
   return {ExecutionNode::toInspectable("FilterNode"),
-          {.id = _inVariable->id,
-           .name = _inVariable->name,
-           .isFullDocumentFromCollection =
-               _inVariable->isFullDocumentFromCollection,
-           .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
-           .constantValue = builder.slice().isObject()
-                                ? std::optional<VPackBuilder>{builder}
-                                : std::optional<VPackBuilder>{std::nullopt}}};
+          {_inVariable->toInspectable()}};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -2637,25 +2623,9 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
-  VPackBuilder builder;
-  {
-    if (_inVariable->type() == Variable::Type::Const) {
-      VPackObjectBuilder b(&builder);
-      builder.add(VPackValue("constantValue"));
-      _inVariable->constantValue().toVelocyPack(nullptr, builder, false, true);
-    }
-  }
-
   return {{ExecutionNode::toInspectable("ReturnNode")},
           {.count = _count},
-          {.id = _inVariable->id,
-           .name = _inVariable->name,
-           .isFullDocumentFromCollection =
-               _inVariable->isFullDocumentFromCollection,
-           .isDataFromCollection = _inVariable->isFullDocumentFromCollection,
-           .constantValue = builder.slice().isObject()
-                                ? std::optional<VPackBuilder>{builder}
-                                : std::optional<VPackBuilder>{std::nullopt}}};
+          {_inVariable->toInspectable()}};
 }
 
 /// @brief doToVelocyPack, for ReturnNode
