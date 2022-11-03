@@ -99,6 +99,7 @@ struct Variable;
 
 namespace optimizer2::nodes {
 struct BaseNode;
+struct CalculationNode;
 struct EnumerateCollectionNode;
 struct EnumerateListNode;
 struct FilterNode;
@@ -878,6 +879,8 @@ class CalculationNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::CalculationNode toInspectable(unsigned flags) const;
 
  private:
   /// @brief output variable to write to

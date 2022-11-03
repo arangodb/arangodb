@@ -74,12 +74,14 @@
 // PlanNodes
 #include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
 #include "Aql/Optimizer2/PlanNodes/EnumerateListNode.h"
+#include "Aql/Optimizer2/PlanNodes/CalculationNode.h"
 #include "Aql/Optimizer2/PlanNodes/FilterNode.h"
 #include "Aql/Optimizer2/PlanNodes/LimitNode.h"
 #include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
 #include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
 
 // PlanNodesTypes
+#include "Aql/Optimizer2/PlanNodeTypes/Function.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 #include <velocypack/Iterator.h>
@@ -1092,6 +1094,7 @@ void ExecutionNode::toVelocyPack(arangodb::velocypack::Builder& builder,
 }
 
 // TODO: Introduce a template here to get rid of the "type" argument
+// TODO: Add canThrow as a parameter (or template)
 aql::optimizer2::nodes::BaseNode ExecutionNode::toInspectable(
     std::string&& type) const {
   AttributeTypes::Dependencies deps{};
@@ -2156,6 +2159,61 @@ void CalculationNode::doToVelocyPack(VPackBuilder& nodes,
       nodes.close();
     }
   }
+}
+
+optimizer2::nodes::CalculationNode CalculationNode::toInspectable(
+    unsigned flags) const {
+  std::vector<optimizer2::types::Function> functions{};
+
+  if ((flags & SERIALIZE_FUNCTIONS) && _expression->node() != nullptr) {
+    auto root = _expression->node();
+    if (root != nullptr) {
+      // enumerate all used functions, but report each function only once
+      std::unordered_set<std::string> functionsSeen;
+
+      // TODO: Note - do not like this part here ...
+      Ast::traverseReadOnly(
+          root, [&functionsSeen, &functions](AstNode const* node) -> bool {
+            if (node->type == NODE_TYPE_FCALL) {
+              auto func = static_cast<Function const*>(node->getData());
+              if (functionsSeen.insert(func->name).second) {
+                functions.emplace_back(optimizer2::types::Function{
+                    .name = func->name,
+                    .isDeterministic =
+                        func->hasFlag(Function::Flags::Deterministic),
+                    // deprecated
+                    .canRunOnDBServer =
+                        func->hasFlag(Function::Flags::CanRunOnDBServerCluster),
+                    .usesV8 = func->hasV8Implementation(),
+                    .canAccessDocuments =
+                        func->hasFlag(Function::Flags::CanReadDocuments),
+                    .canRunOnDBServerCluster =
+                        func->hasFlag(Function::Flags::CanRunOnDBServerCluster),
+                    .canRunOnDBServerOneShard = func->hasFlag(
+                        Function::Flags::CanRunOnDBServerOneShard),
+                    .cacheable = func->hasFlag(Function::Flags::Cacheable)});
+              }
+            } else if (node->type == NODE_TYPE_FCALL_USER) {
+              auto func = node->getString();
+              if (functionsSeen.insert(func).second) {
+                // user defined function, not seen before
+                functions.emplace_back(optimizer2::types::Function{
+                    .name = func,
+                    .isDeterministic = false,
+                    .canRunOnDBServer = false,  // deprecated
+                    .usesV8 = true});
+              }
+            }
+            return true;
+          });
+    }
+  }
+
+  return {{ExecutionNode::toInspectable("CalculationNode")},
+          _outVariable->toInspectable(),
+          _expression->toInspectable(),
+          _expression->typeString(),  // TODO: ^^ gut, storing same thing twice
+          std::move(functions)};
 }
 
 /// @brief creates corresponding ExecutionBlock
