@@ -409,6 +409,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   TRI_ASSERT(postCommitSeq <= _db->GetLatestSequenceNumber());
 
+  _state->clearQueryCache();
   // This resets the counters in the collection(s), so we also need to reset
   // our counters here for consistency.
   _callback.commit(_lastWrittenOperationTick);

@@ -47,8 +47,8 @@ auto makeByTerms(std::string_view name,
   auto& [terms, min_match, merge_type] = *filter.mutable_options();
   min_match = match_count;
   merge_type = type;
-  for (irs::string_ref value : values) {
-    terms.emplace(irs::ref_cast<irs::byte_type>(value), irs::kNoBoost);
+  for (std::string_view value : values) {
+    terms.emplace(irs::ViewCast<irs::byte_type>(value), irs::kNoBoost);
   }
   return filter;
 }

@@ -180,8 +180,6 @@ class DatabaseFeature : public ArangodFeature {
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool forceSyncProperties() const { return _forceSyncProperties; }
-  void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const {
     return _defaultReplicationVersion;
@@ -243,7 +241,6 @@ class DatabaseFeature : public ArangodFeature {
   void enableDeadlockDetection();
 
   bool _defaultWaitForSync;
-  bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
   bool _isInitiallyEmpty;
   bool _checkVersion;

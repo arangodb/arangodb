@@ -30,7 +30,7 @@ namespace arangodb {
 namespace iresearch {
 
 struct VPackTermAttribute final : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "vpack_term_attribute";
   }
 
