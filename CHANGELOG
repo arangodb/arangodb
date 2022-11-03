@@ -4,6 +4,8 @@ v3.10.1 (XXXX-XX-XX)
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
+* Updated OpenSSL to 1.1.1s.
+
 * Solve a case of excessive memory consumption in certain AQL queries with IN
   filters with very long lists. Free sub-iterators as soon as they are
   exhausted.
