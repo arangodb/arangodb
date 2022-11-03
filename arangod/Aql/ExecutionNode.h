@@ -98,6 +98,7 @@ using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
 namespace optimizer2::nodes {
+struct BaseNode;
 struct FilterNode;
 struct LimitNode;
 struct ReturnNode;
@@ -382,6 +383,8 @@ class ExecutionNode {
 
   /// @brief serialize this ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+
+  optimizer2::nodes::BaseNode toInspectable(std::string&& type) const;
 
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
   /// This function implicitly creates an array and serializes all nodes

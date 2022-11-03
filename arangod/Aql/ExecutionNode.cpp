@@ -1086,6 +1086,22 @@ void ExecutionNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   doToVelocyPack(builder, flags);
 }
 
+// TODO: Introduce a template here to get rid of the "type" argument
+aql::optimizer2::nodes::BaseNode ExecutionNode::toInspectable(
+    std::string&& type) const {
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  return {
+    .id = AttributeTypes::Numeric{id().id()}, .type = std::move(type),
+    .dependencies = std::move(deps), .estimatedCost = estimate.estimatedCost,
+    .estimatedNrItems = estimate.estimatedNrItems, .canThrow = false
+  };
+}
+
 /// @brief static analysis debugger
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -2561,18 +2577,7 @@ optimizer2::nodes::FilterNode FilterNode::toInspectable() const {
     }
   }
 
-  AttributeTypes::Dependencies deps{};
-  for (auto const& it : _dependencies) {
-    deps.emplace_back(it->id().id());
-  }
-  CostEstimate estimate = getCost();
-
-  return {{.id = AttributeTypes::Numeric{id().id()},
-           .type = "FilterNode",
-           .dependencies = std::move(deps),
-           .estimatedCost = estimate.estimatedCost,
-           .estimatedNrItems = estimate.estimatedNrItems,
-           .canThrow = false},
+  return {ExecutionNode::toInspectable("FilterNode"),
           {.id = _inVariable->id,
            .name = _inVariable->name,
            .isFullDocumentFromCollection =
