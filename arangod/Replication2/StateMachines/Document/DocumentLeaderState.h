@@ -60,9 +60,8 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->size();
   }
 
-  void resetSnapshot(std::string clientId, velocypack::SharedSlice documents);
-  velocypack::SharedSlice getNextBatch(std::string const& clientId);
-  void deleteSnapshot(std::string const& clientId);
+  auto getSnapshot(SnapshotOptions const& options, TRI_vocbase_t& vocbase)
+      -> ResultT<Snapshot>;
 
   LoggerContext const loggerContext;
   std::string_view const shardId;
@@ -82,6 +81,7 @@ struct DocumentLeaderState
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
-  std::unordered_map<std::string, SnapshotIterator> _snapshotIterators;
+  Guarded<std::unordered_map<std::string, SnapshotIterator>, std::mutex>
+      _snapshotIterators;
 };
 }  // namespace arangodb::replication2::replicated_state::document

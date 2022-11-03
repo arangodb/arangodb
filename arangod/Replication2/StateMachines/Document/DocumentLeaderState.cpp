@@ -174,37 +174,48 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
-void DocumentLeaderState::resetSnapshot(std::string clientId,
-                                        velocypack::SharedSlice documents) {
-  _snapshotIterators.insert_or_assign(std::move(clientId),
-                                      SnapshotIterator(std::move(documents)));
-}
-
-velocypack::SharedSlice DocumentLeaderState::getNextBatch(
-    std::string const& clientId) {
-  static const std::size_t kSizeLimitation = 1024 * 1024;  // 1MB
-  auto snapshot = _snapshotIterators.find(clientId);
-  TRI_ASSERT(snapshot != _snapshotIterators.end());
-  auto& iterator = snapshot->second.it;
-  if (iterator.valid()) {
-    VPackBuilder builder;
-    std::size_t totalSize = 0;
-    {
-      VPackArrayBuilder ab(&builder);
-      while (iterator.valid() && totalSize < kSizeLimitation) {
-        auto doc = iterator.value();
-        totalSize += doc.byteSize();
-        builder.add(doc);
-        iterator.next();
-      }
+auto DocumentLeaderState::getSnapshot(SnapshotOptions const& options,
+                                      TRI_vocbase_t& vocbase)
+    -> ResultT<Snapshot> {
+  if (options.batch == options.kFirst) {
+    auto logicalCollection = vocbase.lookupCollection(shardId);
+    if (logicalCollection == nullptr) {
+      return ResultT<Snapshot>::error(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", shardId));
     }
-    return builder.sharedSlice();
+    return _snapshotIterators.doUnderLock(
+        [&options, logicalCollection = std::move(logicalCollection)](
+            auto& snapshotIterators) mutable {
+          try {
+            snapshotIterators.erase(options.clientId);
+            auto emplacement = snapshotIterators.emplace(
+                options.clientId, std::move(logicalCollection));
+            TRI_ASSERT(emplacement.second);
+            return ResultT<Snapshot>::success(emplacement.first->second.next());
+          } catch (basics::Exception const& ex) {
+            return ResultT<Snapshot>::error(ex.code(), ex.what());
+          }
+        });
   }
-  return velocypack::SharedSlice{};
-}
 
-void DocumentLeaderState::deleteSnapshot(std::string const& clientId) {
-  TRI_ASSERT(_snapshotIterators.erase(clientId));
+  TRI_ASSERT(options.batch == options.kNext);
+  return _snapshotIterators.doUnderLock([&options](auto& snapshotIterators) {
+    auto it = snapshotIterators.find(options.clientId);
+    if (it == snapshotIterators.end()) {
+      return ResultT<Snapshot>::error(
+          TRI_ERROR_INTERNAL,
+          fmt::format("No snapshot for client {}", options.clientId));
+    }
+
+    // TODO improve cleanup
+    auto snapshot = it->second.next();
+    if (snapshot.documents.isNone()) {
+      snapshotIterators.erase(it);
+    }
+
+    return ResultT<Snapshot>::success(std::move(snapshot));
+  });
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

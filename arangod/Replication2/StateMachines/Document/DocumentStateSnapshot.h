@@ -25,8 +25,19 @@
 
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "StorageEngine/ReplicationIterator.h"
 
 #include <velocypack/SharedSlice.h>
+
+namespace arangodb {
+class LogicalCollection;
+class PhysicalCollection;
+
+namespace transaction {
+class Context;
+}
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
 struct Snapshot {
@@ -46,11 +57,20 @@ struct SnapshotOptions {
   LogIndex waitForIndex;
 };
 
-struct SnapshotIterator {
-  velocypack::SharedSlice documents;
-  VPackArrayIterator it;
+class SnapshotIterator {
+ public:
+  explicit SnapshotIterator(
+      std::shared_ptr<LogicalCollection> logicalCollection);
 
-  explicit SnapshotIterator(velocypack::SharedSlice&& arr)
-      : documents(arr), it(documents.slice()) {}
+  auto next() -> Snapshot;
+
+ private:
+  static const std::size_t kBatchSizeLimit = 1024 * 1024;  // 1MB
+
+  std::shared_ptr<LogicalCollection> _logicalCollection;
+  std::shared_ptr<transaction::Context> _ctx;
+  SingleCollectionTransaction _trx;
+  std::unique_ptr<ReplicationIterator> _it;
 };
+
 }  // namespace arangodb::replication2::replicated_state::document

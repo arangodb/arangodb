@@ -23,18 +23,15 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/Exceptions.tpp>
 #include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <Basics/Exceptions.h>
+#include <Basics/Exceptions.tpp>
 
 #include <memory>
 
@@ -53,51 +50,13 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
       return leaderResult.result();
     }
     auto leader = leaderResult.get();
-
-    if (options.batch == replicated_state::document::SnapshotOptions::kFirst) {
-      auto logicalCollection = _vocbase.lookupCollection(leader->shardId);
-      if (logicalCollection == nullptr) {
-        return ResultT<velocypack::SharedSlice>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            fmt::format("Collection {} not found", leader->shardId));
-      }
-
-      auto ctx = transaction::StandaloneContext::Create(_vocbase);
-      auto singleCollectionTrx = SingleCollectionTransaction(
-          ctx, *logicalCollection, AccessMode::Type::READ);
-
-      // We call begin here so rocksMethods are initialized
-      if (auto res = singleCollectionTrx.begin(); res.fail()) {
-        return ResultT<velocypack::SharedSlice>::error(res.errorNumber(),
-                                                       res.errorMessage());
-      }
-
-      auto* physicalCollection = logicalCollection->getPhysical();
-      TRI_ASSERT(physicalCollection != nullptr);
-      auto iterator = physicalCollection->getReplicationIterator(
-          ReplicationIterator::Ordering::Revision, singleCollectionTrx);
-
-      VPackBuilder builder;
-      builder.openArray();
-      for (auto& revIterator =
-               dynamic_cast<RevisionReplicationIterator&>(*iterator);
-           revIterator.hasMore(); revIterator.next()) {
-        auto slice = revIterator.document();
-        builder.add(slice);
-      }
-      builder.close();
-
-      leader->resetSnapshot(options.clientId, builder.sharedSlice());
+    auto result = leader->getSnapshot(options, _vocbase);
+    if (result.fail()) {
+      return result.result();
     }
 
-    auto nextBatch = leader->getNextBatch(options.clientId);
-    if (nextBatch.isNone()) {
-      leader->deleteSnapshot(options.clientId);
-    }
-
-    auto snapshot = replicated_state::document::Snapshot{std::move(nextBatch)};
     return futures::Future<ResultT<velocypack::SharedSlice>>{
-        velocypack::serialize(snapshot)};
+        velocypack::serialize(result.get())};
   }
 
  private:

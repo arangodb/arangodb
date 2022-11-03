@@ -78,7 +78,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
           auto snapshotRes =
               leaderInterface->getSnapshot(waitForIndex, suffix).get();
           if (snapshotRes.fail()) {
-            snapshotRes.result();
+            return snapshotRes.result();
           }
 
           auto& docs = snapshotRes->documents;
@@ -87,7 +87,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
             return {TRI_ERROR_NO_ERROR};
           }
 
-          auto insertRes = self->populateLocalShard(std::move(docs));
+          auto insertRes = self->populateLocalShard(docs);
           if (insertRes.fail()) {
             return insertRes;
           }
