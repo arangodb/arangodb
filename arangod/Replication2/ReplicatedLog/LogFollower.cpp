@@ -476,13 +476,12 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
   });
 }
 
-auto replicated_log::LogFollower::getParticipantId() const noexcept
-    -> ParticipantId const& {
+auto LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _participantId;
 }
 
-auto replicated_log::LogFollower::resign() && -> std::tuple<
-    std::unique_ptr<LogCore>, DeferredAction> {
+auto LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>,
+                                            DeferredAction> {
   auto result = _guardedFollowerData.doUnderLock(
       [this](GuardedFollowerData& followerData) {
         LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";

@@ -179,12 +179,15 @@ void ReplicatedStateManager<S>::becomeFollower(
   ADB_PROD_ASSERT(oldMethods == nullptr);
 
   auto followerState = _factory->constructFollower(std::move(core));
+  auto stream = std::make_shared<StreamProxy<EntryType, Deserializer>>(
+      std::move(methods));
+  followerState->setStream(stream);
   guard->_currentManager
       .template emplace<std::shared_ptr<NewFollowerStateManager<S>>>(
           std::make_shared<NewFollowerStateManager<S>>(
               _loggerContext.template with<logContextKeyStateRole>(
                   static_strings::StringFollower),
-              _metrics, std::move(followerState), std::move(methods)));
+              _metrics, std::move(followerState), std::move(stream)));
 }
 
 template<typename S>
@@ -415,7 +418,7 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
     LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
   LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
                       << commitIndex;
-  if (_logMethods == nullptr) {
+  if (_stream == nullptr) {
     return std::nullopt;
   }
   _commitIndex = std::max(_commitIndex, commitIndex);
@@ -425,9 +428,12 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
 template<typename S>
 auto NewFollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
     -> std::optional<futures::Future<Result>> {
+  if (_stream == nullptr) {
+    return std::nullopt;
+  }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
-    auto log = _logMethods->getLogSnapshot();
+    auto log = _stream->methods().getLogSnapshot();
     _applyEntriesIndexInFlight = _commitIndex;
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
     auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
@@ -449,10 +455,10 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedFollowerState<S>> followerState,
-    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> logMethods)
+    std::shared_ptr<StreamProxy<EntryType, Deserializer>> stream)
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
-      _guardedData{std::move(followerState), std::move(logMethods)} {}
+      _guardedData{std::move(followerState), std::move(stream)} {}
 
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
@@ -468,39 +474,44 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
 
   // temporary hack: post on the scheduler to avoid deadlocks with the log
   auto& scheduler = *SchedulerFeature::SCHEDULER;
-  scheduler.queue(
-      RequestLane::CLUSTER_INTERNAL,
-      [weak = this->weak_from_this(), fut = std::move(fut),
-       rttGuard = std::move(rttGuard),
-       snapshotCounter = std::move(snapshotCounter), leader, index]() mutable {
-        std::move(fut).thenFinal(
-            [weak = std::move(weak), rttGuard = std::move(rttGuard),
-             snapshotCounter = std::move(snapshotCounter), leader,
-             index](futures::Try<Result>&& tryResult) mutable noexcept {
-              rttGuard.fire();
-              snapshotCounter.fire();
-              if (auto self = weak.lock(); self != nullptr) {
-                LOG_CTX("13f07", DEBUG, self->_loggerContext)
-                    << "snapshot completed, informing replicated log";
-                auto result =
-                    basics::catchToResult([&] { return tryResult.get(); });
-                if (result.ok()) {
-                  LOG_CTX("44d58", DEBUG, self->_loggerContext)
-                      << "snapshot transfer successfully completed";
-                  auto guard = self->_guardedData.getLockedGuard();
-                  auto res = guard->_logMethods->snapshotCompleted();
-                  // TODO (How) can we handle this more gracefully?
-                  ADB_PROD_ASSERT(res.ok());
-                } else {
-                  LOG_CTX("9a68a", ERR, self->_loggerContext)
-                      << "failed to transfer snapshot: "
-                      << result.errorMessage() << " - retry scheduled";
-                  // TODO implement a more graceful retry loop with a back-off
-                  self->acquireSnapshot(leader, index);
-                }
-              }
-            });
-      });
+  scheduler.queue(RequestLane::CLUSTER_INTERNAL, [weak = this->weak_from_this(),
+                                                  fut = std::move(fut),
+                                                  rttGuard =
+                                                      std::move(rttGuard),
+                                                  snapshotCounter = std::move(
+                                                      snapshotCounter),
+                                                  leader, index]() mutable {
+    std::move(fut).thenFinal(
+        [weak = std::move(weak), rttGuard = std::move(rttGuard),
+         snapshotCounter = std::move(snapshotCounter), leader,
+         index](futures::Try<Result>&& tryResult) mutable noexcept {
+          rttGuard.fire();
+          snapshotCounter.fire();
+          if (auto self = weak.lock(); self != nullptr) {
+            LOG_CTX("13f07", DEBUG, self->_loggerContext)
+                << "snapshot completed, informing replicated log";
+            auto result =
+                basics::catchToResult([&] { return tryResult.get(); });
+            if (result.ok()) {
+              LOG_CTX("44d58", DEBUG, self->_loggerContext)
+                  << "snapshot transfer successfully completed";
+              auto guard = self->_guardedData.getLockedGuard();
+              auto res =
+                  static_cast<replicated_log::IReplicatedLogFollowerMethods&>(
+                      guard->_stream->methods())
+                      .snapshotCompleted();
+              // TODO (How) can we handle this more gracefully?
+              ADB_PROD_ASSERT(res.ok());
+            } else {
+              LOG_CTX("9a68a", ERR, self->_loggerContext)
+                  << "failed to transfer snapshot: " << result.errorMessage()
+                  << " - retry scheduled";
+              // TODO implement a more graceful retry loop with a back-off
+              self->acquireSnapshot(leader, index);
+            }
+          }
+        });
+  });
 }
 
 template<typename S>
@@ -509,7 +520,8 @@ auto NewFollowerStateManager<S>::resign() && noexcept
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
   auto core = std::move(*guard->_followerState).resign();
-  auto methods = std::move(guard->_logMethods);
+  auto methods = std::move(*guard->_stream).resign();
+  guard->_stream.reset();
   return {std::move(core), std::move(methods)};
 }
 

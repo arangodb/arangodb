@@ -102,28 +102,30 @@ auto DocumentFollowerState::applyEntries(
                       to_string(data.core->getGid()))};
     }
 
-    while (auto entry = ptr->next()) {
-      auto doc = entry->second;
-      auto res = self->_transactionHandler->applyEntry(doc);
-      if (res.fail()) {
-        return res;
+    return basics::catchToResult([&]() -> Result {
+      while (auto entry = ptr->next()) {
+        auto doc = entry->second;
+        auto res = self->_transactionHandler->applyEntry(doc);
+        if (res.fail()) {
+          return res;
+        }
+
+        if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+          self->_activeTransactions.clear();
+          self->getStream()->release(
+              self->_activeTransactions.getReleaseIndex(entry->first));
+        } else if (doc.operation == OperationType::kCommit ||
+                   doc.operation == OperationType::kAbort) {
+          self->_activeTransactions.erase(doc.tid);
+          self->getStream()->release(
+              self->_activeTransactions.getReleaseIndex(entry->first));
+        } else {
+          self->_activeTransactions.emplace(doc.tid, entry->first);
+        }
       }
 
-      if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-        self->_activeTransactions.clear();
-        self->getStream()->release(
-            self->_activeTransactions.getReleaseIndex(entry->first));
-      } else if (doc.operation == OperationType::kCommit ||
-                 doc.operation == OperationType::kAbort) {
-        self->_activeTransactions.erase(doc.tid);
-        self->getStream()->release(
-            self->_activeTransactions.getReleaseIndex(entry->first));
-      } else {
-        self->_activeTransactions.emplace(doc.tid, entry->first);
-      }
-    }
-
-    return {TRI_ERROR_NO_ERROR};
+      return {TRI_ERROR_NO_ERROR};
+    });
   });
 }
 

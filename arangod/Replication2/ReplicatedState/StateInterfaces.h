@@ -153,6 +153,11 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<CoreType> override = 0;
 
+ public:
+  void setStream(std::shared_ptr<Stream> stream) noexcept {
+    _stream = std::move(stream);
+  }
+
  protected:
   [[nodiscard]] auto getStream() const noexcept
       -> std::shared_ptr<Stream> const&;
@@ -160,7 +165,6 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
  private:
   friend struct FollowerStateManager<S>;
   friend struct NewFollowerStateManager<S>;
-
   void setStateManager(
       std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
 

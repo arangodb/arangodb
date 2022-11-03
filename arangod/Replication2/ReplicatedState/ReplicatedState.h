@@ -128,6 +128,12 @@ struct StreamProxy : Interface<EntryType> {
   explicit StreamProxy(std::unique_ptr<ILogMethodsT> methods)
       : _logMethods(std::move(methods)) {}
 
+  auto methods() -> auto& { return *this->_logMethods; }
+
+  auto resign() && -> decltype(this->_logMethods) {
+    return std::move(this->_logMethods);
+  }
+
   auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override {
     // TODO As far as I can tell right now, we can get rid of this:
     //      Delete this, also in streams::Stream.
@@ -164,12 +170,6 @@ struct ProducerStreamProxy
       -> std::pair<LogIndex, DeferredAction> override {
     // TODO Remove this method, it should be superfluous
     return this->_logMethods->insertDeferred(serialize(v));
-  }
-
-  auto methods() -> auto& { return *this->_logMethods; }
-
-  auto resign() && -> decltype(this->_logMethods) {
-    return std::move(this->_logMethods);
   }
 
  private:
@@ -237,8 +237,7 @@ struct NewFollowerStateManager
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
-      std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
-          logMethods);
+      std::shared_ptr<StreamProxy<EntryType, Deserializer>> stream);
   void acquireSnapshot(ServerID leader, LogIndex index);
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
@@ -259,7 +258,7 @@ struct NewFollowerStateManager
     auto maybeScheduleAppendEntries() -> std::optional<futures::Future<Result>>;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
-    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
+    std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
