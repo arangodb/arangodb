@@ -290,13 +290,33 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto shardsMap = coll->shardIds();
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
+
       if (_request->parsedValue("details", false)) {
         // with details
-        coll->shardMapToVelocyPack(_builder);
+        VPackObjectBuilder arr(&_builder, "shards", true);
+        for (ShardID const& shard : *shards) {
+          std::vector<ServerID> servers;
+          ci.getShardServers(shard, servers);
+
+          if (servers.empty()) {
+            continue;
+          }
+
+          VPackArrayBuilder arr2(&_builder, shard);
+
+          for (auto const& server : servers) {
+            arr2->add(VPackValue(server));
+          }
+        }
       } else {
-        // without details
-        coll->shardIDsToVelocyPack(_builder);
+        // no details
+        VPackArrayBuilder arr(&_builder, "shards", true);
+
+        for (ShardID const& shard : *shards) {
+          arr->add(VPackValue(shard));
+        }
       }
     }
     return standardResponse();
