@@ -470,9 +470,29 @@ struct CompactionStopReason {
                            ParticipantMissingEntries const& right) noexcept
         -> bool = default;
   };
+  struct LeaderBlocksReleaseEntry {
+    template<class Inspector>
+    friend auto inspect(Inspector& f, LeaderBlocksReleaseEntry& x) {
+      return f.object(x).fields();
+    }
+    friend auto operator==(LeaderBlocksReleaseEntry const& left,
+                           LeaderBlocksReleaseEntry const& right) noexcept
+        -> bool = default;
+  };
+
+  struct NothingToCompact {
+    template<class Inspector>
+    friend auto inspect(Inspector& f, NothingToCompact& x) {
+      return f.object(x).fields();
+    }
+    friend auto operator==(NothingToCompact const& left,
+                           NothingToCompact const& right) noexcept
+        -> bool = default;
+  };
 
   std::variant<CompactionThresholdNotReached, NotReleasedByStateMachine,
-               ParticipantMissingEntries>
+               ParticipantMissingEntries, LeaderBlocksReleaseEntry,
+               NothingToCompact>
       value;
 
   friend auto operator==(CompactionStopReason const& left,
@@ -486,9 +506,14 @@ struct CompactionStopReason {
         insp::type<CompactionThresholdNotReached>(
             "CompactionThresholdNotReached"),
         insp::type<NotReleasedByStateMachine>("NotReleasedByStateMachine"),
+        insp::type<LeaderBlocksReleaseEntry>("LeaderBlocksRelease"),
+        insp::type<NothingToCompact>("NothingToCompact"),
         insp::type<ParticipantMissingEntries>("ParticipantMissingEntries"));
   }
 };
+
+auto operator<<(std::ostream&, CompactionStopReason const&) -> std::ostream&;
+auto to_string(CompactionStopReason const&) -> std::string;
 
 struct CompactionResult {
   std::size_t numEntriesCompacted{0};

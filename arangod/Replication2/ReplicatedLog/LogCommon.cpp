@@ -339,3 +339,44 @@ auto replicated_log::CompactionResponse::fromResult(
     return CompactionResponse{std::move(res).get()};
   }
 }
+
+auto replicated_log::operator<<(std::ostream& os,
+                                CompactionStopReason const& csr)
+    -> std::ostream& {
+  return os << to_string(csr);
+}
+
+auto replicated_log::to_string(CompactionStopReason const& csr) -> std::string {
+  struct ToStringVisitor {
+    auto operator()(CompactionStopReason::LeaderBlocksReleaseEntry const&)
+        -> std::string {
+      return "Leader prevents release of more log entries";
+    }
+    auto operator()(CompactionStopReason::NothingToCompact const&)
+        -> std::string {
+      return "Nothing to compact";
+    }
+    auto operator()(
+        CompactionStopReason::NotReleasedByStateMachine const& reason)
+        -> std::string {
+      return fmt::format("Statemachine release index is at {}",
+                         reason.releasedIndex.value);
+    }
+    auto operator()(
+        CompactionStopReason::CompactionThresholdNotReached const& reason)
+        -> std::string {
+      return fmt::format(
+          "Automatic compaction threshold not reached, next compaction at {}",
+          reason.nextCompactionAt.value);
+    }
+    auto operator()(
+        CompactionStopReason::ParticipantMissingEntries const& reason)
+        -> std::string {
+      return fmt::format(
+          "Compaction waiting for participant {} to receive all log entries",
+          reason.who);
+    }
+  };
+
+  return std::visit(ToStringVisitor{}, csr.value);
+}

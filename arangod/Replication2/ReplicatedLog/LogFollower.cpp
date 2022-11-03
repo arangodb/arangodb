@@ -453,6 +453,7 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.leader = _leaderId;
     status.term = _currentTerm;
     status.lowestIndexToKeep = followerData._lowestIndexToKeep;
+    status.compactionStatus = followerData.compactionStatus;
     // TODO add snapshot status?
     return LogStatus{std::move(status)};
   });
@@ -710,7 +711,7 @@ auto LogFollower::release(LogIndex doneWithIdx) -> Result {
   guard->_releaseIndex = doneWithIdx;
   LOG_CTX("a0c95", TRACE, _loggerContext)
       << "new release index set to " << guard->_releaseIndex;
-  return guard->checkCompaction().result();
+  return guard->checkCompaction();
 }
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
@@ -781,11 +782,37 @@ Result LogFollower::onSnapshotCompleted() {
 
 auto LogFollower::compact() -> ResultT<CompactionResult> {
   auto guard = _guardedFollowerData.getLockedGuard();
-  auto compactionStop =
-      std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
+  auto const& [stopIndex, reason] = guard->calcCompactionStop();
   LOG_CTX("aed29", INFO, _loggerContext)
-      << "starting explicit compaction up to index " << compactionStop;
-  return guard->runCompaction(compactionStop);
+      << "starting explicit compaction up to index " << stopIndex << "; "
+      << reason;
+  return guard->runCompaction(true);
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStopIndex()
+    const noexcept -> LogIndex {
+  return std::min(_lowestIndexToKeep, _releaseIndex + 1);
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStop()
+    const noexcept -> std::pair<LogIndex, CompactionStopReason> {
+  auto const stopIndex = calcCompactionStopIndex();
+  ADB_PROD_ASSERT(stopIndex <= _inMemoryLog.getFirstIndex())
+      << "stopIndex is " << stopIndex << " releaseIndex = " << _releaseIndex
+      << " lowestIndexToKeep = " << _lowestIndexToKeep
+      << "first index = " << _inMemoryLog.getFirstIndex();
+  if (stopIndex == _inMemoryLog.getLastIndex()) {
+    return {stopIndex, {CompactionStopReason::NothingToCompact{}}};
+  } else if (stopIndex == _releaseIndex + 1) {
+    return {stopIndex,
+            {CompactionStopReason::NotReleasedByStateMachine{_releaseIndex}}};
+  } else if (stopIndex == _lowestIndexToKeep) {
+    return {stopIndex, {CompactionStopReason::LeaderBlocksReleaseEntry{}}};
+  } else {
+    ADB_PROD_ASSERT(false) << "stopIndex is " << stopIndex
+                           << " releaseIndex = " << _releaseIndex
+                           << " lowestIndexToKeep = " << _lowestIndexToKeep;
+  }
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
@@ -798,37 +825,58 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
   return result;
 }
 
-auto LogFollower::GuardedFollowerData::checkCompaction()
-    -> ResultT<CompactionResult> {
-  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
+auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
+  auto const compactionStop = calcCompactionStopIndex();
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() +
-                            _follower._options->_thresholdLogCompaction) {
+  return runCompaction(false).result();
+}
+
+auto LogFollower::GuardedFollowerData::runCompaction(bool ignoreThreshold)
+    -> ResultT<CompactionResult> {
+  auto const nextCompactionAt = _inMemoryLog.getFirstIndex() +
+                                _follower._options->_thresholdLogCompaction;
+  if (!ignoreThreshold && _inMemoryLog.getLastIndex() <=
+                              _inMemoryLog.getFirstIndex() +
+                                  _follower._options->_thresholdLogCompaction) {
     // only do a compaction every _thresholdLogCompaction entries
     LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
+    compactionStatus.stop = CompactionStopReason{
+        CompactionStopReason::CompactionThresholdNotReached{nextCompactionAt}};
     return {};
   }
-  return runCompaction(compactionStop);
-}
 
-auto LogFollower::GuardedFollowerData::runCompaction(LogIndex compactionStop)
-    -> ResultT<CompactionResult> {
-  auto const numberOfCompactedEntries =
-      compactionStop.value - _inMemoryLog.getFirstIndex().value;
-  auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _logCore->removeFront(compactionStop).get();
-  if (res.ok()) {
-    _inMemoryLog = std::move(newLog);
-    _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
-        numberOfCompactedEntries);
-    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries};
+  auto const [compactionStop, reason] = calcCompactionStop();
+  ADB_PROD_ASSERT(compactionStop >= _inMemoryLog.getFirstIndex());
+  auto const compactionRange =
+      LogRange(_inMemoryLog.getFirstIndex(), compactionStop);
+  auto const numberOfCompactedEntries = compactionRange.count();
+  auto res = Result{};
+  if (numberOfCompactedEntries > 0) {
+    auto newLog = _inMemoryLog.release(compactionStop);
+    res = _logCore->removeFront(compactionStop).get();
+    if (res.ok()) {
+      _inMemoryLog = std::move(newLog);
+      _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
+          numberOfCompactedEntries);
+      compactionStatus.lastCompaction = CompactionStatus::Compaction{
+          .time = CompactionStatus::clock::now(), .range = compactionRange};
+    }
+    LOG_CTX("f1028", TRACE, _follower._loggerContext)
+        << "compaction result = " << res.errorMessage();
   }
-  LOG_CTX("f1028", TRACE, _follower._loggerContext)
-      << "compaction result = " << res.errorMessage();
-  return res;
+
+  if (res.fail()) {
+    LOG_CTX("5b57b", WARN, _follower._loggerContext)
+        << "compaction failed: " << res.errorMessage();
+    return res;
+  } else {
+    compactionStatus.stop = reason;
+    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries,
+                            .stopReason = reason};
+  }
 }
 
 auto LogFollower::GuardedFollowerData::waitForResign()

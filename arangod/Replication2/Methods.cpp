@@ -740,7 +740,6 @@ struct ReplicatedLogMethodsCoordinator final
                                   fuerte::RestVerb::Post, path, buffer, opts)
           .thenValue([participant](
                          network::Response&& resp) noexcept -> ResultPair {
-            LOG_DEVEL << resp.slice().toJson();
             auto result = resp.deserialize<CompactionResultMap>();
             if (result.fail()) {
               return std::make_pair(

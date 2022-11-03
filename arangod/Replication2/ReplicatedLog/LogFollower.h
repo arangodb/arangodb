@@ -100,8 +100,8 @@ class LogFollower : public ILogFollower,
     [[nodiscard]] auto getLocalStatistics() const noexcept -> LogStatistics;
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
-    [[nodiscard]] auto checkCompaction() -> ResultT<CompactionResult>;
-    [[nodiscard]] auto runCompaction(LogIndex compactionStop)
+    [[nodiscard]] auto checkCompaction() -> Result;
+    [[nodiscard]] auto runCompaction(bool ignoreThreshold)
         -> ResultT<CompactionResult>;
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
@@ -110,6 +110,9 @@ class LogFollower : public ILogFollower,
 
     [[nodiscard]] auto waitForResign()
         -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+    [[nodiscard]] auto calcCompactionStop() const noexcept
+        -> std::pair<LogIndex, CompactionStopReason>;
+    [[nodiscard]] auto calcCompactionStopIndex() const noexcept -> LogIndex;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
@@ -127,6 +130,7 @@ class LogFollower : public ILogFollower,
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
     WaitForBag _waitForResignQueue;
+    CompactionStatus compactionStatus;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
