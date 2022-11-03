@@ -570,8 +570,8 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).asan === 'true') {
-    whichFilter.filter = 'skip when built with asan';
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
+    whichFilter.filter = 'skip when built with asan or tsan';
     return false;
   }
 
@@ -735,7 +735,7 @@ function runThere (options, instanceInfo, file) {
     httpOptions.method = 'POST';
 
     httpOptions.timeout = options.oneTestTimeout;
-    if (options.isAsan) {
+    if (options.isSan) {
       httpOptions.timeout *= 2;
     }
     if (options.valgrind) {
