@@ -76,6 +76,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body);
 
+  RestStatus registerQueryOrCursor(std::shared_ptr<aql::Query> query);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
@@ -107,6 +109,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool wasCanceled();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief build options for the query as JSON
+  ///        Will fill the _options Builder
+  //////////////////////////////////////////////////////////////////////////////
+
+  void buildOptions(arangodb::velocypack::Slice const&);
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
@@ -119,13 +128,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void cancelQuery();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief build options for the query as JSON
-  ///        Will fill the _options Builder
-  //////////////////////////////////////////////////////////////////////////////
-
-  void buildOptions(arangodb::velocypack::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
@@ -166,6 +168,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   aql::QueryResult _queryResult;
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief A shared pointer to the query options velocypack, s.t. we avoid
+  ///        to reparse and set default options
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::velocypack::Builder> _options;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our query registry
@@ -195,11 +204,5 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief A shared pointer to the query options velocypack, s.t. we avoid
-  ///        to reparse and set default options
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::velocypack::Builder> _options;
 };
 }  // namespace arangodb

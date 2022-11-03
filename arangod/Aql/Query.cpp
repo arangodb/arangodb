@@ -30,6 +30,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -50,6 +51,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "Graph/Graph.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
@@ -1864,4 +1866,46 @@ void Query::debugKillQuery() {
       << queryList->enabled();
   kill();
 #endif
+}
+
+std::shared_ptr<Query> Query::createFromPlan(
+    TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> ctx,
+    VPackSlice const plan, VPackSlice const options) {
+  ADB_PROD_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+
+  QueryId queryId;
+  if (ServerState::instance()->isCoordinator()) {
+    queryId =
+        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
+  } else {
+    queryId = TRI_NewServerSpecificTick();
+  }
+
+  auto query = ClusterQuery::create(queryId, ctx, aql::QueryOptions(options));
+
+  VPackSlice collections = plan.get("collections");
+  VPackSlice variables = plan.get("variables");
+
+  QueryAnalyzerRevisions analyzersRevision;
+  auto revisionRes = analyzersRevision.fromVelocyPack(plan);
+  if (ADB_UNLIKELY(revisionRes.fail())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   revisionRes.errorMessage());
+  }
+
+  // simon says: hack to get the behaviour of old second aql::Query constructor
+  VPackBuilder snippetBuilder;  // simon says: hack to make format conform
+  snippetBuilder.openObject();
+  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
+  snippetBuilder.add("nodes", plan.get("nodes"));
+  snippetBuilder.close();
+  snippetBuilder.close();
+
+  VPackBuilder ignoreResponse;
+  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
+                             variables, snippetBuilder.slice(),
+                             VPackSlice::noneSlice(), ignoreResponse,
+                             analyzersRevision);
+
+  return query;
 }
