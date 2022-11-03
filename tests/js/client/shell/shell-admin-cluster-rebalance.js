@@ -254,7 +254,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
           result = getRebalancePlan(true, true, true);
           let moves = result.result.moves;
-          assertTrue(moves.length > 0);
+          assertTrue(moves.length > 0, {moves, result});
           for (const job of moves) {
             assertNotEqual(job.to, dbServer.id);
           }
@@ -293,7 +293,7 @@ function clusterRebalanceOtherOptionsSuite() {
         result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
         const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
-        assertTrue(movesAllFlagsTrue.length > moves.length);
+        assertTrue(movesAllFlagsTrue.length > moves.length. {result, movesAllFlagsTrue, moves});
         if (moves.length > 0) {
           for (const job of moves) {
             if (job.shard === shardName) {
@@ -322,7 +322,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
         result = getRebalancePlan(true, false, true);
         let moves = result.result.moves;
-        assertTrue(moves.length > 0);
+        assertTrue(moves.length > 0, {moves, result});
         for (const job of moves) {
           if (job.shard === shardName) {
             assertNotEqual(job.from, followerId);
