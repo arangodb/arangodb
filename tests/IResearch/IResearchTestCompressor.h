@@ -31,11 +31,11 @@ namespace {
 // to avoid adding new file to both arangodbtests and arangod
 // we create here a header-only static by using this holder
 struct function_holder {
-  std::function<irs::bytes_ref(irs::byte_type* src, size_t size,
-                               irs::bstring& out)>
+  std::function<irs::bytes_view(irs::byte_type* src, size_t size,
+                                irs::bstring& out)>
       compress_mock;
-  std::function<irs::bytes_ref(const irs::byte_type* src, size_t src_size,
-                               irs::byte_type* dst, size_t dst_size)>
+  std::function<irs::bytes_view(const irs::byte_type* src, size_t src_size,
+                                irs::byte_type* dst, size_t dst_size)>
       decompress_mock;
 };
 }  // namespace
@@ -47,23 +47,23 @@ struct test_compressor {
   class test_compressor_compressor final
       : public ::iresearch::compression::compressor {
    public:
-    virtual bytes_ref compress(byte_type* src, size_t size,
-                               bstring& out) override {
+    virtual bytes_view compress(byte_type* src, size_t size,
+                                bstring& out) override {
       return test_compressor::functions().compress_mock
                  ? test_compressor::functions().compress_mock(src, size, out)
-                 : bytes_ref::EMPTY;
+                 : kEmptyStringView<byte_type>;
     }
   };
 
   class test_compressor_decompressor final
       : public ::iresearch::compression::decompressor {
    public:
-    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override {
+    virtual bytes_view decompress(const byte_type* src, size_t src_size,
+                                  byte_type* dst, size_t dst_size) override {
       return test_compressor::functions().decompress_mock
                  ? test_compressor::functions().decompress_mock(src, src_size,
                                                                 dst, dst_size)
-                 : bytes_ref::EMPTY;
+                 : kEmptyStringView<byte_type>;
     }
   };
 
@@ -81,7 +81,7 @@ struct test_compressor {
     return holder;
   }
 
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch::compression::mock::test_compressor";
   }
 };

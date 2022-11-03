@@ -27,7 +27,6 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Common.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -38,21 +37,24 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
+class DatabaseFeature;
 class RocksDBEdgeIndex;
 
-class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
+class RocksDBEdgeIndexWarmupTask {
+ public:
+  RocksDBEdgeIndexWarmupTask(DatabaseFeature& databaseFeature,
+                             std::string const& dbName,
+                             std::string const& collectionName, IndexId iid,
+                             rocksdb::Slice lower, rocksdb::Slice upper);
+  Result run();
+
  private:
-  RocksDBEdgeIndex* _index;
-  transaction::Methods* _trx;
+  DatabaseFeature& _databaseFeature;
+  std::string const _dbName;
+  std::string const _collectionName;
+  IndexId const _iid;
   std::string const _lower;
   std::string const _upper;
-
- public:
-  RocksDBEdgeIndexWarmupTask(
-      std::shared_ptr<basics::LocalTaskQueue> const& queue,
-      RocksDBEdgeIndex* index, transaction::Methods* trx,
-      rocksdb::Slice const& lower, rocksdb::Slice const& upper);
-  void run() override;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {
@@ -108,8 +110,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       aql::Variable const* reference) const override;
 
   /// @brief Warmup the index caches.
-  void warmup(transaction::Methods* trx,
-              std::shared_ptr<basics::LocalTaskQueue> queue) override;
+  Result scheduleWarmup() override;
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 
@@ -145,8 +146,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys, aql::AstNode const* valNode) const;
 
-  void warmupInternal(transaction::Methods* trx, rocksdb::Slice const& lower,
-                      rocksdb::Slice const& upper);
+  void warmupInternal(transaction::Methods* trx, rocksdb::Slice lower,
+                      rocksdb::Slice upper);
 
  private:
   std::string const _directionAttr;

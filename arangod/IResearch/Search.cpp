@@ -94,11 +94,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
 }
 
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
-}
-
 }  // namespace fst
 
 #include "utils/fstext/fst_builder.hpp"
@@ -697,7 +692,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     auto value = *it;
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+      return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
     }
     auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {

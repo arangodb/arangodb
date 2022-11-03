@@ -66,7 +66,7 @@
 namespace {
 
 struct TestAttributeZ : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeZ";
   }
 };
@@ -75,14 +75,14 @@ REGISTER_ATTRIBUTE(TestAttributeZ);
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept { return "empty"; }
+  static constexpr std::string_view type_name() noexcept { return "empty"; }
 
-  static ptr make(irs::string_ref) {
+  static ptr make(std::string_view) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     arangodb::velocypack::Builder builder;
     if (slice.isString()) {
@@ -112,7 +112,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref) override { return true; }
+  virtual bool reset(std::string_view) override { return true; }
 
  private:
   TestAttributeZ _attr;
@@ -1352,7 +1352,7 @@ TEST_F(IResearchLinkMetaTest, test_readMaskAll) {
     \"storeValues\": \"value\", \
     \"analyzers\": [] \
   }");
-  EXPECT_TRUE(meta.init(server.server(), json->slice(), tmpString, nullptr,
+  EXPECT_TRUE(meta.init(server.server(), json->slice(), tmpString, {},
                         arangodb::iresearch::LinkVersion::MIN, &mask));
   EXPECT_TRUE(mask._fields);
   EXPECT_TRUE(mask._includeAllFields);
@@ -1367,7 +1367,7 @@ TEST_F(IResearchLinkMetaTest, test_readMaskNone) {
   std::string tmpString;
 
   auto json = VPackParser::fromJson("{}");
-  EXPECT_TRUE(meta.init(server.server(), json->slice(), tmpString, nullptr,
+  EXPECT_TRUE(meta.init(server.server(), json->slice(), tmpString, {},
                         arangodb::iresearch::LinkVersion::MIN, &mask));
   EXPECT_FALSE(mask._fields);
   EXPECT_FALSE(mask._includeAllFields);
