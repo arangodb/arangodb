@@ -31,11 +31,7 @@
 
 #include <velocypack/Slice.h>
 
-namespace aql {
-namespace optimizer2::types {
-struct Variable;
-}
-}  // namespace aql
+using namespace arangodb::aql;
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id,
