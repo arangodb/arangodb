@@ -38,6 +38,8 @@ const isCluster = internal.isCluster();
 const request = require('@arangodb/request');
 
 const defaultReplicationFactor = db._properties().replicationFactor;
+const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+
 
 function getEndpointsByType(type) {
   const isType = (d) => (d.instanceRole === type);
