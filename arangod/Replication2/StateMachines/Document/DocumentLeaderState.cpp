@@ -192,7 +192,14 @@ auto DocumentLeaderState::getSnapshot(SnapshotOptions const& options,
             auto emplacement = snapshotIterators.emplace(
                 options.clientId, std::move(logicalCollection));
             TRI_ASSERT(emplacement.second);
-            return ResultT<Snapshot>::success(emplacement.first->second.next());
+
+            // TODO improve cleanup
+            auto snapshot = emplacement.first->second.next();
+            if (snapshot.documents.isNone()) {
+              snapshotIterators.erase(emplacement.first);
+            }
+
+            return ResultT<Snapshot>::success(std::move(snapshot));
           } catch (basics::Exception const& ex) {
             return ResultT<Snapshot>::error(ex.code(), ex.what());
           }
