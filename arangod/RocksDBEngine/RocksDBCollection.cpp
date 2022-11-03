@@ -354,8 +354,7 @@ RocksDBCollection::~RocksDBCollection() {
   }
 }
 
-Result RocksDBCollection::updateProperties(VPackSlice const& slice,
-                                           bool /*doSync*/) {
+Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
   _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
                   !_logicalCollection.isAStub() &&
                   !ServerState::instance()->isCoordinator() &&

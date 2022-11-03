@@ -170,19 +170,18 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
 
   auto self =
       std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
-  return doCommit().thenValue(
-      [self = std::move(self), activeTrx, this](auto&& res) {
-        if (res.ok()) {
-          self->updateStatus(transaction::Status::COMMITTED);
-          self->cleanupTransaction();  // deletes trx
-          ++self->statistics()._transactionsCommitted;
-        } else {
-          // what if this fails?
-          std::ignore = self->abortTransaction(activeTrx);  // deletes trx
-        }
-        TRI_ASSERT(!self->_cacheTx);
-        return std::forward<Result>(res);
-      });
+  return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
+    if (res.ok()) {
+      self->updateStatus(transaction::Status::COMMITTED);
+      self->cleanupTransaction();  // deletes trx
+      ++self->statistics()._transactionsCommitted;
+    } else {
+      // what if this fails?
+      std::ignore = self->abortTransaction(activeTrx);  // deletes trx
+    }
+    TRI_ASSERT(!self->_cacheTx);
+    return std::forward<Result>(res);
+  });
 }
 
 /// @brief abort and rollback a transaction
