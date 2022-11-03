@@ -173,7 +173,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         if (snapshotCookie == _cookies.end()) {
           snapshotCookie =
               _cookies.emplace(link.first.get(), impl.snapshot()).first;
-        } 
+        }
         if (impl.exists(snapshotCookie->second, docId, &tick)) {
           skipInsert.emplace(link.first->id());
         } else {

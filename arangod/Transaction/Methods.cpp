@@ -173,8 +173,7 @@ getStatusChangeCallbacks(arangodb::TransactionState& state,
 }
 
 std::vector<arangodb::transaction::Methods::PreCommitCallback const*>*
-getPreCommitCallbacks(arangodb::TransactionState& state,
-                         bool create = false) {
+getPreCommitCallbacks(arangodb::TransactionState& state, bool create = false) {
   struct CookieType : public arangodb::TransactionState::Cookie {
     std::vector<arangodb::transaction::Methods::PreCommitCallback const*>
         _callbacks;
@@ -198,7 +197,6 @@ getPreCommitCallbacks(arangodb::TransactionState& state,
 
   return cookie ? &(cookie->_callbacks) : nullptr;
 }
-
 
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
@@ -374,7 +372,6 @@ bool transaction::Methods::addPreCommitCallback(
 
   return true;
 }
-
 
 bool transaction::Methods::removeStatusChangeCallback(
     StatusChangeCallback const* callback) {

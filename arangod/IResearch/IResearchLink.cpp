@@ -688,13 +688,15 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
                   sync.unlock();
                   // we are number 2. We must wait for 1/3 to commit
                   std::this_thread::sleep_for(10s);
-                  TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::Number2Crash") {
+                  TRI_IF_FAILURE(
+                      "ArangoSearch::ThreeTransactionsMisorder::Number2Crash") {
                     TRI_TerminateDebugging(
                         "ArangoSearch::ThreeTransactionsMisorder Number2");
                   }
                 }
               }
-              LOG_TOPIC("182ec", DEBUG, TOPIC) << lastOperationTick << " released";
+              LOG_TOPIC("182ec", DEBUG, TOPIC)
+                  << lastOperationTick << " released";
               break;
             }
             if (!inList) {
@@ -779,15 +781,16 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
             // all are fluhing. Now release in order 1 2 3
             sync.unlock();
             std::this_thread::sleep_for(std::chrono::seconds(myNumber));
-            LOG_TOPIC("0a90a", DEBUG, TOPIC) << myNumber << " released  thread " <<
-                std::this_thread::get_id();
+            LOG_TOPIC("0a90a", DEBUG, TOPIC) << myNumber << " released  thread "
+                                             << std::this_thread::get_id();
             break;
           } else {
             sync.unlock();
             std::this_thread::sleep_for(50ms);
           }
         }
-      } else {
+      }
+      else {
         ctx._ctx.addToFlush();
       }
 #else
@@ -1082,7 +1085,8 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::StageOneKill") {
       std::unique_lock<std::mutex> sync(_t3Failureync);
-      // if all candidates gathered and max tick is committed - it is time to crash
+      // if all candidates gathered and max tick is committed - it is time to
+      // crash
       if (_t3Candidates.size() >= 3 &&
           std::find_if(_t3Candidates.begin(), _t3Candidates.end(),
                        [this](uint64_t t) {
@@ -1095,7 +1099,8 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
     _commitStageOne = false;
     auto lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
     // now commit what has possibly accumulated in the second flush context
-    // but will not move the tick as it possibly contains "3rd" generation changes
+    // but will not move the tick as it possibly contains "3rd" generation
+    // changes
     try {
       auto secondCommit = _dataStore._writer->commit();
       LOG_TOPIC("21bda", TRACE, TOPIC)
@@ -1923,7 +1928,8 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
 }
 
 bool IResearchLink::exists(IResearchLink::Snapshot const& snapshot,
-                           LocalDocumentId documentId, TRI_voc_tick_t const* recoveryTick) const {
+                           LocalDocumentId documentId,
+                           TRI_voc_tick_t const* recoveryTick) const {
   if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("6e128", TRACE, TOPIC)
         << "skipping 'exists', operation tick '" << *recoveryTick
@@ -2050,7 +2056,7 @@ Result IResearchLink::insert(transaction::Methods& trx,
     state.cookie(key, std::move(ptr));
 
     if (!ctx || !trx.addStatusChangeCallback(&_trxCallback) ||
-       !trx.addPreCommitCallback(&_trxPreCommit)) {
+        !trx.addPreCommitCallback(&_trxPreCommit)) {
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +

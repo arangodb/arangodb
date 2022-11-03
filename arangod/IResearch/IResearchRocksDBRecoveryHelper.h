@@ -62,9 +62,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   virtual void prepare() override;
 
-  void unprepare() noexcept  override { 
-    _cookies.clear();
-  }
+  void unprepare() noexcept override { _cookies.clear(); }
 
   virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,

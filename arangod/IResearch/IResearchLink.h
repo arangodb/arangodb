@@ -465,7 +465,7 @@ class IResearchLink {
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;                  // the index identifier
+  IndexId const _id;                          // the index identifier
   TRI_voc_tick_t _lastCommittedTickStageOne;  // protected by _commitMutex
   TRI_voc_tick_t _lastCommittedTickStageTwo;  // protected by _commitMutex
   size_t _cleanupIntervalCount;
@@ -473,13 +473,13 @@ class IResearchLink {
                                   // (read-only, set via init())
   std::mutex _commitMutex;        // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;             // for insert(...)/remove(...)
+      _trxCallback;  // for insert(...)/remove(...)
   std::function<void(transaction::Methods& trx)>
-      _trxPreCommit;             // for insert(...)/remove(...)
+      _trxPreCommit;            // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker
-  bool _commitStageOne;   // protected by _commitMutex
+  bool _commitStageOne;         // protected by _commitMutex
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
   // auxilary tools to test fail-cases with transactions commit order
   std::mutex _t3Failureync;

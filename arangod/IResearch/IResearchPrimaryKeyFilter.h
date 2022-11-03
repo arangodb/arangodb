@@ -117,7 +117,6 @@ class PrimaryKeyFilter final : public irs::filter,
                          // (first-match optimization)
 };                       // PrimaryKeyFilter
 
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @class PrimaryKeyFilterContainer
 /// @brief container for storing 'PrimaryKeyFilter's, does nothing as a filter
