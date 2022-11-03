@@ -108,8 +108,7 @@ std::string const& ClusterCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
 
-Result ClusterCollection::updateProperties(VPackSlice const& slice,
-                                           bool doSync) {
+Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   VPackBuilder merge;
   merge.openObject();
 

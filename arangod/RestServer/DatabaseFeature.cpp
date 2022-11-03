@@ -442,7 +442,6 @@ void IOHeartbeatThread::run() {
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this},
       _defaultWaitForSync(false),
-      _forceSyncProperties(true),
       _ignoreDatafileErrors(false),
       _isInitiallyEmpty(false),
       _checkVersion(false),
@@ -489,13 +488,12 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--database.force-sync-properties",
-      "force syncing of collection properties to disk, "
-      "will use waitForSync value of collection when "
-      "turned off",
-      new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  // the following option was obsoleted in 3.9
+  options->addObsoleteOption("--database.force-sync-properties",
+                             "force syncing of collection properties to disk, "
+                             "will use waitForSync value of collection when "
+                             "turned off",
+                             false);
 
   options->addOption(
       "--database.ignore-datafile-errors",

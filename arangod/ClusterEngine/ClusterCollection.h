@@ -66,7 +66,7 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::string const& path() const override;
 
-  Result updateProperties(velocypack::Slice const& slice, bool doSync) override;
+  Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(
       LogicalCollection& collection) const override;
