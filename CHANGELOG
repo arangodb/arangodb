@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-441: Honor read only mode with disabled authentication
+
 * Obsolete startup option `--database.force-sync-properties`. This option
   was useful with the MMFiles storage engine, but didn't have any useful
   effect when used with the RocksDB engine.
