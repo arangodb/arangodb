@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -938,7 +937,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props,
+                                     velocypack::Slice props,
                                      OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
@@ -956,10 +955,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
                                  std::to_string(collection.id().id()));
 
     // replication checks
-    int64_t replFactor = Helper::getNumericValue<int64_t>(
-        props, StaticStrings::ReplicationFactor, 0);
-    if (replFactor > 0) {
-      if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
+    if (auto s = props.get(StaticStrings::ReplicationFactor); s.isNumber()) {
+      int64_t replFactor = Helper::getNumericValue<int64_t>(
+          props, StaticStrings::ReplicationFactor, 0);
+      if (replFactor > 0 &&
+          static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
@@ -1187,34 +1187,14 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return futures::makeFuture(res);
-  }
-
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
-  };
-
-  auto queue =
-      std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
-
+  Result res;
   auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
+    res = idx->scheduleWarmup();
+    if (res.fail()) {
+      break;
+    }
   }
-
-  queue->dispatchAndWait();
-
-  if (queue->status().ok()) {
-    res = trx.commit();
-  } else {
-    return futures::makeFuture(Result(queue->status()));
-  }
-
   return futures::makeFuture(res);
 }
 
