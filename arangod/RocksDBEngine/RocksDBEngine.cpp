@@ -2214,14 +2214,14 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
 
 /// @brief flushes the RocksDB WAL.
 /// the optional parameter "waitForSync" is currently only used when the
-/// "waitForCollector" parameter is also set to true. If "waitForCollector"
-/// is true, all the RocksDB column family memtables are flushed, and, if
-/// "waitForSync" is set, additionally synced to disk. The only call site
-/// that uses "waitForCollector" currently is hot backup.
-/// The function parameter name are a remainder from MMFiles times, when
-/// they made more sense. This can be refactored at any point, so that
-/// flushing column families becomes a separate API.
-Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
+/// "flushColumnFamilies" parameter is also set to true. If
+/// "flushColumnFamilies" is true, all the RocksDB column family memtables are
+/// flushed, and, if "waitForSync" is set, additionally synced to disk. The only
+/// call site that uses "flushColumnFamilies" currently is hot backup. The
+/// function parameter name are a remainder from MMFiles times, when they made
+/// more sense. This can be refactored at any point, so that flushing column
+/// families becomes a separate API.
+Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   Result res;
 
   if (_syncThread) {
@@ -2232,7 +2232,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
     res = RocksDBSyncThread::sync(_db->GetBaseDB());
   }
 
-  if (res.ok() && waitForCollector) {
+  if (res.ok() && flushColumnFamilies) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
