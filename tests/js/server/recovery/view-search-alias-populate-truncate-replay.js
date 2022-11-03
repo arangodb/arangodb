@@ -27,11 +27,13 @@
 /// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const db = require('@arangodb').db;
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const cn = 'UnitTestsTruncateDummy';
 const vn = cn + 'View';
+var truncateFailure = require('@arangodb/test-helper-common').truncateFailure;
 
 function runSetup () {
   'use strict';
@@ -52,8 +54,7 @@ function runSetup () {
 
   c.save({ name: "crashme" }, { waitForSync: true });
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
-  c.truncate();
-  internal.debugTerminate('crashing server');
+  return truncateFailure(c);
 }
 
 function recoverySuite () {
@@ -86,8 +87,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;

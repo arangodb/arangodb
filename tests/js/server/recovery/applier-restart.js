@@ -41,6 +41,7 @@ function runSetup () {
   replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
 
   internal.debugTerminate('crashing server');
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -73,8 +74,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
