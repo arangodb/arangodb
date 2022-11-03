@@ -101,7 +101,7 @@ auto ClusterShardResolver::getShard(DocumentId const& documentId,
             TRI_errno_string(res)));
   }
   auto shard = config->shardId(responsibleShard);
-  if (shard == InvalidPregelShard) {
+  if (!shard.isValid()) {
     return ResultT<PregelShard>::error(
         TRI_ERROR_CLUSTER_SHARD_GONE, "Could not resolve target shard of edge");
   }
@@ -112,7 +112,7 @@ auto SingleServerShardResolver::getShard(DocumentId const& documentId,
                                          WorkerConfig* config)
     -> ResultT<PregelShard> {
   auto shard = config->shardId(documentId._collectionName);
-  if (shard == InvalidPregelShard) {
+  if (!shard.isValid()) {
     return ResultT<PregelShard>::error(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
         "Could not resolve target collection of edge");
@@ -589,7 +589,7 @@ auto GraphStore<V, E>::storeVertices(
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
 
   ShardID shard;
-  PregelShard currentShard = InvalidPregelShard;
+  PregelShard currentShard;
   Result res;
 
   VPackBuilder builder;
@@ -657,7 +657,7 @@ auto GraphStore<V, E>::storeVertices(
       }
 
       currentShard = it->shard();
-      shard = globalShards[currentShard];
+      shard = globalShards[currentShard._shard];
 
       auto ctx =
           transaction::StandaloneContext::Create(_vocbaseGuard.database());
