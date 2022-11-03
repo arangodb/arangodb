@@ -310,28 +310,26 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
-                                bool includeShardsEntry) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool translateCids) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
-  if (includeShardsEntry) {
-    result.add(VPackValue("shards"));
-    result.openObject();
-    auto tmpShards = _shardIds;
+  result.add(VPackValue("shards"));
+  result.openObject();
+  auto tmpShards = _shardIds;
 
-    for (auto const& shards : *tmpShards) {
-      result.add(VPackValue(shards.first));
-      result.openArray();
+  for (auto const& shards : *tmpShards) {
+    result.add(VPackValue(shards.first));
+    result.openArray();
 
-      for (auto const& servers : shards.second) {
-        result.add(VPackValue(servers));
-      }
-
-      result.close();  // server array
+    for (auto const& servers : shards.second) {
+      result.add(VPackValue(servers));
     }
 
-    result.close();  // shards
+    result.close();  // server array
   }
+
+  result.close();  // shards
 
   if (isSatellite()) {
     result.add(StaticStrings::ReplicationFactor,

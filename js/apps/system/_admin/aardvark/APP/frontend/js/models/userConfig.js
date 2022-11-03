@@ -92,32 +92,91 @@ window.UserConfig = Backbone.Model.extend({
   },
 
   setItem: function (keyName, keyValue, callback) {
-    if (this.ldapEnabled) {
-      this.setLocalItem(keyName, keyValue, callback);
-    } else {
-      // url PUT /_api/user/<username>/config/<key>
-      var self = this;
+    // keyName: Name where the objects will be stored.
+    // keyValue: Object the user wants to store.
+    // callback: Function which will be executed after successful exit.
 
-      $.ajax({
-        type: 'PUT',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.username) + '/config/' + encodeURIComponent(keyName)),
-        contentType: 'application/json',
-        processData: false,
-        data: JSON.stringify({value: keyValue}),
-        async: true,
-        success: function () {
-          self.set(keyName, keyValue);
-
-          if (callback) {
-            callback();
-          }
-        },
-        error: function () {
-          arangoHelper.arangoError('User configuration', 'Could not update user configuration for key: ' + keyName);
+    this.fetch({
+      success: function (data) {
+        storeToDB(data.toJSON());
+      },
+      error: function (data) {
+        if (data.responseJSON && data.responseJSON.errorMessage && data.responseJSON.errorNum) {
+          arangoHelper.arangoError(
+            'Graph Config',
+            `${data.responseJSON.errorMessage}[${data.responseJSON.errorNum}]`
+          );
+        } else {
+          arangoHelper.arangoError(
+            'Graph Config',
+            'Could not fetch graph configuration. Cannot save changes!'
+          );
         }
-      });
-    }
+      }
+    });
+
+    const mergeDatabaseDataWithLocalChanges = (dataFromDB, keyName, newObject) => {
+      // Currently a local merge is required as the "_api/user/<user>/config"
+      // API does not do a merge internally. It does a replacement instead.
+
+      const isObject = (varToCheck) => {
+        if (typeof varToCheck === 'object' && !Array.isArray(varToCheck) && varToCheck !== null) {
+          return true;
+        } else {
+          return false;
+        }
+      };
+
+      if (!dataFromDB) {
+        return newObject;
+      }
+
+      // Format notice
+      // dataFromDB<object>: dataFromDB.result.keyName
+      if (dataFromDB.result && dataFromDB.result[keyName]) {
+        const existingEntry = dataFromDB.result[keyName];
+        // We've found available data we need to merge
+        if (isObject(existingEntry) && isObject(newObject)) {
+          return {...existingEntry, ...newObject};
+        } else {
+          return newObject;
+        }
+      }
+
+      return newObject;
+    };
+
+    // Method to save the actual item
+    const storeToDB = (dataFromDB) => {
+      const dataObjectToStore = mergeDatabaseDataWithLocalChanges(dataFromDB, keyName, keyValue);
+
+      if (this.ldapEnabled) {
+        this.setLocalItem(keyName, dataObjectToStore, callback);
+      } else {
+        // url PUT /_api/user/<username>/config/<key>
+        var self = this;
+
+        $.ajax({
+          type: 'PUT',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.username) + '/config/' + encodeURIComponent(keyName)),
+          contentType: 'application/json',
+          processData: false,
+          data: JSON.stringify({value: dataObjectToStore}),
+          async: true,
+          success: function () {
+            self.set(keyName, dataObjectToStore);
+
+            if (callback) {
+              callback(dataObjectToStore);
+            }
+          },
+          error: function () {
+            arangoHelper.arangoError('User configuration', 'Could not update user configuration for key: ' + keyName);
+          }
+        });
+      }
+    };
   },
 
   getItem: function (keyName, callback) {

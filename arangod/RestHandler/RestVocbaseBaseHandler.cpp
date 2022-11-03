@@ -683,7 +683,10 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
           "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
-      return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+      auto aqlStandaloneContext =
+          std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+      aqlStandaloneContext->setStreaming();
+      return aqlStandaloneContext;
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
       std::string const& trxDef =
@@ -708,5 +711,6 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
                                        std::to_string(tid.id()) +
                                        "' not found");
   }
+  ctx->setStreaming();
   return ctx;
 }

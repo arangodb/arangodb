@@ -26,6 +26,7 @@
 #include <memory>
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
@@ -103,6 +104,36 @@ class Context {
   virtual std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) = 0;
 
+  /// @brief whether or not is from a streaming transaction (used to know
+  /// whether or not can read from query cache)
+  bool isStreaming() const noexcept {
+    return _transaction.isStreamingTransaction;
+  }
+
+  /// @brief whether or not transaction is JS (used to know
+  /// whether or not can read from query cache)
+  bool isTransactionJS() const noexcept { return _transaction.isJStransaction; }
+
+  bool isReadOnlyTransaction() const noexcept {
+    return _transaction.isReadOnlyTransaction;
+  }
+
+  void setReadOnly() noexcept { _transaction.isReadOnlyTransaction = true; }
+
+  /// @brief sets the transaction to be streaming (used to know whether or not
+  /// can read from query cache)
+  void setStreaming() noexcept {
+    TRI_ASSERT(_transaction.isJStransaction == false);
+    _transaction.isStreamingTransaction = true;
+  }
+
+  /// @brief sets the transaction to be JS (used to know whether or not
+  /// can read from query cache)
+  void setJStransaction() noexcept {
+    TRI_ASSERT(_transaction.isStreamingTransaction == false);
+    _transaction.isJStransaction = true;
+  }
+
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
 
@@ -139,8 +170,10 @@ class Context {
 
   struct {
     TransactionId id;
-    bool isReadOnlyTransaction;
+    bool isReadOnlyTransaction = false;
     bool isFollowerTransaction;
+    bool isStreamingTransaction = false;
+    bool isJStransaction = false;
   } _transaction;
 };
 

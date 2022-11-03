@@ -864,12 +864,6 @@ bool Index::covers(aql::Projections& projections) const {
   // check if we can use covering indexes
   auto const& covered = coveredFields();
 
-  if (n > covered.size()) {
-    // we have more projections than attributes in the index, so we already know
-    // that the index cannot support all the projections
-    return false;
-  }
-
   for (size_t i = 0; i < n; ++i) {
     bool found = false;
     for (size_t j = 0; j < covered.size(); ++j) {
@@ -908,10 +902,10 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
-void Index::warmup(transaction::Methods*,
-                   std::shared_ptr<basics::LocalTaskQueue>) {
+Result Index::scheduleWarmup() {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
+  return {};
 }
 
 /// @brief generate error message

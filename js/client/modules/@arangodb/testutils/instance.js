@@ -385,7 +385,6 @@ class instance {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
         'agency.size': this.agencyConfig.agencySize,
-        'agency.pool-size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port
