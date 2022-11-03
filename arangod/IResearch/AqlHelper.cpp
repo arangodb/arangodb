@@ -150,7 +150,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
-      irs::string_ref lhsValue, rhsValue;
+      std::string_view lhsValue, rhsValue;
       iresearch::parseValue(lhsValue, *lhs);
       iresearch::parseValue(rhsValue, *rhs);
 
@@ -166,7 +166,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
-      irs::string_ref lhsName, rhsName;
+      std::string_view lhsName, rhsName;
       iresearch::parseValue(lhsName, *lhs);
       iresearch::parseValue(rhsName, *rhs);
 
@@ -303,8 +303,8 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   }
 }
 
-irs::string_ref getFuncName(aql::AstNode const& node) {
-  irs::string_ref fname;
+std::string_view getFuncName(aql::AstNode const& node) {
+  std::string_view fname;
 
   switch (node.type) {
     case aql::NODE_TYPE_FCALL:
@@ -354,9 +354,9 @@ void visitReferencedVariables(
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
-/*static*/ irs::string_ref ScopedAqlValue::typeString(
+/*static*/ std::string_view ScopedAqlValue::typeString(
     ScopedValueType type) noexcept {
-  static irs::string_ref constexpr kTypeNames[] = {
+  static std::string_view constexpr kTypeNames[] = {
       "invalid", "null",  "boolean", "double",
       "string",  "array", "range",   "object"};
 
@@ -526,7 +526,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     };
 
     bool read(aql::AstNode const* node, QueryContext const* ctx) noexcept {
-      this->strVal = irs::string_ref::NIL;
+      this->strVal = std::string_view{};
       this->iVal = 0;
       this->type = Type::INVALID;
       this->root = nullptr;
@@ -630,7 +630,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     }
 
     iresearch::ScopedAqlValue aqlValue;
-    irs::string_ref strVal;
+    std::string_view strVal;
     int64_t iVal;
     Type type{Type::INVALID};
     aql::AstNode const* root = nullptr;
@@ -665,7 +665,7 @@ bool nameFromAttributeAccess(
           _filter{filter} {}
 
     bool attributeAccess(aql::AstNode const& node) {
-      irs::string_ref strValue;
+      std::string_view strValue;
 
       if (!parseValue(strValue, node)) {
         // wrong type
@@ -703,7 +703,7 @@ bool nameFromAttributeAccess(
           append(_value.getInt64());
           return true;
         case iresearch::SCOPED_VALUE_TYPE_STRING: {
-          irs::string_ref strValue;
+          std::string_view strValue;
 
           if (!_value.getString(strValue)) {
             // unable to parse value as string
@@ -718,11 +718,11 @@ bool nameFromAttributeAccess(
       }
     }
 
-    void append(irs::string_ref const& value) {
+    void append(std::string_view const& value) {
       if (!_str.empty()) {
         _str += NESTING_LEVEL_DELIMITER;
       }
-      _str.append(value.c_str(), value.size());
+      _str.append(value.data(), value.size());
     }
 
     void append(int64_t value) {

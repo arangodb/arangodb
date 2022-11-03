@@ -115,7 +115,7 @@ class QueryFilter : public QueryTest {
       EXPECT_TRUE(assertRules(
           _vocbase, query, {aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref, std::shared_ptr<velocypack::Buffer<uint8_t>>>
+      std::map<std::string_view, std::shared_ptr<velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", insertedDocs[0]}};
 
       auto queryResult = executeQuery(_vocbase, query);
