@@ -1095,11 +1095,12 @@ aql::optimizer2::nodes::BaseNode ExecutionNode::toInspectable(
   }
   CostEstimate estimate = getCost();
 
-  return {
-    .id = AttributeTypes::Numeric{id().id()}, .type = std::move(type),
-    .dependencies = std::move(deps), .estimatedCost = estimate.estimatedCost,
-    .estimatedNrItems = estimate.estimatedNrItems, .canThrow = false
-  };
+  return {.id = AttributeTypes::Numeric{id().id()},
+          .type = std::move(type),
+          .dependencies = std::move(deps),
+          .estimatedCost = estimate.estimatedCost,
+          .estimatedNrItems = estimate.estimatedNrItems,
+          .canThrow = false};
 }
 
 /// @brief static analysis debugger
