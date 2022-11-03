@@ -184,22 +184,22 @@ var AqlHighlightRules = function() {
             token : "punctuation",
             regex : /[\.,]/
         }, {
-            token : "keyword",  // language construct usable in COLLECT
-            regex : /WITH\s+COUNT\s+INTO\b/,
-            caseInsensitive: true
+            // COLLECT ... WITH COUNT INTO
+            // BUG: Need to use character classes because caseInsensitive: true
+            // would affect all other rules, https://github.com/ajaxorg/ace/issues/4887
+            token : "keyword",
+            regex : /[Ww][Ii][Tt][Hh]\s+[Cc][Oo][Uu][Nn][Tt]\s+[Ii][Nn][Tt][Oo]\b/
         }, {
-            token : "keyword",  // handle separately because of the whitespace
-            regex : /AT\s+LEAST\b/,
-            caseInsensitive: true // BUG: https://github.com/ajaxorg/ace/issues/4887
+            // AT LEAST (...)
+            // BUG: See above
+            token : "keyword",
+            regex : /[Aa][Tt]\s+[Ll][Ee][Aa][Ss][Tt]\b/
         }, {
             token : "language.variable", // case sensitive
             regex : /(?:CURRENT|NEW|OLD)\b/
         }, {
             token : keywordMapper,
-            regex : /[a-zA-Z_][a-zA-Z0-9_]*\b/
-        }, {
-            token : "identifier",
-            regex : /(?:\$?|_+)[a-zA-Z]+[_a-zA-Z0-9]*/,
+            regex : /(?:\$?|_+)[a-zA-Z]+[_a-zA-Z0-9]*\b/
         }, {
             token : "text",
             regex : "\\s+"
