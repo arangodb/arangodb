@@ -54,13 +54,11 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-using Helper = arangodb::basics::VelocyPackHelper;
-
 namespace arangodb {
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
                                      ClusterEngineType engineType,
-                                     arangodb::velocypack::Slice const& info)
+                                     velocypack::Slice info)
     : PhysicalCollection(collection, info),
       _engineType(engineType),
       _info(info),
@@ -115,10 +113,10 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   merge.openObject();
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = Helper::getBooleanValue(_info.slice(),
-                                       StaticStrings::CacheEnabled, false);
+    bool def = basics::VelocyPackHelper::getBooleanValue(
+        _info.slice(), StaticStrings::CacheEnabled, false);
     merge.add(StaticStrings::CacheEnabled,
-              VPackValue(Helper::getBooleanValue(
+              VPackValue(basics::VelocyPackHelper::getBooleanValue(
                   slice, StaticStrings::CacheEnabled, def)));
 
     if (VPackSlice schema = slice.get(StaticStrings::Schema);
@@ -178,7 +176,7 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
-               VPackValue(Helper::getBooleanValue(
+               VPackValue(basics::VelocyPackHelper::getBooleanValue(
                    _info.slice(), StaticStrings::CacheEnabled, false)));
 
     // note: computed values do not need to be handled here, as they are added
@@ -204,8 +202,8 @@ futures::Future<OperationResult> ClusterCollection::figures(
                               details, options);
 }
 
-void ClusterCollection::figuresSpecific(
-    bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
+void ClusterCollection::figuresSpecific(bool /*details*/,
+                                        velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
@@ -227,8 +225,7 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void ClusterCollection::prepareIndexes(
-    arangodb::velocypack::Slice indexesSlice) {
+void ClusterCollection::prepareIndexes(velocypack::Slice indexesSlice) {
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
@@ -413,7 +410,7 @@ void ClusterCollection::deferDropCollection(
   // nothing to do here
 }
 
-void ClusterCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
+void ClusterCollection::addIndex(std::shared_ptr<Index> idx) {
   // LOCKED from the outside
   auto const id = idx->id();
   for (auto const& it : _indexes) {
