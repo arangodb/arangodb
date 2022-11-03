@@ -127,7 +127,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* term = irs::get<irs::term_attribute>(a);
       ASSERT_NE(nullptr, term);
-      ASSERT_TRUE(term->value.null());
+      ASSERT_TRUE(irs::IsNull(term->value));
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
@@ -147,7 +147,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* term = irs::get<irs::term_attribute>(a);
       ASSERT_NE(nullptr, term);
-      ASSERT_TRUE(term->value.null());
+      ASSERT_TRUE(irs::IsNull(term->value));
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
@@ -168,7 +168,7 @@ TEST(GeoPointAnalyzerTest, ctor) {
     {
       auto* term = irs::get<irs::term_attribute>(a);
       ASSERT_NE(nullptr, term);
-      ASSERT_TRUE(term->value.null());
+      ASSERT_TRUE(irs::IsNull(term->value));
     }
     ASSERT_EQ(irs::type<GeoPointAnalyzer>::id(), a.type());
     ASSERT_FALSE(a.next());
@@ -209,7 +209,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -244,7 +244,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -288,7 +288,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -325,7 +325,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -369,7 +369,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -406,7 +406,7 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -655,7 +655,7 @@ TEST(GeoJSONAnalyzerTest, ctor) {
   {
     auto* term = irs::get<irs::term_attribute>(a);
     ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(term->value.null());
+    ASSERT_TRUE(irs::IsNull(term->value));
   }
   ASSERT_EQ(irs::type<GeoJSONAnalyzer>::id(), a.type());
   ASSERT_FALSE(a.next());
@@ -711,7 +711,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -736,7 +736,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -759,7 +759,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -785,7 +785,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -870,7 +870,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -895,7 +895,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -918,7 +918,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -944,7 +944,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1031,7 +1031,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1056,7 +1056,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1079,7 +1079,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1105,7 +1105,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1201,7 +1201,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1224,7 +1224,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1279,7 +1279,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1304,7 +1304,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1327,7 +1327,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1353,7 +1353,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1480,7 +1480,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1505,7 +1505,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1528,7 +1528,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1554,7 +1554,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1612,7 +1612,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1646,7 +1646,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1678,7 +1678,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1713,7 +1713,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1745,7 +1745,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1780,7 +1780,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1819,7 +1819,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1853,7 +1853,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1885,7 +1885,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1920,7 +1920,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1952,7 +1952,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }
@@ -1987,7 +1987,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
     auto begin = terms.begin();
     for (; a.next(); ++begin) {
       ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      ASSERT_EQ(*begin, irs::ViewCast<char>(term->value));
     }
     ASSERT_EQ(begin, terms.end());
   }

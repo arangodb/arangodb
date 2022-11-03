@@ -54,11 +54,9 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
-#include "velocypack/Builder.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
 #include <absl/strings/str_cat.h>
@@ -369,29 +367,6 @@ std::vector<std::string> const& LogicalCollection::shardKeys() const noexcept {
 std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->shardIds();
-}
-
-void LogicalCollection::shardMapToVelocyPack(
-    arangodb::velocypack::Builder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-
-  result.add(VPackValue("shards"));
-  serialize(result, *shardIds());
-}
-
-void LogicalCollection::shardIDsToVelocyPack(
-    arangodb::velocypack::Builder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  result.add(VPackValue("shards"));
-
-  std::vector<ShardID> combinedShardIDs;
-  for (auto const& s : *shardIds()) {
-    combinedShardIDs.push_back(s.first);
-  }
-  std::sort(combinedShardIDs.begin(), combinedShardIDs.end(),
-            [&](ShardID const& a, ShardID const& b) { return a < b; });
-
-  serialize(result, combinedShardIDs);
 }
 
 void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
@@ -831,28 +806,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourcePlanId,
               VPackValue(std::to_string(planId().id())));
   }
-
-#ifdef USE_ENTERPRISE
-  if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
-      ServerState::instance()->isRunningInCluster()) {
-    TRI_ASSERT(!isSmartChild());
-    VirtualClusterSmartEdgeCollection const* edgeCollection =
-        static_cast<arangodb::VirtualClusterSmartEdgeCollection const*>(this);
-    if (edgeCollection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unable to cast smart edge collection");
-    }
-    edgeCollection->shardMapToVelocyPack(build);
-    bool includeShardsEntry = false;
-    _sharding->toVelocyPack(build, ctx != Serialization::List,
-                            includeShardsEntry);
-  } else {
-    _sharding->toVelocyPack(build, ctx != Serialization::List);
-  }
-#else
   _sharding->toVelocyPack(build, ctx != Serialization::List);
-#endif
-
   includeVelocyPackEnterprise(build);
   TRI_ASSERT(build.isOpenObject());
   // We leave the object open
@@ -946,9 +900,12 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                       "bad value for replicationFactor");
       }
 
+      auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor > 10) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
@@ -971,9 +928,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         }
       }
     } else if (replicationFactorSlice.isString()) {
-      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
+      if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE

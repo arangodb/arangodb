@@ -63,6 +63,8 @@
       ]
     },
 
+    nodeColorAttributes: new Map(),
+
     activeNodes: [],
     selectedNodes: {},
 
@@ -573,6 +575,23 @@
       this.fetchGraph();
     },
 
+    checkAndSetGraphConfig: function (data) {
+      // This method check whether we do have stored visual properties already available
+      // in our database.
+
+      // combinedName: Variable which uses a database and graph-name bound unique id to store its properties.
+      const combinedName = frontendConfig.db + '_' + this.name;
+
+      const dataAsJson = data.toJSON();
+      if (dataAsJson.result && dataAsJson.result.graphs) {
+        if (data.toJSON().result.graphs[combinedName]) {
+          this.graphConfig = data.toJSON().result.graphs[combinedName];
+        }
+      } else {
+        this.graphConfig = null;
+      }
+    },
+
     fetchGraph: function (toFocus) {
       var self = this;
       // arangoHelper.buildGraphSubNav(self.name, 'Content');
@@ -619,7 +638,7 @@
               self.renderGraph(data, toFocus);
             } else {
               if (data.settings) {
-                if (data.settings.startVertex && self.graphConfig.startNode === undefined) {
+                if (data.settings.startVertex && (!self.graphConfig || self.graphConfig.startNode === undefined)) {
                   if (self.tmpStartNode === undefined) {
                     self.tmpStartNode = data.settings.startVertex._id;
                   }
@@ -665,9 +684,11 @@
       if (self.graphConfig === undefined || self.graphConfig === null) {
         self.userConfig.fetch({
           success: function (data) {
-            var combinedName = frontendConfig.db + '_' + self.name;
             try {
-              self.graphConfig = data.toJSON().graphs[combinedName];
+              self.checkAndSetGraphConfig(data);
+              // TODO: Method getGraphSettings() needs a refactor.
+              // Flow currently works, but it is hardly maintainable.
+              // Additional info, e.g. check inner usage of "checkAndSetGraphConfig" there.
               self.getGraphSettings(continueFetchGraph);
 
               if (self.graphConfig === undefined || self.graphConfig === null) {
@@ -1226,7 +1247,6 @@
     },
 
     updateColors: function (nodes, edges, ncolor, ecolor, origin) {
-      var combinedName = frontendConfig.db + '_' + this.name;
       var self = this;
 
       if (ncolor) {
@@ -1239,7 +1259,7 @@
       this.userConfig.fetch({
         success: function (data) {
           if (nodes === true) {
-            self.graphConfig = data.toJSON().graphs[combinedName];
+            self.checkAndSetGraphConfig(data);
             try {
               self.currentGraph.graph.nodes().forEach(function (n) {
                 if (origin) {
@@ -1608,7 +1628,7 @@
         contentType: 'application/json',
         data: ajaxData,
         success: function (data) {
-          self.checkExpand(data, id);
+          self.checkExpand(data, id, ajaxData);
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not expand node: ' + id + '.');
@@ -1618,7 +1638,7 @@
       self.removeHelp();
     },
 
-    checkExpand: function (data, origin) {
+    checkExpand: function (data, origin, ajaxData) {
       var self = this;
       var newNodes = data.nodes;
       var newEdges = data.edges;
@@ -1646,7 +1666,15 @@
         });
 
         if (found === false) {
-          newNode.originalColor = newNode.color;
+          if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
+          let color = self.nodeColorAttributes.get(newNode.nodeColorAttributeValue);
+          if(!color) {
+              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              self.nodeColorAttributes.set(newNode.nodeColorAttributeValue, tempNodeColor);
+              color = tempNodeColor;
+            }
+            newNode.color = '#' + color;
+          }
           self.currentGraph.graph.addNode(newNode);
           newNodeCounter++;
         }
@@ -1728,8 +1756,7 @@
 
       this.userConfig.fetch({
         success: function (data) {
-          var combinedName = frontendConfig.db + '_' + self.name;
-          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.checkAndSetGraphConfig(data);
 
           // init settings view
           if (self.graphSettingsView) {
@@ -1753,7 +1780,7 @@
             self.graphSettingsView.setDefaults(true, true);
             self.userConfig.fetch({
               success: function (data) {
-                self.graphConfig = data.toJSON().graphs[combinedName];
+                self.checkAndSetGraphConfig(data);
                 continueFunction();
               }
             });
@@ -1884,6 +1911,22 @@
 
       return lasso;
       */
+    },
+
+    colorNodesByAttribute: function(s, attribute) {
+      var self = this;
+          
+      s.graph.nodes().forEach(function (n) {
+        let color = self.nodeColorAttributes.get(n.nodeColorAttributeValue);
+        if(!color) {
+          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+          self.nodeColorAttributes.set(n.nodeColorAttributeValue, tempNodeColor);
+          color = tempNodeColor;
+        }
+
+        n.color = '#' + color;
+      });
+      s.refresh();
     },
 
     renderGraph: function (graph, toFocus, aqlMode, layout, renderer, edgeType) {
@@ -2104,12 +2147,13 @@
                   }
                   _.each(data.documents[0], function (value, key) {
                     if (key !== '_key' && key !== '_id' && key !== '_rev' && key !== '_from' && key !== '_to') {
-                      attributes += '<span class="nodeAttribute">' + key + '</span>';
+                      attributes += '<span class="nodeAttribute" title="' + arangoHelper.escapeHtml(value, false) + '">' + arangoHelper.escapeHtml(key, false) + '</span>';
                     }
                   });
                   var string = '<div id="nodeInfoDiv" class="nodeInfoDiv" style="display: none;">' + attributes + '</div>';
 
                   $('#graph-container').append(string);
+                  arangoHelper.fixTooltips('.nodeAttribute', 'top');
                   if (self.isFullscreen) {
                     $('.nodeInfoDiv').css('top', '10px');
                     $('.nodeInfoDiv').css('left', '10px');
@@ -2388,6 +2432,10 @@
       } else {
         $('#toggleForce').fadeOut('fast');
       }
+
+      if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
+        this.colorNodesByAttribute(s, graph.settings.nodeColorAttribute);
+      }
     },
 
     reInitDragListener: function () {
@@ -2447,7 +2495,8 @@
             self.currentGraph.refresh({ skipIndexation: true });
             // self.cameraToNode(origin, 1000);
           }
-        }, 500);
+        }, 1000);
+
       }
 
       $('#toggleForce .fa').removeClass('fa-play').addClass('fa-pause');
