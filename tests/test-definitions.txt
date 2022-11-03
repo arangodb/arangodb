@@ -154,3 +154,8 @@ communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 parallelity=4 cluster
 communication_ssl full priority=1000 parallelity=4 cluster
+
+# Run RTA makedata:
+rta_makedata cluster
+rta_makedata parallelity=2 single
+rta_makedata parallelity=2 single suffix=afo -- --activefailover true 
