@@ -64,7 +64,8 @@ class ClusteringPropertiesTest : public ::testing::Test {
   static ResultT<ClusteringProperties> parse(VPackSlice body) {
     ClusteringProperties res;
     try {
-      auto status = velocypack::deserializeWithStatus(body, res);
+      auto status = velocypack::deserializeWithStatus(body, res, {},
+                                                      InspectUserContext{});
       if (!status.ok()) {
         return Result{
             TRI_ERROR_BAD_PARAMETER,
@@ -83,7 +84,8 @@ class ClusteringPropertiesTest : public ::testing::Test {
       VPackSlice body, DatabaseConfiguration const& config) {
     ClusteringProperties res;
     try {
-      auto status = velocypack::deserializeWithStatus(body, res);
+      auto status = velocypack::deserializeWithStatus(body, res, {},
+                                                      InspectUserContext{});
       if (!status.ok()) {
         return Result{
             TRI_ERROR_BAD_PARAMETER,
@@ -104,7 +106,7 @@ class ClusteringPropertiesTest : public ::testing::Test {
 
   static VPackBuilder serialize(ClusteringProperties testee) {
     VPackBuilder result;
-    velocypack::serialize(result, testee);
+    velocypack::serialize(result, testee, InspectUserContext{});
     return result;
   }
 
@@ -114,6 +116,7 @@ class ClusteringPropertiesTest : public ::testing::Test {
     res.replicationFactor = 3;
     res.writeConcern = 2;
     res.id = DataSourceId{42};
+    res.shardingStrategy = "hash";
     return res;
   }
 

@@ -71,7 +71,7 @@ class CreateCollectionBodyTest : public ::testing::Test {
 
   static VPackBuilder serialize(CreateCollectionBody testee) {
     VPackBuilder result;
-    velocypack::serialize(result, testee);
+    velocypack::serialize(result, testee, InspectUserContext{});
     return result;
   }
 
@@ -551,8 +551,8 @@ TEST_P(PlanCollectionReplicationFactorTest, test_minReplicationFactor) {
 TEST_P(PlanCollectionReplicationFactorTest, test_nonoEnforce) {
   auto body = testBody();
   auto config = defaultDBConfig();
-  EXPECT_EQ(config.minReplicationFactor, 0);
-  EXPECT_EQ(config.maxReplicationFactor, 0);
+  EXPECT_EQ(config.minReplicationFactor, 0ull);
+  EXPECT_EQ(config.maxReplicationFactor, 0ull);
   EXPECT_EQ(config.enforceReplicationFactor, true);
 
   config.enforceReplicationFactor = false;

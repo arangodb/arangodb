@@ -41,7 +41,8 @@ ResultT<CreateCollectionBody> parseAndValidate(
     CreateCollectionBody res;
     // Inject the given defaultName. Json input will overwrite the name
     res.name = defaultName;
-    auto status = velocypack::deserializeWithStatus(input, res);
+    auto status =
+        velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
       // Inject default values, and finally check if collection is allowed
       auto result = res.applyDefaultsAndValidateDatabaseConfiguration(config);
@@ -116,7 +117,7 @@ CreateCollectionBody::toCreateCollectionProperties(
 arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
     const {
   arangodb::velocypack::Builder builder;
-  arangodb::velocypack::serialize(builder, *this);
+  arangodb::velocypack::serialize(builder, *this, InspectUserContext{});
   // TODO: This is a hack to erase attributes that are not expected by follow up
   // APIS, it should be obsolete after refactoring is completed
   std::vector<std::string> attributesToErase{};

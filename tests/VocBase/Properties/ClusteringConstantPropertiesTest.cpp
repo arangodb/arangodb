@@ -61,7 +61,8 @@ class ClusteringConstantPropertiesTest : public ::testing::Test {
   static ResultT<ClusteringConstantProperties> parse(VPackSlice body) {
     ClusteringConstantProperties res;
     try {
-      auto status = velocypack::deserializeWithStatus(body, res);
+      auto status = velocypack::deserializeWithStatus(body, res, {},
+                                                      InspectUserContext{});
       if (!status.ok()) {
         return Result{
             TRI_ERROR_BAD_PARAMETER,
@@ -78,7 +79,7 @@ class ClusteringConstantPropertiesTest : public ::testing::Test {
 
   static VPackBuilder serialize(ClusteringConstantProperties testee) {
     VPackBuilder result;
-    velocypack::serialize(result, testee);
+    velocypack::serialize(result, testee, InspectUserContext{});
     return result;
   }
 };
@@ -131,4 +132,29 @@ GeneratePositiveIntegerAttributeTest(ClusteringConstantPropertiesTest,
 
 GenerateOptionalStringAttributeTest(ClusteringConstantPropertiesTest,
                                     distributeShardsLike);
+
+TEST_F(ClusteringConstantPropertiesTest, test_distributeShardsLikeUserContext) {
+  ClusteringConstantProperties props;
+  props.distributeShardsLike = "test";
+  props.distributeShardsLikeCid = "42";
+  VPackBuilder serial;
+  velocypack::serialize(serial, props, InspectUserContext{});
+  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
+  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
+  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
+            props.distributeShardsLike);
+}
+
+TEST_F(ClusteringConstantPropertiesTest,
+       test_distributeShardsLikeAgencyContext) {
+  ClusteringConstantProperties props;
+  props.distributeShardsLike = "test";
+  props.distributeShardsLikeCid = "42";
+  VPackBuilder serial;
+  velocypack::serialize(serial, props, InspectAgencyContext{});
+  ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
+  ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
+  EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
+            props.distributeShardsLikeCid);
+}
 }  // namespace arangodb::tests

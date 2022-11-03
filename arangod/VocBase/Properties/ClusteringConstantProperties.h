@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "VocBase/Properties/InspectContexts.h"
 
 #include <optional>
 #include <cstdint>
@@ -53,12 +54,9 @@ struct ClusteringConstantProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringConstantProperties& props) {
-
   auto distShardsLikeField = std::invoke([&]() {
-    // Make the Inspector ignore distributeShardsLike on write
-    // if there is no value.
-
-    if constexpr (!Inspector::isLoading) {
+    if constexpr (std::is_same_v<typename Inspector::Context,
+                                 InspectAgencyContext>) {
       // The agency requires the CollectionID
       auto field =
           f.field("distributeShardsLike", props.distributeShardsLikeCid)
@@ -66,9 +64,9 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
       return field;
     } else {
       // The user gives the CollectionName
-      auto field = f.field("distributeShardsLike", props.distributeShardsLike)
-                       .invariant(UtilityInvariants::isNonEmptyIfPresent);
-      return std::move(field).fallback(f.keep());
+      return f.field("distributeShardsLike", props.distributeShardsLike)
+          .fallback(f.keep())
+          .invariant(UtilityInvariants::isNonEmptyIfPresent);
     }
   });
 

@@ -49,6 +49,24 @@ template<class T>
   return std::move(builder).sharedSlice();
 }
 
+template<class T, class Context>
+void serialize(Builder& builder, T& value, Context const& context) {
+  inspection::VPackSaveInspector<Context> inspector(builder, context);
+  if (auto res = inspector.apply(value); !res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string{"Error while serializing to VelocyPack: "} + res.error() +
+            "\nPath: " + res.path());
+  }
+}
+
+template<class T, class Context>
+[[nodiscard]] auto serialize(T& value, Context const& context) -> SharedSlice {
+  auto builder = Builder();
+  serialize(builder, value, context);
+  return std::move(builder).sharedSlice();
+}
+
 namespace detail {
 
 template<class Inspector, class T>
