@@ -32,12 +32,12 @@ template<typename T>
 class ResultT;
 
 class DataSourceId;
-struct ClusteringProperties;
+struct CollectionProperties;
 
 struct DatabaseConfiguration {
   DatabaseConfiguration(
       std::function<DataSourceId()> idGenerator,
-      std::function<ResultT<ClusteringProperties>(std::string const&)>
+      std::function<ResultT<CollectionProperties>(std::string const&)>
           getCollectionGroupSharding);
 
   bool allowExtendedNames = false;
@@ -55,7 +55,7 @@ struct DatabaseConfiguration {
   bool isOneShardDB = false;
 
   std::function<DataSourceId()> idGenerator;
-  std::function<ResultT<ClusteringProperties>(std::string const&)>
+  std::function<ResultT<CollectionProperties>(std::string const&)>
       getCollectionGroupSharding;
 };
 }

@@ -36,6 +36,8 @@ class Result;
 struct ClusteringConstantProperties {
   inspection::NonNullOptional<uint64_t> numberOfShards{std::nullopt};
   inspection::NonNullOptional<std::string> distributeShardsLike{std::nullopt};
+  inspection::NonNullOptional<std::string> distributeShardsLikeCid{
+      std::nullopt};
   std::optional<std::string> shardingStrategy =
       std::nullopt;  // defaultShardingStrategy
   std::vector<std::string> shardKeys =
@@ -55,11 +57,17 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
   auto distShardsLikeField = std::invoke([&]() {
     // Make the Inspector ignore distributeShardsLike on write
     // if there is no value.
-    auto field = f.field("distributeShardsLike", props.distributeShardsLike)
-                     .invariant(UtilityInvariants::isNonEmptyIfPresent);
+
     if constexpr (!Inspector::isLoading) {
+      // The agency requires the CollectionID
+      auto field =
+          f.field("distributeShardsLike", props.distributeShardsLikeCid)
+              .invariant(UtilityInvariants::isNonEmptyIfPresent);
       return field;
     } else {
+      // The user gives the CollectionName
+      auto field = f.field("distributeShardsLike", props.distributeShardsLike)
+                       .invariant(UtilityInvariants::isNonEmptyIfPresent);
       return std::move(field).fallback(f.keep());
     }
   });

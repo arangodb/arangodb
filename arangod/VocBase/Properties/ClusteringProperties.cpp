@@ -24,6 +24,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/ResultT.h"
+#include "VocBase/Properties/CollectionProperties.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
@@ -54,6 +55,13 @@ ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
       return groupInfo.result();
     }
     // Copy the relevant attributes
+
+    // We cannot have a cid set yet, this can only be set if we read from
+    // agency which is not yet implemented using this path.
+    TRI_ASSERT(!distributeShardsLikeCid.has_value());
+    // Copy the CID value
+    distributeShardsLikeCid = std::to_string(groupInfo->id.id());
+    TRI_ASSERT(groupInfo->numberOfShards.has_value());
     if (numberOfShards.has_value()) {
       if (numberOfShards != groupInfo->numberOfShards) {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -65,6 +73,7 @@ ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
     } else {
       numberOfShards = groupInfo->numberOfShards;
     }
+    TRI_ASSERT(groupInfo->writeConcern.has_value());
     if (writeConcern.has_value()) {
       if (writeConcern != groupInfo->writeConcern) {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -76,6 +85,7 @@ ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
     } else {
       writeConcern = groupInfo->writeConcern;
     }
+    TRI_ASSERT(groupInfo->replicationFactor.has_value());
     if (replicationFactor.has_value()) {
       if (replicationFactor != groupInfo->replicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
@@ -86,6 +96,26 @@ ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
       }
     } else {
       replicationFactor = groupInfo->replicationFactor;
+    }
+    TRI_ASSERT(groupInfo->shardingStrategy.has_value());
+    if (shardingStrategy.has_value()) {
+      // TODO: Externalize, and add EE exceptions
+      if (shardingStrategy != groupInfo->shardingStrategy) {
+        return {TRI_ERROR_BAD_PARAMETER,
+                "Cannot have a different sharding strategy (" +
+                    shardingStrategy.value() +
+                    "), than the leading collection (" +
+                    groupInfo->shardingStrategy.value() + ")"};
+      }
+    } else {
+      shardingStrategy = groupInfo->shardingStrategy;
+    }
+    if (shardKeys.size() != groupInfo->shardKeys.size()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Cannot have a different number of shardKeys (" +
+                  std::to_string(shardKeys.size()) +
+                  "), than the leading collection (" +
+                  std::to_string(groupInfo->shardKeys.size()) + ")."};
     }
   } else {
     // Apply database defaults

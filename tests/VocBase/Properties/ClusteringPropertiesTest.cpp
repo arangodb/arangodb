@@ -26,6 +26,7 @@
 #include "Basics/ResultT.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Properties/ClusteringProperties.h"
+#include "VocBase/Properties/CollectionProperties.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "Inspection/VPack.h"
 
@@ -107,20 +108,21 @@ class ClusteringPropertiesTest : public ::testing::Test {
     return result;
   }
 
-  static ClusteringProperties defaultLeaderProps() {
-    ClusteringProperties res;
+  static CollectionProperties defaultLeaderProps() {
+    CollectionProperties res;
     res.numberOfShards = 12;
     res.replicationFactor = 3;
     res.writeConcern = 2;
+    res.id = DataSourceId{42};
     return res;
   }
 
   static DatabaseConfiguration defaultDBConfig(
-      std::unordered_map<std::string, ClusteringProperties> lookupMap = {}) {
+      std::unordered_map<std::string, CollectionProperties> lookupMap = {}) {
     return DatabaseConfiguration{
         []() { return DataSourceId(42); },
         [lookupMap = std::move(lookupMap)](
-            std::string const& name) -> ResultT<ClusteringProperties> {
+            std::string const& name) -> ResultT<CollectionProperties> {
           // Set a lookup method
           if (!lookupMap.contains(name)) {
             return {TRI_ERROR_INTERNAL};

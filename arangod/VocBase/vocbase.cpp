@@ -2255,13 +2255,13 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
     if (!ServerState::instance()->isCoordinator() &&
         !ServerState::instance()->isDBServer()) {
       return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [](std::string const&) -> ResultT<ClusteringProperties> {
+              [](std::string const&) -> ResultT<CollectionProperties> {
                 return {TRI_ERROR_NOT_IMPLEMENTED};
               }};
     } else {
       auto& ci = cl.clusterInfo();
       return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
-              [this](std::string const& name) -> ResultT<ClusteringProperties> {
+              [this](std::string const& name) -> ResultT<CollectionProperties> {
                 CollectionNameResolver resolver{*this};
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
@@ -2269,8 +2269,7 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
                                 "Collection not found: " + name +
                                     " in database " + this->name()};
                 }
-                // Extract required ShardingProperties
-                return c->getClusteringProperties();
+                return c->getCollectionProperties();
               }};
     }
   });

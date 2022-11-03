@@ -53,7 +53,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/Properties/ClusteringProperties.h"
+#include "VocBase/Properties/CollectionProperties.h"
 #include "VocBase/Validators.h"
 
 #ifdef USE_ENTERPRISE
@@ -314,9 +314,16 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
-ClusteringProperties LogicalCollection::getClusteringProperties()
+CollectionProperties LogicalCollection::getCollectionProperties()
     const noexcept {
-  ClusteringProperties props;
+  CollectionProperties props;
+  // NOTE: This implementation is NOT complete.
+  // It only contains what was absolute necessary to get distributeShardsLike
+  // to work.
+  // Longterm-Plan: A logical collection should have those properties as a
+  // member and just return a reference to them.
+  props.name = name();
+  props.id = id();
   props.numberOfShards = numberOfShards();
   props.writeConcern = writeConcern();
   props.replicationFactor = replicationFactor();
