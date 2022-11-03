@@ -161,7 +161,7 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector) override {
+  Result flushWal(bool waitForSync, bool flushColumnFamilies) override {
     return {};
   }
 
