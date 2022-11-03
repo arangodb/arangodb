@@ -30,6 +30,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/Projections.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -153,7 +155,7 @@ class IResearchInvertedIndexIteratorTestBase
                                 arangodb::iresearch::
                                     IResearchInvertedIndexMetaIndexingContext>(
                            trx, doc->first, doc->second->slice(),
-                           *_index->meta()._indexingContext)
+                           *_index->meta()._indexingContext, nullptr)
                        .ok();
         EXPECT_TRUE(res);
         ++doc;
@@ -173,7 +175,7 @@ class IResearchInvertedIndexIteratorTestBase
                               arangodb::iresearch::
                                   IResearchInvertedIndexMetaIndexingContext>(
                          trx, doc->first, doc->second->slice(),
-                         *_index->meta()._indexingContext)
+                         *_index->meta()._indexingContext, nullptr)
                      .ok();
       EXPECT_TRUE(res);
       ++doc;
@@ -237,10 +239,12 @@ class IResearchInvertedIndexIteratorTestBase
       }
     }
     ASSERT_TRUE(ref);
+    arangodb::ResourceMonitor monitor(
+        arangodb::GlobalResourceMonitor::instance());
     arangodb::IndexIteratorOptions opts;
     arangodb::SingleCollectionTransaction trx(ctx, collection(),
                                               arangodb::AccessMode::Type::READ);
-    auto iterator = index().iteratorForCondition(&collection(), &trx,
+    auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
                                                  filterNode->getMember(0), ref,
                                                  opts, mutableConditionIdx);
     test(iterator.get());

@@ -42,6 +42,7 @@ class Slice;
 }
 
 namespace graph {
+template<class ProviderType>
 class KShortestPathsFinder;
 class ShortestPathFinder;
 class ShortestPathResult;

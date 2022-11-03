@@ -32,6 +32,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -66,6 +68,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
+#include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
@@ -626,13 +629,7 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
-      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
-    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
-      resolved.erase(0, StaticStrings::FullFromPrefix.size());
-    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
-      resolved.erase(0, StaticStrings::FullToPrefix.size());
-    }
+    ClusterMethods::realNameFromSmartName(resolved);
 #endif
     // build collection name
     temp.append(resolved);
@@ -790,10 +787,13 @@ OperationResult transaction::Methods::anyLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
+                ReadOwnWrites::no);
 
   iterator->nextDocument(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -1310,48 +1310,21 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
     return {};
   }
 
-  auto state = collection.getDocumentState();
-  TRI_ASSERT(state != nullptr);
-  if (state == nullptr) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-            "Could not get replicated state"};
-  }
-
-  auto status = state->getStatus();
-  if (status == std::nullopt) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            "Could not get replicated state status"};
-  }
-
-  using namespace replication2::replicated_state;
-
-  if (auto leaderStatus = status->asLeaderStatus(); leaderStatus != nullptr) {
-    if (leaderStatus->managerState.state ==
-        LeaderInternalState::kRecoveryInProgress) {
-      // Even though we are the leader, we don't want to replicate during
-      // recovery.
-      options.silent = true;
-      replicationType = ReplicationType::FOLLOWER;
-      followers = nullptr;
-    } else if (leaderStatus->managerState.state ==
-               LeaderInternalState::kServiceAvailable) {
-      options.silent = false;
-      replicationType = ReplicationType::LEADER;
-      followers = std::make_shared<std::vector<ServerID>>();
-    } else {
-      return {TRI_ERROR_REPLICATION_LEADER_ERROR,
-              "Unexpected manager state " +
-                  std::string(to_string(leaderStatus->managerState.state))};
-    }
-  } else if (auto followerStatus = status->asFollowerStatus();
-             followerStatus != nullptr) {
+  // The context type is a good indicator of the replication type.
+  // A transaction created on a follower always has a ReplicatedContext, whereas
+  // one created on the leader does not. The only exception is while doing
+  // recovery, where we have a ReplicatedContext, but we are still the
+  // leader. In that case, the leader behaves very similar to a follower.
+  if (auto* context = dynamic_cast<transaction::ReplicatedContext*>(
+          _transactionContext.get());
+      context == nullptr) {
+    options.silent = false;
+    replicationType = ReplicationType::LEADER;
+    followers = std::make_shared<std::vector<ServerID>>();
+  } else {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
     followers = std::make_shared<std::vector<ServerID> const>();
-  } else {
-    std::stringstream s;
-    s << "Status is " << *status;
-    return {TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE, s.str()};
   }
   return {};
 }
@@ -1614,6 +1587,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
              resultBuilder.slice().length() == value.length());
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     StorageEngine& engine = collection->vocbase()
@@ -1654,15 +1628,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
   }
-  return futures::makeFuture(OperationResult(std::move(res), std::move(resDocs),
-                                             options, std::move(errorCounter)));
+
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::insertLocalHelper(
@@ -1970,6 +1949,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
              resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
     if (replicationType == ReplicationType::LEADER &&
         (!followers->empty() ||
@@ -2004,7 +1984,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -2012,8 +1992,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
-                         std::move(errorCounter));
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::modifyLocalHelper(
@@ -2309,6 +2293,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
              resultBuilder.slice().length() == value.length());
 
   auto resDocs = resultBuilder.steal();
+  auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
     auto replicationVersion = collection->replicationVersion();
     if (replicationType == ReplicationType::LEADER &&
@@ -2340,7 +2325,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     // execute a deferred intermediate commit, if required.
-    res = performIntermediateCommitIfRequired(collection->id());
+    intermediateCommit = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -2348,8 +2333,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
-                         std::move(errorCounter));
+  return std::move(intermediateCommit)
+      .thenValue([options, errorCounter = std::move(errorCounter),
+                  resDocs = std::move(resDocs)](auto&& res) mutable {
+        return OperationResult(res, std::move(resDocs), options,
+                               std::move(errorCounter));
+      });
 }
 
 Result transaction::Methods::removeLocalHelper(
@@ -2431,10 +2420,13 @@ OperationResult transaction::Methods::allLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
+                ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -2776,9 +2768,10 @@ OperationResult transaction::Methods::countLocal(
 
 /// @brief factory for IndexIterator objects from AQL
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
-    IndexHandle const& idx, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
+    ResourceMonitor& monitor, IndexHandle const& idx,
+    arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2796,16 +2789,16 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
-                                   mutableConditionIdx);
+  return idx->iteratorForCondition(monitor, this, condition, var, opts,
+                                   readOwnWrites, mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
-    std::string const& collectionName, CursorType cursorType,
-    ReadOwnWrites readOwnWrites) {
+    ResourceMonitor& monitor, std::string const& collectionName,
+    CursorType cursorType, ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
   if (ADB_UNLIKELY(_state->isCoordinator())) {
@@ -3016,7 +3009,7 @@ Future<Result> Methods::replicateOperations(
             operation),
         state()->id(),
         replication2::replicated_state::document::ReplicationOptions{});
-    return Result{};
+    return performIntermediateCommitIfRequired(collection->id());
   }
 
   // path and requestType are different for insert/remove/modify.
@@ -3148,9 +3141,8 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb =
-      [=, this](
-          std::vector<futures::Try<network::Response>>&& responses) -> Result {
+  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses)
+      -> futures::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
         vocbase().server().getFeature<ReplicationMetricsFeature>();
@@ -3267,14 +3259,12 @@ Future<Result> Methods::replicateOperations(
       }
     }
 
-    Result res;
     if (didRefuse) {  // case (1), caller may abort this transaction
-      res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
     } else {
       // execute a deferred intermediate commit, if required.
-      res = performIntermediateCommitIfRequired(collection->id());
+      return performIntermediateCommitIfRequired(collection->id());
     }
-    return res;
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -3585,8 +3575,13 @@ futures::Future<OperationResult> Methods::countInternal(
 }
 
 // perform a (deferred) intermediate commit if required
-Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
+futures::Future<Result> Methods::performIntermediateCommitIfRequired(
+    DataSourceId collectionId) {
   return _state->performIntermediateCommitIfRequired(collectionId);
+}
+
+Result Methods::triggerIntermediateCommit() {
+  return _state->triggerIntermediateCommit();
 }
 
 #ifndef USE_ENTERPRISE

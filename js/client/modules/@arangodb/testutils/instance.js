@@ -371,7 +371,7 @@ class instance {
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
     } else if (this.options.noStartStopLogs) {
-      let logs = ['all=error'];
+      let logs = ['all=error', 'crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
           logs = logs.concat(this.args['log.level']);
@@ -385,7 +385,6 @@ class instance {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
         'agency.size': this.agencyConfig.agencySize,
-        'agency.pool-size': this.agencyConfig.agencySize,
         'agency.wait-for-sync': this.agencyConfig.waitForSync,
         'agency.supervision': this.agencyConfig.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port

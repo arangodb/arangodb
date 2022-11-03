@@ -27,10 +27,18 @@
 
 namespace arangodb {
 
+struct IRocksDBTransactionCallback {
+  virtual ~IRocksDBTransactionCallback() = default;
+  virtual rocksdb::SequenceNumber prepare() = 0;
+  virtual void cleanup() = 0;
+  virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
+};
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState const* state,
+                                 IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
   ~RocksDBTrxBaseMethods();
@@ -70,6 +78,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return _numInserts + _numUpdates + _numRemoves;
   }
 
+  uint64_t numPrimitiveOperations() const noexcept final override {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
+  }
+
   /// @brief add an operation for a transaction
   Result addOperation(TRI_voc_document_operation_e opType) override;
 
@@ -102,6 +114,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   virtual void createTransaction();
 
   arangodb::Result doCommit();
+
+  IRocksDBTransactionCallback& _callback;
 
   rocksdb::TransactionDB* _db{nullptr};
 

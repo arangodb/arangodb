@@ -106,12 +106,12 @@ void mangleNested(std::string& name) {
 }
 
 #ifdef USE_ENTERPRISE
-bool isNestedField(irs::string_ref name) noexcept {
+bool isNestedField(std::string_view name) noexcept {
   return !name.empty() && name.back() == kNestedDelimiter;
 }
 #endif
 
-bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+bool needTrackPrevDoc(std::string_view name, bool nested) noexcept {
 #ifdef USE_ENTERPRISE
   return (isNestedField(name)) || (nested && name == DocumentPrimaryKey::PK());
 #else

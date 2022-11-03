@@ -494,13 +494,162 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       }
     }
   } else {
-    auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
-    auto executorInfos = EnumeratePathsExecutorInfos(
-        outputRegister, engine.getQuery(), std::move(finder),
-        std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<ExecutionBlockImpl<
-        EnumeratePathsExecutor<graph::KShortestPathsFinder>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+    if (ServerState::instance()->isCoordinator()) {
+      auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsForward;
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsBackward;
+
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariablesForward{};
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariablesBackward{};
+
+      ClusterBaseProviderOptions forwardProviderOptions(
+          traverserCache, engines(), false, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesForward,
+          std::move(availableDepthsSpecificConditionsForward));
+
+      ClusterBaseProviderOptions backwardProviderOptions(
+          traverserCache, engines(), true, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesBackward,
+          std::move(availableDepthsSpecificConditionsBackward));
+
+      // TODO [GraphRefactor]: Optimize useWeight section
+      if (opts->useWeight()) {
+        double defaultWeight = opts->getDefaultWeight();
+        if (opts->getWeightAttribute().empty()) {
+          forwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+        } else {
+          std::string weightAttribute = opts->getWeightAttribute();
+          forwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+        }
+      }
+      std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
+          std::make_unique<graph::KShortestPathsFinder<
+              ClusterProvider<ClusterProviderStep>>>(
+              *opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions));
+      auto executorInfos = EnumeratePathsExecutorInfos(
+          outputRegister, engine.getQuery(), std::move(finder),
+          std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<
+          EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    } else {
+      // TODO [GraphRefactor]: Cleanup of this area (duplicate code)
+      // - buildUsedIndexes
+      // - buildReverseUsedIndexes
+      // - forwardProviderOptions
+      // - backwardProviderOptions
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          reversedUsedIndexes{};
+      reversedUsedIndexes.first = buildReverseUsedIndexes();
+
+      SingleServerBaseProviderOptions forwardProviderOptions(
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+          opts->collectionToShard(), opts->getVertexProjections(),
+          opts->getEdgeProjections());
+
+      SingleServerBaseProviderOptions backwardProviderOptions(
+          opts->tmpVar(), std::move(reversedUsedIndexes),
+          opts->getExpressionCtx(), {}, opts->collectionToShard(),
+          opts->getVertexProjections(), opts->getEdgeProjections());
+
+      // TODO [GraphRefactor]: Optimize useWeight section
+      if (opts->useWeight()) {
+        double defaultWeight = opts->getDefaultWeight();
+        if (opts->getWeightAttribute().empty()) {
+          forwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+        } else {
+          std::string weightAttribute = opts->getWeightAttribute();
+          forwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+        }
+      }
+
+      std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
+          std::make_unique<graph::KShortestPathsFinder<
+              SingleServerProvider<SingleServerProviderStep>>>(
+              *opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions));
+      auto executorInfos = EnumeratePathsExecutorInfos(
+          outputRegister, engine.getQuery(), std::move(finder),
+          std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<
+          EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
   }
 }
 
