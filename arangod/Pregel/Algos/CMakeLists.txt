@@ -11,7 +11,8 @@ target_sources(arango_pregel PRIVATE
   SLPA.cpp
   SSSP.cpp
   ShortestPath.cpp
-  WCC.cpp)
+  WCC.cpp
+  ColorPropagation.cpp)
 
 if (USE_MAINTAINER_MODE)
   target_sources(arango_pregel PRIVATE
