@@ -154,7 +154,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   transaction::StandaloneContext ctx(coll->vocbase());
 
   // FIXME: check ticks range and possibly omit this step
-  containers::FlatHashSet<IndexId> skipInsert;
+  _skipExisted.clear();
   mustReplay = false;
   {
     for (auto const& link : links) {
@@ -175,7 +175,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
               _cookies.emplace(link.first.get(), impl.snapshot()).first;
         }
         if (impl.exists(snapshotCookie->second, docId, &tick)) {
-          skipInsert.emplace(link.first->id());
+          _skipExisted.emplace(link.first->id());
         } else {
           mustReplay = true;
         }
@@ -203,7 +203,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       // link excluded from recovery
       _skippedIndexes.emplace(link.first->id());
     } else {
-      if (skipInsert.find(link.first->id()) != skipInsert.end()) {
+      if (_skipExisted.find(link.first->id()) != _skipExisted.end()) {
         continue;
       }
       // link participates in recovery

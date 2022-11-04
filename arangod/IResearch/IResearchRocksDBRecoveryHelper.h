@@ -62,7 +62,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   virtual void prepare() override;
 
-  void unprepare() noexcept override { _cookies.clear(); }
+  void unprepare() noexcept override { _cookies = {}; }
 
   virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                      const rocksdb::Slice& value,
@@ -110,6 +110,8 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
       _skipRecoveryItems;
 
   containers::FlatHashSet<IndexId> _skippedIndexes;
+
+  containers::FlatHashSet<IndexId> _skipExisted;
 
   // Snapshots for links at state prior to recovery.
   // Used to decide if insert should be replayed
