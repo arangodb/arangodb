@@ -413,7 +413,7 @@ Result TransactionState::checkCollectionPermission(
 
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
-void TransactionState::clearQueryCache() {
+void TransactionState::clearQueryCache() const {
   if (_collections.empty()) {
     return;
   }

@@ -207,7 +207,7 @@ class IResearchDataStore {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested);
+                bool nested, uint64_t const* recoveryTick);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -216,7 +216,8 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   template<typename FieldIteratorType, typename MetaType>
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc, MetaType const& meta);
+                velocypack::Slice doc, MetaType const& meta,
+                uint64_t const* recoveryTick);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties

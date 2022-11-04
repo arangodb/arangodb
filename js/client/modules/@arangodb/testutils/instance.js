@@ -371,7 +371,7 @@ class instance {
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
     } else if (this.options.noStartStopLogs) {
-      let logs = ['all=error'];
+      let logs = ['all=error', 'crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
           logs = logs.concat(this.args['log.level']);

@@ -100,9 +100,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                                          size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* node,
@@ -142,13 +143,15 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                   OperationOptions const& options, bool insert);
 
   /// @brief create the iterator, for a single attribute, IN operator
-  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
+  std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
+                                                  transaction::Methods*,
                                                   aql::AstNode const*,
                                                   aql::AstNode const*,
                                                   bool ascending);
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
+  std::unique_ptr<IndexIterator> createEqIterator(ResourceMonitor& monitor,
+                                                  transaction::Methods*,
                                                   aql::AstNode const*,
                                                   aql::AstNode const*,
                                                   ReadOwnWrites readOwnWrites);

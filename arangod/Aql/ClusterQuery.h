@@ -62,6 +62,8 @@ class ClusterQuery : public Query {
  private:
   /// @brief first one should be the local one
   traverser::GraphEngineList _traversers;
+
+  size_t _planMemoryUsage;
 };
 
 }  // namespace arangodb::aql

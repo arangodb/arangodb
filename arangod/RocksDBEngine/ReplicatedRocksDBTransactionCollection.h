@@ -72,6 +72,8 @@ class ReplicatedRocksDBTransactionCollection final
 
   uint64_t numOperations() const noexcept;
 
+  uint64_t numPrimitiveOperations() const noexcept;
+
   bool ensureSnapshot();
 
   auto leaderState() -> std::shared_ptr<

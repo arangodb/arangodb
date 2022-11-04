@@ -43,6 +43,7 @@
 namespace arangodb {
 
 class LocalDocumentId;
+struct ResourceMonitor;
 
 namespace aql {
 class TraversalStats;
@@ -77,7 +78,8 @@ class RefactoredSingleServerEdgeCursor {
     LookupInfo(LookupInfo&&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    void rearmVertex(VertexType vertex, transaction::Methods* trx,
+    void rearmVertex(VertexType vertex, ResourceMonitor& monitor,
+                     transaction::Methods* trx,
                      arangodb::aql::Variable const* tmpVar,
                      aql::TraversalStats& stats);
 
@@ -102,7 +104,8 @@ class RefactoredSingleServerEdgeCursor {
 
  public:
   RefactoredSingleServerEdgeCursor(
-      transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      arangodb::aql::Variable const* tmpVar,
       std::vector<IndexAccessor>& globalIndexConditions,
       std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
           depthBasedIndexConditions,
@@ -119,6 +122,7 @@ class RefactoredSingleServerEdgeCursor {
   std::vector<LookupInfo> _lookupInfo;
   containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
 
+  ResourceMonitor& _monitor;
   transaction::Methods* _trx;
   // Only works with hardcoded variables
   arangodb::aql::FixedVarExpressionContext& _expressionCtx;
