@@ -92,7 +92,7 @@ struct VertexSumAggregator : public IAggregator {
   void serialize(VPackBuilder& builder) const override {
     VPackObjectBuilder b(&builder);
     for (auto const& pair1 : _entries) {
-      builder.add(std::to_string(pair1.first._shard),
+      builder.add(std::to_string(pair1.first.shard),
                   VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
         builder.add(VPackValuePair(pair2.first.data(), pair2.first.size(),
@@ -105,7 +105,7 @@ struct VertexSumAggregator : public IAggregator {
   void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(VPackValueType::Object));
     for (auto const& pair1 : _entries) {
-      builder.add(std::to_string(pair1.first._shard),
+      builder.add(std::to_string(pair1.first.shard),
                   VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
         builder.add(VPackValuePair(pair2.first.data(), pair2.first.size(),

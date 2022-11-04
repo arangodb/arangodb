@@ -28,20 +28,20 @@
 namespace arangodb::pregel {
 
 struct PregelShard {
-  PregelShard() : _shard(InvalidPregelShard){};
-  explicit PregelShard(uint16_t shard) : _shard(shard) {}
+  PregelShard() : shard(InvalidPregelShard){};
+  explicit PregelShard(uint16_t shard) : shard(shard) {}
 
-  [[nodiscard]] auto isValid() const { return _shard != InvalidPregelShard; };
+  [[nodiscard]] auto isValid() const { return shard != InvalidPregelShard; };
 
   [[nodiscard]] auto operator<=>(const PregelShard& rhs) const = default;
 
   static const std::uint16_t InvalidPregelShard = -1;
-  std::uint16_t _shard = InvalidPregelShard;
+  std::uint16_t shard = InvalidPregelShard;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, PregelShard& x) {
-  return f.object(x).fields(f.field("shard", x._shard));
+  return f.object(x).fields(f.field("shard", x.shard));
 }
 
 }  // namespace arangodb::pregel
@@ -51,7 +51,7 @@ template<>
 struct hash<arangodb::pregel::PregelShard> {
   std::size_t operator()(
       const arangodb::pregel::PregelShard& k) const noexcept {
-    return std::hash<std::uint16_t>()(k._shard);
+    return std::hash<std::uint16_t>()(k.shard);
   }
 };
 

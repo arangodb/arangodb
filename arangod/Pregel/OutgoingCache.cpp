@@ -68,7 +68,7 @@ template<typename M>
 void ArrayOutCache<M>::appendMessage(PregelShard shard,
                                      std::string_view const& key,
                                      M const& data) {
-  _sendCountPerShard[this->_config->globalShardIDs()[shard._shard]]++;
+  _sendCountPerShard[this->_config->globalShardIDs()[shard.shard]]++;
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -133,7 +133,7 @@ void ArrayOutCache<M>::flushMessages() {
     auto [shardMessageCount, messageVPack] = messagesToVPack(vertexMessageMap);
     responses.emplace_back(connection.sendWithoutRetry(
         Destination{Destination::Type::shard,
-                    this->_config->globalShardIDs()[shard._shard]},
+                    this->_config->globalShardIDs()[shard.shard]},
         ModernMessage{.executionNumber = this->_config->executionNumber(),
                       .payload = PregelMessage{
                           .senderId = ServerState::instance()->getId(),
@@ -177,7 +177,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
                                          std::string_view const& key,
                                          M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
-    _sendCountPerShard[this->_config->globalShardIDs()[shard._shard]]++;
+    _sendCountPerShard[this->_config->globalShardIDs()[shard.shard]]++;
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
       this->_sendCountNextGSS++;
@@ -193,7 +193,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       auto& ref = (*it).second;  // will be modified by combine(...)
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
-      _sendCountPerShard[this->_config->globalShardIDs()[shard._shard]]++;
+      _sendCountPerShard[this->_config->globalShardIDs()[shard.shard]]++;
       vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
@@ -242,7 +242,7 @@ void CombiningOutCache<M>::flushMessages() {
 
     responses.emplace_back(connection.sendWithoutRetry(
         Destination{Destination::Type::shard,
-                    this->_config->globalShardIDs()[shard._shard]},
+                    this->_config->globalShardIDs()[shard.shard]},
         ModernMessage{.executionNumber = this->_config->executionNumber(),
                       .payload = PregelMessage{
                           .senderId = ServerState::instance()->getId(),

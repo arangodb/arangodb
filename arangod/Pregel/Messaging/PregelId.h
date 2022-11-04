@@ -31,25 +31,24 @@ namespace arangodb::pregel {
 
 struct PregelID {
   PregelID() = default;
-  PregelID(PregelShard s, std::string k) : _shard(s), _key(std::move(k)) {}
+  PregelID(PregelShard s, std::string k) : shard(s), key(std::move(k)) {}
 
   [[nodiscard]] bool operator==(const PregelID& rhs) const = default;
 
   bool operator<(const PregelID& rhs) const {
-    return _shard < rhs._shard || (_shard == rhs._shard && _key < rhs._key);
+    return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  [[nodiscard]] bool isValid() const { return _shard.isValid() && !_key.empty(); }
+  [[nodiscard]] bool isValid() const { return shard.isValid() && !key.empty(); }
 
-  PregelShard _shard;
-  std::string _key;
+  PregelShard shard;
+  std::string key;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, PregelID& x) {
-  return f.object(x).fields(f.field("shard", x._shard), f.field("key", x._key));
+  return f.object(x).fields(f.field("shard", x.shard), f.field("key", x.key));
 }
-
 
 }  // namespace arangodb::pregel
 

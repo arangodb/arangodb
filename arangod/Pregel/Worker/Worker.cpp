@@ -576,8 +576,9 @@ auto Worker<V, E, M>::_resultsFct(CollectPregelResults const& message) const
   for (; it.hasMore(); ++it) {
     Vertex<V, E> const* vertexEntry = *it;
 
-    TRI_ASSERT(vertexEntry->shard()._shard < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()._shard];
+    TRI_ASSERT(vertexEntry->shard().shard < _config.globalShardIDs().size());
+    ShardID const& shardId =
+        _config.globalShardIDs()[vertexEntry->shard().shard];
 
     result.openObject(/*unindexed*/ true);
 

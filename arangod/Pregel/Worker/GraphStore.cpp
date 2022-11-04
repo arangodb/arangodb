@@ -657,7 +657,7 @@ auto GraphStore<V, E>::storeVertices(
       }
 
       currentShard = it->shard();
-      shard = globalShards[currentShard._shard];
+      shard = globalShards[currentShard.shard];
 
       auto ctx =
           transaction::StandaloneContext::Create(_vocbaseGuard.database());
