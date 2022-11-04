@@ -24,6 +24,8 @@
 #include "CollectOptions.h"
 #include "Basics/Exceptions.h"
 
+#include "Aql/Optimizer2/PlanNodes/CollectNode.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -55,6 +57,26 @@ bool CollectOptions::shouldUseMethod(CollectMethod m) const {
 void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
+}
+
+optimizer2::nodes::CollectNodeStructs::CollectOptions
+CollectOptions::toInspectable() const {
+  // TODO: make this more nicely later
+  auto xyz = methodToString(method);
+  if (xyz == "hash") {
+    return {optimizer2::nodes::CollectNodeStructs::CollectMethod::HASH};
+  }
+  if (xyz == "sorted") {
+    return {optimizer2::nodes::CollectNodeStructs::CollectMethod::SORTED};
+  }
+  if (xyz == "distinct") {
+    return {optimizer2::nodes::CollectNodeStructs::CollectMethod::DISTINCT};
+  }
+  if (xyz == "count") {
+    return {optimizer2::nodes::CollectNodeStructs::CollectMethod::COUNT};
+  }
+
+  return {optimizer2::nodes::CollectNodeStructs::CollectMethod::UNDEFINED};
 }
 
 /// @brief get the aggregation method from a string

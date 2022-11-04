@@ -27,8 +27,6 @@
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Function.h"
 
-#include "Inspection/VPackInspection.h"
-
 namespace arangodb::aql::optimizer2::nodes {
 
 struct CalculationNode : optimizer2::nodes::BaseNode {
