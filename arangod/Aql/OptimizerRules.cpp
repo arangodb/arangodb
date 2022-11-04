@@ -6315,10 +6315,6 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
   // variables from them
   for (auto const& n : nodes) {
     KShortestPathsNode* ksp = ExecutionNode::castTo<KShortestPathsNode*>(n);
-    if (ksp->shortestPathType() != graph::ShortestPathType::Type::KPaths) {
-      // we are only interested in K_PATHS nodes here
-      continue;
-    }
     if (!ksp->usesPathOutVariable()) {
       continue;
     }

@@ -134,7 +134,30 @@ auto ClusterProvider::startVertex(VertexType vertex, size_t depth,
 
 void ClusterProvider::fetchVerticesFromEngines(
     std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
-  if (!_opts.produceVertices()) {
+  bool mustSend = false;
+
+  transaction::BuilderLeaser leased(trx());
+  leased->openObject();
+
+  if (_opts.produceVertices()) {
+    // slow path, sharding not deducable from _id
+    leased->add("keys", VPackValue(VPackValueType::Array));
+    for (auto const& looseEnd : looseEnds) {
+      TRI_ASSERT(looseEnd->isLooseEnd());
+      auto const& vertexId = looseEnd->getVertex().getID();
+      if (!_opts.getCache()->isVertexCached(vertexId)) {
+        leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                                   VPackValueType::String));
+        mustSend = true;
+      }
+    }
+    leased->close();  // 'keys' Array
+  }
+
+  leased->close();  // base object
+
+  if (!mustSend) {
+    // nothing to send. save requests...
     for (auto const& looseEnd : looseEnds) {
       auto const& vertexId = looseEnd->getVertex().getID();
       if (!_opts.getCache()->isVertexCached(vertexId)) {
@@ -145,28 +168,13 @@ void ClusterProvider::fetchVerticesFromEngines(
     return;
   }
 
-  auto const* engines = _opts.engines();
-  // slow path, sharding not deducable from _id
-  transaction::BuilderLeaser leased(trx());
-  leased->openObject();
-  leased->add("keys", VPackValue(VPackValueType::Array));
-  for (auto const& looseEnd : looseEnds) {
-    TRI_ASSERT(looseEnd->isLooseEnd());
-    auto const& vertexId = looseEnd->getVertex().getID();
-    if (!_opts.getCache()->isVertexCached(vertexId)) {
-      leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
-                                 VPackValueType::String));
-    }
-  }
-  leased->close();  // 'keys' Array
-  leased->close();  // base object
-
   auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
 
   network::RequestOptions reqOpts;
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
+  auto const* engines = _opts.engines();
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
