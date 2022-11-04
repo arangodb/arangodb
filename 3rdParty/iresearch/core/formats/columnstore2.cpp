@@ -1753,7 +1753,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
         cb->make_buffered(*direct_data_input, memory_accounting, 
                           range(sorted_columns.data() + i + 1,
                                 sorted_columns.size() - i - 1));
-        IR_FRMT_TRACE("Finished buffered: %d", cb->header().id);
+        IR_FRMT_TRACE("Finished buffered: %llu", cb->header().id);
       }
     }
   }
