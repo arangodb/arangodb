@@ -60,15 +60,14 @@ void DatabasePathFeature::collectOptions(
   options
       ->addOption("--database.directory", "The path to the database directory.",
                   new StringParameter(&_directory))
-      .setLongDescription(std::string{
-          "This defines the location where all data of a server is stored.\n"
-          "\n"
-          "Make sure the directory is writable by the arangod process. You "
-          "should further not use a database directory which is provided by a "
-          "network filesystem such as NFS. The reason is that networked "
-          "filesystems might cause inconsistencies when there are multiple "
-          "parallel readers or writers or they lack features required by "
-          "arangod, e.g. `flock()`."});
+      .setLongDescription(R"(This defines the location where all data of a
+server is stored.
+
+Make sure the directory is writable by the arangod process. You should further
+not use a database directory which is provided by a network filesystem such as
+NFS. The reason is that networked filesystems might cause inconsistencies when
+there are multiple parallel readers or writers or they lack features required by
+arangod, e.g. `flock()`.)");
 
   options->addOption(
       "--database.required-directory-state",

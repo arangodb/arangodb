@@ -65,17 +65,15 @@ void ReplicationTimeoutFeature::collectOptions(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30501)
-      .setLongDescription(std::string{
-          "**Warning**: This option should generally remain untouched and only "
-          "be changed with great care!\n"
-          "\n"
-          "The minimum timeout in seconds for the internal synchronous "
-          "replication mechanism between DB-Servers. If replication requests "
-          "are slow, but the servers are otherwise healthy, timeouts can cause "
-          "followers to be dropped unnecessarily, resulting in costly resync "
-          "operations. Increasing this value may help avoid such resyncs. "
-          "Conversely, decreasing it may cause more resyncs, while lowering "
-          "the latency of individual write operations."});
+      .setLongDescription(R"(**Warning**: This option should generally remain
+untouched and only be changed with great care!
+
+The minimum timeout in seconds for the internal synchronous replication
+mechanism between DB-Servers. If replication requests are slow, but the servers
+are otherwise healthy, timeouts can cause followers to be dropped unnecessarily,
+resulting in costly resync operations. Increasing this value may help avoid such
+resyncs. Conversely, decreasing it may cause more resyncs, while lowering the
+latency of individual write operations.)");
 
   options
       ->addOption("--cluster.synchronous-replication-timeout-maximum",
@@ -86,13 +84,11 @@ void ReplicationTimeoutFeature::collectOptions(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30800)
-      .setLongDescription(std::string{
-          "**Warning**: This option should generally remain untouched and only "
-          "be changed with great care!\n"
-          "\n"
-          "Extend or shorten the timeouts for the internal synchronous "
-          "replication mechanism between DB-Servers. All such timeouts are "
-          "affected by this change."});
+      .setLongDescription(R"(**Warning**: This option should generally remain
+untouched and only be changed with great care!
+
+Extend or shorten the timeouts for the internal synchronous replication
+mechanism between DB-Servers. All such timeouts are affected by this change.)");
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",

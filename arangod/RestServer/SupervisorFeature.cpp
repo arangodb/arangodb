@@ -121,12 +121,11 @@ void SupervisorFeature::collectOptions(
           new BooleanParameter(&_supervisor),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setLongDescription(std::string{
-          "Runs an arangod process as supervisor with another arangod process "
-          "as child, which acts as the server. In the event that the server "
-          "unexpectedly terminates due to an internal error, the supervisor "
-          "automatically restarts the server. Enabling this option implies "
-          "that the server runs as a daemon."});
+      .setLongDescription(R"(Runs an arangod process as supervisor with another
+arangod process as child, which acts as the server. In the event that the server
+unexpectedly terminates due to an internal error, the supervisor automatically
+restarts the server. Enabling this option implies that the server runs as a
+daemon.)");
 }
 
 void SupervisorFeature::validateOptions(

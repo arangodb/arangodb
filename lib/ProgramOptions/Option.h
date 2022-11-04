@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace arangodb {
@@ -138,7 +139,7 @@ struct Option {
   std::string toVersionString(std::vector<uint32_t> const& version) const;
 
   // provide a detailed explanation of an option
-  Option& setLongDescription(std::string const&& longDesc) {
+  Option& setLongDescription(char const* longDesc) {
     longDescription = longDesc;
     return *this;
   }
@@ -219,7 +220,7 @@ struct Option {
   std::string section;
   std::string name;
   std::string description;
-  std::string longDescription;
+  std::string_view longDescription;
   std::string shorthand;
   std::unique_ptr<Parameter> parameter;
 

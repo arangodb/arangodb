@@ -150,14 +150,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
-      .setLongDescription(std::string{
-          "A value of `10` seconds is recommended for regular cluster "
-          "deployments. For Active Failover deployments, it is recommended to "
-          "use a higher value for the grace period to avoid unnecessary "
-          "failovers. In Active Failover setups, the leader server needs to "
-          "handle all the load and is thus expected to get overloaded and "
-          "unresponsive more easily than a server in a regular cluster, which "
-          "needs to handle only a part of the overall load."});
+      .setLongDescription(R"(A value of `10` seconds is recommended for regular
+cluster deployments. For Active Failover deployments, it is recommended to use a
+higher value for the grace period to avoid unnecessary failovers.
+
+In Active Failover setups, the leader server needs to handle all the load and is
+thus expected to get overloaded and unresponsive more easily than a server in a
+regular cluster, which needs to handle only a part of the overall load.)");
 
   options->addOption("--agency.supervision-ok-threshold",
                      "The supervision time after which a server is considered "

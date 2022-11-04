@@ -488,11 +488,10 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           new BooleanParameter(&_forceSyncProperties),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setLongDescription(std::string{
-          "If turned off, no fsync happens for the collection and database "
-          "properties stored in `parameter.json` files in the file system. If "
-          "you turn this option off, it speeds up workloads that create and "
-          "drop a lot of collections (e.g. test suites)."});
+      .setLongDescription(R"(If turned off, no fsync happens for the collection
+and database properties stored in `parameter.json` files in the file system. If
+you turn this option off, it speeds up workloads that create and drop a lot of
+collections (e.g. test suites).)");
 
   options->addOption(
       "--database.ignore-datafile-errors",

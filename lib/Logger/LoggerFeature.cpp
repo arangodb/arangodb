@@ -134,12 +134,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.level,-l", "the global or topic-specific log level",
                   new VectorParameter<StringParameter>(&_levels))
-      .setLongDescription(std::string{
-          "**Audit logging** (Enterprise Edition): The server logs all audit "
-          "events by default. Low priority events, such as statistics "
-          "operations, are logged with the `debug` log level. To keep such "
-          "events from cluttering the log, set the appropriate log topics to "
-          "the `info` log level."});
+      .setLongDescription(R"(
+
+**Audit logging** (Enterprise Edition): The server logs all audit events by
+default. Low priority events, such as statistics operations, are logged with the
+`debug` log level. To keep such events from cluttering the log, set the
+appropriate log topics to the `info` log level.)");
 
   options
       ->addOption("--log.max-entry-length",

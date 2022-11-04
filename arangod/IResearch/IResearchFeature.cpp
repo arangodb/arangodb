@@ -899,28 +899,31 @@ void IResearchFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _running.store(false);
   options->addSection("arangosearch", std::string{name()}.append(" feature"));
+
   options
       ->addOption(THREADS_PARAM,
                   "The exact number of threads to use for asynchronous "
                   "tasks (0 = auto-detect).",
                   new options::UInt32Parameter(&_threads))
       .setDeprecatedIn(30705)
-      .setLongDescription(std::string{
-          "From version 3.7.5 on, the commit and consolidation thread counts "
-          "should be set separately via the following options instead:"
-          "- `--arangosearch.commit-threads`\n"
-          "- `--arangosearch.commit-threads-idle`\n"
-          "- `--arangosearch.consolidation-threads`\n"
-          "- `--arangosearch.consolidation-threads-idle`\n"
-          "\n"
-          "If either `--arangosearch.commit-threads` or "
-          "`--arangosearch.consolidation-threads` is set, then "
-          "`--arangosearch.threads` and `arangosearch.threads-limit` are "
-          "ignored. If only the legacy options are set, then the commit and "
-          "consolidation thread counts are calculated as follows:\n"
-          "- Maximum: The smaller value out of `--arangosearch.threads` and "
-          "`arangosearch.threads-limit` divided by 2, but at least 1.\n"
-          "- Minimum: the maximum divided by 2, but at least 1.\n"});
+      .setLongDescription(
+          R"(From version 3.7.5 on, the commit and consolidation
+thread counts should be set separately via the following options instead:
+
+- `--arangosearch.commit-threads`
+- `--arangosearch.commit-threads-idle`
+- `--arangosearch.consolidation-threads`
+- `--arangosearch.consolidation-threads-idle`
+
+If either `--arangosearch.commit-threads` or
+`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
+`arangosearch.threads-limit` are ignored. If only the legacy options are set,
+then the commit and consolidation thread counts are calculated as follows:
+
+- Maximum: The smaller value out of `--arangosearch.threads` and
+  `arangosearch.threads-limit` divided by 2, but at least 1.
+- Minimum: the maximum divided by 2, but at least 1.\n)");
+
   options
       ->addOption(
           THREADS_LIMIT_PARAM,
@@ -928,23 +931,23 @@ void IResearchFeature::collectOptions(
           "for asynchronous tasks (0 = use default).",
           new options::UInt32Parameter(&_threadsLimit))
       .setDeprecatedIn(30705)
-      .setLongDescription(std::string{
-          "From version 3.7.5 on, you should set the commit and consolidation "
-          "thread counts "
-          "separately via the following options instead:"
-          "- `--arangosearch.commit-threads`\n"
-          "- `--arangosearch.commit-threads-idle`\n"
-          "- `--arangosearch.consolidation-threads`\n"
-          "- `--arangosearch.consolidation-threads-idle`\n"
-          "\n"
-          "If either `--arangosearch.commit-threads` or "
-          "`--arangosearch.consolidation-threads` is set, then "
-          "`--arangosearch.threads` and `arangosearch.threads-limit` are "
-          "ignored. If only the legacy options are set, then the commit and "
-          "consolidation thread counts are calculated as follows:\n"
-          "- Maximum: The smaller value out of `--arangosearch.threads` and "
-          "`arangosearch.threads-limit` divided by 2, but at least 1.\n"
-          "- Minimum: the maximum divided by 2, but at least 1.\n"});
+      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+and consolidation thread counts separately via the following options instead:
+
+- `--arangosearch.commit-threads`
+- `--arangosearch.commit-threads-idle`
+- `--arangosearch.consolidation-threads`
+- `--arangosearch.consolidation-threads-idle`
+
+If either `--arangosearch.commit-threads` or
+`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
+`arangosearch.threads-limit` are ignored. If only the legacy options are set,
+then the commit and consolidation thread counts are calculated as follows:
+
+- Maximum: The smaller value out of `--arangosearch.threads` and
+  `arangosearch.threads-limit` divided by 2, but at least 1.
+- Minimum: the maximum divided by 2, but at least 1.)");
+
   options
       ->addOption(
           CONSOLIDATION_THREADS_PARAM,
@@ -952,11 +955,10 @@ void IResearchFeature::collectOptions(
           "(0 = auto-detect).",
           new options::UInt32Parameter(&_consolidationThreads))
       .setIntroducedIn(30705)
-      .setLongDescription(std::string{
-          "The option value must fall in the range "
-          "`[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to "
-          "automatically choose a sensible number based on the number of cores "
-          "in the system."});
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
+choose a sensible number based on the number of cores in the system.)");
+
   options
       ->addOption(
           CONSOLIDATION_THREADS_IDLE_PARAM,
@@ -964,16 +966,17 @@ void IResearchFeature::collectOptions(
           "for consolidation tasks (0 = auto-detect).",
           new options::UInt32Parameter(&_consolidationThreadsIdle))
       .setIntroducedIn(30705);
+
   options
       ->addOption(COMMIT_THREADS_PARAM,
                   "The upper limit to the allowed number of commit threads "
                   "(0 = auto-detect).",
                   new options::UInt32Parameter(&_commitThreads))
       .setIntroducedIn(30705)
-      .setLongDescription(std::string{
-          "The option value must fall in the range `[ 1..4 * NumberOfCores ]`. "
-          "Set it to `0` to automatically choose a sensible number based on "
-          "the number of cores in the system."});
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..4 * NumberOfCores ]`. Set it to `0` to automatically choose a sensible
+number based on the number of cores in the system.)");
+
   options
       ->addOption(
           COMMIT_THREADS_IDLE_PARAM,
@@ -981,11 +984,10 @@ void IResearchFeature::collectOptions(
           "for commit tasks (0 = auto-detect)",
           new options::UInt32Parameter(&_commitThreadsIdle))
       .setIntroducedIn(30705)
-      .setLongDescription(std::string{
-          "The option value must fall in the range "
-          "`[ 1..arangosearch.commit-threads ]`. Set it to `0` to "
-          "automatically choose a sensible number based on the number of cores "
-          "in the system."});
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a
+sensible number based on the number of cores in the system.)");
+
   options
       ->addOption(
           SKIP_RECOVERY,  // TODO: Move parts of the descriptions to
@@ -1005,20 +1007,19 @@ void IResearchFeature::collectOptions(
           new options::VectorParameter<options::StringParameter>(
               &_skipRecoveryItems))
       .setIntroducedIn(30904);
+
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
                   "Whether or not retrieval queries on out-of-sync "
                   "View links and inverted indexes should fail.",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
       .setIntroducedIn(30904)
-      .setLongDescription(std::string{
-          "If set to `true`, any data retrieval queries on out-of-sync "
-          "links/indexes fail with the error 'collection/view is out of sync' "
-          " (error code 1481).\n"
-          "\n"
-          "If set to `false`, queries on out-of-sync links/indexes are "
-          "answered "
-          "normally, but the returned data may be incomplete."});
+      .setLongDescription(R"(If set to `true`, any data retrieval queries on
+out-of-sync links/indexes fail with the error 'collection/view is out of sync'
+(error code 1481).
+
+If set to `false`, queries on out-of-sync links/indexes are answered normally,
+but the returned data may be incomplete.)");
 }
 
 void IResearchFeature::validateOptions(
