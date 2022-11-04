@@ -468,7 +468,7 @@ class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
   using mapping = std::vector<mapping_value>;
 
   explicit remapped_bytes_ref_input(const bytes_ref& data, mapping&& mapping)
-      : bytes_ref_input(data), mapping_{mapping} {
+      : bytes_ref_input(data), mapping_{std::move(mapping)} {
     std::sort(
         mapping_.begin(), mapping_.end(),
         [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });

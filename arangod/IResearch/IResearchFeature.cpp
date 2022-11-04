@@ -960,7 +960,12 @@ void IResearchFeature::collectOptions(
       ->addOption(
           CACHE_LIMIT,
           "Limit in bytes for ArangoSearch columns cache. (0 = no caching)",
-          new options::UInt64Parameter(&_columnsCacheLimit))
+          new options::UInt64Parameter(&_columnsCacheLimit),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
 #endif
 }

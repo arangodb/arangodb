@@ -364,17 +364,18 @@ class column_base : public column_reader, private util::noncopyable {
   column_header& mutable_header() { return hdr_; }
   void reset_stream(const index_input* stream) { stream_ = stream; }
 
-  bool allocate_buffered_memory(size_t size) {
+  bool allocate_buffered_memory(
+      size_t size, const memory_accounting_f& buffered_memory_accounter) {
     assert(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    assert(buffered_memory_accounter_);
-    if (!buffered_memory_accounter_(static_cast<int64_t>(size))) {
+    assert(buffered_memory_accounter);
+    if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
       // use string to have always null-terminated name
       std::string col_name{"<anonymous>"};
       if (!name().null()) {
         col_name = name();
       }
       IR_FRMT_WARN(
-          "Failed to allocate memory for buffered column id %d name: %s of "
+          "Failed to allocate memory for buffered column id %llu name: %s of "
           "size " IR_SIZE_T_SPECIFIER,
           header().id, col_name.c_str(), size);
       return false;
@@ -382,6 +383,7 @@ class column_base : public column_reader, private util::noncopyable {
     // should be only one alllocation
     assert(column_data_.empty());
     column_data_.resize(size);
+    buffered_memory_accounter_ = buffered_memory_accounter;
     return true;
   }
 
@@ -421,11 +423,10 @@ class column_base : public column_reader, private util::noncopyable {
 
   std::vector<irs::byte_type> column_data_;
   irs::index_input::ptr buffered_input_;
-  memory_accounting_f buffered_memory_accounter_;
  private:
   template<typename ValueReader>
   doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in) const;
-
+  memory_accounting_f buffered_memory_accounter_;
   const index_input* stream_;
   encryption::stream* cipher_;
   column_header hdr_;
@@ -666,16 +667,14 @@ class dense_fixed_length_column final : public column_base {
   void make_buffered(
       irs::index_input& in, const memory_accounting_f& memory_accounter,
       range<std::unique_ptr<column_reader>> next_sorted_columns) override {
-    buffered_memory_accounter_ = memory_accounter;
     auto& hdr = mutable_header();
     auto const data_size = len_ * hdr.docs_count;
     auto const bitmap_size =
         calculate_bitmap_size(in.length(), next_sorted_columns);
     auto const total_size = data_size + bitmap_size;
-    if (!allocate_buffered_memory(total_size)) {
+    if (!allocate_buffered_memory(total_size, memory_accounter)) {
       return;
     }
-    column_data_.resize(total_size);
     in.read_bytes(data_, column_data_.data(), data_size);
     irs::remapped_bytes_ref_input::mapping mapping;
     if (bitmap_size) {
@@ -771,7 +770,7 @@ class fixed_length_column final: public column_base {
                     std::move(hdr),  std::move(index),
                     data_in,         cipher},
         inflater_{std::move(inflater)},
-        blocks_{blocks},
+        blocks_{std::move(blocks)},
         len_{len} {
     assert(header().docs_count);
     assert(ColumnType::kFixed == header().type);
@@ -782,11 +781,11 @@ class fixed_length_column final: public column_base {
   void make_buffered(
       irs::index_input& in, const memory_accounting_f& memory_accounter, 
       range<std::unique_ptr<column_reader>> next_sorted_columns) override {
-    buffered_memory_accounter_ = memory_accounter;
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(len_, hdr, in, blocks_,
                                     column_data_, next_sorted_columns,
+                                    memory_accounter,
                                     nullptr)) {
         buffered_input_ = std::make_unique<irs::bytes_ref_input>(
             irs::bytes_ref{column_data_.data(), column_data_.size()});
@@ -795,6 +794,7 @@ class fixed_length_column final: public column_base {
       irs::remapped_bytes_ref_input::mapping mapping;
       if (make_buffered_data<true>(len_, hdr, in, blocks_,
                                    column_data_, next_sorted_columns,
+                                   memory_accounter,
                                    &mapping)) {
         buffered_input_ = std::make_unique<irs::remapped_bytes_ref_input>(
             irs::bytes_ref{column_data_.data(), column_data_.size()},
@@ -837,7 +837,9 @@ class fixed_length_column final: public column_base {
       uint64_t len, column_header& hdr, irs::index_input& in,
       std::vector<uint64_t>& blocks, std::vector<irs::byte_type>& column_data,
       range<std::unique_ptr<column_reader>> next_sorted_columns,
+      const memory_accounting_f& memory_accounter,
       remapped_bytes_ref_input::mapping* mapping) {
+    assert(!blocks.empty());
     auto const last_block_full = hdr.docs_count % column::kBlockSize == 0;
     auto last_offset = blocks.back();
     std::vector<std::tuple<size_t, size_t, size_t>> blocks_offsets;
@@ -853,7 +855,7 @@ class fixed_length_column final: public column_base {
     }
     const auto bitmap_index_size =
         calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size)) {
+    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size, memory_accounter)) {
       return false;
     }
     std::sort(blocks_offsets.begin(), blocks_offsets.end(),
@@ -945,18 +947,17 @@ class sparse_column : public column_base {
   void make_buffered(
       irs::index_input& in, const memory_accounting_f& memory_accounter,
       range<std::unique_ptr<column_reader>> next_sorted_columns) override {
-    buffered_memory_accounter_ = memory_accounter;
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(hdr, in, blocks_, column_data_,
-                                    next_sorted_columns, nullptr)) {
+                                    next_sorted_columns, memory_accounter, nullptr)) {
         buffered_input_ = std::make_unique<irs::bytes_ref_input>(
             irs::bytes_ref{column_data_.data(), column_data_.size()});
       }
     } else {
       irs::remapped_bytes_ref_input::mapping mapping;
       if (make_buffered_data<true>(hdr, in, blocks_, column_data_,
-                                   next_sorted_columns, &mapping)) {
+                                   next_sorted_columns, memory_accounter, &mapping)) {
         buffered_input_ = std::make_unique<irs::remapped_bytes_ref_input>(
             irs::bytes_ref{column_data_.data(), column_data_.size()},
             std::move(mapping));
@@ -990,18 +991,19 @@ class sparse_column : public column_base {
       std::vector<column_block>& blocks,
       std::vector<irs::byte_type>& column_data,
       range<std::unique_ptr<column_reader>> next_sorted_columns,
+      const memory_accounting_f& memory_accounter,
       remapped_bytes_ref_input::mapping* mapping) {
     // idx adr/block offset length source
     std::vector <std::tuple<size_t, bool, size_t, size_t, size_t>> chunks;
     size_t chunks_size{0};
     size_t block_idx{0};
     std::vector<irs::byte_type> addr_buffer;
+    chunks.reserve(blocks.size());  // minimum, we may even need more chunks
     for (auto& block : blocks) {
+      size_t length{0};
       if (bitpack::ALL_EQUAL == block.bits) {
-        size_t length = block.avg * block.last;
+        length = block.avg * block.last;
         length += block.last_size;
-        chunks.emplace_back(block_idx++, false, chunks_size, length, block.data);
-        chunks_size += length;
       } else {
         // addr table size
         const size_t addr_length = packed::bytes_required_64(
@@ -1019,14 +1021,15 @@ class sparse_column : public column_base {
             value_index, block.bits));
         const uint64_t start = block.avg * block.last + start_delta;
 
-        size_t length = block.last_size + start;
-        chunks.emplace_back(block_idx++, false, chunks_size, length, block.data);
-        chunks_size += length;
+        length = block.last_size + start;
       }
+      assert(length);
+      chunks.emplace_back(block_idx++, false, chunks_size, length, block.data);
+      chunks_size += length;
     }
     const auto bitmap_size =
         calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_size + chunks_size)) {
+    if (!allocate_buffered_memory(bitmap_size + chunks_size, memory_accounter)) {
       return false;
     }
 
@@ -1749,7 +1752,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
             break;
           }
         }
-        IR_FRMT_TRACE("Making buffered: %d", cb->header().id);
+        IR_FRMT_TRACE("Making buffered: %llu", cb->header().id);
         cb->make_buffered(*direct_data_input, memory_accounting, 
                           range(sorted_columns.data() + i + 1,
                                 sorted_columns.size() - i - 1));
