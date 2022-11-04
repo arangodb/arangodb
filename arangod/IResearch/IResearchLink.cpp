@@ -1997,7 +1997,7 @@ bool IResearchLink::exists(IResearchLink::Snapshot const& snapshot,
 
       return true;
     } else if (*recoveryTick > _dataStore._recoveryTickHigh) {
-      LOG_TOPIC("6e128", TRACE, TOPIC)
+      LOG_TOPIC("6e129", TRACE, TOPIC)
           << "skipping 'exists', operation tick '" << *recoveryTick
           << "', recovery tick high '" << _dataStore._recoveryTickHigh << "'";
       return false;
