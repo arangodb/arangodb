@@ -45,10 +45,6 @@
 
 #include <velocypack/Iterator.h>
 
-#ifndef USE_PLAN_CACHE
-#undef USE_PLAN_CACHE
-#endif
-
 using namespace arangodb;
 using namespace arangodb::aql;
 

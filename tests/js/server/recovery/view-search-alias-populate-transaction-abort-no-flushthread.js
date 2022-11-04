@@ -27,9 +27,11 @@
 /// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
+var arangodb = require('@arangodb');
+var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
 
 function runSetup () {
   'use strict';
@@ -49,22 +51,25 @@ function runSetup () {
   internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
-  var tx = {
-    collections: {
-      write: ['UnitTestsRecoveryDummy']
+  return transactionFailure(
+    {
+      collections: {
+        write: ['UnitTestsRecoveryDummy']
+      },
+      action: function() {
+        var db = require('@arangodb').db;
+        var c = db.UnitTestsRecoveryDummy;
+        for (let i = 0; i < 10000; i++) {
+          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+        }
+        throw new Error('intentional abort');
+      },
+      waitForSync: true
     },
-    action: function() {
-      var c = db.UnitTestsRecoveryDummy;
-      for (let i = 0; i < 10000; i++) {
-        c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-      }
-      throw new Error('intentional abort');
-    },
-    waitForSync: true
-  };
-
-  db._executeTransaction(tx);
-  internal.debugTerminate('crashing server');
+    internal.errors.ERROR_TRANSACTION_INTERNAL.code,
+    'Error: intentional abort',
+    true,
+    false);
 }
 
 function recoverySuite () {
@@ -96,8 +101,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
