@@ -898,7 +898,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
         l->format());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
-        (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), nullptr).ok()));
+        (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), nullptr)
+             .ok()));
     l->commit(true);
     EXPECT_EQ(
         1, reader.reopen().live_docs_count());  // should see this immediately
@@ -1066,7 +1067,8 @@ TEST_F(IResearchLinkTest, test_write) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
-        (l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), nullptr).ok()));
+        (l->remove(trx, arangodb::LocalDocumentId(2), doc1->slice(), nullptr)
+             .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1500,7 +1502,8 @@ TEST_F(IResearchLinkTest,
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
-        (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), nullptr).ok()));
+        (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), nullptr)
+             .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
