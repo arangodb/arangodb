@@ -131,12 +131,14 @@ struct ClusterBaseProviderOptions {
  public:
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
-      std::unordered_map<ServerID, aql::EngineId> const* engines,
-      bool backward);
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices);
 
   RefactoredClusterTraverserCache* getCache();
 
-  bool isBackward() const;
+  bool isBackward() const noexcept;
+
+  bool produceVertices() const noexcept;
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
@@ -146,7 +148,9 @@ struct ClusterBaseProviderOptions {
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
-  bool _backward;
+  bool const _backward;
+
+  bool const _produceVertices;
 };
 
 }  // namespace graph

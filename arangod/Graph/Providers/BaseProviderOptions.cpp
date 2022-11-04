@@ -123,8 +123,12 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
-    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    bool produceVertices)
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _produceVertices(produceVertices) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -134,7 +138,13 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   return _cache.get();
 }
 
-bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+bool ClusterBaseProviderOptions::isBackward() const noexcept {
+  return _backward;
+}
+
+bool ClusterBaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
+}
 
 std::unordered_map<ServerID, aql::EngineId> const*
 ClusterBaseProviderOptions::engines() const {

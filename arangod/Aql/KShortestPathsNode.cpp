@@ -441,10 +441,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
-      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(),
-                                                        false);
-      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(),
-                                                         true);
+      ClusterBaseProviderOptions forwardProviderOptions(
+          cache, engines(), false, opts->produceVertices());
+      ClusterBaseProviderOptions backwardProviderOptions(
+          cache, engines(), true, opts->produceVertices());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
