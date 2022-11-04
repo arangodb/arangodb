@@ -1,6 +1,8 @@
 devel
 -----
 
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
 * Improve performance and memory usage of IN list lookups for hash, skiplist
   and persistent indexes.
 
