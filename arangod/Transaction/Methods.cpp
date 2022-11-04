@@ -32,6 +32,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -785,10 +787,13 @@ OperationResult transaction::Methods::anyLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
+                ReadOwnWrites::no);
 
   iterator->nextDocument(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -2415,10 +2420,13 @@ OperationResult transaction::Methods::allLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
+                ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -2760,9 +2768,10 @@ OperationResult transaction::Methods::countLocal(
 
 /// @brief factory for IndexIterator objects from AQL
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
-    IndexHandle const& idx, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
+    ResourceMonitor& monitor, IndexHandle const& idx,
+    arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2780,16 +2789,16 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
-                                   mutableConditionIdx);
+  return idx->iteratorForCondition(monitor, this, condition, var, opts,
+                                   readOwnWrites, mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
-    std::string const& collectionName, CursorType cursorType,
-    ReadOwnWrites readOwnWrites) {
+    ResourceMonitor& monitor, std::string const& collectionName,
+    CursorType cursorType, ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
   if (ADB_UNLIKELY(_state->isCoordinator())) {

@@ -47,6 +47,7 @@ function runSetup () {
 
   internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
   c.ensureIndex({ type: "skiplist", fields: ["value"] });
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -83,8 +84,7 @@ function recoverySuite () {
 function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
+    return runSetup();
   } else {
     jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
