@@ -792,7 +792,7 @@ std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
 std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
-std::string const CACHE_LIMIT("--arangosearch.columns_cache_limit");
+std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
                                      const char* file, int line,
