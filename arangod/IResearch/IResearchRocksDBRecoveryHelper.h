@@ -62,7 +62,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
 
   virtual void prepare() override;
 
-  void unprepare() noexcept override { 
+  void unprepare() noexcept override {
     _skipExisted = {};
     _cookies = {};
   }
