@@ -28,11 +28,12 @@
 #include "Basics/VelocyPackStringLiteral.h"
 #include "InspectTestHelperMakros.h"
 #include "velocypack/Collection.h"
-
+#include "Inspection/VPackInspection.h"
 // Node Class
 #include "Aql/Optimizer2/PlanNodes/CollectNode.h"
 
 // Libraries
+#include <Inspection/VPackWithErrorT.h>
 #include <fmt/core.h>
 
 using namespace arangodb::inspection;
@@ -138,10 +139,11 @@ GenerateBoolAttributeTest(Optimizer2CollectNode, specialized);
 
 TEST_F(Optimizer2CollectNode, construction) {
   auto CollectNodeBuffer = createMinimumBody();
-  auto res = deserializeWithStatus<CollectNode>(CollectNodeBuffer);
+  auto res = deserializeWithErrorT<CollectNode>(CollectNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto collectNode = res.get();
@@ -162,14 +164,11 @@ TEST_F(Optimizer2CollectNode, construction) {
 
     // Aggregates
     EXPECT_EQ(collectNode.aggregates.size(), 2ul);
-    EXPECT_TRUE(collectNode.aggregates.at(0).outVariable.has_value());
-    EXPECT_EQ(collectNode.aggregates.at(0).outVariable.value().id, 2ul);
-    EXPECT_EQ(collectNode.aggregates.at(0).outVariable.value().name, "length");
-    EXPECT_FALSE(collectNode.aggregates.at(0)
-                     .outVariable.value()
-                     .isFullDocumentFromCollection);
+    EXPECT_EQ(collectNode.aggregates.at(0).outVariable.id, 2ul);
+    EXPECT_EQ(collectNode.aggregates.at(0).outVariable.name, "length");
     EXPECT_FALSE(
-        collectNode.aggregates.at(0).outVariable.value().isDataFromCollection);
+        collectNode.aggregates.at(0).outVariable.isFullDocumentFromCollection);
+    EXPECT_FALSE(collectNode.aggregates.at(0).outVariable.isDataFromCollection);
     EXPECT_EQ(collectNode.aggregates.at(0).type, "LENGTH");
 
     EXPECT_TRUE(collectNode.aggregates.at(1).inVariable.has_value());
@@ -180,14 +179,11 @@ TEST_F(Optimizer2CollectNode, construction) {
                      .isFullDocumentFromCollection);
     EXPECT_FALSE(
         collectNode.aggregates.at(1).inVariable.value().isDataFromCollection);
-    EXPECT_TRUE(collectNode.aggregates.at(1).outVariable.has_value());
-    EXPECT_EQ(collectNode.aggregates.at(1).outVariable.value().id, 3ul);
-    EXPECT_EQ(collectNode.aggregates.at(1).outVariable.value().name, "min");
-    EXPECT_FALSE(collectNode.aggregates.at(1)
-                     .outVariable.value()
-                     .isFullDocumentFromCollection);
+    EXPECT_EQ(collectNode.aggregates.at(1).outVariable.id, 3ul);
+    EXPECT_EQ(collectNode.aggregates.at(1).outVariable.name, "min");
     EXPECT_FALSE(
-        collectNode.aggregates.at(1).outVariable.value().isDataFromCollection);
+        collectNode.aggregates.at(1).outVariable.isFullDocumentFromCollection);
+    EXPECT_FALSE(collectNode.aggregates.at(1).outVariable.isDataFromCollection);
     EXPECT_EQ(collectNode.aggregates.at(1).type, "MIN");
 
     // Expression
@@ -197,7 +193,9 @@ TEST_F(Optimizer2CollectNode, construction) {
     // keepVariables
     EXPECT_FALSE(collectNode.keepVariables.has_value());
 
-    EXPECT_EQ(collectNode.collectOptions.method, CollectMethod::HASH);
+    EXPECT_EQ(collectNode.collectOptions.method,
+              arangodb::aql::optimizer2::nodes::CollectNodeStructs::
+                  CollectMethod::HASH);
     EXPECT_FALSE(collectNode.isDistinctCommand);
     EXPECT_TRUE(collectNode.specialized);
   }
