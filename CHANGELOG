@@ -1,3 +1,9 @@
+v3.10.2 (XXXX-XX-XX)
+--------------------
+
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
+
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
