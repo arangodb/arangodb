@@ -79,7 +79,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(firstEntry.logPayload, undefined);
       assertTrue(firstEntry.meta !== undefined);
       const meta = firstEntry.meta;
-      assertEqual(meta.type, "FirstIndexOfTerm");
+      assertEqual(meta.type, "FirstEntryOfTerm");
       assertEqual(meta.leader, leader);
       assertEqual(meta.participants.generation, 1);
       assertEqual(Object.keys(meta.participants.participants).sort(), servers.sort());
