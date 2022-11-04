@@ -94,58 +94,59 @@ If there is more, the default is `(system RAM size - 2 GiB) * 0.25`.)");
 across many different cache tables. In order to provide intelligent internal
 memory management, the system periodically reclaims memory from caches which are
 used less often and reallocates it to caches which get more activity.)");
+}
 
-  void CacheManagerFeature::validateOptions(
-      std::shared_ptr<options::ProgramOptions>) {
-    if (_cacheSize > 0 && _cacheSize < Manager::kMinSize) {
-      LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
-          << "invalid value for `--cache.size', need at least "
-          << Manager::kMinSize;
-      FATAL_ERROR_EXIT();
-    }
+void CacheManagerFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions>) {
+  if (_cacheSize > 0 && _cacheSize < Manager::kMinSize) {
+    LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
+        << "invalid value for `--cache.size', need at least "
+        << Manager::kMinSize;
+    FATAL_ERROR_EXIT();
+  }
+}
+
+void CacheManagerFeature::start() {
+  if (ServerState::instance()->isAgent() || _cacheSize == 0) {
+    // we intentionally do not activate the cache on an agency node, as it
+    // is not needed there
+    return;
   }
 
-  void CacheManagerFeature::start() {
-    if (ServerState::instance()->isAgent() || _cacheSize == 0) {
-      // we intentionally do not activate the cache on an agency node, as it
-      // is not needed there
-      return;
+  auto scheduler = SchedulerFeature::SCHEDULER;
+  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+    try {
+      scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
+      return true;
+    } catch (...) {
+      return false;
     }
+  };
 
-    auto scheduler = SchedulerFeature::SCHEDULER;
-    auto postFn = [scheduler](std::function<void()> fn) -> bool {
-      try {
-        scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
-        return true;
-      } catch (...) {
-        return false;
-      }
-    };
+  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
+  _manager =
+      std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
 
-    SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
-    _manager =
-        std::make_unique<Manager>(sharedPRNG, std::move(postFn), _cacheSize);
+  _rebalancer = std::make_unique<CacheRebalancerThread>(
+      server(), _manager.get(), _rebalancingInterval);
+  _rebalancer->start();
+  LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
+}
 
-    _rebalancer = std::make_unique<CacheRebalancerThread>(
-        server(), _manager.get(), _rebalancingInterval);
-    _rebalancer->start();
-    LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
+void CacheManagerFeature::beginShutdown() {
+  if (_manager != nullptr) {
+    _rebalancer->beginShutdown();
+    _manager->beginShutdown();
   }
+}
 
-  void CacheManagerFeature::beginShutdown() {
-    if (_manager != nullptr) {
-      _rebalancer->beginShutdown();
-      _manager->beginShutdown();
-    }
+void CacheManagerFeature::stop() {
+  if (_manager != nullptr) {
+    _rebalancer->shutdown();
+    _manager->shutdown();
   }
+}
 
-  void CacheManagerFeature::stop() {
-    if (_manager != nullptr) {
-      _rebalancer->shutdown();
-      _manager->shutdown();
-    }
-  }
-
-  cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
+cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 }  // namespace arangodb
