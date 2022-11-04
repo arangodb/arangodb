@@ -23,6 +23,7 @@
 
 #include "LogEntries.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 
 #include <Basics/StaticStrings.h>
 #include <Basics/StringUtils.h>
@@ -117,7 +118,7 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice)
     return {termIndex, LogPayload::createFromSlice(payload)};
   } else {
     auto meta = slice.get("meta");
-    TRI_ASSERT(!meta.isNone());
+    TRI_ASSERT(!meta.isNone()) << slice.toJson();
     return {termIndex, LogMetaPayload::fromVelocyPack(meta)};
   }
 }
@@ -144,7 +145,7 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index,
     _payload = LogPayload::createFromSlice(payload);
   } else {
     auto meta = persisted.get("meta");
-    TRI_ASSERT(!meta.isNone());
+    TRI_ASSERT(!meta.isNone()) << persisted.toJson();
     _payload = LogMetaPayload::fromVelocyPack(meta);
   }
 }
@@ -195,8 +196,7 @@ void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
 }
 
 auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return LogEntryView(slice.get("logIndex").extract<LogIndex>(),
-                      slice.get("payload"));
+  return {slice.get("logIndex").extract<LogIndex>(), slice.get("payload")};
 }
 
 auto LogEntryView::clonePayload() const -> LogPayload {

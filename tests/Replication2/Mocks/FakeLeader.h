@@ -55,7 +55,7 @@ struct FakeLeader final : replicated_log::ILogLeader,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  auto ping(std::optional<std::string> message) -> WaitForFuture override {
+  auto ping(std::optional<std::string> message) -> LogIndex override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 

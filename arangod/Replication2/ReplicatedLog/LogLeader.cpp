@@ -1491,14 +1491,14 @@ auto replicated_log::LogLeader::waitForResign()
 }
 
 auto replicated_log::LogLeader::ping(std::optional<std::string> message)
-    -> replicated_log::ILogParticipant::WaitForFuture {
+    -> LogIndex {
   auto index = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leader) {
     auto meta = LogMetaPayload::withPing(message);
     return leader.insertInternal(std::move(meta), false, std::nullopt);
   });
 
   triggerAsyncReplication();
-  return waitFor(index);
+  return index;
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

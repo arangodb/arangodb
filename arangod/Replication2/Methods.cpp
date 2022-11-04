@@ -162,6 +162,16 @@ struct ReplicatedLogMethodsDBServer final
     return log.getInternalIteratorRange(start, start + limit);
   }
 
+  auto ping(LogId id, std::optional<std::string> message) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto idx = log->ping(std::move(message));
+    return log->waitFor(idx).thenValue([idx](auto&& result) {
+      return std::make_pair(idx, std::forward<decltype(result)>(result));
+    });
+  }
+
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
@@ -582,6 +592,40 @@ struct ReplicatedLogMethodsCoordinator final
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 payload.copyBuffer(), opts)
+        .thenValue([](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto result = resp.slice().get("result");
+          auto waitResult = result.get("result");
+
+          auto quorum =
+              std::make_shared<replication2::replicated_log::QuorumData const>(
+                  waitResult.get("quorum"));
+          auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
+          auto index = result.get("index").extract<LogIndex>();
+          return std::make_pair(index, replicated_log::WaitForResult(
+                                           commitIndex, std::move(quorum)));
+        });
+  }
+
+  auto ping(LogId id, std::optional<std::string> message) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
+
+    VPackBufferUInt8 payload;
+    if (message) {
+      VPackBuilder builder(payload);
+      VPackObjectBuilder ob(&builder);
+      builder.add("message", VPackValue(*message));
+    }
+
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Post, path,
+                                std::move(payload), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
