@@ -125,7 +125,6 @@ const replicatedLogEntrySuite = function () {
       const head = db._replicatedLog(logId).head();
       assertEqual(head.length, 2);
       const entry = head[1];
-      print(entry);
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;
