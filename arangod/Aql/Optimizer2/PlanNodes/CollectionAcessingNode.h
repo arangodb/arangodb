@@ -36,7 +36,9 @@ struct CollectionAccessingNode {
   AttributeTypes::String collection;
 
   // ee specific
-  bool satellite;  // but always set
+  std::optional<bool>
+      satellite;  // but always set
+                  // ... but removed in TraversalNode therefore optional again
 
   // TODO: Optional because TraversalNode does not set it.....
   // See note below - also "collection" is handled differently there.

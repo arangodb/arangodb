@@ -126,7 +126,7 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.maxProjections, 5u);
     EXPECT_EQ(enumerateCollectionNode.database, "_system");
     EXPECT_EQ(enumerateCollectionNode.collection, "_graphs");
-    EXPECT_FALSE(enumerateCollectionNode.satellite);
+    EXPECT_FALSE(enumerateCollectionNode.satellite.value());
     EXPECT_TRUE(enumerateCollectionNode.isSatellite.has_value());
     EXPECT_FALSE(enumerateCollectionNode.isSatellite.value());
     EXPECT_FALSE(enumerateCollectionNode.isSatelliteOf.has_value());
