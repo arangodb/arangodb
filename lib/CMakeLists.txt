@@ -52,6 +52,10 @@ else()
   message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
 endif()
 
+add_library(arango_static_strings STATIC
+  Basics/StaticStrings.cpp
+)
+
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
@@ -107,7 +111,6 @@ add_library(arango STATIC
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SourceLocation.cpp
-  Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
@@ -203,6 +206,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_static_strings
   velocypack
   linenoise-ng
   date_interface
@@ -231,10 +235,12 @@ target_link_libraries(arango PUBLIC v8_interface)
 add_dependencies(arango v8_build)
 
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 target_include_directories(arango
   PUBLIC
   ${FROZEN_INCLUDE_DIR}
+  ${FUNCTION2_INCLUDE_DIR}
 )
 
 add_dependencies(arango snappy)

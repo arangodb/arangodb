@@ -1,6 +1,46 @@
 devel
 -----
 
+* Improve performance and memory usage of IN list lookups for hash, skiplist
+  and persistent indexes.
+
+* Improve memory usage tracking for IN list lookups and other RocksDB-based
+  lookups.
+
+* Remove inactive query plan cache code (was only a stub and never enabled 
+  before).
+
+* Fixed BTS-441: Honor read only mode with disabled authentication
+
+* Obsolete startup option `--database.force-sync-properties`. This option
+  was useful with the MMFiles storage engine, but didn't have any useful
+  effect when used with the RocksDB engine.
+
+* Updated OpenSSL to 1.1.1s.
+
+* BTS_483: Added restriction for usage of query cache for streaming and JS 
+  transactions when they are not read-only.
+
+* Remove map and map.gz files from repository and add them to gitignore.
+  These files are only used for debugging and therefore should not be
+  included in any release. This also reduces the size of release packages.
+
+* Repair "load indexes into memory" function in the web UI.
+
+* Improved help texts for the collection type and satellite collection
+  options in the web UI.
+
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
+* Deprecate the startup option `--agency.pool-size`. This option was never
+  properly supported for any values other than the value of `--agency.size`.
+  Now any value set for `--agency.pool-size` other than the value set for
+  `--agency.size` will now produce a fatal error on startup.
+
+* BTS-1082: Updating properties of a satellite collection breaks
+  replicationFactor.
+
 * FE-159: When creating a database in cluster mode, there are several parameters
   required. However they are invisible (nothing shown) if I open DB settings
   after creation. Those settings should be visible in readonly mode (grey out).

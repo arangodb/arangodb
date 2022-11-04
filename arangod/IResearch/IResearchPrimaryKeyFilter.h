@@ -41,7 +41,7 @@ namespace iresearch {
 class PrimaryKeyFilter final : public irs::filter,
                                public irs::filter::prepared {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
@@ -132,7 +132,7 @@ class PrimaryKeyFilter final : public irs::filter,
 ///////////////////////////////////////////////////////////////////////////////
 class PrimaryKeyFilterContainer final : public irs::filter {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilterContainer";
   }
 

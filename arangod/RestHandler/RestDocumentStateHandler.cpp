@@ -88,7 +88,7 @@ RestStatus RestDocumentStateHandler::handleGetSnapshot(
   auto waitForIndexParam =
       _request->parsedValue<decltype(replication2::LogIndex::value)>(
           "waitForIndex");
-  if (!waitForIndexParam.has_value() || waitForIndexParam.value() < 0) {
+  if (!waitForIndexParam.has_value()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid waitForIndex parameter");
     return RestStatus::DONE;

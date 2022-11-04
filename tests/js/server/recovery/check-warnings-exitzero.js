@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertMatch */
+/* global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for crash handler
@@ -33,11 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  // make log level more verbose, as by default we hide most messages from
-  // the test output
-  require("internal").logLevel("crash=info");
-  // calls std::terminate() in the server
-  internal.debugTerminate('CRASH-HANDLER-TEST-TERMINATE');
+  // intentionall do nothing, so we will see a normal shutdown!
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -50,15 +46,6 @@ function recoverySuite () {
 
   return {
     testLogOutput: function () {
-      // check if crash handler is turned off
-      let envVariable = internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"];
-      if (typeof envVariable === 'string') {
-        envVariable = envVariable.trim().toLowerCase();
-        if (!(envVariable === 'true' || envVariable === 'yes' || envVariable === 'on' || envVariable === 'y')) {
-          return;
-        }
-      }
-
       let fs = require("fs");
       let crashFile = internal.env["crash-log"];
 
@@ -66,32 +53,50 @@ function recoverySuite () {
 
       let platform = internal.platform;
       if (platform !== 'linux') {
-        // crash handler only available on Linux
         return;
       }
 
-      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
-        return line.match(/\{crash\}/);
-      });
-      assertTrue(lines.length > 0);
+      // find all warnings, errors, fatal errors...
+      let lines = fs.readFileSync(crashFile).toString().trim().split("\n").filter(function(line) {
+        // we are interested in errors, warnings, fatal errors
+        if (!line.match(/ (ERROR|WARNING|FATAL) \[[a-f0-9]+\] /)) {
+          return false;
+        }
 
-      // check message
-      let line = lines.shift();
-      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*handler for std::terminate\(\) invoked without active exception/, line);
-
-      // check debug symbols
-      // it is a bit compiler- and optimization-level-dependent what
-      // symbols we get
-      let expected = [ /std::terminate/, /TerminateDebugging/, /JS_DebugTerminate/ ];
-      let matches = 0;
-      lines.forEach(function(line) {
-        expected.forEach(function(ex) {
-          if (line.match(/ frame /) && line.match(ex)) {
-            ++matches;
-          }
-        });
+        if (line.match(/\{(memory|performance)\}/)) {
+          // ignore errors about memory/performance configuration
+          return false;
+        }
+        
+        if (line.match(/\[0458b\].*DO NOT USE IN PRODUCTION/i)) {
+          // intentionally ignore DO NOT USE IN PRODUCTION line
+          return false;
+        }
+        if (line.match(/\[bd666\].*=+/)) {
+          // and its following line ===============================
+          return false;
+        }
+        if (internal.env["isSan"] === "true" && line.match(/\[3ad54\].*=+/)) {
+          // intentionally ignore "slow background settings sync: " in case of ASan
+          return false;
+        }
+        if (line.match(/\[2c0c6\].*Extended names+/)) {
+          // intentionally ignore "extended names for databases is an experimental feature...
+          return false;
+        }
+        if (line.match(/\[1afb1\].*This is an unlicensed ArangoDB instance./)) {
+          // intentionally ignore "This is an unlicensed ArangoDB instance...
+          return false;
+        }
+        if (line.match(/\[d72fb\].*Your license will expire/)) {
+          // intentionally ignore "This is an unlicensed ArangoDB instance...
+          return false;
+        }
+        return true;
       });
-      assertTrue(matches > 0, lines);
+
+      // and expected that there are none
+      assertEqual(0, lines.length, lines);
     }
 
   };

@@ -23,8 +23,13 @@
 
 #pragma once
 
+<<<<<<< HEAD:arangod/Pregel/Worker/GraphStore.h
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
+    ||||||| 25b5d277e3b:arangod/Pregel/GraphStore.h
+=======
+#include "Basics/ResourceUsage.h"
+    >>>>>>> devel:arangod/Pregel/GraphStore.h
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
@@ -40,11 +45,12 @@
 #include <memory>
 #include <set>
 
-struct TRI_vocbase_t;
+    struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class LogicalCollection;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;
