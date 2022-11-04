@@ -55,6 +55,10 @@ struct FakeLeader final : replicated_log::ILogLeader,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  auto ping(std::optional<std::string> message) -> WaitForFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
     using streamSpec =

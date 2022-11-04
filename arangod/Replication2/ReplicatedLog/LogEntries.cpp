@@ -224,7 +224,7 @@ auto LogMetaPayload::withUpdateParticipantsConfig(
       UpdateParticipantsConfig{.participants = std::move(config)}};
 }
 
-auto LogMetaPayload::withPing(std::string message,
+auto LogMetaPayload::withPing(std::optional<std::string> message,
                               Ping::clock::time_point tp) noexcept
     -> LogMetaPayload {
   return LogMetaPayload{Ping{std::move(message), tp}};

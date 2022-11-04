@@ -105,7 +105,7 @@ struct LogMetaPayload {
     }
   };
 
-  static auto withPing(std::string message,
+  static auto withPing(std::optional<std::string> message,
                        Ping::clock::time_point = Ping::clock::now()) noexcept
       -> LogMetaPayload;
 

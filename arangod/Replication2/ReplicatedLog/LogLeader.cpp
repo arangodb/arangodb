@@ -1490,6 +1490,17 @@ auto replicated_log::LogLeader::waitForResign()
   return std::move(future);
 }
 
+auto replicated_log::LogLeader::ping(std::optional<std::string> message)
+    -> replicated_log::ILogParticipant::WaitForFuture {
+  auto index = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leader) {
+    auto meta = LogMetaPayload::withPing(message);
+    return leader.insertInternal(std::move(meta), false, std::nullopt);
+  });
+
+  triggerAsyncReplication();
+  return waitFor(index);
+}
+
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
     -> Result {
   auto res = _guardedLogCore.doUnderLock([&](auto& core) {
