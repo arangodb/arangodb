@@ -132,8 +132,7 @@ class Methods {
                              transaction::Status status)>
       StatusChangeCallback;
 
-  typedef std::function<void(transaction::Methods& trx)>
-      PreCommitCallback;
+  typedef std::function<void(transaction::Methods& trx)> PreCommitCallback;
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
   /// @note not thread-safe on the assumption of static factory registration
