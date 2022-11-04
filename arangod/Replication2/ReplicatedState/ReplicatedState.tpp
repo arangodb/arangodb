@@ -463,7 +463,7 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
 template<typename S>
 void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                  LogIndex index) {
-  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "Acquiring snapshot";
+  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquiring snapshot";
   MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       _metrics->replicatedStateNumberWaitingForSnapshot);
@@ -489,12 +489,13 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
           snapshotCounter.fire();
           if (auto self = weak.lock(); self != nullptr) {
             LOG_CTX("13f07", DEBUG, self->_loggerContext)
-                << "snapshot completed, informing replicated log";
+                << "acquireSnapshot returned";
             auto result =
                 basics::catchToResult([&] { return tryResult.get(); });
             if (result.ok()) {
               LOG_CTX("44d58", DEBUG, self->_loggerContext)
-                  << "snapshot transfer successfully completed";
+                  << "snapshot transfer successfully completed, informing "
+                     "replicated log";
               auto guard = self->_guardedData.getLockedGuard();
               auto res =
                   static_cast<replicated_log::IReplicatedLogFollowerMethods&>(

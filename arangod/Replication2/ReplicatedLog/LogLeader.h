@@ -170,6 +170,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   auto getParticipantConfigGenerations() const noexcept
       -> std::pair<std::size_t, std::optional<std::size_t>>;
 
+  auto setSnapshotAvailable(ParticipantId const&) -> Result;
+
  protected:
   // Use the named constructor construct() to create a leader!
   LogLeader(LoggerContext logContext,

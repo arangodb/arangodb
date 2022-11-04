@@ -378,6 +378,15 @@ struct arangodb::VocBaseLogManager {
               pool, participantId, vocbase.name(), id);
         }
 
+        auto constructLeaderCommunicator(const ParticipantId& participantId)
+            -> std::shared_ptr<replicated_log::ILeaderCommunicator> override {
+          auto* pool = vocbase.server().getFeature<NetworkFeature>().pool();
+
+          return std::make_shared<
+              replication2::replicated_log::NetworkLeaderCommunicator>(
+              pool, participantId, vocbase.name(), id);
+        }
+
         TRI_vocbase_t& vocbase;
         replication2::LogId id;
       };

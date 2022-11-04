@@ -95,6 +95,13 @@ struct ILogParticipant {
  */
 struct ILogFollower : ILogParticipant, AbstractFollower {};
 
+struct ILeaderCommunicator {
+  virtual ~ILeaderCommunicator() = default;
+  virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
+  virtual auto reportSnapshotAvailable() noexcept
+      -> futures::Future<Result> = 0;
+};
+
 /**
  * Interfaces describe a LogLeader API. Components should use this interface
  * if they want to refer to a LogLeader instance.

@@ -251,10 +251,15 @@ ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
 auto DefaultParticipantsFactory::constructFollower(
     std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
     ParticipantContext context) -> std::shared_ptr<ILogFollower> {
+  std::shared_ptr<ILeaderCommunicator> leaderComm;
+  if (info.leader) {
+    leaderComm = followerFactory->constructLeaderCommunicator(*info.leader);
+  }
   return LogFollower::construct(
       context.loggerContext, std::move(context.metrics),
       std::move(context.options), std::move(info.myself), std::move(logCore),
-      info.term, std::move(info.leader), std::move(context.stateHandle));
+      info.term, std::move(info.leader), std::move(context.stateHandle),
+      leaderComm);
 }
 
 auto DefaultParticipantsFactory::constructLeader(

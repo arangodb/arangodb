@@ -55,6 +55,8 @@ struct IAbstractFollowerFactory {
   virtual ~IAbstractFollowerFactory() = default;
   virtual auto constructFollower(ParticipantId const&)
       -> std::shared_ptr<AbstractFollower> = 0;
+  virtual auto constructLeaderCommunicator(ParticipantId const&)
+      -> std::shared_ptr<replicated_log::ILeaderCommunicator> = 0;
 };
 
 struct IReplicatedLogMethodsBase {

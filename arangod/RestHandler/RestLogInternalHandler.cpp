@@ -25,6 +25,7 @@
 
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
+#include "Replication2/ReplicatedLog/LogLeader.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -49,12 +50,23 @@ RestStatus RestLogInternalHandler::execute() {
   }
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() != 2 || suffixes[1] != "append-entries") {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect POST /_api/log-internal/<log-id>/append-entries");
-    return RestStatus::DONE;
+  if (suffixes.size() == 2) {
+    if (suffixes[1] == "update-snapshot-status") {
+      return handleUpdateSnapshotStatus();
+    } else if (suffixes[1] == "append-entries") {
+      return handleAppendEntries();
+    }
   }
 
+  generateError(
+      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expect POST "
+      "/_api/log-internal/<log-id>/[append-entries|update-snapshot-status]");
+  return RestStatus::DONE;
+}
+
+RestStatus RestLogInternalHandler::handleAppendEntries() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
@@ -77,4 +89,18 @@ RestStatus RestLogInternalHandler::execute() {
                });
 
   return waitForFuture(std::move(f));
+}
+
+RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+  auto participant = _request->value("follower");
+  auto res = _vocbase.getReplicatedLogLeaderById(logId)->setSnapshotAvailable(
+      participant);
+  if (res.fail()) {
+    generateError(res);
+  } else {
+    generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+  }
+  return RestStatus::DONE;
 }

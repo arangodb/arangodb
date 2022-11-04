@@ -1000,7 +1000,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
 
     auto flags = activeParticipantsConfig->participants.find(pid);
     TRI_ASSERT(flags != std::end(activeParticipantsConfig->participants));
-
     participantStates.emplace_back(algorithms::ParticipantState{
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
@@ -1035,6 +1034,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
       << ", current commit index = " << _commitIndex;
+  LOG_CTX_IF("fbc23", TRACE, _self._logContext, newCommitIndex == _commitIndex)
+      << "commit fail reason = " << to_string(commitFailReason)
+      << " follower-states = " << indexes;
   if (newCommitIndex > _commitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
@@ -1567,6 +1569,22 @@ auto replicated_log::LogLeader::waitForResign()
   action.fire();
 
   return std::move(future);
+}
+
+auto replicated_log::LogLeader::setSnapshotAvailable(
+    ParticipantId const& participantId) -> Result {
+  auto guard = _guardedLeaderData.getLockedGuard();
+  auto follower = guard->_follower.find(participantId);
+  if (follower == guard->_follower.end()) {
+    return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+  }
+  follower->second->snapshotAvailable = true;
+  LOG_CTX("c8b6a", INFO, _logContext)
+      << "Follower snapshot " << participantId << " completed.";
+  auto promises = guard->checkCommitIndex();
+  guard.unlock();
+  handleResolvedPromiseSet(std::move(promises), _logMetrics);
+  return {};
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

@@ -541,7 +541,8 @@ replicated_log::LogFollower::LogFollower(
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
     std::shared_ptr<IReplicatedStateHandle> stateHandle,
-    replicated_log::InMemoryLog inMemoryLog)
+    replicated_log::InMemoryLog inMemoryLog,
+    std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
     : _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _loggerContext(
@@ -552,6 +553,7 @@ replicated_log::LogFollower::LogFollower(
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
       _stateHandle(std::move(stateHandle)),
+      leaderCommunicator(std::move(leaderCommunicator)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
   auto guard = _guardedFollowerData.getLockedGuard();
   auto snapshotStatus = guard->_logCore->getSnapshotState();
@@ -728,7 +730,8 @@ auto LogFollower::construct(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
-    std::shared_ptr<IReplicatedStateHandle> stateHandle)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
+    std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
     -> std::shared_ptr<LogFollower> {
   auto log = InMemoryLog::loadFromLogCore(*logCore);
 
@@ -748,18 +751,20 @@ auto LogFollower::construct(
         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
         std::optional<ParticipantId> leaderId,
         std::shared_ptr<IReplicatedStateHandle> stateHandle,
-        InMemoryLog inMemoryLog)
+        InMemoryLog inMemoryLog,
+        std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
         : LogFollower(loggerContext, std::move(logMetrics), std::move(options),
                       std::move(id), std::move(logCore), term,
                       std::move(leaderId), std::move(stateHandle),
-                      std::move(inMemoryLog)) {}
+                      std::move(inMemoryLog), std::move(leaderCommunicator)) {}
   };
 
   return std::make_shared<MakeSharedWrapper>(
       loggerContext, std::move(logMetrics), std::move(options), std::move(id),
       std::move(logCore), term, std::move(leaderId), std::move(stateHandle),
-      std::move(log));
+      std::move(log), std::move(leaderCommunicator));
 }
+
 auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
   return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
 }
@@ -776,6 +781,17 @@ Result LogFollower::onSnapshotCompleted() {
   ADB_PROD_ASSERT(guard->_snapshotProgress ==
                   GuardedFollowerData::SnapshotProgress::kInProgress);
   guard->_snapshotProgress = GuardedFollowerData::SnapshotProgress::kCompleted;
+  leaderCommunicator->reportSnapshotAvailable().thenFinal(
+      [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
+        auto realRes = basics::catchToResult([&] { return res.get(); });
+        if (realRes.fail()) {
+          LOG_CTX("9db47", ERR, self->_loggerContext)
+              << "failed to update snapshot status on leader";
+          FATAL_ERROR_EXIT();  // TODO this has to be more resilient
+        }
+        LOG_CTX("600de", DEBUG, self->_loggerContext)
+            << "snapshot status updated on leader";
+      });
   return {};
 }
 

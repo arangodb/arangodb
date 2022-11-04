@@ -111,6 +111,7 @@ auto algorithms::operator<<(std::ostream& os,
     -> std::ostream& {
   os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
   os << "failed = " << std::boolalpha << p.failed;
+  os << ", snapshot = " << std::boolalpha << p.snapshotAvailable;
   os << ", flags = " << p.flags;
   os << '}';
   return os;

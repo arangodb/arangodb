@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -75,4 +76,32 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
         return AppendEntriesResult::fromVelocyPack(
             result.slice().get("result"));
       });
+}
+
+NetworkLeaderCommunicator::NetworkLeaderCommunicator(
+    network::ConnectionPool* pool, ParticipantId leader, DatabaseID database,
+    LogId logId)
+    : pool(pool),
+      leader(std::move(leader)),
+      database(std::move(database)),
+      logId(logId) {}
+
+auto NetworkLeaderCommunicator::getParticipantId() const noexcept
+    -> ParticipantId const& {
+  return leader;
+}
+
+auto NetworkLeaderCommunicator::reportSnapshotAvailable() noexcept
+    -> futures::Future<Result> {
+  auto path = basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal,
+                                         logId, "update-snapshot-status");
+  network::RequestOptions opts;
+  opts.database = database;
+  opts.parameters["follower"] = ServerState::instance()->getId();
+  auto f =
+      network::sendRequest(pool, "server:" + leader,
+                           arangodb::fuerte::RestVerb::Post, path, {}, opts);
+
+  return std::move(f).thenValue(
+      [](network::Response result) { return result.combinedResult(); });
 }
