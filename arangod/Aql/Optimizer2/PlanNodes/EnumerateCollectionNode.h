@@ -28,7 +28,6 @@
 
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
 #include "Aql/Optimizer2/PlanNodeTypes/IndexHint.h"
 
 #include <Inspection/VPackWithErrorT.h>
@@ -37,8 +36,7 @@ namespace arangodb::aql::optimizer2::nodes {
 
 struct EnumerateCollectionNode : optimizer2::nodes::BaseNode,
                                  optimizer2::nodes::DocumentProducingNode,
-                                 optimizer2::nodes::CollectionAccessingNode,
-                                 optimizer2::types::Satellite {
+                                 optimizer2::nodes::CollectionAccessingNode {
   optimizer2::types::IndexHint indexHint;
 
   // Boolean values
@@ -52,7 +50,6 @@ auto inspect(Inspector& f, EnumerateCollectionNode& x) {
       f.embedFields(static_cast<optimizer2::nodes::DocumentProducingNode&>(x)),
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
-      f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
       // TODO: Check is Satellite is still needed (moved some internals into
       // CollectionAccessingNode)
       f.field("indexHint", x.indexHint), f.field("random", x.random));

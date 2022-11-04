@@ -49,6 +49,10 @@ class Expression;
 class Projections;
 struct NonConstExpressionContainer;
 
+namespace optimizer2::nodes {
+struct IndexNode;
+}
+
 template<typename T>
 struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
@@ -165,6 +169,8 @@ class IndexNode : public ExecutionNode,
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::IndexNode toInspectable() const;
 
  private:
   NonConstExpressionContainer buildNonConstExpressions() const;

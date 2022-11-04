@@ -1716,7 +1716,6 @@ EnumerateCollectionNode::toInspectable() const {
   return {{ExecutionNode::toInspectable("EnumerateCollectionNode")},
           {DocumentProducingNode::toInspectable()},
           {CollectionAccessingNode::toInspectable()},
-          {},  // TODO: Satellite Extension - check if still needed
           _hint.toInspectable(),
           _random};
 }

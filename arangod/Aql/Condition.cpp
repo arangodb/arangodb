@@ -42,6 +42,8 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+
 #include <velocypack/Builder.h>
 
 #ifdef _WIN32
@@ -572,6 +574,16 @@ void Condition::toVelocyPack(arangodb::velocypack::Builder& builder,
     VPackObjectBuilder guard(&builder);
   } else {
     _root->toVelocyPack(builder, verbose);
+  }
+}
+
+std::optional<optimizer2::types::Expression> Condition::toInspectable() const {
+  if (_root == nullptr) {
+    return {std::nullopt};
+  } else {
+    static constexpr bool details = true;
+    return std::optional<optimizer2::types::Expression>{
+        _root->toInspectable(details)};
   }
 }
 

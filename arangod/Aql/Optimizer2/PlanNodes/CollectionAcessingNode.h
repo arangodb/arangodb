@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodeTypes/Satellite.h"
 #include "Aql/Optimizer2/Types/Types.h"
 
 namespace arangodb::aql::optimizer2::nodes {
@@ -35,7 +34,9 @@ struct CollectionAccessingNode {
   // specific
   AttributeTypes::String database;
   AttributeTypes::String collection;
+
   // ee specific
+  bool satellite;  // but always set
 
   // TODO: Optional because TraversalNode does not set it.....
   // See note below - also "collection" is handled differently there.
@@ -61,7 +62,7 @@ auto inspect(Inspector& f, CollectionAccessingNode& v) {
       // because TraversalNode inherits the
       // CollectionAccessingNode but does not set a
       // "collection" property
-      f.field("isSatellite", v.isSatellite),
+      f.field("satellite", v.satellite), f.field("isSatellite", v.isSatellite),
       f.field("isSatelliteOf", v.isSatelliteOf));
 }
 
