@@ -228,8 +228,8 @@ class GraphProviderTest : public ::testing::Test {
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
-                                      false);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false,
+                                      /*produceVertices*/ true);
       return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
