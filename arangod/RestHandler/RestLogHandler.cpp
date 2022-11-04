@@ -104,9 +104,9 @@ RestStatus RestLogHandler::handlePostRequest(
   } else if (verb == "multi-insert") {
     return handlePostInsertMulti(methods, logId, body);
   } else {
-    generateError(
-        rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-        "expecting one of the resources 'insert', 'release', 'multi-insert'");
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expecting one of the resources 'insert', 'release', "
+                  "'multi-insert', 'compact', 'ping'");
   }
   return RestStatus::DONE;
 }

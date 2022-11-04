@@ -612,7 +612,7 @@ struct ReplicatedLogMethodsCoordinator final
   auto ping(LogId id, std::optional<std::string> message) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
-    auto path = basics::StringUtils::joinT("/", "_api/log", id, "insert");
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "ping");
 
     VPackBufferUInt8 payload;
     if (message) {

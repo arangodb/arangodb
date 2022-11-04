@@ -151,6 +151,13 @@ ArangoReplicatedLog.prototype.insert = function (payload, {waitForSync = false, 
   return requestResult.result;
 };
 
+ArangoReplicatedLog.prototype.ping = function (message) {
+  let str = JSON.stringify({message});
+  let requestResult = this._database._connection.POST(this._baseurl() + `/ping`, str);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
 ArangoReplicatedLog.prototype.multiInsert = function(payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/multi-insert?waitForSync=${waitForSync}&dontWaitForCommit=${dontWaitForCommit}`, str);
