@@ -845,6 +845,7 @@ class fixed_length_column final: public column_base {
     std::vector<std::tuple<size_t, size_t, size_t>> blocks_offsets;
     size_t blocks_data_size{0};
     size_t block_index{0};
+    blocks_offsets.reserve(blocks.size());
     for (auto& block : blocks) {
       size_t length = (block != last_offset || last_block_full)
                           ? column::kBlockSize
