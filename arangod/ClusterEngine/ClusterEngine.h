@@ -161,7 +161,7 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector) override {
+  Result flushWal(bool waitForSync, bool flushColumnFamilies) override {
     return {};
   }
 
@@ -186,8 +186,7 @@ class ClusterEngine final : public StorageEngine {
                                   LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection,
-                        bool doSync) override;
+                        LogicalCollection const& collection) override;
 
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                     LogicalCollection const& collection,

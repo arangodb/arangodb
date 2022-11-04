@@ -69,5 +69,6 @@ constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* UPDATE_REPLICATED_LOG = "UpdateReplicatedLog";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
+constexpr char const* UPDATE_REPLICATED_STATE = "UpdateReplicatedState";
 
 }  // namespace arangodb::maintenance

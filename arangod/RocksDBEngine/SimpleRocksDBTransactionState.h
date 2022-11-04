@@ -65,6 +65,8 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
 
   uint64_t numOperations() const noexcept override;
 
+  uint64_t numPrimitiveOperations() const noexcept override;
+
   bool ensureSnapshot() override;
 
   rocksdb::SequenceNumber beginSeq() const override;
