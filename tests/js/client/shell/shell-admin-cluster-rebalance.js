@@ -73,11 +73,6 @@ function getServersHealth() {
   return result.parsedBody.Health;
 }
 
-function getMovesWithAllFlagsTrue() {
-  const result = getRebalancePlan(true, true, true);
-  return result.result.moves;
-}
-
 function clusterRebalanceSuite() {
   let prevDB = null;
   return {
@@ -254,9 +249,10 @@ function clusterRebalanceOtherOptionsSuite() {
 
           result = getRebalancePlan(true, true, true);
           let moves = result.result.moves;
-          assertTrue(moves.length > 0);
-          for (const job of moves) {
-            assertNotEqual(job.to, dbServer.id);
+          if (moves.length > 0) {
+            for (const job of moves) {
+              assertNotEqual(job.to, dbServer.id);
+            }
           }
         } finally {
           assertTrue(continueExternal(dbServer.pid));
@@ -292,8 +288,6 @@ function clusterRebalanceOtherOptionsSuite() {
         assertNotNull(leaderId);
         result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
-        const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
-        assertTrue(movesAllFlagsTrue.length > moves.length);
         if (moves.length > 0) {
           for (const job of moves) {
             if (job.shard === shardName) {
@@ -322,11 +316,12 @@ function clusterRebalanceOtherOptionsSuite() {
 
         result = getRebalancePlan(true, false, true);
         let moves = result.result.moves;
-        assertTrue(moves.length > 0);
-        for (const job of moves) {
-          if (job.shard === shardName) {
-            assertNotEqual(job.from, followerId);
-            assertTrue(job.isLeader);
+        if (moves.length > 0) {
+          for (const job of moves) {
+            if (job.shard === shardName) {
+              assertNotEqual(job.from, followerId);
+              assertTrue(job.isLeader);
+            }
           }
         }
       });

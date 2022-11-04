@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed assertions of cluster rebalance js test that obligated the rebalance
+  plan to have moves, but there were cases in which all the possible moves 
+  were negative, so there was no actual better move to perform.
+
 * Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
 
 * Improve performance and memory usage of IN list lookups for hash, skiplist
