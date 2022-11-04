@@ -379,7 +379,15 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       });
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
+
+      if (internal.isEnterprise()) {
+        assertNotEqual(-1, plan.rules.indexOf("cluster-one-shard"));
+        // one shard rule has kicked in as well and modified the plan accordingly
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
+      } else {
+        assertEqual(-1, plan.rules.indexOf("cluster-one-shard"));
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      }
     },
 
     testSingleDistinct: function () {
