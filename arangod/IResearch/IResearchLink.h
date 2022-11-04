@@ -190,6 +190,8 @@ class IResearchLink {
               LocalDocumentId documentId,
               TRI_voc_tick_t const* recoveryTick) const;
 
+  int recoveyTickHigh() const noexcept { return _dataStore._recoveryTickHigh; }
+
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
 
@@ -393,7 +395,8 @@ class IResearchLink {
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
-    TRI_voc_tick_t _recoveryTick{0};
+    TRI_voc_tick_t _recoveryTickLow{0};
+    TRI_voc_tick_t _recoveryTickHigh{0};
     std::atomic_bool _inRecovery{false};  // data store is in recovery
     explicit operator bool() const noexcept { return _directory && _writer; }
 

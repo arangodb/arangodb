@@ -715,12 +715,12 @@ index_writer::documents_context::document::~document() noexcept {
   }
 }
 
-void index_writer::documents_context::addToFlush() {
+void index_writer::documents_context::AddToFlush() {
   auto& ctx = segment_.ctx();
   if (!ctx) {
     return;  // nothing to do
   }
-  writer_.get_flush_context()->addToPending(segment_);
+  writer_.get_flush_context()->AddToPending(segment_);
 }
 
 index_writer::documents_context::~documents_context() noexcept {
@@ -888,7 +888,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   return ctx;
 }
 
-void index_writer::flush_context::addToPending(
+void index_writer::flush_context::AddToPending(
     active_segment_context& segment) {
   if (segment.flush_ctx_) {
     return;

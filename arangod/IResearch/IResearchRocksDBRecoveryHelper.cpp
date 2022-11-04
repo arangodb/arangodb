@@ -169,13 +169,17 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 #else
         IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
 #endif
-        auto snapshotCookie = _cookies.find(link.first.get());
-        if (snapshotCookie == _cookies.end()) {
-          snapshotCookie =
-              _cookies.emplace(link.first.get(), impl.snapshot()).first;
-        }
-        if (impl.exists(snapshotCookie->second, docId, &tick)) {
-          _skipExisted.emplace(link.first->id());
+        if (tick <= impl.recoveyTickHigh()) {
+          auto snapshotCookie = _cookies.find(link.first.get());
+          if (snapshotCookie == _cookies.end()) {
+            snapshotCookie =
+                _cookies.emplace(link.first.get(), impl.snapshot()).first;
+          }
+          if (impl.exists(snapshotCookie->second, docId, &tick)) {
+            _skipExisted.emplace(link.first->id());
+          } else {
+            mustReplay = true;
+          }
         } else {
           mustReplay = true;
         }

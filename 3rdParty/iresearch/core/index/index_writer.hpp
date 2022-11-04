@@ -203,7 +203,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
 
     ~documents_context() noexcept;
 
-    void addToFlush();
+    void AddToFlush();
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create a document to filled by the caller
@@ -999,7 +999,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     void emplace(active_segment_context&& segment, uint64_t first_operation_tick); // add the segment to this flush_context
     // add the segment to this flush_context pending segments but not to freelist.
     // So this segment would be waited upong flushing
-    void addToPending(active_segment_context& segment);
+    void AddToPending(active_segment_context& segment);
     void reset() noexcept;
   }; // flush_context
 

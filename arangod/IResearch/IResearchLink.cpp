@@ -248,16 +248,57 @@ class IResearchFlushSubscription final : public FlushSubscription {
   std::atomic<TRI_voc_tick_t> _tick;
 };
 
-bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
+enum class SegmentPayloadVersion : irs::byte_type {
+  // Only max tick stored. Possibly has uncommitted WAL ticks
+  SingleTick = 0,
+  // Two stage commit ticks are stored.
+  // Min tick is fully committed but between first and second tick
+  // uncommitted WAL records may be present. After second tick nothing is
+  // committed.
+  TwoStageTick = 1
+};
+
+bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tickLow,
+              TRI_voc_tick_t& tickHigh) noexcept {
   static_assert(sizeof(uint64_t) == sizeof(TRI_voc_tick_t));
 
-  if (payload.size() != sizeof(uint64_t)) {
+  if (payload.size() < sizeof(uint64_t)) {
+    LOG_TOPIC("41474", ERR, TOPIC) << "Unexpected segment payload size "
+                                   << payload.size() << " for initial check";
     return false;
   }
-
-  std::memcpy(&tick, payload.c_str(), sizeof(uint64_t));
-  tick = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tick));
-
+  std::memcpy(&tickLow, payload.c_str(), sizeof(uint64_t));
+  tickLow = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tickLow));
+  tickHigh = std::numeric_limits<TRI_voc_tick_t>::max();
+  SegmentPayloadVersion version{SegmentPayloadVersion::SingleTick};
+  if (payload.size() > sizeof(uint64_t) + sizeof(version)) {
+    std::memcpy(&version, payload.c_str() + sizeof(uint64_t), sizeof(version));
+    switch (version) {
+      case SegmentPayloadVersion::TwoStageTick: {
+        if (payload.size() == (2 * sizeof(uint64_t)) + sizeof(version)) {
+          std::memcpy(&tickHigh,
+                      payload.c_str() + sizeof(uint64_t) + sizeof(version),
+                      sizeof(uint64_t));
+          tickHigh = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tickHigh));
+        } else {
+          LOG_TOPIC("49b4d", ERR, TOPIC)
+              << "Unexpected segment payload size " << payload.size()
+              << " for version '"
+              << static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
+                     version)
+              << "'";
+          return false;
+        }
+      }
+      default:
+        // falling back to SingleTick as it always present
+        LOG_TOPIC("fad1f", WARN, TOPIC)
+            << "Unexpected segment payload version '"
+            << static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
+                   version)
+            << "' fallback to minimal version";
+    }
+  }
   return true;
 }
 
@@ -768,7 +809,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
               }
               std::this_thread::sleep_for(5s);
             }
-            ctx._ctx.addToFlush();
+            ctx._ctx.AddToFlush();
             LOG_TOPIC("cdc04", DEBUG, TOPIC) << myNumber << " added to flush";
             ++_t3NumFlushRegistered;
             break;
@@ -791,10 +832,10 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
         }
       }
       else {
-        ctx._ctx.addToFlush();
+        ctx._ctx.AddToFlush();
       }
 #else
-      ctx._ctx.addToFlush();
+      ctx._ctx.AddToFlush();
 #endif
     }
   };
@@ -1646,7 +1687,8 @@ Result IResearchLink::initDataStore(
       _dataStore._inRecovery.store(
           true, std::memory_order_release);  // will be adjusted in
                                              // post-recovery callback
-      _dataStore._recoveryTick = _engine->recoveryTick();
+      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
+          _engine->recoveryTick();
       break;
     }
 
@@ -1656,7 +1698,8 @@ Result IResearchLink::initDataStore(
       _createdInRecovery = true;
 
       _dataStore._inRecovery.store(false, std::memory_order_release);
-      _dataStore._recoveryTick = _engine->releasedTick();
+      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
+          _engine->releasedTick();
       break;
     }
   }
@@ -1667,7 +1710,8 @@ Result IResearchLink::initDataStore(
           irs::directory_reader::open(*(_dataStore._directory));
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
-                    _dataStore._recoveryTick)) {
+                    _dataStore._recoveryTickLow,
+                    _dataStore._recoveryTickHigh)) {
         return {TRI_ERROR_INTERNAL,
                 "failed to get last committed tick while initializing link '" +
                     std::to_string(id().id()) + "'"};
@@ -1677,16 +1721,18 @@ Result IResearchLink::initDataStore(
           << "successfully opened existing data store data store reader for "
           << "link '" << id() << "', docs count '"
           << _dataStore._reader->docs_count() << "', live docs count '"
-          << _dataStore._reader->live_docs_count() << "', recovery tick '"
-          << _dataStore._recoveryTick << "'";
+          << _dataStore._reader->live_docs_count()
+          << "', recovery tick low boundary '" << _dataStore._recoveryTickLow
+          << "' , recovery tick high boundary '" << _dataStore._recoveryTickHigh
+          << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }
   }
-  _lastCommittedTickStageOne = _dataStore._recoveryTick;
+  _lastCommittedTickStageOne = _dataStore._recoveryTickLow;
   _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
   _flushSubscription =
-      std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTick);
+      std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
 
   irs::index_writer::init_options options;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
@@ -1712,10 +1758,21 @@ Result IResearchLink::initDataStore(
     // convert to BE
     tick = irs::numeric_utils::hton64(
         uint64_t{_commitStageOne ? _lastCommittedTickStageTwo
-                                 : _lastCommittedTickStageOne});
+                                 : std::min(_lastCommittedTickStageOne,
+                                            _lastCommittedTickStageTwo)});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
-
+    static_assert(sizeof SegmentPayloadVersion::TwoStageTick ==
+                  sizeof irs::byte_type);
+    out.push_back(
+        static_cast<irs::byte_type>(SegmentPayloadVersion::TwoStageTick));
+    if (_commitStageOne) {
+      tick = _lastCommittedTickStageOne;
+    } else {
+      tick = std::max(_lastCommittedTickStageOne, _lastCommittedTickStageTwo);
+    }
+    tick = irs::numeric_utils::hton64(tick);
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
     return true;
   };
 
@@ -1783,15 +1840,17 @@ Result IResearchLink::initDataStore(
   }
 
   if (!readTick(_dataStore._reader.meta().meta.payload(),
-                _dataStore._recoveryTick)) {
+                _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh)) {
     return {TRI_ERROR_INTERNAL,
             "failed to get last committed tick while initializing link '" +
                 std::to_string(id().id()) + "'"};
   }
 
-  LOG_TOPIC("7e128", TRACE, TOPIC) << "data store reader for link '" << id()
-                                   << "' is initialized with recovery tick '"
-                                   << _dataStore._recoveryTick << "'";
+  LOG_TOPIC("7e128", TRACE, TOPIC)
+      << "data store reader for link '" << id()
+      << "' is initialized with recovery tick low '"
+      << _dataStore._recoveryTickLow << "' and recovery tick high '"
+      << _dataStore._recoveryTickHigh << "'";
 
   // reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0;        // 0 == disable
@@ -1845,11 +1904,11 @@ Result IResearchLink::initDataStore(
                  "synchronize it.";
 
           outOfSync = true;
-        } else if (dataStore._recoveryTick >
+        } else if (dataStore._recoveryTickLow >
                    linkLock->_engine->recoveryTick()) {
           LOG_TOPIC("5b59f", WARN, TOPIC)
               << "arangosearch link '" << linkLock->id()
-              << "' is recovered at tick '" << dataStore._recoveryTick
+              << "' is recovered at tick '" << dataStore._recoveryTickLow
               << "' less than storage engine tick '"
               << linkLock->_engine->recoveryTick()
               << "', it seems WAL tail was lost and link '" << linkLock->id()
@@ -1930,12 +1989,19 @@ void IResearchLink::scheduleConsolidation(std::chrono::milliseconds delay) {
 bool IResearchLink::exists(IResearchLink::Snapshot const& snapshot,
                            LocalDocumentId documentId,
                            TRI_voc_tick_t const* recoveryTick) const {
-  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
-    LOG_TOPIC("6e128", TRACE, TOPIC)
-        << "skipping 'exists', operation tick '" << *recoveryTick
-        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+  if (recoveryTick) {
+    if (*recoveryTick <= _dataStore._recoveryTickLow) {
+      LOG_TOPIC("6e128", TRACE, TOPIC)
+          << "skipping 'exists', operation tick '" << *recoveryTick
+          << "', recovery tick low '" << _dataStore._recoveryTickLow << "'";
 
-    return false;
+      return true;
+    } else if (*recoveryTick > _dataStore._recoveryTickHigh) {
+      LOG_TOPIC("6e128", TRACE, TOPIC)
+          << "skipping 'exists', operation tick '" << *recoveryTick
+          << "', recovery tick high '" << _dataStore._recoveryTickHigh << "'";
+      return false;
+    }
   }
   PrimaryKeyFilter filter(documentId);
   auto prepared = filter.prepare(snapshot.getDirectoryReader());
@@ -1957,10 +2023,10 @@ Result IResearchLink::insert(transaction::Methods& trx,
 
   auto& state = *(trx.state());
 
-  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTickLow) {
     LOG_TOPIC("7c228", TRACE, TOPIC)
         << "skipping 'insert', operation tick '" << *recoveryTick
-        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+        << "', recovery tick '" << _dataStore._recoveryTickLow << "'";
 
     return {};
   }
@@ -2185,10 +2251,10 @@ Result IResearchLink::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTickLow) {
     LOG_TOPIC("7d228", TRACE, TOPIC)
         << "skipping 'removal', operation tick '" << *recoveryTick
-        << "', recovery tick '" << _dataStore._recoveryTick << "'";
+        << "', recovery tick '" << _dataStore._recoveryTickLow << "'";
 
     return {};
   }
