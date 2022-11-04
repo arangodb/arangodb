@@ -55,7 +55,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Transaction/V8Context.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -94,8 +94,7 @@ Result RocksDBEdgeIndexWarmupTask::run() {
   DatabaseGuard databaseGuard(_databaseFeature, _dbName);
   CollectionGuard collectionGuard(&databaseGuard.database(), _collectionName);
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(
-      databaseGuard.database(), false);
+  auto ctx = transaction::StandaloneContext::Create(databaseGuard.database());
   SingleCollectionTransaction trx(ctx, *collectionGuard.collection(),
                                   AccessMode::Type::READ);
   Result res = trx.begin();
@@ -742,8 +741,7 @@ Result RocksDBEdgeIndex::scheduleWarmup() {
     return {};
   }
 
-  auto ctx =
-      transaction::V8Context::CreateWhenRequired(_collection.vocbase(), false);
+  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
