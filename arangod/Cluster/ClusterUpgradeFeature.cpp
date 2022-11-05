@@ -61,13 +61,14 @@ void ClusterUpgradeFeature::collectOptions(
           "disable = ignore `--database.auto-upgrade` and never perform an "
           "upgrade, force = ignore `--database.auto-upgrade` and always "
           "perform an upgrade and shut down, online = always perform an "
-          "upgrade but don't shut down)",
+          "upgrade but don't shut down).",
           new DiscreteValuesParameter<StringParameter>(
-              &_upgradeMode, std::unordered_set<std::string>{"auto", "disable",
-                                                             "force", "online"})
-              arangodb::options::makeFlags(
-                  arangodb::options::Flags::DefaultNoComponents,
-                  arangodb::options::Flags::OnCoordinator))
+              &_upgradeMode,
+              std::unordered_set<std::string>{"auto", "disable", "force",
+                                              "online"}),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600);
 }
 

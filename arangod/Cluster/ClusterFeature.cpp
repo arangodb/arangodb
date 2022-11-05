@@ -146,24 +146,22 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnDBServer))
-      .setDeprecatedIn(std::string{
-          "You can specify this option multiple times to let the server use a "
-          "cluster of Agency servers.\n"
-          "\n"
-          "Endpoints have the following pattern:\n"
-          "- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4\n"
-          "- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6\n"
-          "- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL "
-          "encryption\n"
-          "- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL "
-          "encryption\n"
-          "\n"
-          "You must specify at least one endpoint or ArangoDB refuses to "
-          "start. It is recommended to specify at least two endpoints, so that "
-          "ArangoDB has an alternative endpoint if one of them becomes "
-          "unavailable:\n\n"
-          "`--cluster.agency-endpoint tcp://192.168.1.1:4001 "
-          "--cluster.agency-endpoint tcp://192.168.1.2:4002 ...`"});
+      .setLongDescription(R"(You can specify this option multiple times to let
+the server use a cluster of Agency servers.
+
+Endpoints have the following pattern:
+
+- `tcp://ipv4-address:port` - TCP/IP endpoint, using IPv4
+- `tcp://[ipv6-address]:port` - TCP/IP endpoint, using IPv6
+- `ssl://ipv4-address:port` - TCP/IP endpoint, using IPv4, SSL encryption
+- `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
+
+You must specify at least one endpoint or ArangoDB refuses to start. It is
+recommended to specify at least two endpoints, so that ArangoDB has an
+alternative endpoint if one of them becomes unavailable:
+
+`--cluster.agency-endpoint tcp://192.168.1.1:4001
+--cluster.agency-endpoint tcp://192.168.1.2:4002 ...`)");
 
   options
       ->addOption("--cluster.my-role", "This server's role.",
