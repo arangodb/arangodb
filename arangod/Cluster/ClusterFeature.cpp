@@ -260,10 +260,9 @@ databases, which in turn is used as the default for collections.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600)
-      .setIntroducedIn(
-          R"(If you don't set this option, it defaults to the value
-of the `--cluster.min-replication-factor` option. If set, the value must be
-between the values of `--cluster.min-replication-factor` and
+      .setLongDescription(R"(If you don't set this option, it defaults to the
+value of the `--cluster.min-replication-factor` option. If set, the value must
+be between the values of `--cluster.min-replication-factor` and
 `--cluster.max-replication-factor`.
 
 Note that you can still adjust the replication factor per collection. This value
@@ -279,10 +278,9 @@ specified when creating a collection.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600)
-      .setLongDescription(
-          R"(If you change the value of this setting and restart
-the servers, no changes are applied to existing collections that would violate
-the new setting.)");
+      .setLongDescription(R"(If you change the value of this setting and
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.)");
 
   options
       ->addOption("--cluster.max-replication-factor",
@@ -295,10 +293,9 @@ the new setting.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600)
-      .setLongDescription(
-          R"(If you change the value of this setting and restart
-the servers, no changes are applied to existing collections that would violate
-the new setting.)");
+      .setLongDescription(R"(If you change the value of this setting and
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.)");
 
   options
       ->addOption(
@@ -310,10 +307,9 @@ the new setting.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30501)
-      .setLongDescription(
-          R"(If you change the value of this setting and restart
-the servers, no changes are applied to existing collections that would violate
-the new setting.)");
+      .setLongDescription(R"(If you change the value of this setting and
+restart the servers, no changes are applied to existing collections that would
+violate the new setting.)");
 
   options
       ->addOption("--cluster.force-one-shard",
