@@ -381,10 +381,11 @@ issued for administration and database-internal purposes.)");
                   new BooleanParameter(&_trackQueryString))
       .setIntroducedIn(30704);
 
-  options->addOption("--query.tracking-with-bindvars",
-                     "Whether to track bind variable of AQL queries.",
-                     new BooleanParameter(&_trackBindVars));
-  .setLongDescription(R"(If set to `true`, then the bind variables are
+  options
+      ->addOption("--query.tracking-with-bindvars",
+                  "Whether to track bind variable of AQL queries.",
+                  new BooleanParameter(&_trackBindVars))
+      .setLongDescription(R"(If set to `true`, then the bind variables are
 tracked and shown for all running and slow AQL queries. This also enables the
 display of bind variable values in the list of cached AQL query results. This
 option only has an effect if `--query.tracking` is set to `true` or if the query
@@ -404,10 +405,9 @@ option to `false`.)");
                   "Whether AQL queries should fail with errors even for "
                   "recoverable warnings.",
                   new BooleanParameter(&_failOnWarning))
-      .setLongDescription(
-          R"(If set to `true`, AQL queries that produce warnings
-are instantly aborted and throw an exception. This option can be set to catch
-obvious issues with AQL queries early.
+      .setLongDescription(R"(If set to `true`, AQL queries that produce
+warnings are instantly aborted and throw an exception. This option can be set
+to catch obvious issues with AQL queries early.
 
 If set to `false`, AQL queries that produce warnings are not aborted and return
 the warnings along with the query results.
@@ -424,10 +424,9 @@ You can override the option for each individual AQL query via the
                   new BooleanParameter(&_requireWith))
       .setIntroducedIn(30711)
       .setIntroducedIn(30800)
-      .setLongDescription(
-          R"(If set to `true`, AQL queries in single server mode
-also require `WITH` clauses in AQL queries where a cluster installation would
-require them.
+      .setLongDescription(R"(If set to `true`, AQL queries in single server
+mode also require `WITH` clauses in AQL queries where a cluster installation
+would require them.
 
 The option is set to `false` by default, but you can turn it on in single
 servers to remove this behavior difference between single servers and clusters,
@@ -449,11 +448,10 @@ You can turn off the tracking of slow queries entirely by setting the option
                   "The threshold for slow streaming AQL queries "
                   "(in seconds).",
                   new DoubleParameter(&_slowStreamingQueryThreshold))
-      .setLongDescription(
-          R"(You can control after what execution time streaming
-AQL queries are considered "slow" with this option. It exists to give streaming
-queries a separate, potentially higher timeout value than for regular queries.
-Streaming queries are often executed in lockstep with application data
+      .setLongDescription(R"(You can control after what execution time
+streaming AQL queries are considered "slow" with this option. It exists to give
+streaming queries a separate, potentially higher timeout value than for regular
+queries. Streaming queries are often executed in lockstep with application data
 processing logic, which then also accounts for the queries' runtime. It is thus
 expected that the lifetime of streaming queries is longer than for regular
 queries.)");
