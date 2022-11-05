@@ -1762,8 +1762,7 @@ Result IResearchLink::initDataStore(
                                             _lastCommittedTickStageTwo)});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
-    static_assert(sizeof SegmentPayloadVersion::TwoStageTick ==
-                  sizeof irs::byte_type);
+    static_assert(sizeof SegmentPayloadVersion == sizeof irs::byte_type);
     out.push_back(
         static_cast<irs::byte_type>(SegmentPayloadVersion::TwoStageTick));
     if (_commitStageOne) {
