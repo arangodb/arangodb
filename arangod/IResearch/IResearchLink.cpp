@@ -289,6 +289,7 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tickLow,
               << "'";
           return false;
         }
+        break;
       }
       default:
         // falling back to SingleTick as it always present
@@ -1762,7 +1763,7 @@ Result IResearchLink::initDataStore(
                                             _lastCommittedTickStageTwo)});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
-    static_assert(sizeof SegmentPayloadVersion == sizeof irs::byte_type);
+    static_assert(sizeof (SegmentPayloadVersion) == sizeof (irs::byte_type));
     out.push_back(
         static_cast<irs::byte_type>(SegmentPayloadVersion::TwoStageTick));
     if (_commitStageOne) {
