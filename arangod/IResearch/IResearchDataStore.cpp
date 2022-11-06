@@ -253,7 +253,7 @@ Result insertDocument(IResearchDataStore const& dataStore,
   doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    ctx.tick(dataStore.engine()->currentTick());
+    ctx.SetLastTick(dataStore.engine()->currentTick());
   }
   return {};
 }
@@ -569,11 +569,9 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _consolidationTimeNum{0},
       _avgConsolidationTimeMs{nullptr},
       _metricStats{nullptr} {
-  auto* key = this;
-
   // initialize transaction callback
-  _trxCallback = [key](transaction::Methods& trx,
-                       transaction::Status status) -> void {
+  _trxCallback = [this](transaction::Methods& trx,
+                        transaction::Status status) -> void {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
 
@@ -582,7 +580,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       return;  // NOOP
     }
 
-    auto prev = state->cookie(key, nullptr);  // get existing cookie
+    auto prev = state->cookie(this, nullptr);  // get existing cookie
 
     if (prev) {
       // TODO FIXME find a better way to look up a ViewState
@@ -590,7 +588,12 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       if (transaction::Status::COMMITTED != status) {  // rollback
         ctx.reset();
       } else {
-        ctx._ctx.tick(state->lastOperationTick());
+        uint64_t const lastOperationTick{state->lastOperationTick()};
+        ctx._ctx.SetLastTick(lastOperationTick);
+        if (ADB_LIKELY(!_engine->inRecovery())) {
+          ctx._ctx.SetFirstTick(lastOperationTick -
+                                state->numPrimitiveOperations());
+        }
       }
     }
 
@@ -1426,7 +1429,8 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 Result IResearchDataStore::remove(transaction::Methods& trx,
-                                  LocalDocumentId documentId, bool nested) {
+                                  LocalDocumentId documentId, bool nested,
+                                  uint64_t const* recoveryTick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1434,10 +1438,9 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 
   TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
-  if (_dataStore._inRecovery &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, TOPIC)
-        << "skipping 'removal', operation tick '" << _engine->recoveryTick()
+        << "skipping 'removal', operation tick '" << *recoveryTick
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
@@ -1514,16 +1517,16 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 template<typename FieldIteratorType, typename MetaType>
 Result IResearchDataStore::insert(transaction::Methods& trx,
                                   LocalDocumentId documentId,
-                                  velocypack::Slice doc, MetaType const& meta) {
+                                  velocypack::Slice doc, MetaType const& meta,
+                                  uint64_t const* recoveryTick) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
 
-  if (_dataStore._inRecovery &&
-      _engine->recoveryTick() <= _dataStore._recoveryTick) {
+  if (recoveryTick && *recoveryTick <= _dataStore._recoveryTick) {
     LOG_TOPIC("7c228", TRACE, TOPIC)
-        << "skipping 'insert', operation tick '" << _engine->recoveryTick()
+        << "skipping 'insert', operation tick '" << *recoveryTick
         << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
     return {};
@@ -1879,13 +1882,15 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
 template Result
 IResearchDataStore::insert<FieldIterator<FieldMeta>, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
-    velocypack::Slice doc, IResearchLinkMeta const& meta);
+    velocypack::Slice doc, IResearchLinkMeta const& meta,
+    uint64_t const* recoveryTick);
 
 template Result IResearchDataStore::insert<
     FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
     IResearchInvertedIndexMetaIndexingContext>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc,
-    IResearchInvertedIndexMetaIndexingContext const& meta);
+    IResearchInvertedIndexMetaIndexingContext const& meta,
+    uint64_t const* recoveryTick);
 
 }  // namespace arangodb::iresearch
