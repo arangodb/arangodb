@@ -32,7 +32,7 @@ let errors = arangodb.errors;
 let dbName = "InvertedIndexSearchAliasSuiteCommunity";
 let isEnterprise = internal.isEnterprise();
 const isCluster = require("internal").isCluster();
-const {triggerMetrics} = require("@arangodb/test-helper");
+const { triggerMetrics } = require("@arangodb/test-helper");
 
 function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     let cleanup = function () {
@@ -694,7 +694,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 {
                     'type': 'inverted', 'name': 'nest2', // empty name
                     'fields': [
-                        { 
+                        {
                             "expression": "RETURN SPLIT(@param, '.') ",
                             "name": "",
                             "features": [
@@ -723,14 +723,14 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         },
 
         testInvertedIndexRegressions: function () {
-            
-            var testColl = db._create("testColl", {replicationFactor:1,  writeConcern:1,  numberOfShards : 1});
+
+            var testColl = db._create("testColl", { replicationFactor: 1, writeConcern: 1, numberOfShards: 1 });
             for (let i = 0; i < 5; i++) {
-                let cv_field = String(i) + String(i+1);
-                testColl.save({ a: "foo", b: "bar", c: i, cv_field: cv_field});
-                testColl.save({ a: "foo", b: "baz", c: i, cv_field: cv_field});
-                testColl.save({ a: "bar", b: "foo", c: i, cv_field: cv_field});
-                testColl.save({ a: "baz", b: "foo", c: i, cv_field: cv_field});
+                let cv_field = String(i) + String(i + 1);
+                testColl.save({ a: "foo", b: "bar", c: i, cv_field: cv_field });
+                testColl.save({ a: "foo", b: "baz", c: i, cv_field: cv_field });
+                testColl.save({ a: "bar", b: "foo", c: i, cv_field: cv_field });
+                testColl.save({ a: "baz", b: "foo", c: i, cv_field: cv_field });
             }
 
             // SEARCH-353
@@ -738,30 +738,30 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a"] });
 
                 assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b"] });
-                assertEqual(testColl.indexes().length, 3);     
+                assertEqual(testColl.indexes().length, 3);
             }
 
             // SEARCH-346
             {
-                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i3",fields:["cv_field"]});
-                assertInvertedIndexCreation("testColl", {type:"inverted",name:"i4",fields:["cv_field"]}, 200);
+                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i3", fields: ["cv_field"] });
+                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i4", fields: ["cv_field"] }, 200);
                 // sync indexes
                 db._query("for d in testColl OPTIONS {'indexHint': 'i1', 'forceIndexHint': true, 'waitForSync': true} filter d.a == 'foo' collect with count into c return c");
                 db._query("for d in testColl OPTIONS {'indexHint': 'i2', 'forceIndexHint': true, 'waitForSync': true} filter d.b == 'bar' collect with count into c return c");
                 db._query("for d in testColl OPTIONS {'indexHint': 'i3', 'forceIndexHint': true, 'waitForSync': true} filter d.cv_field == 'cv_field' collect with count into c return c");
-                assertEqual(testColl.indexes().length, 4);     
+                assertEqual(testColl.indexes().length, 4);
             }
 
             // SEARCH-341
             {
-                if(isCluster) {
+                if (isCluster) {
                     triggerMetrics();
                 }
 
                 let stats = testColl.getIndexes(true, true);
-                for(let i = 0; i < stats.length; i++) {
+                for (let i = 0; i < stats.length; i++) {
                     let index = stats[i];
-                    if(index["type"] == "primary") {
+                    if (index["type"] == "primary") {
                         continue;
                     }
 
