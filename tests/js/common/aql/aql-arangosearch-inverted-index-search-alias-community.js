@@ -40,10 +40,17 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         try { db._dropDatabase(dbName); } catch (err) { }
     };
 
-    var assertInvertedIndexCreation = function (collName, inedxDefinition, expectedCode = 201) {
+    var assertInvertedIndexCreation = function (collName, inedxDefinition, isNewlyCreated = true) {
         var collection = db._collection(collName);
-        var res = collection.ensureIndex(inedxDefinition);
-        assertEqual(res['code'], expectedCode);
+        var res;
+        assertTrue(collection != null);
+        try {
+            res = collection.ensureIndex(inedxDefinition);
+            assertEqual(res["isNewlyCreated"], isNewlyCreated);
+        } catch (err) {
+            print(res);
+            assertTrue(false);
+        }
     };
 
     return {
@@ -744,7 +751,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             // SEARCH-346
             {
                 assertInvertedIndexCreation("testColl", { type: "inverted", name: "i3", fields: ["cv_field"] });
-                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i4", fields: ["cv_field"] }, 200);
+                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i4", fields: ["cv_field"] }, false);
                 // sync indexes
                 db._query("for d in testColl OPTIONS {'indexHint': 'i1', 'forceIndexHint': true, 'waitForSync': true} filter d.a == 'foo' collect with count into c return c");
                 db._query("for d in testColl OPTIONS {'indexHint': 'i2', 'forceIndexHint': true, 'waitForSync': true} filter d.b == 'bar' collect with count into c return c");
