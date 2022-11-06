@@ -90,9 +90,9 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
     std::vector<std::string> longitude;
   };
 
-  static constexpr irs::string_ref type_name() noexcept { return "geopoint"; }
-  static bool normalize(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref args);
+  static constexpr std::string_view type_name() noexcept { return "geopoint"; }
+  static bool normalize(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make(std::string_view args);
 
   // store point as [lng, lat] array to be GeoJSON compliant
   static VPackSlice store(irs::token_stream const* ctx, VPackSlice slice,
@@ -112,7 +112,7 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   }
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(irs::string_ref value) override;
+  virtual bool reset(std::string_view value) override;
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
@@ -155,9 +155,9 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
     Type type{Type::SHAPE};
   };
 
-  static constexpr irs::string_ref type_name() noexcept { return "geojson"; }
-  static bool normalize(irs::string_ref args, std::string& out);
-  static irs::analysis::analyzer::ptr make(irs::string_ref args);
+  static constexpr std::string_view type_name() noexcept { return "geojson"; }
+  static bool normalize(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make(std::string_view args);
 
   static VPackSlice store(irs::token_stream const*, VPackSlice slice,
                           velocypack::Buffer<uint8_t>&) noexcept;
@@ -165,7 +165,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   explicit GeoJSONAnalyzer(Options const& opts);
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(irs::string_ref value) override;
+  virtual bool reset(std::string_view value) override;
 
   Type shapeType() const noexcept { return _type; }
 
@@ -180,7 +180,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
 };  // GeoJSONAnalyzer
 
 // FIXME remove kludge
-inline bool isGeoAnalyzer(irs::string_ref type) noexcept {
+inline bool isGeoAnalyzer(std::string_view type) noexcept {
   return type == GeoJSONAnalyzer::type_name() ||
          type == GeoPointAnalyzer::type_name();
 }

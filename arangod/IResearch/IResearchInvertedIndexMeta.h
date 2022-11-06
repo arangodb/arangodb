@@ -83,7 +83,7 @@ struct InvertedIndexField {
             LinkVersion version, bool extendedNames,
             IResearchAnalyzerFeature& analyzers,
             InvertedIndexField const& parent,
-            irs::string_ref const defaultVocbase, bool rootMode,
+            std::string_view const defaultVocbase, bool rootMode,
             std::string& errorField);
 
   bool json(arangodb::ArangodServer& server, VPackBuilder& builder,
@@ -205,7 +205,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::ArangodServer& server, VPackSlice const& slice,
             bool readAnalyzerDefinition, std::string& errorField,
-            irs::string_ref const defaultVocbase);
+            std::string_view const defaultVocbase);
 
   bool dense() const noexcept { return !_sort.empty(); }
 
