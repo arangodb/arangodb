@@ -745,6 +745,9 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             {
                 assertInvertedIndexCreation("testColl", {type:"inverted",name:"i3",fields:["cv_field"]});
                 assertInvertedIndexCreation("testColl", {type:"inverted",name:"i4",fields:["cv_field"]}, 200);
+                // sync indexes
+                db._query("for d in testColl OPTIONS {'indexHint': 'i1', 'forceIndexHint': true, 'waitForSync': true} filter d.a == 'foo' collect with count into c return c");
+                db._query("for d in testColl OPTIONS {'indexHint': 'i2', 'forceIndexHint': true, 'waitForSync': true} filter d.b == 'bar' collect with count into c return c");
                 db._query("for d in testColl OPTIONS {'indexHint': 'i3', 'forceIndexHint': true, 'waitForSync': true} filter d.cv_field == 'cv_field' collect with count into c return c");
                 assertEqual(testColl.indexes().length, 4);     
             }
