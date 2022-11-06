@@ -44,12 +44,8 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         var collection = db._collection(collName);
         var res;
         assertTrue(collection != null);
-        try {
-            res = collection.ensureIndex(inedxDefinition);
-            assertEqual(res["isNewlyCreated"], isNewlyCreated);
-        } catch {
-            assertTrue(false);
-        }
+        res = collection.ensureIndex(inedxDefinition);
+        assertEqual(res["isNewlyCreated"], isNewlyCreated);
     };
 
     return {
