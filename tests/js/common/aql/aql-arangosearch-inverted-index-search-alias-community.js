@@ -761,7 +761,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 let stats = testColl.getIndexes(true, true);
                 for (let i = 0; i < stats.length; i++) {
                     let index = stats[i];
-                    if (index["type"] == "primary") {
+                    if (index["type"] === "primary") {
                         continue;
                     }
 
