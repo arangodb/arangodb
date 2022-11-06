@@ -47,8 +47,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         try {
             res = collection.ensureIndex(inedxDefinition);
             assertEqual(res["isNewlyCreated"], isNewlyCreated);
-        } catch (err) {
-            print(res);
+        } catch {
             assertTrue(false);
         }
     };
@@ -745,6 +744,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a"] });
 
                 assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b"] });
+                assertInvertedIndexCreation("testColl", { name: "i6", type: "inverted", fields: ["b"] });
                 assertEqual(testColl.indexes().length, 3);
             }
 
