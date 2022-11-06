@@ -53,6 +53,9 @@ class PrimaryKeyFilter final : public irs::filter,
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
 
+  // For documents checks during recovery
+  explicit PrimaryKeyFilter(arangodb::LocalDocumentId const& value) noexcept;
+
   // ----------------------------------------------------------------------------
   // --SECTION-- irs::filter::prepared
   // ----------------------------------------------------------------------------

@@ -1138,7 +1138,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
-      l->insert(trx, pair.first, pair.second);
+      l->insert(trx, pair.first, pair.second, nullptr);
     }
   } else {
     TRI_ASSERT(false);
@@ -1269,7 +1269,7 @@ arangodb::Result PhysicalCollectionMock::insert(
         auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(
             index.get());
         if (!l->insert(*trx, ref->second.docId(),
-                       arangodb::velocypack::Slice(result.vpack()))
+                       arangodb::velocypack::Slice(result.vpack()), nullptr)
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }

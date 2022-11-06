@@ -184,7 +184,13 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
+
+  bool exists(IResearchLink::Snapshot const& snapshot,
+              LocalDocumentId documentId,
+              TRI_voc_tick_t const* recoveryTick) const;
+
+  auto recoveyTickHigh() const noexcept { return _dataStore._recoveryTickHigh; }
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override
@@ -227,7 +233,7 @@ class IResearchLink {
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+                velocypack::Slice doc, TRI_voc_tick_t const* recoveryTick);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
@@ -389,7 +395,8 @@ class IResearchLink {
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
-    TRI_voc_tick_t _recoveryTick{0};
+    TRI_voc_tick_t _recoveryTickLow{0};
+    TRI_voc_tick_t _recoveryTickHigh{0};
     std::atomic_bool _inRecovery{false};  // data store is in recovery
     explicit operator bool() const noexcept { return _directory && _writer; }
 
@@ -462,17 +469,29 @@ class IResearchLink {
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;                  // the index identifier
-  TRI_voc_tick_t _lastCommittedTick;  // protected by _commitMutex
+  IndexId const _id;                          // the index identifier
+  TRI_voc_tick_t _lastCommittedTickStageOne;  // protected by _commitMutex
+  TRI_voc_tick_t _lastCommittedTickStageTwo;  // protected by _commitMutex
   size_t _cleanupIntervalCount;
   IResearchLinkMeta const _meta;  // how this collection should be indexed
                                   // (read-only, set via init())
   std::mutex _commitMutex;        // prevents data store sequential commits
   std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;             // for insert(...)/remove(...)
+      _trxCallback;  // for insert(...)/remove(...)
+  std::function<void(transaction::Methods& trx)>
+      _trxPreCommit;            // for insert(...)/remove(...)
   std::string const _viewGuid;  // the identifier of the desired view
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker
+  bool _commitStageOne;         // protected by _commitMutex
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+  // auxilary tools to test fail-cases with transactions commit order
+  std::mutex _t3Failureync;
+  std::vector<uint64_t> _t3Candidates;
+  size_t _t3PreCommit{0};
+  size_t _t3NumFlushRegistered{0};
+  bool _t3CommitSignal{false};
+#endif
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
