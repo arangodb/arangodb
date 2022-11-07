@@ -34,6 +34,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-common.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb::cluster::rebalance;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -201,6 +203,9 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
   ShardImbalance res(dbServers.size());
 
   for (auto const& s : shards) {
+    if (s.isSystem) {
+      res.totalShardsFromSystemCollections += 1;
+    }
     res.numberShards[s.leader] += 1;
     res.sizeUsed[s.leader] += s.size;
     for (uint32_t i = 0; i < s.followers.size(); ++i) {
@@ -220,6 +225,7 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
   for (size_t i = 0; i < dbServers.size(); ++i) {
     res.imbalance += pow(res.sizeUsed[i] - res.targetSize[i], 2.0);
   }
+
   return res;
 }
 
