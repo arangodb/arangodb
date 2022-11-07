@@ -1,9 +1,8 @@
 devel
 -----
 
-* Removed assertions of cluster rebalance js test that obligated the rebalance
-  plan to have moves, but there were cases in which all the possible moves 
-  were negative, so there was no actual better move to perform.
+* Removed assertions from cluster rebalance js test that obligated the rebalance
+  plan to always have moves, but there were cases in which all there are none.
 
 * Improved the syntax highlighter for AQL queries in the web interface
   with support for multi-line strings, multi-line identifiers in forward
