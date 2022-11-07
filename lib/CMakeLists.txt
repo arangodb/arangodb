@@ -265,6 +265,17 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+if (USE_FAIL_ON_WARNINGS)
+  if (MSVC)
+    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+      # There's a warning about /MP being unused if compiling only a single file
+      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
+    endif()
+  else ()
+    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
+  endif ()
+endif ()
 
 ################################################################################
 ## LIB_ARANGO_AIR_SOURCES
@@ -288,71 +299,6 @@ target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
 
-################################################################################
-## LIB_ARANGO_V8
-################################################################################
-
-add_library(arango_v8 STATIC
-  V8/V8SecurityFeature.cpp
-  V8/JavaScriptSecurityContext.cpp
-  V8/JSLoader.cpp
-  V8/V8LineEditor.cpp
-  V8/v8-buffer.cpp
-  V8/v8-conv.cpp
-  V8/v8-globals.cpp
-  V8/v8-shell.cpp
-  V8/v8-utils.cpp
-  V8/v8-vpack.cpp
-  V8/v8-environment.cpp
-  )
-add_library(arango_v8_deadline STATIC
-  V8/v8-deadline.cpp
-  )
-
-add_library(arango_v8_no_deadline STATIC
-  V8/v8-no-deadline.cpp
-  )
-
-target_link_libraries(arango_v8
-  boost_system
-  boost_boost
-  velocypack
-  )
-target_link_libraries(arango_v8 arango)
-
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_link_libraries(arango_v8 v8_interface)
-target_link_libraries(arango_v8_deadline arango v8_interface)
-target_link_libraries(arango_v8_no_deadline v8_interface)
-
-target_link_libraries(arango_v8_deadline velocypack)
-target_link_libraries(arango_v8_no_deadline velocypack)
-
-# Enterprise
-if (USE_ENTERPRISE)
-  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_v8 PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
-if (USE_FAIL_ON_WARNINGS)
-  if (MSVC)
-    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-      # There's a warning about /MP being unused if compiling only a single file
-      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
-      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
-    endif()
-  else ()
-    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
-    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
-  endif ()
-endif ()
 
 add_subdirectory(Geo)
+add_subdirectory(V8)
