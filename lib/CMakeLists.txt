@@ -289,39 +289,6 @@ target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
 
 ################################################################################
-## LIB_ARANGO_GEO
-################################################################################
-
-add_library(arango_geo STATIC
-  Geo/Ellipsoid.cpp
-  Geo/GeoJson.cpp
-  Geo/GeoParams.cpp
-  Geo/ShapeContainer.cpp
-  Geo/Shapes.cpp
-  Geo/Utils.cpp
-  Geo/karney/geodesic.c
-  Geo/S2/S2MultiPointRegion.cpp
-  Geo/S2/S2MultiPolyline.cpp
-)
-
-target_link_libraries(arango_geo
-  arango
-  boost_system
-  boost_boost
-  s2
-)
-
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif()
-
-# Enterprise
-if (USE_ENTERPRISE)
-  target_compile_definitions(arango_geo PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_geo PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
-################################################################################
 ## LIB_ARANGO_V8
 ################################################################################
 
@@ -376,17 +343,16 @@ endif()
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
       # There's a warning about /MP being unused if compiling only a single file
       target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
-      target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
       target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
     endif()
   else ()
     target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
-    target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
   endif ()
 endif ()
+
+add_subdirectory(Geo)
