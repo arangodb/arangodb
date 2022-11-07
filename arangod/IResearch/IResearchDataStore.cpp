@@ -92,7 +92,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
 bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
   static_assert(sizeof(uint64_t) == sizeof(TRI_voc_tick_t));
 
-  if (payload.size() != sizeof(uint64_t)) {
+  if (payload.size() < sizeof(uint64_t)) {
     return false;
   }
 
