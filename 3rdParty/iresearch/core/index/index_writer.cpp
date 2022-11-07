@@ -972,8 +972,15 @@ void index_writer::flush_context::emplace(active_segment_context&& segment, uint
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
     if (!generation_base) {
-      if (segment.flush_ctx_ && this != segment.flush_ctx_) generation_base = segment.flush_ctx_->generation_ += modification_count; else  // FIXME TODO remove this condition once col_writer tail is writen correctly
-      generation_base = generation_ += modification_count; // atomic increment to end of unique generation range
+      if (segment.flush_ctx_ && this != segment.flush_ctx_) {
+        generation_base = segment.flush_ctx_->generation_ += modification_count;
+      } else {
+        // FIXME TODO remove this condition once col_writer tail is
+        // writen correctly
+        // atomic increment to end of unique generation
+        // range
+        generation_base = generation_ += modification_count; 
+      }
       generation_base -= modification_count; // start of generation range
     }
   }

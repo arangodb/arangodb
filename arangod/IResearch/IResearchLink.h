@@ -190,7 +190,9 @@ class IResearchLink {
               LocalDocumentId documentId,
               TRI_voc_tick_t const* recoveryTick) const;
 
-  auto recoveyTickHigh() const noexcept { return _dataStore._recoveryTickHigh; }
+  auto recoveryTickHigh() const noexcept {
+    return _dataStore._recoveryTickHigh;
+  }
 
   static bool isHidden();  // arangodb::Index override
   static bool isSorted();  // arangodb::Index override

@@ -248,7 +248,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   std::atomic<TRI_voc_tick_t> _tick;
 };
 
-enum class SegmentPayloadVersion : irs::byte_type {
+enum class SegmentPayloadVersion : uint32_t {
   // Only max tick stored. Possibly has uncommitted WAL ticks
   SingleTick = 0,
   // Two stage commit ticks are stored.
@@ -273,6 +273,8 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tickLow,
   SegmentPayloadVersion version{SegmentPayloadVersion::SingleTick};
   if (payload.size() > sizeof(uint64_t) + sizeof(version)) {
     std::memcpy(&version, payload.c_str() + sizeof(uint64_t), sizeof(version));
+    version = static_cast<SegmentPayloadVersion>(irs::numeric_utils::ntoh32(
+        static_cast<std::underlying_type_t<SegmentPayloadVersion>>(version)));
     switch (version) {
       case SegmentPayloadVersion::TwoStageTick: {
         if (payload.size() == (2 * sizeof(uint64_t)) + sizeof(version)) {
@@ -1763,9 +1765,11 @@ Result IResearchLink::initDataStore(
                                             _lastCommittedTickStageTwo)});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
-    static_assert(sizeof(SegmentPayloadVersion) == sizeof(irs::byte_type));
-    out.push_back(
-        static_cast<irs::byte_type>(SegmentPayloadVersion::TwoStageTick));
+    auto version = irs::numeric_utils::hton32(
+        static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
+            SegmentPayloadVersion::TwoStageTick));
+    out.append(reinterpret_cast<irs::byte_type const*>(&version),
+               sizeof version);
     if (_commitStageOne) {
       tick = _lastCommittedTickStageOne;
     } else {

@@ -169,7 +169,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 #else
         IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
 #endif
-        if (tick <= impl.recoveyTickHigh()) {
+        if (tick <= impl.recoveryTickHigh()) {
           auto snapshotCookie = _cookies.find(link.first.get());
           if (snapshotCookie == _cookies.end()) {
             snapshotCookie =
