@@ -1,6 +1,8 @@
 v3.9.5 (XXXX-XX-XX)
 -------------------
 
+* Updating properties of a satellite collection breaks replicationFactor.
+
 * Added startup option `--query.log-failed` to optionally log all failed AQL
   queries to the server log. The option is turned off by default.
 
@@ -21,8 +23,6 @@ v3.9.5 (XXXX-XX-XX)
 
 v3.9.4 (2022-10-18)
 -------------------
-
-* Updating properties of a satellite collection breaks replicationFactor.
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
