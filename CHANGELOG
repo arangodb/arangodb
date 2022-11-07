@@ -1,12 +1,43 @@
 v3.9.5 (XXXX-XX-XX)
 -------------------
 
-* Solve a case of excessive memory consumption in certain AQL queries with
-  IN filters with very long lists. Free sub-iterators as soon as they are
+* Solve a case of excessive memory consumption in certain AQL queries with IN
+  filters with very long lists. Free sub-iterators as soon as they are
   exhausted.
 
+* BTS-1070: Fixed query explain not dealing with an aggregate function without
+  arguments and the WINDOW node not being defined as an Ast node type name.
 
-v3.9.4 (XXXX-XX-XX)
+* Fixed error handling of coordinator commit of streaming transactions.
+  This bug could mean that a streaming transaction is reported to be
+  successfully committed when in reality it isn't.
+
+* Updating properties of a satellite collection breaks replicationFactor.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
+* Updated OpenSSL to 1.1.1s.
+
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the maximum
+  length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values to
+  a reasonable length. Previously the cutoff length was hard-coded.
+
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a `SORT
+  RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
+
+* Improved shard distribution during collection creation.
+
+
+v3.9.4 (2022-10-18)
 -------------------
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
