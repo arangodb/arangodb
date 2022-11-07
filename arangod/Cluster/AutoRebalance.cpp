@@ -27,14 +27,10 @@
 #include <algorithm>
 #include <queue>
 #include <random>
-#include <string>
 #include <string_view>
-#include <vector>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-common.h>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb::cluster::rebalance;
 
