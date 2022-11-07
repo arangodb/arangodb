@@ -168,7 +168,6 @@ const replaceParticipant = (database, logId, oldParticipant, newParticipant) => 
   const res = request.post(
     `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
-  print(res);
   LH.checkRequestResult(res);
   const {json: {result}} = res;
   return result;
