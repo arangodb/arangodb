@@ -3,6 +3,11 @@ v3.9.5 (XXXX-XX-XX)
 
 * Updating properties of a satellite collection breaks replicationFactor.
 
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
+* Updated OpenSSL to 1.1.1s.
+
 * Added startup option `--query.log-failed` to optionally log all failed AQL
   queries to the server log. The option is turned off by default.
 
