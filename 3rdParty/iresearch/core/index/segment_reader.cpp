@@ -181,7 +181,8 @@ class segment_reader_impl : public sub_reader {
  public:
   static sub_reader::ptr open(
     const directory& dir, 
-    const segment_meta& meta
+    const segment_meta& meta,
+    const index_reader_options& warmup
   );
 
   const directory& dir() const noexcept { 
@@ -243,6 +244,8 @@ class segment_reader_impl : public sub_reader {
 
   virtual const irs::column_reader* column(string_ref name) const override;
 
+  const index_reader_options& opts() const noexcept { return opts_; }
+
  private:
   using named_columns = absl::flat_hash_map<hashed_string_ref, const irs::column_reader*>;
   using sorted_named_columns = std::vector<std::reference_wrapper<const irs::column_reader>>;
@@ -257,11 +260,12 @@ class segment_reader_impl : public sub_reader {
   uint64_t meta_version_;
   named_columns named_columns_;
   sorted_named_columns sorted_named_columns_;
-
+  index_reader_options opts_;
   segment_reader_impl(
     const directory& dir,
     uint64_t meta_version,
-    uint64_t docs_count);
+    uint64_t docs_count,
+    const index_reader_options& opts);
 };
 
 segment_reader::segment_reader(impl_ptr&& impl) noexcept
@@ -286,8 +290,9 @@ segment_reader& segment_reader::operator=(
 
 /*static*/ segment_reader segment_reader::open(
     const directory& dir,
-    const segment_meta& meta) {
-  return segment_reader_impl::open(dir, meta);
+    const segment_meta& meta,
+    const index_reader_options& opts) {
+  return segment_reader_impl::open(dir, meta, opts);
 }
 
 segment_reader segment_reader::reopen(const segment_meta& meta) const {
@@ -303,7 +308,7 @@ segment_reader segment_reader::reopen(const segment_meta& meta) const {
   // reuse self if no changes to meta
   return reader_impl.meta_version() == meta.version
     ? *this
-    : segment_reader_impl::open(reader_impl.dir(), meta);
+    : segment_reader_impl::open(reader_impl.dir(), meta, reader_impl.opts());
 }
 
 // -------------------------------------------------------------------
@@ -313,11 +318,11 @@ segment_reader segment_reader::reopen(const segment_meta& meta) const {
 segment_reader_impl::segment_reader_impl(
     const directory& dir,
     uint64_t meta_version,
-    uint64_t docs_count)
+    uint64_t docs_count, const index_reader_options& opts)
   : dir_(dir),
     docs_count_(docs_count),
-    meta_version_(meta_version) {
-}
+      meta_version_(meta_version),
+      opts_(opts) {}
 
 const irs::column_reader* segment_reader_impl::column(string_ref name) const {
   auto it = named_columns_.find(make_hashed_ref(name));
@@ -352,10 +357,11 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 }
 
 /*static*/ sub_reader::ptr segment_reader_impl::open(
-    const directory& dir, const segment_meta& meta) {
+    const directory& dir, const segment_meta& meta,
+    const index_reader_options& opts) {
   auto& codec = *meta.codec;
 
-  PTR_NAMED(segment_reader_impl, reader, dir, meta.version, meta.docs_count);
+  PTR_NAMED(segment_reader_impl, reader, dir, meta.version, meta.docs_count, opts);
 
   // read document mask
   index_utils::read_document_mask(reader->docs_mask_, dir, meta);
@@ -368,9 +374,18 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   // initialize optional columnstore
   if (irs::has_columnstore(meta)) {
     auto& columnstore_reader = reader->columnstore_reader_;
+    columnstore_reader::options columnstore_opts;
+    if (reader->opts().warmup_columns) {
+      columnstore_opts.warmup_column = [warmup = reader->opts().warmup_columns,
+                                        &field_reader,
+                                        &meta](const column_reader& column) {
+        return warmup(meta, *field_reader, column);
+      };
+      columnstore_opts.pinned_memory = reader->opts().pinned_memory_accounting;
+    }
     columnstore_reader = codec.get_columnstore_reader();
-
-    if (!columnstore_reader->prepare(dir, meta)) {
+    
+    if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {
       throw index_error(string_utils::to_string(
         "failed to find existing (according to meta) columnstore in segment '%s'",
         meta.name.c_str()

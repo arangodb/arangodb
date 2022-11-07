@@ -77,11 +77,10 @@ RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
-      _cacheTx(nullptr),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
-      _parallel(false) {
+      _cacheTx(nullptr) {
 }
 
 /// @brief free a transaction container
@@ -490,10 +489,7 @@ RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
 
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
-    : _ctx(trx->transactionContextPtr()),
-      _key(RocksDBTransactionState::toState(trx)->inParallelMode()
-               ? nullptr
-               : _ctx->leaseString()) {
+    : _ctx(trx->transactionContextPtr()), _key(_ctx->leaseString()) {
   TRI_ASSERT(_ctx != nullptr);
   TRI_ASSERT(_key.buffer() != nullptr);
 }

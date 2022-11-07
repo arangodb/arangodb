@@ -92,8 +92,6 @@ static_assert(
         AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
     "Values are not adjacent");
 
-irs::string_ref const PK_COLUMN("@_PK");
-
 // wrapper for use objects with the IResearch unbounded_object_pool
 template<typename T>
 struct AnyFactory {
