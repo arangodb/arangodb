@@ -55,6 +55,9 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   RestStatus handlePostInsert(replication2::ReplicatedLogMethods const& methods,
                               replication2::LogId logId,
                               velocypack::Slice payload);
+  RestStatus handlePostPing(replication2::ReplicatedLogMethods const& methods,
+                            replication2::LogId logId,
+                            velocypack::Slice payload);
   RestStatus handlePostInsertMulti(
       replication2::ReplicatedLogMethods const& methods,
       replication2::LogId logId, velocypack::Slice payload);
