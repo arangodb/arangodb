@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
@@ -521,9 +520,6 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
   if (!r.ok()) {
     return r;
   }
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
   aql::QueryCache::instance()->invalidate(&vocbase());
   if (ServerState::instance()->isSingleServer()) {
     return storage_helper::properties(*this, false);
