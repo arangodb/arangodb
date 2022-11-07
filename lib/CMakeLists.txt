@@ -293,7 +293,7 @@ target_link_libraries(arango_greenspun date_interface)
 ################################################################################
 
 add_library(arango_v8 STATIC
-  ApplicationFeatures/V8SecurityFeature.cpp
+  V8/V8SecurityFeature.cpp
   V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
   V8/V8LineEditor.cpp
