@@ -58,9 +58,6 @@ namespace arangodb {
 namespace iresearch {
 namespace kludge {
 
-const char TYPE_DELIMITER = '\0';
-const char ANALYZER_DELIMITER = '\1';
-
 irs::string_ref const NULL_SUFFIX("\0_n", 3);
 irs::string_ref const BOOL_SUFFIX("\0_b", 3);
 irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);

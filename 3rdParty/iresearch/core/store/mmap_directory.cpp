@@ -38,6 +38,7 @@ using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 inline int get_posix_madvice(IOAdvice advice) {
   switch (advice) {
     case IOAdvice::NORMAL:
+    case IOAdvice::DIRECT_READ:
       return IR_MADVICE_NORMAL;
     case IOAdvice::SEQUENTIAL:
       return IR_MADVICE_SEQUENTIAL;
@@ -150,8 +151,10 @@ index_input::ptr mmap_directory::open(
     const std::string& name,
     IOAdvice advice) const noexcept {
   try {
+    if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
+      return fs_directory::open(name, advice);
+    }
     const auto path = directory() / name;
-
     return mmap_index_input::open(path.c_str(), advice);
   } catch(...) {
     return nullptr;
