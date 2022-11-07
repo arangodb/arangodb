@@ -163,6 +163,9 @@ struct FakeLogLeader : replicated_log::ILogLeader {
       arangodb::replication2::replicated_log::CompactionResult> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  auto ping(std::optional<std::string> message) -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

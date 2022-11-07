@@ -1560,17 +1560,6 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
   });
 }
 
-auto replicated_log::LogLeader::waitForResign()
-    -> futures::Future<futures::Unit> {
-  using namespace arangodb::futures;
-  auto&& [future, action] =
-      _guardedLeaderData.getLockedGuard()->waitForResign();
-
-  action.fire();
-
-  return std::move(future);
-}
-
 auto replicated_log::LogLeader::setSnapshotAvailable(
     ParticipantId const& participantId) -> Result {
   auto guard = _guardedLeaderData.getLockedGuard();
@@ -1585,6 +1574,17 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
   guard.unlock();
   handleResolvedPromiseSet(std::move(promises), _logMetrics);
   return {};
+}
+
+auto replicated_log::LogLeader::ping(std::optional<std::string> message)
+    -> LogIndex {
+  auto index = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leader) {
+    auto meta = LogMetaPayload::withPing(message);
+    return leader.insertInternal(std::move(meta), false, std::nullopt);
+  });
+
+  triggerAsyncReplication();
+  return index;
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

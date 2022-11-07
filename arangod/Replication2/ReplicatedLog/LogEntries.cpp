@@ -23,6 +23,7 @@
 
 #include "LogEntries.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 
 #include <Basics/StaticStrings.h>
 #include <Basics/StringUtils.h>
@@ -117,7 +118,7 @@ auto PersistingLogEntry::fromVelocyPack(velocypack::Slice slice)
     return {termIndex, LogPayload::createFromSlice(payload)};
   } else {
     auto meta = slice.get("meta");
-    TRI_ASSERT(!meta.isNone());
+    TRI_ASSERT(!meta.isNone()) << slice.toJson();
     return {termIndex, LogMetaPayload::fromVelocyPack(meta)};
   }
 }
@@ -144,7 +145,7 @@ PersistingLogEntry::PersistingLogEntry(LogIndex index,
     _payload = LogPayload::createFromSlice(payload);
   } else {
     auto meta = persisted.get("meta");
-    TRI_ASSERT(!meta.isNone());
+    TRI_ASSERT(!meta.isNone()) << persisted.toJson();
     _payload = LogMetaPayload::fromVelocyPack(meta);
   }
 }
@@ -195,71 +196,19 @@ void LogEntryView::toVelocyPack(velocypack::Builder& builder) const {
 }
 
 auto LogEntryView::fromVelocyPack(velocypack::Slice slice) -> LogEntryView {
-  return LogEntryView(slice.get("logIndex").extract<LogIndex>(),
-                      slice.get("payload"));
+  return {slice.get("logIndex").extract<LogIndex>(), slice.get("payload")};
 }
 
 auto LogEntryView::clonePayload() const -> LogPayload {
   return LogPayload::createFromSlice(_payload);
 }
 
-namespace {
-constexpr std::string_view StringFirstIndexOfTerm = "FirstIndexOfTerm";
-constexpr std::string_view StringUpdateParticipantsConfig =
-    "UpdateParticipantsConfig";
-}  // namespace
-
 auto LogMetaPayload::fromVelocyPack(velocypack::Slice s) -> LogMetaPayload {
-  auto typeSlice = s.get(StaticStrings::IndexType);
-  if (typeSlice.isEqualString(StringFirstIndexOfTerm)) {
-    return {FirstEntryOfTerm::fromVelocyPack(s)};
-  } else if (typeSlice.isEqualString(StringUpdateParticipantsConfig)) {
-    return {UpdateParticipantsConfig::fromVelocyPack(s)};
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
+  return velocypack::deserialize<LogMetaPayload>(s);
 }
 
 void LogMetaPayload::toVelocyPack(velocypack::Builder& builder) const {
-  std::visit([&](auto const& v) { v.toVelocyPack(builder); }, info);
-}
-
-void LogMetaPayload::FirstEntryOfTerm::toVelocyPack(
-    velocypack::Builder& b) const {
-  velocypack::ObjectBuilder ob(&b);
-  b.add(StaticStrings::IndexType, velocypack::Value(StringFirstIndexOfTerm));
-  b.add(StaticStrings::Leader, velocypack::Value(leader));
-  b.add(velocypack::Value(StaticStrings::Participants));
-  velocypack::serialize(b, participants);
-}
-
-void LogMetaPayload::UpdateParticipantsConfig::toVelocyPack(
-    velocypack::Builder& b) const {
-  velocypack::ObjectBuilder ob(&b);
-  b.add(StaticStrings::IndexType,
-        velocypack::Value(StringUpdateParticipantsConfig));
-  b.add(velocypack::Value(StaticStrings::Participants));
-  velocypack::serialize(b, participants);
-}
-
-auto LogMetaPayload::UpdateParticipantsConfig::fromVelocyPack(
-    velocypack::Slice s) -> UpdateParticipantsConfig {
-  TRI_ASSERT(s.get(StaticStrings::IndexType)
-                 .isEqualString(StringUpdateParticipantsConfig));
-  auto participants = velocypack::deserialize<agency::ParticipantsConfig>(
-      s.get(StaticStrings::Participants));
-  return UpdateParticipantsConfig{std::move(participants)};
-}
-
-auto LogMetaPayload::FirstEntryOfTerm::fromVelocyPack(velocypack::Slice s)
-    -> FirstEntryOfTerm {
-  TRI_ASSERT(
-      s.get(StaticStrings::IndexType).isEqualString(StringFirstIndexOfTerm));
-  auto leader = s.get(StaticStrings::Leader).copyString();
-  auto participants = velocypack::deserialize<agency::ParticipantsConfig>(
-      s.get(StaticStrings::Participants));
-  return FirstEntryOfTerm{std::move(leader), std::move(participants)};
+  velocypack::serialize(builder, *this);
 }
 
 auto LogMetaPayload::withFirstEntryOfTerm(ParticipantId leader,
@@ -273,4 +222,10 @@ auto LogMetaPayload::withUpdateParticipantsConfig(
     agency::ParticipantsConfig config) -> LogMetaPayload {
   return LogMetaPayload{
       UpdateParticipantsConfig{.participants = std::move(config)}};
+}
+
+auto LogMetaPayload::withPing(std::optional<std::string> message,
+                              Ping::clock::time_point tp) noexcept
+    -> LogMetaPayload {
+  return LogMetaPayload{Ping{std::move(message), tp}};
 }

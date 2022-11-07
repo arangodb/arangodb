@@ -110,6 +110,7 @@ struct ILogLeader : ILogParticipant {
   virtual auto updateParticipantsConfig(
       std::shared_ptr<agency::ParticipantsConfig const> const& config)
       -> LogIndex = 0;
+  virtual auto ping(std::optional<std::string> message) -> LogIndex = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_log

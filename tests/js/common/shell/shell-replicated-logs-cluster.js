@@ -163,6 +163,16 @@ function ReplicatedLogsWriteSuite() {
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
+    testPing: function () {
+      let result = log.ping("foo bar");
+      assertTrue('quorum' in result.result &&
+          'commitIndex' in result.result);
+      const tail = log.tail();
+      assertEqual(tail[1].meta.type, "Ping");
+      assertEqual(tail[1].meta.message, "foo bar");
+      assertTrue(tail[1].meta.time !== undefined);
+    },
+
     testMultiInsert: function () {
       let index = 0;
       for (let i = 0; i < 100; i += 3) {

@@ -157,6 +157,8 @@ RestStatus RestLogHandler::handlePostRequest(
     return handlePostInsert(methods, logId, body);
   } else if (verb == "release") {
     return handlePostRelease(methods, logId);
+  } else if (verb == "ping") {
+    return handlePostPing(methods, logId, body);
   } else if (verb == "compact") {
     return handlePostCompact(methods, logId);
   } else if (verb == "multi-insert") {
@@ -164,7 +166,7 @@ RestStatus RestLogHandler::handlePostRequest(
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expecting one of the resources 'insert', 'release', "
-                  "'multi-insert', 'compact'");
+                  "'multi-insert', 'compact', 'ping'");
   }
   return RestStatus::DONE;
 }
@@ -204,6 +206,29 @@ RestStatus RestLogHandler::handlePostInsert(ReplicatedLogMethods const& methods,
               generateOk(rest::ResponseCode::CREATED, response.slice());
             }));
   }
+}
+
+RestStatus RestLogHandler::handlePostPing(ReplicatedLogMethods const& methods,
+                                          replication2::LogId logId,
+                                          velocypack::Slice payload) {
+  std::optional<std::string> message;
+  if (payload.isObject()) {
+    if (auto messageSlice = payload.get("message"); not messageSlice.isNone()) {
+      message = messageSlice.copyString();
+    }
+  }
+  return waitForFuture(
+      methods.ping(logId, std::move(message))
+          .thenValue([this](auto&& waitForResult) {
+            VPackBuilder response;
+            {
+              VPackObjectBuilder result(&response);
+              response.add("index", VPackValue(waitForResult.first));
+              response.add(VPackValue("result"));
+              waitForResult.second.toVelocyPack(response);
+            }
+            generateOk(rest::ResponseCode::CREATED, response.slice());
+          }));
 }
 
 RestStatus RestLogHandler::handlePostInsertMulti(
