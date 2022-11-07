@@ -111,6 +111,7 @@ function multiCollectionTestSuite() {
 
       console.log("extended edge definition");
 
+      let cols = {};
       for (let c = 0; c < numComponents; c++) {
         let x = 0;
         let vertices = [];
@@ -122,9 +123,16 @@ function multiCollectionTestSuite() {
           vertices[i].push({ _key: String(c) + ":" + String(x++) });
         }
         for (let i = 0; i < cn; ++i) {
-          db[`${vColl}_${i}`].insert(vertices[i]);
+          let coln = `${vColl}_${i}`;
+          if (!cols.hasOwnProperty(coln)) {
+            cols[coln] = [];
+          }
+          cols[coln] = cols[coln].concat(vertices[i]);
         }
       }
+      Object.keys(cols).forEach(coln => {
+        db[coln].insert(cols[coln]);
+      });
 
       for (let i = 0; i < cn; ++i) {
         assertEqual(db[`${vColl}_${i}`].count(), numComponents * n / cn);
@@ -134,6 +142,7 @@ function multiCollectionTestSuite() {
 
       let lcg = createRand();
 
+      let edgeCols = {};
       for (let c = 0; c < numComponents; c++) {
         let edges = [];
         for (let i = 0; i < cn; ++i) {
@@ -155,7 +164,11 @@ function multiCollectionTestSuite() {
         }
         for (let i = 0; i < cn; ++i) {
           for (let j = 0; j < cn; ++j) {
-            db[`${eColl}_${i}_${j}`].insert(edges[i][j]);
+            let coln = `${eColl}_${i}_${j}`;
+            if (!edgeCols.hasOwnProperty(coln)) {
+              edgeCols[coln] = [];
+            }
+          edgeCols[coln] = edgeCols[coln].concat(edges[i][j]);
           }
         }
 
@@ -168,9 +181,16 @@ function multiCollectionTestSuite() {
           const vTo = (toId + c) % cn;
           const from = `${vColl}_${vFrom}/${fromKey}`;
           const to = `${vColl}_${vTo}/${toKey}`;
-          db[`${eColl}_${vFrom}_${vTo}`].insert({ _from: from, _to: to, vertex: String(fromKey) });
+          let coln = `${eColl}_${vFrom}_${vTo}`;
+          if (!cols.hasOwnProperty(coln)) {
+            cols[coln] = [];
+          }
+          edgeCols[coln] = edgeCols[coln].concat({ _from: from, _to: to, vertex: String(fromKey) });
         }
       }
+      Object.keys(edgeCols).forEach(coln => {
+        db[coln].insert(edgeCols[coln]);
+      });
       
       let count = 0;
       for (let i = 0; i < cn; ++i) {
