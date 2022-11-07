@@ -207,8 +207,8 @@ function clusterRebalanceOtherOptionsSuite() {
 
     testRebalancePlanWithoutSystemCollections: function() {
       const result = getRebalancePlan(true, true, true, true);
-      assertEqual(result.imbalanceBefore.shards.totalShardsFromSystemCollections, 0);
-      assertEqual(result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
+      assertEqual(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections, 0);
+      assertEqual(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
     },
 
     testCalcRebalanceStopServer: function() {
