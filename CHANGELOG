@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added option to exclude system collection from rebalance shards plan.
+
 * Improved the syntax highlighter for AQL queries in the web interface
   with support for multi-line strings, multi-line identifiers in forward
   and backticks, colorization of escape sequences, separate tokens for
