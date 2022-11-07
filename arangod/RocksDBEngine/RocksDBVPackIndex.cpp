@@ -312,6 +312,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void resetImpl() override {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
+    if (_resetInternals) {
+      _iterator.reset();
+    }
   }
 
   /// @brief we provide a method to provide the index attribute values
@@ -358,6 +361,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             }
             options.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
           });
+      TRI_ASSERT(_mustSeek);
     }
 
     TRI_ASSERT(_iterator != nullptr);
@@ -1507,10 +1511,16 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::BuilderLeaser expandedSearchValues(trx);
     expandInSearchValues(searchValues.slice(), *(expandedSearchValues.get()));
     VPackSlice expandedSlice = expandedSearchValues->slice();
+    VPackValueLength numIterators = expandedSlice.length();
+
     std::vector<std::unique_ptr<IndexIterator>> iterators;
+    iterators.reserve(numIterators);
 
     for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
       iterators.push_back(lookup(trx, val, !opts.ascending, readOwnWrites));
+      if (numIterators >= 50) {
+        iterators.back()->setResetInternals();
+      }
     }
 
     if (!opts.ascending) {
