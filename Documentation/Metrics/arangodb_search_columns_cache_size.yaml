@@ -1,0 +1,19 @@
+name: arangodb_search_columns_cache_size
+introducedIn: "3.9.5"
+help: |
+  ArangoSearch columns cache usage.
+unit: bytes
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Size of all ArangoSearch columns currently loaded into the cache.
+troubleshoot: |
+  If this metric contains a value close to configured
+  "arangosearch.columns-cache-limit" there might be columns 
+  that are marked to be cached but will not fit into the cache.
+  That may result in query performance degradation. Check the
+  log for pattern "Failed to allocate memory for buffered column"

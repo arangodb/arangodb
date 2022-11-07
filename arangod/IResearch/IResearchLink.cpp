@@ -58,6 +58,9 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchLinkEE.hpp"
+#endif
 
 #include <velocypack/StringRef.h>
 
@@ -1145,6 +1148,11 @@ Result IResearchLink::init(velocypack::Slice definition,
   TRI_ASSERT(meta._sortCompression);
   auto const primarySortCompression =
       meta._sortCompression ? meta._sortCompression : getDefaultCompression();
+
+  irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+  setupReaderEntepriseOptions(readerOptions, vocbase.server(), meta);
+#endif
   if (ServerState::instance()->isCoordinator()) {  // coordinator link
     if (!vocbase.server().hasFeature<ClusterFeature>()) {
       return {
@@ -1260,9 +1268,9 @@ Result IResearchLink::init(velocypack::Slice definition,
       }
       // prepare data-store which can then update options
       // via the IResearchView::link(...) call
-      auto const res =
-          initDataStore(initCallback, meta._version, sorted,
-                        storedValuesColumns, primarySortCompression);
+      auto const res = initDataStore(initCallback, meta._version, sorted,
+                                     storedValuesColumns,
+                                     primarySortCompression, readerOptions);
 
       if (!res.ok()) {
         return res;
@@ -1340,8 +1348,9 @@ Result IResearchLink::init(velocypack::Slice definition,
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
     // via the IResearchView::link(...) call
-    auto const res = initDataStore(initCallback, meta._version, sorted,
-                                   storedValuesColumns, primarySortCompression);
+    auto const res =
+        initDataStore(initCallback, meta._version, sorted, storedValuesColumns,
+                      primarySortCompression, readerOptions);
 
     if (!res.ok()) {
       return res;
@@ -1390,7 +1399,8 @@ Result IResearchLink::init(velocypack::Slice definition,
 Result IResearchLink::initDataStore(
     InitCallback const& initCallback, uint32_t version, bool sorted,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression) {
+    irs::type_info::type_id primarySortCompression,
+    irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1411,10 +1421,8 @@ Result IResearchLink::initDataStore(
 
   auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
   auto& flushFeature = server.getFeature<FlushFeature>();
-
   auto const formatId = getFormat(LinkVersion{version});
   auto format = irs::formats::get(formatId);
-
   if (!format) {
     return {TRI_ERROR_INTERNAL,
             "failed to get data store codec '"s + formatId.data() +
@@ -1474,8 +1482,8 @@ Result IResearchLink::initDataStore(
 
   if (pathExists) {
     try {
-      _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory));
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                       nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTick)) {
@@ -1576,7 +1584,8 @@ Result IResearchLink::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                     nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {
