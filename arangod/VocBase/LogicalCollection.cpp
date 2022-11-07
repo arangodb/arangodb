@@ -584,7 +584,6 @@ Result LogicalCollection::rename(std::string&& newName) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while renaming collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
   if (_status != TRI_VOC_COL_STATUS_LOADED) {
@@ -597,7 +596,6 @@ Result LogicalCollection::rename(std::string&& newName) {
     return TRI_ERROR_INTERNAL;
   }
 
-  auto doSync = databaseFeature.forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -605,7 +603,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     StorageEngine& engine =
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this, doSync);
+    engine.changeCollection(vocbase(), *this);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -858,7 +856,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
       !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
@@ -991,11 +988,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                (writeConcern == 0 && isSatellite()));
   }
 
-  auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
-
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice, doSync);
+  res = getPhysical()->updateProperties(slice);
   if (!res.ok()) {
     return res;
   }
@@ -1046,7 +1041,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this, doSync);
+  engine.changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
@@ -1096,9 +1091,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(_vocbase);
-#endif
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 

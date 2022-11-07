@@ -65,8 +65,8 @@ class PhysicalCollection {
   // path to logical collection
   virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual Result updateProperties(velocypack::Slice const& slice,
-                                  bool doSync) = 0;
+  virtual Result updateProperties(velocypack::Slice slice) = 0;
+
   virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties

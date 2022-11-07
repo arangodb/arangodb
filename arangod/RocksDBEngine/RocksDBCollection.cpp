@@ -341,8 +341,7 @@ RocksDBCollection::~RocksDBCollection() {
   }
 }
 
-Result RocksDBCollection::updateProperties(VPackSlice const& slice,
-                                           bool /*doSync*/) {
+Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
   _cacheEnabled = _cacheManager != nullptr && !_logicalCollection.system() &&
                   !_logicalCollection.isAStub() &&
                   !ServerState::instance()->isCoordinator() &&
@@ -556,9 +555,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
     } else {
       _collectionIndexes.add(newIdx);
     }
-#if USE_PLAN_CACHE
-    arangodb::aql::PlanCache::instance()->invalidate(vocbase);
-#endif
 
     syncIndexOnCreate(*newIdx);
 
