@@ -1,6 +1,8 @@
 v3.9.5 (XXXX-XX-XX)
 -------------------
 
+* Repair "load indexes into memory" function in the web UI.
+
 * Fixed SEARCH-408: Added ArangoSearch cached columns.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
