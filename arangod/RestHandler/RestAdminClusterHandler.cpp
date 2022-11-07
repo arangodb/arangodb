@@ -2597,9 +2597,6 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   auto const imbalanceLeaderAfter = p.computeLeaderImbalance();
   auto const imbalanceShardsAfter = p.computeShardImbalance();
 
-  VPackBuilder builder2;
-  velocypack::serialize(builder2, imbalanceLeaderBefore);
-
   auto const buildResponse = [&](rest::ResponseCode responseCode) {
     {
       VPackBuilder builder;
