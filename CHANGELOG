@@ -1,6 +1,8 @@
 v3.9.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed SEARCH-408: Added ArangoSearch cached columns 
+
 * Updated OpenSSL to 1.1.1s.
 
 * Added startup option `--query.log-failed` to optionally log all failed AQL
