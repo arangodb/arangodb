@@ -118,7 +118,6 @@ add_library(arango STATIC
   Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/VelocyPackStringLiteral.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
@@ -302,3 +301,4 @@ target_link_libraries(arango_greenspun date_interface)
 
 add_subdirectory(Geo)
 add_subdirectory(V8)
+add_subdirectory(VelocypackUtils)

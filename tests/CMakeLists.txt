@@ -326,6 +326,7 @@ target_link_libraries(arangodbtests
   gtest
   boost_boost
   fmt
+  velocypack_utils
 )
 
 if (USE_ENTERPRISE)
