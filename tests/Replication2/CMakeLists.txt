@@ -83,9 +83,12 @@ add_library(arango_tests_replication2 OBJECT
 target_include_directories(arango_tests_replication2 PUBLIC
     ${PROJECT_SOURCE_DIR}/arangod
     ${PROJECT_SOURCE_DIR}/lib
+    # TODO: The below can be removed if Replication2 tests don't include relative to Replication2 anymore
+    ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
 target_link_libraries(arango_tests_replication2
+    gtest
     arango
     arango_replication2
     velocypack
