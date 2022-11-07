@@ -1,6 +1,6 @@
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
-# scripts/generateJenkinsScripts.py --help-flags
+# https://github.com/arangodb/oskar#testing
 
 
 # Single Server only Tests
