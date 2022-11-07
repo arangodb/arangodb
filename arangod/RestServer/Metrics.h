@@ -148,6 +148,13 @@ class Gauge : public Metric {
     }
   }
 
+  bool compare_exchange_weak(
+      T& expected, T desired,
+      std::memory_order success = std::memory_order_relaxed,
+      std::memory_order fail = std::memory_order_relaxed) noexcept {
+    return _g.compare_exchange_weak(expected, desired, success, fail);
+  }
+
   Gauge<T>& operator-=(T const& t) noexcept {
     fetch_sub(t, std::memory_order_relaxed);
     return *this;

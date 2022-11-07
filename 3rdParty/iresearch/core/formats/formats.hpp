@@ -55,6 +55,12 @@ using document_mask = absl::flat_hash_set<doc_id_t> ;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
+// should never throw as may be used in dtors
+// FIXME: bring function2 that supports noexcept 
+using memory_accounting_f = std::function<bool(int64_t)>;
+
+bool noop_memory_accounter(int64_t);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class term_meta
 /// @brief represents metadata associated with the term
@@ -370,13 +376,21 @@ struct IRESEARCH_API columnstore_reader {
 
   using column_visitor_f = std::function<bool(const column_reader&)>;
 
+  struct options {
+    // allows to select "hot" columns
+    column_visitor_f warmup_column;
+    // allows to restrict "hot" columns memory usage
+    memory_accounting_f pinned_memory;
+  };
+
   virtual ~columnstore_reader() = default;
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta) = 0;
+    const segment_meta& meta,
+    const options& opts = options{}) = 0;
 
   virtual bool visit(const column_visitor_f& visitor) const = 0;
 

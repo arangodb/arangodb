@@ -25,7 +25,7 @@
 #pragma once
 
 #include <array>
-
+#include "utils/string.hpp"
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
 #include "VocBase/LogicalDataSource.h"
@@ -39,6 +39,7 @@ LogTopic& logTopic();
 [[maybe_unused]] static auto& DATA_SOURCE_TYPE = dataSourceType();
 [[maybe_unused]] extern LogTopic TOPIC;
 
+inline ::iresearch::string_ref const PK_COLUMN("@_PK");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines the implementation version of the iresearch view interface
 ///        e.g. which how data is stored in iresearch
@@ -147,6 +148,9 @@ struct StaticStrings {
   static constexpr velocypack::StringRef PrimarySortCompressionField{
       "primarySortCompression"};
 
+  static constexpr velocypack::StringRef kPrimarySortCacheField{
+      "primarySortCache"};
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
@@ -158,6 +162,11 @@ struct StaticStrings {
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr velocypack::StringRef CollectionNameField{"collectionName"};
+
+  static constexpr velocypack::StringRef kCacheField{"cache"};
+
+  static constexpr velocypack::StringRef kCachePrimaryKeyField{
+      "primaryKeyCache"};
 };
 
 }  // namespace iresearch

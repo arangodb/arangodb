@@ -136,12 +136,6 @@ class RocksDBTransactionState final : public TransactionState {
     return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
   }
 
-  /// @brief make some internal preparations for accessing this state in
-  /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads() { _parallel = true; }
-  /// @brief in parallel mode. READ-ONLY transactions
-  bool inParallelMode() const { return _parallel; }
-
   RocksDBTransactionCollection::TrackedOperations& trackedOperations(
       DataSourceId cid);
 
@@ -181,9 +175,6 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
 
-  /// @brief cache transaction to unblock banished keys
-  cache::Transaction* _cacheTx;
-
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBTransactionMethods> _rocksMethods;
 
@@ -191,8 +182,8 @@ class RocksDBTransactionState final : public TransactionState {
   std::atomic<uint32_t> _users;
 #endif
 
-  /// @brief if true there key buffers will no longer be shared
-  bool _parallel;
+  /// @brief cache transaction to unblock banished keys
+  cache::Transaction* _cacheTx;
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

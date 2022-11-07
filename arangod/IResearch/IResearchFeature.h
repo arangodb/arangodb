@@ -111,6 +111,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   bool failQueriesOnOutOfSync() const noexcept;
 
+#ifdef USE_ENTERPRISE
+  bool trackColumnsCacheUsage(int64_t diff) noexcept;
+#endif
  private:
   void registerRecoveryHelper();
 
@@ -144,6 +147,11 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   // number of links/indexes currently out of sync
   Gauge<uint64_t>& _outOfSyncLinks;
+
+#ifdef USE_ENTERPRISE
+  Gauge<int64_t>& _columnsCacheMemoryUsed;
+  uint64_t _columnsCacheLimit{0};
+#endif
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;

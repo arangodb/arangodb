@@ -2476,9 +2476,8 @@ class reader final: public columnstore_reader, public context_provider {
     : context_provider(pool_size) {
   }
 
-  virtual bool prepare(
-    const directory& dir,
-    const segment_meta& meta) override;
+  bool prepare(const directory& dir, const segment_meta& meta,
+               const options& opts = options{}) override;
 
   virtual const column_reader* column(field_id field) const override;
 
@@ -2540,7 +2539,8 @@ bool reader::read_meta(
   return true;
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta) {
+bool reader::prepare(const directory& dir, const segment_meta& meta,
+                     const columnstore_reader::options&) {
   const auto filename = file_name(meta.name, writer::FORMAT_EXT);
   bool exists;
 

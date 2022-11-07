@@ -176,7 +176,6 @@ void LocalTaskQueue::dispatchAndWait() {
           // dispatching the task has failed.
           // count down _dispatched again
           std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);
-          ;
           TRI_ASSERT(old > 0);
 
           if (_status.ok()) {
