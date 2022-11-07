@@ -73,7 +73,7 @@ const removeEntry = function (url, stateId, entry) {
 };
 
 const dropState = function (url, stateId) {
-  return request.delete({url: `${url}/_db/${database}/_api/replicated-state/${stateId}`});
+  return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
 };
 
 const removeEntries = function (url, stateId, entries) {
@@ -116,8 +116,6 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testPrototypeReplicatedStateMethods: function() {
-      // TODO Test is disabled for now.
-      return;
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
@@ -253,7 +251,8 @@ const replicatedStateSuite = function () {
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
       assertEqual(result.json.code, 409);
 
-      dropState(coordUrl, stateId);
+      result = dropState(coordUrl, stateId);
+      lh.checkRequestResult(result);
       lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },

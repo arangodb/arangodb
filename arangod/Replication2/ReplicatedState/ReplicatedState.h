@@ -197,7 +197,9 @@ struct NewLeaderStateManager
           stream);
 
   void recoverEntries();
-  void updateCommitIndex(LogIndex index) noexcept;
+  void updateCommitIndex(LogIndex index) noexcept {
+    // TODO do we have to do anything?
+  }
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -211,7 +213,6 @@ struct NewLeaderStateManager
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   struct GuardedData {
     auto recoverEntries();
-    auto getResolvablePromises(LogIndex index) noexcept -> WaitForQueue;
     [[nodiscard]] auto resign() && noexcept -> std::pair<
         std::unique_ptr<CoreType>,
         std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -221,7 +222,6 @@ struct NewLeaderStateManager
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
     std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
         _stream;
-    WaitForQueue _waitQueue;
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -247,18 +247,25 @@ struct NewFollowerStateManager
 
   [[nodiscard]] auto getStateMachine() const
       -> std::shared_ptr<IReplicatedFollowerState<S>>;
+  [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
 
  private:
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   void handleApplyEntriesResult(Result);
   struct GuardedData {
-    auto updateCommitIndex(LogIndex index)
+    [[nodiscard]] auto updateCommitIndex(LogIndex index)
         -> std::optional<futures::Future<Result>>;
-    auto maybeScheduleAppendEntries() -> std::optional<futures::Future<Result>>;
+    [[nodiscard]] auto maybeScheduleAppendEntries()
+        -> std::optional<futures::Future<Result>>;
+    [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
+        -> WaitForQueue;
+    [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
+    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
+    WaitForQueue _waitQueue;
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;

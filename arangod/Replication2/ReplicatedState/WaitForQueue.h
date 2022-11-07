@@ -49,9 +49,11 @@ struct WaitForQueue {
   WaitForQueue(WaitForQueue const&) = delete;
   WaitForQueue(WaitForQueue&&) = default;
   ~WaitForQueue();
-  auto splitLowerThan(LogIndex) noexcept -> WaitForQueue;
+
+  [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture;
+  [[nodiscard]] auto splitLowerThan(LogIndex) noexcept -> WaitForQueue;
   template<typename F>
-  void resolveAllWith(futures::Try<LogIndex> index, F&& run) noexcept;
+  void resolveAllWith(futures::Try<LogIndex> result, F&& run) noexcept;
 };
 
 template<typename F>

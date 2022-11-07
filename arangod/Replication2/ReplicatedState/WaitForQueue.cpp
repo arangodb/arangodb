@@ -27,6 +27,12 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
+auto WaitForQueue::waitFor(LogIndex index) -> WaitForQueue::WaitForFuture {
+  auto it = _queue.emplace(index, WaitForPromise());
+
+  return it->second.getFuture();
+}
+
 auto WaitForQueue::splitLowerThan(LogIndex commitIndex) noexcept
     -> WaitForQueue {
   auto toBeResolved = WaitForQueue();

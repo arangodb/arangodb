@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedState/WaitForQueue.h"
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
@@ -45,9 +46,9 @@ struct ILogLeader;
 namespace replicated_state {
 
 template<typename S>
-struct FollowerStateManager;
-template<typename S>
 struct NewFollowerStateManager;
+template<typename S>
+struct ReplicatedStateManager;
 
 struct IReplicatedLeaderStateBase {
   virtual ~IReplicatedLeaderStateBase() = default;
@@ -163,12 +164,13 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
       -> std::shared_ptr<Stream> const&;
 
  private:
-  friend struct FollowerStateManager<S>;
   friend struct NewFollowerStateManager<S>;
-  void setStateManager(
-      std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
+  friend struct ReplicatedStateManager<S>;
 
-  std::weak_ptr<FollowerStateManager<S>> _manager;
+  void setStateManager(
+      std::shared_ptr<NewFollowerStateManager<S>> manager) noexcept;
+
+  std::weak_ptr<NewFollowerStateManager<S>> _manager;
   std::shared_ptr<Stream> _stream;
 };
 }  // namespace replicated_state

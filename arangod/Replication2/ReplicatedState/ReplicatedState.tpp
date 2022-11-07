@@ -182,12 +182,14 @@ void ReplicatedStateManager<S>::becomeFollower(
   auto stream = std::make_shared<StreamProxy<EntryType, Deserializer>>(
       std::move(methods));
   followerState->setStream(stream);
+  auto stateManager = std::make_shared<NewFollowerStateManager<S>>(
+      _loggerContext.template with<logContextKeyStateRole>(
+          static_strings::StringFollower),
+      _metrics, followerState, std::move(stream));
+  followerState->setStateManager(stateManager);
   guard->_currentManager
       .template emplace<std::shared_ptr<NewFollowerStateManager<S>>>(
-          std::make_shared<NewFollowerStateManager<S>>(
-              _loggerContext.template with<logContextKeyStateRole>(
-                  static_strings::StringFollower),
-              _metrics, std::move(followerState), std::move(stream)));
+          std::move(stateManager));
 }
 
 template<typename S>
@@ -253,9 +255,9 @@ template<typename EntryType, typename Deserializer,
 auto StreamProxy<EntryType, Deserializer, Interface,
                  ILogMethodsT>::waitForIterator(LogIndex index)
     -> futures::Future<std::unique_ptr<Iterator>> {
-  // TODO As far as I can tell right now, we can get rid of this:
+  // TODO As far as I can tell right now, we can get rid of this, but for the
+  //      PrototypeState (currently). So:
   //      Delete this, also in streams::Stream.
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   return _logMethods->waitForIterator(index).thenValue([](auto&& logIter) {
     std::unique_ptr<Iterator> deserializedIter =
         std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
@@ -296,21 +298,6 @@ auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
 }
 
 template<typename S>
-void NewLeaderStateManager<S>::updateCommitIndex(LogIndex index) noexcept {
-  auto queue = _guardedData.getLockedGuard()->getResolvablePromises(index);
-  queue.resolveAllWith(futures::Try(index), []<typename F>(F&& f) noexcept {
-    // TODO post onto the scheduler
-    std::forward<F>(f)();
-  });
-}
-
-template<typename S>
-auto NewLeaderStateManager<S>::GuardedData::getResolvablePromises(
-    LogIndex index) noexcept -> WaitForQueue {
-  return _waitQueue.splitLowerThan(index);
-}
-
-template<typename S>
 NewLeaderStateManager<S>::NewLeaderStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
@@ -320,7 +307,7 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _guardedData{_loggerContext, *_metrics, std::move(leaderState),
-                   std::move(stream), WaitForQueue{}} {}
+                   std::move(stream)} {}
 
 template<typename S>
 auto NewLeaderStateManager<S>::resign() && noexcept
@@ -350,13 +337,6 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
   // resign the stream after the state, so the state won't try to use the
   // resigned stream.
   auto methods = std::move(*_stream).resign();
-  auto tryResult = futures::Try<LogIndex>(
-      std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE)));
-  _waitQueue.resolveAllWith(std::move(tryResult), []<typename F>(F&& f) {
-    // TODO post on scheduler instead
-    std::forward<F>(f)();
-  });
   return {std::move(core), std::move(methods)};
 }
 
@@ -386,16 +366,26 @@ void NewFollowerStateManager<S>::handleApplyEntriesResult(
     arangodb::Result res) {
   auto maybeFuture = [&]() -> std::optional<futures::Future<Result>> {
     auto guard = _guardedData.getLockedGuard();
-    LOG_DEVEL_IF(false) << "applyEntries returned " << res.errorMessage();
     if (res.ok()) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
-      guard->_lastAppliedIndex = *guard->_applyEntriesIndexInFlight;
+      auto const index = guard->_lastAppliedIndex =
+          *guard->_applyEntriesIndexInFlight;
+
+      auto queue = guard->getResolvablePromises(index);
+      auto& scheduler = *SchedulerFeature::SCHEDULER;
+      queue.resolveAllWith(futures::Try(index), [&scheduler]<typename F>(
+                                                    F&& f) noexcept {
+        static_assert(noexcept(std::decay_t<decltype(f)>(std::forward<F>(f))));
+        scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                        [f = std::forward<F>(f)]() mutable noexcept {
+                          static_assert(noexcept(std::forward<F>(f)()));
+                          std::forward<F>(f)();
+                        });
+      });
     }
     guard->_applyEntriesIndexInFlight = std::nullopt;
 
     if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-      LOG_DEVEL_IF(false) << "commit index = " << guard->_commitIndex
-                          << " lastApplied = " << guard->_lastAppliedIndex;
       return guard->maybeScheduleAppendEntries();
     }
     return std::nullopt;
@@ -438,16 +428,31 @@ auto NewFollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
     auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
                                         *_applyEntriesIndexInFlight + 1);
-    LOG_DEVEL_IF(false) << "scheduling apply entries, range = "
-                        << logIter->range();
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
     return _followerState->applyEntries(std::move(deserializedIter));
   } else {
-    LOG_DEVEL_IF(false) << "apply entries still in progress";
     return std::nullopt;
   }
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::GuardedData::getResolvablePromises(
+    LogIndex index) noexcept -> WaitForQueue {
+  return _waitQueue.splitLowerThan(index + 1);
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
+    -> WaitForQueue::WaitForFuture {
+  if (index <= _lastAppliedIndex) {
+    // Resolve the promise immediately before returning the future
+    auto promise = WaitForQueue::WaitForPromise();
+    promise.setTry(futures::Try(_lastAppliedIndex));
+    return promise.getFuture();
+  }
+  return _waitQueue.waitFor(index);
 }
 
 template<typename S>
@@ -523,6 +528,20 @@ auto NewFollowerStateManager<S>::resign() && noexcept
   auto core = std::move(*guard->_followerState).resign();
   auto methods = std::move(*guard->_stream).resign();
   guard->_stream.reset();
+  auto tryResult = futures::Try<LogIndex>(
+      std::make_exception_ptr(replicated_log::ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
+  auto& scheduler = *SchedulerFeature::SCHEDULER;
+  guard->_waitQueue.resolveAllWith(
+      std::move(tryResult), [&scheduler]<typename F>(F&& f) {
+        static_assert(noexcept(std::decay_t<decltype(f)>(std::forward<F>(f))));
+        scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                        [f = std::forward<F>(f)]() mutable noexcept {
+                          static_assert(noexcept(std::forward<F>(f)()));
+                          std::forward<F>(f)();
+                        });
+      });
+
   return {std::move(core), std::move(methods)};
 }
 
@@ -537,6 +556,12 @@ template<typename S>
 auto NewFollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
   return _guardedData.getLockedGuard()->_followerState;
+}
+
+template<typename S>
+auto NewFollowerStateManager<S>::waitForApplied(LogIndex index)
+    -> WaitForQueue::WaitForFuture {
+  return _guardedData.getLockedGuard()->waitForApplied(index);
 }
 
 template<typename S>
@@ -586,25 +611,22 @@ auto IReplicatedFollowerState<S>::getStream() const noexcept
 
 template<typename S>
 void IReplicatedFollowerState<S>::setStateManager(
-    std::shared_ptr<FollowerStateManager<S>> manager) noexcept {
+    std::shared_ptr<NewFollowerStateManager<S>> manager) noexcept {
   _manager = manager;
-  _stream = manager->getStream();
-  TRI_ASSERT(_stream != nullptr);
 }
 
 template<typename S>
 auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
-  std::abort();
-  //  if (auto manager = _manager.lock(); manager != nullptr) {
-  //    return manager->waitForApplied(index);
-  //  } else {
-  //    WaitForAppliedFuture future(
-  //        std::make_exception_ptr(replicated_log::ParticipantResignedException(
-  //            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,
-  //            ADB_HERE)));
-  //    return future;
-  //  }
+  if (auto manager = _manager.lock(); manager != nullptr) {
+    return manager->waitForApplied(index).thenValue(
+        [index](LogIndex index_) { return futures::Unit(); });
+  } else {
+    WaitForAppliedFuture future(
+        std::make_exception_ptr(replicated_log::ParticipantResignedException(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
+    return future;
+  }
 }
 
 template<typename S>
