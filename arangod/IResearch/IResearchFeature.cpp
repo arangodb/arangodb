@@ -1258,7 +1258,7 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
   int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
   do {
     if (current + diff <= static_cast<int64_t>(_columnsCacheLimit)) {
-      TRI_ASSERT(current + diff > 0);
+      TRI_ASSERT(current + diff >= 0);
       done = _columnsCacheMemoryUsed.compare_exchange_weak(current,
                                                            current + diff);
     } else {
