@@ -1,8 +1,12 @@
-v3.9.4 (XXXX-XX-XX)
+v3.9.5 (XXXX-XX-XX)
 -------------------
 
 * Log the documents counts on leader and follower shards at the end of each
   successful shard synchronization.
+
+
+v3.9.4 (XXXX-XX-XX)
+-------------------
 
 * Fixed BTS-852 (user's saved queries used to disappear after updating user
   profile).
