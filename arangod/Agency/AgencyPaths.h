@@ -1746,6 +1746,20 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               std::shared_ptr<Error const> error() const {
                 return Error::make_shared(shared_from_this());
               }
+
+              class TargetVersion
+                  : public StaticComponent<TargetVersion, Supervision> {
+               public:
+                constexpr char const* component() const noexcept {
+                  return "targetVersion";
+                }
+
+                using BaseType::StaticComponent;
+              };
+
+              std::shared_ptr<TargetVersion const> targetVersion() const {
+                return TargetVersion::make_shared(shared_from_this());
+              }
             };
 
             std::shared_ptr<Supervision const> supervision() const {
