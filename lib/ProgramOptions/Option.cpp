@@ -126,7 +126,7 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
       std::string description = parameter->description();
       if (!description.empty()) {
-        value.append(". ");
+        value.append("\n");
         value.append(description);
       }
 
@@ -187,7 +187,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   // split at "."
   size_t pos = name.find('.');
   if (pos == std::string::npos) {
-    // global option
+    // general option
     section = "";
   } else {
     // section-specific option
