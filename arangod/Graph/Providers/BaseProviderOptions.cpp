@@ -77,12 +77,14 @@ BaseProviderOptions::BaseProviderOptions(
         indexInfo,
     aql::FixedVarExpressionContext& expressionContext,
     std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap)
+        collectionToShardMap,
+    bool produceVertices)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap),
-      _weightCallback(std::nullopt) {}
+      _weightCallback(std::nullopt),
+      _produceVertices(produceVertices) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -104,8 +106,12 @@ aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool BaseProviderOptions::hasWeightMethod() const {
+bool BaseProviderOptions::hasWeightMethod() const noexcept {
   return _weightCallback.has_value();
+}
+
+bool BaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
 }
 
 void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {

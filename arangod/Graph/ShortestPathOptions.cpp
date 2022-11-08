@@ -132,6 +132,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("type", VPackValue("shortestPath"));
+  builder.add("produceVertices", VPackValue(produceVertices()));
   builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
 

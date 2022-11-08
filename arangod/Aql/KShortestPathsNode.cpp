@@ -391,10 +391,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       BaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          opts->collectionToShard());
+          opts->collectionToShard(), opts->produceVertices());
       BaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
-          opts->getExpressionCtx(), opts->collectionToShard());
+          opts->getExpressionCtx(), opts->collectionToShard(),
+          opts->produceVertices());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {

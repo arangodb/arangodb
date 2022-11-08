@@ -83,7 +83,8 @@ struct BaseProviderOptions {
           indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      bool produceVertices);
 
   BaseProviderOptions(BaseProviderOptions const&) = delete;
   BaseProviderOptions(BaseProviderOptions&&) = default;
@@ -98,7 +99,9 @@ struct BaseProviderOptions {
 
   aql::FixedVarExpressionContext& expressionContext() const;
 
-  bool hasWeightMethod() const;
+  bool hasWeightMethod() const noexcept;
+
+  bool produceVertices() const noexcept;
 
   double weightEdge(double prefixWeight,
                     arangodb::velocypack::Slice edge) const;
@@ -125,6 +128,8 @@ struct BaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+  bool const _produceVertices;
 };
 
 struct ClusterBaseProviderOptions {

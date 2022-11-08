@@ -67,7 +67,8 @@ class RefactoredTraverserCache {
       arangodb::ResourceMonitor& resourceMonitor,
       arangodb::aql::TraversalStats& stats,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      bool produceVertices);
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -165,6 +166,7 @@ class RefactoredTraverserCache {
       _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
 
+  bool const _produceVertices;
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal
   bool const _allowImplicitCollections;
