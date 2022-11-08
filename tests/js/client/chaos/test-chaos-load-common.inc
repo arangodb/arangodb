@@ -112,21 +112,17 @@ const checkCollectionConsistency = (cn) => {
   } while(failed);
 };
 
-const viewName = (name, isSearchAlias) => {
-  if (isSearchAlias) {
-    return name + "_sa";
-  } else {
-    return name + "_as";
-  }
+const viewName = (name) => {
+  return name + "_sa";
 };
 
-const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
+const checkViewConsistency = (cn, isMaterialize) => {
   let runQuery = (query) => {
     return db._query(query).toArray()[0];
   };
   let expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length");
   // TODO uncomment assert when will be fixed SEARCH-419
-  print("Collection: " + expected + " search: " + isSearchAlias + " materialize: " + isMaterialize);
+  print("Collection: " + expected + " materialize: " + isMaterialize);
   let vn;
   const checkView = (isMaterialize, check) => {
     let result;
@@ -138,16 +134,16 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     print(vn + ": " + result);
   };
 
-  vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize, true);
-
-  vn = viewName(cn + "_view_ps", isSearchAlias);
+  vn = viewName(cn + "_view");
   checkView(isMaterialize, false);
 
-  vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize, true);
+  vn = viewName(cn + "_view_ps");
+  checkView(isMaterialize, false);
 
-  vn = viewName(cn + "_view_ps_sv", isSearchAlias);
+  vn = viewName(cn + "_view_sv");
+  checkView(isMaterialize, false);
+
+  vn = viewName(cn + "_view_ps_sv");
   checkView(isMaterialize, false);
 };
 
@@ -174,100 +170,52 @@ function BaseChaosSuite(testOpts) {
     a.save("testAnalyzer", "delimiter", {delimiter: "/"});
   };
 
-  const removeViews = (isSearchAlias) => {
-    let vn = viewName(cn + "_view", isSearchAlias);
+  const removeViews = () => {
+    let vn = viewName(cn + "_view");
     db._dropView(vn);
 
-    vn = viewName(cn + "_view_ps", isSearchAlias);
+    vn = viewName(cn + "_view_ps");
     db._dropView(vn);
 
-    vn = viewName(cn + "_view_sv", isSearchAlias);
+    vn = viewName(cn + "_view_sv");
     db._dropView(vn);
 
-    vn = viewName(cn + "_view_ps_sv", isSearchAlias);
+    vn = viewName(cn + "_view_ps_sv");
     db._dropView(vn);
   };
 
-  const createViews = (isSearchAlias) => {
+  const createViews = () => {
     // TODO When will be fixed SEARCH-418 add to sort _id
-    removeViews(isSearchAlias);
+    removeViews();
     let vn;
 
-    vn = viewName(cn + "_view", isSearchAlias);
-    if (isSearchAlias) {
-      let i = db._collection(cn).ensureIndex({
-        type: "inverted",
-        includeAllFields: true,
-        analyzer: "testAnalyzer",
-      });
-      db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
-      });
-    } else {
-      db._createView(vn, "arangosearch", {
-        consolidationIntervalMsec: 1000,
-        links: {[cn]: {analyzers: ["testAnalyzer", "identity"], includeAllFields: true}}
-      });
-    }
+    vn = viewName(cn + "_view");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {analyzers: ["testAnalyzer", "identity"], includeAllFields: true}}
+    });
 
-    vn = viewName(cn + "_view_ps", isSearchAlias);
-    if (isSearchAlias) {
-      let i = db._collection(cn).ensureIndex({
-        type: "inverted",
-        includeAllFields: true,
-        analyzer: "testAnalyzer",
-        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
-      });
-      db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
-      });
-    } else {
-      db._createView(vn, "arangosearch", {
-        consolidationIntervalMsec: 1000,
-        links: {[cn]: {includeAllFields: true}},
-        primarySort: [{field: "_key", asc: true}],
-      });
-    }
+    vn = viewName(cn + "_view_ps");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      primarySort: [{field: "_key", asc: true}],
+    });
 
-    vn = viewName(cn + "_view_sv", isSearchAlias);
-    if (isSearchAlias) {
-      let i = db._collection(cn).ensureIndex({
-        type: "inverted",
-        includeAllFields: true,
-        analyzer: "testAnalyzer",
-        storedValues: [["_id"], ["_key"]],
-      });
-      db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
-      });
-    } else {
-      db._createView(vn, "arangosearch", {
-        consolidationIntervalMsec: 1000,
-        links: {[cn]: {includeAllFields: true}},
-        storedValues: [["_id"], ["_key"]],
-      });
-    }
+    vn = viewName(cn + "_view_sv");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      storedValues: [["_id"], ["_key"]],
+    });
 
-    vn = viewName(cn + "_view_ps_sv", isSearchAlias);
-    if (isSearchAlias) {
-      let i = db._collection(cn).ensureIndex({
-        type: "inverted",
-        includeAllFields: true,
-        analyzer: "testAnalyzer",
-        storedValues: [["_id"], ["_key"]],
-        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
-      });
-      db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
-      });
-    } else {
-      db._createView(vn, "arangosearch", {
-        consolidationIntervalMsec: 1000,
-        links: {[cn]: {includeAllFields: true}},
-        storedValues: [["_id"], ["_key"]],
-        primarySort: [{field: "_key", asc: true}],
-      });
-    }
+    vn = viewName(cn + "_view_ps_sv");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      storedValues: [["_id"], ["_key"]],
+      primarySort: [{field: "_key", asc: true}],
+    });
   };
 
   return {
@@ -277,8 +225,7 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      createViews(false);
-      // createViews(true);
+      createViews();
       db._create(coordination_cn);
       
       if (testOpts.withFailurePoints) {
@@ -320,8 +267,7 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      removeViews(false);
-      // removeViews(true);
+      removeViews();
       db._drop(cn);
       
       const shells = db[coordination_cn].all();
@@ -426,23 +372,19 @@ function BaseChaosSuite(testOpts) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT ARRAY LOOKUP QUERY WITH LIMIT=${limit}`);
               query("LET keys = (FOR doc IN " + c.name() + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
-              const lookupViews = (isSearchAlias) => {
+              const lookupViews = () => {
                 const r = Math.random();
                 if (r < 0.25) {
-                  query("LET keys = (FOR doc IN " + viewName(cn + "_view", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 } else if (r < 0.5) {
-                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 } else if (r < 0.75) {
-                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_sv") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 } else {
-                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              // if (Math.random() < 0.5) {
-              //   lookupViews(false);
-              // } else {
-              //   lookupViews(true);
-              // }
+              lookupViews();
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -490,10 +432,8 @@ function BaseChaosSuite(testOpts) {
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
       // require("internal").sleep(60);
-      checkViewConsistency(cn, false, false);
-      // checkViewConsistency(cn, true, false);
-      checkViewConsistency(cn, false, true);
-      // checkViewConsistency(cn, true, true);
+      checkViewConsistency(cn, false);
+      checkViewConsistency(cn, true);
     }
   };
 }
