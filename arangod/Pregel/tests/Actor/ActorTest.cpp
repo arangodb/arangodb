@@ -32,12 +32,9 @@
 
 using namespace arangodb::pregel::actor;
 
-struct Scheduler {
-  auto operator()(auto fn) {
-    fmt::print("schedule called\n");
-    fn();
-    return;
-  }
+// This scheduler just runs any function synchronously as soon as it comes in.
+struct TrivialScheduler {
+  auto operator()(auto fn) { fn(); }
 };
 
 struct State {
@@ -46,28 +43,53 @@ struct State {
 };
 
 struct Message {
-  std::size_t store;
+  std::string store;
 };
 
 struct Handler {
   auto operator()(State state, Message msg) -> State {
     fmt::print("message handler called\n");
     state.called++;
+    state.state += msg.store;
     return state;
   }
 };
 
-using MyActor = Actor<Scheduler, Handler, State, Message>;
+using MyActor = Actor<TrivialScheduler, Handler, State, Message>;
 
 TEST(Actor, processes_message) {
-
-  auto scheduler = Scheduler{};
+  auto scheduler = TrivialScheduler{};
 
   auto actor = MyActor(scheduler, {.state = "Hello"});
 
-  send(actor, {.store = 5});
-  send(actor, {.store = 7});
-  send(actor, {.store = 22});
+  send(actor, {.store = "hello"});
+  send(actor, {.store = "world"});
+  send(actor, {.store = "!"});
 
-  fmt::print("I got called {} times", actor.state.called );
+  fmt::print("I got called {} times, accumulated {}\n", actor.state.called,
+             actor.state.state);
+}
+
+struct SlightlyNonTrivialScheduler {
+  SlightlyNonTrivialScheduler() {}
+
+  auto operator()(auto fn) { threads.emplace_back(fn); }
+
+  // TODO: use threadGuard?
+  std::vector<std::thread> threads;
+};
+
+using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, Message>;
+TEST(Actor, trivial_thread_scheduler) {
+  auto scheduler = SlightlyNonTrivialScheduler();
+
+  auto actor = MyActor2(scheduler, {.state = "Hello"});
+
+  for (std::size_t i = 0; i < 100; i++) {
+    send(actor, {.store = "hello"}) send(actor, {.store = "world"});
+    send(actor, {.store = "!"});
+  }
+  // joinen.
+  fmt::print("I got called {} times, accumulated {}\n", actor.state.called,
+             actor.state.state);
 }

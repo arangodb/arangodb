@@ -28,13 +28,18 @@
 
 namespace arangodb::pregel::actor {
 
-template<typename Scheduler, typename MessageHandler, typename State, typename Message>
+template<typename Scheduler, typename MessageHandler, typename State,
+         typename Message>
 struct Actor {
   Actor(Scheduler& schedule, State initialState)
       : schedule(schedule), state(initialState) {}
 
+  Actor(Scheduler& schedule, State initialState, std::size_t batchSize)
+      : batchSize(batchSize), schedule(schedule), state(initialState) {}
+
+
   void process(Message msg) {
-    inbox.push(msg);
+    inbox.push(new Message(msg));
     kick();
   }
 
@@ -48,9 +53,12 @@ struct Actor {
     if (busy.compare_exchange_strong(was_false, true)) {
       // TODO: this needs to be a constructor parameter
       auto i = size_t{5};
-      auto msg = Message{};
+      Message* msg = nullptr;
       while (inbox.pop(msg) and i > 0) {
-        state = handler(state, msg);
+        // TODO: assert msg is not a nullptr.
+        state = handler(state, *msg);
+        // there'd better not be an exception happening anywhere her
+        delete msg;
         i--;
       }
       if (i == 0 && !inbox.empty()) {
@@ -60,17 +68,22 @@ struct Actor {
     }
   }
 
+  std::size_t batchSize{16};
   std::atomic<bool> busy;
-  boost::lockfree::queue<Message> inbox;
+  // TODO: Waserlaube boost::lockfree::queue? One can only use
+  // trivially destructible members, so we need to use raw pointers
+  // here, like cavepeople.
+  boost::lockfree::queue<Message*> inbox;
   Scheduler& schedule;
   MessageHandler handler{};
   State state;
 };
 
-template<typename Scheduler, typename MessageHandler, typename State, typename Message>
-void send(Actor<Scheduler, MessageHandler, State, Message>& actor, Message msg) {
+template<typename Scheduler, typename MessageHandler, typename State,
+         typename Message>
+void send(Actor<Scheduler, MessageHandler, State, Message>& actor,
+          Message msg) {
   actor.process(msg);
 }
 
-
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::actor
