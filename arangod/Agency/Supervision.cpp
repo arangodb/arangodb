@@ -941,18 +941,18 @@ bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  LOG_TOPIC("aadea", DEBUG, Logger::SUPERVISION) << "Checking dbservers...";
+  LOG_TOPIC("aadea", TRACE, Logger::SUPERVISION) << "Checking dbservers...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
-  LOG_TOPIC("aadeb", DEBUG, Logger::SUPERVISION) << "Checking coordinators...";
+  LOG_TOPIC("aadeb", TRACE, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
              "Singles");
-  LOG_TOPIC("aadec", DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("aadec", TRACE, Logger::SUPERVISION)
       << "Checking single servers (active failover)...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
-  LOG_TOPIC("aaded", DEBUG, Logger::SUPERVISION) << "Server checks done.";
+  LOG_TOPIC("aaded", TRACE, Logger::SUPERVISION) << "Server checks done.";
 
   return true;
 }
@@ -1302,7 +1302,7 @@ void Supervision::waitForSupervisionNode() {
       break;
     }
 
-    LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
+    LOG_TOPIC("9a79b", TRACE, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                                       "initialize its data.";
   }
 }
@@ -2474,7 +2474,7 @@ void Supervision::checkBrokenCreatedDatabases() {
   for (auto const& dbpair : databases.value().get().children()) {
     std::shared_ptr<Node> const& db = dbpair.second;
 
-    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
+    LOG_TOPIC("24152", TRACE, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
 
     ifResourceCreatorLost(db, [&](ResourceCreatorLostEvent const& ev) {
       LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
