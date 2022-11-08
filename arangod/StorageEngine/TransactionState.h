@@ -242,6 +242,12 @@ class TransactionState {
   ///       transaction is committed
   virtual TRI_voc_tick_t lastOperationTick() const noexcept { return 0; }
 
+  /// @returns number of insertions/removals in a transaction, update takes 2
+  /// primitive operations
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  virtual TRI_voc_tick_t numPrimitiveOperations() const noexcept { return 0; }
+
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
 
