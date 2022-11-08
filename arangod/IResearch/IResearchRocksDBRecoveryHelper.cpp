@@ -203,10 +203,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 
   for (auto const& link : links) {
-    if (link.second) {
-      // link excluded from recovery
-      _skippedIndexes.emplace(link.first->id());
-    } else {
+    if (!link.second) {
       if (_skipExisted.find(link.first->id()) != _skipExisted.end()) {
         continue;
       }
