@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <gtest/gtest.h>
 
+#include "Basics/application-exit.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
@@ -96,7 +97,7 @@ struct FakeLogFollower : replicated_log::ILogFollower {
       : core(std::move(core)) {}
   auto getParticipantId() const noexcept -> ParticipantId const& override {
     // not implemented
-    ADB_PROD_ASSERT(false);
+    FATAL_ERROR_ABORT();
   }
   auto appendEntries(replicated_log::AppendEntriesRequest request)
       -> futures::Future<replicated_log::AppendEntriesResult> override {
