@@ -23,28 +23,28 @@
 #include "gtest/gtest.h"
 
 #include "Basics/VelocyPackStringLiteral.h"
-#include <Inspection/VPackInspection.h>
-#include <Inspection/StatusT.h>
+#include <Inspection/VPackWithErrorT.h>
+//#include <Inspection/StatusT.h>
 
 #include <fmt/core.h>
 
 using namespace arangodb::velocypack;
 using namespace arangodb::inspection;
 
-TEST(Inspection, statust_test) {
-  {
-    auto s = StatusT<int>::ok(15);
-    EXPECT_TRUE(s.ok());
-    EXPECT_EQ(s.get(), 15);
-  }
-
-  {
-    auto s = StatusT<int>::error(Status("error"));
-
-    EXPECT_FALSE(s.ok());
-    EXPECT_EQ(s.error(), "error");
-  }
-}
+//TEST(Inspection, statust_test) {
+//  {
+//    auto s = StatusT<int>::ok(15);
+//    EXPECT_TRUE(s.ok());
+//    EXPECT_EQ(s.get(), 15);
+//  }
+//
+//  {
+//    auto s = StatusT<int>::error(Status("error"));
+//
+//    EXPECT_FALSE(s.ok());
+//    EXPECT_EQ(s.error(), "error");
+//  }
+//}
 
 struct Dummy {
   std::string type;
@@ -62,9 +62,9 @@ TEST(Inspection, statust_test_deserialize) {
     "id": 3
   })"_vpack;
 
-  auto res = deserializeWithStatus<Dummy>(testSlice);
+  auto res = deserializeWithErrorT<Dummy>(testSlice);
 
-  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}", res.error());
+  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}", res.error().error());
 
   EXPECT_EQ(res->type, "ReturnNode");
   EXPECT_EQ(res->id, 3u);
@@ -77,9 +77,15 @@ TEST(Inspection, statust_test_deserialize_fail) {
     "fehler": 2
   })"_vpack;
 
-  auto res = deserializeWithStatus<Dummy>(testSlice);
+  auto res = deserializeWithErrorT<Dummy>(testSlice);
 
   ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
 
-  EXPECT_EQ(res.error(), "Found unexpected attribute 'fehler'");
+  EXPECT_EQ(res.error().error(), "Found unexpected attribute 'fehler'");
+}
+
+using namespace arangodb::velocypack;
+int main(int argc, char* argv[]) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
