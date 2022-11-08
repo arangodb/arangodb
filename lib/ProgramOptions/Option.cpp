@@ -201,24 +201,37 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
 std::vector<std::string> Option::wordwrap(std::string const& value,
                                           size_t size) {
   std::vector<std::string> result;
-  std::string next = value;
+  std::string next;
+  std::string delim = "\n";
+  size_t s = 0;
+  size_t t = 0;
 
-  if (size > 0) {
-    while (next.size() > size) {
-      size_t m = next.find_last_of("., ", size - 1);
-
-      if (m == std::string::npos || m < size / 2) {
-        m = size;
-      } else {
-        m += 1;
-      }
-
-      result.emplace_back(next.substr(0, m));
-      next = next.substr(m);
+  do {
+    t = value.find(delim, s);
+    if (t != std::string::npos) {
+      next = value.substr(s, t - s);
+      s = t + delim.size();
+    } else {
+      next = value.substr(s);
     }
-  }
 
-  result.emplace_back(next);
+    if (size > 0) {
+      while (next.size() > size) {
+        size_t m = next.find_last_of("., ", size - 1);
+
+        if (m == std::string::npos || m < size / 2) {
+          m = size;
+        } else {
+          m += 1;
+        }
+
+        result.emplace_back(next.substr(0, m));
+        next = next.substr(m);
+      }
+    }
+
+    result.emplace_back(next);
+  } while (t != std::string::npos);
 
   return result;
 }
