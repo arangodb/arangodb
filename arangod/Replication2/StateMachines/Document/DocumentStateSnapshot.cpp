@@ -23,8 +23,9 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
+#include "RocksDBEngine/SimpleRocksDBTransactionState.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/Context.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -33,10 +34,15 @@ SnapshotIterator::SnapshotIterator(
     std::shared_ptr<LogicalCollection> logicalCollection)
     : _logicalCollection(std::move(logicalCollection)),
       _ctx(transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase())),
-      _trx(_ctx, *_logicalCollection, AccessMode::Type::READ) {
+          _logicalCollection->vocbase())) {
+  transaction::Options options;
+  options.requiresReplication = false;
+
+  _trx = std::make_unique<SingleCollectionTransaction>(
+      _ctx, *_logicalCollection, AccessMode::Type::READ, options);
+
   // We call begin here so that rocksMethods are initialized
-  if (auto res = _trx.begin(); res.fail()) {
+  if (auto res = _trx->begin(); res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
@@ -47,24 +53,28 @@ SnapshotIterator::SnapshotIterator(
   }
 
   _it = physicalCollection->getReplicationIterator(
-      ReplicationIterator::Ordering::Revision, _trx);
+      ReplicationIterator::Ordering::Revision, *_trx);
 }
 
 auto SnapshotIterator::next() -> Snapshot {
   if (!_it->hasMore()) {
     return Snapshot{};
   }
+
   std::size_t batchSize{0};
   VPackBuilder builder;
-  builder.openArray();
-  for (auto& revIterator = dynamic_cast<RevisionReplicationIterator&>(*_it);
-       revIterator.hasMore() && batchSize < kBatchSizeLimit;
-       revIterator.next()) {
-    auto slice = revIterator.document();
-    batchSize += slice.byteSize();
-    builder.add(slice);
+  {
+    VPackArrayBuilder ab(&builder);
+    for (auto& revIterator = dynamic_cast<RevisionReplicationIterator&>(*_it);
+         revIterator.hasMore() && batchSize < kBatchSizeLimit;
+         revIterator.next()) {
+      auto slice = revIterator.document();
+      batchSize += slice.byteSize();
+      builder.add(slice);
+    }
   }
-  builder.close();
+
   return Snapshot{builder.sharedSlice()};
 }
+
 }  // namespace arangodb::replication2::replicated_state::document

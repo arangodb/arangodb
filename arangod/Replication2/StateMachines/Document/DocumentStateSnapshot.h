@@ -32,7 +32,6 @@
 
 namespace arangodb {
 class LogicalCollection;
-class PhysicalCollection;
 
 namespace transaction {
 class Context;
@@ -69,7 +68,7 @@ class SnapshotIterator {
 
   std::shared_ptr<LogicalCollection> _logicalCollection;
   std::shared_ptr<transaction::Context> _ctx;
-  SingleCollectionTransaction _trx;
+  std::unique_ptr<SingleCollectionTransaction> _trx;
   std::unique_ptr<ReplicationIterator> _it;
 };
 

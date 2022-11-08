@@ -758,7 +758,7 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    testLeaderRestAPI: function (testName) {
+    testDropCollectionOngoingTransfer: function (testName) {
       collection.insert({_key: testName});
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let leaderUrl = lh.getServerUrl(leader);

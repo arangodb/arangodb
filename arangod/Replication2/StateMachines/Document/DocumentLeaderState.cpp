@@ -52,6 +52,8 @@ auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
+  _snapshotIterators.getLockedGuard()->clear();
+
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     for (auto const& trx : activeTransactions.getTransactions()) {
       try {
@@ -177,6 +179,12 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
 auto DocumentLeaderState::getSnapshot(SnapshotOptions const& options,
                                       TRI_vocbase_t& vocbase)
     -> ResultT<Snapshot> {
+  if (_isResigning.load()) {
+    return ResultT<Snapshot>::error(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+        fmt::format("Leader resigned for shard {}", shardId));
+  }
+
   if (options.batch == options.kFirst) {
     auto logicalCollection = vocbase.lookupCollection(shardId);
     if (logicalCollection == nullptr) {
