@@ -307,6 +307,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // optimize K_PATHS
+  registerRule("optimize-paths", optimizePathsRule,
+               OptimizerRule::optimizePathsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal",
                removeFiltersCoveredByTraversal,

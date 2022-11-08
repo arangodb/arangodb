@@ -61,18 +61,18 @@ SingleServerProviderStep::SingleServerProviderStep(VertexType v,
 
 SingleServerProviderStep::~SingleServerProviderStep() = default;
 
-VertexType const& SingleServerProviderStep::Vertex::getID() const {
+VertexType const& SingleServerProviderStep::Vertex::getID() const noexcept {
   return _vertex;
 }
 
 SingleServerProviderStep::EdgeType const&
-SingleServerProviderStep::Edge::getID() const {
+SingleServerProviderStep::Edge::getID() const noexcept {
   return _token;
 }
 
-bool SingleServerProviderStep::Edge::isValid() const {
+bool SingleServerProviderStep::Edge::isValid() const noexcept {
   return getID().isValid();
-};
+}
 
 void SingleServerProviderStep::Edge::addToBuilder(
     SingleServerProvider<SingleServerProviderStep>& provider,
@@ -80,6 +80,8 @@ void SingleServerProviderStep::Edge::addToBuilder(
   provider.insertEdgeIntoResult(getID(), builder);
 }
 
-bool SingleServerProviderStep::isResponsible(transaction::Methods*) const {
+#if 0
+bool SingleServerProviderStep::isResponsible(transaction::Methods*) const noexcept {
   return true;
-};
+}
+#endif

@@ -28,10 +28,20 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth,
-                                                     size_t maxDepth)
-    : _minDepth(minDepth), _maxDepth(maxDepth) {}
+                                                     size_t maxDepth,
+                                                     bool produceVertices)
+    : _minDepth(minDepth),
+      _maxDepth(maxDepth),
+      _produceVertices(produceVertices) {}
 
 OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
 
-size_t OneSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
-size_t OneSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
+size_t OneSidedEnumeratorOptions::getMinDepth() const noexcept {
+  return _minDepth;
+}
+size_t OneSidedEnumeratorOptions::getMaxDepth() const noexcept {
+  return _maxDepth;
+}
+bool OneSidedEnumeratorOptions::produceVertices() const noexcept {
+  return _produceVertices;
+}
