@@ -721,7 +721,7 @@ void DumpFeature::collectOptions(
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
 
-  options->addOption("--tick-start", "Only include data after this tick".,
+  options->addOption("--tick-start", "Only include data after this tick.",
                      new UInt64Parameter(&_options.tickStart));
 
   options->addOption("--tick-end", "Last tick to be included in data dump.",

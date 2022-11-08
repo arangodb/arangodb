@@ -336,16 +336,17 @@ For systems with less RAM, the default values are:
 - 512 MiB for systems with between 1 and 4 GiB of RAM.
 - 256 MiB for systems with less than 1 GiB of RAM.)");
 
-  options->addOption("--rocksdb.write-buffer-size",
-                     "The amount of data to build up in memory before "
-                     "converting to a sorted on-disk file (0 = disabled).",
-                     new UInt64Parameter(&_writeBufferSize),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnAgent,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle));
-  .setLongDescription(R"(The amount of data to build up in each in-memory
+  options
+      ->addOption("--rocksdb.write-buffer-size",
+                  "The amount of data to build up in memory before "
+                  "converting to a sorted on-disk file (0 = disabled).",
+                  new UInt64Parameter(&_writeBufferSize),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(The amount of data to build up in each in-memory
 buffer (backed by a log file) before closing the buffer and queuing it to be
 flushed to standard storage. Larger values than the default may improve
 performance, especially for bulk loads.)");
@@ -929,8 +930,8 @@ This option only has an effect on operating systems that support
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30504)
-      .setDeprecatedIn(30800);
-  .setLongDescription(R"(This option allows you to make all writes to the
+      .setDeprecatedIn(30800)
+      .setLongDescription(R"(This option allows you to make all writes to the
 RocksDB storage exclusive and therefore avoid write-write conflicts.
 
 This option was introduced to open a way to upgrade from the legacy MMFiles to
