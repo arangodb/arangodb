@@ -195,43 +195,42 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
     name = name.substr(pos + 1);
   }
 
-  return std::make_pair(section, name);
+  return std::make_pair(std::move(section), std::move(name));
 }
 
 std::vector<std::string> Option::wordwrap(std::string const& value,
                                           size_t size) {
   std::vector<std::string> result;
-  std::string next;
-  std::string delim = "\n";
-  size_t s = 0;
-  size_t t = 0;
+  std::string_view next = value;
 
-  do {
-    t = value.find(delim, s);
-    if (t != std::string::npos) {
-      next = value.substr(s, t - s);
-      s = t + delim.size();
-    } else {
-      next = value.substr(s);
+  if (size == 0) {
+    size = value.size();
+  }
+
+  while (!next.empty()) {
+    size_t skip = 0;
+    size_t m = std::min(size, next.size());
+    TRI_ASSERT(m > 0);
+    size_t n = next.find_last_of("., ", m - 1);
+    if (n != std::string_view::npos && next.size() > size && n >= size / 2 &&
+        n + 1 <= size) {
+      m = n + 1;
+    }
+    n = next.find('\n');
+    if (n != std::string_view::npos && n < m) {
+      m = n;
+      skip = 1;
     }
 
-    if (size > 0) {
-      while (next.size() > size) {
-        size_t m = next.find_last_of("., ", size - 1);
+    TRI_ASSERT(m <= size);
+    TRI_ASSERT(next.substr(0, m).find('\n') == std::string_view::npos);
+    result.emplace_back(next.data(), m);
 
-        if (m == std::string::npos || m < size / 2) {
-          m = size;
-        } else {
-          m += 1;
-        }
-
-        result.emplace_back(next.substr(0, m));
-        next = next.substr(m);
-      }
+    if (m + skip >= next.size()) {
+      break;
     }
-
-    result.emplace_back(next);
-  } while (t != std::string::npos);
+    next = next.substr(m + skip);
+  }
 
   return result;
 }
