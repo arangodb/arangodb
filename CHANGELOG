@@ -1,3 +1,9 @@
+v3.10.2 (XXXX-XX-XX)
+--------------------
+
+* Show number of HTTP requests in cluster query profiles.
+
+
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
