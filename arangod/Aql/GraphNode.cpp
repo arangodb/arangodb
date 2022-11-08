@@ -738,21 +738,109 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 optimizer2::nodes::GraphNode GraphNode::toInspectable(
     std::string&& type) const {
-  using namespace optimizer2::nodes;
+  using namespace optimizer2;
+  using namespace nodes;
+
+  std::vector<AttributeTypes::String> vertexCollectionNames;
+  for (auto const& v : _vertexColls) {
+    vertexCollectionNames.push_back(v->name());
+  }
+
+  std::vector<AttributeTypes::String> edgeCollectionNames;
+  for (auto const& e : _edgeColls) {
+    edgeCollectionNames.push_back(e->name());
+  }
+
   using VPackLoadInspector = inspection::VPackLoadInspector<>;
-
-  velocypack::Builder builder = _graphInfo;
-
-  VPackLoadInspector inspector{builder};
+  velocypack::Builder graphInfoBuilder = _graphInfo;
+  VPackLoadInspector graphInfoInspector{graphInfoBuilder};
   optimizer2::GraphInfo graphInfo;
-  auto result = inspector.apply(graphInfo);
-  ADB_PROD_ASSERT(result.ok());
+  auto graphInfoInspectorResult = graphInfoInspector.apply(graphInfo);
+  ADB_PROD_ASSERT(graphInfoInspectorResult.ok());
 
-  return {
-      {ExecutionNode::toInspectable(std::move(type))},
-          _vocbase->name(),
-          graphInfo
-  };
+  std::vector<AttributeTypes::String> edgeCollections;
+  for (auto const& e : edgeCollectionNames) {
+    auto const& shard = collectionToShardName(e);
+    if (!shard.empty()) {
+      edgeCollections.push_back(e);
+    }
+  }
+
+  std::vector<AttributeTypes::String> vertexCollections;
+  for (auto const& v : vertexCollectionNames) {
+    auto const& shard = collectionToShardName(v);
+    if (!shard.empty()) {
+      vertexCollections.push_back(v);
+    }
+  }
+
+  std::unordered_map<AttributeTypes::String, AttributeTypes::String>
+      collectionToShard;
+  for (auto const& item : _collectionToShard) {
+    collectionToShard[item.first] = item.second;
+  }
+
+  velocypack::Builder vertexOutVariableBuilder;
+  vertexOutVariable()->toVelocyPack(vertexOutVariableBuilder);
+  VPackLoadInspector vertexOutVariableInspector{vertexOutVariableBuilder};
+  types::Variable vertexOutVar;
+  auto vertexOutVariableInspectorResult =
+      vertexOutVariableInspector.apply(vertexOutVar);
+  ADB_PROD_ASSERT(vertexOutVariableInspectorResult.ok());
+
+  velocypack::Builder edgeOutVariableBuilder;
+  edgeOutVariable()->toVelocyPack(edgeOutVariableBuilder);
+  VPackLoadInspector edgeOutVariableInspector{edgeOutVariableBuilder};
+  types::Variable edgeOutVar;
+  auto edgeOutVariableInspectorResult =
+      edgeOutVariableInspector.apply(edgeOutVar);
+  ADB_PROD_ASSERT(edgeOutVariableInspectorResult.ok());
+  
+  velocypack::Builder tmpObjVariableBuilder;
+  _tmpObjVariable->toVelocyPack(tmpObjVariableBuilder);
+  VPackLoadInspector tmpObjVariableInspector{tmpObjVariableBuilder};
+  types::Variable tmpObjVar;
+  auto tmpObjVariableInspectorResult =
+      tmpObjVariableInspector.apply(tmpObjVar);
+  ADB_PROD_ASSERT(tmpObjVariableInspectorResult.ok());
+  
+  velocypack::Builder tmpObjVarNodeBuilder;
+  _tmpObjVarNode->toVelocyPack(tmpObjVarNodeBuilder, true);
+  VPackLoadInspector tmpObjVarNodeInspector{tmpObjVarNodeBuilder};
+  types::Expression tmpObjVarNode;
+  auto tmpObjVarNodeInspectorResult =
+      tmpObjVarNodeInspector.apply(tmpObjVarNode);
+  ADB_PROD_ASSERT(tmpObjVarNodeInspectorResult.ok());
+  
+  velocypack::Builder tmpIdNodeBuilder;
+  _tmpIdNode->toVelocyPack(tmpIdNodeBuilder, true);
+  VPackLoadInspector tmpIdNodeInspector{tmpIdNodeBuilder};
+  types::Expression tmpIdNode;
+  auto tmpIdNodeInspectorResult =
+      tmpIdNodeInspector.apply(tmpIdNode);
+  ADB_PROD_ASSERT(tmpIdNodeInspectorResult.ok());
+
+  return {{ExecutionNode::toInspectable(std::move(type))},
+          .graphDefinition = {vertexCollectionNames, edgeCollectionNames},
+          .database = _vocbase->name(),
+          .graph = graphInfo,
+          .defaultDirection = _defaultDirection,
+          .vertexOutVariable = vertexOutVar,
+          .edgeOutVariable = edgeOutVar,
+          .optimizedOutVariables = {_optimizedOutVariables.begin(),
+                                    _optimizedOutVariables.end()},
+          .tmpObjVariable = tmpObjVar,
+          .tmpObjVarNode = tmpObjVarNode,
+          .tmpIdNode = tmpIdNode,
+          .isLocalGraphNode = isLocalGraphNode(),
+          .isUsedAsSatellite = isUsedAsSatellite(),
+          .isSmart = _isSmart,
+          .isDisjoint = _isDisjoint,
+          .forceOneShardAttributeValue = _enabledClusterOneShardRule,
+          .directions = {_directions.begin(), _directions.end()},
+          .edgeCollections = edgeCollections,
+          .vertexCollections = vertexCollections,
+          .collectionToShard = collectionToShard};
 }
 
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {

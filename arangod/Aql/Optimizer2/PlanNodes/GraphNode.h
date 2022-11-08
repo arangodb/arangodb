@@ -25,6 +25,8 @@
 
 #include "Aql/Optimizer2/PlanNodes/BaseNode.h"
 #include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 #include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
@@ -56,6 +58,16 @@ struct GraphNode : optimizer2::nodes::BaseNode {
   optimizer2::GraphInfo graph;
   AttributeTypes::Numeric defaultDirection;
 
+  // variables
+  optimizer2::types::Variable vertexOutVariable;
+  optimizer2::types::Variable edgeOutVariable;
+  std::vector<optimizer2::types::Variable::VariableId> optimizedOutVariables;
+  optimizer2::types::Variable tmpObjVariable;
+
+  // nodes
+  optimizer2::types::Expression tmpObjVarNode;
+  optimizer2::types::Expression tmpIdNode;
+
   // ee bools
   bool isLocalGraphNode;
   bool isUsedAsSatellite;
@@ -67,7 +79,7 @@ struct GraphNode : optimizer2::nodes::BaseNode {
   std::vector<AttributeTypes::Numeric> directions;
   std::vector<AttributeTypes::String> edgeCollections;
   std::vector<AttributeTypes::String> vertexCollections;
-  VPackBuilder collectionToShard;
+  std::unordered_map<AttributeTypes::String, AttributeTypes::String> collectionToShard;
 };
 
 template<typename Inspector>
@@ -75,12 +87,9 @@ auto inspect(Inspector& f, GraphNode& x) {
   return f.object(x).fields(
       // structs
       f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.embedFields(
-          static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
-      f.field("options", x.options),                  // GraphOptions
       f.field("graphDefinition", x.graphDefinition),  // GraphDefinition
-      f.field("indexes", x.graphIndex),               // GraphIndex(es)
       // main
+      f.field("database", x.database),
       f.field("graph", x.graph),
       f.field("defaultDirection", x.defaultDirection),
       // ee bools

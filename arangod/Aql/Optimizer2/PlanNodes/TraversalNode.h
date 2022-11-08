@@ -114,6 +114,7 @@ auto inspect(Inspector& f, GraphIndex& x) {
  */
 struct TraversalNode : optimizer2::nodes::GraphNode {
   // inner structs
+  GraphDefinition graphDefinition;
   GraphOptions options;
   GraphIndex graphIndex;
 
@@ -148,16 +149,10 @@ struct TraversalNode : optimizer2::nodes::GraphNode {
   std::optional<std::vector<optimizer2::types::Variable>> variables;
 
   // variables
-  optimizer2::types::Variable tmpObjVariable;
+
   std::optional<optimizer2::types::Variable> inVariable;
 
-  // nodes
-  optimizer2::types::Expression tmpObjVarNode;
-  optimizer2::types::Expression tmpIdNode;
-
   // => [v,e,p]
-  optimizer2::types::Variable vertexOutVariable;
-  optimizer2::types::Variable edgeOutVariable;
   optimizer2::types::Variable pathOutVariable;
 };
 
