@@ -149,7 +149,6 @@ void CollectNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 optimizer2::nodes::CollectNode CollectNode::toInspectable() const {
-  // CONTINUE HERE TODO HEIKO TODO
   std::vector<optimizer2::nodes::CollectNodeStructs::CollectNodeGroupVariable>
       groupVars{};
   std::vector<
