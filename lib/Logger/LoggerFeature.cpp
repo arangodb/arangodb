@@ -91,7 +91,12 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.escape", "log.escape-control-chars");
 
   options
-      ->addOption("--log", "The global or topic-specific log level.",
+      ->addOption("--log",
+                  "Set the topic-specific log level, using `--log level` "
+                  "for the general topic or `--log topic=level` for the "
+                  "specified topic (can be specified multiple times). "
+                  "Available log levels: fatal, error, warning, info, debug, "
+                  "trace.",
                   new VectorParameter<StringParameter>(&_levels),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -182,8 +187,7 @@ You can adjust the parameter settings at runtime using the
 #else
                   "file:///path/to/file"
 #endif
-                  " (any occurrence of `$PID` is replaced with the "
-                  "process ID).",
+                  " (any occurrence of $PID is replaced with the process ID).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
 per-topic log messages to different outputs. The output definition can be one
@@ -243,11 +247,12 @@ the more general option `--log.output requests=file://...`.)");
 
   options
       ->addOption("--log.level,-l",
-                  "Set the global or topic-specific log "
-                  "level, using `--log.level level` or "
-                  "`--log.level topic=level` (can be specific multiple times). "
+                  "Set the topic-specific log level, using `--log.level level` "
+                  "for the general topic or `--log.level topic=level` for the "
+                  " specified topic (can be specific multiple times). "
                   "Available log levels: fatal, error, warning, info, debug, "
-                  "trace. Available log topics: " +
+                  "trace."
+                  "Available log topics: all, " +
                       topicsJoined + ".",
                   new VectorParameter<StringParameter>(&_levels))
       .setLongDescription(R"(ArangoDB's log output is grouped by topics.
