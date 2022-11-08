@@ -43,10 +43,11 @@ TEST(Optimizer2SingletonNode, construction) {
     "estimatedNrItems": 1
   })"_vpack;
 
-  auto res = deserializeWithStatus<SingletonNode>(SingletonNodeBuffer);
+  auto res = deserializeWithErrorT<SingletonNode>(SingletonNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto SingletonNode = res.get();

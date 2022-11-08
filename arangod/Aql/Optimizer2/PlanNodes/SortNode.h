@@ -24,29 +24,17 @@
 
 #include "Aql/Optimizer2/PlanNodes/BaseNode.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
-#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+#include "Aql/Optimizer2/PlanNodeTypes/SortNodeElement.h"
 
-#include "Inspection/VPackInspection.h"
+#include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
 
-struct SortNodeElement : optimizer2::types::Variable {
-  optimizer2::types::Variable inVariable;
-  bool ascending;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, SortNodeElement& x) {
-  return f.object(x).fields(f.field("inVariable", x.inVariable),
-                            f.field("ascending", x.ascending));
-}
-
 struct SortNode : optimizer2::nodes::BaseNode {
-  std::vector<SortNodeElement> elements;
+  std::vector<optimizer2::types::SortNodeElement> elements;
   bool stable;
   AttributeTypes::Numeric limit;
   AttributeTypes::String strategy;
-  std::optional<std::vector<AttributeTypes::String>> path;
 };
 
 template<typename Inspector>
@@ -54,8 +42,7 @@ auto inspect(Inspector& f, SortNode& x) {
   return f.object(x).fields(
       f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
       f.field("stable", x.stable), f.field("elements", x.elements),
-      f.field("limit", x.limit), f.field("strategy", x.strategy),
-      f.field("path", x.path));
+      f.field("limit", x.limit), f.field("strategy", x.strategy));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

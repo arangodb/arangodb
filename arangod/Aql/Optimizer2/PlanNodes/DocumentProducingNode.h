@@ -25,6 +25,7 @@
 #include "Aql/Optimizer2/Types/Types.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 
@@ -33,7 +34,9 @@ struct DocumentProducingNode : optimizer2::types::Projections {
   bool readOwnWrites;
   bool useCache;
   bool producesResult;
+  std::optional<optimizer2::types::Variable> outVariable;
   std::optional<optimizer2::types::Expression> filter;
+  std::optional<optimizer2::types::Projections> filterProjection;
 
   bool operator==(DocumentProducingNode const&) const = default;
 };
@@ -44,7 +47,8 @@ auto inspect(Inspector& f, DocumentProducingNode& v) {
       f.embedFields(static_cast<optimizer2::types::Projections&>(v)),
       f.field("count", v.count), f.field("readOwnWrites", v.readOwnWrites),
       f.field("useCache", v.useCache),
-      f.field("producesResult", v.producesResult), f.field("filter", v.filter));
+      f.field("producesResult", v.producesResult),
+      f.field("outVariable", v.outVariable), f.field("filter", v.filter));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

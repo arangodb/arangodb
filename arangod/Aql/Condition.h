@@ -145,6 +145,8 @@ class Condition {
   /// @brief export the condition as VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
 
+  std::optional<optimizer2::types::Expression> toInspectable() const;
+
   /// @brief create a condition from VPack
   static std::unique_ptr<Condition> fromVPack(
       ExecutionPlan*, arangodb::velocypack::Slice const&);

@@ -71,6 +71,19 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
+// PlanNodes
+#include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
+#include "Aql/Optimizer2/PlanNodes/EnumerateListNode.h"
+#include "Aql/Optimizer2/PlanNodes/CalculationNode.h"
+#include "Aql/Optimizer2/PlanNodes/FilterNode.h"
+#include "Aql/Optimizer2/PlanNodes/LimitNode.h"
+#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
+#include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
+
+// PlanNodesTypes
+#include "Aql/Optimizer2/PlanNodeTypes/Function.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
@@ -79,6 +92,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace materialize;
+using namespace arangodb::aql::optimizer2;
 
 namespace {
 
@@ -1079,6 +1093,24 @@ void ExecutionNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   doToVelocyPack(builder, flags);
 }
 
+// TODO: Introduce a template here to get rid of the "type" argument
+// TODO: Add canThrow as a parameter (or template)
+aql::optimizer2::nodes::BaseNode ExecutionNode::toInspectable(
+    std::string&& type) const {
+  AttributeTypes::Dependencies deps{};
+  for (auto const& it : _dependencies) {
+    deps.emplace_back(it->id().id());
+  }
+  CostEstimate estimate = getCost();
+
+  return {.id = AttributeTypes::Numeric{id().id()},
+          .type = std::move(type),
+          .dependencies = std::move(deps),
+          .estimatedCost = estimate.estimatedCost,
+          .estimatedNrItems = estimate.estimatedNrItems,
+          .canThrow = false};
+}
+
 /// @brief static analysis debugger
 #if 0
 struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -1636,6 +1668,10 @@ void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
   // nothing to do here!
 }
 
+optimizer2::nodes::SingletonNode SingletonNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("SingletonNode")}};
+}
+
 /// @brief the cost of a singleton is 1, it produces one item only
 CostEstimate SingletonNode::estimateCost() const {
   CostEstimate estimate = CostEstimate::empty();
@@ -1673,6 +1709,15 @@ void EnumerateCollectionNode::doToVelocyPack(VPackBuilder& builder,
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
+}
+
+optimizer2::nodes::EnumerateCollectionNode
+EnumerateCollectionNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("EnumerateCollectionNode")},
+          {DocumentProducingNode::toInspectable()},
+          {CollectionAccessingNode::toInspectable()},
+          _hint.toInspectable(),
+          _random};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1813,6 +1858,12 @@ void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+}
+
+optimizer2::nodes::EnumerateListNode EnumerateListNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("EnumerateListNode")},
+          _inVariable->toInspectable(),
+          _outVariable->toInspectable()};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1965,6 +2016,11 @@ void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   nodes.add("fullCount", VPackValue(_fullCount));
 }
 
+optimizer2::nodes::LimitNode LimitNode::toInspectable() const {
+  return {
+      {ExecutionNode::toInspectable("LimitNode")}, _offset, _limit, _fullCount};
+}
+
 /// @brief estimateCost
 CostEstimate LimitNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
@@ -2102,6 +2158,61 @@ void CalculationNode::doToVelocyPack(VPackBuilder& nodes,
       nodes.close();
     }
   }
+}
+
+optimizer2::nodes::CalculationNode CalculationNode::toInspectable(
+    unsigned flags) const {
+  std::vector<optimizer2::types::Function> functions{};
+
+  if ((flags & SERIALIZE_FUNCTIONS) && _expression->node() != nullptr) {
+    auto root = _expression->node();
+    if (root != nullptr) {
+      // enumerate all used functions, but report each function only once
+      std::unordered_set<std::string> functionsSeen;
+
+      // TODO: Note - do not like this part here ...
+      Ast::traverseReadOnly(
+          root, [&functionsSeen, &functions](AstNode const* node) -> bool {
+            if (node->type == NODE_TYPE_FCALL) {
+              auto func = static_cast<Function const*>(node->getData());
+              if (functionsSeen.insert(func->name).second) {
+                functions.emplace_back(optimizer2::types::Function{
+                    .name = func->name,
+                    .isDeterministic =
+                        func->hasFlag(Function::Flags::Deterministic),
+                    // deprecated
+                    .canRunOnDBServer =
+                        func->hasFlag(Function::Flags::CanRunOnDBServerCluster),
+                    .usesV8 = func->hasV8Implementation(),
+                    .canAccessDocuments =
+                        func->hasFlag(Function::Flags::CanReadDocuments),
+                    .canRunOnDBServerCluster =
+                        func->hasFlag(Function::Flags::CanRunOnDBServerCluster),
+                    .canRunOnDBServerOneShard = func->hasFlag(
+                        Function::Flags::CanRunOnDBServerOneShard),
+                    .cacheable = func->hasFlag(Function::Flags::Cacheable)});
+              }
+            } else if (node->type == NODE_TYPE_FCALL_USER) {
+              auto func = node->getString();
+              if (functionsSeen.insert(func).second) {
+                // user defined function, not seen before
+                functions.emplace_back(optimizer2::types::Function{
+                    .name = func,
+                    .isDeterministic = false,
+                    .canRunOnDBServer = false,  // deprecated
+                    .usesV8 = true});
+              }
+            }
+            return true;
+          });
+    }
+  }
+
+  return {{ExecutionNode::toInspectable("CalculationNode")},
+          _outVariable->toInspectable(),
+          _expression->toInspectable(),
+          _expression->typeString(),  // TODO: ^^ gut, storing same thing twice
+          std::move(functions)};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -2511,6 +2622,11 @@ void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
   _inVariable->toVelocyPack(nodes);
 }
 
+optimizer2::nodes::FilterNode FilterNode::toInspectable() const {
+  return {ExecutionNode::toInspectable("FilterNode"),
+          {_inVariable->toInspectable()}};
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine& engine,
@@ -2581,6 +2697,12 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
+
+optimizer2::nodes::ReturnNode ReturnNode::toInspectable() const {
+  return {{ExecutionNode::toInspectable("ReturnNode")},
+          {.count = _count},
+          {_inVariable->toInspectable()}};
+}
 
 /// @brief doToVelocyPack, for ReturnNode
 void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {

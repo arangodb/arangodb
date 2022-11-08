@@ -22,24 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
+#include "Aql/Optimizer2/Types/Types.h"
 
-#include <Inspection/VPackWithErrorT.h>
+namespace arangodb::aql::optimizer2::invariants {
 
-namespace arangodb::aql::optimizer2::nodes {
-
-struct LimitNode : optimizer2::nodes::BaseNode {
-  AttributeTypes::Numeric offset;
-  AttributeTypes::Numeric limit;
-  bool fullCount;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, LimitNode& x) {
-  return f.object(x).fields(
-      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.field("offset", x.offset), f.field("limit", x.limit),
-      f.field("fullCount", x.fullCount));
+static inline bool greaterOrEqualZeroNumeric(AttributeTypes::Numeric v) {
+  return v >= 0;
 }
 
-}  // namespace arangodb::aql::optimizer2::nodes
+static inline bool greaterOrEqualZeroDouble(AttributeTypes::Double v) {
+  return v >= 0;
+}
+
+}  // namespace arangodb::aql::optimizer2::invariants

@@ -49,10 +49,11 @@ TEST(Optimizer2FilterNode, construction) {
     }
   })"_vpack;
 
-  auto res = deserializeWithStatus<FilterNode>(FilterNodeBuffer);
+  auto res = deserializeWithErrorT<FilterNode>(FilterNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto filterNode = res.get();

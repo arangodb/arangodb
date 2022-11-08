@@ -26,10 +26,10 @@
 
 namespace arangodb::aql::optimizer2::types {
 
-using VariableId = size_t;
-using Identifier = std::string;
-
 struct Variable {
+  using VariableId = size_t;
+  using Identifier = std::string;
+
   VariableId id;
   Identifier name;
 

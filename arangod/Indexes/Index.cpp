@@ -556,6 +556,35 @@ void Index::toVelocyPack(
   }
 }
 
+arangodb::aql::optimizer2::types::IndexHandle Index::toInspectable(
+    std::underlying_type<Index::Serialize>::type flags) const {
+  std::vector<std::string> parsedFields{};
+  for (auto const& field : fields()) {
+    std::string fieldString;
+    TRI_AttributeNamesToString(field, fieldString);
+    parsedFields.emplace_back(fieldString);
+  }
+
+  return {
+      .id = std::to_string(_iid.id()),
+      .type = oldtypeName(type()),
+      .name = name(),
+      .fields = std::move(parsedFields),
+      .unique = _unique,
+      .sparse = _sparse,
+      .selectivityEstimate =
+          (hasSelectivityEstimate() &&
+           Index::hasFlag(flags, Index::Serialize::Estimates))
+              ? std::optional<double>{selectivityEstimate()}
+              : std::optional<double>{std::nullopt},
+      .figures =
+          Index::hasFlag(flags, Index::Serialize::Figures)
+              ? std::optional<arangodb::aql::optimizer2::types::
+                                  IndexFigure>{{.memory = memory()}}
+              : std::optional<arangodb::aql::optimizer2::types::IndexFigure>{
+                    std::nullopt}};
+}
+
 /// @brief create a VelocyPack representation of the index figures
 /// base functionality (called from derived classes)
 void Index::toVelocyPackFigures(VPackBuilder& builder) const {

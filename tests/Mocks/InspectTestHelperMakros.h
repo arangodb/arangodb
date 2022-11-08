@@ -199,6 +199,40 @@
   GeneratePositiveIntegerAttributeTestInternal(TestClass, attributeName, \
                                                attributeName, true)
 
+#define GeneratePositiveDoubleAttributeTestInternal(TestClass, attributeName, \
+                                                    valueName, allowZero)     \
+  TEST_F(TestClass, test_##attributeName) {                                   \
+    auto shouldBeEvaluatedTo = [&](VPackBuilder const& body,                  \
+                                   double expected) {                         \
+      auto testee = parse(body.sharedSlice());                                \
+      EXPECT_EQ(testee->valueName, expected)                                  \
+          << "Parsing error in " << body.toJson();                            \
+      __HELPER_equalsAfterSerializeParseCircle(testee.get())                  \
+    };                                                                        \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 2),     \
+                        2.0);                                                 \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 42.0),  \
+                        42);                                                  \
+    shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 4.5),   \
+                        4.5);                                                 \
+    if (allowZero) {                                                          \
+      shouldBeEvaluatedTo(createMinimumBodyWithOneValue(#attributeName, 0),   \
+                          0);                                                 \
+    } else {                                                                  \
+      __HELPER_assertParsingThrows(attributeName, 0);                         \
+    }                                                                         \
+    __HELPER_assertParsingThrows(attributeName, -1);                          \
+    __HELPER_assertParsingThrows(attributeName, -4.5);                        \
+    GenerateFailsOnBool(attributeName);                                       \
+    GenerateFailsOnString(attributeName);                                     \
+    GenerateFailsOnArray(attributeName);                                      \
+    GenerateFailsOnObject(attributeName);                                     \
+  }
+
+#define GenerateDoubleAttributeTest(TestClass, attributeName)           \
+  GeneratePositiveDoubleAttributeTestInternal(TestClass, attributeName, \
+                                              attributeName, true)
+
 #define GenerateIgnoredAttributeTest(TestClass, attributeName)                 \
   TEST_F(TestClass, test_##attributeName) {                                    \
     auto shouldPass = [&](VPackBuilder const& body) {                          \

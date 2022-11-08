@@ -53,6 +53,10 @@ class ExpressionContext;
 class QueryContext;
 struct Variable;
 
+namespace optimizer2::types {
+struct Expression;
+}  // namespace optimizer2::types
+
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
  public:
@@ -107,6 +111,8 @@ class Expression {
 
   /// @brief return a VelocyPack representation of the expression
   void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
+
+  optimizer2::types::Expression toInspectable() const;
 
   /// @brief execute the expression
   AqlValue execute(ExpressionContext* ctx, bool& mustDestroy);

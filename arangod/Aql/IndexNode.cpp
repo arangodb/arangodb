@@ -49,6 +49,9 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/Optimizer2/PlanNodes/IndexNode.h"
+#include "Aql/Optimizer2/Types/Types.h"
+
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -268,6 +271,77 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("field", VPackValue(fieldName));  // for explainer.js
     }
   }
+}
+
+optimizer2::nodes::IndexNode IndexNode::toInspectable() const {
+  std::vector<optimizer2::types::IndexHandle> indexes{};
+  for (auto const& index : _indexes) {
+    indexes.emplace_back(
+        index->toInspectable(Index::makeFlags(Index::Serialize::Estimates)));
+  }
+
+  std::optional<
+      std::vector<optimizer2::nodes::IndexNodeStructs::IndexValueVariable>>
+      indexValuesVars;
+  if (isLateMaterialized()) {
+    // container _indexes contains a few items
+    auto indIt = std::find_if(
+        _indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
+          return index->id() == _outNonMaterializedIndVars.first;
+        });
+    TRI_ASSERT(indIt != _indexes.cend());
+    auto const& coveredFields = (*indIt)->coveredFields();
+
+    if (!_outNonMaterializedIndVars.second.empty()) {
+      indexValuesVars = std::vector<
+          optimizer2::nodes::IndexNodeStructs::IndexValueVariable>{};
+      for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
+        TRI_ASSERT(fieldVar.second < coveredFields.size());
+        std::string fieldName;
+        basics::TRI_AttributeNamesToString(coveredFields[fieldVar.second],
+                                           fieldName, true);
+
+        indexValuesVars.value().emplace_back(
+            optimizer2::nodes::IndexNodeStructs::IndexValueVariable{
+                .fieldNumber = fieldVar.second,
+                .fieldName = fieldName,
+                .id = fieldVar.first->id,
+                .name = fieldVar.first->name});
+      }
+    }
+  }
+
+  return {
+      {ExecutionNode::toInspectable("IndexNode")},
+      {DocumentProducingNode::toInspectable()},
+      {CollectionAccessingNode::toInspectable()},
+      arangodb::aql::optimizer2::nodes::IndexNodeStructs::IndexOperatorOptions{
+          .allCoveredByOneIndex = _allCoveredByOneIndex,
+          .sorted = _options.sorted,
+          .ascending = _options.ascending,
+          .reverse = !_options.ascending,
+          .evalFCalls = _options.evaluateFCalls,
+          .waitForSync = _options.waitForSync,
+          .useCache = _options.useCache,
+          .limit = _options.limit,
+          .lookahead = _options.lookahead},
+      _condition->toInspectable(),
+      std::move(indexes),
+      _needsGatherNodeSort,
+      _indexCoversFilterCondition,
+      isLateMaterialized()
+          ? std::optional<optimizer2::types::Variable>{_outNonMaterializedDocId
+                                                           ->toInspectable()}
+          : std::optional<optimizer2::types::Variable>{std::nullopt},
+      isLateMaterialized()
+          ? std::optional<
+                optimizer2::AttributeTypes::Numeric>{_outNonMaterializedIndVars
+                                                         .first.id()}
+          : std::optional<optimizer2::AttributeTypes::Numeric>{std::nullopt},
+      _outNonMaterializedIndVars.second.empty()
+          ? std::optional<std::vector<optimizer2::nodes::IndexNodeStructs::
+                                          IndexValueVariable>>{std::nullopt}
+          : std::move(indexValuesVars)};
 }
 
 /// @brief adds a UNIQUE() to a dynamic IN condition

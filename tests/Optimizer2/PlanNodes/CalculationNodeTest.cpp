@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackStringLiteral.h"
 #include "Aql/Optimizer2/PlanNodes/CalculationNode.h"
 
+#include <Inspection/VPackWithErrorT.h>
 #include <fmt/core.h>
 
 using namespace arangodb::inspection;
@@ -61,10 +62,11 @@ TEST(Optimizer2CalculationNode, construction) {
     "expressionType": "json"
   })"_vpack;
 
-  auto res = deserializeWithStatus<CalculationNode>(CalculationNodeBuffer);
+  auto res = deserializeWithErrorT<CalculationNode>(CalculationNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto calculationNode = res.get();

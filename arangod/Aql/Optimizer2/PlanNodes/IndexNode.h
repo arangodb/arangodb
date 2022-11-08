@@ -32,6 +32,9 @@
 
 namespace arangodb::aql::optimizer2::nodes {
 
+// TODO: move this to a dedicated file (tbd)
+namespace IndexNodeStructs {
+
 struct IndexOperatorOptions {
   bool allCoveredByOneIndex;
   bool sorted;
@@ -39,6 +42,9 @@ struct IndexOperatorOptions {
   bool reverse;
   bool evalFCalls;
   bool waitForSync;
+  bool useCache;
+  AttributeTypes::Numeric limit;
+  AttributeTypes::Numeric lookahead;
 
   bool operator==(IndexOperatorOptions const&) const = default;
 };
@@ -49,16 +55,34 @@ auto inspect(Inspector& f, IndexOperatorOptions& x) {
       f.field("allCoveredByOneIndex", x.allCoveredByOneIndex),
       f.field("sorted", x.sorted), f.field("ascending", x.ascending),
       f.field("reverse", x.reverse), f.field("evalFCalls", x.evalFCalls),
-      f.field("waitForSync", x.waitForSync));
+      f.field("waitForSync", x.waitForSync), f.field("useCache", x.useCache),
+      f.field("limit", x.limit), f.field("lookahead", x.lookahead));
 };
 
-struct IndexNode : optimizer2::nodes::BaseNode,
-                   optimizer2::nodes::DocumentProducingNode,
-                   optimizer2::nodes::CollectionAccessingNode,
-                   optimizer2::types::Satellite,
-                   IndexOperatorOptions {
+struct IndexValueVariable {
+  AttributeTypes::Numeric fieldNumber;
+  AttributeTypes::String fieldName;
+  AttributeTypes::Numeric id;
+  AttributeTypes::String name;
+
+  bool operator==(IndexValueVariable const&) const = default;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, IndexValueVariable& x) {
+  return f.object(x).fields(f.field("fieldNumber", x.fieldNumber),
+                            f.field("fieldName", x.fieldName),
+                            f.field("id", x.id), f.field("name", x.name));
+};
+
+}  // namespace IndexNodeStructs
+
+struct IndexNode
+    : optimizer2::nodes::BaseNode,
+      optimizer2::nodes::DocumentProducingNode,
+      optimizer2::nodes::CollectionAccessingNode,
+      arangodb::aql::optimizer2::nodes::IndexNodeStructs::IndexOperatorOptions {
   // optionals
-  std::optional<optimizer2::types::Variable> outVariable;
   std::optional<optimizer2::types::Expression> condition;
 
   std::vector<optimizer2::types::IndexHandle> indexes;
@@ -66,14 +90,13 @@ struct IndexNode : optimizer2::nodes::BaseNode,
   // Boolean values
   bool needsGatherNodeSort;
   bool indexCoversProjections;
-  AttributeTypes::Numeric limit;
-  AttributeTypes::Numeric lookahead;
 
   // in case: "isLateMaterialized()"
   std::optional<optimizer2::types::Variable> outNonMaterializedDocId;
   std::optional<AttributeTypes::Numeric>
       indexIdOfVars;  // This is BaseType aka. DocumentId
-  std::optional<std::vector<optimizer2::types::Variable>> indexValuesVars;
+  std::optional<std::vector<IndexNodeStructs::IndexValueVariable>>
+      indexValuesVars;
 
   bool operator==(IndexNode const&) const = default;
 };
@@ -85,14 +108,10 @@ auto inspect(Inspector& f, IndexNode& x) {
       f.embedFields(static_cast<optimizer2::nodes::DocumentProducingNode&>(x)),
       f.embedFields(
           static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
-      f.embedFields(static_cast<optimizer2::types::Satellite&>(x)),
-      f.embedFields(static_cast<IndexOperatorOptions&>(x)),
-      // optionals
-      f.field("outVariable", x.outVariable),
+      f.embedFields(static_cast<IndexNodeStructs::IndexOperatorOptions&>(x)),
       // bools
       f.field("needsGatherNodeSort", x.needsGatherNodeSort),
       f.field("indexCoversProjections", x.indexCoversProjections),
-      f.field("limit", x.limit), f.field("lookahead", x.lookahead),
       // in case: "isLateMaterialized()"
       f.field("condition", x.condition), f.field("indexes", x.indexes),
       f.field("outNonMaterializedDocId", x.outNonMaterializedDocId),

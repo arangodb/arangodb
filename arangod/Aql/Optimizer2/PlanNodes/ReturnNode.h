@@ -25,7 +25,8 @@
 #include "Aql/Optimizer2/PlanNodes/BaseNode.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Count.h"
-#include "Inspection/VPackInspection.h"
+
+#include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
 

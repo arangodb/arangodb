@@ -18,28 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+#include "Aql/Optimizer2/Types/Types.h"
 
 #include "velocypack/Builder.h"
 
 namespace arangodb::aql::optimizer2::types {
 
-struct Satellite {
-  bool satellite;    // always set
-  bool isSatellite;  // only in EE set
-  std::optional<AttributeTypes::NodeId> isSatelliteOf =
-      std::nullopt;  // only in EE set
-
-  bool operator==(Satellite const& other) const = default;
+struct SortNodeElement : Variable {
+  Variable inVariable;
+  bool ascending;
+  std::optional<std::vector<AttributeTypes::String>> path;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, Satellite& x) {
-  return f.object(x).fields(f.field("satellite", x.satellite),
-                            f.field("isSatellite", x.isSatellite),
-                            f.field("isSatelliteOf", x.isSatelliteOf));
+auto inspect(Inspector& f, SortNodeElement& x) {
+  return f.object(x).fields(f.field("inVariable", x.inVariable),
+                            f.field("ascending", x.ascending),
+                            f.field("path", x.path));
 }
 
 }  // namespace arangodb::aql::optimizer2::types

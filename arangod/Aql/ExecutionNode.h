@@ -97,6 +97,17 @@ struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
+namespace optimizer2::nodes {
+struct BaseNode;
+struct CalculationNode;
+struct EnumerateCollectionNode;
+struct EnumerateListNode;
+struct FilterNode;
+struct LimitNode;
+struct ReturnNode;
+struct SingletonNode;
+}  // namespace optimizer2::nodes
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -376,6 +387,8 @@ class ExecutionNode {
   /// @brief serialize this ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
+  optimizer2::nodes::BaseNode toInspectable(std::string&& type) const;
+
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
   /// This function implicitly creates an array and serializes all nodes
   /// top-down, i.e., the upmost dependency will be the first, and this node
@@ -630,6 +643,7 @@ class SingletonNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+  optimizer2::nodes::SingletonNode toInspectable() const;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -691,6 +705,8 @@ class EnumerateCollectionNode : public ExecutionNode,
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
+  optimizer2::nodes::EnumerateCollectionNode toInspectable() const;
+
  private:
   /// @brief whether or not we want a random document from the collection
   bool _random;
@@ -746,6 +762,8 @@ class EnumerateListNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
+  optimizer2::nodes::EnumerateListNode toInspectable() const;
+
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
@@ -795,6 +813,8 @@ class LimitNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::LimitNode toInspectable() const;
 
  private:
   /// @brief the offset
@@ -859,6 +879,8 @@ class CalculationNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::CalculationNode toInspectable(unsigned flags) const;
 
  private:
   /// @brief output variable to write to
@@ -986,6 +1008,8 @@ class FilterNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
+  optimizer2::nodes::FilterNode toInspectable() const;
+
  private:
   /// @brief input variable to read from
   Variable const* _inVariable;
@@ -1020,6 +1044,8 @@ class ReturnNode : public ExecutionNode {
              Variable const* inVariable);
 
   ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  optimizer2::nodes::ReturnNode toInspectable() const;
 
   /// @brief return the type of the node
   NodeType getType() const override final;

@@ -38,6 +38,8 @@
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/Optimizer2/PlanNodes/CollectNode.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
@@ -144,6 +146,57 @@ void CollectNode::doToVelocyPack(VPackBuilder& nodes,
   nodes.add("specialized", VPackValue(_specialized));
   nodes.add(VPackValue("collectOptions"));
   _options.toVelocyPack(nodes);
+}
+
+optimizer2::nodes::CollectNode CollectNode::toInspectable() const {
+  std::vector<optimizer2::nodes::CollectNodeStructs::CollectNodeGroupVariable>
+      groupVars{};
+  std::vector<
+      optimizer2::nodes::CollectNodeStructs::CollectNodeAggregateVariable>
+      aggregates;
+
+  for (auto const& groupVariable : _groupVariables) {
+    groupVars.emplace_back(
+        optimizer2::nodes::CollectNodeStructs::CollectNodeGroupVariable{
+            .outVariable = groupVariable.outVar->toInspectable(),
+            .inVariable = groupVariable.inVar->toInspectable()});
+  }
+
+  for (auto const& aggregateVariable : _aggregateVariables) {
+    aggregates.emplace_back(
+        optimizer2::nodes::CollectNodeStructs::CollectNodeAggregateVariable{
+            .outVariable = aggregateVariable.outVar->toInspectable(),
+            .inVariable =
+                aggregateVariable.inVar
+                    ? std::optional<
+                          optimizer2::types::Variable>{aggregateVariable.inVar
+                                                           ->toInspectable()}
+                    : std::optional<optimizer2::types::Variable>{std::nullopt},
+            .type = aggregateVariable.type});
+  }
+
+  std::optional<
+      std::vector<optimizer2::nodes::CollectNodeStructs::CollectNodeVariable>>
+      keepVariables;
+  if (!_keepVariables.empty()) {
+    keepVariables = std::vector<
+        optimizer2::nodes::CollectNodeStructs::CollectNodeVariable>{};
+    for (auto const& it : _keepVariables) {
+      keepVariables.value().emplace_back(
+          optimizer2::nodes::CollectNodeStructs::CollectNodeVariable{
+              it->toInspectable()});
+    }
+  }
+
+  return {{ExecutionNode::toInspectable("CollectNode")},
+          _options.toInspectable(),
+          std::move(groupVars),
+          std::move(aggregates),
+          _expressionVariable->toInspectable(),
+          _outVariable->toInspectable(),
+          std::move(keepVariables),
+          _isDistinctCommand,
+          _specialized};
 }
 
 void CollectNode::calcExpressionRegister(

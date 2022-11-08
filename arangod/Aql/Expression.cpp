@@ -48,6 +48,8 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
+#include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -1902,6 +1904,11 @@ std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {
 void Expression::toVelocyPack(arangodb::velocypack::Builder& builder,
                               bool verbose) const {
   _node->toVelocyPack(builder, verbose);
+}
+
+optimizer2::types::Expression Expression::toInspectable() const {
+  static constexpr bool verbose = true;
+  return _node->toInspectable(verbose);
 }
 
 std::string Expression::typeString() {

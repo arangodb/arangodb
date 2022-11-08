@@ -42,6 +42,10 @@ class ExecutionBlock;
 class ExecutionPlan;
 struct Aggregator;
 
+namespace optimizer2::nodes {
+struct CollectNode;
+}
+
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
@@ -195,6 +199,8 @@ class CollectNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::CollectNode toInspectable() const;
 
  private:
   /// @brief options for the aggregation

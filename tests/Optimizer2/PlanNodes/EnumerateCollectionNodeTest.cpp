@@ -68,11 +68,12 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     "isSatelliteOf": null
   })"_vpack;
 
-  auto res = deserializeWithStatus<EnumerateCollectionNode>(
+  auto res = deserializeWithErrorT<EnumerateCollectionNode>(
       enumerateCollectionNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto enumerateCollectionNode = res.get();
@@ -92,12 +93,14 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_FALSE(enumerateCollectionNode.canThrow.has_value());
 
     // outVariable
-    EXPECT_EQ(enumerateCollectionNode.outVariable.id, 0u);
-    EXPECT_EQ(enumerateCollectionNode.outVariable.name, "x");
+    EXPECT_EQ(enumerateCollectionNode.outVariable.value().id, 0u);
+    EXPECT_EQ(enumerateCollectionNode.outVariable.value().name, "x");
+    EXPECT_TRUE(enumerateCollectionNode.outVariable.value()
+                    .isFullDocumentFromCollection);
     EXPECT_TRUE(
-        enumerateCollectionNode.outVariable.isFullDocumentFromCollection);
-    EXPECT_TRUE(enumerateCollectionNode.outVariable.isDataFromCollection);
-    EXPECT_FALSE(enumerateCollectionNode.outVariable.constantValue.has_value());
+        enumerateCollectionNode.outVariable.value().isDataFromCollection);
+    EXPECT_FALSE(
+        enumerateCollectionNode.outVariable.value().constantValue.has_value());
 
     EXPECT_EQ(enumerateCollectionNode.estimatedCost, 2u);
     EXPECT_EQ(enumerateCollectionNode.estimatedNrItems, 0u);
@@ -123,8 +126,9 @@ TEST(Optimizer2EnumerateCollectionNode, construction) {
     EXPECT_EQ(enumerateCollectionNode.maxProjections, 5u);
     EXPECT_EQ(enumerateCollectionNode.database, "_system");
     EXPECT_EQ(enumerateCollectionNode.collection, "_graphs");
-    EXPECT_FALSE(enumerateCollectionNode.satellite);
-    EXPECT_FALSE(enumerateCollectionNode.isSatellite);
+    EXPECT_FALSE(enumerateCollectionNode.satellite.value());
+    EXPECT_TRUE(enumerateCollectionNode.isSatellite.has_value());
+    EXPECT_FALSE(enumerateCollectionNode.isSatellite.value());
     EXPECT_FALSE(enumerateCollectionNode.isSatelliteOf.has_value());
   }
 }

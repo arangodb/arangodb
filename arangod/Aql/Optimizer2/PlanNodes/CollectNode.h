@@ -26,9 +26,10 @@
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
-#include "Inspection/VPackInspection.h"
-
 namespace arangodb::aql::optimizer2::nodes {
+
+namespace CollectNodeStructs {
+// TODO: Move this into its own file and another place.
 
 struct CollectNodeAggregate : optimizer2::types::Variable {
   std::optional<optimizer2::types::Variable> inVariable;
@@ -68,7 +69,7 @@ auto inspect(Inspector& f, CollectNodeGroupVariable& x) {
 }
 
 struct CollectNodeAggregateVariable {
-  std::optional<optimizer2::types::Variable> outVariable;
+  optimizer2::types::Variable outVariable;
   std::optional<optimizer2::types::Variable> inVariable;
   AttributeTypes::String type;  // "functionName"
 
@@ -103,14 +104,20 @@ template<typename Inspector>
 auto inspect(Inspector& f, CollectOptions& x) {
   return f.object(x).fields(f.field("method", x.method));
 }
+}  // namespace CollectNodeStructs
 
-struct CollectNode : optimizer2::nodes::BaseNode, optimizer2::types::Variable {
-  CollectOptions collectOptions;
-  std::vector<CollectNodeGroupVariable> groups;
-  std::vector<CollectNodeAggregateVariable> aggregates;
+struct CollectNode : optimizer2::nodes::BaseNode {
+  optimizer2::nodes::CollectNodeStructs::CollectOptions collectOptions;
+  std::vector<optimizer2::nodes::CollectNodeStructs::CollectNodeGroupVariable>
+      groups;
+  std::vector<
+      optimizer2::nodes::CollectNodeStructs::CollectNodeAggregateVariable>
+      aggregates;
   std::optional<optimizer2::types::Variable> expression;
   std::optional<optimizer2::types::Variable> outVariable;
-  std::optional<std::vector<CollectNodeVariable>> keepVariables;
+  std::optional<
+      std::vector<optimizer2::nodes::CollectNodeStructs::CollectNodeVariable>>
+      keepVariables;
   bool isDistinctCommand;
   bool specialized;
 

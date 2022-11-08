@@ -83,7 +83,7 @@ class Optimizer2BaseNode : public testing::Test {
 // Generic tests
 
 GenerateIntegerAttributeTest(Optimizer2BaseNode, id);
-GenerateIntegerAttributeTest(Optimizer2BaseNode, estimatedCost);
+GenerateDoubleAttributeTest(Optimizer2BaseNode, estimatedCost);
 GenerateIntegerAttributeTest(Optimizer2BaseNode, estimatedNrItems);
 
 // Default test

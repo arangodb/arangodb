@@ -26,7 +26,7 @@
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
-#include "Inspection/VPackInspection.h"
+#include <Inspection/VPackWithErrorT.h>
 
 namespace arangodb::aql::optimizer2::nodes {
 

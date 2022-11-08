@@ -43,6 +43,10 @@ struct Collection;
 class ExecutionPlan;
 struct Variable;
 
+namespace optimizer2::nodes {
+struct CollectionAccessingNode;
+}
+
 class CollectionAccessingNode {
  public:
   explicit CollectionAccessingNode(aql::Collection const* collection);
@@ -51,6 +55,8 @@ class CollectionAccessingNode {
   virtual ~CollectionAccessingNode() = default;
 
  public:
+  optimizer2::nodes::CollectionAccessingNode toInspectable() const;
+
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     unsigned flags) const;
 

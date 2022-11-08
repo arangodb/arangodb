@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Aql/Optimizer2/Invariants/Invariants.h"
 #include "Aql/Optimizer2/Types/Types.h"
 
 namespace arangodb::aql::optimizer2::nodes {
@@ -31,8 +32,8 @@ struct BaseNode {
   AttributeTypes::NodeId id;
   AttributeTypes::NodeType type;
   AttributeTypes::Dependencies dependencies;
-  AttributeTypes::Numeric estimatedCost;  // TODO: might be double. Check this.
-  AttributeTypes::Numeric estimatedNrItems;
+  AttributeTypes::Double estimatedCost = 0.0;
+  AttributeTypes::Numeric estimatedNrItems = 0;
   std::optional<bool> canThrow;
 
   bool operator==(BaseNode const&) const = default;
@@ -40,11 +41,16 @@ struct BaseNode {
 
 template<class Inspector>
 auto inspect(Inspector& f, BaseNode& v) {
-  return f.object(v).fields(f.field("id", v.id), f.field("type", v.type),
-                            f.field("dependencies", v.dependencies),
-                            f.field("estimatedCost", v.estimatedCost),
-                            f.field("estimatedNrItems", v.estimatedNrItems),
-                            f.field("canThrow", v.canThrow));
+  return f.object(v).fields(
+      f.field("id", v.id), f.field("type", v.type),
+      f.field("dependencies", v.dependencies),
+      f.field("estimatedCost", v.estimatedCost)
+          .fallback(f.keep())
+          .invariant(invariants::greaterOrEqualZeroDouble),
+      f.field("estimatedNrItems", v.estimatedNrItems)
+          .fallback(f.keep())
+          .invariant(invariants::greaterOrEqualZeroNumeric),
+      f.field("canThrow", v.canThrow));
 }
 
 }  // namespace arangodb::aql::optimizer2::nodes

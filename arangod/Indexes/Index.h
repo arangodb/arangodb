@@ -38,6 +38,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include "Aql/Optimizer2/PlanNodeTypes/Indexes.h"
+
 namespace arangodb {
 class IndexIterator;
 class LogicalCollection;
@@ -385,6 +387,8 @@ class Index {
       std::underlying_type<Index::Serialize>::type flags) const;
   std::shared_ptr<velocypack::Builder> toVelocyPack(
       std::underlying_type<Serialize>::type flags) const;
+  arangodb::aql::optimizer2::types::IndexHandle toInspectable(
+      std::underlying_type<Index::Serialize>::type flags) const;
 
   virtual void toVelocyPackFigures(velocypack::Builder&) const;
 

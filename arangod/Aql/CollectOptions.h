@@ -34,6 +34,10 @@ class Slice;
 namespace aql {
 struct Variable;
 
+namespace optimizer2::nodes::CollectNodeStructs {
+struct CollectOptions;
+}
+
 /// @brief CollectOptions
 struct CollectOptions final {
   /// @brief selected aggregation method
@@ -57,6 +61,8 @@ struct CollectOptions final {
 
   /// @brief convert the options to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+  optimizer2::nodes::CollectNodeStructs::CollectOptions toInspectable() const;
 
   /// @brief get the aggregation method from a string
   static CollectMethod methodFromString(std::string_view);

@@ -43,6 +43,10 @@ class ExecutionPlan;
 class Expression;
 struct Variable;
 
+namespace optimizer2::nodes {
+struct DocumentProducingNode;
+}  // namespace optimizer2::nodes
+
 class DocumentProducingNode {
  public:
   explicit DocumentProducingNode(Variable const* outVariable);
@@ -80,6 +84,8 @@ class DocumentProducingNode {
 
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     unsigned flags) const;
+
+  arangodb::aql::optimizer2::nodes::DocumentProducingNode toInspectable() const;
 
   void setCountFlag() { _count = true; }
 

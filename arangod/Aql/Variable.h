@@ -40,6 +40,10 @@ namespace aql {
 class Ast;
 struct AstNode;
 
+namespace optimizer2::types {
+struct Variable;
+}  // namespace optimizer2::types
+
 struct Variable {
   /// @brief name of $OLD variable
   static constexpr std::string_view NAME_OLD = "$OLD";
@@ -77,6 +81,8 @@ struct Variable {
 
   /// @brief return a VelocyPack representation of the variable
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+  arangodb::aql::optimizer2::types::Variable toInspectable() const;
 
   /// @brief replace a variable by another
   static Variable const* replace(

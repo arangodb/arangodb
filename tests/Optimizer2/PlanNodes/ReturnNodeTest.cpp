@@ -51,10 +51,11 @@ TEST(Optimizer2ReturnNode, construction) {
     "estimatedNrItems": 1
   })"_vpack;
 
-  auto res = deserializeWithStatus<ReturnNode>(returnNodeBuffer);
+  auto res = deserializeWithErrorT<ReturnNode>(returnNodeBuffer);
 
   if (!res) {
-    fmt::print("Something went wrong: {}", res.error());
+    fmt::print("Something went wrong: {} {}", res.error().error(),
+               res.error().path());
     EXPECT_TRUE(res.ok());
   } else {
     auto returnNode = res.get();
