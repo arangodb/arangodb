@@ -1022,10 +1022,10 @@ bool Index::covers(arangodb::aql::Projections& projections) const {
   return true;
 }
 
-void Index::warmup(arangodb::transaction::Methods*,
-                   std::shared_ptr<basics::LocalTaskQueue>) {
+Result Index::scheduleWarmup() {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
+  return {};
 }
 
 /// @brief generate error message
