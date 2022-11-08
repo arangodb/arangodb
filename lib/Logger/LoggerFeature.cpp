@@ -249,7 +249,7 @@ the more general option `--log.output requests=file://...`.)");
       ->addOption("--log.level,-l",
                   "Set the topic-specific log level, using `--log.level level` "
                   "for the general topic or `--log.level topic=level` for the "
-                  " specified topic (can be specific multiple times).\n"
+                  "specified topic (can be specified multiple times).\n"
                   "Available log levels: fatal, error, warning, info, debug, "
                   "trace.\n"
                   "Available log topics: all, " +
