@@ -823,6 +823,7 @@ template class arangodb::pregel::GraphStore<HITSKleinbergValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
+template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::GraphStore<VertexData, EdgeData>;

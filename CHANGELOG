@@ -6,6 +6,15 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.8.
 
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, the
+  addition of the AT LEAST and WITH COUNT INTO constructs, and the
+  SHA256() function.
+
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
 * Improve performance and memory usage of IN list lookups for hash, skiplist
   and persistent indexes.
 
