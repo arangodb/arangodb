@@ -116,7 +116,7 @@ replicated_log::LogLeader::~LogLeader() {
           _guardedLeaderData.getLockedGuard()->_waitForQueue.empty();
       !queueEmpty) {
     TRI_ASSERT(false) << "expected wait-for-queue to be empty";
-    LOG_CTX("ce7f7", ERR, _logContext) << "expected wait-for-queue to be empty";
+    LOG_CTX("ce7f1", ERR, _logContext) << "expected wait-for-queue to be empty";
   }
 }
 
@@ -710,7 +710,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     WaitForQueue toBeResolved;
     auto const end = _waitForQueue.upper_bound(_commitIndex);
     for (auto it = _waitForQueue.begin(); it != end;) {
-      LOG_CTX("37d9d", TRACE, _self._logContext)
+      LOG_CTX("37f9d", TRACE, _self._logContext)
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }

@@ -337,7 +337,7 @@ struct arangodb::VocBaseLogManager {
       StorageEngine& engine =
           server.getFeature<EngineSelectorFeature>().engine();
 
-      LOG_CTX("ef730", DEBUG, logContext)
+      LOG_CTX("ef73d", DEBUG, logContext)
           << "building new replicated state " << id << " impl = " << type;
 
       // prepare map
