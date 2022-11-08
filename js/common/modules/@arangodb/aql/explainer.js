@@ -1934,7 +1934,12 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
+              if (node.inVariable !== undefined) {
+                aggregateString += variableName(node.inVariable);
+              }
+              aggregateString += ')';
+              return aggregateString;
             }).join(', ');
         }
         return window;

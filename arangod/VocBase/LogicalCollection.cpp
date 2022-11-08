@@ -919,9 +919,12 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
                       "bad value for replicationFactor");
       }
 
+      auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor > 10) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
@@ -944,9 +947,10 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         }
       }
     } else if (replicationFactorSlice.isString()) {
-      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
+      if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE

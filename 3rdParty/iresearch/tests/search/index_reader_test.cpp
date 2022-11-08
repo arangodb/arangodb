@@ -417,7 +417,9 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::io_error);
+    ASSERT_THROW(
+        irs::segment_reader::open(dir, meta, irs::index_reader_options{}),
+        irs::io_error);
   }
 }
 
@@ -466,7 +468,8 @@ TEST(segment_reader_test, open) {
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
-    auto rdr = irs::segment_reader::open(dir, meta);
+    auto rdr =
+        irs::segment_reader::open(dir, meta, irs::index_reader_options{});
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());
