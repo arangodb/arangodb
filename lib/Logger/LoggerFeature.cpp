@@ -128,11 +128,20 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #else
                      "file:///path/to/file"
 #endif
-                     " (any '$PID' will be replaced with the process id)",
-                     new VectorParameter<StringParameter>(&_output));
+
+  std::vector<std::string> topicsVector;
+  auto const& levels = Logger::logLevelTopics();
+  for (auto const& level : levels) {
+    topicsVector.emplace_back(level.first);
+  }
+  std::string topicsJoined = StringUtils::join(topicsVector, ", ");
 
   options
-      ->addOption("--log.level,-l", "the global or topic-specific log level",
+      ->addOption("--log.level,-l", "Set the global or topic-specific log "
+                  "level, using `--log.level level` or "
+                  "`--log.level topic=level` (can be specific multiple times). "
+                  "Available log levels: fatal, error, warning, info, debug, "
+                  "trace. Available log topics: " + topicsJoined + ".",
                   new VectorParameter<StringParameter>(&_levels))
       .setLongDescription(R"(
 
