@@ -54,7 +54,8 @@ struct NetworkLeaderCommunicator : ILeaderCommunicator {
                                      ParticipantId leader, DatabaseID database,
                                      LogId logId);
   auto getParticipantId() const noexcept -> ParticipantId const& override;
-  auto reportSnapshotAvailable() noexcept -> futures::Future<Result> override;
+  auto reportSnapshotAvailable(MessageId) noexcept
+      -> futures::Future<Result> override;
 
  private:
   network::ConnectionPool* pool;

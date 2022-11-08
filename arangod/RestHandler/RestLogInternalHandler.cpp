@@ -95,8 +95,15 @@ RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   auto participant = _request->value("follower");
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+  auto report =
+      velocypack::deserialize<replicated_log::SnapshotAvailableReport>(body);
   auto res = _vocbase.getReplicatedLogLeaderById(logId)->setSnapshotAvailable(
-      participant);
+      participant, report);
   if (res.fail()) {
     generateError(res);
   } else {

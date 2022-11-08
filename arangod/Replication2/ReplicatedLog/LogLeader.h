@@ -169,7 +169,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   auto getParticipantConfigGenerations() const noexcept
       -> std::pair<std::size_t, std::optional<std::size_t>>;
 
-  auto setSnapshotAvailable(ParticipantId const&) -> Result;
+  auto setSnapshotAvailable(ParticipantId const& participantId,
+                            SnapshotAvailableReport report) -> Result;
 
  protected:
   // Use the named constructor construct() to create a leader!
@@ -204,6 +205,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
     bool snapshotAvailable{false};
+    MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
 
     enum class State {

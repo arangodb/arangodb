@@ -781,17 +781,18 @@ Result LogFollower::onSnapshotCompleted() {
   ADB_PROD_ASSERT(guard->_snapshotProgress ==
                   GuardedFollowerData::SnapshotProgress::kInProgress);
   guard->_snapshotProgress = GuardedFollowerData::SnapshotProgress::kCompleted;
-  leaderCommunicator->reportSnapshotAvailable().thenFinal(
-      [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
-        auto realRes = basics::catchToResult([&] { return res.get(); });
-        if (realRes.fail()) {
-          LOG_CTX("9db47", ERR, self->_loggerContext)
-              << "failed to update snapshot status on leader";
-          FATAL_ERROR_EXIT();  // TODO this has to be more resilient
-        }
-        LOG_CTX("600de", DEBUG, self->_loggerContext)
-            << "snapshot status updated on leader";
-      });
+  leaderCommunicator->reportSnapshotAvailable(guard->_lastRecvMessageId)
+      .thenFinal(
+          [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
+            auto realRes = basics::catchToResult([&] { return res.get(); });
+            if (realRes.fail()) {
+              LOG_CTX("9db47", ERR, self->_loggerContext)
+                  << "failed to update snapshot status on leader";
+              FATAL_ERROR_EXIT();  // TODO this has to be more resilient
+            }
+            LOG_CTX("600de", DEBUG, self->_loggerContext)
+                << "snapshot status updated on leader";
+          });
   return {};
 }
 

@@ -891,11 +891,28 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
           << ", errorCode = " << to_string(response.errorCode)
           << ", reason  = " << to_string(response.reason.error);
 
-      if (follower.snapshotAvailable != response.snapshotAvailable) {
-        LOG_CTX("efd44", INFO, follower.logContext)
-            << "snapshot status changed old = " << follower.snapshotAvailable
-            << " new = " << response.snapshotAvailable;
-        follower.snapshotAvailable = response.snapshotAvailable;
+      // We *must* also ignore the snapshot status when the message id is equal.
+      // See the comment in the else branch for details.
+      if (follower.snapshotAvailableMessageId < response.messageId) {
+        if (follower.snapshotAvailable != response.snapshotAvailable) {
+          LOG_CTX("efd44", INFO, follower.logContext)
+              << "snapshot status changed old = " << follower.snapshotAvailable
+              << " new = " << response.snapshotAvailable;
+          follower.snapshotAvailable = response.snapshotAvailable;
+        }
+      } else {
+        // Note that follower.snapshotAvailableMessageId can be equal to
+        // response.messageId. This means that the follower has called
+        // update-snapshot-status right after handling the append entries
+        // request with that id, but the append entries response arrived here
+        // after the update-snapshot-status.
+        LOG_CTX("cf587", DEBUG, follower.logContext) << fmt::format(
+            "Ignoring snapshot status from append entries response. The "
+            "current status ({}) was set with message id {}, while the "
+            "response (with status {}) currently being handled has message id "
+            "{}.",
+            follower.snapshotAvailable, follower.snapshotAvailableMessageId,
+            response.snapshotAvailable, response.messageId);
       }
 
       follower.lastErrorReason = response.reason;
@@ -1561,13 +1578,30 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
 }
 
 auto replicated_log::LogLeader::setSnapshotAvailable(
-    ParticipantId const& participantId) -> Result {
+    ParticipantId const& participantId, SnapshotAvailableReport report)
+    -> Result {
   auto guard = _guardedLeaderData.getLockedGuard();
   auto follower = guard->_follower.find(participantId);
   if (follower == guard->_follower.end()) {
     return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
   }
-  follower->second->snapshotAvailable = true;
+  auto& followerInfo = *follower->second;
+  if (followerInfo.snapshotAvailableMessageId > report.messageId) {
+    // We already got more recent information, we may silently ignore this.
+    // NOTE that '==' instead of '>' *must not* be ignored: An
+    // AppendEntriesResponse can have the same MessageId as an
+    // "update-snapshot-status", but is always less recent.
+    LOG_CTX("62dc4", DEBUG, _logContext) << fmt::format(
+        "Ignoring outdated 'snapshot available' message from {} follower. "
+        "This was reported with message id {}, but we already have a report "
+        "from {}. The current status is {}.",
+        participantId, report.messageId,
+        followerInfo.snapshotAvailableMessageId,
+        followerInfo.snapshotAvailable);
+    return {};
+  }
+  followerInfo.snapshotAvailable = true;
+  followerInfo.snapshotAvailableMessageId = report.messageId;
   LOG_CTX("c8b6a", INFO, _logContext)
       << "Follower snapshot " << participantId << " completed.";
   auto promises = guard->checkCommitIndex();

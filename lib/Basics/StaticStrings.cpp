@@ -397,6 +397,12 @@ std::string const StaticStrings::ReleaseIndex("releaseIndex");
 std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
 std::string const StaticStrings::Outcome("outcome");
 
+// Replication 2.0 API Strings
+std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
+std::string_view const StaticStrings::ApiLogExternal("/_api/log");
+std::string_view const StaticStrings::ApiDocumentStateExternal(
+    "/_api/document-state");
+
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
@@ -456,13 +462,6 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
-
-std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
-std::string_view const StaticStrings::ApiLogExternal("/_api/log");
-std::string_view const StaticStrings::ApiReplicatedStateExternal(
-    "/_api/replicated-state");
-std::string_view const StaticStrings::ApiDocumentStateExternal(
-    "/_api/document-state");
 
 // TODO REMOVE ME AFTER REFACTOR IS DONE
 std::string const StaticStrings::GraphRefactorFlag("refactor");
