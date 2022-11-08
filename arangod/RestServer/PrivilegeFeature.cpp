@@ -89,7 +89,8 @@ In general, this option (and the related `--gid`) can lower privileges but not
 raise them.)");
 
   options->addOption(
-      "--server.uid", "switch to user-id after reading config files",
+      "--server.uid",
+      "Switch to this user ID after reading configuration files.",
       new StringParameter(&_uid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
@@ -113,7 +114,8 @@ reading configuration files, but before accepting connections or opening other
 files (such as recovery files).)");
 
   options->addOption(
-      "--server.gid", "switch to group-id after reading config files",
+      "--server.gid",
+      "Switch to this group ID after reading configuration files.",
       new StringParameter(&_gid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif

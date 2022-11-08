@@ -495,7 +495,7 @@ collections (e.g. test suites).)");
 
   options->addOption(
       "--database.ignore-datafile-errors",
-      "load collections even if datafiles may contain errors",
+      "Load collections even if datafiles may contain errors.",
       new BooleanParameter(&_ignoreDatafileErrors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -511,7 +511,7 @@ collections (e.g. test suites).)");
 
   options
       ->addOption("--database.io-heartbeat",
-                  "perform IO heartbeat to test underlying volume",
+                  "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))

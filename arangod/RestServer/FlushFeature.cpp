@@ -50,9 +50,20 @@ FlushFeature::FlushFeature(Server& server)
 FlushFeature::~FlushFeature() = default;
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption("--server.flush-interval",
-                             "interval (in microseconds) for flushing data",
-                             true);
+  options
+      ->addObsoleteOption("--server.flush-interval",
+                          "The interval (in microseconds) for flushing data.",
+                          true)
+      .setLongDescription(R"(ArangoDB periodically ensures that all data
+sources (databases, views, etc.) have flushed all committed data to disk and
+write some checkpoint data to aid in future recovery. Increasing this value
+results in fewer, larger write batches, while decreasing it results in more,
+smaller writes. If you set this value too low, it can easily overwhelm the
+server, while setting the value too high may result in high memory usage and
+periodic slowdowns.
+
+The typical range for this value is between 100000 (100ms) and 10000000 (10s).
+Adjust the value with caution.)");
 }
 
 void FlushFeature::registerFlushSubscription(

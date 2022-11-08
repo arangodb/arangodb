@@ -101,7 +101,7 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                    arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--working-directory", "working directory in daemon mode",
+      "--working-directory", "The working directory in daemon mode.",
       new StringParameter(&_workingDirectory),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,

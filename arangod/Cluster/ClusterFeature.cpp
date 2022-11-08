@@ -241,16 +241,21 @@ All specifications of endpoints apply.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600)
-      .setLongDescription(
-          R"(This value is used as the default write concern for
-databases, which in turn is used as the default for collections.)");
+      .setLongDescription(R"(This value is used as the default write concern
+for databases, which in turn is used as the default for collections.
 
-  options->addOption("--cluster.system-replication-factor",
-                     "The default replication factor for system collections.",
-                     new UInt32Parameter(&_systemReplicationFactor),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator));
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
+
+  options
+      ->addOption("--cluster.system-replication-factor",
+                  "The default replication factor for system collections.",
+                  new UInt32Parameter(&_systemReplicationFactor),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator))
+      .setLongDescription(R"(**Warning**: If you use multiple Coordinators, use
+the same value on all Coordinators.)");
 
   options
       ->addOption("--cluster.default-replication-factor",
@@ -267,7 +272,10 @@ be between the values of `--cluster.min-replication-factor` and
 
 Note that you can still adjust the replication factor per collection. This value
 is only the default value used for new collections if no replication factor is
-specified when creating a collection.)");
+specified when creating a collection.
+
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.min-replication-factor",
@@ -280,7 +288,10 @@ specified when creating a collection.)");
       .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
-violate the new setting.)");
+violate the new setting.
+
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.max-replication-factor",
@@ -295,7 +306,10 @@ violate the new setting.)");
       .setIntroducedIn(30600)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
-violate the new setting.)");
+violate the new setting.
+
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption(
@@ -309,7 +323,10 @@ violate the new setting.)");
       .setIntroducedIn(30501)
       .setLongDescription(R"(If you change the value of this setting and
 restart the servers, no changes are applied to existing collections that would
-violate the new setting.)");
+violate the new setting.
+
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options
       ->addOption("--cluster.force-one-shard",
@@ -324,11 +341,14 @@ violate the new setting.)");
 all future collections with only a single shard and using the same DB-Server as
 as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
-and provide advanced transactional guarantees.)");
+and provide advanced transactional guarantees.
+
+**Warning**: If you use multiple Coordinators, use the same value on all
+Coordinators.)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
-      "active coordinator will wait for all replicas to create collection",
+      "Let the active Coordinator wait for all replicas to create collections.",
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -338,8 +358,8 @@ and provide advanced transactional guarantees.)");
 
   options->addOption(
       "--cluster.index-create-timeout",
-      "amount of time (in seconds) the coordinator will wait for an index to "
-      "be created before giving up",
+      "The amount of time (in seconds) the Coordinator waits for an index to "
+      "be created before giving up.",
       new DoubleParameter(&_indexCreationTimeout),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,

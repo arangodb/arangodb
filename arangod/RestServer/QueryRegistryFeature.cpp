@@ -535,8 +535,8 @@ The value can still be adjusted on a per-query basis by setting the
 
   options
       ->addOption("--query.max-nodes-per-callstack",
-                  "maximum number execution nodes on the callstack before "
-                  "splitting the remaining nodes into a separate thread",
+                  "The maximum number of execution nodes on the callstack "
+                  "before splitting the remaining nodes into a separate thread",
                   new UInt64Parameter(&_maxNodesPerCallstack),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -544,15 +544,16 @@ The value can still be adjusted on a per-query basis by setting the
 
   options->addOption(
       "--query.registry-ttl",
-      "default time-to-live of cursors and query snippets (in "
-      "seconds); if <= 0, value will default to 30 for "
-      "single-server instances or 600 for coordinator instances",
+      "The default time-to-live of cursors and query snippets (in seconds). "
+      "If set to 0 or lower, the value defaults to 30 for single server "
+      "instances and 600 for Coordinator instances.",
       new DoubleParameter(&_queryRegistryTTL),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   options
-      ->addOption("--query.smart-joins", "enable SmartJoins query optimization",
+      ->addOption("--query.smart-joins",
+                  "Whether to enable the SmartJoins query optimization.",
                   new BooleanParameter(&_smartJoins),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -561,7 +562,7 @@ The value can still be adjusted on a per-query basis by setting the
 
   options
       ->addOption("--query.parallelize-traversals",
-                  "enable traversal parallelization",
+                  "Whether to enable traversal parallelization.",
                   new BooleanParameter(&_parallelizeTraversals),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -574,8 +575,8 @@ The value can still be adjusted on a per-query basis by setting the
   options
       ->addOption(
           "--query.max-parallelism",
-          "maximum number of threads to use for a single query; "
-          "actual query execution may use less depending on various factors",
+          "The maximum number of threads to use for a single query; the "
+          "actual query execution may use less depending on various factors.",
           new UInt64Parameter(&_maxParallelism),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon,
@@ -624,8 +625,8 @@ usage of collection names will always be disallowed.)");
 
   options
       ->addOption("--query.max-artifact-log-length",
-                  "maximum length of query strings and bind parameter values "
-                  "in logs before they get truncated",
+                  "The maximum length of query strings and bind parameter "
+                  "values in logs before they get truncated.",
                   new SizeTParameter(&_maxQueryStringLength),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -638,8 +639,8 @@ usage of collection names will always be disallowed.)");
 
   options
       ->addOption("--query.log-memory-usage-threshold",
-                  "log queries that have a peak memory usage larger than this "
-                  "threshold",
+                  "Log queries that have a peak memory usage larger than this "
+                  "threshold.",
                   new UInt64Parameter(&_peakMemoryUsageThreshold),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -651,7 +652,7 @@ usage of collection names will always be disallowed.)");
       .setIntroducedIn(31100);
 
   options
-      ->addOption("--query.log-failed", "log failed AQL queries",
+      ->addOption("--query.log-failed", "Whether to log failed AQL queries.",
                   new BooleanParameter(&_logFailedQueries),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,

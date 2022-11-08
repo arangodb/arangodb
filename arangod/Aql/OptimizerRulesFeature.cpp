@@ -84,7 +84,7 @@ state.)");
   options
       ->addOption(
           "--query.parallelize-gather-writes",
-          "enable write parallelization for gather nodes",
+          "Whether to enable write parallelization for gather nodes.",
           new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
       .setIntroducedIn(30600);
 }

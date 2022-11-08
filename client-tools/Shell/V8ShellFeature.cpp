@@ -101,38 +101,39 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.startup-directory",
-      "startup paths containing the JavaScript files",
+      "The startup paths containing the JavaScript files.",
       new StringParameter(&_startupDirectory),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--javascript.client-module", "client module to use at startup",
+      "--javascript.client-module", "The client module to use at startup.",
       new StringParameter(&_clientModule),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.copy-directory",
-      "target directory to copy files from 'javascript.startup-directory' into "
-      "(only used when `--javascript.copy-installation` is enabled)",
+      "The target directory to copy files from "
+      "`--javascript.startup-directory` "
+      "to (only used if `--javascript.copy-installation` is enabled).",
       new StringParameter(&_copyDirectory));
 
   options->addOption(
       "--javascript.module-directory",
-      "additional paths containing JavaScript modules",
+      "Additional paths containing JavaScript modules.",
       new VectorParameter<StringParameter>(&_moduleDirectories),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.current-module-directory",
-                     "add current directory to module path",
+                     "Add the current directory to the module path.",
                      new BooleanParameter(&_currentModuleDirectory));
 
   options->addOption("--javascript.copy-installation",
-                     "Copy contents of `--javascript.startup-directory`.",
+                     "Copy the contents of `--javascript.startup-directory`.",
                      new BooleanParameter(&_copyInstallation));
 
   options->addOption(
       "--javascript.gc-interval",
-      "request-based garbage collection interval (each n.th command)",
+      "Request-based garbage collection interval (each n-th command).",
       new UInt64Parameter(&_gcInterval));
 }
 

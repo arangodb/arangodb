@@ -319,7 +319,8 @@ a value between 1 and 16.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(R"(Increasing the value of this option forces each
-Pregel job to run with at least this level of parallelism.)");
+Pregel job to run with at least this level of parallelism. In a cluster
+deployment, the limit applies per DB-Server.)");
 
   options
       ->addOption("--pregel.max-parallelism",
@@ -332,7 +333,8 @@ Pregel job to run with at least this level of parallelism.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(R"(This option effectively limits the parallelism of
-each Pregel job to the specified value.
+each Pregel job to the specified value. In a cluster deployment, the limit
+applies per DB-Server.
 
 Defaults to the number of available cores.)");
 

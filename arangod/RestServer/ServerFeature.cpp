@@ -78,28 +78,30 @@ another mode.)");
   options->addSection("server", "server features");
 
   options->addOption(
-      "--server.rest-server", "start a rest-server",
+      "--server.rest-server", "Start a REST server.",
       new BooleanParameter(&_restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
           "--server.validate-utf8-strings",
-          "perform UTF-8 string validation for incoming JSON and VelocyPack "
-          "data",
+          "Perform UTF-8 string validation for incoming JSON and VelocyPack "
+          "data.",
           new BooleanParameter(&_validateUtf8Strings),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30700);
 
-  options->addOption("--javascript.script", "run scripts and exit",
+  options->addOption("--javascript.script", "Run the script and exit.",
                      new VectorParameter<StringParameter>(&_scripts));
 
 #if _WIN32
   options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
       new UInt16Parameter(&_codePage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Uncommon));
 #endif
 
   // add several obsoleted options here
