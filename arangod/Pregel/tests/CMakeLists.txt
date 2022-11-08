@@ -1,4 +1,4 @@
-add_subdirectory(Messagable)
+add_subdirectory(Actor)
 
 add_executable(arangodbtests_wcc
   ${PROJECT_SOURCE_DIR}/lib/Basics/VelocyPackStringLiteral.cpp

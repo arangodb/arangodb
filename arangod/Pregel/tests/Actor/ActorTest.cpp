@@ -23,13 +23,51 @@
 
 #include <chrono>
 #include <thread>
+#include <string>
 
 #include "gtest/gtest.h"
+#include "Actor/Actor.h"
 
-#include "Messaging/MessagableT.h"
+#include "fmt/core.h"
 
+using namespace arangodb::pregel::actor;
 
+struct Scheduler {
+  auto operator()(auto fn) {
+    fmt::print("schedule called\n");
+    fn();
+    return;
+  }
+};
 
-TEST(Messagable, processes_message) {
+struct State {
+  std::string state;
+  std::size_t called;
+};
 
+struct Message {
+  std::size_t store;
+};
+
+struct Handler {
+  auto operator()(State state, Message msg) -> State {
+    fmt::print("message handler called\n");
+    state.called++;
+    return state;
+  }
+};
+
+using MyActor = Actor<Scheduler, Handler, State, Message>;
+
+TEST(Actor, processes_message) {
+
+  auto scheduler = Scheduler{};
+
+  auto actor = MyActor(scheduler, {.state = "Hello"});
+
+  send(actor, {.store = 5});
+  send(actor, {.store = 7});
+  send(actor, {.store = 22});
+
+  fmt::print("I got called {} times", actor.state.called );
 }

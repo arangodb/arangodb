@@ -26,22 +26,21 @@
 #include <Inspection/VPackWithErrorT.h>
 #include <boost/lockfree/queue.hpp>
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::actor {
 
-template<typename Scheduler, typename MessagableT, typename MessageT>
-struct Messagable {
-  template<typename... Args>
-  Messagable(Scheduler* scheduler, Args&&... args)
-      : scheduler(scheduler), contained(std::forward<Args>(args)...) {}
+template<typename Scheduler, typename MessageHandler, typename State, typename Message>
+struct Actor {
+  Actor(Scheduler& schedule, State initialState)
+      : schedule(schedule), state(initialState) {}
 
-  void enqueue(MessageT msg) {
+  void process(Message msg) {
     inbox.push(msg);
     kick();
   }
 
   void kick() {
     // Make sure that *someone* works here
-    scheduler->queue([this]() { this->work(); });
+    schedule([this]() { this->work(); });
   }
 
   void work() {
@@ -49,9 +48,9 @@ struct Messagable {
     if (busy.compare_exchange_strong(was_false, true)) {
       // TODO: this needs to be a constructor parameter
       auto i = size_t{5};
-      auto msg = MessageT{};
+      auto msg = Message{};
       while (inbox.pop(msg) and i > 0) {
-        contained.handle(msg);
+        state = handler(state, msg);
         i--;
       }
       if (i == 0 && !inbox.empty()) {
@@ -62,8 +61,16 @@ struct Messagable {
   }
 
   std::atomic<bool> busy;
-  boost::lockfree::queue<MessageT> inbox;
-  Scheduler* scheduler;
-  MessagableT contained;
+  boost::lockfree::queue<Message> inbox;
+  Scheduler& schedule;
+  MessageHandler handler{};
+  State state;
 };
+
+template<typename Scheduler, typename MessageHandler, typename State, typename Message>
+void send(Actor<Scheduler, MessageHandler, State, Message>& actor, Message msg) {
+  actor.process(msg);
+}
+
+
 }  // namespace arangodb::pregel
