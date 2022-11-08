@@ -128,14 +128,12 @@ void ReplicationFeature::collectOptions(
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addOption(
-      "--replication.automatic-failover",
-      "Please use `--replication.active-failover` instead",
-      new BooleanParameter(&_enableActiveFailover),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
   options->addOption("--replication.active-failover",
-                     "Enable active-failover during asynchronous replication",
+                     "Enable active-failover during asynchronous replication.",
                      new BooleanParameter(&_enableActiveFailover));
+  options->addOldOption("--replication.automatic-failover",
+                        "--replication.active-failover");
 
   options
       ->addOption(
