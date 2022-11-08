@@ -196,7 +196,11 @@ be set consistently across all cluster nodes so they can talk to each other.
 
 ArangoDB also supports an `--server.jwt-secret` option to pass the secret
 directly (without a file). However, this is discouraged for security
-reasons.)");
+reasons.
+
+You can reload JWT secrets from disk without restarting the server or the nodes
+of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
+You can use this feature to roll out new JWT secrets throughout a cluster.)");
 
   options
       ->addOption(
@@ -210,7 +214,11 @@ reasons.)");
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
-Only one secret needs to verify a JWT token for it to be accepted.)");
+Only one secret needs to verify a JWT token for it to be accepted.
+
+You can reload JWT secrets from disk without restarting the server or the nodes
+of a cluster deployment via the `POST /_admin/server/jwt` HTTP API endpoint.
+You can use this feature to roll out new JWT secrets throughout a cluster.)");
 }
 
 void AuthenticationFeature::validateOptions(
