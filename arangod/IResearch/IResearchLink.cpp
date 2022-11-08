@@ -271,36 +271,36 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tickLow,
   tickLow = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tickLow));
   tickHigh = std::numeric_limits<TRI_voc_tick_t>::max();
   SegmentPayloadVersion version{SegmentPayloadVersion::SingleTick};
-  if (payload.size() > sizeof(uint64_t) + sizeof(version)) {
-    std::memcpy(&version, payload.c_str() + sizeof(uint64_t), sizeof(version));
-    version = static_cast<SegmentPayloadVersion>(irs::numeric_utils::ntoh32(
-        static_cast<std::underlying_type_t<SegmentPayloadVersion>>(version)));
-    switch (version) {
-      case SegmentPayloadVersion::TwoStageTick: {
-        if (payload.size() == (2 * sizeof(uint64_t)) + sizeof(version)) {
-          std::memcpy(&tickHigh,
-                      payload.c_str() + sizeof(uint64_t) + sizeof(version),
-                      sizeof(uint64_t));
-          tickHigh = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tickHigh));
-        } else {
-          LOG_TOPIC("49b4d", ERR, TOPIC)
-              << "Unexpected segment payload size " << payload.size()
-              << " for version '"
-              << static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
-                     version)
-              << "'";
-          return false;
-        }
-        break;
-      }
-      default:
-        // falling back to SingleTick as it always present
-        LOG_TOPIC("fad1f", WARN, TOPIC)
-            << "Unexpected segment payload version '"
+  if (payload.size() < sizeof(uint64_t) + sizeof(version)) {
+    return false;
+  }
+  std::memcpy(&version, payload.c_str() + sizeof(uint64_t), sizeof(version));
+  version = static_cast<SegmentPayloadVersion>(irs::numeric_utils::ntoh32(
+      static_cast<std::underlying_type_t<SegmentPayloadVersion>>(version)));
+  switch (version) {
+    case SegmentPayloadVersion::TwoStageTick: {
+      if (payload.size() == (2 * sizeof(uint64_t)) + sizeof(version)) {
+        std::memcpy(&tickHigh,
+                    payload.c_str() + sizeof(uint64_t) + sizeof(version),
+                    sizeof(uint64_t));
+        tickHigh = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tickHigh));
+      } else {
+        LOG_TOPIC("49b4d", ERR, TOPIC)
+            << "Unexpected segment payload size " << payload.size()
+            << " for version '"
             << static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
                    version)
-            << "' fallback to minimal version";
+            << "'";
+        return false;
+      }
+      break;
     }
+    default:
+      // falling back to SingleTick as it always present
+      LOG_TOPIC("fad1f", WARN, TOPIC)
+          << "Unexpected segment payload version '"
+          << static_cast<std::underlying_type_t<SegmentPayloadVersion>>(version)
+          << "' fallback to minimal version";
   }
   return true;
 }
@@ -911,13 +911,12 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
   }
 
   std::lock_guard guard{_commitMutex};
-  auto const lastCommittedTickStageOne = _lastCommittedTickStageOne;
-  auto const lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
   _lastCommittedTickStageTwo = tick;
   bool recoverCommittedTick = true;
   _commitStageOne = true;
   auto lastCommittedTickGuard =
-      irs::make_finally([lastCommittedTickStageOne, lastCommittedTickStageTwo,
+      irs::make_finally([lastCommittedTickStageOne = _lastCommittedTickStageOne,
+                         lastCommittedTickStageTwo = _lastCommittedTickStageTwo,
                          this, &recoverCommittedTick] {
         if (recoverCommittedTick) {
           _lastCommittedTickStageOne = lastCommittedTickStageOne;
@@ -1199,9 +1198,9 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
     LOG_TOPIC("7e328", DEBUG, TOPIC)
         << "successful sync of arangosearch link '" << id() << "', segments '"
         << reader->size() << "', docs count '" << reader->docs_count()
-        << "', live docs count '" << reader->docs_count()
         << "', live docs count '" << reader->live_docs_count()
-        << "', last operation tick '" << _lastCommittedTickStageOne << "'";
+        << "', last operation tick low '" << _lastCommittedTickStageOne << "'"
+        << "', last operation tick high '" << _lastCommittedTickStageTwo << "'";
   } catch (basics::Exception const& e) {
     return {e.code(), "caught exception while committing arangosearch link '" +
                           std::to_string(id().id()) + "': " + e.what()};
@@ -1761,8 +1760,7 @@ Result IResearchLink::initDataStore(
     // convert to BE
     tick = irs::numeric_utils::hton64(
         uint64_t{_commitStageOne ? _lastCommittedTickStageTwo
-                                 : std::min(_lastCommittedTickStageOne,
-                                            _lastCommittedTickStageTwo)});
+                                 : _lastCommittedTickStageOne});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
     auto version = irs::numeric_utils::hton32(
@@ -1770,11 +1768,7 @@ Result IResearchLink::initDataStore(
             SegmentPayloadVersion::TwoStageTick));
     out.append(reinterpret_cast<irs::byte_type const*>(&version),
                sizeof version);
-    if (_commitStageOne) {
-      tick = _lastCommittedTickStageOne;
-    } else {
-      tick = std::max(_lastCommittedTickStageOne, _lastCommittedTickStageTwo);
-    }
+    tick = std::max(_lastCommittedTickStageOne, _lastCommittedTickStageTwo);
     tick = irs::numeric_utils::hton64(tick);
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
     return true;
