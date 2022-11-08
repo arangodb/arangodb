@@ -19,7 +19,6 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
-add_subdirectory(Zkd)
 
 # ----------------------------------------
 # Link directories
@@ -302,7 +301,8 @@ if (LINUX)
     set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
   endif ()
 endif ()
-add_executable(
+
+add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_test(NAME arangodbtests
