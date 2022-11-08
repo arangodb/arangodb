@@ -261,7 +261,7 @@ void ClusterProvider::fetchVerticesFromEngines(
     result.emplace_back(std::move(lE));
   }
 
-  _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
+  _stats.addHttpRequests(_opts.engines()->size());
 }
 
 void ClusterProvider::destroyEngines() {
