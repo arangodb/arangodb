@@ -1144,6 +1144,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
 #endif
     _commitStageOne = false;
     auto lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
+    auto const lastTickBeforeCommitTwo = _engine->currentTick();
     // now commit what has possibly accumulated in the second flush context
     // but will not move the tick as it possibly contains "3rd" generation
     // changes
@@ -1153,7 +1154,8 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
           << "Second commit for arangosearch link '" << id() << "' result is "
           << secondCommit << " tick " << _lastCommittedTickStageTwo;
       if (!secondCommit) {
-        _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
+        _lastCommittedTickStageOne = lastTickBeforeCommitTwo;
+        _lastCommittedTickStageTwo = lastTickBeforeCommitTwo;
       }
     } catch (...) {
       // restore last committed tick in case of any error

@@ -960,7 +960,7 @@ void IResearchFeature::collectOptions(
   options
       ->addOption(
           CACHE_LIMIT,
-          "Limit in bytes for ArangoSearch columns cache. (0 = no caching)",
+          "limit in bytes for ArangoSearch columns cache. (0 = no caching)",
           new options::UInt64Parameter(&_columnsCacheLimit),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -971,7 +971,7 @@ void IResearchFeature::collectOptions(
 #endif
   options
       ->addOption(WRITE_HIGH_TICK,
-                  "Whether or not write high tick in the segment meta.",
+                  "whether or not to write high tick in the segment meta",
                   new options::BooleanParameter(&_writeHighTick),
                   arangodb::options::makeDefaultFlags(
                       // Set all as our testing system cannot provide extraArgs
