@@ -356,7 +356,7 @@ void GraphStore<V, E>::loadVertices(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
+  PregelShard sourceShard = _config->shardId(vertexShard);
   auto cursor =
       trx.indexScan(_resourceMonitor, vertexShard,
                     transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
