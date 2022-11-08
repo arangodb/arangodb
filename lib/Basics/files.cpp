@@ -2630,9 +2630,9 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
 #ifdef __APPLE__
   // at least on macOS f_bsize produces incorrect results. it is unclear
   // yet if we need to use f_frsize on Linux as well.
-  uint64_t factor = static_cast<uint64_t>(stat.f_frsize);
+  auto const factor = static_cast<uint64_t>(stat.f_frsize);
 #else
-  uint64_t factor = static_cast<uint64_t>(stat.f_bsize);
+  auto const factor = static_cast<uint64_t>(stat.f_bsize);
 #endif
 
   totalSpace = factor * static_cast<uint64_t>(stat.f_blocks);
