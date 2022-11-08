@@ -45,6 +45,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Aql/Optimizer2/Types/Types.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalEnumeratePathsNode.h"
 #include "Enterprise/Aql/LocalShortestPathNode.h"
@@ -733,6 +734,25 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
+}
+
+optimizer2::nodes::GraphNode GraphNode::toInspectable(
+    std::string&& type) const {
+  using namespace optimizer2::nodes;
+  using VPackLoadInspector = inspection::VPackLoadInspector<>;
+
+  velocypack::Builder builder = _graphInfo;
+
+  VPackLoadInspector inspector{builder};
+  optimizer2::GraphInfo graphInfo;
+  auto result = inspector.apply(graphInfo);
+  ADB_PROD_ASSERT(result.ok());
+
+  return {
+      {ExecutionNode::toInspectable(std::move(type))},
+          _vocbase->name(),
+          graphInfo
+  };
 }
 
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {

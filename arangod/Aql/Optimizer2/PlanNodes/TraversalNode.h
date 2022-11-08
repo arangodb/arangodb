@@ -22,35 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Aql/Optimizer2/PlanNodes/BaseNode.h"
-#include "Aql/Optimizer2/PlanNodes/CollectionAcessingNode.h"
+#include "Aql/Optimizer2/PlanNodes/GraphNode.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 
 #include "Inspection/VPackInspection.h"
 
 namespace arangodb::aql::optimizer2::nodes {
-
-/*
- * GraphDefinition
- */
-
-struct GraphDefinition {
-  std::vector<AttributeTypes::String> vertexCollectionNames;
-  std::vector<AttributeTypes::String> edgeCollectionNames;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, GraphDefinition& x) {
-  return f.object(x).fields(
-      f.field("vertexCollectionNames", x.vertexCollectionNames),
-      f.field("edgeCollectionNames", x.edgeCollectionNames));
-}
-
 /*
  * GraphOptions
  */
-
 struct GraphOptions {
   AttributeTypes::Numeric parallelism;
   bool refactor;
@@ -94,7 +75,6 @@ auto inspect(Inspector& f, GraphOptions& x) {
 /*
  * GraphIndex's inner used "Base"
  */
-
 struct GraphIndexBase {
   AttributeTypes::String id;
   AttributeTypes::String type;
@@ -117,7 +97,6 @@ auto inspect(Inspector& f, GraphIndexBase& x) {
 /*
  * GraphIndex
  */
-
 struct GraphIndex {
   std::vector<GraphIndexBase> base;
   VPackBuilder levels;  // TODO
@@ -133,33 +112,13 @@ auto inspect(Inspector& f, GraphIndex& x) {
  * TraversalNode (MainNode)
  * (above structs used as inner helpers here)
  */
-
-// TODO: Also implement general GraphNode + inheritance
-
-struct TraversalNode : optimizer2::nodes::BaseNode,
-                       optimizer2::nodes::CollectionAccessingNode {
+struct TraversalNode : optimizer2::nodes::GraphNode {
   // inner structs
   GraphOptions options;
-  GraphDefinition graphDefinition;
   GraphIndex graphIndex;
 
   // main
-  AttributeTypes::String graph;
-  AttributeTypes::Numeric defaultDirection;
   AttributeTypes::String vertexId;
-
-  // ee bools
-  bool isLocalGraphNode;
-  bool isUsedAsSatellite;
-  bool isSmart;
-  bool isDisjoint;
-  bool forceOneShardAttributeValue;
-
-  // various
-  std::vector<AttributeTypes::Numeric> directions;
-  std::vector<AttributeTypes::String> edgeCollections;
-  std::vector<AttributeTypes::String> vertexCollections;
-  VPackBuilder collectionToShard;
 
   // conditions
   std::optional<optimizer2::types::Expression> condition;
@@ -205,27 +164,10 @@ struct TraversalNode : optimizer2::nodes::BaseNode,
 template<typename Inspector>
 auto inspect(Inspector& f, TraversalNode& x) {
   return f.object(x).fields(
-      // structs
-      f.embedFields(static_cast<optimizer2::nodes::BaseNode&>(x)),
-      f.embedFields(
-          static_cast<optimizer2::nodes::CollectionAccessingNode&>(x)),
-      f.field("options", x.options),                  // GraphOptions
-      f.field("graphDefinition", x.graphDefinition),  // GraphDefinition
-      f.field("indexes", x.graphIndex),               // GraphIndex(es)
+      //structs
+      f.embedFields(static_cast<optimizer2::nodes::GraphNode&>(x)),
       // main
-      f.field("graph", x.graph),
-      f.field("defaultDirection", x.defaultDirection),
       f.field("vertexId", x.vertexId),
-      // ee bools
-      f.field("isLocalGraphNode", x.isLocalGraphNode),
-      f.field("isUsedAsSatellite", x.isUsedAsSatellite),
-      f.field("isSmart", x.isSmart), f.field("isDisjoint", x.isDisjoint),
-      f.field("forceOneShardAttributeValue", x.forceOneShardAttributeValue),
-      // various
-      f.field("directions", x.directions),
-      f.field("edgeCollections", x.edgeCollections),
-      f.field("vertexCollections", x.vertexCollections),
-      f.field("collectionToShard", x.collectionToShard),
       // conditions
       f.field("condition", x.condition),
       f.field("globalEdgeConditions", x.globalEdgeConditions),
@@ -251,5 +193,4 @@ auto inspect(Inspector& f, TraversalNode& x) {
       f.field("edgeOutVariable", x.edgeOutVariable),
       f.field("pathOutVariable", x.pathOutVariable));
 }
-
 }  // namespace arangodb::aql::optimizer2::nodes

@@ -60,4 +60,21 @@ auto inspect(Inspector& f, ProjectionType& x) {
                     insp::inlineType<ProjectionType::ProjectionString>());
 }
 
+struct GraphInfo {
+  typedef std::vector<AttributeTypes::String> EColNames;
+  typedef AttributeTypes::String GraphName;
+
+  std::variant<EColNames, GraphName> graphInfo;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, GraphInfo& x) {
+  namespace insp = arangodb::inspection;
+
+  return f.variant(x.graphInfo)
+      .unqualified()
+      .alternatives(insp::inlineType<GraphInfo::EColNames>(),
+                    insp::inlineType<GraphInfo::GraphName>());
+}
+
 }  // namespace arangodb::aql::optimizer2

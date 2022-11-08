@@ -31,6 +31,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
+#include "Aql/Optimizer2/PlanNodes/GraphNode.h"
 
 #include <velocypack/Builder.h>
 
@@ -228,6 +229,8 @@ class GraphNode : public ExecutionNode {
 
   void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone,
                         bool withProperties) const;
+
+  optimizer2::nodes::GraphNode toInspectable(std::string&& type) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,
