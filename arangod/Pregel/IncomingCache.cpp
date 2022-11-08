@@ -23,7 +23,6 @@
 
 #include "IncomingCache.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Utils.h"
 #include "Pregel/WorkerConfig.h"
 
@@ -378,8 +377,3 @@ template class arangodb::pregel::CombiningInCache<HLLCounter>;
 template class arangodb::pregel::InCache<ColorPropagationMessageValue>;
 template class arangodb::pregel::ArrayInCache<ColorPropagationMessageValue>;
 template class arangodb::pregel::CombiningInCache<ColorPropagationMessageValue>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::InCache<MessageData>;
-template class arangodb::pregel::ArrayInCache<MessageData>;
-template class arangodb::pregel::CombiningInCache<MessageData>;
