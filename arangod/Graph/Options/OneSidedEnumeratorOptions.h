@@ -24,24 +24,23 @@
 
 #pragma once
 
-#include <numeric>
 #include <cstddef>
 
-namespace arangodb {
-
-namespace graph {
+namespace arangodb::graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
+                            bool produceVertices);
   ~OneSidedEnumeratorOptions();
 
-  [[nodiscard]] size_t getMinDepth() const;
-  [[nodiscard]] size_t getMaxDepth() const;
+  [[nodiscard]] size_t getMinDepth() const noexcept;
+  [[nodiscard]] size_t getMaxDepth() const noexcept;
+  [[nodiscard]] bool produceVertices() const noexcept;
 
  private:
-  size_t _minDepth;
-  size_t _maxDepth;
+  size_t const _minDepth;
+  size_t const _maxDepth;
+  bool const _produceVertices;
 };
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

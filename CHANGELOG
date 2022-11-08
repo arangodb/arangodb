@@ -1,3 +1,9 @@
+v3.10.2 (XXXX-XX-XX)
+--------------------
+
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
+
 v3.10.1 (XXXX-XX-XX)
 --------------------
 
