@@ -275,7 +275,7 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tickLow,
   tickHigh = std::numeric_limits<TRI_voc_tick_t>::max();
   SegmentPayloadVersion version{SegmentPayloadVersion::SingleTick};
   if (payload.size() < sizeof(uint64_t) + sizeof(version)) {
-    return false;
+    return true;
   }
   std::memcpy(&version, payload.c_str() + sizeof(uint64_t), sizeof(version));
   version = static_cast<SegmentPayloadVersion>(irs::numeric_utils::ntoh32(
@@ -1731,10 +1731,9 @@ Result IResearchLink::initDataStore(
           << "successfully opened existing data store data store reader for "
           << "link '" << id() << "', docs count '"
           << _dataStore._reader->docs_count() << "', live docs count '"
-          << _dataStore._reader->live_docs_count()
-          << "', recovery tick low boundary '" << _dataStore._recoveryTickLow
-          << "' , recovery tick high boundary '" << _dataStore._recoveryTickHigh
-          << "'";
+          << _dataStore._reader->live_docs_count() << "', recovery tick low '"
+          << _dataStore._recoveryTickLow << "' , recovery tick high '"
+          << _dataStore._recoveryTickHigh << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }
@@ -1771,6 +1770,9 @@ Result IResearchLink::initDataStore(
                                  : _lastCommittedTickStageOne});
 
     out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof tick);
+    if (_asyncFeature && !_asyncFeature->writeHighTick()) {
+      return true;
+    }
     auto version = irs::numeric_utils::hton32(
         static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
             SegmentPayloadVersion::TwoStageTick));

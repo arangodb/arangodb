@@ -793,6 +793,7 @@ std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
 std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
+std::string const WRITE_HIGH_TICK("--arangosearch.write-high-tick");
 
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
                                      const char* file, int line,
@@ -968,6 +969,16 @@ void IResearchFeature::collectOptions(
               arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
 #endif
+  options
+      ->addOption(WRITE_HIGH_TICK,
+                  "Whether or not write high tick in the segment meta.",
+                  new options::BooleanParameter(&_writeHighTick),
+                  arangodb::options::makeDefaultFlags(
+                      // Set all as our testing system cannot provide extraArgs
+                      // based on server role.
+                      arangodb::options::Flags::Default,
+                      arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30905);
 }
 
 void IResearchFeature::validateOptions(
