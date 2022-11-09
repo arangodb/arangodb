@@ -206,6 +206,12 @@ function clusterRebalanceOtherOptionsSuite() {
       assertEqual(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
     },
 
+    testRebalancePlanWithSystemCollections: function() {
+      const result = getRebalancePlan(true, true, true, false);
+      assertTrue(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections > 0);
+      assertTrue(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections > 0);
+    },
+
 
     testCalcRebalanceStopServer: function() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
