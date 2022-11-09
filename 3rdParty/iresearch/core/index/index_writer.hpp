@@ -109,7 +109,7 @@ enum OpenMode {
 ENABLE_BITMASK_ENUM(OpenMode);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @class index_writer 
+/// @class index_writer
 /// @brief The object is using for indexing data. Only one writer can write to
 ///        the same directory simultaneously.
 ///        Thread safe.
@@ -143,6 +143,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     active_segment_context& operator=(active_segment_context&& other) noexcept;
 
     const segment_context_ptr& ctx() const noexcept { return ctx_; }
+
 
    private:
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -192,13 +193,17 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     documents_context(documents_context&& other) noexcept
       : segment_(std::move(other.segment_)),
         segment_use_count_(std::move(other.segment_use_count_)),
-        tick_(other.tick_),
+        last_operation_tick_(other.last_operation_tick_),
+        first_operation_tick_(other.first_operation_tick_),
         writer_(other.writer_) {
-      other.tick_ = 0;
+      other.last_operation_tick_ = 0;
+      other.first_operation_tick_ = 0;
       other.segment_use_count_ = 0;
     }
 
     ~documents_context() noexcept;
+
+    void AddToFlush();
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create a document to filled by the caller
@@ -305,7 +310,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       try {
         for(;;) {
           assert(uncomitted_doc_id_begin <= writer.docs_cached() + doc_limits::min());
-          auto rollback_extra = 
+          auto rollback_extra =
             writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin; // ensure reset() will be noexcept
 
           rollback.reserve(writer.docs_cached() + 1); // reserve space for rollback
@@ -363,13 +368,17 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     ////////////////////////////////////////////////////////////////////////////
     void reset() noexcept;
 
-    void tick(uint64_t tick) noexcept { tick_ = tick; }
-    uint64_t tick() const noexcept { return tick_; }
+    void SetLastTick(uint64_t tick) noexcept { last_operation_tick_ = tick; }
+    uint64_t GetLastTick() const noexcept { return last_operation_tick_; }
+
+    void SetFirstTick(uint64_t tick) noexcept { first_operation_tick_ = tick; }
+    uint64_t GetFirstTick() const noexcept { return first_operation_tick_; }
 
    private:
     active_segment_context segment_; // the segment_context used for storing changes (lazy-initialized)
     uint64_t segment_use_count_{0}; // segment_.ctx().use_count() at constructor/destructor time must equal
-    uint64_t tick_{0}; // transaction tick
+    uint64_t last_operation_tick_{0}; // transaction commit tick
+    uint64_t first_operation_tick_{0}; // transaction tick
     index_writer& writer_;
 
     // refresh segment if required (guarded by flush_context::flush_mutex_)
@@ -431,7 +440,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   };
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief functor for creating payload. Operation tick is provided for 
+  /// @brief functor for creating payload. Operation tick is provided for
   /// payload generation.
   ////////////////////////////////////////////////////////////////////////////
   using payload_provider_t = std::function<bool(uint64_t, bstring&)>;
@@ -561,17 +570,17 @@ class IRESEARCH_API index_writer : private util::noncopyable {
     const consolidating_segments_t& consolidating_segments)>;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief name of the lock for index repository 
+  /// @brief name of the lock for index repository
   ////////////////////////////////////////////////////////////////////////////
   static const std::string WRITE_LOCK_NAME;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor 
+  /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////
   ~index_writer() noexcept;
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @returns overall number of buffered documents in a writer 
+  /// @returns overall number of buffered documents in a writer
   ////////////////////////////////////////////////////////////////////////////
   uint64_t buffered_docs() const;
 
@@ -613,7 +622,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief imports index from the specified index reader into new segment
-  /// @param reader the index reader to import 
+  /// @param reader the index reader to import
   /// @param desired format that will be used for segment creation,
   ///        nullptr == use index_writer's codec
   /// @param progress callback triggered for consolidation steps, if the
@@ -667,7 +676,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   }
 
   ////////////////////////////////////////////////////////////////////////////
-  /// @brief rollbacks the two-phase transaction 
+  /// @brief rollbacks the two-phase transaction
   ////////////////////////////////////////////////////////////////////////////
   void rollback() {
     // cppcheck-suppress unreadVariable
@@ -682,7 +691,7 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   /// @return whether any changes were committed
   ///
   /// @note that if begin() has been already called commit() is
-  /// relatively lightweight operation 
+  /// relatively lightweight operation
   ////////////////////////////////////////////////////////////////////////////
   bool commit() {
     // cppcheck-suppress unreadVariable
@@ -987,7 +996,10 @@ class IRESEARCH_API index_writer : private util::noncopyable {
       reset();
     }
 
-    void emplace(active_segment_context&& segment); // add the segment to this flush_context
+    void emplace(active_segment_context&& segment, uint64_t first_operation_tick); // add the segment to this flush_context
+    // add the segment to this flush_context pending segments but not to freelist.
+    // So this segment would be waited upong flushing
+    void AddToPending(active_segment_context& segment);
     void reset() noexcept;
   }; // flush_context
 
@@ -1089,9 +1101,9 @@ class IRESEARCH_API index_writer : private util::noncopyable {
   static_assert(std::is_nothrow_move_assignable_v<pending_state_t>);
 
   index_writer(
-    index_lock::ptr&& lock, 
+    index_lock::ptr&& lock,
     index_file_refs::ref_t&& lock_file_ref,
-    directory& dir, 
+    directory& dir,
     format::ptr codec,
     size_t segment_pool_size,
     const segment_options& segment_limits,

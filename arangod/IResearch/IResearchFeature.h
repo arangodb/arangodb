@@ -111,6 +111,8 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
   bool failQueriesOnOutOfSync() const noexcept;
 
+  bool writeHighTick() const noexcept { return _writeHighTick; }
+
 #ifdef USE_ENTERPRISE
   bool trackColumnsCacheUsage(int64_t diff) noexcept;
 #endif
@@ -152,7 +154,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   Gauge<int64_t>& _columnsCacheMemoryUsed;
   uint64_t _columnsCacheLimit{0};
 #endif
-
+  bool _writeHighTick{false};
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
 };

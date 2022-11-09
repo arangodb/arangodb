@@ -60,7 +60,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
                           arangodb::velocypack::Slice const doc) {
-    return IResearchLink::insert(trx, documentId, doc);
+    return IResearchLink::insert(trx, documentId, doc, nullptr);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -84,7 +84,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   arangodb::Result remove(transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
                           VPackSlice const doc) {
-    return IResearchLink::remove(trx, documentId, doc);
+    return IResearchLink::remove(trx, documentId, doc, nullptr);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

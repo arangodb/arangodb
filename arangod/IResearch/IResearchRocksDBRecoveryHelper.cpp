@@ -39,7 +39,6 @@
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchRocksDBLink.h"
 #include "Logger/LogMacros.h"
@@ -117,7 +116,7 @@ void IResearchRocksDBRecoveryHelper::prepare() {
 void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value,
-                                           rocksdb::SequenceNumber /*tick*/) {
+                                           rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -154,6 +153,44 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
   transaction::StandaloneContext ctx(coll->vocbase());
 
+  // FIXME: check ticks range and possibly omit this step
+  _skipExisted.clear();
+  mustReplay = false;
+  {
+    for (auto const& link : links) {
+      if (link.second) {
+        // link excluded from recovery
+        _skippedIndexes.emplace(link.first->id());
+      } else {
+        // link participates in recovery
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        IResearchLink& impl =
+            dynamic_cast<IResearchRocksDBLink&>(*(link.first));
+#else
+        IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
+#endif
+        if (tick <= impl.recoveryTickHigh()) {
+          auto snapshotCookie = _cookies.find(link.first.get());
+          if (snapshotCookie == _cookies.end()) {
+            snapshotCookie =
+                _cookies.emplace(link.first.get(), impl.snapshot()).first;
+          }
+          if (impl.exists(snapshotCookie->second, docId, &tick)) {
+            _skipExisted.emplace(link.first->id());
+          } else {
+            mustReplay = true;
+          }
+        } else {
+          mustReplay = true;
+        }
+      }
+    }
+  }
+
+  if (!mustReplay) {
+    return;
+  }
+
   SingleCollectionTransaction trx(std::shared_ptr<transaction::Context>(
                                       std::shared_ptr<transaction::Context>(),
                                       &ctx),  // aliasing ctor
@@ -166,10 +203,10 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   }
 
   for (auto const& link : links) {
-    if (link.second) {
-      // link excluded from recovery
-      _skippedIndexes.emplace(link.first->id());
-    } else {
+    if (!link.second) {
+      if (_skipExisted.find(link.first->id()) != _skipExisted.end()) {
+        continue;
+      }
       // link participates in recovery
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*(link.first));
@@ -177,7 +214,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
 #endif
 
-      impl.insert(trx, docId, doc);
+      impl.insert(trx, docId, doc, &tick);
     }
   }
 
@@ -191,7 +228,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 // common implementation for DeleteCF / SingleDeleteCF
 void IResearchRocksDBRecoveryHelper::handleDeleteCF(
     uint32_t column_family_id, const rocksdb::Slice& key,
-    rocksdb::SequenceNumber /*tick*/) {
+    rocksdb::SequenceNumber tick) {
   if (column_family_id != _documentCF) {
     return;
   }
@@ -251,7 +288,8 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 #else
       IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*(link.first));
 #endif
-      impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice());
+      impl.remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
+                  &tick);
     }
   }
 
