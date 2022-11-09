@@ -500,9 +500,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       EXPECT_TRUE(trx.begin().ok());
 
       for (size_t i = 0; i < 12; ++i) {
-        EXPECT_TRUE(
-            (link->insert(trx, arangodb::LocalDocumentId(i), doc->slice())
-                 .ok()));
+        EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(i),
+                                  doc->slice(), nullptr)
+                         .ok()));
       }
 
       EXPECT_TRUE(trx.commit().ok());
@@ -1005,7 +1005,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
-        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+        (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice(), nullptr)
+             .ok()));
     EXPECT_TRUE(trx.commit().ok());
   }
 

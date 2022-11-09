@@ -3,6 +3,8 @@ v3.9.5 (XXXX-XX-XX)
 
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
+* Show number of HTTP requests in cluster query profiles.
+
 * Repair "load indexes into memory" function in the web UI.
 
 * Fixed SEARCH-408: Added ArangoSearch cached columns.

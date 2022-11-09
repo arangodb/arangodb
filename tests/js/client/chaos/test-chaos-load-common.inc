@@ -112,6 +112,46 @@ const checkCollectionConsistency = (cn) => {
   } while(failed);
 };
 
+const viewName = (name) => {
+  return name + "_sa";
+};
+
+const checkViewConsistency = (cn, isMaterialize) => {
+  let runQuery = (query) => {
+    return db._query(query).toArray();
+  };
+  let expected;
+  if (!isMaterialize) {
+    expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length")[0];
+  } else {
+    expected = runQuery("FOR d IN " + cn + " RETURN d").length;
+  }
+  // TODO uncomment assert when will be fixed SEARCH-419
+  print("Collection: " + expected + " materialize: " + isMaterialize);
+  let vn;
+  const checkView = (isMaterialize, check) => {
+    let result;
+    if (isMaterialize) {
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d").length;
+    } else {
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
+    }
+    print(vn + ": " + result);
+  };
+
+  vn = viewName(cn + "_view");
+  checkView(isMaterialize, false);
+
+  vn = viewName(cn + "_view_ps");
+  checkView(isMaterialize, false);
+
+  vn = viewName(cn + "_view_sv");
+  checkView(isMaterialize, false);
+
+  vn = viewName(cn + "_view_ps_sv");
+  checkView(isMaterialize, false);
+};
+
 const clearAllFailurePoints = () => {
   for (const server of getDBServers()) {
     debugClearFailAt(getEndpointById(server.id));
@@ -126,12 +166,71 @@ function BaseChaosSuite(testOpts) {
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const coordination_cn = cn + "_coord";
 
+  const createAnalyzers = () => {
+    let a = require("@arangodb/analyzers");
+    try {
+      a.remove("testAnalyzer", true);
+    } catch (e) {
+    }
+    a.save("testAnalyzer", "delimiter", {delimiter: "/"});
+  };
+
+  const removeViews = () => {
+    let vn = viewName(cn + "_view");
+    db._dropView(vn);
+
+    vn = viewName(cn + "_view_ps");
+    db._dropView(vn);
+
+    vn = viewName(cn + "_view_sv");
+    db._dropView(vn);
+
+    vn = viewName(cn + "_view_ps_sv");
+    db._dropView(vn);
+  };
+
+  const createViews = () => {
+    // TODO When will be fixed SEARCH-418 add to sort _id
+    removeViews();
+    let vn;
+
+    vn = viewName(cn + "_view");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {analyzers: ["testAnalyzer", "identity"], includeAllFields: true}}
+    });
+
+    vn = viewName(cn + "_view_ps");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      primarySort: [{field: "_key", asc: true}],
+    });
+
+    vn = viewName(cn + "_view_sv");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      storedValues: [["_id"], ["_key"]],
+    });
+
+    vn = viewName(cn + "_view_ps_sv");
+    db._createView(vn, "arangosearch", {
+      consolidationIntervalMsec: 1000,
+      links: {[cn]: {includeAllFields: true}},
+      storedValues: [["_id"], ["_key"]],
+      primarySort: [{field: "_key", asc: true}],
+    });
+  };
+
   return {
     setUp: function () {
+      createAnalyzers();
       db._drop(cn);
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
+      //createViews();
       db._create(coordination_cn);
       
       if (testOpts.withFailurePoints) {
@@ -173,6 +272,7 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
+      //removeViews();
       db._drop(cn);
       
       const shells = db[coordination_cn].all();
@@ -277,6 +377,19 @@ function BaseChaosSuite(testOpts) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT ARRAY LOOKUP QUERY WITH LIMIT=${limit}`);
               query("LET keys = (FOR doc IN " + c.name() + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+              const lookupViews = () => {
+                const r = Math.random();
+                if (r < 0.25) {
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                } else if (r < 0.5) {
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                } else if (r < 0.75) {
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_sv") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                } else {
+                  query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+                }
+              };
+              //lookupViews();
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -322,7 +435,10 @@ function BaseChaosSuite(testOpts) {
       print("Finished load test - waiting for cluster to get in sync before checking consistency.");
       clearAllFailurePoints();
       waitForShardsInSync(cn);
+      //require("internal").sleep(60);
       checkCollectionConsistency(cn);
+      //checkViewConsistency(cn, false);
+      //checkViewConsistency(cn, true);
     }
   };
 }
