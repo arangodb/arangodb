@@ -70,7 +70,8 @@ TEST(Inspection, statust_test_deserialize) {
 
   auto res = deserializeWithErrorT<Dummy>(testSlice);
 
-  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}", res.error().error());
+  ASSERT_TRUE(res.ok()) << fmt::format("Something went wrong: {}",
+                                       res.error().error());
 
   EXPECT_EQ(res->type, "ReturnNode");
   EXPECT_EQ(res->id, 3u);
@@ -91,6 +92,9 @@ TEST(Inspection, statust_test_deserialize_fail) {
 }
 
 TEST(Inspection, arangodb_query_plan_to_inspectables) {
+  // TODO: This has been the original suited place for our inspectable plan
+  // tests but does not work right now "out of the box" as a lot of components
+  // are required to actually run them (e.g. QueryMock)
   /*std::unique_ptr<arangodb::tests::graph::GraphTestSetup> s{nullptr};
   std::unique_ptr<arangodb::tests::graph::MockGraphDatabase>
   singleServer{nullptr}; std::shared_ptr<arangodb::aql::Query> query{nullptr};
