@@ -351,6 +351,11 @@ TRI_voc_tick_t RocksDBTransactionState::lastOperationTick() const noexcept {
   return _rocksMethods->lastOperationTick();
 }
 
+TRI_voc_tick_t RocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 uint64_t RocksDBTransactionState::numCommits() const {
   return _rocksMethods->numCommits();
 }

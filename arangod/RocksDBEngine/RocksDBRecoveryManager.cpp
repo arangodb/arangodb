@@ -619,6 +619,12 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       helper->prepare();
     }
 
+    auto helpersCleanup = ScopeGuard([&]() noexcept {
+      for (auto& helper : engine.recoveryHelpers()) {
+        helper->unprepare();
+      }
+    });
+
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();
     auto recoveryStartSequence = std::min(earliest, engine.releasedTick());
