@@ -90,7 +90,7 @@ TEST_F(ReplicationMaintenanceActionTest, drop_replicated_log) {
                                   logId, nullptr,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 0);
+  ASSERT_EQ(logs.size(), 0U);
 }
 
 TEST_F(ReplicationMaintenanceActionTest, create_replicated_log) {
@@ -106,7 +106,7 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log) {
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 1);
+  ASSERT_EQ(logs.size(), 1U);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
 }
@@ -127,12 +127,12 @@ TEST_F(ReplicationMaintenanceActionTest, create_replicated_log_leader) {
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 1);
+  ASSERT_EQ(logs.size(), 1U);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
   auto status =
       std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
-  EXPECT_EQ(status.follower.size(), 1);
+  EXPECT_EQ(status.follower.size(), 1U);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
 }
 
@@ -153,7 +153,7 @@ TEST_F(ReplicationMaintenanceActionTest,
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 1);
+  ASSERT_EQ(logs.size(), 1U);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
   EXPECT_TRUE(std::holds_alternative<FollowerStatus>(
@@ -179,12 +179,12 @@ TEST_F(ReplicationMaintenanceActionTest,
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 1);
+  ASSERT_EQ(logs.size(), 1U);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
   auto status =
       std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
-  EXPECT_EQ(status.follower.size(), 2);
+  EXPECT_EQ(status.follower.size(), 2U);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
   EXPECT_NE(status.follower.find(followerId), status.follower.end());
 }
@@ -206,12 +206,12 @@ TEST_F(ReplicationMaintenanceActionTest,
   algorithms::updateReplicatedLog(*this, serverId, RebootId{17}, logId, &spec,
                                   std::make_shared<FakeFailureOracle>());
 
-  ASSERT_EQ(logs.size(), 1);
+  ASSERT_EQ(logs.size(), 1U);
   auto& log = logs.at(logId);
   EXPECT_EQ(log->getParticipant()->getTerm().value(), LogTerm{8});
   auto status =
       std::get<LeaderStatus>(log->getParticipant()->getStatus().getVariant());
-  EXPECT_EQ(status.follower.size(), 1);
+  EXPECT_EQ(status.follower.size(), 1U);
   EXPECT_NE(status.follower.find(serverId), status.follower.end());
-  EXPECT_EQ(status.activeParticipantsConfig.generation, 2);
+  EXPECT_EQ(status.activeParticipantsConfig.generation, 2U);
 }
