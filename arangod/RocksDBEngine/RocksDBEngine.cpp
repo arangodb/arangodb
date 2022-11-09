@@ -515,8 +515,8 @@ the number of previous intervals to use for throttle value calculation.)");
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805)
-      .setLongDescription(R"(If the throttling is enabled, it recalculates a new
-maximum ingestion rate with this frequency.)");
+      .setLongDescription(R"(If the throttling is enabled, it recalculates a
+new maximum ingestion rate with this frequency.)");
 
   options
       ->addOption(
@@ -644,7 +644,8 @@ RocksDB internals and performance.)");
 
   options
       ->addOption("--rocksdb.verify-sst",
-                  "Verify the validity of .sst files present in the `engine-rocksdb` directory.",
+                  "Verify the validity of .sst files present in the "
+                  "`engine-rocksdb` directory on startup.",
                   new BooleanParameter(&_verifySst),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Command,
@@ -653,7 +654,12 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(If set to `true`, during startup, all .sst files
+in the `engine-rocksdb` folder in the database directory are checked for
+potential corruption and errors. The server process stops after the check and
+returns an exit code of `0` if the validation was successful, or a non-zero
+exit code if there is an error in any of the .sst files.)");
 
   options
       ->addOption("--rocksdb.wal-archive-size-limit",
