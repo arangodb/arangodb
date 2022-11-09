@@ -384,7 +384,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   if (!parser.parse(argc, argv)) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
-    exit(EXIT_FAILURE);
+    FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
   }
 
   if (_dumpDependencies) {

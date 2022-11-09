@@ -29,10 +29,6 @@ build
 *.lnk
 Thumbs.db
 
-lib/Basics/error-registry.h
-lib/Basics/exitcodes.h
-lib/Basics/voc-errors.h
-
 cppcheck.xml
 
 enterprise
@@ -54,8 +50,8 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
-cluster/
-cluster-init*/
+/cluster/**
+/cluster-init*/**
 p/
 
 /core
@@ -105,6 +101,8 @@ js/apps/system/_admin/aardvark/APP/react/node_modules/*
 !js/apps/system/_admin/aardvark/APP/react/build/**
 !js/apps/system/_admin/aardvark/APP/react/build/static
 !js/apps/system/_admin/aardvark/APP/react/build/static/**
+js/node/**/node_modules/.bin/
+js/node/node_modules/**/*.md
 
 .gdb-history
 npm-debug.log
@@ -125,3 +123,8 @@ callgrind*
 
 cmake-build*/
 .cache/
+
+js/node/**/*.map
+js/node/**/*.map.gz
+js/apps/**/*.map
+js/apps/**/*.map.gz

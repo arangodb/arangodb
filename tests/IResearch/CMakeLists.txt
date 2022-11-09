@@ -1,5 +1,4 @@
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/ContainersTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ExpressionFilterTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoAnalyzerTest.cpp
@@ -60,7 +59,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTokensTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryValueTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTraversalTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchRocksDBRecoveryHelperTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchPrimaryKeyReuseTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchTestCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewTest.cpp
@@ -71,16 +69,15 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewCountApproximateTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp
-  ${ADDITIONAL_IRESEARCH_TEST_SOURCES}
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp)
 
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-    ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-    PARENT_SCOPE)
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
+  PARENT_SCOPE)
 
 add_executable(
   arangodbtests-iresearch
+  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   ../main.cpp
 )

@@ -21,14 +21,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+
+#include "Transaction/Manager.h"
+#include "velocypack/Value.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -37,150 +47,651 @@ using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
-struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
-  auto getCollectionPlan(std::string const& database,
-                         std::string const& collectionId)
-      -> std::shared_ptr<velocypack::Builder> override {
-    return std::make_shared<VPackBuilder>();
-  }
-
-  auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
-      std::shared_ptr<velocypack::Builder> const& properties)
-      -> Result override {
-    shards.emplace_back(shardId, collectionId);
-    return {};
-  }
-
-  // A mapping between shardId and collectionId
-  std::vector<std::pair<std::string, std::string>> shards;
+struct MockDatabaseGuard : IDatabaseGuard {
+  MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
 };
 
-struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
-  MockDocumentStateShardHandler() : shardId{0} {};
+struct MockTransactionManager : transaction::IManager {
+  MOCK_METHOD(Result, abortManagedTrx,
+              (TransactionId, std::string const& database));
+};
 
-  auto createLocalShard(GlobalLogIdentifier const& gid,
-                        std::string const& collectionId,
-                        std::shared_ptr<velocypack::Builder> const& properties)
-      -> ResultT<std::string> override {
-    ++shardId;
-    return ResultT<std::string>::success(std::to_string(shardId));
+struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
+  MOCK_METHOD(std::shared_ptr<IDocumentStateAgencyHandler>, createAgencyHandler,
+              (GlobalLogIdentifier), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateShardHandler>, createShardHandler,
+              (GlobalLogIdentifier), (override));
+  MOCK_METHOD(std::unique_ptr<IDocumentStateTransactionHandler>,
+              createTransactionHandler, (GlobalLogIdentifier), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, createTransaction,
+              (DocumentLogEntry const&, IDatabaseGuard const&), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateNetworkHandler>,
+              createNetworkHandler, (GlobalLogIdentifier), (override));
+};
+
+struct MockDocumentStateTransaction : IDocumentStateTransaction {
+  MOCK_METHOD(OperationResult, apply, (DocumentLogEntry const&), (override));
+  MOCK_METHOD(Result, intermediateCommit, (), (override));
+  MOCK_METHOD(Result, commit, (), (override));
+  MOCK_METHOD(Result, abort, (), (override));
+};
+
+struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
+  explicit MockDocumentStateTransactionHandler(
+      std::shared_ptr<IDocumentStateTransactionHandler> real)
+      : _real(std::move(real)) {
+    ON_CALL(*this, applyEntry(testing::_))
+        .WillByDefault([this](DocumentLogEntry doc) {
+          return _real->applyEntry(std::move(doc));
+        });
+    ON_CALL(*this, ensureTransaction(testing::_))
+        .WillByDefault([this](DocumentLogEntry const& doc)
+                           -> std::shared_ptr<IDocumentStateTransaction> {
+          return _real->ensureTransaction(doc);
+        });
+    ON_CALL(*this, removeTransaction(testing::_))
+        .WillByDefault([this](TransactionId tid) {
+          return _real->removeTransaction(tid);
+        });
+    ON_CALL(*this, getActiveTransactions())
+        .WillByDefault([this]() -> TransactionMap const& {
+          return _real->getActiveTransactions();
+        });
   }
 
-  int shardId;
+  MOCK_METHOD(Result, applyEntry, (DocumentLogEntry doc), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, ensureTransaction,
+              (DocumentLogEntry const& doc), (override));
+  MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
+  MOCK_METHOD(TransactionMap const&, getActiveTransactions, (),
+              (const, override));
+
+ private:
+  std::shared_ptr<IDocumentStateTransactionHandler> _real;
+};
+
+struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
+  MOCK_METHOD(std::shared_ptr<velocypack::Builder>, getCollectionPlan,
+              (std::string const&), (override));
+  MOCK_METHOD(Result, reportShardInCurrent,
+              (std::string const&, std::string const&,
+               std::shared_ptr<velocypack::Builder> const&),
+              (override));
+};
+
+struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
+  MOCK_METHOD(ResultT<std::string>, createLocalShard,
+              (std::string const&, std::shared_ptr<velocypack::Builder> const&),
+              (override));
+  MOCK_METHOD(Result, dropLocalShard, (std::string const&), (override));
+};
+
+struct MockDocumentStateLeaderInterface : IDocumentStateLeaderInterface {
+  MOCK_METHOD(futures::Future<ResultT<velocypack::SharedSlice>>, getSnapshot,
+              (LogIndex), (override));
+};
+
+struct MockDocumentStateNetworkHandler : IDocumentStateNetworkHandler {
+  MOCK_METHOD(std::shared_ptr<IDocumentStateLeaderInterface>,
+              getLeaderInterface, (ParticipantId), (override, noexcept));
 };
 
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              agencyHandler, shardHandler);
+                                              handlersFactoryMock,
+                                              transactionManagerMock);
   }
 
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
-  std::shared_ptr<MockDocumentStateAgencyHandler> agencyHandler =
-      std::make_shared<MockDocumentStateAgencyHandler>();
-  std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
-      std::make_shared<MockDocumentStateShardHandler>();
+
+  std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
+      handlersFactoryMock = std::make_shared<
+          testing::NiceMock<MockDocumentStateHandlersFactory>>();
+  std::shared_ptr<MockDocumentStateTransaction> transactionMock =
+      std::make_shared<MockDocumentStateTransaction>();
+  std::shared_ptr<testing::NaggyMock<MockDocumentStateAgencyHandler>>
+      agencyHandlerMock = std::make_shared<
+          testing::NaggyMock<MockDocumentStateAgencyHandler>>();
+  std::shared_ptr<testing::NaggyMock<MockDocumentStateShardHandler>>
+      shardHandlerMock =
+          std::make_shared<testing::NaggyMock<MockDocumentStateShardHandler>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateNetworkHandler>>
+      networkHandlerMock = std::make_shared<
+          testing::NiceMock<MockDocumentStateNetworkHandler>>();
+  std::shared_ptr<testing::NiceMock<MockDocumentStateLeaderInterface>>
+      leaderInterfaceMock = std::make_shared<
+          testing::NiceMock<MockDocumentStateLeaderInterface>>();
+  MockTransactionManager transactionManagerMock;
+
+  void SetUp() override {
+    using namespace testing;
+
+    ON_CALL(*transactionMock, commit).WillByDefault(Return(Result{}));
+    ON_CALL(*transactionMock, abort).WillByDefault(Return(Result{}));
+    ON_CALL(*transactionMock, apply(_)).WillByDefault([]() {
+      return OperationResult{Result{}, OperationOptions{}};
+    });
+
+    ON_CALL(*leaderInterfaceMock, getSnapshot).WillByDefault([&](LogIndex) {
+      return futures::Future<ResultT<velocypack::SharedSlice>>{std::in_place};
+    });
+
+    ON_CALL(*networkHandlerMock, getLeaderInterface)
+        .WillByDefault(Return(leaderInterfaceMock));
+
+    ON_CALL(*handlersFactoryMock, createAgencyHandler)
+        .WillByDefault([&](GlobalLogIdentifier gid) {
+          ON_CALL(*agencyHandlerMock, getCollectionPlan)
+              .WillByDefault(Return(std::make_shared<VPackBuilder>()));
+          ON_CALL(*agencyHandlerMock, reportShardInCurrent)
+              .WillByDefault(Return(Result{}));
+          return agencyHandlerMock;
+        });
+
+    ON_CALL(*handlersFactoryMock, createShardHandler)
+        .WillByDefault([&](GlobalLogIdentifier gid) {
+          ON_CALL(*shardHandlerMock, createLocalShard)
+              .WillByDefault(Return(ResultT<std::string>::success(
+                  DocumentStateShardHandler::stateIdToShardId(gid.id))));
+          return shardHandlerMock;
+        });
+
+    ON_CALL(*handlersFactoryMock, createTransactionHandler)
+        .WillByDefault([&](GlobalLogIdentifier gid) {
+          return std::make_unique<DocumentStateTransactionHandler>(
+              std::move(gid), std::make_unique<MockDatabaseGuard>(),
+              handlersFactoryMock);
+        });
+
+    ON_CALL(*handlersFactoryMock, createTransaction)
+        .WillByDefault(Return(transactionMock));
+
+    ON_CALL(*handlersFactoryMock, createNetworkHandler)
+        .WillByDefault(Return(networkHandlerMock));
+  }
+
+  void TearDown() override {
+    using namespace testing;
+
+    Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+    Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
+    Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+    Mock::VerifyAndClearExpectations(transactionMock.get());
+  }
+
+  const std::string collectionId = "testCollectionID";
+  const LogId logId = LogId{1};
+  const std::string dbName = "testDB";
+  const GlobalLogIdentifier globalId{dbName, logId};
+  const std::string shardId =
+      DocumentStateShardHandler::stateIdToShardId(logId);
+  const document::DocumentCoreParameters coreParams{collectionId, dbName};
 };
 
-TEST_F(DocumentStateMachineTest, simple_operations) {
-  const std::string collectionId = "testCollectionID";
+TEST_F(DocumentStateMachineTest,
+       leader_resign_should_abort_active_transactions) {
+  using namespace testing;
 
-  auto followerLog = makeReplicatedLog(LogId{1});
-  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-
+  auto leaderLog = makeReplicatedLog(globalId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
   leader->triggerAsyncReplication();
-
-  auto parameters =
-      document::DocumentCoreParameters{collectionId}.toSharedSlice();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog));
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
+
+  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
+  EXPECT_CALL(*agencyHandlerMock,
+              reportShardInCurrent(collectionId, shardId, _))
+      .Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
   leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
-  follower->runAllAsyncAppendEntries();
-  ASSERT_EQ(shardHandler->shardId, 1);
-  ASSERT_EQ(agencyHandler->shards.size(), 1);
-  ASSERT_EQ(agencyHandler->shards[0].first, "1");
-  ASSERT_EQ(agencyHandler->shards[0].second, collectionId);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  // Very methods called during core construction
+  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
-  ASSERT_EQ(leaderState->shardId, "1");
+  ASSERT_EQ(leaderState->shardId, shardId);
+
+  {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+
+    auto operation = OperationType::kInsert;
+    std::ignore =
+        leaderState->replicateOperation(builder.sharedSlice(), operation,
+                                        TransactionId{5}, ReplicationOptions{});
+    std::ignore =
+        leaderState->replicateOperation(builder.sharedSlice(), operation,
+                                        TransactionId{9}, ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(builder.sharedSlice(),
+                                                  operation, TransactionId{13},
+                                                  ReplicationOptions{});
+  }
+  EXPECT_EQ(3, leaderState->getActiveTransactions().size());
+
+  {
+    VPackBuilder builder;
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), OperationType::kAbort, TransactionId{5},
+        ReplicationOptions{});
+    std::ignore = leaderState->replicateOperation(
+        builder.sharedSlice(), OperationType::kCommit, TransactionId{9},
+        ReplicationOptions{});
+  }
+  EXPECT_EQ(1, leaderState->getActiveTransactions().size());
+
+  EXPECT_CALL(transactionManagerMock,
+              abortManagedTrx(TransactionId{13}, globalId.database))
+      .Times(1);
+
+  // resigning as leader should abort the remaining transaction with id 3
+  std::ignore = leaderLog->becomeFollower("leader", LogTerm{2}, "dummy");
+}
+
+TEST_F(DocumentStateMachineTest,
+       recoverEntries_should_abort_remaining_active_transactions) {
+  using namespace testing;
+
+  std::vector<PersistingLogEntry> entries;
+
+  auto addEntry = [&entries, this](OperationType op, TransactionId trxId) {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+    auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
+
+    builder.clear();
+    builder.openArray();
+    builder.add(VPackValue(1));
+    velocypack::serialize(builder, entry);
+    builder.close();
+
+    entries.emplace_back(LogTerm{1}, LogIndex{entries.size() + 1},
+                         LogPayload::createFromSlice(builder.slice()));
+  };
+
+  // Transaction IDs are of follower type, as if they were replicated.
+  addEntry(OperationType::kInsert, TransactionId{6});
+  addEntry(OperationType::kInsert, TransactionId{10});
+  addEntry(OperationType::kInsert, TransactionId{14});
+  addEntry(OperationType::kAbort, TransactionId{6});
+  addEntry(OperationType::kCommit, TransactionId{10});
+
+  auto core = makeLogCore<MockLog>(globalId);
+  auto it = test::make_iterator(entries);
+  core->insert(*it, true);
+
+  auto leaderLog = std::make_shared<TestReplicatedLog>(
+      std::move(core), _logMetricsMock, _optionsMock,
+      LoggerContext(Logger::REPLICATION2));
+
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{2}, {}, 1);
+  leader->triggerAsyncReplication();
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+
+  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
+  EXPECT_CALL(*agencyHandlerMock,
+              reportShardInCurrent(collectionId, shardId, _))
+      .Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
+
+  EXPECT_CALL(*transactionMock, apply).Times(3);
+  EXPECT_CALL(*transactionMock, commit).Times(1);
+  EXPECT_CALL(*transactionMock, abort).Times(1);
+
+  // The leader adds a tombstone for its own transaction.
+  EXPECT_CALL(transactionManagerMock,
+              abortManagedTrx(TransactionId{14}.asLeaderTransactionId(),
+                              globalId.database))
+      .Times(1);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+}
+
+TEST_F(DocumentStateMachineTest, leader_follower_integration) {
+  using namespace testing;
+
+  auto followerLog = makeReplicatedLog(logId);
+  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  auto leaderLog = makeReplicatedLog(logId);
+  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
+  leader->triggerAsyncReplication();
+
+  auto leaderReplicatedState =
+      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
+          feature->createReplicatedState(DocumentState::NAME, leaderLog,
+                                         statePersistor));
+  ASSERT_NE(leaderReplicatedState, nullptr);
+
+  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
+  EXPECT_CALL(*agencyHandlerMock,
+              reportShardInCurrent(collectionId, shardId, _))
+      .Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
+  leaderReplicatedState->start(
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  // Very methods called during core construction
+  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
+
+  follower->runAllAsyncAppendEntries();
+  auto leaderState = leaderReplicatedState->getLeader();
+  ASSERT_NE(leaderState, nullptr);
+  ASSERT_EQ(leaderState->shardId, shardId);
+
+  // During leader recovery, all ongoing transactions must be aborted
+  auto inMemoryLog = leader->copyInMemoryLog();
+  auto lastIndex = inMemoryLog.getLastIndex();
+  auto entry = inMemoryLog.getEntryByIndex(lastIndex);
+  auto doc = velocypack::deserialize<DocumentLogEntry>(
+      entry->entry().logPayload()->slice()[1]);
+  ASSERT_EQ(doc.operation, OperationType::kAbortAllOngoingTrx);
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, followerLog));
+          feature->createReplicatedState(DocumentState::NAME, followerLog,
+                                         statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
+
+  std::shared_ptr<DocumentStateTransactionHandler> real;
+  std::shared_ptr<MockDocumentStateTransactionHandler> transactionHandlerMock;
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
+      .WillByDefault([&](GlobalLogIdentifier gid) {
+        real = std::make_shared<DocumentStateTransactionHandler>(
+            std::move(gid), std::make_unique<MockDatabaseGuard>(),
+            handlersFactoryMock);
+        transactionHandlerMock =
+            std::make_shared<NiceMock<MockDocumentStateTransactionHandler>>(
+                real);
+        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
+            transactionHandlerMock);
+      });
+
+  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
+  EXPECT_CALL(*agencyHandlerMock,
+              reportShardInCurrent(collectionId, shardId, _))
+      .Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
-  ASSERT_EQ(shardHandler->shardId, 2);
-  ASSERT_EQ(agencyHandler->shards.size(), 2);
-  ASSERT_EQ(agencyHandler->shards[1].first, "2");
-  ASSERT_EQ(agencyHandler->shards[1].second, collectionId);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      coreParams.toSharedSlice());
+
+  // Very methods called during core construction
+  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
+  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
 
-  follower->runAllAsyncAppendEntries();
-
-  // insert operation
+  // Insert a document
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-    builder.add("test", "insert");
+    builder.add("document1_key", "document1_value");
     ob->close();
 
-    auto logIndex = LogIndex{2};
     auto operation = OperationType::kInsert;
-    auto trx = TransactionId{0};
+    auto tid = TransactionId{5};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                               trx, ReplicationOptions{});
+                                               tid, ReplicationOptions{});
 
     ASSERT_TRUE(res.isReady());
-    ASSERT_EQ(res.result().get(), logIndex);
+    auto logIndex = res.result().get();
 
-    follower->runAllAsyncAppendEntries();
-    auto inMemoryLog = leader->copyInMemoryLog();
-    auto entry = inMemoryLog.getEntryByIndex(logIndex);
-    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+    inMemoryLog = leader->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.shardId, "1");
-    ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
-    ASSERT_EQ(docEntry.data.get("test").stringView(), "insert");
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_EQ(doc.data.get("document1_key").stringView(), "document1_value");
+
+    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
+    EXPECT_CALL(*transactionMock, apply).Times(1);
+    follower->runAllAsyncAppendEntries();
+    Mock::VerifyAndClearExpectations(transactionMock.get());
+    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
   }
 
-  // commit operation
+  // Insert another document, but fail with UNIQUE_CONSTRAINT_VIOLATED. The
+  // follower should continue.
+  builder.clear();
   {
-    auto logIndex = LogIndex{3};
+    VPackObjectBuilder ob(&builder);
+    builder.add("document2_key", "document2_value");
+    ob->close();
+
+    auto operation = OperationType::kInsert;
+    auto tid = TransactionId{5};
+    auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
+                                               tid, ReplicationOptions{});
+
+    ASSERT_TRUE(res.isReady());
+    auto logIndex = res.result().get();
+
+    inMemoryLog = leader->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
+        entry->entry().logPayload()->slice()[1]);
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_EQ(doc.data.get("document2_key").stringView(), "document2_value");
+
+    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
+    EXPECT_CALL(*transactionMock, apply(_))
+        .WillOnce([](DocumentLogEntry const& entry) {
+          auto opRes = OperationResult{Result{}, OperationOptions{}};
+          opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] =
+              1;
+          return opRes;
+        });
+    follower->runAllAsyncAppendEntries();
+    Mock::VerifyAndClearExpectations(transactionMock.get());
+    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+  }
+
+  // Commit
+  {
     auto operation = OperationType::kCommit;
-    auto trx = TransactionId{1};
+    auto tid = TransactionId{5};
     auto res = leaderState->replicateOperation(
-        velocypack::SharedSlice{}, operation, trx,
+        velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
 
     ASSERT_FALSE(res.isReady());
-    follower->runAllAsyncAppendEntries();
-    ASSERT_TRUE(res.isReady());
-    ASSERT_EQ(res.result().get(), logIndex);
 
+    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
+    EXPECT_CALL(*transactionMock, commit).Times(1);
     follower->runAllAsyncAppendEntries();
-    auto inMemoryLog = leader->copyInMemoryLog();
-    auto entry = inMemoryLog.getEntryByIndex(logIndex);
-    auto docEntry = velocypack::deserialize<DocumentLogEntry>(
+    Mock::VerifyAndClearExpectations(transactionMock.get());
+    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+    ASSERT_TRUE(res.isReady());
+    auto logIndex = res.result().get();
+
+    inMemoryLog = follower->copyInMemoryLog();
+    entry = inMemoryLog.getEntryByIndex(logIndex);
+    doc = velocypack::deserialize<DocumentLogEntry>(
         entry->entry().logPayload()->slice()[1]);
-    ASSERT_EQ(docEntry.shardId, "1");
-    ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
-    ASSERT_TRUE(docEntry.data.isNone());
+    EXPECT_EQ(doc.shardId, shardId);
+    EXPECT_EQ(doc.operation, operation);
+    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
+    EXPECT_TRUE(doc.data.isNone());
   }
+}
+
+TEST(DocumentStateTransactionHandlerTest, test_ensureTransaction) {
+  using namespace testing;
+
+  auto dbGuardMock = std::make_unique<MockDatabaseGuard>();
+  auto handlersFactoryMock =
+      std::make_shared<MockDocumentStateHandlersFactory>();
+  auto transactionMock = std::make_shared<MockDocumentStateTransaction>();
+
+  auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}}, std::move(dbGuardMock),
+      handlersFactoryMock);
+
+  auto tid = TransactionId{6};
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), tid};
+
+  EXPECT_CALL(*handlersFactoryMock, createTransaction)
+      .WillOnce(Return(transactionMock));
+
+  // Use a new entry and expect the transaction to be created
+  auto trx = transactionHandler.ensureTransaction(doc);
+  Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+
+  // Use an existing entry, and expect the transaction to be reused
+  ASSERT_EQ(trx, transactionHandler.ensureTransaction(doc));
+}
+
+TEST(DocumentStateTransactionHandlerTest, test_applyEntry_basic) {
+  using namespace testing;
+
+  auto dbGuardMock = std::make_unique<MockDatabaseGuard>();
+  auto handlersFactoryMock =
+      std::make_shared<MockDocumentStateHandlersFactory>();
+  auto transactionMock = std::make_shared<MockDocumentStateTransaction>();
+
+  auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}}, std::move(dbGuardMock),
+      handlersFactoryMock);
+
+  ON_CALL(*handlersFactoryMock, createTransaction)
+      .WillByDefault(Return(transactionMock));
+
+  ON_CALL(*transactionMock, apply(_)).WillByDefault([]() {
+    return OperationResult{Result{}, OperationOptions{}};
+  });
+
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), TransactionId{6}};
+
+  // Expect the transaction to be started an applied successfully
+  EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
+  EXPECT_CALL(*transactionMock, apply).Times(1);
+  auto result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+
+  // An intermediate commit should not affect the transaction
+  EXPECT_CALL(*transactionMock, intermediateCommit).WillOnce(Return(Result{}));
+  doc.operation = OperationType::kIntermediateCommit;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  ASSERT_TRUE(
+      transactionHandler.getActiveTransactions().contains(TransactionId{6}));
+
+  // After commit, expect the transaction to be removed
+  EXPECT_CALL(*transactionMock, commit).WillOnce(Return(Result{}));
+  doc.operation = OperationType::kCommit;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  ASSERT_TRUE(transactionHandler.getActiveTransactions().empty());
+
+  // Start a new transaction and then abort it.
+  doc = DocumentLogEntry{"s1234", OperationType::kRemove,
+                         velocypack::SharedSlice(), TransactionId{10}};
+  EXPECT_CALL(*handlersFactoryMock, createTransaction).Times(1);
+  EXPECT_CALL(*transactionMock, apply).Times(1);
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(
+      transactionHandler.getActiveTransactions().contains(TransactionId{10}));
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+
+  // Expect the transaction to be removed after abort
+  EXPECT_CALL(*transactionMock, abort).WillOnce(Return(Result{}));
+  doc.operation = OperationType::kAbort;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+  ASSERT_TRUE(
+      !transactionHandler.getActiveTransactions().contains(TransactionId{10}));
+
+  // No transaction should be created during AbortAllOngoingTrx
+  doc.operation = OperationType::kAbortAllOngoingTrx;
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST(DocumentStateTransactionHandlerTest, test_applyEntry_errors) {
+  using namespace testing;
+
+  auto dbGuardMock = std::make_unique<MockDatabaseGuard>();
+  auto handlersFactoryMock =
+      std::make_shared<MockDocumentStateHandlersFactory>();
+  auto transactionMock = std::make_shared<MockDocumentStateTransaction>();
+
+  auto transactionHandler = DocumentStateTransactionHandler(
+      GlobalLogIdentifier{"testDb", LogId{1}}, std::move(dbGuardMock),
+      handlersFactoryMock);
+
+  EXPECT_CALL(*handlersFactoryMock, createTransaction)
+      .WillOnce(Return(transactionMock));
+
+  auto doc = DocumentLogEntry{"s1234", OperationType::kInsert,
+                              velocypack::SharedSlice(), TransactionId{6}};
+
+  // OperationResult failed, transaction should fail
+  EXPECT_CALL(*transactionMock, apply(_))
+      .WillOnce(Return(
+          OperationResult{Result{TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION},
+                          OperationOptions{}}));
+  auto result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.fail());
+  Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+
+  // Unique constraint violation, should not fail because we are doing recovery
+  EXPECT_CALL(*transactionMock, apply(_))
+      .WillOnce([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] = 1;
+        return opRes;
+      });
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_FALSE(result.fail());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+
+  // Other type of error inside countErrorCodes, transaction should fail
+  EXPECT_CALL(*transactionMock, apply(_))
+      .WillOnce([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION] = 1;
+        return opRes;
+      });
+  result = transactionHandler.applyEntry(doc);
+  ASSERT_TRUE(result.fail());
+  Mock::VerifyAndClearExpectations(transactionMock.get());
 }

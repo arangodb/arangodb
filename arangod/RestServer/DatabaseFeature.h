@@ -30,6 +30,7 @@
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
@@ -179,9 +180,10 @@ class DatabaseFeature : public ArangodFeature {
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool forceSyncProperties() const { return _forceSyncProperties; }
-  void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const {
+    return _defaultReplicationVersion;
+  }
 
   /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
@@ -239,11 +241,11 @@ class DatabaseFeature : public ArangodFeature {
   void enableDeadlockDetection();
 
   bool _defaultWaitForSync;
-  bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
   bool _isInitiallyEmpty;
   bool _checkVersion;
   bool _upgrade;
+  replication::Version _defaultReplicationVersion;
 
   /// @brief whether or not the allow extended database names
   bool _extendedNamesForDatabases;

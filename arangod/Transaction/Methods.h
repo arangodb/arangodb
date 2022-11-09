@@ -23,12 +23,7 @@
 
 #pragma once
 
-#include "Aql/IndexHint.h"
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/Result.h"
-#include "Cluster/FollowerInfo.h"
-#include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
@@ -36,14 +31,9 @@
 #include "Transaction/MethodsApi.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
-#include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/Identifiers/DataSourceId.h"
-#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
-
-#include <velocypack/Slice.h>
 
 #include <memory>
 #include <string>
@@ -56,15 +46,22 @@
 #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
+namespace futures {
+template<class T>
+class Future;
+}
 namespace basics {
 struct AttributeName;
 }  // namespace basics
 
 namespace velocypack {
 class Builder;
-}
+class Slice;
+}  // namespace velocypack
 
 namespace aql {
 class Ast;
@@ -79,11 +76,18 @@ struct Options;
 }  // namespace transaction
 
 class CollectionNameResolver;
+class DataSourceId;
 class Index;
 class IndexIterator;
 class LocalDocumentId;
+class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
+struct OperationResult;
+struct ResourceMonitor;
+class Result;
+class RevisionId;
+class TransactionId;
 class TransactionState;
 class TransactionCollection;
 
@@ -206,20 +210,23 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  Result commit();
+  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
+      -> Result;
   /// @brief commit / finish the transaction
-  Future<Result> commitAsync();
+  [[nodiscard]] auto commitAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result abort();
+  [[nodiscard, deprecated("use async variant")]] auto abort() noexcept
+      -> Result;
   /// @brief abort the transaction
-  Future<Result> abortAsync();
+  [[nodiscard]] auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result finish(Result const& res);
+  [[nodiscard, deprecated("use async variant")]] auto finish(
+      Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  Future<Result> finishAsync(Result const& res);
+  [[nodiscard]] auto finishAsync(Result const& res) noexcept -> Future<Result>;
 
   /// @brief return the transaction id
   TransactionId tid() const;
@@ -358,14 +365,16 @@ class Methods {
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(
-      IndexHandle const&, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, IndexHandle const&,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      IndexIteratorOptions const&, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
+                                           std::string const& collectionName,
                                            CursorType cursorType,
                                            ReadOwnWrites readOwnWrites);
 
@@ -399,11 +408,14 @@ class Methods {
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                               velocypack::Slice value);
 
+  Result triggerIntermediateCommit();
+
  private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+  futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
@@ -439,6 +451,18 @@ class Methods {
                            BatchOptions& batchOptions);
 
   Result determineReplicationTypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  Result determineReplication1TypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  Result determineReplication2TypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
       velocypack::Slice value, OperationOptions& options,
       ReplicationType& replicationType,
@@ -503,9 +527,10 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  auto commitInternal(MethodsApi api) -> Future<Result>;
-  auto abortInternal(MethodsApi api) -> Future<Result>;
-  auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
+  [[nodiscard]] auto commitInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto abortInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto finishInternal(Result const& res, MethodsApi api) noexcept
+      -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
                                         VPackSlice value,
@@ -570,7 +595,7 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      std::shared_ptr<LogicalCollection> collection,
+      TransactionCollection& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,

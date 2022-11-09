@@ -377,19 +377,16 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
   auto fieldsSlice = definition.get(attributeName);
   auto const idxType = Index::type(
       definition.get(arangodb::StaticStrings::IndexType).stringView());
-  auto const fieldIsObject = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
+  auto const isInverted = Index::TRI_IDX_TYPE_INVERTED_INDEX == idxType;
 
   if (fieldsSlice.isArray()) {
-    std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$",
-                             std::regex::ECMAScript);
-
     // "fields" is a list of fields
     for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
-      if (fieldIsObject && !it.isObject()) {
+      if (!isInverted && it.isObject()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "inverted index: field must be an object");
+                      "index field names must be only strings");
       }
-      auto fieldName = fieldIsObject ? it.get("name") : it;
+      auto fieldName = it.isObject() ? it.get("name") : it;
       if (!fieldName.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
@@ -413,9 +410,14 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
                       "cannot index a sub-attribute in this type of index");
       }
 
-      if (std::regex_match(f.begin(), f.end(), idRegex)) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      "_id attribute cannot be indexed");
+      if (!isInverted) {
+        static std::regex const idRegex(
+            "^(.+\\.)?" + StaticStrings::IdString + "$",
+            std::regex::ECMAScript);
+        if (std::regex_match(f.begin(), f.end(), idRegex)) {
+          return Result(TRI_ERROR_BAD_PARAMETER,
+                        "_id attribute cannot be indexed");
+        }
       }
 
       fields.insert(f);

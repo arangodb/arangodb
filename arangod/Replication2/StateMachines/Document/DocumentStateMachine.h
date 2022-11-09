@@ -28,6 +28,10 @@
 
 #include <memory>
 
+namespace arangodb::transaction {
+struct IManager;
+}
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -43,11 +47,15 @@ struct DocumentFollowerState;
 struct DocumentCore;
 struct DocumentCoreParameters;
 
-struct IDocumentStateAgencyHandler;
+struct IDocumentStateHandlersFactory;
 struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+};
+
+struct DocumentCleanupHandler {
+  void drop(std::unique_ptr<DocumentCore>);
 };
 
 struct DocumentState {
@@ -59,37 +67,41 @@ struct DocumentState {
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
   using CoreParameterType = DocumentCoreParameters;
+  using CleanupHandlerType = DocumentCleanupHandler;
 };
 
 struct DocumentCoreParameters {
   std::string collectionId;
+  std::string databaseName;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId));
+    return f.object(p).fields(f.field("collectionId", p.collectionId),
+                              f.field("databaseName", p.databaseName));
   }
 
-  auto toSharedSlice() -> velocypack::SharedSlice;
+  [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
   explicit DocumentFactory(
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
+
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
+
   auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 
-  auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyHandler>;
-  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+  auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 
  private:
-  std::shared_ptr<IDocumentStateAgencyHandler> const _agencyReader;
-  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
+  std::shared_ptr<IDocumentStateHandlersFactory> const _handlersFactory;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace document
 

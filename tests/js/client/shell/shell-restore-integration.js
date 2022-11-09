@@ -322,13 +322,13 @@ function restoreIntegrationSuite() {
               name: "value3",
               expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
               computeOn: ["insert"],
-              override: false,
+              overwrite: false,
               failOnWarning: false
             }, {
               name: "value4",
               expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
               computeOn: ["insert"],
-              override: true,
+              overwrite: true,
               failOnWarning: false
             }]
           }

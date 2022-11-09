@@ -224,9 +224,17 @@ struct GlobalLogIdentifier {
   GlobalLogIdentifier(std::string database, LogId id);
   std::string database;
   LogId id;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, GlobalLogIdentifier& gid) {
+    return f.object(gid).fields(f.field("database", gid.database),
+                                f.field("id", gid.id));
+  }
 };
 
 auto to_string(GlobalLogIdentifier const&) -> std::string;
+
+auto operator<<(std::ostream&, GlobalLogIdentifier const&) -> std::ostream&;
 
 struct ParticipantFlags {
   bool forced = false;

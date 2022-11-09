@@ -62,6 +62,7 @@ class Methods;  // forward declaration
 namespace iresearch {
 
 struct IResearchInvertedIndexMeta;
+struct QueryContext;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
@@ -78,17 +79,17 @@ size_t hash(aql::AstNode const* node, size_t hash = 0) noexcept;
 ///        must be an arangodb::aql::VALUE_TYPE_STRING
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(aql::AstNode const& node) {
+inline std::string_view getStringRef(aql::AstNode const& node) {
   TRI_ASSERT(aql::VALUE_TYPE_STRING == node.value.type);
 
-  return irs::string_ref(node.getStringValue(), node.getStringLength());
+  return std::string_view(node.getStringValue(), node.getStringLength());
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns name of function denoted by a specified AstNode
 /// @note applicable for nodes of type NODE_TYPE_FCALL, NODE_TYPE_FCALL_USER
 //////////////////////////////////////////////////////////////////////////////
-irs::string_ref getFuncName(aql::AstNode const& node);
+std::string_view getFuncName(aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
@@ -111,7 +112,7 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to extract 'irs::basic_string_ref<Char>' value from the
+/// @brief tries to extract 'std::basic_string_view<Char>' value from the
 ///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,18 +238,6 @@ struct AqlValueTraits {
   }
 };
 
-struct QueryContext {
-  transaction::Methods* trx{};
-  aql::Ast* ast{};
-  aql::ExpressionContext* ctx{};
-  irs::index_reader const* index{};
-  aql::Variable const* ref{};
-  // Allow optimize away/modify some conditions during filter building
-  FilterOptimization filterOptimization{FilterOptimization::MAX};
-  // The flag is set when a query is dedicated to a search view
-  bool isSearchQuery{true};
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
 /// @brief convenient wrapper around `AqlValue` and `AstNode`
@@ -257,7 +246,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref typeString(ScopedValueType type) noexcept;
+  static std::string_view typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -319,7 +308,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? _node->getIntValue() : _value.toInt64();
   }
 
-  bool getString(irs::string_ref& value) const {
+  bool getString(std::string_view& value) const {
     if (_node->isConstant()) {
       return parseValue(value, *_node);
     } else {
@@ -538,8 +527,44 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(
     std::string& name, aql::AstNode const& node, QueryContext const& ctx,
-    bool filter, std::span<InvertedIndexField const> fields,
-    std::span<InvertedIndexField const>* subFields = nullptr);
+    bool filter, std::span<InvertedIndexField const>* subFields = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visit name produced by nameFromAttributeAccess
+/// @returns true on success, false otherwise
+////////////////////////////////////////////////////////////////////////////////
+template<typename Visitor>
+bool visitName(std::string_view name, Visitor&& visitor) {
+  if (name.empty()) {
+    return true;
+  }
+
+  auto begin = std::begin(name);
+  auto prev = begin;
+
+  for (auto end = std::end(name); begin != end; ++begin) {
+    if (*begin == NESTING_LEVEL_DELIMITER ||
+        *begin == NESTING_LIST_OFFSET_PREFIX) {
+      if (prev != begin) {
+        std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+      }
+      prev = begin + 1;
+    } else if (*begin == NESTING_LIST_OFFSET_SUFFIX) {
+      size_t idx;
+      if (!absl::SimpleAtoi({prev, begin}, &idx)) {
+        return false;
+      }
+      std::forward<Visitor>(visitor)(idx);
+      prev = begin + 1;
+    }
+  }
+
+  if (prev != begin) {
+    std::forward<Visitor>(visitor)(std::string_view{prev, begin});
+  }
+
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -549,6 +574,10 @@ bool nameFromAttributeAccess(
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref,
                                          bool allowExpansion) noexcept;
+
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb

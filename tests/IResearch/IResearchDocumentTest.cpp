@@ -97,7 +97,7 @@ template<typename Analyzer, bool inverted = false>
 void assertField(arangodb::tests::mocks::MockAqlServer& server,
                  arangodb::iresearch::Field const& value,
                  std::string const& expectedName,
-                 irs::string_ref explicitAnalyzerName = irs::string_ref::NIL) {
+                 std::string_view explicitAnalyzerName = std::string_view{}) {
   SCOPED_TRACE(testing::Message("Expected name: ") << expectedName);
 
   auto* analyzer = dynamic_cast<Analyzer*>(&value.get_tokens());
@@ -108,7 +108,7 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
                 std::is_same_v<irs::boolean_token_stream, Analyzer>) {
     ASSERT_EQ(expectedName, value.name());
   } else if (std::is_base_of_v<irs::analysis::analyzer, Analyzer>) {
-    auto analyzerName = explicitAnalyzerName.null()
+    auto analyzerName = irs::IsNull(explicitAnalyzerName)
                             ? std::string(irs::type<Analyzer>::name())
                             : std::string(explicitAnalyzerName);
     if constexpr (inverted) {
@@ -146,21 +146,21 @@ void assertField(arangodb::tests::mocks::MockAqlServer& server,
 }
 
 struct TestAttribute : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttribute";
   }
 };
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-empty";
   }
-  static ptr make(irs::string_ref) {
+  static ptr make(std::string_view) {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref, std::string& out) {
+  static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -175,7 +175,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref data) override { return true; }
+  virtual bool reset(std::string_view data) override { return true; }
 
  private:
   irs::frequency _attr;
@@ -186,14 +186,14 @@ REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make,
 
 class VPackAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-vpack-analyzer";
   }
-  static ptr make(irs::string_ref) {
+  static ptr make(std::string_view) {
     PTR_NAMED(VPackAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref, std::string& out) {
+  static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -211,15 +211,15 @@ class VPackAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override {
-    if (!_term.value.null()) {
+    if (!irs::IsNull(_term.value)) {
       return false;
     }
-    _term.value = irs::ref_cast<irs::byte_type>(_buf);
+    _term.value = irs::ViewCast<irs::byte_type>(std::string_view{_buf});
     return true;
   }
-  virtual bool reset(irs::string_ref data) override {
+  virtual bool reset(std::string_view data) override {
     _buf = arangodb::iresearch::slice(data).toString();
-    _term.value = irs::bytes_ref::NIL;
+    _term.value = irs::bytes_view{};
     return true;
   }
 
@@ -237,11 +237,11 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
   static bool returnNullFromMake;
   static bool returnFalseFromToString;
 
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-invalid";
   }
 
-  static ptr make(irs::string_ref) {
+  static ptr make(std::string_view) {
     if (returnNullFromMake) {
       return nullptr;
     }
@@ -250,7 +250,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
-  static bool normalize(irs::string_ref, std::string& out) {
+  static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return !returnFalseFromToString;
@@ -266,7 +266,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref data) override { return true; }
+  virtual bool reset(std::string_view data) override { return true; }
 
  private:
   TestAttribute _attr;
@@ -280,23 +280,23 @@ REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make,
 
 class TypedAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-typed";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     PTR_NAMED(TypedAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
-    out.assign(args.c_str(), args.size());
+  static bool normalize(std::string_view args, std::string& out) {
+    out.assign(args.data(), args.size());
     return true;
   }
 
-  explicit TypedAnalyzer(irs::string_ref args)
+  explicit TypedAnalyzer(std::string_view args)
       : irs::analysis::analyzer(irs::type<TypedAnalyzer>::get()) {
-    VPackSlice slice(irs::ref_cast<irs::byte_type>(args).c_str());
+    VPackSlice slice(irs::ViewCast<irs::byte_type>(args).data());
     if (slice.hasKey("type")) {
       auto type = slice.get("type").stringView();
       if (type == "number") {
@@ -311,7 +311,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
         _vpackTerm.value = _typedValue.slice();
       } else if (type == "string") {
         _returnType.value = arangodb::iresearch::AnalyzerValueType::String;
-        _term.value = irs::ref_cast<irs::byte_type>(_strVal);
+        _term.value = irs::ViewCast<irs::byte_type>(std::string_view{_strVal});
       } else {
         // Failure here means we have unexpected type
         EXPECT_TRUE(false);
@@ -319,7 +319,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(irs::string_ref data) override {
+  virtual bool reset(std::string_view data) override {
     _resetted = true;
     return true;
   }
@@ -366,26 +366,26 @@ REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make,
 
 class TypedArrayAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-typed-array";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     PTR_NAMED(TypedArrayAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
-    out.assign(args.c_str(), args.size());
+  static bool normalize(std::string_view args, std::string& out) {
+    out.assign(args.data(), args.size());
     return true;
   }
 
-  explicit TypedArrayAnalyzer(irs::string_ref)
+  explicit TypedArrayAnalyzer(std::string_view)
       : irs::analysis::analyzer(irs::type<TypedArrayAnalyzer>::get()) {
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
-  virtual bool reset(irs::string_ref data) override {
+  virtual bool reset(std::string_view data) override {
     auto value = std::string(data);
     _values.clear();
     _current = 0;
@@ -562,7 +562,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_construct) {
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   EXPECT_FALSE(it.valid());
 }
 
@@ -578,7 +578,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_empty_object) {
   arangodb::iresearch::IResearchLinkMeta linkMeta;
   linkMeta._includeAllFields = true;  // include all fields
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(VPackSlice::emptyObjectSlice(), linkMeta);
   EXPECT_FALSE(it.valid());
 }
@@ -630,7 +630,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
@@ -714,7 +714,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
@@ -825,7 +825,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator doc(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator doc(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   doc.reset(slice, linkMeta);
   for (; doc.valid(); ++doc) {
     auto& field = *doc;
@@ -885,7 +885,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
 
@@ -943,7 +943,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
 }
@@ -982,7 +982,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   EXPECT_FALSE(it.valid());
 }
@@ -1026,7 +1026,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // stringValue (with IdentityAnalyzer)
@@ -1277,7 +1277,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_reset) {
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(json0->slice(), linkMeta);
   ASSERT_TRUE(it.valid());
 
@@ -1420,7 +1420,7 @@ TEST_F(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
 
   // default analyzer
@@ -1501,7 +1501,7 @@ TEST_F(IResearchDocumentTest,
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(slice, linkMeta);
   ASSERT_TRUE(it.valid());
 
@@ -2071,7 +2071,7 @@ TEST_F(
       },
   };
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(json->slice(), linkMeta);
 
   for (auto& assertField : assertFields) {
@@ -2191,7 +2191,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
         EMPTY, EMPTY, arangodb::transaction::Options());
 
-    IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
 
@@ -2234,8 +2234,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ++it;
     ASSERT_FALSE(it.valid());
 
-    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer'
-                                            // will not be optimized out
+    analyzer->reset(std::string_view{});  // ensure that acquired 'analyzer'
+                                          // will not be optimized out
   }
 
   // first analyzer is invalid
@@ -2266,7 +2266,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
         arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
         EMPTY, EMPTY, arangodb::transaction::Options());
 
-    IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+    IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
     it.reset(slice, linkMeta);
     ASSERT_TRUE(it.valid());
 
@@ -2284,8 +2284,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     ++it;
     ASSERT_FALSE(it.valid());
 
-    analyzer->reset(irs::string_ref::NIL);  // ensure that acquired 'analyzer'
-                                            // will not be optimized out
+    analyzer->reset(std::string_view{});  // ensure that acquired 'analyzer'
+                                          // will not be optimized out
   }
 }
 
@@ -2491,7 +2491,7 @@ TEST_F(IResearchDocumentTest,
       },
   };
 
-  IResearchLinkIterator it(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it.reset(json->slice(), linkMeta);
 
   for (auto& assertField : assertFields) {
@@ -3114,26 +3114,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
 
   auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
   {
-    IResearchLinkIterator it_no_name(trx, irs::string_ref::EMPTY,
-                                     arangodb::IndexId(0));
-    EXPECT_FALSE(it_no_name.valid());
-    it_no_name.reset(document.slice(), linkMeta);
-    ASSERT_TRUE(it_no_name.valid());
-    bool id_indexed{false};
-    while (it_no_name.valid()) {
-      auto& field = *it_no_name;
-      std::string const actualName = std::string(field.name());
-      id_indexed = actualName == mangledId;
-      if (id_indexed) {
-        break;
-      }
-      ++it_no_name;
-    }
-    ASSERT_TRUE(
-        id_indexed);  // for single server collection name is not necessary
-  }
-  {
-    IResearchLinkIterator it_name(trx, "test", arangodb::IndexId(1));
+    IResearchLinkIterator it_name("test", arangodb::IndexId(1));
     EXPECT_FALSE(it_name.valid());
     it_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_name.valid());
@@ -3191,7 +3172,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
 
   auto mangledId = mangleStringIdentity(arangodb::StaticStrings::IdString);
   {
-    IResearchLinkIterator it_no_name(trx, irs::string_ref::EMPTY,
+    IResearchLinkIterator it_no_name(irs::kEmptyStringView<char>,
                                      arangodb::IndexId(0));
     EXPECT_FALSE(it_no_name.valid());
     it_no_name.reset(document.slice(), linkMeta);
@@ -3209,7 +3190,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     ASSERT_FALSE(id_indexed);
   }
   {
-    IResearchLinkIterator it_name(trx, "test", arangodb::IndexId(1));
+    IResearchLinkIterator it_name("test", arangodb::IndexId(1));
     EXPECT_FALSE(it_name.valid());
     it_name.reset(document.slice(), linkMeta);
     ASSERT_TRUE(it_name.valid());
@@ -3248,7 +3229,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
       EMPTY, EMPTY, arangodb::transaction::Options());
-  IResearchLinkIterator it1(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it1(irs::kEmptyStringView<char>, arangodb::IndexId(0));
 
   auto json = arangodb::velocypack::Parser::fromJson("{\"value\":\"3\"}");
   auto json2 = arangodb::velocypack::Parser::fromJson("{\"value\":\"4\"}");
@@ -3256,7 +3237,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
   it1.reset(json->slice(), linkMeta);
   ASSERT_TRUE(it1.valid());
 
-  IResearchLinkIterator it2(trx, irs::string_ref::EMPTY, arangodb::IndexId(0));
+  IResearchLinkIterator it2(irs::kEmptyStringView<char>, arangodb::IndexId(0));
   it2.reset(json2->slice(), linkMeta);
   ASSERT_TRUE(it2.valid());
 
@@ -3366,7 +3347,7 @@ TEST_F(
       },
   };
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3496,7 +3477,7 @@ TEST_F(
                                             mangleNull("never_present"));
       }};
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3631,7 +3612,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
                                             mangleNull("never_present"));
       }};
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3666,7 +3647,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_not_array_expansion) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"keys": "not_an_array", "boost": 10})");
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
@@ -3696,13 +3677,68 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_array_no_expansion) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": [1,2,3]})");
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
   assertField<irs::numeric_token_stream, true>(server, *it,
                                                mangleNumeric("boost"));
   ASSERT_THROW(++it, arangodb::basics::Exception);
+}
+
+TEST_F(IResearchDocumentTest, InvertedFieldIterator_searchField) {
+  auto const indexMetaJson = arangodb::velocypack::Parser::fromJson(
+      R"({"fields" : [{"name": "boost"},
+                      {"name": "keys", "searchField": true}]})");
+
+  auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  arangodb::iresearch::IResearchInvertedIndexMeta indexMeta;
+  std::string error;
+  ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
+                             error, sysVocbase.get()->name()));
+
+  std::vector<std::string> EMPTY;
+  arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*sysVocbase), EMPTY,
+      EMPTY, EMPTY, arangodb::transaction::Options());
+
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({"boost": 10, "keys": [1,2,3]})");
+
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
+                                arangodb::IndexId(0));
+  it.reset(json->slice(), *indexMeta._indexingContext);
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_FALSE(it.valid());
+
+  auto json2 =
+      arangodb::velocypack::Parser::fromJson(R"({"boost": 10, "keys": 123})");
+  it.reset(json2->slice(), *indexMeta._indexingContext);
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("boost"));
+  ++it;
+  ASSERT_TRUE(it.valid());
+  assertField<irs::numeric_token_stream, true>(server, *it,
+                                               mangleNumeric("keys"));
+  ++it;
+  ASSERT_FALSE(it.valid());
 }
 
 TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
@@ -3725,7 +3761,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({"boost": 10, "keys": { "a":1, "b":2, "c":3}})");
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
@@ -3761,7 +3797,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
         assertField<irs::null_token_stream>(server, *it, mangleNull("keys"));
       }};
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
   ASSERT_TRUE(it.valid());
@@ -3804,7 +3840,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_partial_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3849,7 +3885,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_IncludeAllFields_simple) {
   std::string error;
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3896,7 +3932,7 @@ TEST_F(IResearchDocumentTest,
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 
@@ -3948,7 +3984,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_choose_closer_path_match) {
   ASSERT_TRUE(indexMeta.init(server.server(), indexMetaJson->slice(), false,
                              error, sysVocbase.get()->name()));
 
-  InvertedIndexFieldIterator it(trx, irs::string_ref::EMPTY,
+  InvertedIndexFieldIterator it(irs::kEmptyStringView<char>,
                                 arangodb::IndexId(0));
   it.reset(json->slice(), *indexMeta._indexingContext);
 

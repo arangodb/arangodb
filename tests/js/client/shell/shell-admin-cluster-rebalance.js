@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, assertNotEqual, arango */
+/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango, instanceManager */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDB Enterprise License Tests
@@ -29,41 +29,85 @@
 let jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
-
+const {getDBServers} = require('@arangodb/test-helper');
+const internal = require('internal');
 const database = "cluster_rebalance_db";
-let prevDB = null;
+
+const suspendExternal = internal.suspendExternal;
+const continueExternal = require("internal").continueExternal;
+const wait = require("internal").wait;
+
+
+function resignServer(server) {
+  let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
+  assertEqual(202, res.code);
+  const id = res.parsedBody.id;
+
+  let count = 10;
+  while (--count >= 0) {
+    require("internal").wait(5.0, false);
+    res = arango.GET_RAW("/_admin/cluster/queryAgencyJob?id=" + id);
+    if (res.code === 200 && res.parsedBody.status === "Finished") {
+      return;
+    }
+  }
+  assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
+}
+
+function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges) {
+  const result = arango.POST('/_admin/cluster/rebalance', {
+    version: 1,
+    moveLeaders: moveLeaders,
+    moveFollowers: moveFollowers,
+    leaderChanges: leaderChanges,
+    databasesExcluded: ["_system"],
+  });
+  assertEqual(result.code, 200);
+  assertEqual(result.error, false);
+  return result;
+}
+
+function getServersHealth() {
+  let result = arango.GET_RAW('/_admin/cluster/health');
+  assertTrue(result.parsedBody.hasOwnProperty("Health"));
+  return result.parsedBody.Health;
+}
 
 function clusterRebalanceSuite() {
+  let prevDB = null;
   return {
-    setUpAll: function () {
+    setUpAll: function() {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
-      for (let i = 0; i < 10; i++) {
-        db._create("col" + i);
+      for (let i = 0; i < 20; i++) {
+        db._create("col" + i, {replicationFactor: 2});
       }
+
+      // resign one server
+      resignServer(getDBServers()[0].id);
     },
 
-    tearDownAll: function () {
-      for (let i = 0; i < 10; i++) {
+    tearDownAll: function() {
+      for (let i = 0; i < 20; i++) {
         db._drop("col" + i);
       }
       db._useDatabase(prevDB);
       db._dropDatabase(database);
     },
 
-    testGetImbalance: function () {
+    testGetImbalance: function() {
       let result = arango.GET('/_admin/cluster/rebalance');
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
     },
-    testCalcRebalanceVersion: function () {
+    testCalcRebalanceVersion: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 3
       });
       assertEqual(result.code, 400);
     },
-    testCalcRebalance: function () {
+    testCalcRebalance: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -80,7 +124,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testCalcRebalanceAndExecute: function () {
+    testCalcRebalanceAndExecute: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -117,7 +161,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testExecuteRebalanceVersion: function () {
+    testExecuteRebalanceVersion: function() {
       let result = arango.POST('/_admin/cluster/rebalance/execute', {
         version: 3, moves: []
       });
@@ -126,5 +170,160 @@ function clusterRebalanceSuite() {
   };
 }
 
+function clusterRebalanceOtherOptionsSuite() {
+  let prevDB = null;
+  const numCols = 3;
+
+  return {
+
+    setUpAll: function() {
+      prevDB = db._name();
+      db._createDatabase(database);
+      db._useDatabase(database);
+      for (let i = 0; i < numCols; ++i) {
+        db._create("col" + i, {numberOfShards: 2, replicationFactor: 2});
+      }
+
+      let docs = [];
+      for (let i = 0; i < numCols; ++i) {
+        for (let j = 0; j < 1000; ++j) {
+          docs.push({"value": j});
+        }
+        db["col" + i].insert(docs);
+        docs = [];
+      }
+    },
+
+    tearDownAll: function() {
+      db._useDatabase(prevDB);
+      db._dropDatabase(database);
+    },
+
+    testCalcRebalanceStopServer: function() {
+      const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+      assertNotEqual(dbServers.length, 0);
+      for (let i = 0; i < dbServers.length; ++i) {
+        const dbServer = dbServers[i];
+        assertTrue(suspendExternal(dbServer.pid));
+        try {
+          let serverHealth = null;
+          let startTime = Date.now();
+          let result = null;
+          do {
+            wait(2);
+            result = getServersHealth();
+            assertNotNull(result);
+            serverHealth = result[dbServer.id].Status;
+            assertNotNull(serverHealth);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            assertTrue(timeElapsed < 300, "Server expected status not acquired");
+          } while (serverHealth !== "FAILED");
+          dbServer.suspended = true;
+          const serverShortName = result[dbServer.id].ShortName;
+          assertEqual(serverHealth, "FAILED");
+          startTime = Date.now();
+          let serverUsed;
+          do {
+            wait(2);
+            serverUsed = false;
+            for (let j = 0; j < numCols; ++j) {
+              result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+              for (let key of Object.keys(result)) {
+                if (result[key].leader === serverShortName) {
+                  serverUsed = true;
+                  break;
+                }
+                result[key].followers.forEach(follower => {
+                  if (follower === serverShortName) {
+                    serverUsed = true;
+                  }
+                });
+              }
+              if (serverUsed === true) {
+                break;
+              }
+              const timeElapsed = (Date.now() - startTime) / 1000;
+              assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
+            }
+          } while (serverUsed);
+
+          result = getRebalancePlan(true, true, true);
+          let moves = result.result.moves;
+          for (const job of moves) {
+            assertNotEqual(job.to, dbServer.id);
+          }
+        } finally {
+          assertTrue(continueExternal(dbServer.pid));
+          let serverHealth = null;
+          const startTime = Date.now();
+          do {
+            wait(2);
+            const result = getServersHealth();
+            assertNotNull(result);
+            serverHealth = result[dbServer.id].Status;
+            assertNotNull(serverHealth);
+            const timeElapsed = (Date.now() - startTime) / 1000;
+            assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
+          } while (serverHealth !== "GOOD");
+          dbServer.suspended = false;
+        }
+      }
+    },
+
+    testCalcRebalanceNotMoveLeaders: function() {
+      const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
+      Object.entries(plan).forEach((shardInfo) => {
+        const [shardName, servers] = shardInfo;
+        const leader = servers.leader;
+        let result = getServersHealth();
+        let leaderId = null;
+        Object.entries(result).forEach((serversHealth) => {
+          const [serverId, value] = serversHealth;
+          if (value.ShortName !== undefined && value.ShortName === leader) {
+            leaderId = serverId;
+          }
+        });
+        assertNotNull(leaderId);
+        result = getRebalancePlan(false, true, false);
+        let moves = result.result.moves;
+        for (const job of moves) {
+          if (job.shard === shardName) {
+            assertNotEqual(job.from, leaderId);
+            assertFalse(job.isLeader);
+          }
+        }
+      });
+    },
+
+    testCalcRebalanceNotMoveFollowers: function() {
+      const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
+      Object.entries(plan).forEach((shardInfo) => {
+        const [shardName, servers] = shardInfo;
+        const follower = servers.followers[0]; // replication factor = 2, hence, 1 follower
+        let result = getServersHealth();
+        let followerId = null;
+        Object.entries(result).forEach((serversHealth) => {
+          const [serverId, value] = serversHealth;
+          if (value.ShortName !== undefined && value.ShortName === follower) {
+            followerId = serverId;
+          }
+        });
+        assertNotNull(followerId);
+
+        result = getRebalancePlan(true, false, true);
+        let moves = result.result.moves;
+        for (const job of moves) {
+          if (job.shard === shardName) {
+            assertNotEqual(job.from, followerId);
+            assertTrue(job.isLeader);
+          }
+        }
+      });
+    },
+
+  };
+}
+
 jsunity.run(clusterRebalanceSuite);
+jsunity.run(clusterRebalanceOtherOptionsSuite);
 return jsunity.done();

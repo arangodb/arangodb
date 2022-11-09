@@ -38,8 +38,9 @@ struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
       std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
       arangodb::LogicalDataSource const& collection,
-      arangodb::AccessMode::Type type)
-      : arangodb::transaction::Methods(transactionContext),
+      arangodb::AccessMode::Type type,
+      transaction::Options options = transaction::Options())
+      : arangodb::transaction::Methods(transactionContext, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);

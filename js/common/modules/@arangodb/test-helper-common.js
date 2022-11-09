@@ -28,11 +28,44 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const fs = require('fs');
 
 let instanceInfo = null;
+
+exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSuccess, abortArangoshOnly) {
+  try {
+    db._executeTransaction(trx);
+  } catch (ex) {
+    if ((!abortArangoshOnly || global.arango) &&  // only on arangosh...
+        (ex instanceof arangodb.ArangoError) && // only regular arango errors has the subsequent:
+        (ex.errorNum === errorCode) && // check for right error code
+        (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
+      if (crashOnSuccess) {
+        internal.debugTerminate('crashing server');
+      }
+      return 0;
+    }
+    console.log(ex);
+  }
+  return 1;
+};
+
+exports.truncateFailure = function (collection) {
+  try {
+    collection.truncate();
+    return 1;
+  } catch (ex) {
+    if (!ex instanceof arangodb.ArangoError ||
+        ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
+      throw ex;
+    }
+  }
+  internal.debugTerminate('crashing server');
+};
 
 function getInstanceInfo() {
   if (instanceInfo === null) {
@@ -112,7 +145,8 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist =
     if (testcase === "setUp" ||
         testcase === "tearDown" ||
         testcase === "setUpAll" ||
-        testcase === "tearDownAll") {
+        testcase === "tearDownAll" ||
+        testcase === "internal") {
       targetTestCase = testcase;
     }
     if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)){
@@ -311,4 +345,20 @@ exports.compareStringIds = function (l, r) {
     return l < r ? -1 : 1;
   }
   return 0;
+};
+
+exports.endpointToURL = (endpoint) => {
+  let protocol = endpoint.split('://')[0];
+  switch(protocol) {
+    case 'ssl':
+      return 'https://' + endpoint.substr(6);
+    case 'tcp':
+      return 'http://' + endpoint.substr(6);
+    default:
+      var pos = endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + endpoint;
+      }
+      return 'http' + endpoint.substr(pos);
+  }
 };

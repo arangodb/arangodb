@@ -193,7 +193,7 @@ void RocksDBKey::constructVPackIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId,
-                                                VPackSlice const& indexValues) {
+                                                VPackSlice indexValues) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::UniqueVPackIndexValue;
   size_t const byteSize = static_cast<size_t>(indexValues.byteSize());
@@ -336,6 +336,19 @@ void RocksDBKey::constructReplicatedLog(TRI_voc_tick_t databaseId,
   _buffer->push_back(static_cast<char>(_type));
   uint64ToPersistent(*_buffer, databaseId);
   uint64ToPersistent(*_buffer, logId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructReplicatedState(
+    TRI_voc_tick_t databaseId, arangodb::replication2::LogId stateId) {
+  TRI_ASSERT(databaseId != 0);
+  _type = RocksDBEntryType::ReplicatedLog;
+  size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  _buffer->push_back(static_cast<char>(_type));
+  uint64ToPersistent(*_buffer, databaseId);
+  uint64ToPersistent(*_buffer, stateId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

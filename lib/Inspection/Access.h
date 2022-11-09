@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
 namespace arangodb::inspection {
@@ -307,6 +308,37 @@ struct Access<std::monostate> : AccessBase<std::monostate> {
       f.builder().add(VPackSlice::emptyObjectSlice());
       return Status::Success{};
     }
+  }
+};
+
+template<>
+struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
+  template<class Inspector>
+  static auto apply(Inspector& f, VPackBuilder& x) {
+    if constexpr (Inspector::isLoading) {
+      x.clear();
+      x.add(f.slice());
+      return Status{};
+    } else {
+      if (!x.isClosed()) {
+        return Status{"Exected closed VPackBuilder"};
+      }
+      f.builder().add(x.slice());
+      return Status{};
+    }
+  }
+};
+
+template<typename T>
+struct Access<std::reference_wrapper<T>>
+    : AccessBase<std::reference_wrapper<T>> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::reference_wrapper<T>& x) {
+    static_assert(!Inspector::isLoading,
+                  "a reference_wrapper cannot be deserialized because it "
+                  "cannot be default constructed (default construction is "
+                  "required for the deserialization result type)");
+    return f.apply(x.get());
   }
 };
 

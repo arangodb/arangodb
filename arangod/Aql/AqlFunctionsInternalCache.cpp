@@ -43,15 +43,15 @@ void AqlFunctionsInternalCache::clear() noexcept {
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  buildRegexPattern(_temp, ptr, length, caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  buildRegexPattern(_temp, expr, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
 icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  buildLikePattern(_temp, ptr, length, caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  buildLikePattern(_temp, expr, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
 }
@@ -127,22 +127,23 @@ icu::RegexMatcher* AqlFunctionsInternalCache::fromCache(
 
 /// @brief compile a REGEX pattern from a string
 void AqlFunctionsInternalCache::buildRegexPattern(std::string& out,
-                                                  char const* ptr,
-                                                  size_t length,
+                                                  std::string_view expr,
                                                   bool caseInsensitive) {
   out.clear();
   if (caseInsensitive) {
-    out.reserve(length + 4);
+    out.reserve(expr.size() + 4);
     out.append("(?i)");
   }
 
-  out.append(ptr, length);
+  out.append(expr);
 }
 
 /// @brief compile a LIKE pattern from a string
 void AqlFunctionsInternalCache::buildLikePattern(std::string& out,
-                                                 char const* ptr, size_t length,
+                                                 std::string_view expr,
                                                  bool caseInsensitive) {
+  size_t const length = expr.size();
+
   out.clear();
   out.reserve(length + 8);  // reserve some room
 
@@ -155,7 +156,7 @@ void AqlFunctionsInternalCache::buildLikePattern(std::string& out,
   bool escaped = false;
 
   for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
+    char const c = expr[i];
 
     if (c == '\\') {
       if (escaped) {
@@ -213,12 +214,14 @@ void AqlFunctionsInternalCache::buildLikePattern(std::string& out,
 /// - second: true if the found wildcard is the last byte in the pattern,
 ///   false otherwise. can only be true if first is also true
 std::pair<bool, bool> AqlFunctionsInternalCache::inspectLikePattern(
-    std::string& out, char const* ptr, size_t length) {
+    std::string& out, std::string_view expr) {
+  size_t const length = expr.size();
+
   out.reserve(length);
   bool escaped = false;
 
   for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
+    char const c = expr[i];
 
     if (c == '\\') {
       if (escaped) {

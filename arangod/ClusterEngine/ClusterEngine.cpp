@@ -233,8 +233,7 @@ arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection,
-                                     bool doSync) {
+                                     LogicalCollection const& collection) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -312,6 +311,17 @@ auto ClusterEngine::dropReplicatedLog(
     std::shared_ptr<
         arangodb::replication2::replicated_log::PersistedLog> const&)
     -> Result {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+Result ClusterEngine::updateReplicatedState(
+    TRI_vocbase_t& vocbase,
+    replication2::replicated_state::PersistedStateInfo const& info) {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+Result ClusterEngine::dropReplicatedState(TRI_vocbase_t& vocbase,
+                                          arangodb::replication2::LogId id) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

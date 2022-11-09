@@ -43,7 +43,6 @@ class LogicalCollection;
 class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
@@ -57,8 +56,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              velocypack::Slice info);
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
-                                    bool doSync) override;
+  arangodb::Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
@@ -97,8 +95,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  Result truncate(transaction::Methods& trx,
-                  OperationOptions& options) override;
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete) override;
 
   /// @brief returns the LocalDocumentId and the revision id for the document
   /// with the specified key.
@@ -156,6 +154,15 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         ReadOwnWrites readOwnWrites) const override;
 
  private:
+  // optimized truncate, using DeleteRange operations.
+  // this can only be used if the truncate is performed as a standalone
+  // operation (i.e. not part of a larger transaction)
+  Result truncateWithRangeDelete(transaction::Methods& trx);
+
+  // slow truncate that performs a document-by-document removal.
+  Result truncateWithRemovals(transaction::Methods& trx,
+                              OperationOptions& options);
+
   [[nodiscard]] Result performUpdateOrReplace(
       transaction::Methods& trx, LocalDocumentId previousDocumentId,
       RevisionId previousRevisionId, velocypack::Slice previousDocument,

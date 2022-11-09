@@ -108,7 +108,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     if (foundProjections && !attributes.empty() &&
         attributes.size() <= e->maxProjections()) {
-      Projections projections(attributes);
+      Projections projections(std::move(attributes));
 
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
           !isRandomOrder) {
@@ -179,6 +179,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (!picked && !forced) {
             for (auto const& idx : indexes) {
               if (selectIndexIfPossible(idx)) {
+                TRI_ASSERT(picked != nullptr);
                 break;
               }
             }
@@ -284,6 +285,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (!picked && !forced) {
           for (auto const& idx : indexes) {
             if (selectIndexIfPossible(idx)) {
+              TRI_ASSERT(picked != nullptr);
               break;
             }
           }

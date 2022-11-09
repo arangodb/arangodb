@@ -23,12 +23,22 @@
 
 #pragma once
 
-#include "DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+
+#include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateNetworkHandler;
+struct IDocumentStateTransactionHandler;
+
 struct DocumentFollowerState
-    : replicated_state::IReplicatedFollowerState<DocumentState> {
-  explicit DocumentFollowerState(std::unique_ptr<DocumentCore> core);
+    : replicated_state::IReplicatedFollowerState<DocumentState>,
+      std::enable_shared_from_this<DocumentFollowerState> {
+  explicit DocumentFollowerState(
+      std::unique_ptr<DocumentCore> core,
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+  ~DocumentFollowerState();
 
  protected:
   [[nodiscard]] auto resign() && noexcept
@@ -38,6 +48,18 @@ struct DocumentFollowerState
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
 
-  std::unique_ptr<DocumentCore> _core;
+ private:
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<DocumentCore> core)
+        : core(std::move(core)){};
+    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
+
+    std::unique_ptr<DocumentCore> core;
+  };
+
+  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
+  std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
+  Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
+
 }  // namespace arangodb::replication2::replicated_state::document

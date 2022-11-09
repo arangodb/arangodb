@@ -25,23 +25,21 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
+#include "Basics/system-functions.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
 
 #include "V8/v8-deadline.h"
-#include "Basics/system-functions.h"
-#include "v8-utils.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort certain operations

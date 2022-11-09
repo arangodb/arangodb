@@ -179,6 +179,9 @@ function request (req) {
   if (is.existy(req.timeout)) {
     options.timeout = req.timeout;
   }
+  if (is.existy(req.addContentLength)) {
+    options.addContentLength = req.addContentLength;
+  }
   if (is.existy(req.followRedirect)) {
     options.followRedirects = req.followRedirect; // [sic] node-request compatibility
   }

@@ -317,4 +317,18 @@ auto SetBothWriteConcernAction::toString() const -> std::string {
                      newWriteConcern, newSoftWriteConcern);
 }
 
+SetWaitForSyncAction::SetWaitForSyncAction(bool newWaitForSync)
+    : newWaitForSync(newWaitForSync) {}
+
+void SetWaitForSyncAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.config.waitForSync = newWaitForSync;
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto SetWaitForSyncAction::toString() const -> std::string {
+  return fmt::format("setting waitForSync to {}", newWaitForSync);
+}
+
 }  // namespace arangodb::test

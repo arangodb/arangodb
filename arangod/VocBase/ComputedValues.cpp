@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ComputedValues.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -38,6 +39,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/debugging.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -47,6 +49,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <span>
 #include <string_view>
 #include <type_traits>
 
@@ -82,7 +85,7 @@ transaction::Methods& ComputedValuesExpressionContext::trx() const {
 }
 
 void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
-                                                      char const* msg) {
+                                                      std::string_view msg) {
   if (_failOnWarning) {
     // treat as an error if we are supposed to treat warnings as errors
     registerError(errorCode, msg);
@@ -93,7 +96,7 @@ void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
 }
 
 void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
-                                                    char const* msg) {
+                                                    std::string_view msg) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
   std::string error = buildLogMessage("error", msg);
@@ -102,31 +105,25 @@ void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
 }
 
 std::string ComputedValuesExpressionContext::buildLogMessage(
-    std::string_view type, char const* msg) const {
+    std::string_view type, std::string_view msg) const {
   // note: on DB servers, the error message will contain the shard name
   // rather than the collection name.
-  std::string error =
-      absl::StrCat("computed values expression evaluation produced a runtime ",
-                   type, " for attribute '", _name, "' of collection '",
-                   _collection.vocbase().name(), "/", _collection.name(), "'");
-
-  if (msg != nullptr) {
-    absl::StrAppend(&error, ": ", msg);
-  }
+  std::string error = absl::StrCat(
+      "computed values expression evaluation produced a runtime ", type,
+      " for attribute '", _name, "' of collection '",
+      _collection.vocbase().name(), "/", _collection.name(), "': ", msg);
 
   return error;
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
 icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
@@ -137,7 +134,7 @@ icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
 }
 
 ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    velocypack::Slice const& params) {
+    velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
@@ -170,13 +167,13 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
                                              std::string_view name,
                                              std::string_view expressionString,
                                              ComputeValuesOn mustComputeOn,
-                                             bool doOverride,
-                                             bool failOnWarning, bool keepNull)
+                                             bool overwrite, bool failOnWarning,
+                                             bool keepNull)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
       _mustComputeOn(mustComputeOn),
-      _override(doOverride),
+      _overwrite(overwrite),
       _failOnWarning(failOnWarning),
       _keepNull(keepNull),
       _queryContext(aql::StandaloneCalculation::buildQueryContext(_vocbase)),
@@ -194,8 +191,9 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // store the computed results once (e.g. when using a queryString such
   // as "RETURN DATE_NOW()" you always want the current date to be
   // returned, and not a date once stored)
-  ast->validateAndOptimize(_queryContext->trxForOptimization(),
-                           {.optimizeNonCacheable = false});
+  ast->validateAndOptimize(
+      _queryContext->trxForOptimization(),
+      {.optimizeNonCacheable = false, .optimizeFunctionCalls = false});
 
   if (_failOnWarning) {
     // rethrow any warnings during query inspection
@@ -266,7 +264,7 @@ void ComputedValues::ComputedValue::toVelocyPack(
     result.add(VPackValue("replace"));
   }
   result.close();  // computeOn
-  result.add("override", VPackValue(_override));
+  result.add("overwrite", VPackValue(_overwrite));
   result.add("failOnWarning", VPackValue(_failOnWarning));
   result.add("keepNull", VPackValue(_keepNull));
   result.close();
@@ -276,8 +274,8 @@ std::string_view ComputedValues::ComputedValue::name() const noexcept {
   return _name;
 }
 
-bool ComputedValues::ComputedValue::doOverride() const noexcept {
-  return _override;
+bool ComputedValues::ComputedValue::overwrite() const noexcept {
+  return _overwrite;
 }
 
 bool ComputedValues::ComputedValue::failOnWarning() const noexcept {
@@ -379,7 +377,7 @@ void ComputedValues::mergeComputedAttributes(
       } else {
         auto itCompute = attributes.find(key.stringView());
         if (itCompute == attributes.end() ||
-            !_values[itCompute->second].doOverride()) {
+            !_values[itCompute->second].overwrite()) {
           // only add these attributes from the original document
           // that we are not going to overwrite
           output.addUnchecked(key, it.value());
@@ -394,7 +392,7 @@ void ComputedValues::mergeComputedAttributes(
 
   for (auto const& it : attributes) {
     auto const& cv = _values[it.second];
-    if (cv.doOverride() || !keysWritten.contains(cv.name())) {
+    if (cv.overwrite() || !keysWritten.contains(cv.name())) {
       // update "failOnWarning" flag for each computation
       cvec.failOnWarning(cv.failOnWarning());
       // update "name" vlaue for each computation (for errors/warnings)
@@ -453,10 +451,10 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
       }
     }
 
-    VPackSlice doOverride = it.get("override");
-    if (!doOverride.isBoolean()) {
+    VPackSlice overwrite = it.get("overwrite");
+    if (!overwrite.isBoolean()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "invalid 'computedValues' entry: 'override' must be a boolean"};
+              "invalid 'computedValues' entry: 'overwrite' must be a boolean"};
     }
 
     ComputeValuesOn mustComputeOn = ComputeValuesOn::kNever;
@@ -547,8 +545,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
 
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
-                           mustComputeOn, doOverride.getBoolean(),
-                           failOnWarning, keepNull);
+                           mustComputeOn, overwrite.getBoolean(), failOnWarning,
+                           keepNull);
     } catch (std::exception const& ex) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("invalid 'computedValues' entry: ", ex.what())};
@@ -556,6 +554,41 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
   }
 
   return {};
+}
+
+ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
+    TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+    velocypack::Slice computedValues) {
+  if (!computedValues.isNone()) {
+    if (computedValues.isNull()) {
+      computedValues = VPackSlice::emptyArraySlice();
+    }
+    if (!computedValues.isArray()) {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    "Computed values description is not an array."};
+    }
+
+    TRI_ASSERT(computedValues.isArray());
+
+    std::shared_ptr<ComputedValues> newValue;
+
+    // computed values will be removed if empty array is given
+    if (!computedValues.isEmptyArray()) {
+      try {
+        return std::make_shared<ComputedValues>(
+            vocbase.server()
+                .getFeature<DatabaseFeature>()
+                .getCalculationVocbase(),
+            std::span(shardKeys), computedValues);
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Error when validating computedValues: ", ex.what())};
+      }
+    }
+  }
+
+  return std::shared_ptr<ComputedValues>();
 }
 
 void ComputedValues::toVelocyPack(velocypack::Builder& result) const {

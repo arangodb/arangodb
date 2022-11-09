@@ -38,6 +38,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/FeatureFlags.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceRestHandler.h"
@@ -72,6 +73,7 @@
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestDocumentStateHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -250,8 +252,8 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--http.return-queue-time-header",
-                  "if true, return the 'x-arango-queue-time-seconds' header in "
-                  "responses",
+                  "If true, return the `x-arango-queue-time-seconds` header in "
+                  "responses.",
                   new BooleanParameter(&_returnQueueTimeHeader))
       .setIntroducedIn(30900);
 
@@ -276,8 +278,8 @@ void GeneralServerFeature::collectOptions(
                         "web-interface.trusted-proxy");
 
   options->addOption("--web-interface.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make "
-                     "sure --web-interface.proxy-request-check is enabled",
+                     "List of proxies to trust (can be IP or network). Make "
+                     "sure `--web-interface.proxy-request-check` is enabled.",
                      new VectorParameter<StringParameter>(&_trustedProxies),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -508,7 +510,8 @@ void GeneralServerFeature::buildServers() {
     ssl.verifySslOptions();
   }
 
-  _servers.emplace_back(std::make_unique<GeneralServer>(*this, _numIoThreads));
+  _servers.emplace_back(std::make_unique<GeneralServer>(
+      *this, _numIoThreads, _allowEarlyConnections));
 }
 
 void GeneralServerFeature::startListening() {
@@ -642,7 +645,7 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
 
-  if (cluster.isEnabled()) {
+  if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},
                        RestHandlerCreator<RestLogHandler>::createNoData);
     f.addPrefixHandler(
@@ -654,6 +657,9 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addPrefixHandler(
         "/_api/prototype-state",
         RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
+    f.addPrefixHandler(
+        std::string{StaticStrings::ApiDocumentStateExternal},
+        RestHandlerCreator<RestDocumentStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject

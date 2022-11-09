@@ -233,12 +233,6 @@ template<typename T1, typename T2>
   return (result == 0);
 }
 
-/// @brief checks for a prefix
-bool isPrefix(std::string_view str, std::string_view prefix);
-
-/// @brief checks for a suffix
-bool isSuffix(std::string_view str, std::string_view postfix);
-
 /// @brief url decodes the string
 std::string urlDecodePath(std::string_view str);
 std::string urlDecode(std::string_view str);

@@ -27,10 +27,18 @@
 
 namespace arangodb {
 
+struct IRocksDBTransactionCallback {
+  virtual ~IRocksDBTransactionCallback() = default;
+  virtual rocksdb::SequenceNumber prepare() = 0;
+  virtual void cleanup() = 0;
+  virtual void commit(rocksdb::SequenceNumber lastWritten) = 0;
+};
+
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState const* state,
+                                 IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
   ~RocksDBTrxBaseMethods();
@@ -54,6 +62,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   uint64_t numCommits() const noexcept final override { return _numCommits; }
 
+  uint64_t numIntermediateCommits() const noexcept final override {
+    return _numIntermediateCommits;
+  }
+
   bool ensureSnapshot() final override;
 
   rocksdb::SequenceNumber GetSequenceNumber() const noexcept final override;
@@ -64,6 +76,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   uint64_t numOperations() const noexcept final override {
     return _numInserts + _numUpdates + _numRemoves;
+  }
+
+  uint64_t numPrimitiveOperations() const noexcept final override {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
   }
 
   /// @brief add an operation for a transaction
@@ -99,6 +115,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   arangodb::Result doCommit();
 
+  IRocksDBTransactionCallback& _callback;
+
   rocksdb::TransactionDB* _db{nullptr};
 
   /// @brief shared read options which can be used by operations
@@ -112,6 +130,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
 
   /// @brief number of commits, including intermediate commits
   uint64_t _numCommits{0};
+  /// @brief number of intermediate commits
+  uint64_t _numIntermediateCommits{0};
   // if a transaction gets bigger than these values then an automatic
   // intermediate commit will be done
   uint64_t _numInserts{0};

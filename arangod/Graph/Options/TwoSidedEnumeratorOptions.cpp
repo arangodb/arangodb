@@ -35,3 +35,10 @@ TwoSidedEnumeratorOptions::~TwoSidedEnumeratorOptions() = default;
 
 size_t TwoSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
 size_t TwoSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
+
+bool TwoSidedEnumeratorOptions::getStopAtFirstDepth() const {
+  return _stopAtFirstDepth;
+}
+void TwoSidedEnumeratorOptions::setStopAtFirstDepth(bool stopAtFirstDepth) {
+  _stopAtFirstDepth = stopAtFirstDepth;
+}

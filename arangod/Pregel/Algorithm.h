@@ -26,6 +26,7 @@
 #include <velocypack/Slice.h>
 #include <cstdint>
 #include <functional>
+#include <utility>
 
 #include "Basics/Common.h"
 #include "Pregel/GraphFormat.h"
@@ -56,25 +57,25 @@ struct IAlgorithm {
 
   // virtual bool isFixpointAlgorithm() const {return false;}
 
-  virtual bool supportsAsyncMode() const { return false; }
+  [[nodiscard]] virtual bool supportsAsyncMode() const { return false; }
 
-  virtual bool supportsCompensation() const { return false; }
+  [[nodiscard]] virtual bool supportsCompensation() const { return false; }
 
-  virtual IAggregator* aggregator(std::string const& name) const {
+  [[nodiscard]] virtual IAggregator* aggregator(std::string const& name) const {
     return nullptr;
   }
 
-  virtual MasterContext* masterContext(
+  [[nodiscard]] virtual MasterContext* masterContext(
       arangodb::velocypack::Slice userParams) const {
     return nullptr;
   }
 
   // ============= Configure runtime parameters ============
 
-  std::string const& name() const { return _name; }
+  [[nodiscard]] std::string const& name() const { return _name; }
 
  protected:
-  explicit IAlgorithm(std::string const& name) : _name(name) {}
+  explicit IAlgorithm(std::string name) : _name(std::move(name)) {}
 
  private:
   std::string _name;
@@ -100,7 +101,8 @@ struct Algorithm : IAlgorithm {
       VertexCompensation<vertex_type, edge_type, message_type>;
 
  public:
-  virtual WorkerContext* workerContext(velocypack::Slice userParams) const {
+  [[nodiscard]] virtual WorkerContext* workerContext(
+      velocypack::Slice userParams) const {
     return new WorkerContext();
   }
   virtual graph_format* inputFormat() const = 0;
@@ -110,17 +112,16 @@ struct Algorithm : IAlgorithm {
   virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
-  virtual std::set<std::string> initialActiveSet() {
-    return std::set<std::string>();
-  }
+  virtual std::set<std::string> initialActiveSet() { return {}; }
 
-  virtual uint32_t messageBatchSize(WorkerConfig const& config,
-                                    MessageStats const& stats) const {
+  [[nodiscard]] virtual uint32_t messageBatchSize(
+      WorkerConfig const& config, MessageStats const& stats) const {
     if (config.localSuperstep() == 0) {
       return 500;
     } else {
-      double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-      msgsPerSec /= config.parallelism();  // per thread
+      double msgsPerSec =
+          static_cast<double>(stats.sendCount) / stats.superstepRuntimeSecs;
+      msgsPerSec /= static_cast<double>(config.parallelism());  // per thread
       msgsPerSec *= 0.06;
       return msgsPerSec > 250.0 ? (uint32_t)msgsPerSec : 250;
     }

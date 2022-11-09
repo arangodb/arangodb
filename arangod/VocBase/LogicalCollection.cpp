@@ -32,9 +32,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
@@ -58,11 +60,11 @@
 #endif
 
 #include <absl/strings/str_cat.h>
+#include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
-
-#include <span>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -205,9 +207,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesBefore(info);
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-  initializeSmartAttributes(info);
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesAfter(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -228,14 +234,23 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // computed values
   if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
       res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    LOG_TOPIC("4c73f", ERR, Logger::FIXME)
+        << "collection '" << this->vocbase().name() << "/" << name() << ": "
+        << res.errorMessage()
+        << " - disabling computed values for this collection. original value: "
+        << info.get(StaticStrings::ComputedValues).toJson();
+    TRI_ASSERT(_computedValues == nullptr);
   }
 }
 
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributesBefore(
+    velocypack::Slice info) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
   // nothing to do in community edition
 }
 #endif
@@ -271,39 +286,15 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  if (!computedValues.isNone()) {
-    if (computedValues.isNull()) {
-      computedValues = VPackSlice::emptyArraySlice();
-    }
-    if (!computedValues.isArray()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Computed values description is not an array."};
-    }
+  auto result =
+      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-    TRI_ASSERT(computedValues.isArray());
-
-    std::shared_ptr<ComputedValues> newValue;
-
-    // computed values will be removed if empty array is given
-    if (!computedValues.isEmptyArray()) {
-      auto const& sk = shardKeys();
-      try {
-        newValue =
-            std::make_shared<ComputedValues>(vocbase()
-                                                 .server()
-                                                 .getFeature<DatabaseFeature>()
-                                                 .getCalculationVocbase(),
-                                             std::span(sk), computedValues);
-      } catch (std::exception const& ex) {
-        return {
-            TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Error when validating computedValues: ", ex.what())};
-      }
-    }
-
-    std::atomic_store_explicit(&_computedValues, newValue,
-                               std::memory_order_release);
+  if (result.fail()) {
+    return result.result();
   }
+
+  std::atomic_store_explicit(&_computedValues, result.get(),
+                             std::memory_order_release);
 
   return {};
 }
@@ -554,15 +545,6 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
-                                                     TransactionId tid) {
-  return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
-}
-
-void LogicalCollection::flushClusterIndexEstimates() {
-  getPhysical()->flushClusterIndexEstimates();
-}
-
 std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
 }
@@ -602,7 +584,6 @@ Result LogicalCollection::rename(std::string&& newName) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while renaming collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
   if (_status != TRI_VOC_COL_STATUS_LOADED) {
@@ -615,7 +596,6 @@ Result LogicalCollection::rename(std::string&& newName) {
     return TRI_ERROR_INTERNAL;
   }
 
-  auto doSync = databaseFeature.forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -623,7 +603,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     StorageEngine& engine =
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this, doSync);
+    engine.changeCollection(vocbase(), *this);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -674,7 +654,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags(Index::Serialize::Basics);
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden();
     }
   });
@@ -736,12 +716,12 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags();
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion",
-             VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
+  // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -876,7 +856,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
       !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
@@ -918,9 +897,12 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                       "bad value for replicationFactor");
       }
 
+      auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor > 10) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
@@ -943,9 +925,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         }
       }
     } else if (replicationFactorSlice.isString()) {
-      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
+      if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
@@ -1005,11 +988,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                (writeConcern == 0 && isSatellite()));
   }
 
-  auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
-
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice, doSync);
+  res = getPhysical()->updateProperties(slice);
   if (!res.ok()) {
     return res;
   }
@@ -1060,7 +1041,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this, doSync);
+  engine.changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
@@ -1110,9 +1091,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(_vocbase);
-#endif
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
@@ -1155,17 +1133,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes a truncate operation (note: currently this only clears
-/// the read-cache
+/// @brief processes a truncate operation
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::truncate(transaction::Methods& trx,
-                                   OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::truncate") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  return getPhysical()->truncate(trx, options);
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+  return getPhysical()->truncate(trx, options, usedRangeDelete);
 }
 
 /// @brief compact-data operation
@@ -1298,57 +1273,42 @@ auto LogicalCollection::getDocumentState()
 auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
   auto stateMachine = getDocumentState();
-  auto leader = stateMachine->getLeader();
-  // TODO improve error handling
-  ADB_PROD_ASSERT(leader != nullptr)
-      << "Cannot get DocumentLeaderState in shard " << name();
-  return leader;
-}
 
-auto LogicalCollection::waitForDocumentStateLeader() -> std::shared_ptr<
-    replication2::replicated_state::document::DocumentLeaderState> {
-  auto replicatedState = getDocumentState();
-  std::optional<replication2::replicated_state::StateStatus> status =
-      std::nullopt;
-  replication2::replicated_state::LeaderStatus const* leaderStatus = nullptr;
+  static constexpr auto throwUnavailable = []<typename... Args>(
+      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      Args && ... args) {
+    throw basics::Exception(
+        TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+  };
 
-  // TODO find a better way to wait for service availability
-  for (int counter{0}; counter < 30; ++counter) {
-    status = replicatedState->getStatus();
-    if (status) {
-      leaderStatus = status->asLeaderStatus();
-      if (leaderStatus != nullptr &&
-          leaderStatus->managerState.state ==
-              replication2::replicated_state::LeaderInternalState::
-                  kServiceAvailable) {
-        break;
-      }
-    }
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(1s);
+  auto const status = stateMachine->getStatus();
+  if (status == std::nullopt) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available, accessed "
+                     "from {}/{}. No status available.",
+                     shardIdToStateId(name()), vocbase().name(), name());
   }
 
+  auto const* const leaderStatus = status->asLeaderStatus();
   if (leaderStatus == nullptr) {
-    if (status.has_value()) {
-      std::stringstream stream;
-      stream << "Could not get leader status, current status is " << *status;
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER, stream.str());
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          "Could not get any status from replicated state");
-    }
-  }
-  if (leaderStatus->managerState.state !=
-      replication2::replicated_state::LeaderInternalState::kServiceAvailable) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-        "Leader state service is not available, the current status being: " +
-            std::string(to_string(leaderStatus->managerState.state)));
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     fmt::streamed(*status));
   }
 
-  return getDocumentStateLeader();
+  auto leader = stateMachine->getLeader();
+  if (leader == nullptr) {
+    throwUnavailable(ADB_HERE,
+                     "Replicated state {} is not available as leader, accessed "
+                     "from {}/{}. Status is {}.",
+                     shardIdToStateId(name()), vocbase().name(), name(),
+                     to_string(leaderStatus->managerState.state));
+  }
+
+  return leader;
 }
 
 auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<

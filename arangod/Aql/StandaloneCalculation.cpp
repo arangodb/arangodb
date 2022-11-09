@@ -92,16 +92,38 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
-      arangodb::DataSourceId collectionId) override {
-    // Analyzers do not write. so do nothing
-    return {};
+  Result triggerIntermediateCommit() override {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "CalculationTransactionState";
+    return Result{TRI_ERROR_INTERNAL};
   }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      arangodb::DataSourceId collectionId) override {
+    // Analyzers do not write. so do nothing
+    return Result{};
+  }
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
 
   /// @brief number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override { return 0; }
+  [[nodiscard]] uint64_t numCommits() const noexcept override { return 0; }
+
+  /// @brief number of intermediate commits
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override {
+    return 0;
+  }
+
+  void addIntermediateCommits(uint64_t /*value*/) override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
     return 0;
@@ -243,8 +265,9 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
     parser.parse();
-    ast->validateAndOptimize(queryContext.trxForOptimization(),
-                             {.optimizeNonCacheable = false});
+    ast->validateAndOptimize(
+        queryContext.trxForOptimization(),
+        {.optimizeNonCacheable = false, .optimizeFunctionCalls = false});
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
     TRI_ASSERT(astRoot->type == NODE_TYPE_ROOT);

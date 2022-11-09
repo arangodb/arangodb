@@ -27,7 +27,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/EnumeratePathsExecutor.h"
@@ -391,9 +391,14 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  if (pathType() == arangodb::graph::PathType::Type::KPaths) {
+  const bool isKPaths = pathType() == arangodb::graph::PathType::Type::KPaths;
+  const bool isAllShortestPaths =
+      pathType() == arangodb::graph::PathType::Type::AllShortestPaths;
+
+  if (isKPaths or isAllShortestPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
         opts->minDepth, opts->maxDepth};
+    enumeratorOptions.setStopAtFirstDepth(isAllShortestPaths);
     PathValidatorOptions validatorOptions(opts->tmpVar(),
                                           opts->getExpressionCtx());
 
@@ -423,26 +428,43 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           opts->getExpressionCtx(), {}, opts->collectionToShard(),
           opts->getVertexProjections(), opts->getEdgeProjections());
 
+      using Provider = SingleServerProvider<SingleServerProviderStep>;
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
-        return _makeExecutionBlockImpl<
-            KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>,
-            SingleServerProvider<SingleServerProviderStep>,
-            SingleServerBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
+        if (isKPaths) {
+          return _makeExecutionBlockImpl<KPathEnumerator<Provider>, Provider,
+                                         SingleServerBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        } else {
+          return _makeExecutionBlockImpl<AllShortestPathsEnumerator<Provider>,
+                                         Provider,
+                                         SingleServerBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        }
       } else {
-        return _makeExecutionBlockImpl<
-            TracedKPathEnumerator<
-                SingleServerProvider<SingleServerProviderStep>>,
-            ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-            SingleServerBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
+        if (isKPaths) {
+          return _makeExecutionBlockImpl<TracedKPathEnumerator<Provider>,
+                                         ProviderTracer<Provider>,
+                                         SingleServerBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        } else {
+          return _makeExecutionBlockImpl<
+              TracedAllShortestPathsEnumerator<Provider>,
+              ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        }
       }
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
@@ -452,22 +474,182 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       ClusterBaseProviderOptions backwardProviderOptions(
           cache, engines(), true, opts->produceVertices());
 
-      return _makeExecutionBlockImpl<
-          KPathEnumerator<ClusterProvider<ClusterProviderStep>>,
-          ClusterProvider<ClusterProviderStep>, ClusterBaseProviderOptions>(
-          opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, outputRegister, engine, sourceInput, targetInput,
-          registerInfos);
+      using ClusterProvider = ClusterProvider<ClusterProviderStep>;
+      if (isKPaths) {
+        return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
+                                       ClusterProvider,
+                                       ClusterBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, outputRegister, engine, sourceInput, targetInput,
+            registerInfos);
+      } else {
+        return _makeExecutionBlockImpl<
+            AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
+                                        std::move(backwardProviderOptions),
+                                        enumeratorOptions, validatorOptions,
+                                        outputRegister, engine, sourceInput,
+                                        targetInput, registerInfos);
+      }
     }
   } else {
-    auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
-    auto executorInfos = EnumeratePathsExecutorInfos(
-        outputRegister, engine.getQuery(), std::move(finder),
-        std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<ExecutionBlockImpl<
-        EnumeratePathsExecutor<graph::KShortestPathsFinder>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+    if (ServerState::instance()->isCoordinator()) {
+      auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsForward;
+      std::unordered_set<uint64_t> availableDepthsSpecificConditionsBackward;
+
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariablesForward{};
+      std::vector<std::pair<Variable const*, RegisterId>>
+          filterConditionVariablesBackward{};
+
+      ClusterBaseProviderOptions forwardProviderOptions(
+          traverserCache, engines(), false, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesForward,
+          std::move(availableDepthsSpecificConditionsForward));
+
+      ClusterBaseProviderOptions backwardProviderOptions(
+          traverserCache, engines(), true, opts->produceVertices(),
+          &opts->getExpressionCtx(), filterConditionVariablesBackward,
+          std::move(availableDepthsSpecificConditionsBackward));
+
+      // TODO [GraphRefactor]: Optimize useWeight section
+      if (opts->useWeight()) {
+        double defaultWeight = opts->getDefaultWeight();
+        if (opts->getWeightAttribute().empty()) {
+          forwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+        } else {
+          std::string weightAttribute = opts->getWeightAttribute();
+          forwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+        }
+      }
+      std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
+          std::make_unique<graph::KShortestPathsFinder<
+              ClusterProvider<ClusterProviderStep>>>(
+              *opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions));
+      auto executorInfos = EnumeratePathsExecutorInfos(
+          outputRegister, engine.getQuery(), std::move(finder),
+          std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<
+          EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    } else {
+      // TODO [GraphRefactor]: Cleanup of this area (duplicate code)
+      // - buildUsedIndexes
+      // - buildReverseUsedIndexes
+      // - forwardProviderOptions
+      // - backwardProviderOptions
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          usedIndexes{};
+      usedIndexes.first = buildUsedIndexes();
+
+      std::pair<std::vector<IndexAccessor>,
+                std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+          reversedUsedIndexes{};
+      reversedUsedIndexes.first = buildReverseUsedIndexes();
+
+      SingleServerBaseProviderOptions forwardProviderOptions(
+          opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+          opts->collectionToShard(), opts->getVertexProjections(),
+          opts->getEdgeProjections());
+
+      SingleServerBaseProviderOptions backwardProviderOptions(
+          opts->tmpVar(), std::move(reversedUsedIndexes),
+          opts->getExpressionCtx(), {}, opts->collectionToShard(),
+          opts->getVertexProjections(), opts->getEdgeProjections());
+
+      // TODO [GraphRefactor]: Optimize useWeight section
+      if (opts->useWeight()) {
+        double defaultWeight = opts->getDefaultWeight();
+        if (opts->getWeightAttribute().empty()) {
+          forwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [defaultWeight](double previousWeight,
+                              VPackSlice edge) -> double {
+                return previousWeight + defaultWeight;
+              });
+        } else {
+          std::string weightAttribute = opts->getWeightAttribute();
+          forwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+          backwardProviderOptions.setWeightEdgeCallback(
+              [weightAttribute = weightAttribute, defaultWeight](
+                  double previousWeight, VPackSlice edge) -> double {
+                auto const weight =
+                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                        edge, weightAttribute, defaultWeight);
+                if (weight < 0.) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                }
+
+                return previousWeight + weight;
+              });
+        }
+      }
+
+      std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
+          std::make_unique<graph::KShortestPathsFinder<
+              SingleServerProvider<SingleServerProviderStep>>>(
+              *opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions));
+      auto executorInfos = EnumeratePathsExecutorInfos(
+          outputRegister, engine.getQuery(), std::move(finder),
+          std::move(sourceInput), std::move(targetInput));
+      return std::make_unique<ExecutionBlockImpl<
+          EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
   }
 }
 
@@ -588,10 +770,10 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
-
+    auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], clonedCondition, options()->tmpVar(), itemsInCollection,
-        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
+        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

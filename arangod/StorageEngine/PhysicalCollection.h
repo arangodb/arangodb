@@ -33,6 +33,7 @@
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -62,8 +63,8 @@ class PhysicalCollection {
   // path to logical collection
   virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  virtual arangodb::Result updateProperties(velocypack::Slice slice) = 0;
+
   virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -158,8 +159,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual Result truncate(transaction::Methods& trx,
-                          OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods& trx, OperationOptions& options,
+                          bool& usedRangeDelete) = 0;
 
   /// @brief compact-data operation
   virtual void compact() {}
@@ -229,7 +230,7 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId);
+      rocksdb::SequenceNumber trxSeq);
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId);
 

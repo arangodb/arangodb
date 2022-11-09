@@ -33,9 +33,9 @@
 #include "Indexes/IndexIterator.h"
 
 namespace arangodb {
-
 class LocalDocumentId;
 class LogicalCollection;
+struct ResourceMonitor;
 
 namespace aql {
 struct Variable;
@@ -70,6 +70,7 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   };
 
   BaseOptions const* _opts;
+  ResourceMonitor& _monitor;
   transaction::Methods* _trx;
   aql::Variable const* _tmpVar;
   std::vector<std::vector<CursorInfo>> _cursors;

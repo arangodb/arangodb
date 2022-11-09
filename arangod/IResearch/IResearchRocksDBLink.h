@@ -55,11 +55,34 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     return IResearchLink::hasSelectivityEstimate();
   }
 
+  Result insertInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId, VPackSlice doc,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), &tick);
+  }
+
+  Result removeInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      &tick);
+  }
+
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchLink::insert(trx, documentId, doc);
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), nullptr);
+  }
+
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      nullptr);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -79,11 +102,6 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     return stats().indexSize;
   }
 
-  Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchLink::remove(trx, documentId, false);
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
@@ -94,8 +112,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
       VPackBuilder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
 
-  void toVelocyPackFigures(VPackBuilder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }

@@ -28,6 +28,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 
@@ -73,25 +74,25 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   explicit ComputedValuesExpressionContext(transaction::Methods& trx,
                                            LogicalCollection& collection);
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override;
+  void registerWarning(ErrorCode errorCode, std::string_view msg) override;
 
-  void registerError(ErrorCode errorCode, char const* msg) override;
+  void registerError(ErrorCode errorCode, std::string_view msg) override;
 
   void failOnWarning(bool value) noexcept { _failOnWarning = value; }
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive) override;
 
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override;
 
-  ValidatorBase* buildValidator(velocypack::Slice const& params) override;
+  ValidatorBase* buildValidator(velocypack::Slice params) override;
 
   TRI_vocbase_t& vocbase() const override;
 
@@ -109,7 +110,8 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
   void clearVariable(aql::Variable const* variable) noexcept override;
 
  private:
-  std::string buildLogMessage(std::string_view type, char const* msg) const;
+  std::string buildLogMessage(std::string_view type,
+                              std::string_view msg) const;
 
   transaction::Methods& _trx;
   LogicalCollection& _collection;
@@ -129,7 +131,7 @@ class ComputedValues {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString,
-                  ComputeValuesOn mustComputeOn, bool doOverride,
+                  ComputeValuesOn mustComputeOn, bool overwrite,
                   bool failOnWarning, bool keepNull);
     ComputedValue(ComputedValue const&) = delete;
     ComputedValue& operator=(ComputedValue const&) = delete;
@@ -141,7 +143,7 @@ class ComputedValues {
     void computeAttribute(aql::ExpressionContext& ctx, velocypack::Slice input,
                           velocypack::Builder& output) const;
     std::string_view name() const noexcept;
-    bool doOverride() const noexcept;
+    bool overwrite() const noexcept;
     bool failOnWarning() const noexcept;
     bool keepNull() const noexcept;
     aql::Variable const* tempVariable() const noexcept;
@@ -151,7 +153,7 @@ class ComputedValues {
     std::string _name;
     std::string _expressionString;
     ComputeValuesOn _mustComputeOn;
-    bool _override;
+    bool _overwrite;
     bool _failOnWarning;
     bool _keepNull;
     std::unique_ptr<aql::QueryContext> _queryContext;
@@ -183,6 +185,10 @@ class ComputedValues {
       velocypack::Slice input,
       containers::FlatHashSet<std::string_view> const& keysWritten,
       ComputeValuesOn mustComputeOn, velocypack::Builder& output) const;
+
+  static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
+      TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
+      velocypack::Slice computedValues);
 
  private:
   void mergeComputedAttributes(

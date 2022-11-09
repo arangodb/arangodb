@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
@@ -53,9 +52,9 @@ namespace arangodb::iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
-struct IResearchView::ViewFactory : public arangodb::ViewFactory {
+struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                VPackSlice definition, bool isUserRequest) const override {
+                VPackSlice definition, bool isUserRequest) const final {
     auto& engine =
         vocbase.server().getFeature<EngineSelectorFeature>().engine();
     auto properties = definition.isObject()
@@ -82,8 +81,10 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     LogicalView::ptr impl;
 
     r = ServerState::instance()->isSingleServer()
-            ? storage_helper::construct(impl, vocbase, definition)
-            : cluster_helper::construct(impl, vocbase, definition);
+            ? storage_helper::construct(impl, vocbase, definition,
+                                        isUserRequest)
+            : cluster_helper::construct(impl, vocbase, definition,
+                                        isUserRequest);
     if (!r.ok()) {
       std::string name;
       if (definition.isObject()) {
@@ -159,7 +160,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     VPackSlice definition) const final {
+                     VPackSlice definition,
+                     bool /*isUserRequest*/) const final {
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
@@ -518,9 +520,6 @@ Result IResearchView::properties(velocypack::Slice slice, bool isUserRequest,
   if (!r.ok()) {
     return r;
   }
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
   aql::QueryCache::instance()->invalidate(&vocbase());
   if (ServerState::instance()->isSingleServer()) {
     return storage_helper::properties(*this, false);

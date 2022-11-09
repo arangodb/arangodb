@@ -52,6 +52,7 @@
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
@@ -91,8 +92,11 @@ auto doNothingVisitor = [](AstNode const*) {};
 [[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
                                       ErrorCode code,
                                       std::string_view details) {
-  std::string msg =
-      arangodb::aql::QueryWarnings::buildFormattedString(code, details);
+  // ensure that details is null-terminated
+  // TODO: if we get rid of vsprintf in FillExceptionString, we don't
+  // need to pass a raw C-style string into it
+  std::string temp(details);
+  std::string msg = basics::Exception::FillExceptionString(code, temp.c_str());
   query.warnings().registerError(code, msg);
 }
 
@@ -1750,7 +1754,7 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
   return node;
 }
 
-/// @brief create an AST k-shortest paths or k-paths node
+/// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
 AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
                                        AstNode const* outVars,
                                        AstNode const* graphInfo) {
@@ -1763,7 +1767,8 @@ AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
   TRI_ASSERT(outVars->numMembers() == 1);
 
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths);
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -2600,7 +2605,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
 
     // indexed access, e.g. a[0] or a['foo']
     if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      return this->optimizeIndexedAccess(node);
+      return this->optimizeIndexedAccess(node, ctx->variableDefinitions);
     }
 
     // LET
@@ -3669,8 +3674,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
   if (what->type == NODE_TYPE_OBJECT) {
     // accessing an attribute from an object
-    char const* name = node->getStringValue();
-    size_t const length = node->getStringLength();
+    std::string_view search = node->getStringView();
 
     size_t const n = what->numMembers();
 
@@ -3678,8 +3682,7 @@ AstNode* Ast::optimizeAttributeAccess(
       AstNode const* member = what->getMember(i);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getStringLength() == length &&
-          memcmp(name, member->getStringValue(), length) == 0) {
+          member->getStringView() == search) {
         // found matching member
         return member->getMember(0);
       }
@@ -3697,6 +3700,11 @@ AstNode* Ast::optimizeFunctionCall(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
+
+  if (!options.optimizeFunctionCalls) {
+    // function call optimization not allowed
+    return node;
+  }
 
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
@@ -3760,7 +3768,7 @@ AstNode* Ast::optimizeFunctionCall(
       std::string unescapedPattern;
       bool wildcardFound;
       bool wildcardIsLastChar;
-      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringValue(), patternArg->getStringLength());
+      std::tie(wildcardFound, wildcardIsLastChar) = AqlFunctionsInternalCache::inspectLikePattern(unescapedPattern, patternArg->getStringView());
 
       if (!wildcardFound) {
         TRI_ASSERT(!wildcardIsLastChar);
@@ -3830,7 +3838,9 @@ AstNode* Ast::optimizeFunctionCall(
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
-AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
+AstNode* Ast::optimizeIndexedAccess(
+    AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
+                       variableDefinitions) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
   TRI_ASSERT(node->numMembers() == 2);
@@ -3848,8 +3858,9 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
       // we have to be careful with numeric values here...
       // e.g. array['0'] is not the same as array.0 but must remain a['0'] or
       // (a[0])
-      return createNodeAttributeAccess(node->getMember(0),
-                                       index->getStringView());
+      return this->optimizeAttributeAccess(
+          createNodeAttributeAccess(node->getMember(0), indexValue),
+          variableDefinitions);
     }
   }
 

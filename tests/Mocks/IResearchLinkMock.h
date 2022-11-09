@@ -42,8 +42,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 
-  [[nodiscard]] static auto setCallbakForScope(
-      std::function<irs::directory_attributes()> callback) {
+  [[nodiscard]] static auto setCallbackForScope(
+      std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
     return irs::make_finally([]() noexcept { InitCallback = nullptr; });
   }
@@ -59,7 +59,18 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
                           arangodb::velocypack::Slice const doc) {
-    return IResearchLink::insert(trx, documentId, doc);
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), nullptr);
+  }
+
+  arangodb::Result insertInRecovery(arangodb::transaction::Methods& trx,
+                                    arangodb::LocalDocumentId const& documentId,
+                                    arangodb::velocypack::Slice doc,
+                                    uint64_t tick) {
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), &tick);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -90,8 +101,8 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
       arangodb::velocypack::Builder& builder,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
   IndexType type() const override { return IResearchLink::type(); }

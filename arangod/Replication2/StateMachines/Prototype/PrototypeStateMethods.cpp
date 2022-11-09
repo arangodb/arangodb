@@ -36,6 +36,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/Methods.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "VocBase/vocbase.h"
 #include "Random/RandomGenerator.h"
 
@@ -96,6 +97,12 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     if (leader != nullptr) {
       return leader->get(std::move(keys), readOptions.waitForApplied);
     }
+
+    if (!readOptions.allowDirtyRead) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
+    }
+
     auto follower = stateMachine->getFollower();
     if (follower != nullptr) {
       return follower->get(std::move(keys), readOptions.waitForApplied);
@@ -283,6 +290,7 @@ struct PrototypeStateMethodsCoordinator final
     opts.database = _vocbase.name();
     opts.param("waitForApplied",
                std::to_string(readOptions.waitForApplied.value));
+    opts.param("allowDirtyRead", std::to_string(readOptions.allowDirtyRead));
 
     VPackBuilder builder{};
     {
@@ -528,7 +536,8 @@ struct PrototypeStateMethodsCoordinator final
                   if (result.fail()) {
                     return {result.result()};
                   }
-                  return self->_clusterInfo.waitForPlan(result.get())
+                  return self->_clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
                                  -> ResultT<CreateResult> {
                         if (result.fail()) {
@@ -606,14 +615,14 @@ auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id, std::string key,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::optional<std::string>>> {
-  return get(id, std::move(key), {waitForApplied, std::nullopt});
+  return get(id, std::move(key), {waitForApplied, false, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id,
                                               std::vector<std::string> keys,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
-  return get(id, std::move(keys), {waitForApplied, std::nullopt});
+  return get(id, std::move(keys), {waitForApplied, false, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(

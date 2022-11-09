@@ -133,7 +133,7 @@ class StaticStrings {
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
   static std::string const IndexInBackground;  // index in background
-  static std::string_view constexpr IndexParallelism = "parallelism";
+  static std::string_view constexpr IndexParallelism{"parallelism"};
   static std::string const IndexIsBuilding;      // index build in-process
   static std::string const IndexName;            // index name
   static std::string const IndexSparse;          // index sparsity marker
@@ -142,6 +142,7 @@ class StaticStrings {
   static std::string const IndexUnique;          // index uniqueness marker
   static std::string const IndexEstimates;       // index estimates flag
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
+  static std::string_view constexpr IndexLookahead{"lookahead"};
 
   // static index names
   static std::string const IndexNameEdge;
@@ -163,6 +164,7 @@ class StaticStrings {
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;
+  static std::string const ForceOneShardAttributeValue;
 
   // HTTP headers
   static std::string const Accept;
@@ -350,7 +352,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
@@ -431,6 +436,7 @@ class StaticStrings {
   static std::string_view const ApiLogInternal;
   static std::string_view const ApiLogExternal;
   static std::string_view const ApiReplicatedStateExternal;
+  static std::string_view const ApiDocumentStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

@@ -30,6 +30,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+
 namespace arangodb {
 
 template<typename T>
@@ -95,6 +97,7 @@ struct PrototypeStateMethods {
 
   struct ReadOptions {
     LogIndex waitForApplied{0};
+    bool allowDirtyRead{false};
     std::optional<ParticipantId> readFrom{};
   };
 

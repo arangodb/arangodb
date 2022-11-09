@@ -74,7 +74,7 @@ static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeX";
   }
 };
@@ -83,7 +83,7 @@ REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with
                                      // analized fields
 
 struct TestAttributeY : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeY";
   }
 };
@@ -93,16 +93,16 @@ REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with
 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestInsertAnalyzer";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     PTR_NAMED(TestAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,7 +124,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(irs::string_ref value)
+  TestAnalyzer(std::string_view value)
       : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
@@ -155,20 +155,20 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   virtual bool next() override {
     _term.value = _data;
-    _data = irs::bytes_ref::NIL;
+    _data = irs::bytes_view{};
 
-    return !_term.value.null();
+    return !irs::IsNull(_term.value);
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    _term.value = irs::bytes_ref::NIL;
+  virtual bool reset(std::string_view data) override {
+    _data = irs::ViewCast<irs::byte_type>(data);
+    _term.value = irs::bytes_view{};
 
     return true;
   }
 
  private:
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::increment _inc;
   irs::term_attribute _term;
   TestAttributeX _x;
@@ -233,10 +233,6 @@ class IResearchIndexTest
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
 // test indexing with multiple analyzers (on different collections) will return
 // results only for matching analyzer
 TEST_F(IResearchIndexTest, test_analyzer) {
@@ -250,7 +246,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase().createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase().createView(createView->slice());
+  auto viewImpl = vocbase().createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // populate collections
@@ -292,8 +288,11 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
 
     auto nestedIndex = arangodb::velocypack::Parser::fromJson(
-        R"({"type":"inverted", "name":"nest1", "fields":[{"name":"name", "nested":[{"name":"nested", "nested":[{"name":"color1"}]}]}]})");
+        R"({"type":"inverted", "name":"nest1",
+            "fields":[{"name":"name", "nested":[{"name":"nested", "nested":[{"name":"color1"}]}]}]})");
     bool createdIndex;
+
+#ifdef USE_ENTERPRISE
     auto index = collection0->createIndex(nestedIndex->slice(), createdIndex);
     //    collection->createIndex(nestedIndex->slice(), result);
     //    ASSERT_TRUE(createdIndex);
@@ -301,6 +300,10 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     //    VPackBuilder outputDefinition;
     //    ASSERT_TRUE(arangodb::methods::Indexes::ensureIndex(collection,
     //    nestedIndex->slice(), createdIndex, outputDefinition).ok());
+#else
+    ASSERT_THROW(collection0->createIndex(nestedIndex->slice(), createdIndex),
+                 arangodb::basics::Exception);
+#endif
   }
 
   // docs match from both collections (2 analyzers used for collection0, 1
@@ -522,7 +525,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase.createView(createView->slice());
+  auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // link collections with view
@@ -876,7 +879,7 @@ TEST_F(IResearchIndexTest, test_fields) {
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
   ASSERT_NE(nullptr, collection1);
-  auto viewImpl = vocbase.createView(createView->slice());
+  auto viewImpl = vocbase.createView(createView->slice(), false);
   ASSERT_NE(nullptr, viewImpl);
 
   // populate collections

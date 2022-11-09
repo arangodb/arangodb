@@ -230,4 +230,38 @@ struct SetBothWriteConcernActor : OnceActorBase<SetBothWriteConcernActor> {
   size_t newSoftWriteConcern;
 };
 
+struct ModifySoftWCMultipleStepsActor
+    : ActorBase<ModifySoftWCMultipleStepsActor> {
+  ModifySoftWCMultipleStepsActor(size_t setInvalidWc, size_t resetValidWc);
+
+  size_t setInvalidWC;
+  size_t resetValidWC;
+
+  enum class State { INIT, SET_TO_INVALID, RESET };
+
+  struct InternalState {
+    State state = State::INIT;
+
+    friend auto operator==(InternalState const&, InternalState const&) noexcept
+        -> bool = default;
+    friend auto hash_value(InternalState const& i) noexcept -> std::size_t {
+      return boost::hash_value(i.state);
+    }
+    friend auto operator<<(std::ostream& os, InternalState const& s) noexcept
+        -> std::ostream& {
+      return os << "state = " << static_cast<int>(s.state);
+    }
+  };
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
+};
+
+struct SetWaitForSyncActor : OnceActorBase<SetWaitForSyncActor> {
+  explicit SetWaitForSyncActor(bool waitForSync);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  bool newWaitForSync;
+};
+
 }  // namespace arangodb::test

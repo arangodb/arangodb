@@ -411,6 +411,10 @@ struct AstNode {
   /// this may also set the FLAG_V8 flag for the node
   bool willUseV8() const;
 
+  /// @brief whether or not a node's filter condition can be used inside a
+  /// TraversalNode
+  bool canBeUsedInFilter(bool isOneShard) const;
+
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;
 
@@ -599,13 +603,8 @@ struct AstNode {
   std::vector<AstNode*> members{};
 };
 
+template<bool resolveAttributeAccess = true>
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
-
-/// @brief less comparator for Ast value nodes
-template<bool useUtf8>
-struct AstNodeValueLess {
-  bool operator()(AstNode const* lhs, AstNode const* rhs) const;
-};
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

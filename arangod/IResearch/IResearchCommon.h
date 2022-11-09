@@ -93,8 +93,8 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  static constexpr std::string_view ViewType = "arangosearch";
-  static constexpr std::string_view SearchType = "search";
+  static constexpr std::string_view ViewArangoSearchType = "arangosearch";
+  static constexpr std::string_view ViewSearchAliasType = "search-alias";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -113,6 +113,13 @@ struct StaticStrings {
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view ViewIdField{"view"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attribute name for storing link/inverted index errors
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view LinkError{"error"};
+  static constexpr std::string_view LinkErrorOutOfSync{"outOfSync"};
+  static constexpr std::string_view LinkErrorFailed{"failed"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the

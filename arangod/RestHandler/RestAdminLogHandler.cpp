@@ -31,6 +31,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -111,7 +112,7 @@ RestStatus RestAdminLogHandler::execute() {
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       return reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
-      handleLogLevel();
+      return handleLogLevel();
     } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
       handleLogStructuredParams();
     } else {
@@ -123,7 +124,7 @@ RestStatus RestAdminLogHandler::execute() {
   } else if (type == rest::RequestType::PUT) {
     if (suffixes.size() == 1) {
       if (suffixes[0] == "level") {
-        handleLogLevel();
+        return handleLogLevel();
       } else if (suffixes[0] == "structured") {
         handleLogStructuredParams();
       } else {
@@ -428,16 +429,88 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   return RestStatus::DONE;
 }
 
-void RestAdminLogHandler::handleLogLevel() {
+RestStatus RestAdminLogHandler::handleLogLevel() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-
   // was validated earlier
   TRI_ASSERT(!suffixes.empty());
 
   if (suffixes[0] != "level") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting /_admin/log/level");
-    return;
+    return RestStatus::DONE;
+  }
+
+  bool foundServerIdParameter;
+  std::string const& serverId =
+      _request->value("serverId", foundServerIdParameter);
+
+  if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
+    if (serverId != ServerState::instance()->getId()) {
+      // not ourselves! - need to pass through the request
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+      bool found = false;
+      for (auto const& srv : ci.getServers()) {
+        // validate if server id exists
+        if (srv.first == serverId) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
+                      std::string("unknown serverId supplied."));
+        return RestStatus::DONE;
+      }
+
+      NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+      if (pool == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+
+      network::RequestOptions options;
+      options.timeout = network::Timeout(30.0);
+      options.database = _request->databaseName();
+      options.parameters = _request->parameters();
+
+      auto requestType = fuerte::from_string(
+          GeneralRequest::translateMethod(_request->requestType()));
+
+      auto body = std::invoke([&]() -> std::optional<VPackBuffer<uint8_t>> {
+        if (_request->requestType() == rest::RequestType::GET) {
+          return VPackBuffer<uint8_t>{};
+        }
+
+        bool parseSuccess = false;
+        VPackSlice slice = this->parseVPackBody(parseSuccess);
+        if (!parseSuccess) {
+          return std::nullopt;  // error message generated in parseVPackBody
+        }
+        auto buffer = VPackBuffer<uint8_t>{};
+        buffer.append(slice.start(), slice.byteSize());
+        return buffer;
+      });
+
+      if (!body.has_value()) {
+        return RestStatus::DONE;  // error message from vpack parser
+      }
+
+      auto f = network::sendRequestRetry(
+          pool, "server:" + serverId, requestType, _request->requestPath(),
+          std::move(*body), options, buildHeaders(_request->headers()));
+      return waitForFuture(std::move(f).thenValue(
+          [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
+               shared_from_this())](network::Response const& r) {
+            if (r.fail()) {
+              self->generateError(r.combinedResult());
+            } else {
+              self->generateResult(rest::ResponseCode::OK, r.slice());
+            }
+          }));
+    }
   }
 
   auto const type = _request->requestType();
@@ -459,7 +532,7 @@ void RestAdminLogHandler::handleLogLevel() {
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      return;  // error message generated in parseVPackBody
+      return RestStatus::DONE;  // error message generated in parseVPackBody
     }
 
     if (slice.isString()) {
@@ -497,6 +570,8 @@ void RestAdminLogHandler::handleLogLevel() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
+
+  return RestStatus::DONE;
 }
 
 void RestAdminLogHandler::handleLogStructuredParams() {

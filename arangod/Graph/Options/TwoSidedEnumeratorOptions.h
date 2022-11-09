@@ -38,10 +38,14 @@ struct TwoSidedEnumeratorOptions {
 
   [[nodiscard]] size_t getMinDepth() const;
   [[nodiscard]] size_t getMaxDepth() const;
+  [[nodiscard]] bool getStopAtFirstDepth() const;
+
+  void setStopAtFirstDepth(bool stopAtFirstDepth);
 
  private:
   size_t _minDepth;
   size_t _maxDepth;
+  bool _stopAtFirstDepth;
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -137,6 +137,8 @@ class AgencyCallback {
   void local(bool b);
   bool local() const;
 
+  bool needsInitialValue() const noexcept { return _needsInitialValue; }
+
  private:
   // execute callback with current value data:
   bool execute(velocypack::Slice data, consensus::index_t raftIndex);
@@ -155,6 +157,7 @@ class AgencyCallback {
   CallbackType const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
+  bool const _needsInitialValue;
   /// @brief this flag is set if there was an attempt to signal the callback's
   /// condition variable - this is necessary to catch all signals that happen
   /// before the caller is going into the wait state, i.e. to prevent this
@@ -167,6 +170,10 @@ class AgencyCallback {
 
   /// Determined when registered in registry. Default: true
   bool _local{true};
+
+  /// This index keeps track of which raft index was seen last. It ensures a
+  /// monotonic view on the observed value.
+  consensus::index_t _lastSeenIndex{0};
 };
 
 }  // namespace arangodb

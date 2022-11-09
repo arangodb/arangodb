@@ -26,9 +26,11 @@
 #include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
+#include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ResignShardLeadership.h"
@@ -1194,7 +1196,7 @@ TEST_F(MaintenanceTestActionPhaseOne,
   VPackBuilder v;
   v.add(VPackValue(true));
   std::string dbname = "_system";
-  std::string prop = arangodb::maintenance::WAIT_FOR_SYNC;
+  std::string prop = StaticStrings::WaitForSyncString;
   containers::FlatHashSet<std::string> dirty{dbname};
   bool callNotify = false;
 

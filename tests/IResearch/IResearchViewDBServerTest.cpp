@@ -144,7 +144,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -186,7 +187,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -233,7 +235,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -313,7 +315,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -337,7 +339,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -347,8 +349,9 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     EXPECT_FALSE(view->deleted());
     EXPECT_EQ(viewId, view->id().id());
     EXPECT_EQ(impl->id(), view->planId());  // same as view ID
-    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewType, view->typeName());
-    EXPECT_EQ(arangodb::ViewType::kView, view->type());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+              view->typeName());
+    EXPECT_EQ(arangodb::ViewType::kArangoSearch, view->type());
     EXPECT_EQ(&vocbase, &(view->vocbase()));
   }
 }
@@ -364,7 +367,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -395,7 +398,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -455,7 +458,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     arangodb::transaction::Methods trx(
@@ -500,7 +504,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     // fill with test data
@@ -745,7 +750,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -801,7 +806,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -854,7 +859,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -875,7 +880,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::ViewType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
   }
 
@@ -890,7 +895,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -914,7 +919,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::ViewType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
     auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
         "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, "
@@ -934,7 +939,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -964,7 +969,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(slice.hasKey("planId") && slice.get("planId").isString() &&
                 std::string("3") == slice.get("planId").copyString());
     EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString() &&
-                arangodb::iresearch::StaticStrings::ViewType ==
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                     slice.get("type").copyString());
     EXPECT_TRUE(slice.hasKey("cleanupIntervalStep") &&
                 slice.get("cleanupIntervalStep").isNumber());
@@ -1026,7 +1031,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   // add a single document to view (do not sync)
@@ -1464,7 +1469,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };
@@ -1618,7 +1624,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto index = logicalCollection1->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };
@@ -1749,7 +1756,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
                           testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -1777,7 +1784,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());

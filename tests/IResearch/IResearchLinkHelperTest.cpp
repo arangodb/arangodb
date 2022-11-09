@@ -104,10 +104,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{}");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id same type (validate only meta)
@@ -116,10 +116,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": 123 }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test view id not same type (at least one non-string)
@@ -128,10 +128,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (at least one empty)
@@ -140,10 +140,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (shorter does not end with '/')
@@ -152,10 +152,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (shorter ends with '/' but not a
@@ -165,10 +165,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"ab/c\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) equal
@@ -177,10 +177,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/bc\" }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test meta init fail
@@ -190,10 +190,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": 42 }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test meta not equal
@@ -204,10 +204,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": true }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test equal
@@ -218,10 +218,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": false }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test analyzers with definitions

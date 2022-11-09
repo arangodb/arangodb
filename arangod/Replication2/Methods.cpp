@@ -26,11 +26,15 @@
 #include <Futures/Future.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCallback.h"
+#include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "Inspection/VPack.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -266,6 +270,7 @@ struct ReplicatedLogMethodsCoordinator final
           return false;
         },
         true, true);
+
     if (auto result =
             clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
         result.fail()) {
@@ -366,7 +371,8 @@ struct ReplicatedLogMethodsCoordinator final
                   if (result.fail()) {
                     return {result.result()};
                   }
-                  return self->clusterInfo.waitForPlan(result.get())
+                  return self->clusterInfo
+                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
                       .thenValue([resp = std::move(resp)](auto&& result) mutable
                                  -> ResultT<CreateResult> {
                         if (result.fail()) {
@@ -936,7 +942,6 @@ struct ReplicatedStateCoordinatorMethods
           if (res.fail()) {
             return futures::Future<Result>{std::in_place, res.result()};
           }
-
           return self->clusterInfo.waitForPlan(res.get());
         });
   }

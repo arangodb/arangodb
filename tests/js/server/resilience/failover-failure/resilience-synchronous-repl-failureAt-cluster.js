@@ -36,15 +36,13 @@ const wait = require("internal").wait;
 const instanceRoledbServer = 'dbserver';
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      debugCanUseFailAt,
-      debugRemoveFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
-      reconnectRetry,
-    } = require('@arangodb/test-helper');
+const {
+  debugRemoveFailAt,
+  debugSetFailAt,
+  debugClearFailAt,
+  getEndpointById,
+  getServersByType,
+} = require('@arangodb/test-helper');
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,7 +423,7 @@ function SynchronousReplicationSuite() {
     testBasicOperationsFollowerFail3: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations((place) => {
-        if (place === 2) {
+        if (place === 3) {
           failFollower("LogicalCollection::insert");
         } else if (place === 18) {
           healFollower("LogicalCollection::insert");
@@ -441,7 +439,7 @@ function SynchronousReplicationSuite() {
     testBasicOperationsFollowerFail5: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations((place) => {
-        if (place === 2) {
+        if (place === 5) {
           failFollower("LogicalCollection::replace");
         } else if (place === 18) {
           healFollower("LogicalCollection::replace");
@@ -457,7 +455,7 @@ function SynchronousReplicationSuite() {
     testBasicOperationsFollowerFail7: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations((place) => {
-        if (place === 2) {
+        if (place === 7) {
           failFollower("LogicalCollection::replace");
         } else if (place === 18) {
           healFollower("LogicalCollection::replace");
@@ -473,7 +471,7 @@ function SynchronousReplicationSuite() {
     testBasicOperationsFollowerFail9: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations((place) => {
-        if (place === 2) {
+        if (place === 9) {
           failFollower("LogicalCollection::update");
         } else if (place === 18) {
           healFollower("LogicalCollection::update");
@@ -483,13 +481,13 @@ function SynchronousReplicationSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief fail in place 9
+    /// @brief fail in place 14
     ////////////////////////////////////////////////////////////////////////////////
 
     testBasicOperationsFollowerFail14: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations((place) => {
-        if (place === 2) {
+        if (place === 14) {
           failFollower("LogicalCollection::remove");
         } else if (place === 18) {
           healFollower("LogicalCollection::remove");

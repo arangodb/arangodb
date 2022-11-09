@@ -23,6 +23,7 @@
 
 #include "ProgramOptions.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/terminal-utils.h"
@@ -344,13 +345,15 @@ bool ProgramOptions::require(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    return unknownOption(modernized);
+    unknownOption(modernized);
+    return false;
   }
 
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-    return unknownOption(modernized);
+    unknownOption(modernized);
+    return false;
   }
 
   return true;
@@ -370,7 +373,8 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
-    return unknownOption(modernized);
+    unknownOption(modernized);
+    return false;
   }
 
   if ((*it).second.obsolete) {
@@ -381,7 +385,8 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
-    return unknownOption(modernized);
+    unknownOption(modernized);
+    return false;
   }
 
   auto& option = (*it2).second;
@@ -409,9 +414,10 @@ bool ProgramOptions::setValue(std::string const& name,
       colorStart2 = ShellColorsFeature::SHELL_COLOR_BOLD_RED;
       colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
     }
-    return fail(std::string("error setting value for option '") + colorStart2 +
-                "--" + modernized + colorEnd + "': " + colorStart1 + result +
-                colorEnd);
+    fail(TRI_EXIT_INVALID_OPTION_VALUE,
+         std::string("error setting value for option '") + colorStart2 + "--" +
+             modernized + colorEnd + "': " + colorStart1 + result + colorEnd);
+    return false;
   }
 
   _processingResult.touch(modernized);
@@ -514,7 +520,7 @@ std::string ProgramOptions::getDescription(std::string const& name) {
 }
 
 // handle an unknown option
-bool ProgramOptions::unknownOption(std::string const& name) {
+void ProgramOptions::unknownOption(std::string const& name) {
   char const* colorStart1 = "";
   char const* colorStart2 = "";
   char const* colorStart3 = "";
@@ -527,8 +533,9 @@ bool ProgramOptions::unknownOption(std::string const& name) {
     colorEnd = ShellColorsFeature::SHELL_COLOR_RESET;
   }
 
-  fail(std::string(colorStart1) + "unknown option '" + colorStart2 + "--" +
-       name + colorStart1 + "'" + colorEnd);
+  fail(TRI_EXIT_INVALID_OPTION_NAME,
+       std::string(colorStart1) + "unknown option '" + colorStart2 + "--" +
+           name + colorStart1 + "'" + colorEnd);
 
   auto similarOptions = similar(name, 8, 4);
   if (!similarOptions.empty()) {
@@ -554,14 +561,10 @@ bool ProgramOptions::unknownOption(std::string const& name) {
             << colorStart3 << "--help-all" << colorEnd
             << " to get an overview of available options" << std::endl
             << std::endl;
-
-  return false;
 }
 
 // report an error (callback from parser)
-bool ProgramOptions::fail(std::string const& message) {
-  _processingResult.failed(true);
-
+void ProgramOptions::fail(int exitCode, std::string const& message) {
   char const* colorStart = "";
   char const* colorEnd = "";
 
@@ -571,7 +574,7 @@ bool ProgramOptions::fail(std::string const& message) {
   }
   std::cerr << colorStart << "Error while processing " << _context << " for "
             << TRI_Basename(_progname.c_str()) << ":" << colorEnd << std::endl;
-  failNotice(message);
+  failNotice(exitCode, message);
   std::cerr << std::endl;
 #ifdef _WIN32
   // additionally log these errors to the debug output window in MSVC so
@@ -579,11 +582,11 @@ bool ProgramOptions::fail(std::string const& message) {
   OutputDebugString(message.c_str());
   OutputDebugString("\r\n");
 #endif
-  return false;
 }
 
-void ProgramOptions::failNotice(std::string const& message) {
-  _processingResult.failed(true);
+void ProgramOptions::failNotice(int exitCode, std::string const& message) {
+  _processingResult.fail(exitCode);
+
   std::cerr << "  " << message << std::endl;
 #ifdef _WIN32
   // additionally log these errors to the debug output window in MSVC so

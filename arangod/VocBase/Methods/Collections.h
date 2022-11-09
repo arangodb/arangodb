@@ -40,6 +40,7 @@ class ClusterFeature;
 class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
+struct PlanCollection;
 
 namespace transaction {
 class Methods;
@@ -90,6 +91,19 @@ struct Collections {
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
+  [[nodiscard]] static arangodb::ResultT<
+      std::vector<std::shared_ptr<LogicalCollection>>>
+  create(                      // create collection
+      TRI_vocbase_t& vocbase,  // collection vocbase
+      OperationOptions const& options,
+      std::vector<PlanCollection> collections,  // Collections to create
+      bool createWaitsForSyncReplication,       // replication wait flag
+      bool enforceReplicationFactor,            // replication factor flag
+      bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
+      bool isRestore = false);  // whether this is being called during restore
+
+  /// Create collection, ownership of collection in callback is
+  /// transferred to callee
   [[nodiscard]] static arangodb::Result create(  // create collection
       TRI_vocbase_t& vocbase,                    // collection vocbase
       OperationOptions const& options,
@@ -125,7 +139,7 @@ struct Collections {
 
   static Result properties(Context& ctxt, velocypack::Builder&);
   static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice const& props,
+                                 velocypack::Slice props,
                                  OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
@@ -144,11 +158,6 @@ struct Collections {
 
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
-
-  typedef std::function<void(velocypack::Slice const&)> DocCallback;
-  /// @brief Helper implementation similar to ArangoCollection.all() in v8
-  static arangodb::Result all(TRI_vocbase_t& vocbase, std::string const& cname,
-                              DocCallback const& cb);
 
   static arangodb::Result checksum(LogicalCollection& collection,
                                    bool withRevisions, bool withData,

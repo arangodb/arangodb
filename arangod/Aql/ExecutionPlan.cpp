@@ -326,7 +326,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -360,9 +360,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
-                                                "SHORTEST_PATH", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name.data(),
+              name.size());
         }
       }
     }
@@ -602,41 +603,29 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, unsigned flags) const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = false;
-  options.buildUnindexedArrays = true;
-  auto builder = std::make_shared<VPackBuilder>(&options);
-  toVelocyPack(*builder, ast, flags);
-  return builder;
-}
-
-/// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
-
   _root->allToVelocyPack(builder, flags);
 
-  TRI_ASSERT(builder.isOpenObject());
-
   // set up rules
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
   for (auto const& ruleName :
        OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValuePair(ruleName.data(), ruleName.size(),
-                               VPackValueType::String));
+    builder.add(VPackValue(ruleName));
   }
   builder.close();
 
   // set up collections
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("collections"));
   ast->query().collections().toVelocyPack(builder);
 
   // set up variables
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
@@ -1331,6 +1320,15 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
 
+  if (pruneExpression != nullptr && !pruneExpression->canBeUsedInPrune(
+                                        _ast->query().vocbase().isOneShard())) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "Invalid PRUNE expression");
+  }
+
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
 
@@ -1414,7 +1412,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4));
+      createShortestPathOptions(getAst(), direction, node->getMember(4),
+                                arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode =
@@ -1450,7 +1449,8 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths);
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1465,7 +1465,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), defaultToRefactor);
+      getAst(), direction, node->getMember(5), type, defaultToRefactor);
 
   // First create the node
   auto spNode = new EnumeratePathsNode(

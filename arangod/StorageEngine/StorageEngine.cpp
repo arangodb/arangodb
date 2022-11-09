@@ -56,9 +56,10 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                const VPackSlice& slice) {
+                                                velocypack::Slice slice) {
   return {};
 }
+
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 bool StorageEngine::inRecovery() {
   return recoveryState() < RecoveryState::DONE;
@@ -117,6 +118,12 @@ void StorageEngine::registerReplicatedLog(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
     std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
   vocbase.registerReplicatedLog(id, std::move(log));
+}
+
+void StorageEngine::registerReplicatedState(
+    TRI_vocbase_t& vocbase,
+    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
+  vocbase.registerReplicatedState(info);
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }

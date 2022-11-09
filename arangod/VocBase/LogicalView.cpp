@@ -20,13 +20,17 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalView.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -49,7 +53,9 @@ Result safeCall(Func&& func) {
   try {
     return std::forward<Func>(func)();
   } catch (basics::Exception const& e) {
-    return {e.code()};
+    return {e.code(), e.what()};
+  } catch (std::exception const& e) {
+    return {TRI_ERROR_INTERNAL, e.what()};
   } catch (...) {
     return {TRI_ERROR_INTERNAL};
   }
@@ -171,7 +177,8 @@ bool LogicalView::enumerate(
 }
 
 Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                                velocypack::Slice definition) {
+                                velocypack::Slice definition,
+                                bool isUserRequest) {
   auto& server = vocbase.server();
   if (!server.hasFeature<ViewTypesFeature>()) {
     return {TRI_ERROR_INTERNAL,
@@ -181,7 +188,7 @@ Result LogicalView::instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, {});
   auto& factory = viewTypes.factory(type);
-  return factory.instantiate(view, vocbase, definition);
+  return factory.instantiate(view, vocbase, definition, isUserRequest);
 }
 
 Result LogicalView::rename(std::string&& newName) {
@@ -202,7 +209,7 @@ Result LogicalView::rename(std::string&& newName) {
 namespace cluster_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept {
+                 velocypack::Slice definition, bool isUserRequest) noexcept {
   auto& server = vocbase.server();
   if (!server.hasFeature<ClusterFeature>()) {
     return {TRI_ERROR_INTERNAL,
@@ -213,7 +220,7 @@ Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
   return safeCall([&]() -> Result {
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
     LogicalView::ptr impl;
-    auto r = LogicalView::instantiate(impl, vocbase, definition);
+    auto r = LogicalView::instantiate(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       return r;
     }
@@ -288,10 +295,10 @@ Result properties(LogicalView const& view, bool safe) noexcept {
 namespace storage_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept {
+                 velocypack::Slice definition, bool isUserRequest) noexcept {
   return safeCall([&]() -> Result {
     TRI_set_errno(TRI_ERROR_NO_ERROR);  // reset before calling createView(...)
-    auto impl = vocbase.createView(definition);
+    auto impl = vocbase.createView(definition, isUserRequest);
     if (!impl) {
       return {
           TRI_errno() == TRI_ERROR_NO_ERROR ? TRI_ERROR_INTERNAL : TRI_errno(),

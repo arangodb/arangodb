@@ -25,15 +25,11 @@
 
 #include <velocypack/Iterator.h>
 
-#include <Basics/StringUtils.h>
-#include <Network/Methods.h>
-#include <Network/NetworkFeature.h>
-#include <Cluster/ClusterFeature.h>
+#include "Basics/StringUtils.h"
+#include "Futures/Future.h"
 #include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
-#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
 using namespace arangodb;
@@ -291,6 +287,8 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
   readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.allowDirtyRead =
+      _request->parsedValue<bool>("allowDirtyRead").value_or(false);
   readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
@@ -366,6 +364,8 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
   readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.allowDirtyRead =
+      _request->parsedValue<bool>("allowDirtyRead").value_or(false);
   readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
