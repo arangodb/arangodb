@@ -456,7 +456,6 @@ struct PrototypeStateMethodsCoordinator final
 
   auto createState(CreateOptions options) const
       -> futures::Future<ResultT<CreateResult>> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     using LogMethods = replication2::ReplicatedLogMethods;
     auto methods = LogMethods::createInstance(_vocbase);
 

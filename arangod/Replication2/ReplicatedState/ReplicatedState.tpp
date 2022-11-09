@@ -620,7 +620,7 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
   if (auto manager = _manager.lock(); manager != nullptr) {
     return manager->waitForApplied(index).thenValue(
-        [index](LogIndex index_) { return futures::Unit(); });
+        [](LogIndex) { return futures::Unit(); });
   } else {
     WaitForAppliedFuture future(
         std::make_exception_ptr(replicated_log::ParticipantResignedException(
