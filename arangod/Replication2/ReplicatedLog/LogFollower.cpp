@@ -284,6 +284,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
+    if (data->didResign()) {
+      THROW_ARANGO_EXCEPTION(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    }
 
     auto const& res = tryRes.get();
     {
@@ -530,6 +534,9 @@ auto LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>,
   {
     auto methods = _stateHandle->resignCurrentState();
     ADB_PROD_ASSERT(methods != nullptr);
+    // We *must not* use this handle any longer. Its ownership is shared with
+    // our parent ReplicatedLog, which will pass it as necessary.
+    _stateHandle = nullptr;
   }
   return result;
 }

@@ -140,7 +140,7 @@ class LogFollower : public ILogFollower,
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
-  std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
+  std::shared_ptr<IReplicatedStateHandle> _stateHandle;
   std::shared_ptr<ILeaderCommunicator> const leaderCommunicator;
 
   // We use the unshackled mutex because guards are captured by futures.
