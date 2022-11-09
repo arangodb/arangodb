@@ -1,4 +1,4 @@
-/* global arango, describe, beforeEach, afterEach, it*/
+/* global describe, beforeEach, afterEach, it*/
 'use strict';
 
 const expect = require('chai').expect;
@@ -10,7 +10,8 @@ const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'tes
 const isVst = (arango.getEndpoint().search('vst') >= 0) || (arango.getEndpoint().search('vpp') >= 0);
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
-const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow', 'x-arango-queue-time-seconds'];
+const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow',
+  'x-arango-queue-time-seconds', 'content-security-policy', 'cache-control', 'pragma', 'expires', 'strict-transport-security'];
 function filterIrrelevant(header) {
   return !header.startsWith('x-content-type-options') &&
     !header.startsWith('access-control-') &&
@@ -51,7 +52,6 @@ describe('HTTP headers in Foxx services', function () {
       expect(result.code).to.equal(204);
       expect(result.headers['x-foobar']).to.equal('baz');
       expect(result.headers['x-nofoobar']).to.equal('baz');
-      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'keep-alive', 'server'];
       expect(result.headers['access-control-expose-headers'].
              split(', ').
              filter(filterIrrelevant).
