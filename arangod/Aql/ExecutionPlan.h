@@ -36,6 +36,10 @@
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+// PlanNodes - currently all of them are included in file below
+// TODO: We might want to change the include mechanism later.
+#include "Aql/Optimizer2/Plan/InspectablePlan.h"
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -100,6 +104,8 @@ class ExecutionPlan {
 
   void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
                     unsigned flags) const;
+
+  optimizer2::plan::InspectablePlan toInspectable() const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }

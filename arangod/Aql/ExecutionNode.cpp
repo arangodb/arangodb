@@ -71,15 +71,6 @@
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
-// PlanNodes
-#include "Aql/Optimizer2/PlanNodes/EnumerateCollectionNode.h"
-#include "Aql/Optimizer2/PlanNodes/EnumerateListNode.h"
-#include "Aql/Optimizer2/PlanNodes/CalculationNode.h"
-#include "Aql/Optimizer2/PlanNodes/FilterNode.h"
-#include "Aql/Optimizer2/PlanNodes/LimitNode.h"
-#include "Aql/Optimizer2/PlanNodes/ReturnNode.h"
-#include "Aql/Optimizer2/PlanNodes/SingletonNode.h"
-
 // PlanNodesTypes
 #include "Aql/Optimizer2/PlanNodeTypes/Function.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
@@ -142,6 +133,7 @@ std::unordered_map<int, std::string const> const typeNames{
 }  // namespace
 
 namespace arangodb::aql {
+
 ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice);
 
 #ifndef USE_ENTERPRISE
@@ -570,6 +562,79 @@ void ExecutionNode::allToVelocyPack(VPackBuilder& builder,
 
   VPackArrayBuilder guard(&builder);
   const_cast<ExecutionNode*>(this)->flatWalk(nodeSerializer, true);
+}
+
+optimizer2::plan::InspectablePlan ExecutionNode::allToInspectables() const {
+  optimizer2::plan::InspectablePlan inspectablePlan{};
+
+  struct NodeInspectablesSerializer
+      : WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
+    NodeInspectablesSerializer(
+        optimizer2::plan::InspectablePlan& inspectablePlan)
+        : inspectablePlan(inspectablePlan) {}
+
+    void after(ExecutionNode* n) override {
+      NodeType nodeType = n->getType();
+
+      switch (nodeType) {
+        case CALCULATION: {
+          auto calcNode = castTo<CalculationNode const*>(n);
+          inspectablePlan.insert(
+              calcNode->toInspectable(ExecutionNode::SERIALIZE_DETAILS));
+          break;
+        }
+        case COLLECT: {
+          auto collectNode = castTo<CollectNode const*>(n);
+          inspectablePlan.insert(collectNode->toInspectable());
+          break;
+        }
+        case ENUMERATE_COLLECTION: {
+          auto enumerateCollectionNode =
+              castTo<EnumerateCollectionNode const*>(n);
+          inspectablePlan.insert(enumerateCollectionNode->toInspectable());
+          break;
+        }
+        case ENUMERATE_LIST: {
+          auto enumerateListNode = castTo<EnumerateListNode const*>(n);
+          inspectablePlan.insert(enumerateListNode->toInspectable());
+          break;
+        }
+        case FILTER: {
+          auto filterNode = castTo<FilterNode const*>(n);
+          inspectablePlan.insert(filterNode->toInspectable());
+          break;
+        }
+        case LIMIT: {
+          auto limitNode = castTo<LimitNode const*>(n);
+          inspectablePlan.insert(limitNode->toInspectable());
+          break;
+        }
+        case RETURN: {
+          auto returnNode = castTo<ReturnNode const*>(n);
+          inspectablePlan.insert(returnNode->toInspectable());
+          break;
+        }
+        case SINGLETON: {
+          auto singletonNode = castTo<SingletonNode const*>(n);
+          inspectablePlan.insert(singletonNode->toInspectable());
+          break;
+        }
+        default: {
+          // TODO: WIP - need to include all supported types here
+          // Note: Can we somehow skip the manual type detection + cast?!
+          LOG_DEVEL << "toInspectable for type: " << n->getTypeString()
+                    << " id: (" << n->getType() << ") not implemented yet!";
+          inspectablePlan.increaseErrorCounter();
+          break;
+        }
+      }
+    }
+
+    optimizer2::plan::InspectablePlan& inspectablePlan;
+  } nodeInspectablesSerializer{inspectablePlan};
+
+  const_cast<ExecutionNode*>(this)->flatWalk(nodeInspectablesSerializer, false);
+  return inspectablePlan;
 }
 
 /// @brief execution Node clone utility to be called by derived classes

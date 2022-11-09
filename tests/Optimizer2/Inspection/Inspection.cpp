@@ -24,17 +24,23 @@
 
 #include "Basics/VelocyPackStringLiteral.h"
 #include <Inspection/VPackWithErrorT.h>
-//#include <Inspection/StatusT.h>
+// #include <Inspection/StatusT.h>
+
+// Mock includes
+#include "MockQuery.h"  // might not be needed
+#include "Transaction/StandaloneContext.h"
+#include "../../Graph/GraphTestTools.h"
+#include "Servers.h"
 
 #include <fmt/core.h>
 
 using namespace arangodb::velocypack;
 using namespace arangodb::inspection;
 
-//TEST(Inspection, statust_test) {
-//  {
-//    auto s = StatusT<int>::ok(15);
-//    EXPECT_TRUE(s.ok());
+// TEST(Inspection, statust_test) {
+//   {
+//     auto s = StatusT<int>::ok(15);
+//     EXPECT_TRUE(s.ok());
 //    EXPECT_EQ(s.get(), 15);
 //  }
 //
@@ -82,6 +88,29 @@ TEST(Inspection, statust_test_deserialize_fail) {
   ASSERT_FALSE(res.ok()) << fmt::format("Did not detect the error we exepct");
 
   EXPECT_EQ(res.error().error(), "Found unexpected attribute 'fehler'");
+}
+
+TEST(Inspection, arangodb_query_plan_to_inspectables) {
+  /*std::unique_ptr<arangodb::tests::graph::GraphTestSetup> s{nullptr};
+  std::unique_ptr<arangodb::tests::graph::MockGraphDatabase>
+  singleServer{nullptr}; std::shared_ptr<arangodb::aql::Query> query{nullptr};
+
+
+  singleServer =
+      std::make_unique<arangodb::tests::graph::MockGraphDatabase>(s->server,
+  "testVocbase");
+
+
+  query = singleServer->getQuery("RETURN 1", {"v", "e"});*/
+
+  /*
+  std::string queryString = "RETURN 1";
+  using MockQuery = arangodb::tests::mocks::MockQuery;
+  arangodb::tests::mocks::MockServer server{"PRMR_0001", true};
+  auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+      server.getSystemDatabase());
+  auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
+*/
 }
 
 using namespace arangodb::velocypack;

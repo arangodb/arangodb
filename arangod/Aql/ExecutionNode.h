@@ -72,6 +72,10 @@
 #include "Basics/Identifier.h"
 #include "Containers/HashSet.h"
 
+// PlanNodes - currently all of them are included in file below
+// TODO: We might want to change the include mechanism later.
+#include "Aql/Optimizer2/Plan/InspectablePlan.h"
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -98,6 +102,9 @@ using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
 namespace optimizer2::nodes {
+// TODO: this now "overlaps" with the typedef from InspectablePlan.h
+// Clean this up later. Currently just including the header for fast
+// development. We might want to change this.
 struct BaseNode;
 struct CalculationNode;
 struct EnumerateCollectionNode;
@@ -395,6 +402,8 @@ class ExecutionNode {
   /// will be the last in the array.
   void allToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
 
+  optimizer2::plan::InspectablePlan allToInspectables() const;
+
   /** Variables used and set are disjunct!
    *   Variables that are read from must be returned by the
    *   UsedHere functions and variables that are filled by
@@ -639,11 +648,12 @@ class SingletonNode : public ExecutionNode {
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
 
+  optimizer2::nodes::SingletonNode toInspectable() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
-  optimizer2::nodes::SingletonNode toInspectable() const;
 };
 
 /// @brief class EnumerateCollectionNode
@@ -809,12 +819,12 @@ class LimitNode : public ExecutionNode {
   /// @brief return the limit value
   size_t limit() const;
 
+  optimizer2::nodes::LimitNode toInspectable() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
-
-  optimizer2::nodes::LimitNode toInspectable() const;
 
  private:
   /// @brief the offset
@@ -1003,12 +1013,12 @@ class FilterNode : public ExecutionNode {
 
   Variable const* inVariable() const;
 
+  optimizer2::nodes::FilterNode toInspectable() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
-
-  optimizer2::nodes::FilterNode toInspectable() const;
 
  private:
   /// @brief input variable to read from

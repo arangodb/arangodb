@@ -651,6 +651,10 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.close();
 }
 
+optimizer2::plan::InspectablePlan ExecutionPlan::toInspectable() const {
+  return _root->allToInspectables();
+}
+
 void ExecutionPlan::addAppliedRule(int level) {
   if (_appliedRules.empty() || _appliedRules.back() != level) {
     _appliedRules.emplace_back(level);
