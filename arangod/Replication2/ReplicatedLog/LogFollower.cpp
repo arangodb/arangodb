@@ -458,7 +458,9 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.term = _currentTerm;
     status.lowestIndexToKeep = followerData._lowestIndexToKeep;
     status.compactionStatus = followerData.compactionStatus;
-    // TODO add snapshot status?
+    status.snapshotAvailable =
+        followerData._snapshotProgress ==
+        GuardedFollowerData::SnapshotProgress::kCompleted;
     return LogStatus{std::move(status)};
   });
 }

@@ -554,6 +554,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
             .term = term,
             .local = leaderData.getLocalStatistics(),
             .leadershipEstablished = leaderData._leadershipEstablished,
+            .snapshotAvailable = true,
             .commitFailReason = commitFailReason,
             .activeParticipantsConfig = leaderData.activeParticipantsConfig,
             .committedParticipantsConfig =
