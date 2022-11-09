@@ -37,9 +37,11 @@
 using namespace arangodb;
 using namespace arangodb::traverser;
 
-EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
+EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
+                                       transaction::Methods* trx,
                                        std::string const& collectionName)
-    : _trx(trx),
+    : _monitor(monitor),
+      _trx(trx),
       _collectionName(collectionName),
       _collection(nullptr),
       _coveringPosition(0) {
@@ -88,7 +90,7 @@ arangodb::IndexIterator* EdgeCollectionInfo::getEdges(
 
   if (_cursor == nullptr || !_cursor->canRearm()) {
     _cursor = _trx->indexScanForCondition(
-        _index, _searchBuilder.getOutboundCondition(),
+        _monitor, _index, _searchBuilder.getOutboundCondition(),
         _searchBuilder.getVariable(), _indexIteratorOptions, ReadOwnWrites::no,
         transaction::Methods::kNoMutableConditionIdx);
   } else {

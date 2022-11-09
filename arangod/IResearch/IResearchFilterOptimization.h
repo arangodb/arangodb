@@ -31,7 +31,7 @@ enum class FilterOptimization : int { MAX = -1, NONE = 0 };
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     std::string_view name,
-                                    irs::string_ref startsWith);
+                                    std::string_view startsWith);
 
 }  // namespace iresearch
 }  // namespace arangodb
