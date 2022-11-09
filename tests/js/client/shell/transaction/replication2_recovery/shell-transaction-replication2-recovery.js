@@ -158,7 +158,7 @@ function transactionReplication2Recovery() {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
         }
-        return entry.payload[1].operation === "AbortAllOngoingTrx";
+        return entry.payload.operation === "AbortAllOngoingTrx";
       });
       assertTrue(abortAllEntryFound);
 
