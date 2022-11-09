@@ -133,36 +133,37 @@ void VPackFeature::collectOptions(
 
   options->addOption("--input-file",
 #ifdef __linux__
-                     "input filename (leave empty or use \"-\" for stdin)",
+                     "The input file (leave empty or use \"-\" for stdin).",
 #else
-                     "input filename",
+                     "The input file.",
 #endif
                      new StringParameter(&_inputFile));
 
   options->addOption("--output-file",
 #ifdef __linux__
-                     "output filename (leave empty or use \"+\" for stdout)",
+                     "The output file (leave empty or use \"+\" for stdout).",
 #else
-                     "output filename",
+                     "The output file.",
 #endif
                      new StringParameter(&_outputFile));
 
   options
       ->addOption(
-          "--input-type", "type of input",
+          "--input-type", "The input format.",
           new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--output-type", "type of output",
+      ->addOption("--output-type", "The output format.",
                   new DiscreteValuesParameter<StringParameter>(&_outputType,
                                                                outputTypes))
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--fail-on-non-json",
-                  "fail when trying to emit non-JSON types to JSON output",
-                  new BooleanParameter(&_failOnNonJson))
+      ->addOption(
+          "--fail-on-non-json",
+          "Raise an error when trying to emit non-JSON types to JSON output.",
+          new BooleanParameter(&_failOnNonJson))
       .setIntroducedIn(30800);
 }
 

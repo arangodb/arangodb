@@ -120,8 +120,7 @@ void ReplicationFeature::collectOptions(
   options->addSection("replication", "replication");
   options->addOption(
       "--replication.auto-start",
-      "switch to enable or disable the automatic start "
-      "of replication appliers",
+      "Enable or disable the automatic start of replication appliers.",
       new BooleanParameter(&_replicationApplierAutoStart),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -129,20 +128,18 @@ void ReplicationFeature::collectOptions(
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  options->addOption(
-      "--replication.automatic-failover",
-      "Please use `--replication.active-failover` instead",
-      new BooleanParameter(&_enableActiveFailover),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
   options->addOption("--replication.active-failover",
-                     "Enable active-failover during asynchronous replication",
+                     "Enable active-failover during asynchronous replication.",
                      new BooleanParameter(&_enableActiveFailover));
+  options->addOldOption("--replication.automatic-failover",
+                        "--replication.active-failover");
 
   options
       ->addOption(
           "--replication.max-parallel-tailing-invocations",
-          "Maximum number of concurrently allowed WAL tailing invocations (0 = "
-          "unlimited)",
+          "The maximum number of concurrently allowed WAL tailing invocations "
+          "(0 = unlimited).",
           new UInt64Parameter(&_maxParallelTailingInvocations),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
@@ -150,14 +147,15 @@ void ReplicationFeature::collectOptions(
 
   options
       ->addOption("--replication.connect-timeout",
-                  "Default timeout value for replication connection attempts "
-                  "(in seconds)",
+                  "The default timeout value for replication connection "
+                  "attempts (in seconds).",
                   new DoubleParameter(&_connectTimeout))
       .setIntroducedIn(30409)
       .setIntroducedIn(30504);
   options
       ->addOption("--replication.request-timeout",
-                  "Default timeout value for replication requests (in seconds)",
+                  "The default timeout value for replication requests "
+                  "(in seconds).",
                   new DoubleParameter(&_requestTimeout))
       .setIntroducedIn(30409)
       .setIntroducedIn(30504);
@@ -166,7 +164,7 @@ void ReplicationFeature::collectOptions(
       ->addOption(
           "--replication.quick-keys-limit",
           "Limit at which 'quick' calls to the replication keys API return "
-          "only the document count for second run",
+          "only the document count for the second run.",
           new UInt64Parameter(&_quickKeysLimit),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
@@ -175,7 +173,7 @@ void ReplicationFeature::collectOptions(
   options
       ->addOption(
           "--replication.sync-by-revision",
-          "Whether to use the newer revision-based replication protocol",
+          "Whether to use the newer revision-based replication protocol.",
           new BooleanParameter(&_syncByRevision))
       .setIntroducedIn(30700);
 }

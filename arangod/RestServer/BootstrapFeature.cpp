@@ -89,7 +89,7 @@ bool BootstrapFeature::isReady() const {
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
+      "--hund", "Make ArangoDB bark on startup.", new BooleanParameter(&_bark),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 

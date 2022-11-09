@@ -64,25 +64,58 @@ PrivilegeFeature::PrivilegeFeature(Server& server)
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef ARANGODB_HAVE_SETUID
-  options->addOption(
-      "--uid", "switch to user-id after reading config files",
-      new StringParameter(&_uid),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--uid",
+          "Switch to this user ID after reading the configuration files.",
+          new StringParameter(&_uid),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(The name (identity) of the user to run the
+server as.
+
+If you don't specify this option, the server does not attempt to change its UID,
+so that the UID used by the server is the same as the UID of the user who
+started the server.
+
+If you specify this option, the server changes its UID after opening ports and
+reading configuration files, but before accepting connections or opening other
+files (such as recovery files). This is useful if the server must be started
+with raised privileges (in certain environments) but security considerations
+require that these privileges are dropped once the server has started work.
+
+**Note**: You cannot use this option to bypass operating system security.
+In general, this option (and the related `--gid`) can lower privileges but not
+raise them.)");
 
   options->addOption(
-      "--server.uid", "switch to user-id after reading config files",
+      "--server.uid",
+      "Switch to this user ID after reading configuration files.",
       new StringParameter(&_uid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addOption(
-      "--gid", "switch to group-id after reading config files",
-      new StringParameter(&_gid),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--gid",
+                  "Switch to this group ID after reading configuration files.",
+                  new StringParameter(&_gid),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(The name (identity) of the group to run the
+server as.
+
+If you don't specify this option, the server does not attempt to change its GID,
+so that the GID the server runs as is the primary group of the user who started
+the server.
+
+If you specify this option, the server changes its GID after opening ports and
+reading configuration files, but before accepting connections or opening other
+files (such as recovery files).)");
 
   options->addOption(
-      "--server.gid", "switch to group-id after reading config files",
+      "--server.gid",
+      "Switch to this group ID after reading configuration files.",
       new StringParameter(&_gid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif

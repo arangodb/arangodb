@@ -124,7 +124,7 @@ void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.descriptors-minimum",
-      "minimum number of file descriptors needed to start (0 = no minimum)",
+      "The minimum number of file descriptors needed to start (0 = no minimum)",
       new UInt64Parameter(&_descriptorsMinimum),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,

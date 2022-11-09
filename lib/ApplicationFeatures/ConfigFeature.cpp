@@ -67,7 +67,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--check-configuration", "check the configuration and exit",
+      "--check-configuration", "Check the configuration and exit.",
       new BooleanParameter(&_checkConfiguration),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));

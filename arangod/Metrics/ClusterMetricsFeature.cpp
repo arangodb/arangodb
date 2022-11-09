@@ -53,7 +53,7 @@ void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout in seconds",
+                  "Cluster metrics polling timeout (in seconds).",
                   new options::UInt32Parameter(&_timeout),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))

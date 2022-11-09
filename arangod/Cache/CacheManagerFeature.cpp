@@ -70,17 +70,30 @@ void CacheManagerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "in-memory hash cache");
 
-  options->addOption(
-      "--cache.size", "size of cache in bytes",
-      new UInt64Parameter(&_cacheSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options
+      ->addOption("--cache.size",
+                  "The global size limit for all caches (in bytes).",
+                  new UInt64Parameter(&_cacheSize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Dynamic))
+      .setLongDescription(R"(The global caching system, all caches, and all the
+data contained therein are constrained to this limit.
 
-  options->addOption(
-      "--cache.rebalancing-interval",
-      "microseconds between rebalancing attempts",
-      new UInt64Parameter(
-          &_rebalancingInterval, /*base*/ 1,
-          /*minValue*/ CacheManagerFeature::minRebalancingInterval));
+If there is less than 4 GiB of RAM in the system, default value is 256 MiB.
+If there is more, the default is `(system RAM size - 2 GiB) * 0.25`.)");
+
+  options
+      ->addOption(
+          "--cache.rebalancing-interval",
+          "The time between cache rebalancing attempts (in microseconds). "
+          "The minimum value is 500000 (0.5 seconds).",
+          new UInt64Parameter(
+              &_rebalancingInterval, /*base*/ 1,
+              /*minValue*/ CacheManagerFeature::minRebalancingInterval))
+      .setLongDescription(R"(The server uses a cache system which pools memory
+across many different cache tables. In order to provide intelligent internal
+memory management, the system periodically reclaims memory from caches which are
+used less often and reallocates it to caches which get more activity.)");
 }
 
 void CacheManagerFeature::validateOptions(

@@ -199,6 +199,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
             builder.add("link", VPackValue(section.link));
           }
           builder.add("description", VPackValue(option.description));
+          if (option.hasLongDescription()) {
+            builder.add("longDescription", VPackValue(option.longDescription));
+          }
           builder.add(
               "category",
               VPackValue(option.hasFlag(arangodb::options::Flags::Command)

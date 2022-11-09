@@ -47,13 +47,14 @@ void ServerSecurityFeature::collectOptions(
   options
       ->addOption(
           "--server.harden",
-          "lock down REST APIs that reveal version information or server "
-          "internals for non-admin users",
+          "Lock down REST APIs that reveal version information or server "
+          "internals for non-admin users.",
           new BooleanParameter(&_hardenedRestApi))
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--foxx.api", "enables Foxx management REST APIs",
+      ->addOption("--foxx.api",
+                  "Whether to enable the Foxx management REST APIs.",
                   new BooleanParameter(&_enableFoxxApi),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -62,7 +63,8 @@ void ServerSecurityFeature::collectOptions(
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--foxx.store", "enables Foxx store in web interface",
+      ->addOption("--foxx.store",
+                  "Whether to enable the Foxx store in the web interface.",
                   new BooleanParameter(&_enableFoxxStore),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -73,7 +75,7 @@ void ServerSecurityFeature::collectOptions(
   options
       ->addOption(
           "--foxx.allow-install-from-remote",
-          "allow installing Foxx apps from remote URLs other than Github",
+          "Allow installing Foxx apps from remote URLs other than GitHub.",
           new BooleanParameter(&_foxxAllowInstallFromRemote),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,

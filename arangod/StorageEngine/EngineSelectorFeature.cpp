@@ -77,12 +77,21 @@ EngineSelectorFeature::EngineSelectorFeature(Server& server)
 
 void EngineSelectorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--server.storage-engine",
-                     "storage engine type "
-                     "(note that the mmfiles engine is unavailable since "
-                     "v3.7.0 and cannot be used anymore)",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_engineName, availableEngineNames()));
+  options
+      ->addOption("--server.storage-engine",
+                  "The storage engine type "
+                  "(note that the MMFiles engine is unavailable since "
+                  "v3.7.0 and cannot be used anymore).",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_engineName, availableEngineNames()))
+      .setLongDescription(R"(ArangoDB's storage engine is based on RocksDB, see
+http://rocksdb.org. It is the only available engine from ArangoDB v3.7 onwards.
+
+The storage engine type needs to be the same for an entire deployment.
+Live switching of storage engines on already installed systems isn't supported.
+Configuring the wrong engine (not matching the previously used one) results
+in the server refusing to start. You may use `auto` to let ArangoDB choose the
+previously used one.)");
 }
 
 void EngineSelectorFeature::prepare() {

@@ -126,7 +126,7 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
       std::string description = parameter->description();
       if (!description.empty()) {
-        value.append(". ");
+        value.append("\n");
         value.append(description);
       }
 
@@ -187,7 +187,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   // split at "."
   size_t pos = name.find('.');
   if (pos == std::string::npos) {
-    // global option
+    // general option
     section = "";
   } else {
     // section-specific option
@@ -195,30 +195,42 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
     name = name.substr(pos + 1);
   }
 
-  return std::make_pair(section, name);
+  return std::make_pair(std::move(section), std::move(name));
 }
 
 std::vector<std::string> Option::wordwrap(std::string const& value,
                                           size_t size) {
   std::vector<std::string> result;
-  std::string next = value;
+  std::string_view next = value;
 
-  if (size > 0) {
-    while (next.size() > size) {
-      size_t m = next.find_last_of("., ", size - 1);
-
-      if (m == std::string::npos || m < size / 2) {
-        m = size;
-      } else {
-        m += 1;
-      }
-
-      result.emplace_back(next.substr(0, m));
-      next = next.substr(m);
-    }
+  if (size == 0) {
+    size = value.size();
   }
 
-  result.emplace_back(next);
+  while (!next.empty()) {
+    size_t skip = 0;
+    size_t m = std::min(size, next.size());
+    TRI_ASSERT(m > 0);
+    size_t n = next.find_last_of("., ", m - 1);
+    if (n != std::string_view::npos && next.size() > size && n >= size / 2 &&
+        n + 1 <= size) {
+      m = n + 1;
+    }
+    n = next.find('\n');
+    if (n != std::string_view::npos && n < m) {
+      m = n;
+      skip = 1;
+    }
+
+    TRI_ASSERT(m <= size);
+    TRI_ASSERT(next.substr(0, m).find('\n') == std::string_view::npos);
+    result.emplace_back(next.data(), m);
+
+    if (m + skip >= next.size()) {
+      break;
+    }
+    next = next.substr(m + skip);
+  }
 
   return result;
 }
