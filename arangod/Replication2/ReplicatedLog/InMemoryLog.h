@@ -148,4 +148,6 @@ struct InMemoryLog {
   explicit InMemoryLog(log_type log, LogIndex first);
 };
 
+struct InMemoryLogSlice {};
+
 }  // namespace arangodb::replication2::replicated_log

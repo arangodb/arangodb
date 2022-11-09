@@ -184,6 +184,7 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
         << "reset participant of replicated log";
     auto [core, action] = std::move(*data.participant).resign();
     data.core = std::move(core);
+    // TODO wait for all sync operations to be completed
     data.participant.reset();
   }
 }
