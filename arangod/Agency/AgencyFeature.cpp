@@ -89,8 +89,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::DefaultNoComponents,
                          arangodb::options::Flags::OnAgent));
 
-  options->addOption("--agency.pool-size",
-                     "The number of Agents in the pool.",
+  options->addOption("--agency.pool-size", "The number of Agents in the pool.",
                      new UInt64Parameter(&_poolSize),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
