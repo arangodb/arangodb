@@ -56,7 +56,7 @@ class QueryAggregate : public QueryTest {
         auto names = it.value().get("names");
         ASSERT_TRUE(names.isNumber<size_t>()) << names.toString();
         EXPECT_EQ(expectedIt->second, names.getNumber<size_t>());
-        EXPECT_EQ(expected.erase(key), 1);
+        EXPECT_EQ(expected.erase(key), 1U);
       }
       EXPECT_TRUE(expected.empty());
     }
@@ -98,7 +98,7 @@ class QueryAggregate : public QueryTest {
         auto& expectedNames = expectedIt->second;
         if (expectedNames.empty()) {
           // array must contain singe 'null' value
-          EXPECT_EQ(names.size(), 1);
+          EXPECT_EQ(names.size(), 1U);
           ASSERT_TRUE(names.valid());
           EXPECT_TRUE(names.value().isNull());
           names.next();
@@ -114,7 +114,7 @@ class QueryAggregate : public QueryTest {
         }
 
         EXPECT_TRUE(expectedNames.empty());
-        EXPECT_EQ(expected.erase(key), 1);
+        EXPECT_EQ(expected.erase(key), 1U);
       }
       EXPECT_TRUE(expected.empty());
     }
