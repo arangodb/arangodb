@@ -61,7 +61,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
       [self = shared_from_this(), &destination,
        waitForIndex](auto& data) -> futures::Future<Result> {
         if (data.didResign()) {
-          return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
         if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
@@ -70,30 +70,11 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
         // A follower may request a snapshot before leadership has been
         // established. A retry will occur in that case.
-        auto leaderInterface =
-            self->_networkHandler->getLeaderInterface(destination);
+        auto leader = self->_networkHandler->getLeaderInterface(destination);
+        auto fut = leader->getSnapshot(waitForIndex, std::string{"first"});
 
-        std::string suffix{"first"};
-        while (true) {
-          auto snapshotRes =
-              leaderInterface->getSnapshot(waitForIndex, suffix).get();
-          if (snapshotRes.fail()) {
-            return snapshotRes.result();
-          }
-
-          auto& docs = snapshotRes->documents;
-          if (docs.isNone()) {
-            // No documents to insert. We are done.
-            return {TRI_ERROR_NO_ERROR};
-          }
-
-          auto insertRes = self->populateLocalShard(docs);
-          if (insertRes.fail()) {
-            return insertRes;
-          }
-
-          suffix = "next";
-        }
+        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                            std::move(fut));
       });
 }
 
@@ -103,7 +84,7 @@ auto DocumentFollowerState::applyEntries(
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
     }
 
     if (self->_transactionHandler == nullptr) {
@@ -171,6 +152,54 @@ auto DocumentFollowerState::truncateLocalShard() -> Result {
 auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
     -> Result {
   return forceLocalTransaction(OperationType::kInsert, std::move(slice));
+}
+
+auto DocumentFollowerState::handleSnapshotTransfer(
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    LogIndex waitForIndex,
+    futures::Future<ResultT<Snapshot>>&& transferFuture) noexcept
+    -> futures::Future<Result> {
+   return std::move(transferFuture)
+      .then([weak = weak_from_this(), leader = std::move(leader),
+             waitForIndex](futures::Try<ResultT<Snapshot>>&& tryResult) mutable
+            -> futures::Future<Result> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+        }
+
+        auto catchRes =
+            basics::catchToResultT([&] { return std::move(tryResult).get(); });
+        if (catchRes.fail()) {
+          return catchRes.result();
+        }
+
+        auto snapshotRes = catchRes.get();
+        if (snapshotRes.fail()) {
+          return snapshotRes.result();
+        }
+
+        auto& docs = snapshotRes->documents;
+        if (docs.isNone()) {
+          // No documents to insert. We are done.
+          return {TRI_ERROR_NO_ERROR};
+        }
+
+        auto insertRes = self->_guardedData.doUnderLock(
+            [&self, &docs](auto& data) -> Result {
+              if (data.didResign()) {
+                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+              }
+              return self->populateLocalShard(docs);
+            });
+        if (insertRes.fail()) {
+          return insertRes;
+        }
+
+        auto fut = leader->getSnapshot(waitForIndex, std::string{"next"});
+        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                            std::move(fut));
+      });
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

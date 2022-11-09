@@ -31,8 +31,10 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 enum class OperationType;
+struct Snapshot;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
@@ -57,6 +59,11 @@ struct DocumentFollowerState
                              velocypack::SharedSlice slice) -> Result;
   auto truncateLocalShard() -> Result;
   auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex,
+      futures::Future<ResultT<Snapshot>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
 
  private:
   struct GuardedData {
