@@ -635,7 +635,8 @@ usage of collection names will always be disallowed.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(This option allows you to truncate overly long
+query strings and bind parameter values to a reasonable length in log files.)");
 
   options
       ->addOption("--query.log-memory-usage-threshold",
@@ -649,7 +650,9 @@ usage of collection names will always be disallowed.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(A warning is logged if queries exceed the
+specified threshold. This is useful for finding queries that use a large
+amount of memory.)");
 
   options
       ->addOption("--query.log-failed", "Whether to log failed AQL queries.",
@@ -661,7 +664,9 @@ usage of collection names will always be disallowed.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(If set to `true`, all failed AQL queries are
+logged to the server log. You can use this option during development, or to
+catch unexpected failed queries in production.)");
 }
 
 void QueryRegistryFeature::validateOptions(

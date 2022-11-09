@@ -138,7 +138,7 @@ void TemporaryStorageFeature::collectOptions(
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
       .setIntroducedIn(31000)
-      .setLongDescription(R"(Queries can store input and intermediate results
+      .setLongDescription(R"(Queries can store intermediate and final results
 temporarily on disk if a specified threshold is exceeded, to decrease the memory
 usage. Specify a path to a directory for the temporary data to activate the
 spillover feature. The directory must not be located underneath the instance's 
