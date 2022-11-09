@@ -23,7 +23,6 @@
 
 #include "BaseOptions.h"
 
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
@@ -40,7 +39,6 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
@@ -218,7 +216,7 @@ void BaseOptions::LookupInfo::initializeNonConstExpressions(
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, false, indexCondition, indexVariable);
+      ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }

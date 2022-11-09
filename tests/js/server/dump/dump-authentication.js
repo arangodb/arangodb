@@ -63,6 +63,7 @@ jsunity.run(function dump_single_testsuite() {
       "testPersistent",
       "testView",
       "testSearch",
+      "testInvertedIndex",
       "testAnalyzers",
       "testIndexAnalyzerCollection",
       "testJobsAndQueues",

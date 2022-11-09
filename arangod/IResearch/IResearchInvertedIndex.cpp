@@ -33,9 +33,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
-#include "IResearchDocument.h"
-#include "IResearchFilterFactory.h"
-#include "IResearchIdentityAnalyzer.h"
+#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchFilterFactoryCommon.h"
+#include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Transaction/Methods.h"
@@ -52,6 +53,14 @@
 namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
+
+struct EmptyAttributeProvider final : irs::attribute_provider {
+  irs::attribute* get_mutable(irs::type_info::type_id) override {
+    return nullptr;
+  }
+};
+
+EmptyAttributeProvider const kEmptyAttributeProvider;
 
 InvertedIndexField const* findMatchingSubField(InvertedIndexField const& root,
                                                std::string_view fieldPath) {
@@ -79,7 +88,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   };
 }
 
-irs::bytes_ref refFromSlice(VPackSlice slice) {
+irs::bytes_view refFromSlice(VPackSlice slice) {
   return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
 
@@ -96,19 +105,23 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{.trx = &trx,
-                              .ref = reference,
-                              .isSearchQuery = false,
-                              .isOldMangling = false};
+  QueryContext const queryCtx{
+      .trx = &trx,
+      .ref = reference,
+      .fields = metaFields,
+      // we don't care here as we are checking condition in general
+      .namePrefix = nestedRoot(false),
+      .isSearchQuery = false,
+      .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
   auto emptyAnalyzer = makeEmptyAnalyzer();
-  FilterContext const filterCtx{.fieldAnalyzerProvider = provider,
+  FilterContext const filterCtx{.query = queryCtx,
                                 .contextAnalyzer = emptyAnalyzer,
-                                .fields = metaFields};
+                                .fieldAnalyzerProvider = provider};
 
-  auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
+  auto rv = FilterFactory::filter(nullptr, filterCtx, *node);
 
   LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
@@ -128,7 +141,7 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
 ///         After the document id has beend found "get" method
 ///         could be used to get Slice for the Projections
 struct CoveringValue {
-  explicit CoveringValue(irs::string_ref col) : column(col) {}
+  explicit CoveringValue(std::string_view col) : column(col) {}
   CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
   void reset(irs::sub_reader const& rdr) {
@@ -160,7 +173,7 @@ struct CoveringValue {
       }
       TRI_ASSERT(totalSize > 0);
       size_t size = 0;
-      VPackSlice slice(value->value.c_str());
+      VPackSlice slice(value->value.data());
       TRI_ASSERT(slice.byteSize() <= totalSize);
       while (i < index) {
         if (ADB_LIKELY(size < totalSize)) {
@@ -183,7 +196,7 @@ struct CoveringValue {
   }
 
   irs::doc_iterator::ptr itr;
-  irs::string_ref column;
+  std::string_view column;
   const irs::payload* value{};
 };
 
@@ -194,7 +207,8 @@ class CoveringVector final : public IndexIteratorCoveringData {
     size_t fields{meta._sort.fields().size()};
     _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
-      _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
+      _coverage.emplace_back(fields,
+                             CoveringValue(irs::kEmptyStringView<char>));
     }
     for (auto const& column : meta._storedValues.columns()) {
       fields += column.fields.size();
@@ -305,14 +319,23 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       return;
     }
 
-    QueryContext const queryCtx{.trx = _trx,
-                                .index = _reader,
-                                .ref = _variable,
-                                .isSearchQuery = false,
-                                .isOldMangling = false,
-                                .hasNestedFields = _indexMeta->hasNested()};
-
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(*_indexMeta);
+
+    QueryContext const queryCtx{
+        .trx = _trx,
+        .index = _reader,
+        .ref = _variable,
+        .fields = _indexMeta->_fields,
+        .namePrefix = nestedRoot(_indexMeta->hasNested()),
+        .isSearchQuery = false,
+        .isOldMangling = false};
+
+    // The analyzer is referenced in the FilterContext and used during the
+    // following FilterFactory::::filter() call, so may not be a temporary.
+    auto emptyAnalyzer = makeEmptyAnalyzer();
+    FilterContext const filterCtx{.query = queryCtx,
+                                  .contextAnalyzer = emptyAnalyzer,
+                                  .fieldAnalyzerProvider = &analyzerProvider};
 
     irs::Or root;
     if (condition) {
@@ -320,14 +343,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
               transaction::Methods::kNoMutableConditionIdx ||
           (condition->type != aql::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::NODE_TYPE_OPERATOR_NARY_OR)) {
-        // The analyzer is referenced in the FilterContext and used during the
-        // following FilterFactory::::filter() call, so may not be a temporary.
-        auto emptyAnalyzer = makeEmptyAnalyzer();
-        FilterContext const filterCtx{
-            .fieldAnalyzerProvider = &analyzerProvider,
-            .contextAnalyzer = emptyAnalyzer,
-            .fields = _indexMeta->_fields};
-        auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
+        auto rv = FilterFactory::filter(&root, filterCtx, *condition);
 
         if (rv.fail()) {
           velocypack::Builder builder;
@@ -354,21 +370,15 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         irs::boolean_filter* conditionJoiner{nullptr};
 
         if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
-          conditionJoiner = &root.add<irs::And>();
+          conditionJoiner = &append<irs::And>(root, filterCtx);
         } else {
           TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
-          conditionJoiner = &root.add<irs::Or>();
+          conditionJoiner = &append<irs::Or>(root, filterCtx);
         }
 
-        auto emptyAnalyzer = makeEmptyAnalyzer();
-        FilterContext const filterCtx{
-            .fieldAnalyzerProvider = &analyzerProvider,
-            .contextAnalyzer = emptyAnalyzer,
-            .fields = _indexMeta->_fields};
-
-        auto& mutable_root = conditionJoiner->add<irs::Or>();
+        auto& mutable_root = append<irs::Or>(*conditionJoiner, filterCtx);
         auto rv =
-            FilterFactory::filter(&mutable_root, queryCtx, filterCtx,
+            FilterFactory::filter(&mutable_root, filterCtx,
                                   *condition->getMember(_mutableConditionIdx));
         if (rv.fail()) {
           velocypack::Builder builder;
@@ -380,7 +390,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                            builder.toJson(), "': ", rv.errorMessage()));
         }
 
-        auto& proxy_filter = conditionJoiner->add<irs::proxy_filter>();
+        auto& proxy_filter =
+            append<irs::proxy_filter>(*conditionJoiner, filterCtx);
         auto existingCache = _immutablePartCache->find(condition);
         if (existingCache != _immutablePartCache->end()) {
           proxy_filter.set_cache(existingCache->second);
@@ -401,17 +412,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           auto const conditionSize =
               static_cast<int64_t>(condition->numMembers());
 
-          // The analyzer is referenced in the FilterContext and used during the
-          // following ::filter() call, so may not be a temporary.
-          auto emptyAnalyzer = makeEmptyAnalyzer();
-          FilterContext const filterCtx{
-              .fieldAnalyzerProvider = &analyzerProvider,
-              .contextAnalyzer = emptyAnalyzer};
-
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
-              auto& tmp_root = immutableRoot->add<irs::Or>();
-              auto rv = FilterFactory::filter(&tmp_root, queryCtx, filterCtx,
+              auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
+              auto rv = FilterFactory::filter(&tmp_root, filterCtx,
                                               *condition->getMember(i));
               if (rv.fail()) {
                 velocypack::Builder builder;
@@ -429,9 +433,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       }
     } else {
       // sorting case
-      addAllFilter(root, _indexMeta->hasNested());
+      append<irs::all>(root, filterCtx);
     }
-    _filter = root.prepare(*_reader, _order, irs::kNoBoost, nullptr);
+    _filter = root.prepare(*_reader, irs::Order::kUnordered, irs::kNoBoost,
+                           &kEmptyAttributeProvider);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {
@@ -447,7 +452,6 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::Order _order;
   irs::index_reader const* _reader;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
@@ -458,13 +462,11 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexIterator(LogicalCollection* collection,
-                                 IResearchSnapshotState* state,
-                                 transaction::Methods* trx,
-                                 aql::AstNode const* condition,
-                                 IResearchInvertedIndexMeta const* meta,
-                                 aql::Variable const* variable,
-                                 int mutableConditionIdx)
+  IResearchInvertedIndexIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _projections(*meta) {}
@@ -520,7 +522,11 @@ class IResearchInvertedIndexIterator final
           continue;
         }
         _projections.reset(segmentReader);
-        _itr = segmentReader.mask(_filter->execute(segmentReader));
+
+        _itr = segmentReader.mask(_filter->execute(
+            irs::ExecutionContext{.segment = segmentReader,
+                                  .scorers = irs::Order::kUnordered,
+                                  .ctx = &kEmptyAttributeProvider}));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
@@ -569,13 +575,11 @@ class IResearchInvertedIndexIterator final
 class IResearchInvertedIndexMergeIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexMergeIterator(LogicalCollection* collection,
-                                      IResearchSnapshotState* state,
-                                      transaction::Methods* trx,
-                                      aql::AstNode const* condition,
-                                      IResearchInvertedIndexMeta const* meta,
-                                      aql::Variable const* variable,
-                                      int mutableConditionIdx)
+  IResearchInvertedIndexMergeIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _heap_it({meta->_sort, meta->_sort.size(), _segments}),
@@ -741,8 +745,8 @@ IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
 void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
                                           TRI_vocbase_t const* defaultVocbase,
                                           velocypack::Builder& builder,
-                                          bool forPersistence) const {
-  if (!_meta.json(server, builder, forPersistence, defaultVocbase)) {
+                                          bool writeAnalyzerDefinition) const {
+  if (!_meta.json(server, builder, writeAnalyzerDefinition, defaultVocbase)) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
         std::string{"Failed to generate inverted index field definition"}));
@@ -832,7 +836,7 @@ Result IResearchInvertedIndex::init(
 AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;
@@ -908,9 +912,10 @@ bool IResearchInvertedIndex::matchesDefinition(
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
-    LogicalCollection* collection, transaction::Methods* trx,
-    aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts, int mutableConditionIdx) {
+    ResourceMonitor& monitor, LogicalCollection* collection,
+    transaction::Methods* trx, aql::AstNode const* node,
+    aql::Variable const* reference, IndexIteratorOptions const& opts,
+    int mutableConditionIdx) {
   if (failQueriesOnOutOfSync() && isOutOfSync()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -945,11 +950,11 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     } else {
       return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     }
   } else {
@@ -959,7 +964,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     TRI_ASSERT(!_meta._sort.empty());
 
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        collection, &state, trx, node, &_meta, reference,
+        monitor, collection, &state, trx, node, &_meta, reference,
         transaction::Methods::kNoMutableConditionIdx);
   }
 }
@@ -1076,12 +1081,13 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
 void IResearchInvertedClusterIndex::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
-  auto const forPersistence =
+  bool const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
+  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
   auto& vocbase = IResearchDataStore::collection().vocbase();
   IResearchInvertedIndex::toVelocyPack(vocbase.server(), &vocbase, builder,
-                                       forPersistence);
+                                       forPersistence || forInventory);
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,

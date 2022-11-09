@@ -51,11 +51,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
-
-#ifdef USE_PLAN_CACHE
-#include "Aql/PlanCache.h"
-#endif
 
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
@@ -91,11 +88,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
   }
   return Weight{
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
-}
-
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
 }
 
 }  // namespace fst
@@ -279,7 +271,7 @@ std::string check(SearchMeta const& search,
   return {};
 }
 
-void add(SearchMeta::Map& search, InvertedIndexField const& index) {
+void addImpl(SearchMeta::Map& search, InvertedIndexField const& index) {
   for (auto const& field : index._fields) {
     auto it = search.lower_bound(field.path());
     if (it == search.end() || it->first != field.path()) {
@@ -291,9 +283,13 @@ void add(SearchMeta::Map& search, InvertedIndexField const& index) {
       it->second.includeAllFields |= field._includeAllFields;
     }
 #ifdef USE_ENTERPRISE
-    add(search, field);
+    addImpl(search, field);
 #endif
   }
+}
+
+void add(SearchMeta::Map& search, InvertedIndexField const& index) {
+  addImpl(search, index);
   if (index._includeAllFields) {
     search.emplace("", SearchMeta::Field{index.analyzer()._shortName, true,
                                          index._isSearchField});
@@ -543,9 +539,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     r = cluster_helper::properties(*this, true /*means under lock*/);
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
-#ifdef USE_PLAN_CACHE
-    aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
     aql::QueryCache::instance()->invalidate(&vocbase());
     r = storage_helper::properties(*this, true /*means under lock*/);
   }
@@ -595,6 +588,13 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     if (!safe) {
       sharedLock.lock();
     }
+
+    // we may need to check the permissions of the underlying
+    // collections
+    auto const& execCtx = ExecContext::current();
+    bool const checkPermissions =
+        ctx == Serialization::Properties && !execCtx.isSuperuser();
+
     for (auto& [cid, handles] : _indexes) {
       for (auto& handle : handles) {
         if (auto inverted = handle->lock(); inverted) {
@@ -607,6 +607,15 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
           if (!collection) {
             continue;
           }
+
+          if (checkPermissions &&
+              !execCtx.canUseCollection(vocbase().name(), collection->name(),
+                                        auth::Level::RO)) {
+            return {TRI_ERROR_FORBIDDEN,
+                    absl::StrCat("Current user cannot use collection '",
+                                 collection->name(), "'")};
+          }
+
           if (ctx == Serialization::Properties ||
               ctx == Serialization::Inventory) {
             build.add(velocypack::Value{velocypack::ValueType::Object});
@@ -627,6 +636,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
       }
     }
     build.close();
+
     return {};
   } catch (basics::Exception const& e) {
     return {
@@ -675,7 +685,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     auto value = *it;
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+      return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
     }
     auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {

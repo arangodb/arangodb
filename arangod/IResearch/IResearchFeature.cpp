@@ -648,10 +648,10 @@ void registerIndexFactory(
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
   // positional arguments (attribute [<scorer-specific properties>...]);
-  irs::string_ref constexpr args(".|+");
+  std::string_view constexpr args(".|+");
 
   irs::scorers::visit(
-      [&functions, &args](irs::string_ref name,
+      [&functions, &args](std::string_view name,
                           irs::type_info const& args_format) -> bool {
         // ArangoDB, for API consistency, only supports scorers configurable via
         // jSON
@@ -667,7 +667,7 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
 
         // scorers are not usable in analyzers
         arangodb::iresearch::addFunction(
-            functions, {std::move(upperName), args.c_str(),
+            functions, {std::move(upperName), args.data(),
                         aql::Function::makeFlags(
                             aql::Function::Flags::Deterministic,
                             aql::Function::Flags::Cacheable,
@@ -859,6 +859,7 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &aql::functions::GeoContains ||
          func.implementation == &aql::functions::GeoInRange ||
          func.implementation == &aql::functions::GeoIntersects ||
+         func.implementation == &aql::functions::GeoDistance ||
          func.implementation == &aql::functions::LevenshteinMatch ||
          func.implementation == &aql::functions::Like ||
          func.implementation == &aql::functions::NgramMatch ||
@@ -1065,7 +1066,7 @@ void IResearchFeature::prepare() {
     auto submitTask = [this](ThreadGroup group) {
       return queue(group, 0ms, [state = _startState]() noexcept {
         {
-          auto lock = irs::make_lock_guard(state->mtx);
+          std::lock_guard lock{state->mtx};
           ++state->counter;
         }
         state->cv.notify_one();
@@ -1110,7 +1111,7 @@ void IResearchFeature::start() {
         << "] consolidation thread(s)";
 
     {
-      auto lock = irs::make_unique_lock(_startState->mtx);
+      std::unique_lock lock{_startState->mtx};
       if (!_startState->cv.wait_for(
               lock, 60s, [this]() { return _startState->counter == 2; })) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

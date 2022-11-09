@@ -543,7 +543,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
 /// This function implicitly creates an array and serializes all nodes top-down,
 /// i.e., the upmost dependency will be the first, and this node will be the
 /// last in the array.
-void ExecutionNode::allToVelocyPack(VPackBuilder& builder,
+void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
                                     unsigned flags) const {
   struct NodeSerializer
       : WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
@@ -783,19 +783,6 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
           // by the time this code was implemented only
           // SCATTER, MUTEX and DISTRIBUTE nodes were allowed to have more
           // than one parent, so all others indicated an issue on plan
-          if (!(n->getType() == SCATTER || n->getType() == MUTEX ||
-                n->getType() == DISTRIBUTE)) {
-            VPackBuilder builder;
-
-            n->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-            std::vector<ExecutionNode*> parents{};
-            n->parents(parents);
-
-            for (auto p : parents) {
-              builder.clear();
-              p->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
-            }
-          }
           TRI_ASSERT(n->getType() == SCATTER || n->getType() == MUTEX ||
                      n->getType() == DISTRIBUTE);
           if (flattenType == FlattenType::INLINE_ALL || n->getType() == MUTEX) {
@@ -936,7 +923,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 }
 
 /// @brief serialize this ExecutionNode to VelocyPack
-void ExecutionNode::toVelocyPack(arangodb::velocypack::Builder& builder,
+void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
                                  unsigned flags) const {
   VPackObjectBuilder objectGuard(&builder);
 
@@ -1632,7 +1619,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 }
 
 /// @brief doToVelocyPack, for SingletonNode
-void SingletonNode::doToVelocyPack(VPackBuilder&, unsigned) const {
+void SingletonNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -1662,7 +1649,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _hint(base) {}
 
 /// @brief doToVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::doToVelocyPack(VPackBuilder& builder,
+void EnumerateCollectionNode::doToVelocyPack(velocypack::Builder& builder,
                                              unsigned flags) const {
   builder.add("random", VPackValue(_random));
 
@@ -1778,9 +1765,13 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
 
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  auto const estimatedNrItems =
+  auto estimatedNrItems =
       collection()->count(&trx, transaction::CountType::TryCache);
-  if (!doCount()) {
+  if (_random) {
+    // we retrieve at most one random document from the collection.
+    // so the estimate is at most 1
+    estimatedNrItems = 1;
+  } else if (!doCount()) {
     // if "count" mode is active, the estimated number of items from above
     // must not be multiplied with the number of items in this collection
     estimate.estimatedNrItems *= estimatedNrItems;
@@ -1802,7 +1793,7 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief doToVelocyPack, for EnumerateListNode
-void EnumerateListNode::doToVelocyPack(VPackBuilder& nodes,
+void EnumerateListNode::doToVelocyPack(velocypack::Builder& nodes,
                                        unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
@@ -1955,7 +1946,8 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 }
 
 // @brief doToVelocyPack, for LimitNode
-void LimitNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
+void LimitNode::doToVelocyPack(velocypack::Builder& nodes,
+                               unsigned /*flags*/) const {
   nodes.add("offset", VPackValue(_offset));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
@@ -2031,7 +2023,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
 CalculationNode::~CalculationNode() = default;
 
 /// @brief doToVelocyPack, for CalculationNode
-void CalculationNode::doToVelocyPack(VPackBuilder& nodes,
+void CalculationNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned flags) const {
   nodes.add(VPackValue("expression"));
   _expression->toVelocyPack(nodes, flags);
@@ -2239,7 +2231,8 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief doToVelocyPack, for SubqueryNode
-void SubqueryNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void SubqueryNode::doToVelocyPack(velocypack::Builder& nodes,
+                                  unsigned flags) const {
   // Since we have spliced subqueries this should never be called.
   // However, we still keep the old implementation around in case it is needed
   // again at some point (e.g., if we want to serialize nodes during
@@ -2502,7 +2495,8 @@ FilterNode::FilterNode(ExecutionPlan* plan,
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief doToVelocyPack, for FilterNode
-void FilterNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
+void FilterNode::doToVelocyPack(velocypack::Builder& nodes,
+                                unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 }
@@ -2579,7 +2573,8 @@ ReturnNode::ReturnNode(ExecutionPlan* plan,
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief doToVelocyPack, for ReturnNode
-void ReturnNode::doToVelocyPack(VPackBuilder& nodes, unsigned /*flags*/) const {
+void ReturnNode::doToVelocyPack(velocypack::Builder& nodes,
+                                unsigned /*flags*/) const {
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
   nodes.add("count", VPackValue(_count));
@@ -2681,7 +2676,7 @@ Variable const* ReturnNode::inVariable() const { return _inVariable; }
 void ReturnNode::inVariable(Variable const* v) { _inVariable = v; }
 
 /// @brief doToVelocyPack, for NoResultsNode
-void NoResultsNode::doToVelocyPack(VPackBuilder&, unsigned) const {
+void NoResultsNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2791,7 +2786,7 @@ SortInformation::Match SortInformation::isCoveredBy(
 }
 
 /// @brief doToVelocyPack, for AsyncNode
-void AsyncNode::doToVelocyPack(VPackBuilder&, unsigned) const {
+void AsyncNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
   // nothing to do here!
 }
 
@@ -2857,7 +2852,7 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
       _outVariable(aql::Variable::varFromVPack(
           plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
 
-void MaterializeNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
+void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
@@ -2900,7 +2895,7 @@ MaterializeMultiNode::MaterializeMultiNode(
       _inNonMaterializedColPtr(aql::Variable::varFromVPack(
           plan->getAst(), base, MATERIALIZE_NODE_IN_NM_COL_PARAM, true)) {}
 
-void MaterializeMultiNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
+void MaterializeMultiNode::doToVelocyPack(velocypack::Builder& nodes,
                                           unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);
@@ -2991,7 +2986,7 @@ MaterializeSingleNode::MaterializeSingleNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
 
-void MaterializeSingleNode::doToVelocyPack(arangodb::velocypack::Builder& nodes,
+void MaterializeSingleNode::doToVelocyPack(velocypack::Builder& nodes,
                                            unsigned flags) const {
   // call base class method
   MaterializeNode::doToVelocyPack(nodes, flags);

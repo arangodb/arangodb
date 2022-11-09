@@ -584,7 +584,6 @@ Result LogicalCollection::rename(std::string&& newName) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while renaming collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   // Check for illegal states.
   if (_status != TRI_VOC_COL_STATUS_LOADED) {
@@ -597,7 +596,6 @@ Result LogicalCollection::rename(std::string&& newName) {
     return TRI_ERROR_INTERNAL;
   }
 
-  auto doSync = databaseFeature.forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -605,7 +603,7 @@ Result LogicalCollection::rename(std::string&& newName) {
     StorageEngine& engine =
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this, doSync);
+    engine.changeCollection(vocbase(), *this);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -656,7 +654,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags(Index::Serialize::Basics);
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden();
     }
   });
@@ -718,12 +716,12 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags();
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion",
-             VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
+  // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -858,7 +856,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
       !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
@@ -900,9 +897,12 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                       "bad value for replicationFactor");
       }
 
+      auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor > 10) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
@@ -925,9 +925,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         }
       }
     } else if (replicationFactorSlice.isString()) {
-      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
+      if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
@@ -987,11 +988,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                (writeConcern == 0 && isSatellite()));
   }
 
-  auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
-
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice, doSync);
+  res = getPhysical()->updateProperties(slice);
   if (!res.ok()) {
     return res;
   }
@@ -1042,7 +1041,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this, doSync);
+  engine.changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
@@ -1092,9 +1091,6 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(_vocbase);
-#endif
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 

@@ -25,6 +25,8 @@ endif ()
 ## gtest
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "gtest" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
 set(GOOGLETEST_ROOT 3rdParty/gtest/googletest CACHE STRING "Google Test source root")
 set(GOOGLEMOCK_ROOT 3rdParty/gtest/googlemock CACHE STRING "Google Mock source root")
 
@@ -51,7 +53,7 @@ target_include_directories(gtest
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.12)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.13)
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 
@@ -333,38 +335,10 @@ if (EXISTS ${STARTER_SOURCE})
   endif()
 endif()
 
-add_library(fuerte STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H2Connection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/requests.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/types.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
-  )
-
-target_link_libraries(fuerte PUBLIC nghttp2)
-target_link_libraries(fuerte PUBLIC llhttp)
-target_link_libraries(fuerte PUBLIC boost_system)
-target_link_libraries(fuerte PUBLIC velocypack)
-
-include(CheckTypeSize)
-check_type_size("ssize_t" SIZEOF_SSIZE_T)
-if(SIZEOF_SSIZE_T STREQUAL "")
-  # ssize_t is a signed type in POSIX storing at least -1.
-  # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
-  target_compile_definitions(fuerte PRIVATE ssize_t=int)
-endif()
-
-target_include_directories(fuerte SYSTEM PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
-target_include_directories(fuerte SYSTEM PUBLIC "${OPENSSL_INCLUDE_DIR}")
+################################################################################
+## fuerte
+################################################################################
+add_subdirectory(fuerte)
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
@@ -375,6 +349,9 @@ add_subdirectory(taocpp-json EXCLUDE_FROM_ALL)
 add_subdirectory(json-schema-validation EXCLUDE_FROM_ALL)
 
 
+################################################################################
+## tzdata
+################################################################################
 LIST(APPEND TZ_DATA_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/africa"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/antarctica"
@@ -393,38 +370,20 @@ LIST(APPEND TZ_DATA_FILES
 
 set(TZ_DATA_FILES ${TZ_DATA_FILES} PARENT_SCOPE)
 
-
+add_custom_target(tzdata)
 
 if (MSVC)
   add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
+    TARGET tzdata POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/tzdata
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/$<CONFIG>/tzdata)
 else()
   add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata)
-
-  add_custom_command(
-    TARGET fuerte POST_BUILD
+    TARGET tzdata POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/tzdata
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/tests/tzdata
+    COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/bin/tzdata
     COMMAND ${CMAKE_COMMAND} -E copy ${TZ_DATA_FILES} ${CMAKE_BINARY_DIR}/tests/tzdata)
 endif()

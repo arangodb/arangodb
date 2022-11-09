@@ -74,7 +74,7 @@ static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeX";
   }
 };
@@ -83,7 +83,7 @@ REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with
                                      // analized fields
 
 struct TestAttributeY : public irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestAttributeY";
   }
 };
@@ -93,16 +93,16 @@ REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with
 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "TestInsertAnalyzer";
   }
 
-  static ptr make(irs::string_ref args) {
+  static ptr make(std::string_view args) {
     PTR_NAMED(TestAnalyzer, ptr, args);
     return ptr;
   }
 
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,7 +124,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(irs::string_ref value)
+  TestAnalyzer(std::string_view value)
       : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
@@ -155,20 +155,20 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   virtual bool next() override {
     _term.value = _data;
-    _data = irs::bytes_ref::NIL;
+    _data = irs::bytes_view{};
 
-    return !_term.value.null();
+    return !irs::IsNull(_term.value);
   }
 
-  virtual bool reset(irs::string_ref data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    _term.value = irs::bytes_ref::NIL;
+  virtual bool reset(std::string_view data) override {
+    _data = irs::ViewCast<irs::byte_type>(data);
+    _term.value = irs::bytes_view{};
 
     return true;
   }
 
  private:
-  irs::bytes_ref _data;
+  irs::bytes_view _data;
   irs::increment _inc;
   irs::term_attribute _term;
   TestAttributeX _x;

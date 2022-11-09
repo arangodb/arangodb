@@ -692,8 +692,8 @@ aql::AstNode* Index::specializeCondition(
 }
 
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(
-    transaction::Methods* /* trx */, aql::AstNode const* /* node */,
-    aql::Variable const* /* reference */,
+    ResourceMonitor& /*monitor*/, transaction::Methods* /* trx */,
+    aql::AstNode const* /* node */, aql::Variable const* /* reference */,
     IndexIteratorOptions const& /* opts */, ReadOwnWrites /* readOwnWrites */,
     int /*mutableConditionIdx*/) {
   // the default implementation should never be called
@@ -851,115 +851,6 @@ bool Index::canUseConditionPart(
   return true;
 }
 
-/// @brief Transform the list of search slices to search values.
-///        Always expects a list of lists as input.
-///        Outer list represents the single lookups, inner list represents the
-///        index field values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-///        Example: Index on (a, b)
-///        Input: [ [{=: 1}, {in: 2,3}], [{=:2}, {=:3}]
-///        Result: [ [{=: 1}, {=: 2}],[{=:1}, {=:3}], [{=:2}, {=:3}]]
-void Index::expandInSearchValues(VPackSlice const base,
-                                 VPackBuilder& result) const {
-  TRI_ASSERT(base.isArray());
-
-  VPackArrayBuilder baseGuard(&result);
-  for (VPackSlice oneLookup : VPackArrayIterator(base)) {
-    TRI_ASSERT(oneLookup.isArray());
-
-    bool usesIn = false;
-    for (VPackSlice it : VPackArrayIterator(oneLookup)) {
-      if (it.hasKey(StaticStrings::IndexIn)) {
-        usesIn = true;
-        break;
-      }
-    }
-    if (!usesIn) {
-      // Shortcut, no multiply
-      // Just copy over base
-      result.add(oneLookup);
-      return;
-    }
-
-    std::unordered_map<size_t, std::vector<VPackSlice>> elements;
-    basics::VelocyPackHelper::VPackLess<true> sorter;
-    size_t n = static_cast<size_t>(oneLookup.length());
-    for (VPackValueLength i = 0; i < n; ++i) {
-      VPackSlice current = oneLookup.at(i);
-      if (current.hasKey(StaticStrings::IndexIn)) {
-        VPackSlice inList = current.get(StaticStrings::IndexIn);
-        if (!inList.isArray()) {
-          // IN value is a non-array
-          result.clear();
-          result.openArray();
-          return;
-        }
-
-        TRI_ASSERT(inList.isArray());
-        VPackValueLength nList = inList.length();
-
-        if (nList == 0) {
-          // Empty Array. short circuit, no matches possible
-          result.clear();
-          result.openArray();
-          return;
-        }
-
-        std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash,
-                           basics::VelocyPackHelper::VPackEqual>
-            tmp(static_cast<size_t>(nList),
-                basics::VelocyPackHelper::VPackHash(),
-                basics::VelocyPackHelper::VPackEqual());
-
-        for (VPackSlice el : VPackArrayIterator(inList)) {
-          tmp.emplace(el);
-        }
-        auto& vector = elements[i];
-        vector.insert(vector.end(), tmp.begin(), tmp.end());
-        std::sort(vector.begin(), vector.end(), sorter);
-      }
-    }
-    // If there is an entry in elements for one depth it was an in,
-    // all of them are now unique so we simply have to multiply
-
-    size_t level = n - 1;
-    std::vector<size_t> positions(n, 0);
-    bool done = false;
-    while (!done) {
-      TRI_IF_FAILURE("Index::permutationIN") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-      VPackArrayBuilder guard(&result);
-      for (size_t i = 0; i < n; ++i) {
-        auto list = elements.find(i);
-        if (list == elements.end()) {
-          // Insert
-          result.add(oneLookup.at(i));
-        } else {
-          VPackObjectBuilder objGuard(&result);
-          result.add(StaticStrings::IndexEq, list->second.at(positions[i]));
-        }
-      }
-      while (true) {
-        auto list = elements.find(level);
-        if (list != elements.end() &&
-            ++positions[level] < list->second.size()) {
-          level = n - 1;
-          // abort inner iteration
-          break;
-        }
-        positions[level] = 0;
-        if (level == 0) {
-          done = true;
-          break;
-        }
-        --level;
-      }
-    }
-  }
-}
-
 /// @brief whether or not the index covers all the attributes passed in.
 /// the function may modify the projections by setting the coveringIndexPosition
 /// value in it.
@@ -972,12 +863,6 @@ bool Index::covers(aql::Projections& projections) const {
 
   // check if we can use covering indexes
   auto const& covered = coveredFields();
-
-  if (n > covered.size()) {
-    // we have more projections than attributes in the index, so we already know
-    // that the index cannot support all the projections
-    return false;
-  }
 
   for (size_t i = 0; i < n; ++i) {
     bool found = false;
@@ -1017,10 +902,10 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
-void Index::warmup(transaction::Methods*,
-                   std::shared_ptr<basics::LocalTaskQueue>) {
+Result Index::scheduleWarmup() {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
+  return {};
 }
 
 /// @brief generate error message

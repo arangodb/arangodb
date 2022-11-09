@@ -69,6 +69,7 @@
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -131,15 +132,21 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-#ifdef USE_SST_INGESTION
 namespace {
+#ifdef USE_SST_INGESTION
 void cleanUpTempFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
     TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
-}  // namespace
 #endif
+
+std::unique_ptr<rocksdb::Env> createChecksumEnv(rocksdb::Env* baseEnv,
+                                                std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(baseEnv, path);
+}
+
+}  // namespace
 
 namespace arangodb {
 
@@ -289,11 +296,6 @@ RocksDBEngine::RocksDBEngine(Server& server,
 RocksDBEngine::~RocksDBEngine() {
   _recoveryHelpers.clear();
   shutdownRocksDBInstance();
-}
-
-std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
-    rocksdb::Env* base_env, std::string const& path) {
-  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -783,7 +785,7 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _checksumEnv = createChecksumEnv(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
@@ -1118,7 +1120,7 @@ std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
   if (vocbase.replicationVersion() == replication::Version::TWO &&
       (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
       ServerState::instance()->isRunningInCluster() &&
-      !options.allowDirtyReads) {
+      !options.allowDirtyReads && options.requiresReplication) {
     return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
                                                                options);
   }
@@ -1469,14 +1471,14 @@ ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
 }
 
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice slice, bool doSync) {
+    velocypack::Slice slice, bool doSync) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(
-    RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync) {
+    RocksDBKey const& key, velocypack::Slice slice, bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::convertStatus(
@@ -1508,12 +1510,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
 }
 
 Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                VPackSlice const& slice) {
+                                                velocypack::Slice slice) {
   return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
 }
 
 Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
-                                          VPackSlice const& slice,
+                                          velocypack::Slice slice,
                                           RocksDBLogValue&& logValue) {
   RocksDBKey key;
   key.constructDatabase(id);
@@ -1532,7 +1534,7 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
 
 Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                   DataSourceId cid,
-                                                  VPackSlice const& slice,
+                                                  velocypack::Slice slice,
                                                   RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1954,8 +1956,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 }
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection,
-                                     bool doSync) {
+                                     LogicalCollection const& collection) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
@@ -2212,14 +2213,14 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() const {
 
 /// @brief flushes the RocksDB WAL.
 /// the optional parameter "waitForSync" is currently only used when the
-/// "waitForCollector" parameter is also set to true. If "waitForCollector"
-/// is true, all the RocksDB column family memtables are flushed, and, if
-/// "waitForSync" is set, additionally synced to disk. The only call site
-/// that uses "waitForCollector" currently is hot backup.
-/// The function parameter name are a remainder from MMFiles times, when
-/// they made more sense. This can be refactored at any point, so that
-/// flushing column families becomes a separate API.
-Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
+/// "flushColumnFamilies" parameter is also set to true. If
+/// "flushColumnFamilies" is true, all the RocksDB column family memtables are
+/// flushed, and, if "waitForSync" is set, additionally synced to disk. The only
+/// call site that uses "flushColumnFamilies" currently is hot backup. The
+/// function parameter name are a remainder from MMFiles times, when they made
+/// more sense. This can be refactored at any point, so that flushing column
+/// families becomes a separate API.
+Result RocksDBEngine::flushWal(bool waitForSync, bool flushColumnFamilies) {
   Result res;
 
   if (_syncThread) {
@@ -2230,7 +2231,7 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector) {
     res = RocksDBSyncThread::sync(_db->GetBaseDB());
   }
 
-  if (res.ok() && waitForCollector) {
+  if (res.ok() && flushColumnFamilies) {
     rocksdb::FlushOptions flushOptions;
     flushOptions.wait = waitForSync;
 
@@ -2371,8 +2372,8 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       << "number of prunable files: " << _prunableWalFiles.size();
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize <= _maxWalArchiveSizeLimit) {
-    // size of the archive is restricted.
+      totalArchiveSize > _maxWalArchiveSizeLimit) {
+    // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
@@ -2404,13 +2405,19 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
+        TRI_ASSERT(totalArchiveSize > _maxWalArchiveSizeLimit);
+
+        // never change this id without adjusting wal-archive-size-limit tests
+        // in tests/js/client/server-parameters
         LOG_TOPIC("d9793", WARN, Logger::ENGINES)
             << "forcing removal of RocksDB WAL file '" << f->PathName()
             << "' with start sequence " << f->StartSequence()
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize;
+            << ", actual archive size is: " << totalArchiveSize
+            << ". if these warnings persist, try to increase the value of "
+            << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
       TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
@@ -2952,12 +2959,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto const& a : VPackObjectIterator(sslice)) {
+  for (auto a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
       std::replace(name.begin(), name.end(), '-', '_');
-      if (name.front() != 'r') {
+      if (!name.empty() && name.front() != 'r') {
         name = std::string{kEngineName}.append("_").append(name);
       }
       result += "\n# HELP " + name + " " + name + "\n# TYPE " + name +
@@ -2996,9 +3003,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
         // -1 returned for somethings that are valid property but no value
         if (0 < temp) {
           sum += temp;
-        }  // if
-      }    // if
-    }      // for
+        }
+      }
+    }
     builder.add(s, VPackValue(sum));
   };
 
@@ -3073,6 +3080,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheCapacity);
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
+
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
@@ -3137,13 +3145,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   builder.close();
 
   if (_throttleListener) {
     builder.add("rocksdb_engine.throttle.bps",
                 VPackValue(_throttleListener->getThrottle()));
-  }  // if
+  }
 
   {
     // total disk space in database directory

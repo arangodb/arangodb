@@ -233,17 +233,18 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     arangodb::iresearch::QueryContext ctx{
         .trx = &query.trxForOptimization(),
         .ref = &viewNode.outVariable(),
+        // we don't care here as we are checking condition in general
+        .namePrefix = nestedRoot(false),
         .isSearchQuery = true,
-        .isOldMangling = (viewNode.meta() == nullptr),
-        // we don't care here- we are checking condition in general
-        .hasNestedFields = false};
+        .isOldMangling = (viewNode.meta() == nullptr)};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
-    FilterContext const filterCtx{.contextAnalyzer = FieldMeta::identity()};
+    FilterContext const filterCtx{.query = ctx,
+                                  .contextAnalyzer = FieldMeta::identity()};
 
     auto filterCreated =
-        FilterFactory::filter(nullptr, ctx, filterCtx, *searchCondition.root());
+        FilterFactory::filter(nullptr, filterCtx, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -778,7 +779,7 @@ void extractScorers(IResearchViewNode const& viewNode, DedupSearchFuncs& dedup,
               TRI_ERROR_BAD_PARAMETER,
               "Inaccesible non-ArangoSearch view variable '%s' is used in "
               "search function '%s'",
-              v->name.c_str(), funcName.c_str());
+              v->name.c_str(), funcName.data());
         }
       }
 
@@ -1104,7 +1105,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
       THROW_ARANGO_EXCEPTION_FORMAT(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           "Non ArangoSearch view variable '%s' is used in scorer function '%s'",
-          func.var->name.c_str(), funcName.c_str());
+          func.var->name.c_str(), funcName.data());
     }
   }
 }

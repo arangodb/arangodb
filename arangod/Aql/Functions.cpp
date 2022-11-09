@@ -1673,8 +1673,8 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   }
 
   auto utf32Attribute = basics::StringUtils::characterCodes(
-      attributeValue.c_str(), attributeValue.size());
-  auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(),
+      attributeValue.data(), attributeValue.size());
+  auto utf32Target = basics::StringUtils::characterCodes(targetValue.data(),
                                                          targetValue.size());
 
   auto const similarity = irs::ngram_similarity<uint32_t, search_semantics>(
@@ -1781,13 +1781,13 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
+    attrNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
+    targetNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data
@@ -1872,10 +1872,10 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
 
   auto const& lhs = aql::extractFunctionParameterValue(args, 0);
   auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
   auto const& rhs = aql::extractFunctionParameterValue(args, 1);
   auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
 
   size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
 
@@ -5353,17 +5353,12 @@ AqlValue functions::Md5(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create md5
-  char hash[17];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), p, length);
+  char hash[16];
+  rest::SslInterface::sslMD5(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[33];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 16, p, length);
+  char hex[32];
+  rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
   return AqlValue(&hex[0], 32);
 }
@@ -5380,19 +5375,36 @@ AqlValue functions::Sha1(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create sha1
-  char hash[21];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), p, length);
+  char hash[20];
+  rest::SslInterface::sslSHA1(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[41];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 20, p, length);
+  char hex[40];
+  rest::SslInterface::sslHEX(hash, 20, &hex[0]);
 
   return AqlValue(&hex[0], 40);
+}
+
+/// @brief function SHA256
+AqlValue functions::Sha256(ExpressionContext* exprCtx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  transaction::Methods* trx = &exprCtx->trx();
+  auto const& vopts = trx->vpackOptions();
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+  transaction::StringLeaser buffer(trx);
+  velocypack::StringSink adapter(buffer.get());
+
+  ::appendAsString(vopts, adapter, value);
+
+  // create sha256
+  char hash[32];
+  rest::SslInterface::sslSHA256(buffer->data(), buffer->length(), &hash[0]);
+
+  // as hex
+  char hex[64];
+  rest::SslInterface::sslHEX(hash, 32, &hex[0]);
+
+  return AqlValue(&hex[0], 64);
 }
 
 /// @brief function SHA512
@@ -5407,17 +5419,12 @@ AqlValue functions::Sha512(ExpressionContext* exprCtx, AstNode const&,
   ::appendAsString(vopts, adapter, value);
 
   // create sha512
-  char hash[65];
-  char* p = &hash[0];
-  size_t length;
-
-  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), p, length);
+  char hash[64];
+  rest::SslInterface::sslSHA512(buffer->data(), buffer->length(), &hash[0]);
 
   // as hex
-  char hex[129];
-  p = &hex[0];
-
-  rest::SslInterface::sslHEX(hash, 64, p, length);
+  char hex[128];
+  rest::SslInterface::sslHEX(hash, 64, &hex[0]);
 
   return AqlValue(&hex[0], 128);
 }

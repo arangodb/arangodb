@@ -496,8 +496,12 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       continue;
     }
 
-    if (q + 1 == end || *(q + 1) == '&') {
-      ++q;  // skip ahead
+    bool isAmpersand = (*q == '&');
+
+    if (q + 1 == end || *(q + 1) == '&' || isAmpersand) {
+      if (!isAmpersand) {
+        ++q;  // skip ahead
+      }
 
       std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' &&
@@ -510,7 +514,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
       keyPhase = true;
       keyBegin = q + 1;
-      continue;
+
+      if (!isAmpersand) {
+        continue;
+      }
     }
     ++q;
   }
@@ -912,14 +919,18 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    if (!_validatedPayload) {
-      VPackOptions const* options = validationOptions(strictValidation);
-      VPackValidator validator(options);
-      _validatedPayload = validator.validate(
-          _payload.data(), _payload.length());  // throws on error
+    if (!_payload.empty()) {
+      if (!_validatedPayload) {
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackValidator validator(options);
+        _validatedPayload = validator.validate(
+            _payload.data(), _payload.length());  // throws on error
+      }
+      TRI_ASSERT(_validatedPayload);
+      return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
+    } else {
+      return VPackSlice::noneSlice();
     }
-    TRI_ASSERT(_validatedPayload);
-    return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();
 }

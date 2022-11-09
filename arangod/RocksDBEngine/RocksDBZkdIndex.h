@@ -65,9 +65,10 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
       const aql::Variable* reference) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, const aql::AstNode* node,
-      const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      const aql::AstNode* node, const aql::Variable* reference,
+      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
@@ -85,9 +86,10 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
                 velocypack::Slice doc) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, const aql::AstNode* node,
-      const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      const aql::AstNode* node, const aql::Variable* reference,
+      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 };
 
 namespace zkd {

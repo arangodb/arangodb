@@ -58,16 +58,16 @@ bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
     return false;
   }
 
-  std::unordered_multiset<irs::string_ref> expected;
+  std::unordered_multiset<std::string_view> expected;
 
   for (auto& entry : lhs) {
-    expected.emplace(entry._pool ? irs::string_ref(entry._pool->name())
-                                 : irs::string_ref::NIL);
+    expected.emplace(entry._pool ? std::string_view(entry._pool->name())
+                                 : std::string_view{});
   }
 
   for (auto& entry : rhs) {
-    auto itr = expected.find(entry._pool ? irs::string_ref(entry._pool->name())
-                                         : irs::string_ref::NIL);
+    auto itr = expected.find(entry._pool ? std::string_view(entry._pool->name())
+                                         : std::string_view{});
 
     if (itr == expected.end()) {
       return false;  // values do not match
@@ -108,11 +108,11 @@ constexpr std::array<std::string_view, kNameToPolicy.size()> kPolicyToName{
 }  // namespace
 
 bool operator<(arangodb::iresearch::FieldMeta::Analyzer const& lhs,
-               irs::string_ref rhs) noexcept {
+               std::string_view rhs) noexcept {
   return lhs._pool->name() < rhs;
 }
 
-bool operator<(irs::string_ref lhs,
+bool operator<(std::string_view lhs,
                arangodb::iresearch::FieldMeta::Analyzer const& rhs) noexcept {
   return lhs < rhs._pool->name();
 }
@@ -161,7 +161,7 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
 
 bool FieldMeta::init(
     ArangodServer& server, velocypack::Slice const& slice,
-    std::string& errorField, irs::string_ref defaultVocbase,
+    std::string& errorField, std::string_view defaultVocbase,
     LinkVersion version, FieldMeta const& defaults,
     std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
     Mask* mask) {
@@ -213,7 +213,7 @@ bool FieldMeta::init(
         auto name = value.copyString();
         auto shortName = name;
 
-        if (!defaultVocbase.null()) {
+        if (!irs::IsNull(defaultVocbase)) {
           name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
           shortName =
               IResearchAnalyzerFeature::normalize(name, defaultVocbase, false);
@@ -222,7 +222,7 @@ bool FieldMeta::init(
         AnalyzerPool::ptr analyzer;
         bool found = false;
 
-        auto it = referencedAnalyzers.find(irs::string_ref(name));
+        auto it = referencedAnalyzers.find(std::string_view(name));
 
         if (it != referencedAnalyzers.end()) {
           analyzer = *it;
@@ -548,7 +548,7 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
           !entry.value()
                ->_fields.empty();  // do not output empty fields on subobjects
       fieldsBuilder.add(           // add sub-object
-          std::string_view(entry.key().c_str(),
+          std::string_view(entry.key().data(),
                            entry.key().size()),  // field name
           VPackValue(velocypack::ValueType::Object));
 
@@ -573,7 +573,7 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
       // do not output empty fields on subobjects
       fieldMask._fields = !entry.value()->_fields.empty();
       fieldsBuilder.add(
-          std::string_view(entry.key().c_str(), entry.key().size()),
+          std::string_view(entry.key().data(), entry.key().size()),
           VPackValue(velocypack::ValueType::Object));
 
       if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
@@ -675,7 +675,7 @@ bool IResearchLinkMeta::operator==(
 
 bool IResearchLinkMeta::init(
     ArangodServer& server, VPackSlice slice, std::string& errorField,
-    irs::string_ref defaultVocbase /*= irs::string_ref::NIL*/,
+    std::string_view defaultVocbase /*= std::string_view{}*/,
     LinkVersion defaultVersion /* = LinkVersion::MIN*/,
     Mask* mask /*= nullptr*/) {
   if (!slice.isObject()) {
@@ -791,12 +791,12 @@ bool IResearchLinkMeta::init(
           }
 
           name = value.get(kSubFieldName).copyString();
-          if (!defaultVocbase.null()) {
+          if (!irs::IsNull(defaultVocbase)) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
           }
         }
-        irs::string_ref type;
+        std::string_view type;
 
         {
           // required string value

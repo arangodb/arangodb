@@ -55,6 +55,7 @@
 #include "gtest/gtest.h"
 
 #include "index/index_reader.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/column_existence_filter.hpp"
 #include "search/range_filter.hpp"
@@ -86,8 +87,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
   os << "Range(" << range.field();
-  std::string termValueMin(ref_cast<char>(range.options().range.min));
-  std::string termValueMax(ref_cast<char>(range.options().range.max));
+  std::string termValueMin(
+      ViewCast<char>(irs::bytes_view{range.options().range.min}));
+  std::string termValueMax(
+      ViewCast<char>(irs::bytes_view{range.options().range.max}));
   if (!termValueMin.empty()) {
     os << " "
        << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">="
@@ -108,7 +111,7 @@ std::ostream& operator<<(std::ostream& os, by_range const& range) {
 }
 
 std::ostream& operator<<(std::ostream& os, by_term const& term) {
-  std::string termValue(ref_cast<char>(term.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{term.options().term}));
   return os << "Term(" << term.field() << "=" << termValue << ")";
 }
 
@@ -160,7 +163,7 @@ std::ostream& operator<<(std::ostream& os, Not const& filter) {
 std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
   os << "NGRAM_SIMILARITY[";
   os << filter.field() << ", ";
-  for (auto ngram : filter.options().ngrams) {
+  for (auto const& ngram : filter.options().ngrams) {
     os << ngram.c_str();
   }
   os << "," << filter.options().threshold << "]";
@@ -174,15 +177,17 @@ std::ostream& operator<<(std::ostream& os, empty const&) {
 
 std::ostream& operator<<(std::ostream& os,
                          irs::by_column_existence const& filter) {
-  os << "EXISTS[" << filter.field() << "]";
+  os << "EXISTS[" << filter.field() << ", " << size_t(filter.options().acceptor)
+     << "]";
   return os;
 }
 
 std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
   os << "LEVENSHTEIN_MATCH[";
   os << lev.field() << ", '";
-  std::string termValue(ref_cast<char>(lev.options().term));
-  std::string prefixValue(ref_cast<char>(lev.options().prefix));
+  std::string termValue(ViewCast<char>(irs::bytes_view{lev.options().term}));
+  std::string prefixValue(
+      ViewCast<char>(irs::bytes_view{lev.options().prefix}));
   os << termValue << "', " << static_cast<int>(lev.options().max_distance)
      << ", " << lev.options().with_transpositions << ", "
      << lev.options().max_terms << ", '" << prefixValue << "']";
@@ -192,7 +197,7 @@ std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
 std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
   os << "STARTS_WITH[";
   os << filter.field() << ", '";
-  std::string termValue(ref_cast<char>(filter.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{filter.options().term}));
   os << termValue << "', " << filter.options().scored_terms_limit << "]";
   return os;
 }
@@ -201,7 +206,7 @@ std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
   os << "TERMS[";
   os << filter.field() << ", {";
   for (auto& [term, boost] : filter.options().terms) {
-    os << "[" << ref_cast<char>(term) << ", " << boost << "],";
+    os << "[" << ViewCast<char>(irs::bytes_view{term}) << ", " << boost << "],";
   }
   os << "}, " << filter.options().min_match << "]";
   return os;
@@ -259,7 +264,7 @@ std::string to_string(irs::filter const& f) {
 namespace {
 
 struct BoostScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "boostscorer";
   }
 
@@ -267,9 +272,9 @@ struct BoostScorer : public irs::sort {
    public:
     Prepared() = default;
 
-    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+    virtual void collect(irs::byte_type*, const irs::index_reader&,
+                         const irs::sort::field_collector*,
+                         const irs::sort::term_collector*) const override {
       // NOOP
     }
 
@@ -303,7 +308,7 @@ struct BoostScorer : public irs::sort {
     }
   };  // namespace
 
-  static irs::sort::ptr make(irs::string_ref) {
+  static irs::sort::ptr make(std::string_view) {
     return std::make_unique<BoostScorer>();
   }
 
@@ -317,7 +322,7 @@ struct BoostScorer : public irs::sort {
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "customscorer";
   }
 
@@ -325,9 +330,9 @@ struct CustomScorer : public irs::sort {
    public:
     Prepared(float_t i) : i(i) {}
 
-    virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+    virtual void collect(irs::byte_type*, const irs::index_reader&,
+                         const irs::sort::field_collector*,
+                         const irs::sort::term_collector*) const override {
       // NOOP
     }
 
@@ -365,14 +370,14 @@ struct CustomScorer : public irs::sort {
     float_t i;
   };
 
-  static irs::sort::ptr make(irs::string_ref args) {
-    if (args.null()) {
+  static irs::sort::ptr make(std::string_view args) {
+    if (irs::IsNull(args)) {
       return std::make_unique<CustomScorer>(0u);
     }
 
     // velocypack::Parser::fromJson(...) will throw exception on parse error
     auto json =
-        arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+        arangodb::velocypack::Parser::fromJson(args.data(), args.size());
     auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
     if (!slice.isArray()) {
@@ -412,6 +417,25 @@ static const VPackSlice testDatabaseArgs = testDatabaseBuilder.slice();
 namespace arangodb {
 
 namespace tests {
+
+void checkQuery(TRI_vocbase_t& vocbase,
+                std::span<const velocypack::Slice> expected,
+                std::string const& query) {
+  auto result = tests::executeQuery(vocbase, query);
+  SCOPED_TRACE(testing::Message("Error: ") << result.errorMessage());
+  ASSERT_TRUE(result.result.ok());
+  auto slice = result.data->slice();
+  EXPECT_TRUE(slice.isArray());
+  size_t i = 0;
+
+  for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+    auto const resolved = itr.value().resolveExternals();
+    EXPECT_TRUE(i < expected.size());
+    EXPECT_EQUAL_SLICES(expected[i++], resolved);
+  }
+
+  EXPECT_EQ(i, expected.size());
+}
 
 std::string const AnalyzerCollectionName("_analyzers");
 
@@ -562,12 +586,11 @@ arangodb::aql::QueryResult executeQuery(
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
-    std::string const& optionsString /*= "{}"*/
-) {
+    std::string const& optionsString /*= "{}"*/) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
   query->initTrxForTests();
@@ -584,12 +607,11 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 std::shared_ptr<arangodb::aql::Query> prepareQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
-    std::string const& optionsString /*= "{}"*/
-) {
+    std::string const& optionsString /*= "{}"*/) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
-      ctx, arangodb::aql::QueryString(queryString), nullptr,
+      ctx, arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
@@ -654,12 +676,10 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
-#ifdef USE_ENTERPRISE
 std::string mangleNested(std::string name) {
   arangodb::iresearch::kludge::mangleNested(name);
   return name;
 }
-#endif
 
 std::string mangleString(std::string name, std::string_view suffix) {
   arangodb::iresearch::kludge::mangleAnalyzer(name);
@@ -737,10 +757,10 @@ void assertFilterOptimized(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
     EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(
-                    &actualFilter, ctx, filterCtx, viewNode->filterCondition())
+                    &actualFilter, filterCtx, viewNode->filterCondition())
                     .ok());
     EXPECT_FALSE(actualFilter.empty());
     EXPECT_EQ(expectedFilter, *actualFilter.begin());
@@ -784,7 +804,7 @@ void assertExpressionFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;
@@ -801,10 +821,10 @@ void assertExpressionFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
-    EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
-                     nullptr, ctx, filterCtx, *filterNode)
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
+    EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, filterCtx,
+                                                            *filterNode)
                      .ok()));
   }
 
@@ -814,14 +834,9 @@ void assertExpressionFilter(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
 
-    irs::Or expected;
-    expected.add<arangodb::iresearch::ByExpression>().init(
-        *ast, *expressionExtractor(filterNode));
-
     ExpressionContextMock exprCtx;
     exprCtx.setTrx(&trx);
 
-    irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{
         .trx = &trx,
         .ast = ast,
@@ -829,13 +844,19 @@ void assertExpressionFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .isSearchQuery = true};
+
+    irs::Or expected;
+    expected.add<arangodb::iresearch::ByExpression>().init(
+        ctx, *expressionExtractor(filterNode));
+
+    irs::Or actual;
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
-    EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(
-                     &actual, ctx, filterCtx, *filterNode)
-                     .ok()));
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
+    EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
+                                                           *filterNode)
+                    .ok());
     EXPECT_EQ(expected, actual);
     EXPECT_EQ(boost, actual.begin()->boost());
   }
@@ -916,7 +937,7 @@ void buildActualFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;
@@ -926,7 +947,7 @@ void buildActualFilter(
 
   // optimization time
   {
-    arangodb::transaction ::Methods trx(
+    arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
         arangodb::transaction::Options());
 
@@ -934,10 +955,10 @@ void buildActualFilter(
         .trx = &trx, .ref = ref, .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
-    ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
-                    nullptr, ctx, filterCtx, *filterNode)
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
+    ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(nullptr, filterCtx,
+                                                           *filterNode)
                     .ok());
   }
 
@@ -961,12 +982,12 @@ void buildActualFilter(
         .isSearchQuery = true};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
-    ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(
-                    dynamic_cast<irs::boolean_filter*>(&actual), ctx, filterCtx,
-                    *filterNode)
-                    .ok());
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
+    ASSERT_TRUE(
+        arangodb::iresearch::FilterFactory::filter(
+            dynamic_cast<irs::boolean_filter*>(&actual), filterCtx, *filterNode)
+            .ok());
   }
 }
 
@@ -1012,7 +1033,7 @@ void assertFilter(
   auto* allVars = ast->variables();
   ASSERT_TRUE(allVars);
   aql::Variable* ref = nullptr;
-  for (auto entry : allVars->variables(true)) {
+  for (auto const& entry : allVars->variables(true)) {
     if (entry.second == refName) {
       ref = allVars->getVariable(entry.first);
       break;
@@ -1034,16 +1055,16 @@ void assertFilter(
         .trx = &trx,
         .ref = ref,
         .filterOptimization = filterOptimization,
+        .namePrefix = arangodb::iresearch::nestedRoot(hasNested),
         .isSearchQuery = searchQuery,
-        .isOldMangling = oldMangling,
-        .hasNestedFields = hasNested};
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
-    EXPECT_TRUE((parseOk == arangodb::iresearch::FilterFactory::filter(
-                                nullptr, ctx, filterCtx, *filterNode)
-                                .ok()));
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
+    EXPECT_EQ(parseOk, arangodb::iresearch::FilterFactory::filter(
+                           nullptr, filterCtx, *filterNode)
+                           .ok());
   }
 
   // execution time
@@ -1064,15 +1085,15 @@ void assertFilter(
         .index = &irs::sub_reader::empty(),
         .ref = ref,
         .filterOptimization = filterOptimization,
+        .namePrefix = arangodb::iresearch::nestedRoot(hasNested),
         .isSearchQuery = searchQuery,
-        .isOldMangling = oldMangling,
-        .hasNestedFields = hasNested};
+        .isOldMangling = oldMangling};
     arangodb::iresearch::FieldMeta::Analyzer analyzer{
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
-    arangodb::iresearch::FilterContext const filterCtx{.contextAnalyzer =
-                                                           analyzer};
+    arangodb::iresearch::FilterContext const filterCtx{
+        .query = ctx, .contextAnalyzer = analyzer};
     EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
-                          &actual, ctx, filterCtx, *filterNode)
+                          &actual, filterCtx, *filterNode)
                           .ok());
 
     if (execOk) {

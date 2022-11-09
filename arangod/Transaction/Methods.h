@@ -84,6 +84,7 @@ class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
 struct OperationResult;
+struct ResourceMonitor;
 class Result;
 class RevisionId;
 class TransactionId;
@@ -364,14 +365,16 @@ class Methods {
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(
-      IndexHandle const&, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, IndexHandle const&,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      IndexIteratorOptions const&, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
+                                           std::string const& collectionName,
                                            CursorType cursorType,
                                            ReadOwnWrites readOwnWrites);
 
@@ -405,11 +408,14 @@ class Methods {
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                               velocypack::Slice value);
 
+  Result triggerIntermediateCommit();
+
  private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+  futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the

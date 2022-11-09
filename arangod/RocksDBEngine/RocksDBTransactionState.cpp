@@ -30,47 +30,32 @@
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cache/CacheManagerFeature.h"
-#include "Cache/Manager.h"
-#include "Cache/Transaction.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
-#include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
-#include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
-#include <rocksdb/status.h>
-#include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
-#include <atomic>
-#include <cstddef>
-#include <memory>
 
 using namespace arangodb;
 
@@ -79,11 +64,10 @@ RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
     : TransactionState(vocbase, tid, options),
-      _cacheTx(nullptr),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _users(0),
 #endif
-      _parallel(false) {
+      _cacheTx(nullptr) {
 }
 
 /// @brief free a transaction container
@@ -161,44 +145,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   return res;
 }
 
-rocksdb::SequenceNumber RocksDBTransactionState::prepareCollections() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-
-  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
-
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-
-    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
-    preSeq = std::max(seq, preSeq);
-  }
-
-  return preSeq;
-}
-
-void RocksDBTransactionState::commitCollections(
-    rocksdb::SequenceNumber lastWritten) {
-  TRI_ASSERT(lastWritten > 0);
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    // we need this in case of an intermediate commit. The number of
-    // initial documents is adjusted and numInserts / removes is set to 0
-    // index estimator updates are buffered
-    coll->commitCounts(id(), lastWritten);
-  }
-}
-
-void RocksDBTransactionState::cleanupCollections() {
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->abortCommit(id());
-  }
-}
-
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   if (_cacheTx != nullptr) {
     // note: endTransaction() will delete _cacheTrx!
@@ -256,6 +202,7 @@ Result RocksDBTransactionState::abortTransaction(
     // may have queried something via AQL that is now rolled back
     clearQueryCache();
   }
+
   TRI_ASSERT(!_cacheTx);
   ++statistics()._transactionsAborted;
 
@@ -305,11 +252,6 @@ Result RocksDBTransactionState::addOperation(
   }
 
   return result;
-}
-
-Result RocksDBTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
-  return rocksdbMethods(cid)->checkIntermediateCommit();
 }
 
 RocksDBTransactionCollection::TrackedOperations&
@@ -389,9 +331,6 @@ RocksDBTransactionMethods* RocksDBTransactionState::toMethods(
       collectionId);
 }
 
-void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
-bool RocksDBTransactionState::inParallelMode() const { return _parallel; }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 RocksDBTransactionStateGuard::RocksDBTransactionStateGuard(
     RocksDBTransactionState* state) noexcept
@@ -406,10 +345,7 @@ RocksDBTransactionStateGuard::~RocksDBTransactionStateGuard() {
 
 /// @brief constructor, leases a builder
 RocksDBKeyLeaser::RocksDBKeyLeaser(transaction::Methods* trx)
-    : _ctx(trx->transactionContextPtr()),
-      _key(RocksDBTransactionState::toState(trx)->inParallelMode()
-               ? nullptr
-               : _ctx->leaseString()) {
+    : _ctx(trx->transactionContextPtr()), _key(_ctx->leaseString()) {
   TRI_ASSERT(_ctx != nullptr);
   TRI_ASSERT(_key.buffer() != nullptr);
 }

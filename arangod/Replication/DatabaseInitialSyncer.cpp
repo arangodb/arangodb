@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -58,6 +57,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -156,7 +156,7 @@ arangodb::Result fetchRevisions(
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
-    std::vector<arangodb::RevisionId>& toFetch,
+    bool encodeAsHLC, std::vector<arangodb::RevisionId>& toFetch,
     arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
@@ -249,6 +249,7 @@ arangodb::Result fetchRevisions(
        config.leader.patchVersion < 1)) {
     queueSize = 1;
   }
+
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
     while (futures.size() < queueSize && current < toFetch.size()) {
@@ -259,7 +260,12 @@ arangodb::Result fetchRevisions(
         VPackArrayBuilder list(&requestBuilder);
         std::size_t i;
         for (i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
-          requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+          if (encodeAsHLC) {
+            requestBuilder.add(VPackValue(toFetch[current + i].toHLC()));
+          } else {
+            // deprecated, ambiguous format
+            requestBuilder.add(toFetch[current + i].toValuePair(ridBuffer));
+          }
           shoppingList.insert(toFetch[current + i]);
           ++count;
         }
@@ -269,7 +275,8 @@ arangodb::Result fetchRevisions(
       arangodb::network::RequestOptions reqOptions;
       reqOptions.param("collection", leader)
           .param("serverId", state.localServerIdString)
-          .param("batchId", std::to_string(config.batch.id));
+          .param("batchId", std::to_string(config.batch.id))
+          .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
       reqOptions.timeout = arangodb::network::Timeout(25.0);
       auto buffer = requestBuilder.steal();
@@ -411,14 +418,20 @@ arangodb::Result fetchRevisions(
         {
           VPackArrayBuilder list(&requestBuilder);
           for (auto const& r : v) {
-            requestBuilder.add(r.toValuePair(ridBuffer));
+            if (encodeAsHLC) {
+              requestBuilder.add(VPackValue(r.toHLC()));
+            } else {
+              // deprecated, ambiguous format
+              requestBuilder.add(r.toValuePair(ridBuffer));
+            }
           }
         }
 
         arangodb::network::RequestOptions reqOptions;
         reqOptions.param("collection", leader)
             .param("serverId", state.localServerIdString)
-            .param("batchId", std::to_string(config.batch.id));
+            .param("batchId", std::to_string(config.batch.id))
+            .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
         reqOptions.timeout = arangodb::network::Timeout(25.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
@@ -442,7 +455,12 @@ arangodb::Result fetchRevisions(
       futures.pop_front();
       shoppingLists.pop_front();
       TRI_ASSERT(futures.size() == shoppingLists.size());
-      res = trx.state()->performIntermediateCommitIfRequired(collection.id());
+
+      auto fut =
+          trx.state()->performIntermediateCommitIfRequired(collection.id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
+
       if (res.fail()) {
         return res;
       }
@@ -1567,9 +1585,24 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 
     using ::arangodb::basics::StringUtils::urlEncode;
 
-    // assemble URL to call
+    // assemble URL to call.
+    // note that the URL contains both the "resume" and "resumeHLC"
+    // parameters. "resume" contains the stringified revision id value for
+    // where to resume from. that stringification can be ambiguous and is thus
+    // deprecated. we also send a "resumeHLC" parameter now, which always
+    // contains a base64-encoded logical clock value. this is the preferred
+    // way to encode the resume value, and once all leaders support it, we can
+    // remove the "resume" parameter from the protocol
+    bool appendResumeHLC = true;
     std::string url = baseUrl + "&" + StaticStrings::RevisionTreeResume + "=" +
                       urlEncode(requestResume.toString());
+
+    TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { appendResumeHLC = false; }
+
+    if (appendResumeHLC) {
+      url += "&" + StaticStrings::RevisionTreeResumeHLC + "=" +
+             urlEncode(requestResume.toHLC()) + "&encodeAsHLC=true";
+    }
 
     bool isVPack = false;
     auto headers = replutils::createHeaders();
@@ -1612,8 +1645,8 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
   }
 }
 
-/// @brief incrementally fetch data from a collection using keys as the primary
-/// document identifier
+/// @brief incrementally fetch data from a collection using revisions as the
+/// primary document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     arangodb::LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
@@ -1795,7 +1828,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   // std::pair<std::size_t, std::size_t> fullRange = treeLeader->range();
   auto treeLocal = physical->revisionTree(*trx);
   if (!treeLocal) {
-    // local collection does not support syncing by revision, fall back to keys
+    // local collection does not support syncing by revision, fall back to
+    // keys
     guard.fire();
     return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
   }
@@ -1810,21 +1844,35 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     return Result{};
   }
 
-  // now lets get the actual ranges and handle the differences
+  // encoding revisions as HLC timestamps is supported from the following
+  // versions:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC =
+      _config.leader.majorVersion >= 4 ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 11) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 10 &&
+       _config.leader.patchVersion >= 1) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 9 &&
+       _config.leader.patchVersion >= 4) ||
+      (_config.leader.majorVersion >= 3 && _config.leader.minorVersion >= 8 &&
+       _config.leader.patchVersion >= 8);
 
+  TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
+
+  // now lets get the actual ranges and handle the differences
   {
     VPackBuilder requestBuilder;
     {
-      char ridBuffer[arangodb::basics::maxUInt64StringSize];
       VPackArrayBuilder list(&requestBuilder);
-      for (auto& pair : ranges) {
+      for (auto const& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.first,
-                                                                   ridBuffer));
-        requestBuilder.add(
-            basics::HybridLogicalClock::encodeTimeStampToValuePair(pair.second,
-                                                                   ridBuffer));
+        // ok to use only HLC encoding here.
+        requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
+        requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
       }
     }
 
@@ -1930,16 +1978,25 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
                           ": response is not an object");
       }
 
-      VPackSlice resumeSlice = slice.get("resume");
-      if (!resumeSlice.isNone() && !resumeSlice.isString()) {
-        ++stats.numFailedConnects;
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      std::string("got invalid response from leader at ") +
-                          _config.leader.endpoint + url +
-                          ": response field 'resume' is not a number");
+      if (VPackSlice s = slice.get(StaticStrings::RevisionTreeResumeHLC);
+          s.isString()) {
+        // use "resumeHLC" if it is present
+        requestResume = RevisionId::fromHLC(s.stringView());
+      } else {
+        // "resumeHLC" not present.
+        // now fall back to using "resume", which is deprecated
+        VPackSlice resumeSlice = slice.get(StaticStrings::RevisionTreeResume);
+        if (!resumeSlice.isNone() && !resumeSlice.isString()) {
+          ++stats.numFailedConnects;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        std::string("got invalid response from leader at ") +
+                            _config.leader.endpoint + url +
+                            ": response field 'resume' is not a number");
+        }
+        requestResume = resumeSlice.isNone()
+                            ? RevisionId::max()
+                            : RevisionId::fromSlice(resumeSlice);
       }
-      requestResume = resumeSlice.isNone() ? RevisionId::max()
-                                           : RevisionId::fromSlice(resumeSlice);
 
       if (requestResume < RevisionId::max() && !isAborted()) {
         // already fetch next chunk in the background, by posting the
@@ -1978,13 +2035,19 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         RevisionId removalBound =
             leaderSlice.isEmptyArray()
                 ? RevisionId{currentRange.second}.next()
-                : RevisionId::fromSlice(leaderSlice.at(0));
+                : (encodeAsHLC
+                       ? RevisionId::fromHLC(leaderSlice.at(0).stringView())
+                       : RevisionId::fromSlice(leaderSlice.at(0)));
         TRI_ASSERT(RevisionId{currentRange.first} <= removalBound);
         TRI_ASSERT(removalBound <= RevisionId{currentRange.second}.next());
-        RevisionId mixedBound = leaderSlice.isEmptyArray()
-                                    ? RevisionId{currentRange.second}
-                                    : RevisionId::fromSlice(leaderSlice.at(
-                                          leaderSlice.length() - 1));
+        RevisionId mixedBound =
+            leaderSlice.isEmptyArray()
+                ? RevisionId{currentRange.second}
+                : (encodeAsHLC ? RevisionId::fromHLC(
+                                     leaderSlice.at(leaderSlice.length() - 1)
+                                         .stringView())
+                               : RevisionId::fromSlice(
+                                     leaderSlice.at(leaderSlice.length() - 1)));
         TRI_ASSERT(RevisionId{currentRange.first} <= mixedBound);
         TRI_ASSERT(mixedBound <= RevisionId{currentRange.second});
 
@@ -1996,7 +2059,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
 
           if (local.revision() < leaderRev) {
             toRemove.emplace_back(local.revision());
@@ -2015,7 +2083,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           }
         }
         for (; index < leaderSlice.length(); ++index) {
-          RevisionId leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          RevisionId leaderRev;
+          if (encodeAsHLC) {
+            leaderRev = RevisionId::fromHLC(leaderSlice.at(index).stringView());
+          } else {
+            leaderRev = RevisionId::fromSlice(leaderSlice.at(index));
+          }
           // fetch any leftovers
           toFetch.emplace_back(leaderRev);
           iterResume = std::max(iterResume, leaderRev.next());
@@ -2041,13 +2114,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       toRemove.clear();
 
       res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
-                             toFetch, stats);
+                             encodeAsHLC, toFetch, stats);
       if (res.fail()) {
         return res;
       }
       toFetch.clear();
 
-      res = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      auto fut = trx->state()->performIntermediateCommitIfRequired(coll->id());
+      TRI_ASSERT(fut.isReady());
+      res = fut.get();
 
       if (res.fail()) {
         return res;
@@ -2182,8 +2257,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
-    // validation phase just returns ok if we got here (aborts above if data is
-    // invalid)
+    // validation phase just returns ok if we got here (aborts above if data
+    // is invalid)
     _config.progress.processedCollections.try_emplace(leaderCid, leaderName);
 
     return Result();
@@ -2224,9 +2299,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
           bool truncate = false;
 
           if (col->name() == StaticStrings::UsersCollection) {
-            // better not throw away the _users collection. otherwise it is gone
-            // and this may be a problem if the
-            // server crashes in-between.
+            // better not throw away the _users collection. otherwise it is
+            // gone and this may be a problem if the server crashes
+            // in-between.
             truncate = true;
           }
 
@@ -2424,8 +2499,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
     url += "&includeFoxxQueues=true";
   }
 
-  // use an optmization here for shard synchronization: only fetch the inventory
-  // including a single shard. this can greatly reduce the size of the response.
+  // use an optmization here for shard synchronization: only fetch the
+  // inventory including a single shard. this can greatly reduce the size of
+  // the response.
   if (ServerState::instance()->isDBServer() && !_config.isChild() &&
       _config.applier._skipCreateDrop &&
       _config.applier._restrictType ==
@@ -2552,8 +2628,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
   // STEP 1: validate collection declarations from leader
   // ----------------------------------------------------------------------------------
 
-  // STEP 2: drop and re-create collections locally if they are also present on
-  // the leader
+  // STEP 2: drop and re-create collections locally if they are also present
+  // on the leader
   //  ------------------------------------------------------------------------------------
 
   // iterate over all collections from the leader...
