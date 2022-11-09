@@ -231,7 +231,7 @@ TEST_F(KShortestPathsFinderTest, path_of_length_5_with_loops_to_start_end) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  ASSERT_EQ(result.length(), 5);
+  ASSERT_EQ(result.length(), 5U);
 }
 
 TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
