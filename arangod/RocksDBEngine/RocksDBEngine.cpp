@@ -506,7 +506,7 @@ the number of previous intervals to use for throttle value calculation.)");
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30805)
-      .setDeprecatedIn(R"(If the throttling is enabled, it recalculates a new
+      .setLongDescription(R"(If the throttling is enabled, it recalculates a new
 maximum ingestion rate with this frequency.)");
 
   options
@@ -549,8 +549,8 @@ on the write rate.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
-  .setLongDescription(R"(There is normally no need to change this value.)");
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(There is normally no need to change this value.)");
 
   options
       ->addOption("--rocksdb.throttle-lower-bound-bps",
