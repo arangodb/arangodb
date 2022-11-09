@@ -159,7 +159,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
     LogIndex waitForIndex,
     futures::Future<ResultT<Snapshot>>&& transferFuture) noexcept
     -> futures::Future<Result> {
-   return std::move(transferFuture)
+  return std::move(transferFuture)
       .then([weak = weak_from_this(), leader = std::move(leader),
              waitForIndex](futures::Try<ResultT<Snapshot>>&& tryResult) mutable
             -> futures::Future<Result> {
