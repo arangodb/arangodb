@@ -105,7 +105,7 @@ TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
   ShortestPathResult result;
 
   ASSERT_FALSE(finder->shortestPath(start->slice(), end->slice(), result));
-  EXPECT_EQ(result.length(), 0);
+  EXPECT_EQ(result.length(), 0U);
 }
 
 TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {

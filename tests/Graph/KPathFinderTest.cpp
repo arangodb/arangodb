@@ -285,7 +285,7 @@ TEST_P(KPathFinderTest, no_path_exists) {
   }
   {
     aql::TraversalStats stats = finder.stealStats();
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
   }
 }
 
@@ -323,14 +323,14 @@ TEST_P(KPathFinderTest, path_depth_0) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
-    EXPECT_EQ(stats.getScannedIndex(), 1);
+    EXPECT_EQ(stats.getScannedIndex(), 1U);
   }
 
   {
     // Make sure stats are stolen and resettet
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
   }
 }
 
@@ -367,7 +367,7 @@ TEST_P(KPathFinderTest, path_depth_1) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 3);
+    EXPECT_EQ(stats.getScannedIndex(), 3U);
   }
 }
 
@@ -403,7 +403,7 @@ TEST_P(KPathFinderTest, path_depth_2) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup 3 vertices + 2 edges
-    EXPECT_EQ(stats.getScannedIndex(), 5);
+    EXPECT_EQ(stats.getScannedIndex(), 5U);
   }
 }
 
@@ -441,7 +441,7 @@ TEST_P(KPathFinderTest, path_depth_3) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup 4 vertices + 3 edges
-    EXPECT_EQ(stats.getScannedIndex(), 7);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 }
 
@@ -494,7 +494,7 @@ TEST_P(KPathFinderTest, path_diamond) {
     aql::TraversalStats stats = finder.stealStats();
     // We have 3 paths.
     // Each path has 3 vertices + 2 edges to lookup
-    EXPECT_EQ(stats.getScannedIndex(), 15);
+    EXPECT_EQ(stats.getScannedIndex(), 15U);
   }
 }
 
