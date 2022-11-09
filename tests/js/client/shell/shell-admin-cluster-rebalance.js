@@ -74,11 +74,6 @@ function getServersHealth() {
   return result.parsedBody.Health;
 }
 
-function getMovesWithAllFlagsTrue() {
-  const result = getRebalancePlan(true, true, true, false);
-  return result.result.moves;
-}
-
 function clusterRebalanceSuite() {
   let prevDB = null;
   return {
@@ -211,6 +206,7 @@ function clusterRebalanceOtherOptionsSuite() {
       assertEqual(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
     },
 
+
     testCalcRebalanceStopServer: function() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
@@ -261,7 +257,6 @@ function clusterRebalanceOtherOptionsSuite() {
 
           result = getRebalancePlan(true, true, true, false);
           let moves = result.result.moves;
-          assertTrue(moves.length > 0, {moves, result});
           for (const job of moves) {
             assertNotEqual(job.to, dbServer.id);
           }
@@ -299,14 +294,10 @@ function clusterRebalanceOtherOptionsSuite() {
         assertNotNull(leaderId);
         result = getRebalancePlan(false, true, false, false);
         let moves = result.result.moves;
-        const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
-        assertTrue(movesAllFlagsTrue.length > moves.length, {movesAllFlagsTrue, moves});
-        if (moves.length > 0) {
-          for (const job of moves) {
-            if (job.shard === shardName) {
-              assertNotEqual(job.from, leaderId);
-              assertFalse(job.isLeader);
-            }
+        for (const job of moves) {
+          if (job.shard === shardName) {
+            assertNotEqual(job.from, leaderId);
+            assertFalse(job.isLeader);
           }
         }
       });
@@ -329,7 +320,6 @@ function clusterRebalanceOtherOptionsSuite() {
 
         result = getRebalancePlan(true, false, true, false);
         let moves = result.result.moves;
-        assertTrue(moves.length > 0, {moves, result});
         for (const job of moves) {
           if (job.shard === shardName) {
             assertNotEqual(job.from, followerId);
