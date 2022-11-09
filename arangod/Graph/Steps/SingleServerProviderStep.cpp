@@ -79,9 +79,3 @@ void SingleServerProviderStep::Edge::addToBuilder(
     arangodb::velocypack::Builder& builder) const {
   provider.insertEdgeIntoResult(getID(), builder);
 }
-
-#if 0
-bool SingleServerProviderStep::isResponsible(transaction::Methods*) const noexcept {
-  return true;
-}
-#endif

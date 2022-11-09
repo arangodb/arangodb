@@ -113,10 +113,6 @@ class SingleServerProviderStep
     return collectionNameResult.get().first;
   };
 
-#if 0
-  bool isResponsible(transaction::Methods*) const noexcept;
-#endif
-
   friend auto operator<<(std::ostream& out,
                          SingleServerProviderStep const& step) -> std::ostream&;
 
