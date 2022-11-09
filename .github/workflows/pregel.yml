@@ -3,11 +3,8 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ "devel", "staging/pregel-refactor" ]
-    paths:
-      - "arangod/**"
-      - "client-tools/**"
-      - "lib/**"
-      - "tests/**"
+  push:
+    branches: [ "devel", "staging/pregel-refactor" ]
 permissions:
   contents: read
 jobs:
