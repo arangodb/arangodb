@@ -270,6 +270,12 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+# Enable CMake's Testing facilities.
+#
+# This enables you to use the add_test cmake command to add a test which is
+# automatically run by executing ctest
+enable_testing()
+
 set(BUILD_SHARED_LIBS OFF)
 
 # required for clang completion in editors - must be set after creating project
