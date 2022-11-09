@@ -30,17 +30,14 @@ namespace arangodb::graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
-                            bool produceVertices);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
   ~OneSidedEnumeratorOptions();
 
   [[nodiscard]] size_t getMinDepth() const noexcept;
   [[nodiscard]] size_t getMaxDepth() const noexcept;
-  [[nodiscard]] bool produceVertices() const noexcept;
 
  private:
   size_t const _minDepth;
   size_t const _maxDepth;
-  bool const _produceVertices;
 };
 }  // namespace arangodb::graph

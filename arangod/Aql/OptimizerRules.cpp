@@ -62,6 +62,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
@@ -887,7 +888,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
 bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   auto* options =
       static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
-  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  arangodb::containers::FlatHashSet<arangodb::aql::AttributeNamePath>
+      attributes;
   bool modified = false;
   size_t maxProjections = options->getMaxProjections();
   auto pathOutVariable = traversal->pathOutVariable();
@@ -1005,7 +1007,7 @@ bool optimizeTraversalPathVariable(
 
   // path is used later, but lets check which of its sub-attributes
   // "vertices" or "edges" are in use (or the complete path)
-  std::unordered_set<AttributeNamePath> attributes;
+  containers::FlatHashSet<AttributeNamePath> attributes;
   VarSet vars;
 
   ExecutionNode* current = traversal->getFirstParent();
@@ -6362,7 +6364,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
 
     Variable const* variable = &(ksp->pathOutVariable());
 
-    std::unordered_set<AttributeNamePath> attributes;
+    containers::FlatHashSet<AttributeNamePath> attributes;
     VarSet vars;
     bool canOptimize = true;
 
@@ -6402,8 +6404,7 @@ void arangodb::aql::optimizePathsRule(Optimizer* opt,
 
     if (canOptimize) {
       bool produceVertices =
-          (attributes.find(StaticStrings::GraphQueryVertices) !=
-           attributes.end());
+          attributes.contains(StaticStrings::GraphQueryVertices);
 
       if (!produceVertices) {
         auto* options = ksp->options();
