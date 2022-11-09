@@ -2437,7 +2437,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   auto [todo, pending] = countAllMoveShardJobs();
 
   VPackBuilder builder;
-  auto p = collectRebalanceInformation({});
+  auto p = collectRebalanceInformation({}, false);
   auto leader = p.computeLeaderImbalance();
   auto shard = p.computeShardImbalance();
   {
