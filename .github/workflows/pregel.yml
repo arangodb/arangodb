@@ -2,7 +2,7 @@ name: pregel
 on:
   workflow_dispatch:
   pull_request:
-    branches: [ "devel" "staging/pregel-refactor" ]
+    branches: [ "devel", "staging/pregel-refactor" ]
     paths:
       - "arangod/**"
       - "client-tools/**"
