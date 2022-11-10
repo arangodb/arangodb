@@ -33,6 +33,7 @@ let dbName = "InvertedIndexSearchAliasSuiteCommunity";
 let isEnterprise = internal.isEnterprise();
 const isCluster = require("internal").isCluster();
 const { triggerMetrics } = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 
 function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     let cleanup = function () {
@@ -759,20 +760,22 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 if (isCluster) {
                     triggerMetrics();
                 }
-
-                let stats = testColl.getIndexes(true, true);
-                for (let i = 0; i < stats.length; i++) {
-                    let index = stats[i];
-                    if (index["type"] === "primary") {
-                        continue;
+                checkIndexMetrics( function () {
+                    let stats = testColl.getIndexes(true, true);
+                    for (let i = 0; i < stats.length; i++) {
+                        let index = stats[i];
+                        if (index["type"] === "primary") {
+                            continue;
+                        }
+    
+                        assertEqual(index["name"], `i${i}`);
+                        assertEqual(index["figures"]["numDocs"], 20);
+                        assertEqual(index["figures"]["numLiveDocs"], 20);
+                        assertEqual(index["figures"]["numSegments"], 1);
+                        assertEqual(index["figures"]["numFiles"], 6);
                     }
+                });
 
-                    assertEqual(index["name"], `i${i}`);
-                    assertEqual(index["figures"]["numDocs"], 20);
-                    assertEqual(index["figures"]["numLiveDocs"], 20);
-                    assertEqual(index["figures"]["numSegments"], 1);
-                    assertEqual(index["figures"]["numFiles"], 6);
-                }
             }
         },
 
