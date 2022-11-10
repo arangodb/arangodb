@@ -291,8 +291,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     testReplicateOperationsModify: function() {
       const opType = "Update";
 
+      // Choose two distinct random numbers
+      const numDocs = 2;
+      const nums = new Set();
+      while(nums.size !== numDocs) {
+        nums.add(_.random(1000));
+      }
+
       // Update single document
-      let documents = [{_key: `test${_.random(1000)}`}, {_key: `test${_.random(1000)}`}];
+      const documents = [...nums].map(i => ({_key: `test${i}`}));
       let docHandles = [];
       documents.forEach(doc => {
         let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
