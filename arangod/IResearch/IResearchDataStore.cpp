@@ -988,7 +988,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("7e319", TRACE, TOPIC)
           << "First commit for ArangoSearch index '" << id()
           << "' is no changes tick " << lastTickBeforeCommitOne;
-
+      TRI_ASSERT(_lastCommittedTickOne <= lastTickBeforeCommitOne);
+      TRI_ASSERT(_lastCommittedTickTwo <= lastTickBeforeCommitOne);
       // no changes, can release the latest tick before commit one
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
@@ -1024,6 +1025,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("21bda", TRACE, TOPIC)
           << "Second commit for ArangoSearch index '" << id()
           << "' is no changes tick " << lastTickBeforeCommitTwo;
+      TRI_ASSERT(_lastCommittedTickOne <= lastTickBeforeCommitTwo);
+      TRI_ASSERT(_lastCommittedTickTwo <= lastTickBeforeCommitTwo);
       // no changes, can release the latest tick before commit two
       _lastCommittedTickOne = lastTickBeforeCommitTwo;
       _lastCommittedTickTwo = lastTickBeforeCommitTwo;
@@ -1109,11 +1112,12 @@ Result IResearchDataStore::consolidateUnsafeImpl(
   emptyConsolidation = false;  // TODO Why?
 
   if (!policy.policy()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("unset consolidation policy while executing "
-                         "consolidation policy '",
-                         policy.properties().toString(),
-                         "' on ArangoSearch index '", id().id(), "'")};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat(
+            "unset consolidation policy while executing consolidation policy '",
+            policy.properties().toString(), "' on ArangoSearch index '",
+            id().id(), "'")};
   }
 
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
