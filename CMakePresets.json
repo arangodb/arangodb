@@ -125,6 +125,10 @@
   ],
   "testPresets": [
     {
+      "name": "community-developer",
+      "configurePreset": "community-developer"
+    },
+    {
       "name": "enterprise-developer",
       "configurePreset": "enterprise-developer"
     }

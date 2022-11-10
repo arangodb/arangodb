@@ -10,3 +10,11 @@ target_include_directories(arangodbtests_actor PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod/Pregel)
 
 target_link_libraries(arangodbtests_actor boost_boost velocypack fmt gtest)
+
+# FIXME: setting the working directory manually is a hack
+# that needs to be removed/addressed.
+# without this hack ctest currently does not find the executable.
+add_test(
+  NAME actor
+  COMMAND arangodbtests_actor
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)

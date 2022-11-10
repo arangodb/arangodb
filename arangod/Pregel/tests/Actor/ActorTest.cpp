@@ -86,7 +86,8 @@ TEST(Actor, trivial_thread_scheduler) {
   auto actor = MyActor2(scheduler, {.state = "Hello"});
 
   for (std::size_t i = 0; i < 100; i++) {
-    send(actor, {.store = "hello"}) send(actor, {.store = "world"});
+    send(actor, {.store = "hello"});
+    send(actor, {.store = "world"});
     send(actor, {.store = "!"});
   }
   // joinen.
