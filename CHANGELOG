@@ -1,4 +1,4 @@
-v3.9.5 (XXXX-XX-XX)
+v3.9.5 (2022-11-10)
 -------------------
 
 * Show number of HTTP requests in cluster query profiles.
