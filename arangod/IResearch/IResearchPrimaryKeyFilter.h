@@ -45,7 +45,17 @@ class PrimaryKeyFilter final : public irs::filter,
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
+  struct ExistsTag {};
+  static irs::type_info type(ExistsTag);
   static irs::type_info type(StorageEngine& engine);
+
+  template<typename Tag>
+  PrimaryKeyFilter(Tag tag, arangodb::LocalDocumentId const& value,
+                   bool nested) noexcept
+      : irs::filter(type(tag)),
+        _pk(DocumentPrimaryKey::encode(value)),
+        _pkSeen(false),
+        _nested(nested) {}
 
   PrimaryKeyFilter(StorageEngine& engine,
                    arangodb::LocalDocumentId const& value, bool nested) noexcept
