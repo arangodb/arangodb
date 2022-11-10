@@ -2,7 +2,8 @@
 add_executable(arangodbtests_actor
   ${PROJECT_SOURCE_DIR}/arangod/Pregel/Actor/Actor.cpp
   main.cpp
-  ActorTest.cpp)
+  ActorTest.cpp
+  MPSCQueueTest.cpp)
 
 target_include_directories(arangodbtests_actor PRIVATE
   ${PROJECT_SOURCE_DIR}/lib

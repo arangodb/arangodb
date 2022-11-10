@@ -24,7 +24,8 @@
 #pragma once
 
 #include <Inspection/VPackWithErrorT.h>
-#include <boost/lockfree/queue.hpp>
+
+#include "MPSCQueue.h"
 
 namespace arangodb::pregel::actor {
 
@@ -37,9 +38,8 @@ struct Actor {
   Actor(Scheduler& schedule, State initialState, std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule), state(initialState) {}
 
-
-  void process(Message msg) {
-    inbox.push(new Message(msg));
+  void process(Message* msg) {
+    inbox.push(msg);
     kick();
   }
 
@@ -52,17 +52,11 @@ struct Actor {
     auto was_false = false;
     if (busy.compare_exchange_strong(was_false, true)) {
       // TODO: this needs to be a constructor parameter
-      auto i = size_t{5};
-      Message* msg = nullptr;
-      while (inbox.pop(msg) and i > 0) {
+      auto i = batchSize;
+      while (msg = inbox.pop() and i > 0) {
         // TODO: assert msg is not a nullptr.
         state = handler(state, *msg);
-        // there'd better not be an exception happening anywhere her
-        delete msg;
         i--;
-      }
-      if (i == 0 && !inbox.empty()) {
-        kick();
       }
       busy.store(false);
     }
@@ -70,10 +64,7 @@ struct Actor {
 
   std::size_t batchSize{16};
   std::atomic<bool> busy;
-  // TODO: Waserlaube boost::lockfree::queue? One can only use
-  // trivially destructible members, so we need to use raw pointers
-  // here, like cavepeople.
-  boost::lockfree::queue<Message*> inbox;
+  MPSCQueue inbox;
   Scheduler& schedule;
   MessageHandler handler{};
   State state;

@@ -30,6 +30,9 @@
 
 #include "fmt/core.h"
 
+#include "Basics/ThreadGuard.h"
+
+using namespace arangodb;
 using namespace arangodb::pregel::actor;
 
 // This scheduler just runs any function synchronously as soon as it comes in.
@@ -73,10 +76,9 @@ TEST(Actor, processes_message) {
 struct SlightlyNonTrivialScheduler {
   SlightlyNonTrivialScheduler() {}
 
-  auto operator()(auto fn) { threads.emplace_back(fn); }
+  auto operator()(auto fn) { threads.emplace(fn); }
 
-  // TODO: use threadGuard?
-  std::vector<std::thread> threads;
+  ThreadGuard threads;
 };
 
 using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, Message>;
@@ -93,4 +95,6 @@ TEST(Actor, trivial_thread_scheduler) {
   // joinen.
   fmt::print("I got called {} times, accumulated {}\n", actor.state.called,
              actor.state.state);
+
+  scheduler.threads.joinAll();
 }
