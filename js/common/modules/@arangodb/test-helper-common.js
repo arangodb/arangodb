@@ -370,7 +370,7 @@ exports.checkIndexMetrics = (checkFunction) => {
     try {
       checkFunction();
       isMetricsArrived = true;
-    } catch {
+    } catch (err) {
       isMetricsArrived = false;
       if (timeToWait > 0) {
         require("internal").sleep(2);
