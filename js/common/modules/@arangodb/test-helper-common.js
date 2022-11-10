@@ -376,7 +376,7 @@ exports.checkIndexMetrics = (checkFunction) => {
         require("internal").sleep(2);
         timeToWait = timeToWait - 2;
       } else {
-        assertTrue(false);
+        throw err;
       }
     }
   }
