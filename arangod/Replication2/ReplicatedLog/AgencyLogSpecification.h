@@ -42,6 +42,8 @@ using ParticipantsFlagsMap =
 
 struct LogPlanConfig {
   std::size_t effectiveWriteConcern = 1;
+  // TODO: Move this to the term config, we won't allow changing this
+  // intra-term.
   bool waitForSync = false;
 
   LogPlanConfig() noexcept = default;
