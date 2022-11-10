@@ -42,6 +42,26 @@ function ahuacatlDocumentSuite () {
     tearDown : function () {
       db._drop(cn);
     },
+    
+    testDocumentEmptyKey : function () {
+      let res = AQL_EXECUTE("RETURN DOCUMENT('')").json;
+      let doc = res[0];
+      assertNull(doc);
+      
+      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', '')").json;
+      doc = res[0];
+      assertNull(doc);
+    },
+    
+    testDocumentEmptyKeys : function () {
+      let res = AQL_EXECUTE("RETURN DOCUMENT(['', ''])").json;
+      let doc = res[0];
+      assertEqual([], doc);
+      
+      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', ['', ''])").json;
+      doc = res[0];
+      assertEqual([], doc);
+    },
 
     testDocumentSingleShard : function () {
       let c = db._create(cn, {numberOfShards: 1});
