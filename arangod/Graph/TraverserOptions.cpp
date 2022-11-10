@@ -33,6 +33,7 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Indexes/Index.h"
+#include "Aql/Optimizer2/PlanNodeTypes/Projections.h"
 
 #include <velocypack/Iterator.h>
 
@@ -442,6 +443,82 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
 }
 
 TraverserOptions::~TraverserOptions() = default;
+
+aql::optimizer2::types::TraverserOptions TraverserOptions::toInspectable()
+    const {
+  using namespace aql::optimizer2;
+
+  types::TraverserOptions traverser_options{
+      {
+          .parallelism = _parallelism,
+          .refactor = refactor(),
+          .produceVertices = _produceVertices,
+          .maxProjections = getMaxProjections(),
+      },
+      .neighbors = useNeighbors,
+      .producePathsVertices = producePathsVertices(),
+      .producePathsEdges = producePathsEdges(),
+      .producePathsWeights = producePathsWeights(),
+      .minDepth = minDepth,
+      .maxDepth = maxDepth,
+      .defaultWeight = defaultWeight,
+      .weightAttribute = weightAttribute,
+  };
+
+  if (!_vertexProjections.empty()) {
+    traverser_options.vertexProjections = _vertexProjections.toInspectable();
+  }
+
+  if (!_edgeProjections.empty()) {
+    traverser_options.edgeProjections = _edgeProjections.toInspectable();
+  }
+
+  switch (uniqueVertices) {
+    case TraverserOptions::UniquenessLevel::NONE:
+      traverser_options.uniqueVertices = "none";
+      break;
+    case TraverserOptions::UniquenessLevel::PATH:
+      traverser_options.uniqueVertices = "path";
+      break;
+    case TraverserOptions::UniquenessLevel::GLOBAL:
+      traverser_options.uniqueVertices = "global";
+      break;
+  }
+
+  switch (uniqueEdges) {
+    case TraverserOptions::UniquenessLevel::NONE:
+      traverser_options.uniqueEdges = "none";
+      break;
+    case TraverserOptions::UniquenessLevel::PATH:
+      traverser_options.uniqueEdges = "path";
+      break;
+    case TraverserOptions::UniquenessLevel::GLOBAL:
+      traverser_options.uniqueEdges = "global";
+      break;
+  }
+
+  switch (mode) {
+    case TraverserOptions::Order::DFS:
+      traverser_options.order = StaticStrings::GraphQueryOrderDFS;
+      break;
+    case TraverserOptions::Order::BFS:
+      traverser_options.order = StaticStrings::GraphQueryOrderBFS;
+      break;
+    case TraverserOptions::Order::WEIGHTED:
+      traverser_options.order = StaticStrings::GraphQueryOrderWeighted;
+      break;
+  }
+
+  if (!vertexCollections.empty()) {
+    traverser_options.vertexCollections = {vertexCollections.begin(), vertexCollections.end()};
+  }
+
+  if (!edgeCollections.empty()) {
+    traverser_options.edgeCollections = {edgeCollections.begin(), edgeCollections.end()};
+  }
+
+  return traverser_options;
+}
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);

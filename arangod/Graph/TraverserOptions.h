@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
+#include "Aql/Optimizer2/PlanNodeTypes/GraphOptions.h"
 
 #include <memory>
 
@@ -126,6 +127,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   /// @brief Build a velocypack for cloning in the plan.
   void toVelocyPack(arangodb::velocypack::Builder&) const override;
+
+  aql::optimizer2::types::TraverserOptions toInspectable() const;
 
   /// @brief Build a velocypack for indexes
   void toVelocyPackIndexes(arangodb::velocypack::Builder&) const override;

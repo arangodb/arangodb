@@ -25,53 +25,11 @@
 #include "Aql/Optimizer2/PlanNodes/GraphNode.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Expression.h"
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
+#include "Aql/Optimizer2/PlanNodeTypes/GraphOptions.h"
 
 #include "Inspection/VPackInspection.h"
 
 namespace arangodb::aql::optimizer2::nodes {
-/*
- * GraphOptions
- */
-struct GraphOptions {
-  AttributeTypes::Numeric parallelism;
-  bool refactor;
-  bool produceVertices;
-  bool neighbors;
-  bool producePathsVertices;
-  bool producePathsEdges;
-  bool producePathsWeights;
-
-  AttributeTypes::Numeric maxProjections;
-  AttributeTypes::Numeric minDepth;
-  AttributeTypes::Numeric maxDepth;
-  AttributeTypes::Numeric defaultWeight;
-
-  AttributeTypes::String uniqueVertices;
-  AttributeTypes::String uniqueEdges;
-  AttributeTypes::String order;
-  AttributeTypes::String weightAttribute;
-  AttributeTypes::String type;
-};
-
-template<typename Inspector>
-auto inspect(Inspector& f, GraphOptions& x) {
-  return f.object(x).fields(
-      f.field("parallelism", x.parallelism), f.field("refactor", x.refactor),
-      f.field("produceVertices", x.produceVertices),
-      f.field("neighbors", x.neighbors),
-      f.field("producePathsVertices", x.producePathsVertices),
-      f.field("producePathsEdges", x.producePathsEdges),
-      f.field("producePathsWeights", x.producePathsWeights),
-
-      f.field("maxProjections", x.maxProjections),
-      f.field("minDepth", x.minDepth), f.field("maxDepth", x.maxDepth),
-      f.field("defaultWeight", x.defaultWeight),
-
-      f.field("uniqueVertices", x.uniqueVertices),
-      f.field("uniqueEdges", x.uniqueEdges), f.field("order", x.order),
-      f.field("weightAttribute", x.weightAttribute), f.field("type", x.type));
-}
-
 /*
  * GraphIndex's inner used "Base"
  */
@@ -114,8 +72,7 @@ auto inspect(Inspector& f, GraphIndex& x) {
  */
 struct TraversalNode : optimizer2::nodes::GraphNode {
   // inner structs
-  GraphDefinition graphDefinition;
-  GraphOptions options;
+  optimizer2::types::TraverserOptions options;
   GraphIndex graphIndex;
 
   // main
@@ -161,6 +118,8 @@ auto inspect(Inspector& f, TraversalNode& x) {
   return f.object(x).fields(
       //structs
       f.embedFields(static_cast<optimizer2::nodes::GraphNode&>(x)),
+      f.field("options", x.options),
+      f.field("indexes", x.graphIndex),
       // main
       f.field("vertexId", x.vertexId),
       // conditions
