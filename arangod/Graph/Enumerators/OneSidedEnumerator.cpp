@@ -125,7 +125,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
-  TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
