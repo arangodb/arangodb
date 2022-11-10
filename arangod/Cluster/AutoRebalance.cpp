@@ -107,14 +107,17 @@ uint64_t AutoRebalanceProblem::createCollection(std::string const& name,
   std::vector<uint32_t> positionsNewShards;
   for (uint32_t i = 0; i < numberOfShards; ++i) {
     uint32_t newId = static_cast<uint32_t>(shards.size());
-    shards.emplace_back(Shard{.id = newId,
-                              .leader = 0,
-                              .replicationFactor = replicationFactor,
-                              .size = 1024 * 1024,
-                              .collectionId = collId,
-                              .weight = weight,
-                              .blocked = false,
-                              .ignored = false});
+    shards.emplace_back(Shard{
+        .id = newId,
+        .leader = 0,
+        .replicationFactor = replicationFactor,
+        .size = 1024 * 1024,
+        .collectionId = collId,
+        .weight = weight,
+        .blocked = false,
+        .ignored = false,
+        .isSystem = false,
+    });
     for (uint32_t j = 1; j < replicationFactor; ++j) {
       shards[newId].followers.push_back(j);
     }
