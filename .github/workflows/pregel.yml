@@ -20,7 +20,7 @@ jobs:
           cmake --preset community-developer -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang-14
       - name: build
         run: |
-          cmake --build --preset community-developer --target arangodbtests_pregel_actor
+          cmake --build --preset community-developer --target arangodbtests_actor
       - name: test
         run: |
-          ctest --preset community-developer -R pregel_actor
+          ctest --preset community-developer -R actor
