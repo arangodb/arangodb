@@ -672,3 +672,5 @@ template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;
 template class arangodb::pregel::Worker<DMIDValue, float, DMIDMessage>;
 template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
+template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
+                                        ColorPropagationMessageValue>;

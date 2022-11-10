@@ -158,7 +158,7 @@ template<typename V, typename E, typename M>
                         feature);
   } else if (algorithm == "colorpropagation") {
     return createWorker(vocbase,
-                        new algos::ColorPropagation(server, userParams), body,
+                        new algos::ColorPropagation(server, userParams), data,
                         feature);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)

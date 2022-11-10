@@ -59,6 +59,12 @@ class Utils {
   static size_t const batchOfVerticesStoredBeforeUpdatingStatus;
   static size_t const batchOfVerticesProcessedBeforeUpdatingStatus;
 
+  static std::string const equivalenceClass;
+  static std::string const inputColorsFieldName;
+  static std::string const outputColorsFieldName;
+  static std::string const numColors;
+  static std::string const colors;
+
   static int64_t countDocuments(TRI_vocbase_t* vocbase,
                                 std::string const& collection);
 
