@@ -369,3 +369,7 @@ template class arangodb::pregel::CombiningInCache<DMIDMessage>;
 template class arangodb::pregel::InCache<HLLCounter>;
 template class arangodb::pregel::ArrayInCache<HLLCounter>;
 template class arangodb::pregel::CombiningInCache<HLLCounter>;
+
+template class arangodb::pregel::InCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::ArrayInCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::CombiningInCache<ColorPropagationMessageValue>;

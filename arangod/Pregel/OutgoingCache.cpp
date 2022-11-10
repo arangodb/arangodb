@@ -292,3 +292,8 @@ template class arangodb::pregel::CombiningOutCache<DMIDMessage>;
 template class arangodb::pregel::OutCache<HLLCounter>;
 template class arangodb::pregel::ArrayOutCache<HLLCounter>;
 template class arangodb::pregel::CombiningOutCache<HLLCounter>;
+
+template class arangodb::pregel::OutCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::ArrayOutCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::CombiningOutCache<
+    ColorPropagationMessageValue>;

@@ -54,7 +54,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 2U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -79,7 +79,7 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
   {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{2});
-    EXPECT_EQ(req.entries.size(), 0);
+    EXPECT_EQ(req.entries.size(), 0U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, firstIdx);
@@ -105,7 +105,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 2U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -126,7 +126,7 @@ TEST_F(LeaderAppendEntriesTest, response_exception) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{2});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 2U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -153,7 +153,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 2U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -182,7 +182,7 @@ TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2);
+    EXPECT_EQ(req.entries.size(), 2U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -204,7 +204,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.entries.size(), 1U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
@@ -227,7 +227,7 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     auto req = follower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{4});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 1);
+    EXPECT_EQ(req.entries.size(), 1U);
     EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
