@@ -24,6 +24,7 @@
 #pragma once
 
 #include <Inspection/VPackWithErrorT.h>
+#include <memory>
 
 #include "MPSCQueue.h"
 
@@ -38,8 +39,8 @@ struct Actor {
   Actor(Scheduler& schedule, State initialState, std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule), state(initialState) {}
 
-  void process(Message* msg) {
-    inbox.push(msg);
+  void process(std::unique_ptr<Message> msg) {
+    inbox.push(std::move(msg));
     kick();
   }
 
@@ -53,18 +54,22 @@ struct Actor {
     if (busy.compare_exchange_strong(was_false, true)) {
       // TODO: this needs to be a constructor parameter
       auto i = batchSize;
-      while (msg = inbox.pop() and i > 0) {
-        // TODO: assert msg is not a nullptr.
-        state = handler(state, *msg);
+
+      while(auto msg = inbox.pop()) {
+        /* fugly */
+        Message* ptr = static_cast<Message*>(msg.release());
+        state = handler(state, std::unique_ptr<Message>(ptr));
         i--;
+        if(i == 0) {
+          break;
+        }
       }
       busy.store(false);
     }
   }
-
   std::size_t batchSize{16};
   std::atomic<bool> busy;
-  MPSCQueue inbox;
+  arangodb::pregel::mpscqueue::MPSCQueue inbox;
   Scheduler& schedule;
   MessageHandler handler{};
   State state;
@@ -73,8 +78,8 @@ struct Actor {
 template<typename Scheduler, typename MessageHandler, typename State,
          typename Message>
 void send(Actor<Scheduler, MessageHandler, State, Message>& actor,
-          Message msg) {
-  actor.process(msg);
+          std::unique_ptr<Message> msg) {
+  actor.process(std::move(msg));
 }
 
 }  // namespace arangodb::pregel::actor

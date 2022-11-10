@@ -26,11 +26,17 @@
 #include <memory>
 #include <atomic>
 
-
+// This lock-free multi-producer-single-consumer-queue is inspired by the
+// code published at
+//
+// https://www.1024cores.net/home/lock-free-algorithms/queues/intrusive-mpsc-node-based-queue
+//
+// under a Apache-2.0 license.
 namespace arangodb::pregel::mpscqueue {
 
 struct MPSCQueue {
   struct Node {
+    virtual ~Node() = default;
     std::atomic<Node*> next{nullptr};
   };
 

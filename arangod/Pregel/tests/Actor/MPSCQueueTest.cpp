@@ -35,7 +35,35 @@
 using namespace arangodb::pregel::mpscqueue;
 
 
-TEST(MPSCQueue, constructs_destructs) {
+struct Message : MPSCQueue::Node {
+  Message(std::string content) : content(std::move(content)) {}
+  std::string content;
+};
 
-  ASSERT_TRUE(false);
+TEST(MPSCQueue, gives_back_stuff_pushed) {
+  auto queue = MPSCQueue();
+
+  queue.push(std::make_unique<Message>("aon"));
+  queue.push(std::make_unique<Message>("dha"));
+  queue.push(std::make_unique<Message>("tri"));
+  queue.push(std::make_unique<Message>("ceithir"));
+  queue.push(std::make_unique<Message>("dannsa"));
+
+  auto msg1 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ("aon", msg1->content);
+
+  auto msg2 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ("dha", msg2->content);
+
+  auto msg3 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ("tri", msg3->content);
+
+  auto msg4 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ("ceithir", msg4->content);
+
+  auto msg5 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ("dannsa", msg5->content);
+
+  auto msg6 = static_cast<Message*>(queue.pop().release());
+  ASSERT_EQ(nullptr, msg6);
 }
