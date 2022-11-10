@@ -1007,8 +1007,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                 } else {
                   LOG_TOPIC("3294e", WARN, Logger::SUPERVISION)
                       << "failed to iterate through current shard servers "
-                         "for "
-                         "shard "
+                         "for shard "
                       << _shard << " or one of its clones";
                   TRI_ASSERT(false);
                   return;  // we don't increment done and remain PENDING
