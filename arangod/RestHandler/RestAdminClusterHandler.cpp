@@ -2379,7 +2379,6 @@ struct RebalanceOptions {
   bool leaderChanges;
   bool moveLeaders;
   bool moveFollowers;
-  bool excludeSystemCollections;
   double piFactor;
   std::vector<DatabaseID> databasesExcluded;
 };
@@ -2393,8 +2392,6 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
       f.field("leaderChanges", x.leaderChanges).fallback(true),
       f.field("moveLeaders", x.moveLeaders).fallback(false),
       f.field("moveFollowers", x.moveFollowers).fallback(false),
-      f.field("excludeSystemCollections", x.excludeSystemCollections)
-          .fallback(false),
       f.field("piFactor", x.piFactor).fallback(1.0),
       f.field("databasesExcluded", x.databasesExcluded)
           .fallback(std::vector<DatabaseID>{}));
@@ -2437,7 +2434,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   auto [todo, pending] = countAllMoveShardJobs();
 
   VPackBuilder builder;
-  auto p = collectRebalanceInformation({}, false);
+  auto p = collectRebalanceInformation({});
   auto leader = p.computeLeaderImbalance();
   auto shard = p.computeShardImbalance();
   {
@@ -2580,8 +2577,7 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
     return RestStatus::DONE;
   }
 
-  auto p = collectRebalanceInformation(options->databasesExcluded,
-                                       options->excludeSystemCollections);
+  auto p = collectRebalanceInformation(options->databasesExcluded);
   auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
   auto const imbalanceShardsBefore = p.computeShardImbalance();
 
@@ -2709,8 +2705,7 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 
 cluster::rebalance::AutoRebalanceProblem
 RestAdminClusterHandler::collectRebalanceInformation(
-    std::vector<std::string> const& excludedDatabases,
-    bool excludeSystemCollections) {
+    std::vector<std::string> const& excludedDatabases) {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   cluster::rebalance::AutoRebalanceProblem p;
@@ -2790,10 +2785,6 @@ RestAdminClusterHandler::collectRebalanceInformation(
         distributeShardsLikeCounter;
 
     for (auto const& collection : ci.getCollections(db)) {
-      bool isSystem = collection->name().starts_with("_");
-      if (excludeSystemCollections && isSystem) {
-        continue;
-      }
       if (auto const& like = collection->distributeShardsLike();
           !like.empty()) {
         distributeShardsLikeCounter[like].distributeShardsLikeCounter += 1;
@@ -2816,7 +2807,6 @@ RestAdminClusterHandler::collectRebalanceInformation(
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;
-          shardRef.isSystem = isSystem;
           shardRef.replicationFactor =
               static_cast<decltype(shardRef.replicationFactor)>(
                   shard.second.size());

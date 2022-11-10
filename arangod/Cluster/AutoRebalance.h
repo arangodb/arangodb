@@ -58,7 +58,6 @@ struct Shard {
   double weight = 1.0;  // for leadership optimization
   bool blocked;         // flag, if shard is blocked by config
   bool ignored;         // flag, if shard is ignored by config
-  bool isSystem;        // flag, if shard is from a system collection
 };
 
 struct Collection {
@@ -86,17 +85,10 @@ struct ShardImbalance {
   std::vector<uint64_t> numberShards;  // number of shards per DBServer
   double totalUsed;                    // sum of all sizes
   uint64_t totalShards;  // total number of all shards (leader or follower)
-  uint64_t totalShardsFromSystemCollections;  // number of shards on leader that
-                                              // come from system collections,
-                                              // because they might be excluded
-                                              // with request option
-  double imbalance;  // total imbalance according to formula
-                     // in design document
+  double imbalance;      // total imbalance according to formula
+                         // in design document
   ShardImbalance(size_t numberDBServers)
-      : totalUsed(0.0),
-        totalShards(0),
-        totalShardsFromSystemCollections(0),
-        imbalance(0) {
+      : totalUsed(0.0), totalShards(0), imbalance(0) {
     sizeUsed.resize(numberDBServers, 0);
     targetSize.resize(numberDBServers, 0);
     numberShards.resize(numberDBServers, 0);
@@ -109,8 +101,6 @@ auto inspect(Inspector& f, ShardImbalance& x) {
       f.field("sizeUsed", x.sizeUsed), f.field("targetSize", x.targetSize),
       f.field("numberShards", x.numberShards),
       f.field("totalUsed", x.totalUsed), f.field("totalShards", x.totalShards),
-      f.field("totalShardsFromSystemCollections",
-              x.totalShardsFromSystemCollections),
       f.field("imbalance", x.imbalance));
 }
 

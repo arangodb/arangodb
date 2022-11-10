@@ -54,13 +54,12 @@ function resignServer(server) {
   assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
 }
 
-function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {
+function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges) {
   const result = arango.POST('/_admin/cluster/rebalance', {
     version: 1,
     moveLeaders: moveLeaders,
     moveFollowers: moveFollowers,
     leaderChanges: leaderChanges,
-    excludeSystemCollections: excludeSystemCollections,
     databasesExcluded: ["_system"],
   });
   assertEqual(result.code, 200);
@@ -200,19 +199,6 @@ function clusterRebalanceOtherOptionsSuite() {
       db._dropDatabase(database);
     },
 
-    testRebalancePlanWithoutSystemCollections: function() {
-      const result = getRebalancePlan(true, true, true, true);
-      assertEqual(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections, 0);
-      assertEqual(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections, 0);
-    },
-
-    testRebalancePlanWithSystemCollections: function() {
-      const result = getRebalancePlan(true, true, true, false);
-      assertTrue(result.result.imbalanceBefore.shards.totalShardsFromSystemCollections > 0);
-      assertTrue(result.result.imbalanceAfter.shards.totalShardsFromSystemCollections > 0);
-    },
-
-
     testCalcRebalanceStopServer: function() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
@@ -261,7 +247,7 @@ function clusterRebalanceOtherOptionsSuite() {
             }
           } while (serverUsed);
 
-          result = getRebalancePlan(true, true, true, false);
+          result = getRebalancePlan(true, true, true);
           let moves = result.result.moves;
           for (const job of moves) {
             assertNotEqual(job.to, dbServer.id);
@@ -298,7 +284,7 @@ function clusterRebalanceOtherOptionsSuite() {
           }
         });
         assertNotNull(leaderId);
-        result = getRebalancePlan(false, true, false, false);
+        result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
         for (const job of moves) {
           if (job.shard === shardName) {
@@ -324,7 +310,7 @@ function clusterRebalanceOtherOptionsSuite() {
         });
         assertNotNull(followerId);
 
-        result = getRebalancePlan(true, false, true, false);
+        result = getRebalancePlan(true, false, true);
         let moves = result.result.moves;
         for (const job of moves) {
           if (job.shard === shardName) {
