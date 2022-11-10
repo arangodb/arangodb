@@ -1,6 +1,11 @@
 devel
 -----
 
+* Delay a MoveShard operation for leader change, until the old leader has
+  actually assumed its leadership and until the new leader is actually in
+  sync. This fixes a bug which could block a shard under certain circumstances.
+  This fixes BTS-1110.
+
 * Removed assertions from cluster rebalance js test that obligated the rebalance
   plan to always have moves, but there were cases in which all there are none.
 
