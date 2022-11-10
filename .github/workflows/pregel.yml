@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 1
       - name: cmake
         run: |
-          cmake --preset community-developer -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang-14
+          cmake --preset community-developer -DCMAKE_C_COMPILER=clang-14 -DCMAKE_CXX_COMPILER=clang-14 -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=lld
       - name: build
         run: |
           cmake --build --preset community-developer --target arangodbtests_actor
