@@ -2596,12 +2596,6 @@ static void JS_CompletionsVocbase(
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_parse()"))
       .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"))
-      .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_profileQuery()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_query()"))
