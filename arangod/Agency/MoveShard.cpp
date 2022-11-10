@@ -1386,8 +1386,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
           << "Precondition failed on MoveShard::abort() for shard " << _shard
           << " of collection " << _collection
           << ", if the collection has been deleted in the meantime, the "
-             "job "
-             "will be finished soon, if this message repeats, tell us.";
+             "job will be finished soon, if this message repeats, tell us.";
       result = Result(
           TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
           std::string("Precondition failed while aborting moveShard job ") +
