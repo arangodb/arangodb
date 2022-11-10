@@ -285,8 +285,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
     if (data->didResign()) {
-      THROW_ARANGO_EXCEPTION(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
     }
 
     auto const& res = tryRes.get();

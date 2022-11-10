@@ -347,7 +347,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
+  std::shared_ptr<IReplicatedStateHandle> _stateHandle;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   ParticipantId const _id;
   LogTerm const _currentTerm;

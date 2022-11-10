@@ -460,6 +460,9 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
   if (leaderEstablished) {
     auto methods = _stateHandle->resignCurrentState();
     ADB_PROD_ASSERT(methods != nullptr);
+    // We *must not* use this handle any longer. Its ownership is shared with
+    // our parent ReplicatedLog, which will pass it as necessary.
+    _stateHandle = nullptr;
   }
   return std::make_tuple(std::move(core), std::move(actionOuter));
 }
@@ -1582,6 +1585,10 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
     ParticipantId const& participantId, SnapshotAvailableReport report)
     -> Result {
   auto guard = _guardedLeaderData.getLockedGuard();
+  if (guard->_didResign) {
+    throw ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+  }
   auto follower = guard->_follower.find(participantId);
   if (follower == guard->_follower.end()) {
     return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
