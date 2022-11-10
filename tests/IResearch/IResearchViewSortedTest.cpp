@@ -141,9 +141,9 @@ class IResearchViewSortedTest
 TEST_P(IResearchViewSortedTest, SingleField) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -447,9 +447,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 TEST_P(IResearchViewSortedTest, MultipleFields) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 

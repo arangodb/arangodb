@@ -54,10 +54,6 @@
 #include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
 
-#ifdef USE_PLAN_CACHE
-#include "Aql/PlanCache.h"
-#endif
-
 #include <absl/strings/numbers.h>
 #include <absl/strings/str_cat.h>
 
@@ -92,11 +88,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
   }
   return Weight{
       static_cast<bool>(static_cast<bool>(lhs) ^ static_cast<bool>(rhs))};
-}
-
-inline Weight Divide(const Weight& lhs, const Weight& rhs,
-                     DivideType typ = DIVIDE_ANY) {
-  return DivideLeft(lhs, rhs);
 }
 
 }  // namespace fst
@@ -548,9 +539,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     r = cluster_helper::properties(*this, true /*means under lock*/);
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
-#ifdef USE_PLAN_CACHE
-    aql::PlanCache::instance()->invalidate(&vocbase());
-#endif
     aql::QueryCache::instance()->invalidate(&vocbase());
     r = storage_helper::properties(*this, true /*means under lock*/);
   }
@@ -697,7 +685,7 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     auto value = *it;
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
-      return {TRI_ERROR_BAD_PARAMETER, "'index' should be a string"};
+      return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
     }
     auto collection = resolver.getCollection(collectionSlice.stringView());
     if (!collection) {

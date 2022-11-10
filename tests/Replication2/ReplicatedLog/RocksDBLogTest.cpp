@@ -117,26 +117,26 @@ TEST_F(RocksDBLogTest, insert_iterate) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 1U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 2);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 2U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 3);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 3U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1000);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 1000U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
@@ -177,8 +177,8 @@ TEST_F(RocksDBLogTest, insert_remove_iterate) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1000);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 1000U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
 
     entry = iter->next();
@@ -220,33 +220,33 @@ TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 1U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("first"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 2);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 2U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("second"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 3);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 3U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 999);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 999U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(),
               LogPayload::createFromString("nine-nine-nine"));
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1000);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 1000U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("thousand"));
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
@@ -290,8 +290,8 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 1);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 1U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     EXPECT_FALSE(entry->hasPayload());
     EXPECT_TRUE(entry->hasMeta());
     ASSERT_EQ(*entry->meta(),
@@ -301,8 +301,8 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 2);
-    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logIndex().value, 2U);
+    ASSERT_EQ(entry->logTerm().value, 1U);
     EXPECT_FALSE(entry->hasPayload());
     EXPECT_TRUE(entry->hasMeta());
     auto const expected =
@@ -314,8 +314,8 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
 
     entry = iter->next();
     ASSERT_TRUE(entry.has_value());
-    ASSERT_EQ(entry->logIndex().value, 3);
-    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logIndex().value, 3U);
+    ASSERT_EQ(entry->logTerm().value, 2U);
     ASSERT_EQ(*entry->logPayload(), LogPayload::createFromString("third"));
 
     entry = iter->next();

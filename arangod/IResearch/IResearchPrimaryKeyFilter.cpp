@@ -33,13 +33,13 @@
 namespace {
 
 struct typeDefault {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "::typeDefault";
   }
 };
 
 struct typeRecovery {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "::typeRecovery";
   }
 };

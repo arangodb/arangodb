@@ -27,8 +27,10 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
 #include "Basics/Common.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
@@ -100,6 +102,7 @@ GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
                              GraphFormat<V, E>* graphFormat)
     : _feature(feature),
       _vocbaseGuard(vocbase),
+      _resourceMonitor(GlobalResourceMonitor::instance()),
       _executionNumber(executionNumber),
       _graphFormat(graphFormat),
       _config(nullptr),
@@ -351,8 +354,9 @@ void GraphStore<V, E>::loadVertices(
   }
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  auto cursor = trx.indexScan(
-      vertexShard, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto cursor =
+      trx.indexScan(_resourceMonitor, vertexShard,
+                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* coll = cursor->collection();
@@ -378,7 +382,8 @@ void GraphStore<V, E>::loadVertices(
 
   for (ShardID const& edgeShard : edgeShards) {
     edgeCollectionInfos.emplace_back(
-        std::make_unique<traverser::EdgeCollectionInfo>(&trx, edgeShard));
+        std::make_unique<traverser::EdgeCollectionInfo>(_resourceMonitor, &trx,
+                                                        edgeShard));
   }
 
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
@@ -818,6 +823,7 @@ template class arangodb::pregel::GraphStore<HITSKleinbergValue, int8_t>;
 template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
+template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::GraphStore<VertexData, EdgeData>;

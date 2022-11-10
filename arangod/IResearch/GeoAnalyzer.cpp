@@ -218,7 +218,7 @@ void toVelocyPack(VPackBuilder& builder,
 }
 
 template<typename Analyzer>
-bool fromVelocyPack(irs::string_ref args, typename Analyzer::Options& out) {
+bool fromVelocyPack(std::string_view args, typename Analyzer::Options& out) {
   auto const slice = arangodb::iresearch::slice(args);
 
   auto const res = deserialize<typename Deserializer<Analyzer>::type,
@@ -237,7 +237,7 @@ bool fromVelocyPack(irs::string_ref args, typename Analyzer::Options& out) {
 }
 
 template<typename Analyzer>
-bool normalize(irs::string_ref args, std::string& out) {
+bool normalize(std::string_view args, std::string& out) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -253,7 +253,7 @@ bool normalize(irs::string_ref args, std::string& out) {
 }
 
 template<typename Analyzer>
-irs::analysis::analyzer::ptr make(irs::string_ref args) {
+irs::analysis::analyzer::ptr make(std::string_view args) {
   typename Analyzer::Options opts;
 
   if (!fromVelocyPack<Analyzer>(args, opts)) {
@@ -290,13 +290,13 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   _end = _begin + _terms.size();
 }
 
-/*static*/ bool GeoJSONAnalyzer::normalize(irs::string_ref args,
+/*static*/ bool GeoJSONAnalyzer::normalize(std::string_view args,
                                            std::string& out) {
   return ::normalize<GeoJSONAnalyzer>(args, out);
 }
 
 /*static*/ irs::analysis::analyzer::ptr GeoJSONAnalyzer::make(
-    irs::string_ref args) {
+    std::string_view args) {
   return ::make<GeoJSONAnalyzer>(args);
 }
 
@@ -328,7 +328,7 @@ void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts.set_index_contains_points_only(_type != Type::SHAPE);
 }
 
-bool GeoJSONAnalyzer::reset(irs::string_ref value) {
+bool GeoJSONAnalyzer::reset(std::string_view value) {
   auto const slice = iresearch::slice(value);
 
   if (!parseShape(slice, _shape, _type == Type::POINT)) {
@@ -354,13 +354,13 @@ bool GeoJSONAnalyzer::reset(irs::string_ref value) {
   return true;
 }
 
-/*static*/ bool GeoPointAnalyzer::normalize(irs::string_ref args,
+/*static*/ bool GeoPointAnalyzer::normalize(std::string_view args,
                                             std::string& out) {
   return ::normalize<GeoPointAnalyzer>(args, out);
 }
 
 /*static*/ irs::analysis::analyzer::ptr GeoPointAnalyzer::make(
-    irs::string_ref args) {
+    std::string_view args) {
   return ::make<GeoPointAnalyzer>(args);
 }
 
@@ -393,7 +393,7 @@ bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
   return iresearch::parsePoint(latitude, longitude, point);
 }
 
-bool GeoPointAnalyzer::reset(irs::string_ref value) {
+bool GeoPointAnalyzer::reset(std::string_view value) {
   if (!parsePoint(iresearch::slice(value), _point)) {
     return false;
   }

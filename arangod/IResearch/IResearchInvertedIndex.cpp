@@ -88,7 +88,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
   };
 }
 
-irs::bytes_ref refFromSlice(VPackSlice slice) {
+irs::bytes_view refFromSlice(VPackSlice slice) {
   return {slice.startAs<irs::byte_type>(), slice.byteSize()};
 }
 
@@ -141,7 +141,7 @@ inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
 ///         After the document id has beend found "get" method
 ///         could be used to get Slice for the Projections
 struct CoveringValue {
-  explicit CoveringValue(irs::string_ref col) : column(col) {}
+  explicit CoveringValue(std::string_view col) : column(col) {}
   CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
   void reset(irs::sub_reader const& rdr) {
@@ -173,7 +173,7 @@ struct CoveringValue {
       }
       TRI_ASSERT(totalSize > 0);
       size_t size = 0;
-      VPackSlice slice(value->value.c_str());
+      VPackSlice slice(value->value.data());
       TRI_ASSERT(slice.byteSize() <= totalSize);
       while (i < index) {
         if (ADB_LIKELY(size < totalSize)) {
@@ -196,7 +196,7 @@ struct CoveringValue {
   }
 
   irs::doc_iterator::ptr itr;
-  irs::string_ref column;
+  std::string_view column;
   const irs::payload* value{};
 };
 
@@ -207,7 +207,8 @@ class CoveringVector final : public IndexIteratorCoveringData {
     size_t fields{meta._sort.fields().size()};
     _coverage.reserve(meta._sort.size() + meta._storedValues.columns().size());
     if (!meta._sort.empty()) {
-      _coverage.emplace_back(fields, CoveringValue(irs::string_ref::EMPTY));
+      _coverage.emplace_back(fields,
+                             CoveringValue(irs::kEmptyStringView<char>));
     }
     for (auto const& column : meta._storedValues.columns()) {
       fields += column.fields.size();
@@ -461,13 +462,11 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 class IResearchInvertedIndexIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexIterator(LogicalCollection* collection,
-                                 IResearchSnapshotState* state,
-                                 transaction::Methods* trx,
-                                 aql::AstNode const* condition,
-                                 IResearchInvertedIndexMeta const* meta,
-                                 aql::Variable const* variable,
-                                 int mutableConditionIdx)
+  IResearchInvertedIndexIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _projections(*meta) {}
@@ -576,13 +575,11 @@ class IResearchInvertedIndexIterator final
 class IResearchInvertedIndexMergeIterator final
     : public IResearchInvertedIndexIteratorBase {
  public:
-  IResearchInvertedIndexMergeIterator(LogicalCollection* collection,
-                                      IResearchSnapshotState* state,
-                                      transaction::Methods* trx,
-                                      aql::AstNode const* condition,
-                                      IResearchInvertedIndexMeta const* meta,
-                                      aql::Variable const* variable,
-                                      int mutableConditionIdx)
+  IResearchInvertedIndexMergeIterator(
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      IResearchSnapshotState* state, transaction::Methods* trx,
+      aql::AstNode const* condition, IResearchInvertedIndexMeta const* meta,
+      aql::Variable const* variable, int mutableConditionIdx)
       : IResearchInvertedIndexIteratorBase(collection, state, trx, condition,
                                            meta, variable, mutableConditionIdx),
         _heap_it({meta->_sort, meta->_sort.size(), _segments}),
@@ -839,7 +836,7 @@ Result IResearchInvertedIndex::init(
 AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;
@@ -915,9 +912,10 @@ bool IResearchInvertedIndex::matchesDefinition(
 }
 
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
-    LogicalCollection* collection, transaction::Methods* trx,
-    aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts, int mutableConditionIdx) {
+    ResourceMonitor& monitor, LogicalCollection* collection,
+    transaction::Methods* trx, aql::AstNode const* node,
+    aql::Variable const* reference, IndexIteratorOptions const& opts,
+    int mutableConditionIdx) {
   if (failQueriesOnOutOfSync() && isOutOfSync()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
@@ -952,11 +950,11 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
       return std::make_unique<IResearchInvertedIndexIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     } else {
       return std::make_unique<IResearchInvertedIndexMergeIterator>(
-          collection, &state, trx, node, &_meta, reference,
+          monitor, collection, &state, trx, node, &_meta, reference,
           mutableConditionIdx);
     }
   } else {
@@ -966,7 +964,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     TRI_ASSERT(!_meta._sort.empty());
 
     return std::make_unique<IResearchInvertedIndexMergeIterator>(
-        collection, &state, trx, node, &_meta, reference,
+        monitor, collection, &state, trx, node, &_meta, reference,
         transaction::Methods::kNoMutableConditionIdx);
   }
 }
