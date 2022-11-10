@@ -33,5 +33,9 @@ OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth,
 
 OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
 
-size_t OneSidedEnumeratorOptions::getMinDepth() const { return _minDepth; }
-size_t OneSidedEnumeratorOptions::getMaxDepth() const { return _maxDepth; }
+size_t OneSidedEnumeratorOptions::getMinDepth() const noexcept {
+  return _minDepth;
+}
+size_t OneSidedEnumeratorOptions::getMaxDepth() const noexcept {
+  return _maxDepth;
+}

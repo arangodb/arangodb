@@ -69,7 +69,7 @@ struct RecursiveAttributeFinderContext {
   bool couldExtractAttributePath;
   std::string_view expectedAttribute;
   containers::SmallVector<AstNode const*, 128> seen;
-  std::unordered_set<arangodb::aql::AttributeNamePath>& attributes;
+  containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes;
 };
 
 struct ValidateAndOptimizeContext {
@@ -2769,7 +2769,7 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
-    std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
+    containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes) {
   RecursiveAttributeFinderContext state{variable,
                                         /*couldExtractAttributePath*/ true,
                                         expectedAttribute,
