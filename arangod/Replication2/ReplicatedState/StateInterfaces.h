@@ -46,7 +46,7 @@ struct ILogLeader;
 namespace replicated_state {
 
 template<typename S>
-struct NewFollowerStateManager;
+struct FollowerStateManager;
 template<typename S>
 struct ReplicatedStateManager;
 
@@ -164,13 +164,13 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
       -> std::shared_ptr<Stream> const&;
 
  private:
-  friend struct NewFollowerStateManager<S>;
+  friend struct FollowerStateManager<S>;
   friend struct ReplicatedStateManager<S>;
 
   void setStateManager(
-      std::shared_ptr<NewFollowerStateManager<S>> manager) noexcept;
+      std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
 
-  std::weak_ptr<NewFollowerStateManager<S>> _manager;
+  std::weak_ptr<FollowerStateManager<S>> _manager;
   std::shared_ptr<Stream> _stream;
 };
 }  // namespace replicated_state

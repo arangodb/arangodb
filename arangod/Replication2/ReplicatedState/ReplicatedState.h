@@ -183,13 +183,13 @@ struct ProducerStreamProxy
 };
 
 template<typename S>
-struct NewLeaderStateManager
-    : std::enable_shared_from_this<NewLeaderStateManager<S>> {
+struct LeaderStateManager
+    : std::enable_shared_from_this<LeaderStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   using Serializer = typename ReplicatedStateTraits<S>::Serializer;
-  explicit NewLeaderStateManager(
+  explicit LeaderStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
@@ -227,13 +227,13 @@ struct NewLeaderStateManager
 };
 
 template<typename S>
-struct NewFollowerStateManager
-    : std::enable_shared_from_this<NewFollowerStateManager<S>> {
+struct FollowerStateManager
+    : std::enable_shared_from_this<FollowerStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
-  explicit NewFollowerStateManager(
+  explicit FollowerStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
@@ -274,11 +274,11 @@ struct NewFollowerStateManager
 };
 
 template<typename S>
-struct NewUnconfiguredStateManager
-    : std::enable_shared_from_this<NewUnconfiguredStateManager<S>> {
+struct UnconfiguredStateManager
+    : std::enable_shared_from_this<UnconfiguredStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  explicit NewUnconfiguredStateManager(LoggerContext loggerContext,
-                                       std::unique_ptr<CoreType>) noexcept;
+  explicit UnconfiguredStateManager(LoggerContext loggerContext,
+                                    std::unique_ptr<CoreType>) noexcept;
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -346,9 +346,9 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
     explicit GuardedData(Args&&... args)
         : _currentManager(std::forward<Args>(args)...) {}
 
-    std::variant<std::shared_ptr<NewUnconfiguredStateManager<S>>,
-                 std::shared_ptr<NewLeaderStateManager<S>>,
-                 std::shared_ptr<NewFollowerStateManager<S>>>
+    std::variant<std::shared_ptr<UnconfiguredStateManager<S>>,
+                 std::shared_ptr<LeaderStateManager<S>>,
+                 std::shared_ptr<FollowerStateManager<S>>>
         _currentManager;
   };
   Guarded<GuardedData> _guarded;
