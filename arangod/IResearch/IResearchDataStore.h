@@ -481,8 +481,8 @@ class IResearchDataStore {
 
   // protected by _commitMutex
   bool _commitStageOne{false};
-  uint64_t _lastCommittedTickStageOne{0};
-  uint64_t _lastCommittedTickStageTwo{0};
+  uint64_t _lastCommittedTickOne{0};
+  uint64_t _lastCommittedTickTwo{0};
 
   size_t _cleanupIntervalCount{0};
 
