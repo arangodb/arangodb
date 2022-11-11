@@ -286,6 +286,10 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const&);
 
+/// @brief optimizes away unused K_PATHS things
+void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const&);
+
 /// @brief removes filter nodes already covered by the traversal and removes
 /// unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt,

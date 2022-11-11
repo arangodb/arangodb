@@ -76,7 +76,7 @@ RefactoredTraverserCache::RefactoredTraverserCache(
     std::unordered_map<std::string, std::vector<std::string>> const&
         collectionToShardMap,
     arangodb::aql::Projections const& vertexProjections,
-    arangodb::aql::Projections const& edgeProjections)
+    arangodb::aql::Projections const& edgeProjections, bool produceVertices)
     : _query(query),
       _trx(trx),
       _stringHeap(
@@ -84,6 +84,7 @@ RefactoredTraverserCache::RefactoredTraverserCache(
           4096), /* arbitrary block-size may be adjusted for performance */
       _collectionToShardMap(collectionToShardMap),
       _resourceMonitor(resourceMonitor),
+      _produceVertices(produceVertices),
       _allowImplicitCollections(ServerState::instance()->isSingleServer() &&
                                 !_query->vocbase()
                                      .server()
@@ -226,6 +227,11 @@ bool RefactoredTraverserCache::appendVertex(
   }
 
   auto findDocumentInShard = [&](std::string const& collectionName) -> bool {
+    if (!_produceVertices) {
+      // we don't need any vertex data, return quickly
+      result.add(VPackSlice::nullSlice());
+      return true;
+    }
     try {
       transaction::AllowImplicitCollectionsSwitcher disallower(
           _trx->state()->options(), _allowImplicitCollections);
