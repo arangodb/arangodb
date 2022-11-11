@@ -30,7 +30,7 @@ using namespace arangodb::replication2::replicated_log::comp;
 
 StorageManager::StorageManager(std::unique_ptr<LogCore> core)
     : guardedData(std::move(core)) {}
-
+/*
 auto StorageManager::getInMemoryLog() const noexcept
     -> arangodb::replication2::replicated_log::InMemoryLog {
   return guardedData.getLockedGuard()->inMemoryLog;
@@ -55,14 +55,14 @@ auto StorageManager::removeFront(arangodb::replication2::LogIndex stop) noexcept
         return result.result();
       });
 }
-
+*/
 auto StorageManager::resign() -> std::unique_ptr<LogCore> {
   return std::move(guardedData.getLockedGuard()->core);
 }
 
 StorageManager::GuardedData::GuardedData(std::unique_ptr<LogCore> core)
     : core(std::move(core)) {}
-
+/*
 auto StorageTransaction::removeFront(
     arangodb::replication2::LogIndex stop) noexcept
     -> arangodb::futures::Future<arangodb::Result> {
@@ -73,3 +73,4 @@ auto StorageTransaction::getInMemoryLog() const noexcept
     -> const arangodb::replication2::replicated_log::InMemoryLog& {
   return interface->getInMemoryLog();
 }
+*/

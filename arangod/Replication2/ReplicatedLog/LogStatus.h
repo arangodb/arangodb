@@ -145,6 +145,7 @@ struct CompactionStatus {
   };
 
   std::optional<Compaction> lastCompaction;
+  std::optional<Compaction> inProgress;
   std::optional<CompactionStopReason> stop;
 
   friend auto operator==(CompactionStatus const& left,

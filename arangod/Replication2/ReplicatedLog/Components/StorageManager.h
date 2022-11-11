@@ -33,38 +33,24 @@ class Result;
 namespace replication2::replicated_log {
 inline namespace comp {
 
-struct IStorageInterface {
-  virtual auto getInMemoryLog() const noexcept -> InMemoryLog const& = 0;
+struct IStorageTransaction {
+  virtual ~IStorageTransaction() = default;
+  virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
+  virtual auto getLogBounds() const noexcept -> LogRange = 0;
   virtual auto removeFront(LogIndex stop) noexcept
       -> futures::Future<Result> = 0;
-  virtual auto appendEntries(LogIndex appendAfter, InMemoryLogSlice)
-      -> futures::Future<Result>;
-};
-
-struct StorageTransaction {
-  [[nodiscard]] auto getInMemoryLog() const noexcept -> InMemoryLog const&;
-  auto removeFront(LogIndex stop) noexcept -> futures::Future<Result>;
-  auto removeBack(LogIndex first) noexcept -> futures::Future<Result>;
-  auto appendEntries(LogIndex appendAfter, InMemoryLogSlice)
-      -> futures::Future<Result>;
-
- private:
-  IStorageInterface* interface;
+  virtual auto appendEntries(LogIndex appendAfter, InMemoryLogSlice) noexcept
+      -> futures::Future<Result> = 0;
 };
 
 struct IStorageManager {
   virtual ~IStorageManager() = default;
-  virtual auto transaction() -> StorageTransaction = 0;
+  virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
 };
 
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
   explicit StorageManager(std::unique_ptr<LogCore> core);
-
-  // auto getInMemoryLog() const noexcept -> InMemoryLog override;
-
-  // auto removeFront(LogIndex stop) noexcept -> futures::Future<Result>
-  // override;
 
   auto resign() -> std::unique_ptr<LogCore>;
 

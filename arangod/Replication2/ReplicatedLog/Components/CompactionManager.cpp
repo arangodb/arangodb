@@ -24,39 +24,98 @@
 #include "CompactionManager.h"
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
+#include "Replication2/ReplicatedLog/Components/StorageManager.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
-CompactionManager::CompactionManager(IStorageManager& storage)
-    : guarded(storage) {}
+CompactionManager::CompactionManager(
+    IStorageManager& storage, ISchedulerInterface& scheduler,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+    : guarded(storage, scheduler), options(std::move(options)) {}
 
-void CompactionManager::updateReleaseIndex(
-    arangodb::replication2::LogIndex index) noexcept {
+void CompactionManager::updateReleaseIndex(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
   guard->releaseIndex = std::max(guard->releaseIndex, index);
-  guard->triggerAsyncCompaction();
+  triggerAsyncCompaction(std::move(guard), false);
 }
 
-void CompactionManager::updateLargestIndexToKeep(
-    arangodb::replication2::LogIndex index) noexcept {
+void CompactionManager::updateLargestIndexToKeep(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
   guard->largestIndexToKeep = std::max(guard->largestIndexToKeep, index);
-  guard->triggerAsyncCompaction();
+  triggerAsyncCompaction(std::move(guard), false);
 }
 
-auto CompactionManager::compact() noexcept
-    -> futures::Future<arangodb::ResultT<CompactionResult>> {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+auto CompactionManager::compact() noexcept -> futures::Future<CompactResult> {
+  auto guard = guarded.getLockedGuard();
+  auto f = guard->compactAggregator.waitFor();
+  triggerAsyncCompaction(std::move(guard), true);
+  return f;
 }
 
 auto CompactionManager::getCompactionStatus() const noexcept
-    -> arangodb::replication2::replicated_log::CompactionStatus {
-  return guarded.getLockedGuard()->lastCompaction;
+    -> CompactionStatus {
+  return guarded.getLockedGuard()->status;
 }
 
-CompactionManager::GuardedData::GuardedData(IStorageManager& storage)
-    : storage(storage) {}
+CompactionManager::GuardedData::GuardedData(IStorageManager& storage,
+                                            ISchedulerInterface& scheduler)
+    : storage(storage), scheduler(scheduler) {}
 
-void CompactionManager::GuardedData::triggerAsyncCompaction() {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+auto CompactionManager::GuardedData::isCompactionInProgress() const noexcept
+    -> bool {
+  return _compactionInProgress;
+}
+
+auto CompactionManager::calculateCompactionIndex(GuardedData const& data,
+                                                 LogRange bounds,
+                                                 bool ignoreThreshold) const
+    -> std::tuple<LogIndex, CompactionStopReason> {
+  auto [first, last] = bounds;
+  auto newCompactionIndex =
+      std::min(data.releaseIndex, data.largestIndexToKeep);
+  auto nextAutomaticCompactionAt = first + options->_thresholdLogCompaction;
+  if (not ignoreThreshold and nextAutomaticCompactionAt > newCompactionIndex) {
+    return {first,
+            {CompactionStopReason::CompactionThresholdNotReached{
+                nextAutomaticCompactionAt}}};
+  }
+
+  if (first == last) {
+    return {first, {CompactionStopReason::NothingToCompact{}}};
+  } else if (newCompactionIndex == data.releaseIndex) {
+    return {
+        newCompactionIndex,
+        {CompactionStopReason::NotReleasedByStateMachine{data.releaseIndex}}};
+  } else {
+    TRI_ASSERT(newCompactionIndex == data.largestIndexToKeep);
+    return {newCompactionIndex,
+            {CompactionStopReason::LeaderBlocksReleaseEntry{}}};
+  }
+}
+
+void CompactionManager::checkCompaction(
+    Guarded<GuardedData>::mutex_guard_type guard) {
+  auto store = guard->storage.transaction();
+  auto logBounds = store->getLogBounds();
+
+  auto [index, reason] = calculateCompactionIndex(
+      guard.get(), logBounds, guard->_fullCompactionNextRound);
+
+  if (index > logBounds.from) {
+    auto& compaction = guard->status.inProgress.emplace();
+    compaction.time = CompactionStatus::clock ::now();
+    compaction.range = LogRange{logBounds.from, index};
+    guard->_compactionInProgress = true;
+    store->removeFront(index);
+  } else {
+    guard->status.stop = reason;
+  }
+}
+
+void CompactionManager::triggerAsyncCompaction(
+    Guarded<GuardedData>::mutex_guard_type guard, bool ignoreThreshold) {
+  guard->_fullCompactionNextRound |= ignoreThreshold;
+  if (not guard->_compactionInProgress) {
+    checkCompaction(std::move(guard));
+  }
 }

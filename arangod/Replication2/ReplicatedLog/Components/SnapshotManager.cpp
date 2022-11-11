@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SnapshotManager.h"
-
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto SnapshotManager::getSnapshotStatus() const noexcept

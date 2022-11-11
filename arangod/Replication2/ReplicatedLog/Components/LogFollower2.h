@@ -50,7 +50,7 @@
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
 namespace arangodb::replication2::replicated_log::refactor {
-
+/*
 struct IStateHandleManager {
   virtual ~IStateHandleManager() = default;
   virtual void updateCommitIndex(LogIndex) noexcept = 0;
@@ -183,5 +183,5 @@ struct LogFollowerImpl : ILogFollower {
 
   Guarded<FollowerManager> guarded;
 };
-
+*/
 }  // namespace arangodb::replication2::replicated_log::refactor

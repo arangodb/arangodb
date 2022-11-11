@@ -21,11 +21,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "Replication2/ReplicatedState/StateCommon.h"
 
 namespace arangodb::replication2 {
-namespace replicated_state {
-struct SnapshotStatus;
-}
 namespace replicated_log {
 inline namespace comp {
 enum class SnapshotState { INVALID, AVAILABLE };

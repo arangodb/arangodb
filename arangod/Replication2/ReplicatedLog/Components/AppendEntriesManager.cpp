@@ -29,15 +29,22 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
-
+/*
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   auto guard = guarded.getLockedGuard();
+  auto requestGuard = guard->requestInFlight.acquire();
+  if (not requestGuard) {
+    return AppendEntriesResult::withRejection(
+        LogTerm{1}, MessageId{0},
+        AppendEntriesErrorReason{
+            AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
+        false);
+  }
+
   if (auto error = guard->preflightChecks(); error) {
     return {std::move(*error)};
   }
-
-  guard->requestInFlight = true;
 
   {
     // Invalidate snapshot status if necessary.
@@ -86,13 +93,6 @@ AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
 
 auto AppendEntriesManager::GuardedData::preflightChecks()
     -> std::optional<AppendEntriesResult> {
-  if (requestInFlight) {
-    return AppendEntriesResult::withRejection(
-        LogTerm{1}, MessageId{0},
-        AppendEntriesErrorReason{
-            AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
-        false);
-  }
-
   return std::nullopt;
 }
+*/

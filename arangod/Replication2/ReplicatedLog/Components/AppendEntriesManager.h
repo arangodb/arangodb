@@ -23,6 +23,7 @@
 #pragma once
 #include <optional>
 #include "Basics/Guarded.h"
+#include "ExclusiveBool.h"
 
 namespace arangodb {
 class Result;
@@ -56,7 +57,7 @@ struct AppendEntriesManager
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot);
     auto preflightChecks() -> std::optional<AppendEntriesResult>;
 
-    bool requestInFlight{false};
+    ExclusiveBool requestInFlight;
 
     IStorageManager& storage;
     ISnapshotManager& snapshot;
