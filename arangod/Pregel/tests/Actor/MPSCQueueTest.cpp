@@ -49,8 +49,7 @@ TEST(MPSCQueue, gives_back_stuff_pushed) {
   queue.push(std::make_unique<MPSCStringMessage>("dha"));
   queue.push(std::make_unique<MPSCStringMessage>("tri"));
 
-  auto msg = static_cast<MPSCStringMessage*>(queue.pop().release());
-  EXPECT_EQ("aon", msg->content);
+  ASSERT_EQ("aon", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
   ASSERT_EQ("dha", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
   ASSERT_EQ("tri", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
 
