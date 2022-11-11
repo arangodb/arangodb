@@ -39,10 +39,23 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
 
  private:
   RestStatus executeByMethod(replication2::DocumentStateMethods const& methods);
+
   RestStatus handleGetRequest(
       replication2::DocumentStateMethods const& methods);
   RestStatus handleGetSnapshot(
       replication2::DocumentStateMethods const& methods,
-      replication2::LogId logId, std::string const& batch);
+      replication2::LogId const& logId);
+
+  RestStatus handlePostRequest(
+      replication2::DocumentStateMethods const& methods);
+  RestStatus handlePostSnapshot(
+      replication2::DocumentStateMethods const& methods,
+      replication2::LogId const& logId);
+
+  RestStatus handleDeleteRequest(
+      replication2::DocumentStateMethods const& methods);
+  RestStatus handleDeleteSnapshot(
+      replication2::DocumentStateMethods const& methods,
+      replication2::LogId const& logId);
 };
 }  // namespace arangodb

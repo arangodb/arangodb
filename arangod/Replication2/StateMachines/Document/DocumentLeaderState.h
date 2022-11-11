@@ -60,8 +60,13 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->size();
   }
 
-  auto getSnapshot(SnapshotOptions const& options, TRI_vocbase_t& vocbase)
-      -> ResultT<Snapshot>;
+  auto snapshotStart(SnapshotParams::Start const& params,
+                     TRI_vocbase_t& vocbase) -> ResultT<SnapshotBatch>;
+  auto snapshotNext(SnapshotParams::Next const& params)
+      -> ResultT<SnapshotBatch>;
+  auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
+  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
+  auto allSnapshotsStatus() -> ResultT<AllSnapshotsStatus>;
 
   LoggerContext const loggerContext;
   std::string_view const shardId;
@@ -81,7 +86,7 @@ struct DocumentLeaderState
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
   std::atomic_bool _isResigning;
-  Guarded<std::unordered_map<std::string, SnapshotIterator>, std::mutex>
-      _snapshotIterators;
+  Guarded<std::unordered_map<SnapshotId, Snapshot>, basics::UnshackledMutex>
+      _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document

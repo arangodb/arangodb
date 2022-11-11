@@ -34,7 +34,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 enum class OperationType;
-struct Snapshot;
+struct SnapshotBatch;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
@@ -62,7 +62,7 @@ struct DocumentFollowerState
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex,
-      futures::Future<ResultT<Snapshot>>&& snapshotFuture) noexcept
+      futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<Result>;
 
  private:

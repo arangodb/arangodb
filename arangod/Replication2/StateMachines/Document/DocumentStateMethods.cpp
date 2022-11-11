@@ -42,21 +42,41 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
   explicit DocumentStateMethodsDBServer(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase) {}
 
-  [[nodiscard]] auto getSnapshot(
-      LogId logId, replicated_state::document::SnapshotOptions& options) const
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override {
+  [[nodiscard]] auto processSnapshotRequest(
+      LogId logId, replicated_state::document::SnapshotParams params) const
+      -> ResultT<velocypack::SharedSlice> override {
+    using namespace replicated_state;
+
     auto leaderResult = getDocumentStateLeaderById(logId);
     if (leaderResult.fail()) {
       return leaderResult.result();
     }
     auto leader = leaderResult.get();
-    auto result = leader->getSnapshot(options, _vocbase);
-    if (result.fail()) {
-      return result.result();
-    }
 
-    return futures::Future<ResultT<velocypack::SharedSlice>>{
-        velocypack::serialize(result.get())};
+    return std::visit(
+        overload{
+            [&](document::SnapshotParams::Start& params) {
+              return processResult(leader->snapshotStart(params, _vocbase));
+            },
+            [&](document::SnapshotParams::Next& params) {
+              return processResult(leader->snapshotNext(params));
+            },
+            [&](document::SnapshotParams::Finish& params) {
+              auto result = leader->snapshotFinish(params);
+              if (result.fail()) {
+                return ResultT<velocypack::SharedSlice>::error(result);
+              }
+              return ResultT<velocypack::SharedSlice>::success(
+                  velocypack::SharedSlice{});
+            },
+            [&](document::SnapshotParams::Status& params) {
+              if (params.id.has_value()) {
+                return processResult(leader->snapshotStatus(*params.id));
+              }
+              return processResult(leader->allSnapshotsStatus());
+            },
+        },
+        params.params);
   }
 
  private:
@@ -83,6 +103,16 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
                       logId));
     }
     return leader;
+  }
+
+  template<typename T>
+  [[nodiscard]] auto processResult(ResultT<T> result) const
+      -> ResultT<velocypack::SharedSlice> {
+    if (result.fail()) {
+      return ResultT<velocypack::SharedSlice>::error(result.result());
+    }
+    return ResultT<velocypack::SharedSlice>::success(
+        velocypack::serialize(result.get()));
   }
 
  private:

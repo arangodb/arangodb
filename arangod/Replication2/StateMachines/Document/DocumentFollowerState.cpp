@@ -71,8 +71,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
         // A follower may request a snapshot before leadership has been
         // established. A retry will occur in that case.
         auto leader = self->_networkHandler->getLeaderInterface(destination);
-        auto fut = leader->getSnapshot(waitForIndex, std::string{"first"});
-
+        auto fut = leader->startSnapshot(waitForIndex);
         return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
                                             std::move(fut));
       });
@@ -157,11 +156,11 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     LogIndex waitForIndex,
-    futures::Future<ResultT<Snapshot>>&& transferFuture) noexcept
+    futures::Future<ResultT<SnapshotBatch>>&& transferFuture) noexcept
     -> futures::Future<Result> {
   return std::move(transferFuture)
       .then([weak = weak_from_this(), leader = std::move(leader),
-             waitForIndex](futures::Try<ResultT<Snapshot>>&& tryResult) mutable
+             waitForIndex](futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
         if (self == nullptr) {
@@ -179,12 +178,10 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return snapshotRes.result();
         }
 
-        auto& docs = snapshotRes->documents;
-        if (docs.isNone()) {
-          // No documents to insert. We are done.
-          return {TRI_ERROR_NO_ERROR};
-        }
+        // Will be removed once we introduce collection groups
+        TRI_ASSERT(snapshotRes->shard == self->shardId);
 
+        auto& docs = snapshotRes->payload;
         auto insertRes = self->_guardedData.doUnderLock(
             [&self, &docs](auto& data) -> Result {
               if (data.didResign()) {
@@ -196,9 +193,12 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return insertRes;
         }
 
-        auto fut = leader->getSnapshot(waitForIndex, std::string{"next"});
-        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                            std::move(fut));
+        if (snapshotRes->hasMore) {
+          auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
+          return self->handleSnapshotTransfer(std::move(leader), waitForIndex, std::move(fut));
+        }
+
+        return leader->finishSnapshot(snapshotRes->snapshotId);
       });
 }
 

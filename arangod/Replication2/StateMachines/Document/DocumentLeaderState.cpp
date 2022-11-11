@@ -52,7 +52,7 @@ auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
-  _snapshotIterators.getLockedGuard()->clear();
+  _snapshots.getLockedGuard()->clear();
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     for (auto const& trx : activeTransactions.getTransactions()) {
@@ -176,60 +176,99 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
-auto DocumentLeaderState::getSnapshot(SnapshotOptions const& options,
-                                      TRI_vocbase_t& vocbase)
-    -> ResultT<Snapshot> {
-  if (_isResigning.load()) {
-    return ResultT<Snapshot>::error(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-        fmt::format("Leader resigned for shard {}", shardId));
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params,
+                                        TRI_vocbase_t& vocbase)
+    -> ResultT<SnapshotBatch> {
+  auto logicalCollection = vocbase.lookupCollection(shardId);
+  if (logicalCollection == nullptr) {
+    return ResultT<SnapshotBatch>::error(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        fmt::format("Collection {} not found", shardId));
   }
 
-  if (options.batch == options.kFirst) {
-    auto logicalCollection = vocbase.lookupCollection(shardId);
-    if (logicalCollection == nullptr) {
-      return ResultT<Snapshot>::error(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Collection {} not found", shardId));
+  return _snapshots.doUnderLock(
+      [&, logicalCollection =
+              std::move(logicalCollection)](auto& snapshots) mutable {
+        if (_isResigning.load()) {
+          return ResultT<SnapshotBatch>::error(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+              fmt::format("Leader resigned for shard {}", shardId));
+        }
+
+        auto emplacement = snapshots.emplace(
+            std::piecewise_construct, std::forward_as_tuple(params.id),
+            std::forward_as_tuple(params.id, std::move(logicalCollection)));
+        TRI_ASSERT(emplacement.second);
+
+        return emplacement.first->second.fetch();
+      });
+}
+
+auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
+    -> ResultT<SnapshotBatch> {
+  return _snapshots.doUnderLock([&](auto& snapshots) {
+    if (_isResigning.load()) {
+      return ResultT<SnapshotBatch>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
     }
-    return _snapshotIterators.doUnderLock(
-        [&options, logicalCollection = std::move(logicalCollection)](
-            auto& snapshotIterators) mutable {
-          try {
-            snapshotIterators.erase(options.clientId);
-            auto emplacement = snapshotIterators.emplace(
-                options.clientId, std::move(logicalCollection));
-            TRI_ASSERT(emplacement.second);
+    auto it = snapshots.find(params.id);
+    if (it == snapshots.end()) {
+      return ResultT<SnapshotBatch>::error(
+          TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", params.id));
+    }
+    return it->second.fetch();
+  });
+}
 
-            // TODO improve cleanup
-            auto snapshot = emplacement.first->second.next();
-            if (snapshot.documents.isNone()) {
-              snapshotIterators.erase(emplacement.first);
-            }
+auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
+    -> Result {
+  return _snapshots.doUnderLock([&](auto& snapshots) {
+    if (_isResigning.load()) {
+      return Result(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                    fmt::format("Leader resigned for shard {}", shardId));
+    }
+    auto it = snapshots.find(params.id);
+    if (it == snapshots.end()) {
+      return Result{TRI_ERROR_INTERNAL,
+                    fmt::format("Snapshot {} not found", params.id)};
+    }
+    return it->second.finish();
+  });
+}
 
-            return ResultT<Snapshot>::success(std::move(snapshot));
-          } catch (basics::Exception const& ex) {
-            return ResultT<Snapshot>::error(ex.code(), ex.what());
-          }
-        });
-  }
-
-  TRI_ASSERT(options.batch == options.kNext);
-  return _snapshotIterators.doUnderLock([&options](auto& snapshotIterators) {
-    auto it = snapshotIterators.find(options.clientId);
-    if (it == snapshotIterators.end()) {
-      return ResultT<Snapshot>::error(
-          TRI_ERROR_INTERNAL,
-          fmt::format("No snapshot for client {}", options.clientId));
+auto DocumentLeaderState::snapshotStatus(SnapshotId id)
+    -> ResultT<SnapshotStatus> {
+  return _snapshots.doUnderLock([&](auto& snapshots) {
+    if (_isResigning.load()) {
+      return ResultT<SnapshotStatus>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
     }
 
-    // TODO improve cleanup
-    auto snapshot = it->second.next();
-    if (snapshot.documents.isNone()) {
-      snapshotIterators.erase(it);
+    auto it = snapshots.find(id);
+    if (it == snapshots.end()) {
+      return ResultT<SnapshotStatus>::error(
+          TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
+    }
+    return ResultT<SnapshotStatus>::success(it->second.status());
+  });
+}
+
+auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
+  return _snapshots.doUnderLock([&](auto& snapshots) {
+    if (_isResigning.load()) {
+      return ResultT<AllSnapshotsStatus>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
     }
 
-    return ResultT<Snapshot>::success(std::move(snapshot));
+    std::unordered_map<SnapshotId, SnapshotStatus> result;
+    for (auto& it : snapshots) {
+      result.emplace(it.first, it.second.status());
+    }
+    return ResultT<AllSnapshotsStatus>::success(
+        AllSnapshotsStatus{std::move(result)});
   });
 }
 
