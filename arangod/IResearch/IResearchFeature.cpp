@@ -906,9 +906,8 @@ void IResearchFeature::collectOptions(
                   "tasks (0 = auto-detect).",
                   new options::UInt32Parameter(&_threads))
       .setDeprecatedIn(30705)
-      .setLongDescription(
-          R"(From version 3.7.5 on, the commit and consolidation
-thread counts should be set separately via the following options instead:
+      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+and consolidation thread counts separately via the following options instead:
 
 - `--arangosearch.commit-threads`
 - `--arangosearch.commit-threads-idle`

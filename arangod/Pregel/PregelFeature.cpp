@@ -349,10 +349,9 @@ Defaults to the number of available cores.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
-      .setLongDescription(
-          R"(If set to `true`, Pregel jobs store their temporary
-data in disk-backed memory-mapped files. If set to `false`, the temporary data
-of Pregel jobs is buffered in main memory.
+      .setLongDescription(R"(If set to `true`, Pregel jobs store their
+temporary data in disk-backed memory-mapped files. If set to `false`, the
+temporary data of Pregel jobs is buffered in main memory.
 
 Memory-mapped files are used by default. This has the advantage of a lower RAM
 utilization, which reduces the likelihood of out-of-memory situations. However,

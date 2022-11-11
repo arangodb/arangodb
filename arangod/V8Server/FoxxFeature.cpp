@@ -60,9 +60,8 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(If set to `true`, the Foxx queues are available and
-jobs in the queues are executed asynchronously.
+      .setLongDescription(R"(If set to `true`, the Foxx queues are available
+and jobs in the queues are executed asynchronously.
 
 If set to `false`, the queue manager is disabled and any jobs are prevented from
 being processed, which may reduce CPU load a bit.)");
