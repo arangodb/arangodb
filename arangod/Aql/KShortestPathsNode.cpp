@@ -391,10 +391,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
       BaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          opts->collectionToShard());
+          opts->collectionToShard(), opts->produceVertices());
       BaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
-          opts->getExpressionCtx(), opts->collectionToShard());
+          opts->getExpressionCtx(), opts->collectionToShard(),
+          opts->produceVertices());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
@@ -441,10 +442,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     } else {
       auto cache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
-      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(),
-                                                        false);
-      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(),
-                                                         true);
+      ClusterBaseProviderOptions forwardProviderOptions(
+          cache, engines(), false, opts->produceVertices());
+      ClusterBaseProviderOptions backwardProviderOptions(
+          cache, engines(), true, opts->produceVertices());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {

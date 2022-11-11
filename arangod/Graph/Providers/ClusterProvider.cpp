@@ -134,21 +134,39 @@ auto ClusterProvider::startVertex(VertexType vertex, size_t depth,
 
 void ClusterProvider::fetchVerticesFromEngines(
     std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
-  auto const* engines = _opts.engines();
-  // slow path, sharding not deducable from _id
+  bool mustSend = false;
+
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
-  leased->add("keys", VPackValue(VPackValueType::Array));
-  for (auto const& looseEnd : looseEnds) {
-    TRI_ASSERT(looseEnd->isLooseEnd());
-    auto const& vertexId = looseEnd->getVertex().getID();
-    if (!_opts.getCache()->isVertexCached(vertexId)) {
-      leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
-                                 VPackValueType::String));
+
+  if (_opts.produceVertices()) {
+    // slow path, sharding not deducable from _id
+    leased->add("keys", VPackValue(VPackValueType::Array));
+    for (auto const& looseEnd : looseEnds) {
+      TRI_ASSERT(looseEnd->isLooseEnd());
+      auto const& vertexId = looseEnd->getVertex().getID();
+      if (!_opts.getCache()->isVertexCached(vertexId)) {
+        leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
+                                   VPackValueType::String));
+        mustSend = true;
+      }
     }
+    leased->close();  // 'keys' Array
   }
-  leased->close();  // 'keys' Array
+
   leased->close();  // base object
+
+  if (!mustSend) {
+    // nothing to send. save requests...
+    for (auto const& looseEnd : looseEnds) {
+      auto const& vertexId = looseEnd->getVertex().getID();
+      if (!_opts.getCache()->isVertexCached(vertexId)) {
+        _opts.getCache()->cacheVertex(vertexId, VPackSlice::nullSlice());
+      }
+      result.emplace_back(looseEnd);
+    }
+    return;
+  }
 
   auto* pool = trx()->vocbase().server().getFeature<NetworkFeature>().pool();
 
@@ -156,6 +174,7 @@ void ClusterProvider::fetchVerticesFromEngines(
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
+  auto const* engines = _opts.engines();
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
@@ -241,6 +260,8 @@ void ClusterProvider::fetchVerticesFromEngines(
     }
     result.emplace_back(std::move(lE));
   }
+
+  _stats.addHttpRequests(_opts.engines()->size());
 }
 
 void ClusterProvider::destroyEngines() {
@@ -388,7 +409,6 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   if (looseEnds.size() > 0) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
-    _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
       if (_vertexConnectedEdges.find(step->getVertex().getID()) ==

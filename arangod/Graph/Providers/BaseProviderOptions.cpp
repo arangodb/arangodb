@@ -77,12 +77,14 @@ BaseProviderOptions::BaseProviderOptions(
         indexInfo,
     aql::FixedVarExpressionContext& expressionContext,
     std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap)
+        collectionToShardMap,
+    bool produceVertices)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap),
-      _weightCallback(std::nullopt) {}
+      _weightCallback(std::nullopt),
+      _produceVertices(produceVertices) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -104,8 +106,12 @@ aql::FixedVarExpressionContext& BaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool BaseProviderOptions::hasWeightMethod() const {
+bool BaseProviderOptions::hasWeightMethod() const noexcept {
   return _weightCallback.has_value();
+}
+
+bool BaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
 }
 
 void BaseProviderOptions::setWeightEdgeCallback(WeightCallback callback) {
@@ -123,8 +129,12 @@ double BaseProviderOptions::weightEdge(double prefixWeight,
 
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
-    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+    bool produceVertices)
+    : _cache(std::move(cache)),
+      _engines(engines),
+      _backward(backward),
+      _produceVertices(produceVertices) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -134,7 +144,13 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   return _cache.get();
 }
 
-bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+bool ClusterBaseProviderOptions::isBackward() const noexcept {
+  return _backward;
+}
+
+bool ClusterBaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
+}
 
 std::unordered_map<ServerID, aql::EngineId> const*
 ClusterBaseProviderOptions::engines() const {

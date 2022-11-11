@@ -66,6 +66,7 @@
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -6287,6 +6288,86 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     for (auto const& n : nodes) {
       TraversalConditionFinder finder(plan.get(), &modified);
       n->walk(finder);
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief optimizes away unused K_PATHS things
+void arangodb::aql::optimizePathsRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
+  ::arangodb::containers::SmallVector<
+      ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::K_SHORTEST_PATHS, true);
+
+  if (nodes.empty()) {
+    // no traversals present
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
+  for (auto const& n : nodes) {
+    KShortestPathsNode* ksp = ExecutionNode::castTo<KShortestPathsNode*>(n);
+    if (!ksp->usesPathOutVariable()) {
+      continue;
+    }
+
+    Variable const* variable = &(ksp->pathOutVariable());
+
+    std::unordered_set<std::string> attributes;
+    VarSet vars;
+    bool canOptimize = true;
+
+    ExecutionNode* current = ksp->getFirstParent();
+    while (current != nullptr && canOptimize) {
+      switch (current->getType()) {
+        case EN::CALCULATION: {
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            // path variable used here
+            Expression* exp =
+                ExecutionNode::castTo<CalculationNode*>(current)->expression();
+            AstNode const* node = exp->node();
+            if (!Ast::getReferencedAttributes(node, variable, attributes)) {
+              // full path variable is used, or accessed in a way that we don't
+              // understand, e.g. "p" or "p[0]" or "p[*]..."
+              canOptimize = false;
+            }
+          }
+          break;
+        }
+        default: {
+          // if the path is used by any other node type, we don't know what to
+          // do and will not optimize parts of it away
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            canOptimize = false;
+          }
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    }
+
+    if (canOptimize) {
+      bool produceVertices =
+          (attributes.find(StaticStrings::GraphQueryVertices) !=
+           attributes.end());
+
+      if (!produceVertices) {
+        auto* options = ksp->options();
+        options->setProduceVertices(false);
+        modified = true;
+      }
     }
   }
 
