@@ -1474,10 +1474,12 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #   endforeach ()
 # endif ()
 
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
 if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
   add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()

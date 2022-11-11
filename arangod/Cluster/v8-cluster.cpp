@@ -28,7 +28,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"

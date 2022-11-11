@@ -31,7 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
