@@ -963,6 +963,12 @@ Result IResearchDataStore::commitUnsafeImpl(
 
       commitLock.lock();
     }
+    _commitStageOne = true;
+    auto stageOneGuard = absl::Cleanup{
+        [&, lastCommittedTickOne = _lastCommittedTickOne]() noexcept {
+          _lastCommittedTickOne = lastCommittedTickOne;
+        }};
+    auto const lastTickBeforeCommitOne = _engine->currentTick();
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
       std::unique_lock sync{_t3FailureSync};
@@ -975,12 +981,6 @@ Result IResearchDataStore::commitUnsafeImpl(
       LOG_TOPIC("4cb66", DEBUG, TOPIC) << "Commit started";
     }
 #endif
-    _commitStageOne = true;
-    auto stageOneGuard = absl::Cleanup{
-        [&, lastCommittedTickOne = _lastCommittedTickOne]() noexcept {
-          _lastCommittedTickOne = lastCommittedTickOne;
-        }};
-    auto const lastTickBeforeCommitOne = _engine->currentTick();
     auto const commitOne = _dataStore._writer->commit(progress);
     std::move(stageOneGuard).Cancel();
     if (!commitOne) {

@@ -161,7 +161,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       continue;
     }
     auto apply = [&](auto& impl) {
-      if (tick <= impl.recoveryTickHigh()) {
+      if (tick > impl.recoveryTickHigh()) {
         mustReplay = true;
         return;
       }
