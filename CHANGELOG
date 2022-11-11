@@ -1,8 +1,12 @@
-v3.10.1 (XXXX-XX-XX)
+v3.10.2 (XXXX-XX-XX)
 --------------------
 
 * Fix disk space metrics rocksdb_free_disk_space and rocksdb_total_disk_space 
   on macOS. Previously, they seem to have reported wrong values.
+
+
+v3.10.1 (XXXX-XX-XX)
+--------------------
 
 * Updated OpenSSL to 1.1.1s.
 
