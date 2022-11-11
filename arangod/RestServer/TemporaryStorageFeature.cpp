@@ -145,7 +145,7 @@ spillover feature. The directory must not be located underneath the instance's
 database directory.
 
 The threshold value to start spilling data onto disk is either a number of rows
-in the query input or an amount of memory used in bytes, which you can set as
+produced by a query or an amount of memory used in bytes, which you can set as
 query options (`spillOverThresholdNumRows` and `spillOverThresholdMemoryUsage`).
 
 **Note**: This feature is experimental and is turned off by default.
