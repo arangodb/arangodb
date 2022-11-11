@@ -43,6 +43,7 @@ struct MPSCQueue {
   MPSCQueue() : stub{}, head(&stub), tail(&stub) {}
 
   auto push_internal(Node *value) -> void {
+    value->next.store(nullptr);
     auto prev = head.exchange(value);
     prev->next.store(value);
   }
@@ -57,31 +58,50 @@ struct MPSCQueue {
     auto next = current->next.load();
 
     if (current == &stub) {
+      // stub->next == nullptr means the queue
+      // currently does not contain reachable
+      // elements
       if (nullptr == next) {
         return nullptr;
       }
+      // otherwise just move on past stub.
       tail.store(next);
       current = next;
       next = next->next.load();
     }
 
+    // not reached the current head yet.
     if (next != nullptr) {
+      //  move tail
       tail.store(next);
-      // FIXME
+      // don't leak a pointer into the queue
+      current->next.store(nullptr);
       return std::unique_ptr<Node>(current);
     }
 
+    // we are now at the end of the
+    // *visible* linear list;
     auto currenth = head.load();
     if (current != currenth) {
       return nullptr;
     }
 
+    // we are in the situation where we popped
+    // everything up to the last element (which
+    // head points at!)
+    // Since someone else could still be trying
+    // to add stuff to us, we add the stub so
+    // they can
     push_internal(&stub);
 
+    // might be stub. or anything else. but
+    // we don't care, we just move on
     next = current->next.load();
 
     if (next != nullptr) {
       tail.store(next);
+      // do not leak pointer into queue
+      current->next.store(nullptr);
       return std::unique_ptr<Node>(current);
     }
 
