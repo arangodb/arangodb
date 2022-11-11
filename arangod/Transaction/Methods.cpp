@@ -90,6 +90,19 @@ using Future = futures::Future<T>;
 
 namespace {
 
+template<Methods::CallbacksTag tag>
+struct ToType;
+
+template<>
+struct ToType<Methods::CallbacksTag::StatusChange> {
+  using Type = Methods::StatusChangeCallback;
+};
+
+template<>
+struct ToType<Methods::CallbacksTag::PreCommit> {
+  using Type = Methods::PreCommitCallback;
+};
+
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
                                TRI_voc_document_operation_e opType,
@@ -266,7 +279,7 @@ getDataSourceRegistrationCallbacks() {
 ///         or nullptr if none and !create
 template<Methods::CallbacksTag tag>
 auto* getCallbacks(TransactionState& state, bool create = false) {
-  using Callback = typename Methods::ToType<tag>::Type;
+  using Callback = typename ToType<tag>::Type;
   struct CookieType : public TransactionState::Cookie {
     std::vector<Callback const*> _callbacks;
   };

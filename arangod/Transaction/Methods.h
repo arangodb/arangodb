@@ -146,17 +146,6 @@ class Methods {
                                                   transaction::Status status)>;
   using PreCommitCallback = std::function<void(transaction::Methods& trx)>;
 
-  template<CallbacksTag tag>
-  struct ToType {
-    static_assert(tag == CallbacksTag::StatusChange);
-    using Type = StatusChangeCallback;
-  };
-
-  template<>
-  struct ToType<CallbacksTag::PreCommit> {
-    using Type = PreCommitCallback;
-  };
-
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
   /// @note not thread-safe on the assumption of static factory registration
