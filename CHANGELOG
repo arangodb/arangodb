@@ -1,7 +1,11 @@
-v3.9.5 (XXXX-XX-XX)
+v3.9.6 (XXXX-XX-XX)
 -------------------
 
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
+
+v3.9.5 (XXXX-XX-XX)
+-------------------
 
 * Show number of HTTP requests in cluster query profiles.
 
