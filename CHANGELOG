@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
 * Removed assertions from cluster rebalance js test that obligated the rebalance
