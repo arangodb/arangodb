@@ -409,7 +409,7 @@ class instanceManager {
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
     try {
       this.tcpdump = executeExternal(prog, args);
-      sleep(1);
+      sleep(5);
       let exitStatus = statusExternal(this.tcpdump.pid, false);
       if (exitStatus.status !== "RUNNING") {
         crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${JSON.stringify(exitStatus)} '${prog}' ${JSON.stringify(args)}`;
