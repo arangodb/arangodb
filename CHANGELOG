@@ -8,7 +8,7 @@ v3.10.2 (XXXX-XX-XX)
   the addition of the AT LEAST and WITH COUNT INTO constructs.
 
 
-v3.10.1 (XXXX-XX-XX)
+v3.10.1 (2022-11-04)
 --------------------
 
 * Updated OpenSSL to 1.1.1s.
