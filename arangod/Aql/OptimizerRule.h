@@ -202,6 +202,10 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // optimize K_PATHS
+    optimizePathsRule,
+
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
