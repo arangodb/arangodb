@@ -26,82 +26,81 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "Actor/MPSCQueue.h"
+#include "Actor/SimpleQueue.h"
 #include "Basics/ThreadGuard.h"
 
 #include "fmt/core.h"
 
 using namespace arangodb;
-using namespace arangodb::pregel::mpscqueue;
+using namespace arangodb::pregel::simplequeue;
 
-struct MPSCStringMessage : MPSCQueue::Node {
-  MPSCStringMessage(std::string content) : content(std::move(content)) {}
+struct SimpleStringMessage : SimpleQueue::Node {
+  SimpleStringMessage(std::string content) : content(std::move(content)) {}
   std::string content;
 };
 
 // this test just pushes and pops some messages to see whether the
 // queue works properly in the absence of
 // concurrency.
-TEST(MPSCQueue, gives_back_stuff_pushed) {
-  auto queue = MPSCQueue();
+TEST(SimpleQueue, gives_back_stuff_pushed) {
+  auto queue = SimpleQueue();
 
-  queue.push(std::make_unique<MPSCStringMessage>("aon"));
-  queue.push(std::make_unique<MPSCStringMessage>("dha"));
-  queue.push(std::make_unique<MPSCStringMessage>("tri"));
+  queue.push(std::make_unique<SimpleStringMessage>("aon"));
+  queue.push(std::make_unique<SimpleStringMessage>("dha"));
+  queue.push(std::make_unique<SimpleStringMessage>("tri"));
 
-  auto msg = static_cast<MPSCStringMessage*>(queue.pop().release());
-  EXPECT_EQ("aon", msg->content);
-  ASSERT_EQ("dha", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("tri", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("aon", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("dha", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("tri", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
 
   // here the queue should be empty
   ASSERT_EQ(nullptr, queue.pop());
 
-  queue.push(std::make_unique<MPSCStringMessage>("ceithir"));
-  queue.push(std::make_unique<MPSCStringMessage>("dannsa"));
+  queue.push(std::make_unique<SimpleStringMessage>("ceithir"));
+  queue.push(std::make_unique<SimpleStringMessage>("dannsa"));
 
-  ASSERT_EQ("ceithir", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("dannsa", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("ceithir", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("dannsa", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
 
   // empty again!
   ASSERT_EQ(nullptr, queue.pop());
 
-  queue.push(std::make_unique<MPSCStringMessage>("coig"));
+  queue.push(std::make_unique<SimpleStringMessage>("coig"));
 
-  ASSERT_EQ("coig", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("coig", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
 
   // not empty
-  queue.push(std::make_unique<MPSCStringMessage>("sia"));
-  ASSERT_EQ("sia", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  queue.push(std::make_unique<SimpleStringMessage>("sia"));
+  ASSERT_EQ("sia", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
 
   ASSERT_EQ(nullptr, queue.pop());
 }
 
-struct MPSCThreadMessage : MPSCQueue::Node {
-  MPSCThreadMessage(size_t threadId, size_t messageId)
+struct SimpleThreadMessage : SimpleQueue::Node {
+  SimpleThreadMessage(size_t threadId, size_t messageId)
       : threadId(threadId), messageId(messageId) {}
   size_t threadId{};
   size_t messageId{};
 };
 
 // This test starts a number of system threads that push
-// Apart from checking that this process doesn't crash
 // messages onto the message queue, and an additional
 // thread that keeps reading messages from the queue;
 //
+// Apart from checking that this process doesn't crash
 // the test checks that every message id from every thread
 // has been read in the consumer.
-TEST(MPSCQueue, threads_push_stuff_comes_out) {
+TEST(SimpleQueue, threads_push_stuff_comes_out) {
   constexpr auto numberThreads = size_t{125};
   constexpr auto numberMessages = size_t{10000};
 
-  auto queue = MPSCQueue();
+  auto queue = SimpleQueue();
   auto threads = ThreadGuard();
 
   for (auto threadId = size_t{0}; threadId < numberThreads; ++threadId) {
     threads.emplace([&queue, threadId]() {
       for (size_t msgN = 0; msgN < numberMessages; ++msgN) {
-        queue.push(std::make_unique<MPSCThreadMessage>(threadId, msgN));
+        queue.push(std::make_unique<SimpleThreadMessage>(threadId, msgN));
       }
     });
   }
@@ -117,7 +116,7 @@ TEST(MPSCQueue, threads_push_stuff_comes_out) {
     while (true) {
       auto rcv = queue.pop();
       if (rcv != nullptr) {
-        auto msg = static_cast<MPSCThreadMessage*>(rcv.release());
+        auto msg = static_cast<SimpleThreadMessage*>(rcv.release());
         receivedIds[msg->threadId][msg->messageId] = true;
         counter++;
 

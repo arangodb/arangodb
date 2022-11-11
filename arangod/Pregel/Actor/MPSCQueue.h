@@ -36,7 +36,7 @@ namespace arangodb::pregel::mpscqueue {
 
 struct MPSCQueue {
   struct Node {
-    virtual ~Node() = default;
+  virtual ~Node() = default;
     std::atomic<Node*> next{nullptr};
   };
 
