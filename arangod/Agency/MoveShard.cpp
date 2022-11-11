@@ -186,9 +186,9 @@ bool MoveShard::checkLeaderFollowerCurrent(
   for (auto const& s : shardsLikeMe) {
     auto sharedPath = _database + "/" + s.collection + "/";
     auto currentServersPath = curColPrefix + sharedPath + s.shard + "/servers";
-    auto [serverList, ok] = _snapshot.hasAsArray(currentServersPath);
-    if (ok && serverList.length() > 0) {
-      if (_from != serverList[0].stringView()) {
+    auto const& serverList = _snapshot.hasAsArray(currentServersPath);
+    if (serverList.second && serverList.first.length() > 0) {
+      if (_from != serverList.first[0].stringView()) {
         LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
             << "MoveShard: From server " << _from
             << " has not yet assumed leadership for collection " << s.collection
@@ -198,7 +198,7 @@ bool MoveShard::checkLeaderFollowerCurrent(
         break;
       }
       bool toFound = false;
-      for (auto server : VPackArrayIterator(serverList)) {
+      for (auto server : VPackArrayIterator(serverList.first)) {
         if (_to == server.stringView()) {
           toFound = true;
           break;
