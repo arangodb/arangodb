@@ -1,6 +1,9 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
 * Fix disk space metrics rocksdb_free_disk_space and rocksdb_total_disk_space 
   on macOS. Previously, they seem to have reported wrong values.
 
