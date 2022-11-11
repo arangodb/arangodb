@@ -73,10 +73,10 @@ auto inspect(Inspector& f, GraphIndex& x) {
 struct TraversalNode : optimizer2::nodes::GraphNode {
   // inner structs
   optimizer2::types::TraverserOptions options;
-  GraphIndex graphIndex;
+//  GraphIndex graphIndex;
 
   // main
-  AttributeTypes::String vertexId;
+  std::optional<AttributeTypes::String> vertexId;
 
   // conditions
   std::optional<optimizer2::types::Expression> condition;
@@ -106,7 +106,6 @@ struct TraversalNode : optimizer2::nodes::GraphNode {
   std::optional<std::vector<optimizer2::types::Variable>> variables;
 
   // variables
-
   std::optional<optimizer2::types::Variable> inVariable;
 
   // => [v,e,p]
@@ -119,7 +118,7 @@ auto inspect(Inspector& f, TraversalNode& x) {
       //structs
       f.embedFields(static_cast<optimizer2::nodes::GraphNode&>(x)),
       f.field("options", x.options),
-      f.field("indexes", x.graphIndex),
+//      f.field("indexes", x.graphIndex),
       // main
       f.field("vertexId", x.vertexId),
       // conditions

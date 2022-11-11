@@ -1381,4 +1381,88 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
 
+optimizer2::nodes::TraversalNode TraversalNode::toInspectable() const {
+  TRI_ASSERT(_fromCondition != nullptr);
+  TRI_ASSERT(_toCondition != nullptr);
+
+  auto options = dynamic_cast<TraverserOptions&>(*_options);
+  std::optional<optimizer2::AttributeTypes::String> vertexId;
+  std::optional<optimizer2::types::Variable> inVariable;
+  std::optional<optimizer2::types::Expression> condition;
+  std::optional<std::vector<optimizer2::types::Expression>>
+      globalEdgeConditions;
+  std::optional<std::vector<optimizer2::types::Expression>>
+      globalVertexConditions;
+  std::optional<std::vector<optimizer2::types::Variable>> conditionVariables;
+  std::optional<std::map<std::string, optimizer2::types::Expression>>
+      edgeConditions;
+  std::optional<std::map<std::string, optimizer2::types::Expression>>
+      vertexConditions;
+
+  if (usesInVariable()) {
+    inVariable.emplace(_inVariable->toInspectable());
+  } else {
+    vertexId.emplace(_vertexId);
+  }
+
+  if (_condition != nullptr) {
+    std::optional<optimizer2::types::Expression> tempCondition =
+        _condition->toInspectable();
+    condition.swap(tempCondition);
+  }
+
+  if (!_globalEdgeConditions.empty()) {
+    std::vector<optimizer2::types::Expression> tempGlobalEdgeConditions;
+    for (auto const& it : _globalEdgeConditions) {
+      tempGlobalEdgeConditions.push_back(it->toInspectable(true));
+    }
+    globalEdgeConditions.emplace(tempGlobalEdgeConditions);
+  }
+
+  if (!_globalVertexConditions.empty()) {
+    std::vector<optimizer2::types::Expression> tempGlobalVertexConditions;
+    for (auto const& it : _globalVertexConditions) {
+      tempGlobalVertexConditions.push_back(it->toInspectable(true));
+    }
+    globalVertexConditions.emplace(tempGlobalVertexConditions);
+  }
+
+  if (!_conditionVariables.empty()) {
+    std::vector<optimizer2::types::Variable> tempConditionVariables;
+    for (auto const& it : _conditionVariables) {
+      tempConditionVariables.push_back(it->toInspectable());
+    }
+    conditionVariables.emplace(tempConditionVariables);
+  }
+
+  if (!_edgeConditions.empty()) {
+    std::map<std::string, optimizer2::types::Expression> tempEdgeCondtions;
+    for (auto const& it : _edgeConditions) {
+      tempEdgeCondtions[basics::StringUtils::itoa(it.first)] = it.second;
+    }
+    edgeConditions.emplace(tempEdgeCondtions);
+  }
+
+  if (!_vertexConditions.empty()) {
+    std::map<std::string, optimizer2::types::Expression> tempVertexConditions;
+    for (auto const&)
+  }
+
+  optimizer2::nodes::TraversalNode traversal_node{
+      GraphNode::toInspectable("traversal"),
+      options.toInspectable(),
+      vertexId,
+      condition,
+      globalEdgeConditions,
+      globalVertexConditions,
+      conditionVariables,
+      _fromCondition->toInspectable(true),
+      _toCondition->toInspectable(true),
+      edgeConditions,
+      vertexConditions
+      inVariable};
+
+  return traversal_node;
+}
+
 #endif

@@ -30,6 +30,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "PruneExpressionEvaluator.h"
 #include "TraversalExecutor.h"
+#include "Aql/Optimizer2/PlanNodes/TraversalNode.h"
 
 namespace arangodb {
 
@@ -236,6 +237,8 @@ class TraversalNode : public virtual GraphNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  optimizer2::nodes::TraversalNode toInspectable() const;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

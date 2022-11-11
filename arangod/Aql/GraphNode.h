@@ -32,6 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "Aql/Optimizer2/PlanNodes/GraphNode.h"
+#include "Graph/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
 
