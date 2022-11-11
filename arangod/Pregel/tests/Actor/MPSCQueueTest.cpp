@@ -39,32 +39,41 @@ struct Message : MPSCQueue::Node {
   std::string content;
 };
 
+// this test just pushes and pops some messages to see whether the
+// queue works properly in the absence of
+// concurrency.
 TEST(MPSCQueue, gives_back_stuff_pushed) {
   auto queue = MPSCQueue();
 
   queue.push(std::make_unique<Message>("aon"));
   queue.push(std::make_unique<Message>("dha"));
   queue.push(std::make_unique<Message>("tri"));
+
+  ASSERT_EQ("aon", static_cast<Message*>(queue.pop().release())->content);
+  ASSERT_EQ("dha", static_cast<Message*>(queue.pop().release())->content);
+  ASSERT_EQ("tri", static_cast<Message*>(queue.pop().release())->content);
+
+  // here the queue should be empty
+  ASSERT_EQ(nullptr, queue.pop());
+
   queue.push(std::make_unique<Message>("ceithir"));
   queue.push(std::make_unique<Message>("dannsa"));
 
-  auto msg1 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ("aon", msg1->content);
+  ASSERT_EQ("ceithir", static_cast<Message*>(queue.pop().release())->content);
+  ASSERT_EQ("dannsa", static_cast<Message*>(queue.pop().release())->content);
 
-  auto msg2 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ("dha", msg2->content);
+  // empty again!
+  ASSERT_EQ(nullptr, queue.pop());
 
-  auto msg3 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ("tri", msg3->content);
+  queue.push(std::make_unique<Message>("coig"));
 
-  auto msg4 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ("ceithir", msg4->content);
+  ASSERT_EQ("coig", static_cast<Message*>(queue.pop().release())->content);
 
-  auto msg5 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ("dannsa", msg5->content);
+  // not empty
+  queue.push(std::make_unique<Message>("sia"));
+  ASSERT_EQ("sia", static_cast<Message*>(queue.pop().release())->content);
 
-  auto msg6 = static_cast<Message*>(queue.pop().release());
-  ASSERT_EQ(nullptr, msg6);
+  ASSERT_EQ(nullptr, queue.pop());
 }
 
 struct Message2 : MPSCQueue::Node {
@@ -101,7 +110,7 @@ TEST(MPSCQueue, threads_push_stuff_comes_out) {
     thread = std::vector<bool>(numberMessages);
   }
 
-  threads.emplace([&queue, &receivedIds, numberThreads, numberMessages]() {
+  threads.emplace([&queue, &receivedIds, numberThreads]() {
     auto counter = size_t{0};
 
     while (true) {
