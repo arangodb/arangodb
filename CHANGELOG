@@ -1,8 +1,12 @@
-v3.10.1 (XXXX-XX-XX)
+v3.10.2 (XXXX-XX-XX)
 --------------------
 
-  Removed assertions from cluster rebalance js test that obligated the rebalance
+* Removed assertions from cluster rebalance js test that obligated the rebalance
   plan to always have moves, but there were cases in which all there are none.
+
+
+v3.10.1 (XXXX-XX-XX)
+--------------------
 
 * Updated OpenSSL to 1.1.1s.
 
