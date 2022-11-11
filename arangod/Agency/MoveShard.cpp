@@ -204,6 +204,50 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
+bool MoveShard::checkLeaderFollowerCurrent(
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+  bool ok = true;
+  for (auto const& s : shardsLikeMe) {
+    auto sharedPath = _database + "/" + s.collection + "/";
+    auto currentServersPath = curColPrefix + sharedPath + s.shard + "/servers";
+    auto serverList = _snapshot.hasAsArray(currentServersPath);
+    if (serverList && (*serverList).length() > 0) {
+      if (_from != (*serverList)[0].stringView()) {
+        LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
+            << "MoveShard: From server " << _from
+            << " has not yet assumed leadership for collection " << s.collection
+            << " shard " << s.shard
+            << ", delaying start of MoveShard job for shard " << _shard;
+        ok = false;
+        break;
+      }
+      bool toFound = false;
+      for (auto server : VPackArrayIterator(*serverList)) {
+        if (_to == server.stringView()) {
+          toFound = true;
+          break;
+        }
+      }
+      if (!toFound) {
+        LOG_TOPIC("55262", DEBUG, Logger::SUPERVISION)
+            << "MoveShard: To server " << _to
+            << " is not in sync for collection " << s.collection << " shard "
+            << s.shard << ", delaying start of MoveShard job for shard "
+            << _shard;
+        ok = false;
+        break;
+      }
+    } else {
+      LOG_TOPIC("55263", INFO, Logger::SUPERVISION)
+          << "MoveShard: Did not find a non-empty server list in Current "
+             "for collection "
+          << s.collection << " and shard " << s.shard;
+      ok = false;  // not even a server list found
+    }
+  }
+  return ok;
+}
+
 bool MoveShard::start(bool&) {
   if (considerCancellation()) {
     return false;
@@ -397,46 +441,7 @@ bool MoveShard::start(bool&) {
     // shard group and that the _toServer is actually in sync. Otherwise,
     // if this job here asks the leader to resign, we would be stuck.
     // If the _toServer is not in sync, the job would take overly long.
-    bool ok = true;
-    for (auto const& s : shardsLikeMe) {
-      auto sharedPath = _database + "/" + s.collection + "/";
-      auto currentServersPath =
-          curColPrefix + sharedPath + s.shard + "/servers";
-      auto serverList = _snapshot.hasAsArray(currentServersPath);
-      if (serverList && (*serverList).length() > 0) {
-        if (_from != (*serverList)[0].stringView()) {
-          LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
-              << "MoveShard: From server " << _from
-              << " has not yet assumed leadership for collection "
-              << s.collection << " shard " << s.shard
-              << ", delaying start of MoveShard job for shard " << _shard;
-          ok = false;
-          break;
-        }
-        bool toFound = false;
-        for (auto server : VPackArrayIterator(*serverList)) {
-          if (_to == server.stringView()) {
-            toFound = true;
-            break;
-          }
-        }
-        if (!toFound) {
-          LOG_TOPIC("55262", DEBUG, Logger::SUPERVISION)
-              << "MoveShard: To server " << _to
-              << " is not in sync for collection " << s.collection << " shard "
-              << s.shard << ", delaying start of MoveShard job for shard "
-              << _shard;
-          ok = false;
-          break;
-        }
-      } else {
-        LOG_TOPIC("55263", INFO, Logger::SUPERVISION)
-            << "MoveShard: Did not find a non-empty server list in Current "
-               "for collection "
-            << s.collection << " and shard " << s.shard;
-        ok = false;  // not even a server list found
-      }
-    }
+    bool ok = checkLeaderFollowerCurrent(shardsLikeMe);
     if (!ok) {
       return false;  // Do not start job, but leave it in Todo.
                      // Log messages already written.
