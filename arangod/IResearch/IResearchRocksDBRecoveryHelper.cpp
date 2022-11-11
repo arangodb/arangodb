@@ -153,7 +153,6 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
   auto doc = RocksDBValue::data(value);
 
   transaction::StandaloneContext ctx(coll->vocbase());
-  // FIXME: check ticks range and possibly omit this step
   _skipExisted.clear();
   mustReplay = false;
   for (auto const& link : links) {

@@ -490,9 +490,9 @@ class IResearchDataStore {
   std::mutex _commitMutex;
 
   // for insert(...)/remove(...)
-  std::function<void(transaction::Methods&)> _trxBeforeFinish;
+  std::function<void(transaction::Methods&)> _trxPreCommit;
   std::function<void(transaction::Methods&, transaction::Status)>
-      _trxAfterFinish;
+      _trxStatusChange;
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};

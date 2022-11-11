@@ -68,15 +68,15 @@ namespace {
 
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
-  explicit IResearchFlushSubscription(uint64_t tick = 0) noexcept
+  explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
       : _tick{tick} {}
 
   /// @brief earliest tick that can be released
-  [[nodiscard]] uint64_t tick() const noexcept final {
+  [[nodiscard]] TRI_voc_tick_t tick() const noexcept final {
     return _tick.load(std::memory_order_acquire);
   }
 
-  void tick(uint64_t tick) noexcept {
+  void tick(TRI_voc_tick_t tick) noexcept {
     auto value = _tick.load(std::memory_order_acquire);
     TRI_ASSERT(value <= tick);
 
@@ -90,7 +90,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
  private:
-  std::atomic_uint64_t _tick;
+  std::atomic<TRI_voc_tick_t> _tick;
 };
 
 enum class SegmentPayloadVersion : uint32_t {
@@ -598,8 +598,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
       _maintenanceState(std::make_shared<MaintenanceState>()),
       _id(iid) {
   // initialize transaction callback
-
-  _trxBeforeFinish = [this](transaction::Methods& trx) {
+  _trxPreCommit = [this](transaction::Methods& trx) {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
     if (!state) {  // check state of the top-most transaction only
@@ -666,8 +665,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     ctx._ctx.AddToFlush();
 #endif
   };
-  _trxAfterFinish = [this](transaction::Methods& trx,
-                           transaction::Status status) {
+  _trxStatusChange = [this](transaction::Methods& trx,
+                            transaction::Status status) {
     auto* state = trx.state();
     TRI_ASSERT(state != nullptr);
     if (!state) {  // check state of the top-most transaction only
@@ -1669,8 +1668,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addPreCommitCallback(&_trxBeforeFinish) ||
-        !trx.addStatusChangeCallback(&_trxAfterFinish)) {
+    if (!ctx || !trx.addPreCommitCallback(&_trxPreCommit) ||
+        !trx.addStatusChangeCallback(&_trxStatusChange)) {
       return {
           TRI_ERROR_INTERNAL,
           absl::StrCat(
@@ -1714,7 +1713,7 @@ bool IResearchDataStore::exists(IResearchDataStore::Snapshot const& snapshot,
                                 LocalDocumentId documentId, bool nested,
                                 TRI_voc_tick_t const* recoveryTick) const {
   if (recoveryTick == nullptr) {
-    TRI_ASSERT(false) << "Call exists not in recovery";
+    // skip recovery check
   } else if (*recoveryTick <= _dataStore._recoveryTickLow) {
     LOG_TOPIC("6e128", TRACE, TOPIC)
         << "skipping 'exists', operation tick '" << *recoveryTick
@@ -1841,8 +1840,8 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addPreCommitCallback(&_trxBeforeFinish) ||
-        !trx.addStatusChangeCallback(&_trxAfterFinish)) {
+    if (!ctx || !trx.addPreCommitCallback(&_trxPreCommit) ||
+        !trx.addStatusChangeCallback(&_trxStatusChange)) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failed to store state into a TransactionState for "
                            "insert into ArangoSearch index '",
@@ -1909,7 +1908,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   try {
     _dataStore._writer->clear(tick);
     std::move(clearGuard).Cancel();
-    TRI_ASSERT(tick <= _lastCommittedTickOne);
+    // payload will not be called is index already empty
+    _lastCommittedTickOne = std::max(tick, _lastCommittedTickOne);
     _lastCommittedTickTwo = _lastCommittedTickOne;
 
     // get new reader
