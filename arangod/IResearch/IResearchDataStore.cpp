@@ -614,7 +614,7 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
       size_t myNumber{0};
       while (true) {
-        std::unique_lock sync(_t3FailureSync);
+        std::unique_lock sync{_t3FailureSync};
         if (_t3PreCommit < 3) {
           if (!myNumber) {
             myNumber = ++_t3PreCommit;
@@ -999,7 +999,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::StageOneKill") {
-      std::unique_lock sync(_t3FailureSync);
+      std::unique_lock sync{_t3FailureSync};
       // if all candidates gathered and max tick is committed it's time to crash
       if (_t3Candidates.size() >= 3 &&
           std::find_if(_t3Candidates.begin(), _t3Candidates.end(),
@@ -1030,6 +1030,20 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitTwo;
       _lastCommittedTickTwo = lastTickBeforeCommitTwo;
     }
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder::StageTwoKill") {
+      std::unique_lock sync{_t3FailureSync};
+      // if all candidates gathered and max tick is committed - it is time to
+      // crash
+      if (_t3Candidates.size() >= 3 &&
+          std::find_if(_t3Candidates.begin(), _t3Candidates.end(),
+                       [this](uint64_t t) {
+                         return t > _lastCommittedTickOne;
+                       }) == _t3Candidates.end()) {
+        TRI_TerminateDebugging("Killed on commit stage two");
+      }
+    }
+#endif
     // get new reader
     auto reader = _dataStore._reader.reopen();
 
