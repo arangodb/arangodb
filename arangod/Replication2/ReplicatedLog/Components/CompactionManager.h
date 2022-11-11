@@ -102,6 +102,11 @@ struct CompactionManager : ICompactionManager,
       IStorageManager& storage, ISchedulerInterface& scheduler,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options);
 
+  CompactionManager(CompactionManager const&) = delete;
+  CompactionManager(CompactionManager&&) noexcept = delete;
+  auto operator=(CompactionManager const&) -> CompactionManager& = delete;
+  auto operator=(CompactionManager&&) noexcept -> CompactionManager& = delete;
+
   void updateReleaseIndex(LogIndex index) noexcept override;
   void updateLargestIndexToKeep(LogIndex index) noexcept override;
   auto compact() noexcept -> futures::Future<CompactResult> override;
@@ -121,7 +126,6 @@ struct CompactionManager : ICompactionManager,
     bool _fullCompactionNextRound{false};
     LogIndex releaseIndex;
     LogIndex largestIndexToKeep;
-    LogIndex allowCompactionUpto;
     CompactionStatus status;
     IStorageManager& storage;
     ISchedulerInterface& scheduler;

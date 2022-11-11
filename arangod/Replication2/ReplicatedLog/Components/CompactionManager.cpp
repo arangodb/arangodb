@@ -70,6 +70,8 @@ auto CompactionManager::calculateCompactionIndex(GuardedData const& data,
                                                  LogRange bounds,
                                                  bool ignoreThreshold) const
     -> std::tuple<LogIndex, CompactionStopReason> {
+  // TODO make this function a stand alone functional program
+  //      and write tests for it, separately.
   auto [first, last] = bounds;
   auto newCompactionIndex =
       std::min(data.releaseIndex, data.largestIndexToKeep);
@@ -106,7 +108,27 @@ void CompactionManager::checkCompaction(
     compaction.time = CompactionStatus::clock ::now();
     compaction.range = LogRange{logBounds.from, index};
     guard->_compactionInProgress = true;
-    store->removeFront(index);
+    auto f = store->removeFront(index);
+    guard.unlock();
+    std::move(f).thenFinal(
+        [weak = weak_from_this()](futures::Try<Result> const& tryResult) {
+          auto self = weak.lock();
+          if (self == nullptr) {
+            return;
+          }
+
+          auto guard = self->guarded.getLockedGuard();
+          auto result = basics::catchToResult([&] { return tryResult.get(); });
+          ADB_PROD_ASSERT(guard->status.inProgress.has_value());
+          guard->status.lastCompaction = guard->status.inProgress;
+          guard->status.inProgress.reset();
+          if (result.fail()) {
+            // TODO report error in compaction
+            abort();
+          } else {
+            self->checkCompaction(std::move(guard));
+          }
+        });
   } else {
     guard->status.stop = reason;
   }

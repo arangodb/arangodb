@@ -145,7 +145,7 @@ TEST_F(CompactionManagerTest, no_compaction_because_of_threshold) {
   EXPECT_EQ(detail.nextCompactionAt, LogIndex{50});
 }
 
-TEST_F(CompactionManagerTest, run_atomatic_compaction) {
+TEST_F(CompactionManagerTest, run_automatic_compaction) {
   LogRange const range{LogIndex{0}, LogIndex{101}};
   options->_thresholdLogCompaction = 0;
 
@@ -186,5 +186,27 @@ TEST_F(CompactionManagerTest, run_atomatic_compaction) {
     ASSERT_NE(status.inProgress, std::nullopt);
     // compaction is possible upto entry 20
     EXPECT_EQ(status.inProgress->range, (LogRange{LogIndex{0}, LogIndex{20}}));
+  }
+
+  EXPECT_CALL(storageManagerMock, transaction).Times(1);
+  ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
+    return trx;
+  });
+
+  // now resolve the promise
+  p->setValue(TRI_ERROR_NO_ERROR);
+
+  {
+    auto const status = compactionManager->getCompactionStatus();
+    ASSERT_NE(status.lastCompaction, std::nullopt);
+    // old compaction stored
+    EXPECT_EQ(status.lastCompaction->range,
+              (LogRange{LogIndex{0}, LogIndex{20}}));
+    // now other compaction going
+    EXPECT_EQ(status.inProgress, std::nullopt);
   }
 }
