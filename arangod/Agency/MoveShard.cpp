@@ -1117,8 +1117,7 @@ JOB_STATUS MoveShard::pendingFollower() {
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
         << "MoveShard (follower): found FAILED server in Plan, aborting "
-           "job, "
-           "db: "
+           "job, db: "
         << _database << " coll: " << _collection << " shard: " << _shard;
     abort("failed server in Plan");
     return FAILED;
@@ -1314,7 +1313,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                   return;
                 }
                 // Add to server last. Will be removed by removeFollower if
-                // to much
+                // too many.
                 trx.add(VPackValue(_to));
               }
             });
