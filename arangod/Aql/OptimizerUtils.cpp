@@ -37,7 +37,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
-#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
 
@@ -905,7 +904,7 @@ namespace arangodb::aql::utils {
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
-                     std::unordered_set<AttributeNamePath>& attributes) {
+                     containers::FlatHashSet<AttributeNamePath>& attributes) {
   using EN = aql::ExecutionNode;
 
   VarSet vars;

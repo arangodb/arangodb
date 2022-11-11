@@ -43,7 +43,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
