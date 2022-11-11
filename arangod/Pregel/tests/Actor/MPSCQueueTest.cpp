@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel::mpscqueue;
 
-struct MPSCStringMessage : MPSCQueue::Node {
+struct MPSCStringMessage : MPSCQueue<MPSCStringMessage>::Node {
   MPSCStringMessage(std::string content) : content(std::move(content)) {}
   std::string content;
 };
@@ -43,15 +43,15 @@ struct MPSCStringMessage : MPSCQueue::Node {
 // queue works properly in the absence of
 // concurrency.
 TEST(MPSCQueue, gives_back_stuff_pushed) {
-  auto queue = MPSCQueue();
+  auto queue = MPSCQueue<MPSCStringMessage>();
 
   queue.push(std::make_unique<MPSCStringMessage>("aon"));
   queue.push(std::make_unique<MPSCStringMessage>("dha"));
   queue.push(std::make_unique<MPSCStringMessage>("tri"));
 
-  ASSERT_EQ("aon", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("dha", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("tri", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("aon", queue.pop()->content);
+  ASSERT_EQ("dha", queue.pop()->content);
+  ASSERT_EQ("tri", queue.pop()->content);
 
   // here the queue should be empty
   ASSERT_EQ(nullptr, queue.pop());
@@ -59,24 +59,24 @@ TEST(MPSCQueue, gives_back_stuff_pushed) {
   queue.push(std::make_unique<MPSCStringMessage>("ceithir"));
   queue.push(std::make_unique<MPSCStringMessage>("dannsa"));
 
-  ASSERT_EQ("ceithir", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("dannsa", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("ceithir", queue.pop()->content);
+  ASSERT_EQ("dannsa", queue.pop()->content);
 
   // empty again!
   ASSERT_EQ(nullptr, queue.pop());
 
   queue.push(std::make_unique<MPSCStringMessage>("coig"));
 
-  ASSERT_EQ("coig", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("coig", queue.pop()->content);
 
   // not empty
   queue.push(std::make_unique<MPSCStringMessage>("sia"));
-  ASSERT_EQ("sia", static_cast<MPSCStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("sia", queue.pop()->content);
 
   ASSERT_EQ(nullptr, queue.pop());
 }
 
-struct MPSCThreadMessage : MPSCQueue::Node {
+struct MPSCThreadMessage : MPSCQueue<MPSCThreadMessage>::Node {
   MPSCThreadMessage(size_t threadId, size_t messageId)
       : threadId(threadId), messageId(messageId) {}
   size_t threadId{};
@@ -94,7 +94,7 @@ TEST(MPSCQueue, threads_push_stuff_comes_out) {
   constexpr auto numberThreads = size_t{125};
   constexpr auto numberMessages = size_t{10000};
 
-  auto queue = MPSCQueue();
+  auto queue = MPSCQueue<MPSCThreadMessage>();
   auto threads = ThreadGuard();
 
   for (auto threadId = size_t{0}; threadId < numberThreads; ++threadId) {
@@ -116,7 +116,7 @@ TEST(MPSCQueue, threads_push_stuff_comes_out) {
     while (true) {
       auto rcv = queue.pop();
       if (rcv != nullptr) {
-        auto msg = static_cast<MPSCThreadMessage*>(rcv.release());
+        auto msg = rcv.release();
         receivedIds[msg->threadId][msg->messageId] = true;
         counter++;
 

@@ -69,7 +69,7 @@ struct Actor {
   }
   std::size_t batchSize{16};
   std::atomic<bool> busy;
-  arangodb::pregel::mpscqueue::MPSCQueue inbox;
+  arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
   Scheduler& schedule;
   MessageHandler handler{};
   State state;

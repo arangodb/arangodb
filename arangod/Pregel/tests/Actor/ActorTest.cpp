@@ -47,13 +47,13 @@ struct State {
   std::size_t called;
 };
 
-struct Message : public MPSCQueue::Node {
-  Message(std::string value) : store(std::move(value)) {}
+struct SimpleStringMessage : public MPSCQueue<SimpleStringMessage>::Node {
+  SimpleStringMessage(std::string value) : store(std::move(value)) {}
   std::string store;
 };
 
 struct Handler {
-  auto operator()(State state, std::unique_ptr<Message> msg) -> State {
+  auto operator()(State state, std::unique_ptr<SimpleStringMessage> msg) -> State {
     fmt::print("message handler called {}\n", msg->store);
     state.called++;
     state.state += msg->store;
@@ -61,7 +61,7 @@ struct Handler {
   }
 };
 
-using MyActor = Actor<TrivialScheduler, Handler, State, Message>;
+using MyActor = Actor<TrivialScheduler, Handler, State, SimpleStringMessage>;
 
 // TEST(Actor, processes_message) {
 //   auto scheduler = TrivialScheduler{};
@@ -84,7 +84,7 @@ struct SlightlyNonTrivialScheduler {
   ThreadGuard threads;
 };
 
-using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, Message>;
+using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, SimpleStringMessage>;
 // TEST(Actor, trivial_thread_scheduler) {
 //   auto scheduler = SlightlyNonTrivialScheduler();
 

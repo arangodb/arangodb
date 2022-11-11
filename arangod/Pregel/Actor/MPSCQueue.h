@@ -34,13 +34,18 @@
 // under a Apache-2.0 license.
 namespace arangodb::pregel::mpscqueue {
 
+template<typename T>
 struct MPSCQueue {
   struct Node {
-  virtual ~Node() = default;
+    virtual ~Node() = default;
     std::atomic<Node*> next{nullptr};
   };
 
   MPSCQueue() : stub{}, head(&stub), tail(&stub) {}
+  MPSCQueue(MPSCQueue const&) = delete;
+  MPSCQueue(MPSCQueue&&) = delete;
+  MPSCQueue& operator=(MPSCQueue const&) = delete;
+  MPSCQueue& operator=(MPSCQueue&&) = delete;
 
   auto push_internal(Node *value) -> void {
     value->next.store(nullptr);
@@ -48,12 +53,12 @@ struct MPSCQueue {
     prev->next.store(value);
   }
 
-  auto push(std::unique_ptr<Node> value) -> void {
+  auto push(std::unique_ptr<T> value) -> void {
     auto ptr = value.release();
     push_internal(ptr);
   }
 
-  auto pop() -> std::unique_ptr<Node> {
+  auto pop() -> std::unique_ptr<T> {
     auto current = tail.load();
     auto next = current->next.load();
 
@@ -76,7 +81,7 @@ struct MPSCQueue {
       tail.store(next);
       // don't leak a pointer into the queue
       current->next.store(nullptr);
-      return std::unique_ptr<Node>(current);
+      return std::unique_ptr<T>(static_cast<T*>(current));
     }
 
     // we are now at the end of the
@@ -102,7 +107,7 @@ struct MPSCQueue {
       tail.store(next);
       // do not leak pointer into queue
       current->next.store(nullptr);
-      return std::unique_ptr<Node>(current);
+      return std::unique_ptr<T>(static_cast<T*>(current));
     }
 
     return nullptr;
