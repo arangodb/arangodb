@@ -1,3 +1,13 @@
+v3.10.2 (XXXX-XX-XX)
+--------------------
+
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, and
+  the addition of the AT LEAST and WITH COUNT INTO constructs.
+
+
 v3.10.1 (2022-11-04)
 --------------------
 
