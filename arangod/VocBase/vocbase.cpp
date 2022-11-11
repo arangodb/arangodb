@@ -39,7 +39,6 @@
 #include <velocypack/ValueType.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
@@ -886,9 +885,6 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
-#if USE_PLAN_CACHE
-  arangodb::aql::PlanCache::instance()->invalidate(this);
-#endif
   arangodb::aql::QueryCache::instance()->invalidate(this);
   std::string const& dbName = _info.getName();
 
@@ -1603,8 +1599,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
 
   checkCollectionInvariants();
 
-  // invalidate all entries in the plan and query cache now
-  arangodb::aql::PlanCache::instance()->invalidate(this);
+  // invalidate all entries in the query cache now
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   return TRI_ERROR_NO_ERROR;
@@ -1713,9 +1708,6 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   if (df.versionTracker() != nullptr) {
     df.versionTracker()->track("rename collection");
   }
-
-  // invalidate all entries for the two collections
-  arangodb::aql::PlanCache::instance()->invalidate(this);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1908,10 +1900,7 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
     return res;
   }
 
-  // invalidate all entries in the plan and query cache now
-#if USE_PLAN_CACHE
-  arangodb::aql::PlanCache::instance()->invalidate(this);
-#endif
+  // invalidate all entries in the query cache now
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);

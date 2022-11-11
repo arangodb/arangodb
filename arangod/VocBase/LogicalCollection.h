@@ -234,29 +234,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSatellite() const noexcept;
   bool usesDefaultShardKeys() const noexcept;
   std::vector<std::string> const& shardKeys() const noexcept;
-
-  virtual std::shared_ptr<ShardMap> shardIds() const;
-
-  // @brief will write the full ShardMap into the builder, containing
-  // all ShardIDs including their server distribution (ServerIDs) as an Object.
-  // Example:
-  //  {
-  //    ...
-  //    "s123456": ["PRMR-a41b97a0-e4d3-482b-925a-ff8efc9e0198", ...]
-  //    ...
-  //  }
-  void shardMapToVelocyPack(arangodb::velocypack::Builder& result) const;
-
-  // @brief will iterate over the whole ShardMap and will write only the
-  // ShardIDs into the builder as an Array. The ShardIDs are sorted and returned
-  // alphabetically.
-  // Example:
-  //  [
-  //    ...
-  //    "s123456",
-  //    ...
-  //  ]
-  void shardIDsToVelocyPack(arangodb::velocypack::Builder& result) const;
+  TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
 
   // mutation options for sharding
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;

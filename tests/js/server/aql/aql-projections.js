@@ -221,7 +221,7 @@ function projectionsPlansTestSuite () {
       let queries = [
         [`FOR doc IN ${cn} RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true ],
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.bar.baz]`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false ],
@@ -266,13 +266,16 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
         [`FOR doc IN ${cn} RETURN doc.foo.bar.baz`, 'persistent', [['foo', 'bar', 'baz']], true ],
         [`FOR doc IN ${cn} RETURN doc.foo.baz.bar`, 'persistent', [['foo', 'baz', 'bar']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar']], true ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.baz.bar, doc.foo.baz.bat]`, 'persistent', [['foo', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.baz, doc.foo.bar.bat]`, 'persistent', [['foo', 'bar', 'bat'], ['foo', 'bar', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.baz.bar, doc.foo.baz.bat]`, 'persistent', [['foo', 'baz', 'bar'], ['foo', 'baz', 'bat']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.baz`, 'persistent', [['foo', 'baz']], true ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN 1`, 'persistent', [], false ],
         [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN 1`, 'persistent', [['foo', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz]`, 'persistent', [['foo', 'bar'], ['foo', 'baz']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz.bar]`, 'persistent', [['foo', 'bar'], ['foo', 'baz', 'bar']], true ],
+        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.bar`, 'persistent', [['foo', 'bar'], ['foo', 'baz']], true ],
       ];
 
       queries.forEach(function(query) {
@@ -297,12 +300,47 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} RETURN doc.foo.moo`, [['foo', 'moo']] ],
         [`FOR doc IN ${cn} RETURN doc.bar`, ['bar'] ],
         [`FOR doc IN ${cn} RETURN doc.baz`, ['baz'] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz]`, ['foo'] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz.bar]`, ['foo'] ],
         [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.unrelated]`, [['foo', 'bar'], 'unrelated'] ],
         [`FOR doc IN ${cn} RETURN [doc.foo.baz, doc.unrelated]`, [['foo', 'baz'], 'unrelated'] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz, doc.unrelated]`, ['foo', 'unrelated'] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.baz == 1 RETURN doc.foo.bar`, ['foo'] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar, doc.foo.baz, doc.unrelated]`, [['foo', 'bar'], ['foo', 'baz'], 'unrelated'] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'EnumerateCollectionNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(query[1], nodes[0].projections, query);
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      });
+    },
+    
+    testPersistentSubAttributesMultiSamePrefix : function () {
+      c.ensureIndex({ type: "persistent", fields: ["foo.bar.a", "foo.bar.b"] });
+      let queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, 'persistent', [['foo', 'bar', 'a']], true ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.b`, 'persistent', [['foo', 'bar', 'b']], true ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, 'persistent', [['foo', 'bar', 'a'], ['foo', 'bar', 'b']], true ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }).plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
+        assertEqual(1, nodes.length, query);
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(query[2], nodes[0].projections, query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        if (query[2].length) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        } else {
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      });
+      
+      queries = [
+        [`FOR doc IN ${cn} RETURN doc.foo`, ['foo'] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']] ],
+        [`FOR doc IN ${cn} RETURN doc.foo.bar.c`, [['foo', 'bar', 'c']] ],
       ];
 
       queries.forEach(function(query) {
@@ -519,7 +557,7 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 1 RETURN doc.foo.bar`, [['foo', 'bar']] ],
         [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.foo.bar`, [['foo', 'bar'], 'moo'] ],
         [`FOR doc IN ${cn} FILTER doc.moo == 1 RETURN doc.moo.bar`, ['moo'] ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.a, doc.foo.b, doc.moo]`, ['foo', 'moo'] ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.a, doc.foo.b, doc.moo]`, [['foo', 'a'], ['foo', 'b'], 'moo'] ],
         [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo]`, ['a', 'b', 'moo'] ],
         [`FOR doc IN ${cn} RETURN [doc.a, doc.b, doc.moo.far]`, ['a', 'b', ['moo', 'far']] ],
       ];
@@ -605,8 +643,8 @@ function projectionsExtractionTestSuite () {
         [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']], true, bar ],
         [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, [['foo', 'bar', 'a']], true, barA ],
         [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']], true, baz ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar']], true, barAB ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.baz, doc.foo.bar.a]`, ['foo'], true, bazBarA ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar', 'a'], ['foo', 'bar', 'b']], true, barAB ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.baz, doc.foo.bar.a]`, [['foo', 'bar', 'a'], ['foo', 'baz']], true, bazBarA ],
       ];
 
       queries.forEach(function(query) {
@@ -637,8 +675,8 @@ function projectionsExtractionTestSuite () {
         [`FOR doc IN ${cn} RETURN doc.foo.bar`, [['foo', 'bar']], true, bar ],
         [`FOR doc IN ${cn} RETURN doc.foo.baz`, [['foo', 'baz']], false, baz ],
         [`FOR doc IN ${cn} RETURN doc.foo.bar.a`, [['foo', 'bar', 'a']], true, barA ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.baz]`, ['foo'], false, barBaz ],
-        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar']], true, barBaz ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.baz]`, [['foo', 'bar', 'a'], ['foo', 'baz']], false, barBaz ],
+        [`FOR doc IN ${cn} RETURN [doc.foo.bar.a, doc.foo.bar.b]`, [['foo', 'bar', 'a'], ['foo', 'bar', 'b']], true, barBaz ],
       ];
 
       queries.forEach(function(query) {

@@ -412,6 +412,6 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
     velocypack::Dumper dumper(&sink, &tmpOpts);
     dumper.dump(current);
 
-    headResponse(static_cast<size_t>(sink.length));
+    headResponse(static_cast<size_t>(sink.length()));
   }
 }

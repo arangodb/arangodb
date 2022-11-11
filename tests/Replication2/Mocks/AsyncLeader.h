@@ -50,6 +50,9 @@ struct AsyncLeader : replicated_log::ILogLeader,
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
   auto release(LogIndex doneWithIdx) -> Result override;
   auto compact() -> Result override;
+  auto ping(std::optional<std::string> message) -> LogIndex override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
   auto insert(LogPayload payload, bool waitForSync) -> LogIndex override;
   auto insert(LogPayload payload, bool waitForSync,
               DoNotTriggerAsyncReplication replication) -> LogIndex override;

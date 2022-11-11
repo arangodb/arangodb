@@ -26,6 +26,7 @@
 #include <string_view>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
+#include <Inspection/VPack.h>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -60,11 +61,14 @@ struct LogMetaPayload {
     ParticipantId leader;
     agency::ParticipantsConfig participants;
 
-    static auto fromVelocyPack(velocypack::Slice) -> FirstEntryOfTerm;
-    void toVelocyPack(velocypack::Builder&) const;
-
     friend auto operator==(FirstEntryOfTerm const&,
                            FirstEntryOfTerm const&) noexcept -> bool = default;
+
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, FirstEntryOfTerm& x) {
+      return f.object(x).fields(f.field("leader", x.leader),
+                                f.field("participants", x.participants));
+    }
   };
 
   static auto withFirstEntryOfTerm(ParticipantId leader,
@@ -74,21 +78,50 @@ struct LogMetaPayload {
   struct UpdateParticipantsConfig {
     agency::ParticipantsConfig participants;
 
-    static auto fromVelocyPack(velocypack::Slice) -> UpdateParticipantsConfig;
-    void toVelocyPack(velocypack::Builder&) const;
-
     friend auto operator==(UpdateParticipantsConfig const&,
                            UpdateParticipantsConfig const&) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, UpdateParticipantsConfig& x) {
+      return f.object(x).fields(f.field("participants", x.participants));
+    }
   };
 
   static auto withUpdateParticipantsConfig(agency::ParticipantsConfig config)
       -> LogMetaPayload;
 
+  struct Ping {
+    using clock = std::chrono::system_clock;
+    std::optional<std::string> message;
+    clock::time_point time;
+
+    friend auto operator==(Ping const&, Ping const&) noexcept -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, Ping& x) {
+      return f.object(x).fields(
+          f.field("message", x.message),
+          f.field("time", x.time)
+              .transformWith(inspection::TimeStampTransformer{}));
+    }
+  };
+
+  static auto withPing(std::optional<std::string> message,
+                       Ping::clock::time_point = Ping::clock::now()) noexcept
+      -> LogMetaPayload;
+
   static auto fromVelocyPack(velocypack::Slice) -> LogMetaPayload;
   void toVelocyPack(velocypack::Builder&) const;
 
-  std::variant<FirstEntryOfTerm, UpdateParticipantsConfig> info;
+  std::variant<FirstEntryOfTerm, UpdateParticipantsConfig, Ping> info;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, LogMetaPayload& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.info).embedded("type").alternatives(
+        insp::type<FirstEntryOfTerm>("FirstEntryOfTerm"),
+        insp::type<UpdateParticipantsConfig>("UpdateParticipantsConfig"),
+        insp::type<Ping>("Ping"));
+  }
 
   friend auto operator==(LogMetaPayload const&, LogMetaPayload const&) noexcept
       -> bool = default;

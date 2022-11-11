@@ -36,9 +36,10 @@
 
 using namespace arangodb;
 
-RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(RocksDBTransactionState* state,
-                                             rocksdb::TransactionDB* db)
-    : RocksDBTransactionMethods(state), _db(db) {
+RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
+    RocksDBTransactionState const* state, IRocksDBTransactionCallback& callback,
+    rocksdb::TransactionDB* db)
+    : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
   _readOptions.prefix_same_as_start = true;  // should always be true
   _readOptions.fill_cache = _state->options().fillBlockCache;
@@ -357,7 +358,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   }
   TRI_ASSERT(numOperations > 0);
 
-  rocksdb::SequenceNumber previousSeqNo = _state->prepareCollections();
+  rocksdb::SequenceNumber previousSeqNo = _callback.prepare();
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
@@ -374,7 +375,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() noexcept {
     try {
-      _state->cleanupCollections();
+      _callback.cleanup();
     } catch (std::exception const& e) {
       LOG_TOPIC("62772", ERR, Logger::ENGINES)
           << "failed to cleanup collections: " << e.what();
@@ -408,7 +409,15 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
 
   TRI_ASSERT(postCommitSeq <= _db->GetLatestSequenceNumber());
 
-  _state->commitCollections(_lastWrittenOperationTick);
+  _state->clearQueryCache();
+  // This resets the counters in the collection(s), so we also need to reset
+  // our counters here for consistency.
+  _callback.commit(_lastWrittenOperationTick);
+  _numInserts = 0;
+  _numUpdates = 0;
+  _numRemoves = 0;
+  TRI_ASSERT(this->numOperations() == 0);
+
   cleanupCollTrx.cancel();
 
   // wait for sync if required
