@@ -23,9 +23,10 @@
 
 #include "SingleServerEdgeCursor.h"
 
-#include "Aql/AttributeNamePath.h"
-#include "Aql/Projections.h"
 #include "Aql/AstNode.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/QueryContext.h"
+#include "Aql/Projections.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -73,6 +74,7 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(
     std::vector<size_t> const* mapping,
     std::vector<BaseOptions::LookupInfo> const& lookupInfo)
     : _opts(opts),
+      _monitor(_opts->query().resourceMonitor()),
       _trx(opts->trx()),
       _tmpVar(tmpVar),
       _currentCursor(0),
@@ -362,7 +364,8 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
         // and create a new one
         _opts->cache()->incrCursorsCreated();
         cursor = _trx->indexScanForCondition(
-            it, node, _tmpVar, defaultIndexIteratorOptions, ReadOwnWrites::no,
+            _monitor, it, node, _tmpVar, defaultIndexIteratorOptions,
+            ReadOwnWrites::no,
             static_cast<int>(
                 info.conditionNeedUpdate
                     ? info.conditionMemberToUpdate
@@ -427,8 +430,8 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
 
     csrs.emplace_back(
         _trx->indexScanForCondition(
-            index, info.indexCondition, _tmpVar, defaultIndexIteratorOptions,
-            ReadOwnWrites::no,
+            _monitor, index, info.indexCondition, _tmpVar,
+            defaultIndexIteratorOptions, ReadOwnWrites::no,
             static_cast<int>(
                 info.conditionNeedUpdate
                     ? info.conditionMemberToUpdate

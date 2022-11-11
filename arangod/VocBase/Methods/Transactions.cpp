@@ -395,6 +395,10 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   auto& vocbase = GetContextVocBase(isolate);
   transaction::V8Context ctx(vocbase, embed);
+  if (writeCollections.empty() && exclusiveCollections.empty()) {
+    ctx.setReadOnly();
+  }
+  ctx.setJStransaction();
 
   // start actual transaction
   transaction::Methods trx(std::shared_ptr<transaction::Context>(

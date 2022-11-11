@@ -28,18 +28,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
 
 function optimizerCollectInClusterSuite(isSearchAlias) {
   let c;
@@ -76,9 +72,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
           });
       }
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.save({group: "test" + (i % 10), value: i});
+        docs.push({group: "test" + (i % 10), value: i});
       }
+      c.insert(docs);
 
       // sync the view
       db._query("FOR d IN UnitTestViewSorted OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
@@ -151,6 +149,26 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+    
+    testCountGroups: function () {
+      let query = "FOR doc IN " + c.name() + " COLLECT value = doc.group WITH COUNT INTO length SORT value RETURN { value, length }";
+      let results = AQL_EXECUTE(query);
+      
+      let expected = [];
+      for (let i = 0; i < 10; ++i) {
+        expected.push({ value: "test" + i, length: 100 });
+      }
+      assertEqual(expected.length, results.json.length);
+      assertEqual(expected, results.json);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct: function () {
@@ -265,9 +283,12 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
           });
       }
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.save({group: "test" + (i % 10), value: i});
+        docs.push({group: "test" + (i % 10), value: i});
       }
+      c.insert(docs);
+
       // sync the view
       db._query("FOR d IN UnitTestViewSorted OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
     },
@@ -339,6 +360,34 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+    
+    testSingleCountGroups: function () {
+      let query = "FOR doc IN " + c.name() + " COLLECT value = doc.group WITH COUNT INTO length SORT value RETURN { value, length }";
+      let results = AQL_EXECUTE(query);
+      
+      let expected = [];
+      for (let i = 0; i < 10; ++i) {
+        expected.push({ value: "test" + i, length: 100 });
+      }
+      assertEqual(expected.length, results.json.length);
+      assertEqual(expected, results.json);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
+      });
+
+      assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+
+      if (internal.isEnterprise()) {
+        assertNotEqual(-1, plan.rules.indexOf("cluster-one-shard"));
+        // one shard rule has kicked in as well and modified the plan accordingly
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "SortNode", "CalculationNode", "RemoteNode", "GatherNode", "ReturnNode"], nodeTypes);
+      } else {
+        assertEqual(-1, plan.rules.indexOf("cluster-one-shard"));
+        assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      }
     },
 
     testSingleDistinct: function () {
@@ -416,6 +465,130 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
   };
 }
 
+function optimizerCollectInClusterSuiteSmartGraph() {
+  const vn = "UnitTestsVertex";
+  const en = "UnitTestsEdge";
+  const gn = "UnitTestsSmartGraph";
+  const smrt = require("@arangodb/smart-graph");
+
+  return {
+    setUpAll: function () {
+      try {
+        smrt._drop(gn, true);
+      } catch (err) {}
+
+      smrt._create(gn, [smrt._relation(en, vn, vn)], [], { smartGraphAttribute: "group", numberOfShards: 3, isSmart: true });
+
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({group: "test" + (i % 10), value: i});
+      }
+      let keys = db[vn].insert(docs);
+      assertEqual(1000, db[vn].count());
+      
+      docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({_from: keys[i]._id, _to: keys[keys.length - i - 1]._id, value: i, group: "test" + (i % 10)});
+      }
+      db[en].insert(docs);
+
+      assertEqual(1000, db[en].count());
+    },
+
+    tearDownAll: function () {
+      smrt._drop(gn, true);
+    },
+
+    testCount: function () {
+      let query = "FOR doc IN " + en + " COLLECT WITH COUNT INTO length RETURN length";
+
+      let results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1000, results.json[0]);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+
+    testCountMulti: function () {
+      let query = "FOR doc1 IN " + en + " FILTER doc1.value < 10 FOR doc2 IN " + en + " COLLECT WITH COUNT INTO length RETURN length";
+      let results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(10000, results.json[0]);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+    
+    testCountGroups: function () {
+      let query = "FOR doc IN " + en + " COLLECT value = doc.group WITH COUNT INTO length SORT value RETURN { value, length }";
+      let results = AQL_EXECUTE(query);
+      
+      let expected = [];
+      for (let i = 0; i < 10; ++i) {
+        expected.push({ value: "test" + i, length: 100 });
+      }
+      assertEqual(expected.length, results.json.length);
+      assertEqual(expected, results.json);
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+    },
+
+    testDistinct: function () {
+      let query = "FOR doc IN " + en + " SORT doc.value RETURN DISTINCT doc.value";
+
+      let results = AQL_EXECUTE(query);
+      assertEqual(1000, results.json.length);
+      for (let i = 0; i < 1000; ++i) {
+        assertEqual(i, results.json[i]);
+      }
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+
+    testDistinctMulti: function () {
+      let query = "FOR doc1 IN " + en + " FILTER doc1.value < 10 FOR doc2 IN " + en + " SORT doc2.value RETURN DISTINCT doc2.value";
+
+      let results = AQL_EXECUTE(query, null, {optimizer: {rules: ["-interchange-adjacent-enumerations"]}});
+      assertEqual(1000, results.json.length);
+      for (let i = 0; i < 1000; ++i) {
+        assertEqual(i, results.json[i]);
+      }
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function (node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    },
+
+  };
+}
+
 
 function optimizerCollectInClusterArangoSearchSuite() {
   let suite = {};
@@ -461,5 +634,8 @@ jsunity.run(optimizerCollectInClusterArangoSearchSuite);
 jsunity.run(optimizerCollectInClusterSearchAliasSuite);
 jsunity.run(optimizerCollectInClusterSingleShardArangoSearchSuite);
 jsunity.run(optimizerCollectInClusterSingleShardSearchAliasSuite);
+if (internal.isEnterprise()) {
+  jsunity.run(optimizerCollectInClusterSuiteSmartGraph);
+}
 
 return jsunity.done();
