@@ -1,6 +1,9 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Fix disk space metrics rocksdb_free_disk_space and rocksdb_total_disk_space 
+  on macOS. Previously, they seem to have reported wrong values.
+
 * Show number of HTTP requests in cluster query profiles.
 
 * Removed assertions from cluster rebalance js test that obligated the rebalance
