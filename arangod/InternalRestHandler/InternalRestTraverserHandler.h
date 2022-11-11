@@ -52,7 +52,6 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   // @brief Destroy an existing Traverser Engine.
   void destroyEngine();
 
- private:
   aql::QueryRegistry* _registry;
 };
 }  // namespace arangodb
