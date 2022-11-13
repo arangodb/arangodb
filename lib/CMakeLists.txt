@@ -277,6 +277,8 @@ target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
 
+
+add_subdirectory(Futures)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)

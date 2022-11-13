@@ -27,11 +27,13 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+#include <optional>
 
-#include "Futures/Exceptions.h"
-#include "Futures/Promise.h"
-#include "Futures/SharedState.h"
-#include "Futures/Unit.h"
+#include "Exceptions.h"
+#include "Promise.h"
+#include "SharedState.h"
+#include "Unit.h"
+#include "std-coro.h"
 
 namespace arangodb {
 namespace futures {

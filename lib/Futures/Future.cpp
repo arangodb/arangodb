@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Future.h"
+#include "Future.h"
 
 namespace arangodb::futures {
 /// Make a complete void future

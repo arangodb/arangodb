@@ -23,6 +23,7 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Futures)
 
 # ----------------------------------------
 # Link directories
@@ -220,6 +221,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
+  Futures/CoroutineTest.cpp
   Futures/FutureTest.cpp
   Futures/PromiseTest.cpp
   Futures/TryTest.cpp
