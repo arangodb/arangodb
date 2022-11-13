@@ -24,9 +24,11 @@
 #pragma once
 
 // #include "Basics/Common.h"
-#include "Basics/debugging.h"
-// #include "Basics/system-compiler.h"
+// #include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 
+#include <new>
+#include <stdexcept>
 #include <exception>
 #include <type_traits>
 #include <utility>
@@ -309,7 +311,7 @@ class Try {
 template<>
 class Try<void> {
  public:
-  Try() noexcept : _exception() { TRI_ASSERT(!hasException()); }
+  Try() noexcept : _exception() { /* TRI_ASSERT(!hasException()); */ }
   explicit Try(std::exception_ptr e) : _exception(std::move(e)) {}
   Try(Try<void>&& o) : _exception(std::move(o._exception)) {}
 

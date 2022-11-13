@@ -133,11 +133,11 @@ class SharedState {
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
   Try<T>& getTry() noexcept {
-    TRI_ASSERT(hasResult());
+    //TRI_ASSERT(hasResult());
     return _result;
   }
   Try<T> const& getTry() const noexcept {
-    TRI_ASSERT(hasResult());
+    //TRI_ASSERT(hasResult());
     return _result;
   }
 
@@ -151,7 +151,7 @@ class SharedState {
   /// executor or if the executor is inline).
   template<typename F>
   void setCallback(F&& func) {
-    TRI_ASSERT(!hasCallback());
+    //TRI_ASSERT(!hasCallback());
 
     // construct _callback first; TODO maybe try to avoid this?
     _callback = std::forward<F>(func);
@@ -163,7 +163,7 @@ class SharedState {
                                            std::memory_order_release)) {
           return;
         }
-        TRI_ASSERT(state == State::OnlyResult);  // race with setResult
+        //TRI_ASSERT(state == State::OnlyResult);  // race with setResult
         [[fallthrough]];
       case State::OnlyResult:
         // acquire is actually correct here
@@ -174,7 +174,8 @@ class SharedState {
         }
         [[fallthrough]];
       default:
-        TRI_ASSERT(false);  // unexpected state
+        break;
+        //TRI_ASSERT(false);  // unexpected state
     }
   }
 
@@ -187,7 +188,7 @@ class SharedState {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
-    TRI_ASSERT(!hasResult());
+    //TRI_ASSERT(!hasResult());
     // call move constructor of content
     ::new (&_result) Try<T>(std::move(t));
 
@@ -199,7 +200,7 @@ class SharedState {
                                            std::memory_order_release)) {
           return;
         }
-        TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
+        //TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
         [[fallthrough]];
       case State::OnlyCallback:
         // acquire is actually correct here
@@ -211,7 +212,8 @@ class SharedState {
         [[fallthrough]];
 
       default:
-        TRI_ASSERT(false);  // unexpected state
+        break;
+        // TRI_ASSERT(false);  // unexpected state
     }
   }
 
@@ -224,7 +226,7 @@ class SharedState {
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachFuture()` is called previously or concurrently).
   void detachPromise() noexcept {
-    TRI_ASSERT(hasResult());
+    // TRI_ASSERT(hasResult());
     detachOne();
   }
 
@@ -245,15 +247,15 @@ class SharedState {
         _attached(1) {}
 
   ~SharedState() {
-    TRI_ASSERT(_attached == 0);
-    TRI_ASSERT(hasResult());
+    // TRI_ASSERT(_attached == 0);
+    // TRI_ASSERT(hasResult());
     _result.~Try<T>();
   }
 
   /// detach promise or future from shared state
   void detachOne() noexcept {
     auto a = _attached.fetch_sub(1, std::memory_order_acq_rel);
-    TRI_ASSERT(a >= 1);
+    // TRI_ASSERT(a >= 1);
     if (a == 1) {
       _callback = nullptr;
       delete this;
@@ -261,8 +263,8 @@ class SharedState {
   }
 
   void doCallback() {
-    TRI_ASSERT(_state == State::Done);
-    TRI_ASSERT(_callback);
+    // TRI_ASSERT(_state == State::Done);
+    // TRI_ASSERT(_callback);
 
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe

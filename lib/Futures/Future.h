@@ -33,7 +33,6 @@
 #include "Promise.h"
 #include "SharedState.h"
 #include "Unit.h"
-#include "std-coro.h"
 
 namespace arangodb {
 namespace futures {
@@ -211,7 +210,7 @@ class Future {
     if (this != &o) {
       detach();
       std::swap(_state, o._state);
-      TRI_ASSERT(o._state == nullptr);
+    //  TRI_ASSERT(o._state == nullptr);
     }
     return *this;
   }
@@ -229,13 +228,13 @@ class Future {
 
   /// True if the result is a value (not an exception)
   bool hasValue() const {
-    TRI_ASSERT(isReady());
+    //TRI_ASSERT(isReady());
     return result().hasValue();
   }
 
   /// True if the result is an exception (not a value) on a future
   bool hasException() const {
-    TRI_ASSERT(isReady());
+    //TRI_ASSERT(isReady());
     return result().hasException();
   }
 
@@ -520,7 +519,7 @@ class Future {
   void detach() noexcept {
     detail::SharedState<T>* state = nullptr;
     std::swap(state, _state);
-    TRI_ASSERT(_state == nullptr);
+//     TRI_ASSERT(_state == nullptr);
     if (state) {
       // may delete the shared state, so must be last action
       state->detachFuture();

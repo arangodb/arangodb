@@ -5,7 +5,6 @@ target_include_directories(arango_futures PRIVATE
   ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2
   PUBLIC
   ${PROJECT_SOURCE_DIR}/lib
-
   )
 
 if (MSVC)
