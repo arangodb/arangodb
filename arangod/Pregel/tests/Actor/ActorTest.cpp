@@ -47,34 +47,34 @@ struct State {
   std::size_t called;
 };
 
-struct SimpleStringMessage : public MPSCQueue<SimpleStringMessage>::Node {
-  SimpleStringMessage(std::string value) : store(std::move(value)) {}
+struct ActorMessage : public MPSCQueue<ActorMessage>::Node {
+  ActorMessage(std::string value) : store(std::move(value)) {}
   std::string store;
 };
 
 struct Handler {
-  auto operator()(State state, std::unique_ptr<SimpleStringMessage> msg) -> State {
-    fmt::print("message handler called {}\n", msg->store);
+  auto operator()(State state, std::unique_ptr<ActorMessage> msg)
+      -> State {
     state.called++;
     state.state += msg->store;
     return state;
   }
 };
 
-using MyActor = Actor<TrivialScheduler, Handler, State, SimpleStringMessage>;
+using MyActor = Actor<TrivialScheduler, Handler, State, ActorMessage>;
 
-// TEST(Actor, processes_message) {
-//   auto scheduler = TrivialScheduler{};
+TEST(Actor, processes_message) {
+  auto scheduler = TrivialScheduler{};
 
-//   auto actor = MyActor(scheduler, {.state = "Hello"});
+  auto actor = MyActor(scheduler, {.state = "Hello"});
 
-//   send(actor, std::make_unique<Message>("hello"));
-//   send(actor, std::make_unique<Message>("world"));
-//   send(actor, std::make_unique<Message>("!"));
+  send(actor, std::make_unique<ActorMessage>("hello"));
+  send(actor, std::make_unique<ActorMessage>("world"));
+  send(actor, std::make_unique<ActorMessage>("!"));
 
-//   fmt::print("I got called {} times, accumulated {}\n", actor.state.called,
-//              actor.state.state);
-// }
+  ASSERT_EQ(actor.state.called, 3u);
+  ASSERT_EQ(actor.state.state, "Hellohelloworld!");
+}
 
 struct SlightlyNonTrivialScheduler {
   SlightlyNonTrivialScheduler() {}
@@ -84,11 +84,37 @@ struct SlightlyNonTrivialScheduler {
   ThreadGuard threads;
 };
 
-using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, SimpleStringMessage>;
-// TEST(Actor, trivial_thread_scheduler) {
-//   auto scheduler = SlightlyNonTrivialScheduler();
+struct ActorMessageA : public MPSCQueue<ActorMessageA>::Node {
+  ActorMessageA(std::string value) : store(std::move(value)) {}
+  std::string store;
+};
 
-//   auto actor = MyActor2(scheduler, {.state = "Hello"});
+using MyActor2 =
+    Actor<SlightlyNonTrivialScheduler, Handler, State, ActorMessageA>;
+struct State {
+  std::string state;
+  std::size_t called;
+};
+
+struct ActorMessage : public MPSCQueue<ActorMessage>::Node {
+  ActorMessage(std::string value) : store(std::move(value)) {}
+  std::string store;
+};
+
+struct Handler {
+  auto operator()(State state, std::unique_ptr<ActorMessage> msg)
+      -> State {
+    state.called++;
+    state.state += msg->store;
+    return state;
+  }
+};
+
+
+
+TEST(Actor, trivial_thread_scheduler) {
+   auto scheduler = SlightlyNonTrivialScheduler();
+   auto actor = MyActor2(scheduler, {.state = "Hello"});
 
 //   for (std::size_t i = 0; i < 100; i++) {
 //     send(actor, std::make_unique<Message>("hello"));
@@ -100,4 +126,4 @@ using MyActor2 = Actor<SlightlyNonTrivialScheduler, Handler, State, SimpleString
 //              actor.state.state);
 
 //   scheduler.threads.joinAll();
-// }
+}

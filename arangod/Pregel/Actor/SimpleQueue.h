@@ -31,32 +31,31 @@
 // this is the most trivial queue I could come up with.
 namespace arangodb::pregel::simplequeue {
 
+template<typename T>
 struct SimpleQueue {
   struct Node {
     virtual ~Node() = default;
   };
   SimpleQueue() = default;
 
-  auto push(std::unique_ptr<Node> value) {
+  auto push(std::unique_ptr<T> value) {
     auto ptr = value.release();
-    queue.doUnderLock([ptr](auto& queue) {
-      queue.emplace_back(ptr);
-    });
+    queue.doUnderLock([ptr](auto& queue) { queue.emplace_back(ptr); });
   }
 
-  auto pop() -> std::unique_ptr<Node> {
-    return queue.doUnderLock([](auto& queue) -> std::unique_ptr<Node> {
+  auto pop() -> std::unique_ptr<T> {
+    return queue.doUnderLock([](auto& queue) -> std::unique_ptr<T> {
       if (queue.empty()) {
         return nullptr;
       } else {
         auto front = queue.front();
         queue.pop_front();
-        return std::unique_ptr<Node>(front);
+        return std::unique_ptr<T>(static_cast<T*>(front));
       }
     });
   }
 
-  arangodb::Guarded<std::deque<Node *>> queue;
+  arangodb::Guarded<std::deque<Node*>> queue;
 };
 
 }  // namespace arangodb::pregel::simplequeue

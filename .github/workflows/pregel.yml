@@ -23,4 +23,4 @@ jobs:
           cmake --build --preset community-developer --target arangodbtests_actor
       - name: test
         run: |
-          ctest --preset community-developer -R actor
+          ctest --preset community-developer -R mpsc_queue\|simple_queue

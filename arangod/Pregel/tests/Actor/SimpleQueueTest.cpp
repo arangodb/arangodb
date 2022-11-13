@@ -34,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel::simplequeue;
 
-struct SimpleStringMessage : SimpleQueue::Node {
+struct SimpleStringMessage : SimpleQueue<SimpleStringMessage>::Node {
   SimpleStringMessage(std::string content) : content(std::move(content)) {}
   std::string content;
 };
@@ -43,15 +43,15 @@ struct SimpleStringMessage : SimpleQueue::Node {
 // queue works properly in the absence of
 // concurrency.
 TEST(SimpleQueue, gives_back_stuff_pushed) {
-  auto queue = SimpleQueue();
+  auto queue = SimpleQueue<SimpleStringMessage>();
 
   queue.push(std::make_unique<SimpleStringMessage>("aon"));
   queue.push(std::make_unique<SimpleStringMessage>("dha"));
   queue.push(std::make_unique<SimpleStringMessage>("tri"));
 
-  ASSERT_EQ("aon", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("dha", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("tri", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("aon", queue.pop()->content);
+  ASSERT_EQ("dha", queue.pop()->content);
+  ASSERT_EQ("tri", queue.pop()->content);
 
   // here the queue should be empty
   ASSERT_EQ(nullptr, queue.pop());
@@ -59,24 +59,24 @@ TEST(SimpleQueue, gives_back_stuff_pushed) {
   queue.push(std::make_unique<SimpleStringMessage>("ceithir"));
   queue.push(std::make_unique<SimpleStringMessage>("dannsa"));
 
-  ASSERT_EQ("ceithir", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
-  ASSERT_EQ("dannsa", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("ceithir", queue.pop()->content);
+  ASSERT_EQ("dannsa", queue.pop()->content);
 
   // empty again!
   ASSERT_EQ(nullptr, queue.pop());
 
   queue.push(std::make_unique<SimpleStringMessage>("coig"));
 
-  ASSERT_EQ("coig", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("coig", queue.pop()->content);
 
   // not empty
   queue.push(std::make_unique<SimpleStringMessage>("sia"));
-  ASSERT_EQ("sia", static_cast<SimpleStringMessage*>(queue.pop().release())->content);
+  ASSERT_EQ("sia", queue.pop()->content);
 
   ASSERT_EQ(nullptr, queue.pop());
 }
 
-struct SimpleThreadMessage : SimpleQueue::Node {
+struct SimpleThreadMessage : SimpleQueue<SimpleThreadMessage>::Node {
   SimpleThreadMessage(size_t threadId, size_t messageId)
       : threadId(threadId), messageId(messageId) {}
   size_t threadId{};
@@ -94,7 +94,7 @@ TEST(SimpleQueue, threads_push_stuff_comes_out) {
   constexpr auto numberThreads = size_t{125};
   constexpr auto numberMessages = size_t{10000};
 
-  auto queue = SimpleQueue();
+  auto queue = SimpleQueue<SimpleThreadMessage>();
   auto threads = ThreadGuard();
 
   for (auto threadId = size_t{0}; threadId < numberThreads; ++threadId) {
@@ -114,9 +114,8 @@ TEST(SimpleQueue, threads_push_stuff_comes_out) {
     auto counter = size_t{0};
 
     while (true) {
-      auto rcv = queue.pop();
-      if (rcv != nullptr) {
-        auto msg = static_cast<SimpleThreadMessage*>(rcv.release());
+      auto msg = queue.pop();
+      if (msg != nullptr) {
         receivedIds[msg->threadId][msg->messageId] = true;
         counter++;
 

@@ -1,4 +1,3 @@
-
 add_executable(arangodbtests_actor
   ${PROJECT_SOURCE_DIR}/arangod/Pregel/Actor/Actor.cpp
   main.cpp
@@ -18,6 +17,16 @@ target_link_libraries(arangodbtests_actor boost_boost velocypack fmt gtest)
 # that needs to be removed/addressed.
 # without this hack ctest currently does not find the executable.
 add_test(
+  NAME mpsc_queue
+  COMMAND arangodbtests_actor --gtest_filter=MPSCQueue*
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
+add_test(
+  NAME simple_queue
+  COMMAND arangodbtests_actor --gtest_filter=SimpleQueue*
+  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
+add_test(
   NAME actor
-  COMMAND arangodbtests_actor
+  COMMAND arangodbtests_actor --gtest_filter=Actor
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)

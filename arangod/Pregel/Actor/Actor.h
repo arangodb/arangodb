@@ -52,13 +52,10 @@ struct Actor {
   void work() {
     auto was_false = false;
     if (busy.compare_exchange_strong(was_false, true)) {
-      // TODO: this needs to be a constructor parameter
       auto i = batchSize;
 
       while(auto msg = inbox.pop()) {
-        /* fugly */
-        Message* ptr = static_cast<Message*>(msg.release());
-        state = handler(state, std::unique_ptr<Message>(ptr));
+        state = handler(state, std::move(msg));
         i--;
         if(i == 0) {
           break;
@@ -67,6 +64,7 @@ struct Actor {
       busy.store(false);
     }
   }
+      // TODO: this needs to be a constructor parameter
   std::size_t batchSize{16};
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;

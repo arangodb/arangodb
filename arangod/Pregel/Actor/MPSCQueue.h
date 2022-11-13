@@ -58,7 +58,7 @@ struct MPSCQueue {
     push_internal(ptr);
   }
 
-  auto pop() -> std::unique_ptr<T> {
+  [[nodiscard]] auto pop() -> std::unique_ptr<T> {
     auto current = tail.load();
     auto next = current->next.load();
 
@@ -113,6 +113,7 @@ struct MPSCQueue {
     return nullptr;
   }
 
+private:
   Node stub{};
   std::atomic<Node*> head;
   std::atomic<Node*> tail;
