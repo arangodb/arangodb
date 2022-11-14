@@ -163,7 +163,7 @@ TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   auto& agent = mockAgent.get();
   auto addFollower =
       AddFollower(baseStructure.getOrCreate(PREFIX), &agent, jobId, "unittest",
-                  DATABASE, COLLECTION, SHARD);
+                  DATABASE, COLLECTION, SHARD, false);
 
   addFollower.create();
 }
