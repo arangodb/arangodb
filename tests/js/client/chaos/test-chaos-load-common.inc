@@ -117,34 +117,37 @@ const viewName = (name, isSearchAlias) => {
 
 const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   let runQuery = (query) => {
-    return db._query(query).toArray()[0];
+    return db._query(query).toArray();
   };
-  let expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length");
-  // TODO uncomment assert when will be fixed SEARCH-419
-  print("Collection: " + expected + " search: " + isSearchAlias + " materialize: " + isMaterialize);
+  let expected;
+  if (!isMaterialize) {
+    expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length")[0];
+  } else {
+    expected = runQuery("FOR d IN " + cn + " RETURN d").length;
+  }
+  print("Collection: " + expected + " materialize: " + isMaterialize);
   let vn;
   const checkView = (isMaterialize, check) => {
     let result;
     if (isMaterialize) {
-      result = runQuery("RETURN LENGTH(FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d)");
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d").length;
     } else {
-      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length");
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
+    print(vn + ": " + result);
     if (check) {
       assertEqual(expected, result);
-    } else {
-      print(result);
     }
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize, true);
 
   vn = viewName(cn + "_view_ps", isSearchAlias);
   checkView(isMaterialize, false);
 
   vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize, true);
 
   vn = viewName(cn + "_view_ps_sv", isSearchAlias);
   checkView(isMaterialize, false);
@@ -272,8 +275,12 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
-      // createViews(false);
-      // createViews(true);
+      // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
+      testOpts.checkView = !testOpts.withIntermediateCommits;
+      if (testOpts.checkView) {
+        createViews(false);
+        createViews(true);
+      }
       db._create(coordination_cn);
 
       if (testOpts.withFailurePoints) {
@@ -315,8 +322,10 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      // removeViews(false);
-      // removeViews(true);
+      if (testOpts.checkView) {
+        removeViews(false);
+        removeViews(true);
+      }
       db._drop(cn);
 
       const shells = db[coordination_cn].all();
@@ -433,11 +442,13 @@ function BaseChaosSuite(testOpts) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              // if (Math.random() < 0.5) {
-              //   lookupViews(false);
-              // } else {
-              //   lookupViews(true);
-              // }
+              if (testOpts.checkView) {
+                if (Math.random() < 0.5) {
+                  lookupViews(false);
+                } else {
+                  lookupViews(true);
+                }
+              }
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -484,10 +495,12 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
-      // checkViewConsistency(cn, false, false);
-      // checkViewConsistency(cn, true, false);
-      // checkViewConsistency(cn, false, true);
-      // checkViewConsistency(cn, true, true);
+      if (testOpts.checkView) {
+        checkViewConsistency(cn, false, false);
+        checkViewConsistency(cn, true, false);
+        checkViewConsistency(cn, false, true);
+        checkViewConsistency(cn, true, true);
+      }
     }
   };
 }
