@@ -29,6 +29,7 @@ const arangodb = require("@arangodb");
 const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
+const isEnterprise = require("internal").isEnterprise();
 
 const db = arangodb.db;
 
@@ -92,22 +93,106 @@ function createClusterWideMetrics() {
   let foo2_values = [{"name": "i"}];
   let foo3_values = [{"name": "hate"}, {"name": "js"}];
   for (let i = 0; i !== 1000; ++i) {
-    foo1_values.push({"name": i});
-    foo2_values.push({"name": i + 100000});
-    foo3_values.push({"name": i - 100000});
+    foo1_values.push({"name": i, "nested_1_1": [{"a": -i}], "nested_1_2": [{"nested_1_1": [{"b": -i + 1}]}]});
+    foo2_values.push({"name": i + 100000, "nested_2_1": [{"c": -i}], "nested_2_2": [{"nested_2_1": [{"d": -i + 1}]}]});
+    foo3_values.push({"name": i - 100000, 
+                        "nested_3_1": [{"e": String(i)}], 
+                        "nested_3_2": [{"nested_3_1": [{"f": String(i + 1)}]}], 
+                        "nested_3_3": [{"nested_3_2": [{"nested_3_1":[{"h": String(i + 1)}]}]}]
+                      });
   }
   db.foo1.save(foo1_values);
   db.foo2.save(foo2_values);
-  db.foo3.save(foo3_values);
-  db._createView("foov", "arangosearch", {
-    "consolidationIntervalMsec": 0,
-    "cleanupIntervalStep": 0,
-    "links": {
-      "foo1": {"includeAllFields": true},
-      "foo2": {"includeAllFields": true},
-      "foo3": {"includeAllFields": true}
-    }
-  });
+  db.foo3.save(foo3_values)
+  if (isEnterprise) {
+    db._createView("foov", "arangosearch", {
+      "consolidationIntervalMsec": 0,
+      "cleanupIntervalStep": 0,
+      "links": {
+        "foo1": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_1_1": {
+              "nested": {
+                "a": {}
+              }
+            },
+            "nested_1_2": {
+              "nested": {
+                "nested_1_1": {
+                  "nested": {
+                    "b": {}
+                  }
+                }
+              } 
+            }
+          }
+        },
+        "foo2": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_2_1": {
+              "nested": {
+                "c": {}
+              }
+            },
+            "nested_2_2": {
+              "nested": {
+                "nested_2_1": {
+                  "nested": {
+                    "d": {}
+                  }
+                }
+              } 
+            }
+          }
+        },
+        "foo3": {
+          "includeAllFields": true,
+          "fields": {
+            "nested_3_1": {
+              "nested": {
+                "e": {}
+              }
+            },
+            "nested_3_2": {
+              "nested": {
+                "nested_3_1": {
+                  "nested": {
+                    "f": {}
+                  }
+                }
+              } 
+            },
+            "nested_3_3": {
+              "nested": {
+                "nested_3_2": {
+                  "nested": {
+                    "nested_3_1": {
+                      "nested":{
+                        "h": {}
+                      }
+                    }
+                  }
+                }
+              } 
+            }
+          }
+        }
+      }
+    });
+  } else {
+    db._createView("foov", "arangosearch", {
+      "consolidationIntervalMsec": 0,
+      "cleanupIntervalStep": 0,
+      "links": {
+        "foo1": {"includeAllFields": true},
+        "foo2": {"includeAllFields": true},
+        "foo3": {"includeAllFields": true}
+      }
+    });
+  }
+
   db._query("FOR d IN foov OPTIONS { waitForSync: true } LIMIT 1 RETURN 1");
 }
 
