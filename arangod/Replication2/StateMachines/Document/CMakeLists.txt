@@ -1,5 +1,6 @@
 target_sources(arango_replication2 PRIVATE
   ActiveTransactionsQueue.cpp
+  CollectionReader.cpp
   DocumentCore.cpp
   DocumentFollowerState.cpp
   DocumentLeaderState.cpp
@@ -12,5 +13,6 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateNetworkHandler.cpp
   DocumentStateShardHandler.cpp
   DocumentStateSnapshot.cpp
+  DocumentStateSnapshotHandler.cpp
   DocumentStateTransaction.cpp
   DocumentStateTransactionHandler.cpp)
