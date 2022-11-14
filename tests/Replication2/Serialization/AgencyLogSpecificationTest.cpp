@@ -145,7 +145,7 @@ TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
 
     auto jsonSlice = velocypack::Slice(jsonBuffer->data());
     auto supervision = deserialize<LogTarget::Supervision>(jsonSlice);
-    EXPECT_EQ(supervision.maxActionsTraceLength, 1234);
+    EXPECT_EQ(supervision.maxActionsTraceLength, 1234U);
   }
 }
 
