@@ -131,6 +131,7 @@ struct CompactionStatus {
   struct Compaction {
     clock::time_point time;
     LogRange range;
+    std::optional<result::Error> error;
 
     friend auto operator==(Compaction const& left,
                            Compaction const& right) noexcept -> bool = default;

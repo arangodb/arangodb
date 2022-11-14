@@ -102,35 +102,49 @@ void CompactionManager::checkCompaction(
 
   auto [index, reason] = calculateCompactionIndex(
       guard.get(), logBounds, guard->_fullCompactionNextRound);
+  guard->_fullCompactionNextRound = false;
+  auto promises = std::move(guard->compactAggregator);
 
   if (index > logBounds.from) {
     auto& compaction = guard->status.inProgress.emplace();
     compaction.time = CompactionStatus::clock ::now();
-    compaction.range = LogRange{logBounds.from, index};
+    LogRange compactionRange = LogRange{logBounds.from, index};
+    compaction.range = compactionRange;
     guard->_compactionInProgress = true;
     auto f = store->removeFront(index);
     guard.unlock();
     std::move(f).thenFinal(
-        [weak = weak_from_this()](futures::Try<Result> const& tryResult) {
+        [weak = weak_from_this(), promises = std::move(promises),
+         reason = reason,
+         compactionRange](futures::Try<Result> const& tryResult) mutable {
           auto self = weak.lock();
           if (self == nullptr) {
             return;
           }
 
-          auto guard = self->guarded.getLockedGuard();
           auto result = basics::catchToResult([&] { return tryResult.get(); });
-          ADB_PROD_ASSERT(guard->status.inProgress.has_value());
-          guard->status.lastCompaction = guard->status.inProgress;
-          guard->status.inProgress.reset();
-          if (result.fail()) {
-            // TODO report error in compaction
-            abort();
-          } else {
-            self->checkCompaction(std::move(guard));
+          auto cresult = CompactResult{.stopReason = reason,
+                                       .compactedRange = compactionRange};
+          {
+            auto guard = self->guarded.getLockedGuard();
+            ADB_PROD_ASSERT(guard->status.inProgress.has_value());
+            guard->status.lastCompaction = guard->status.inProgress;
+            guard->status.inProgress.reset();
+            if (result.fail()) {
+              cresult.error = std::move(result).error();
+              guard->status.lastCompaction->error = cresult.error;
+            } else {
+              self->checkCompaction(std::move(guard));
+            }
           }
+
+          promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
         });
   } else {
     guard->status.stop = reason;
+    guard.unlock();
+    auto cresult = CompactResult{.stopReason = reason};
+    promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
   }
 }
 

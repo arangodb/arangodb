@@ -36,6 +36,8 @@ using namespace arangodb::replication2::replicated_log;
 
 namespace {
 
+struct StorageManagerMock;
+
 struct StorageTransactionMock : IStorageTransaction {
   MOCK_METHOD(InMemoryLog, getInMemoryLog, (), (const, noexcept, override));
   MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
@@ -146,13 +148,13 @@ TEST_F(CompactionManagerTest, no_compaction_because_of_threshold) {
 }
 
 TEST_F(CompactionManagerTest, run_automatic_compaction) {
-  LogRange const range{LogIndex{0}, LogIndex{101}};
   options->_thresholdLogCompaction = 0;
 
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
-    ON_CALL(*trx, getLogBounds).WillByDefault(testing::Return(range));
-    EXPECT_CALL(*trx, getLogBounds).Times(1).WillOnce(testing::Return(range));
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{0}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
     return trx;
   });
 
@@ -168,8 +170,9 @@ TEST_F(CompactionManagerTest, run_automatic_compaction) {
   std::optional<futures::Promise<Result>> p;
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
     auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
-    ON_CALL(*trx, getLogBounds).WillByDefault(testing::Return(range));
-    EXPECT_CALL(*trx, getLogBounds).Times(1).WillOnce(testing::Return(range));
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{0}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
 
     ON_CALL(*trx, removeFront).WillByDefault([&](LogIndex stop) {
       return p.emplace().getFuture();
@@ -197,7 +200,7 @@ TEST_F(CompactionManagerTest, run_automatic_compaction) {
     return trx;
   });
 
-  // now resolve the promise
+  // now resolve the removeFront-promise
   p->setValue(TRI_ERROR_NO_ERROR);
 
   {
@@ -209,4 +212,86 @@ TEST_F(CompactionManagerTest, run_automatic_compaction) {
     // now other compaction going
     EXPECT_EQ(status.inProgress, std::nullopt);
   }
+}
+
+TEST_F(CompactionManagerTest, manual_compaction_call_nothing_to_compact_ok) {
+  EXPECT_CALL(storageManagerMock, transaction).Times(1);
+  ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
+    return trx;
+  });
+
+  auto cf = compactionManager->compact();
+  ASSERT_TRUE(cf.isReady());
+  auto result = cf.get();
+  EXPECT_EQ(result.error, std::nullopt);
+  EXPECT_TRUE(result.compactedRange.empty());
+}
+
+constexpr auto operator"" _Lx(unsigned long long idx) noexcept -> LogIndex {
+  return LogIndex{idx};
+}
+
+TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
+  EXPECT_CALL(storageManagerMock, transaction).Times(2);
+  ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
+    return trx;
+  });
+
+  // compaction possible upto 40, but threshold blocks
+  options->_thresholdLogCompaction = 100;
+  compactionManager->updateReleaseIndex(40_Lx);
+  compactionManager->updateLargestIndexToKeep(40_Lx);
+
+  {
+    auto status = compactionManager->getCompactionStatus();
+    ASSERT_NE(std::nullopt, status.stop);
+    EXPECT_TRUE(std::holds_alternative<
+                CompactionStopReason::CompactionThresholdNotReached>(
+        status.stop->value));
+  }
+
+  std::optional<futures::Promise<Result>> removeFrontPromise;
+
+  EXPECT_CALL(storageManagerMock, transaction)
+      .Times(2)
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .Times(1)
+            .WillOnce(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+        EXPECT_CALL(*trx, removeFront(LogIndex{40}))
+            .Times(1)
+            .WillOnce([&](LogIndex stop) {
+              return removeFrontPromise.emplace().getFuture();
+            });
+        return trx;
+      })
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .Times(1)
+            .WillOnce(testing::Return(LogRange{LogIndex{40}, LogIndex{101}}));
+        return trx;
+      });
+
+  auto cf = compactionManager->compact();
+  ASSERT_FALSE(cf.isReady());
+  // promise should be set now
+  ASSERT_NE(removeFrontPromise, std::nullopt);
+  removeFrontPromise->setValue(Result{});
+
+  ASSERT_TRUE(cf.isReady());
+  auto result = cf.get();
+  EXPECT_EQ(result.error, std::nullopt);
+  EXPECT_EQ(result.compactedRange, (LogRange{LogIndex{20}, LogIndex{40}}));
 }

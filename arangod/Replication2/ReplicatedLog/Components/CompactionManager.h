@@ -74,10 +74,18 @@ struct ResolveAggregator {
   }
 
   auto resolveAll(futures::Try<T> result) -> DeferredAction {
+    struct ResolveData {
+      ContainerType promises;
+      futures::Try<T> result;
+      ResolveData(ContainerType promises, futures::Try<T> result)
+          : promises(std::move(promises)), result(std::move(result)) {}
+    };
     return DeferredAction{
-        [ps = std::move(promises), result = std::move(result)]() noexcept {
-          for (auto& p : ps) {
-            p.setTry(result);
+        [data = std::make_unique<ResolveData>(
+             std::move(promises), std::move(result))]() mutable noexcept {
+          for (auto& p : data->promises) {
+            auto copy = data->result;
+            p.setTry(std::move(copy));
           }
         }};
   }

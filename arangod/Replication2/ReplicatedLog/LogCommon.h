@@ -517,6 +517,7 @@ auto to_string(CompactionStopReason const&) -> std::string;
 
 struct CompactionResult {
   std::size_t numEntriesCompacted{0};
+  LogRange range;
   std::optional<CompactionStopReason> stopReason;
 
   friend auto operator==(CompactionResult const& left,
