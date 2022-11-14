@@ -151,7 +151,7 @@ struct ColorPropagationValue {
     VectorOfColors result;
     auto const size = colors.size();
     result.reserve(size);
-    for (size_t color = 0; color < size; ++color) {
+    for (uint16_t color = 0; color < size; ++color) {
       if (contains(color)) {
         result.push_back(color);
       }
