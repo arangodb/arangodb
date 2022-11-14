@@ -771,7 +771,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::commitUnsafe(
       // persist "outOfSync" flag in RocksDB once. note: if this fails, it will
       // throw an exception
       try {
-        _engine->changeCollection(collection().vocbase(), collection(), true);
+        _engine->changeCollection(collection().vocbase(), collection());
       } catch (std::exception const& ex) {
         // we couldn't persist the outOfSync flag, but we can't mark the data
         // store as "not outOfSync" again. not much we can do except logging.
@@ -1344,7 +1344,7 @@ Result IResearchDataStore::initDataStore(
           // persist "out of sync" flag in RocksDB. note: if this fails, it will
           // throw an exception and abort the recovery & startup.
           linkLock->_engine->changeCollection(linkLock->collection().vocbase(),
-                                              linkLock->collection(), true);
+                                              linkLock->collection());
 
           if (asyncFeature->failQueriesOnOutOfSync()) {
             // we cannot return an error from here as this would abort the

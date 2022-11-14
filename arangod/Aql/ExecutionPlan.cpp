@@ -603,41 +603,29 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, unsigned flags) const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = false;
-  options.buildUnindexedArrays = true;
-  auto builder = std::make_shared<VPackBuilder>(&options);
-  toVelocyPack(*builder, ast, flags);
-  return builder;
-}
-
-/// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
-
   _root->allToVelocyPack(builder, flags);
 
-  TRI_ASSERT(builder.isOpenObject());
-
   // set up rules
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
   for (auto const& ruleName :
        OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValuePair(ruleName.data(), ruleName.size(),
-                               VPackValueType::String));
+    builder.add(VPackValue(ruleName));
   }
   builder.close();
 
   // set up collections
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("collections"));
   ast->query().collections().toVelocyPack(builder);
 
   // set up variables
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 

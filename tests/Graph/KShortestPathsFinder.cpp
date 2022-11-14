@@ -154,7 +154,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
             std::move(forwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextForward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     SingleServerBaseProviderOptions backwardOpts(
         _tmpVarBackward,
@@ -162,7 +162,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
             std::move(backwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextBackward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     finder = new KShortestPathsFinder<
         SingleServerProvider<SingleServerProviderStep>>(
@@ -231,7 +231,7 @@ TEST_F(KShortestPathsFinderTest, path_of_length_5_with_loops_to_start_end) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  ASSERT_EQ(result.length(), 5);
+  ASSERT_EQ(result.length(), 5U);
 }
 
 TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
@@ -374,7 +374,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
             std::move(forwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextForward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     SingleServerBaseProviderOptions backwardOpts(
         _tmpVarBackward,
@@ -382,7 +382,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
             std::move(backwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextBackward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     forwardOpts.setWeightEdgeCallback(
         [weightAttribute = usedWeightAttribute, usedDefaultWeight](

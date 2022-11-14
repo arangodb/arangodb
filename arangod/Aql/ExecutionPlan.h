@@ -99,9 +99,6 @@ class ExecutionPlan {
                                           bool explainRegisters) noexcept;
 
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      Ast* ast, unsigned flags) const;
-
   void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
                     unsigned flags) const;
 

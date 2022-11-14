@@ -24,7 +24,7 @@
 #include "v8-shell.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/csv.h"

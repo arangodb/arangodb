@@ -73,10 +73,10 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     // Metric still unused
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 0);
+    EXPECT_EQ(numAppendEntries, 0U);
     auto numFollowerAppendEntries = countHistogramEntries(
         _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 0);
+    EXPECT_EQ(numFollowerAppendEntries, 0U);
   }
 
   {
@@ -207,10 +207,10 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     // Finally, the LCI is updated with another round of requests.
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 6);
+    EXPECT_EQ(numAppendEntries, 6U);
     auto numFollowerAppendEntries = countHistogramEntries(
         _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 6);
+    EXPECT_EQ(numFollowerAppendEntries, 6U);
   }
 }
 
@@ -276,7 +276,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
     // AppendEntries with new LCI
-    EXPECT_EQ(number_of_runs, 4);
+    EXPECT_EQ(number_of_runs, 4U);
   }
 
   {
@@ -519,7 +519,7 @@ TEST_F(ReplicatedLogTest,
     // AppendEntries with prevLogIndex 2 -> success = false, replicated log
     // empty AppendEntries with prevLogIndex 2 -> success = true, including
     // commit index AppendEntries with LCI
-    EXPECT_EQ(number_of_runs, 3);
+    EXPECT_EQ(number_of_runs, 3U);
   }
 
   {

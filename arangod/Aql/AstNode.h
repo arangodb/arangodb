@@ -609,13 +609,8 @@ struct AstNode {
   std::vector<AstNode*> members{};
 };
 
+template<bool resolveAttributeAccess = true>
 int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
-
-/// @brief less comparator for Ast value nodes
-template<bool useUtf8>
-struct AstNodeValueLess {
-  bool operator()(AstNode const* lhs, AstNode const* rhs) const;
-};
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

@@ -71,9 +71,10 @@ class IResearchInvertedIndex : public IResearchDataStore {
   bool covers(aql::Projections& projections) const;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      LogicalCollection* collection, transaction::Methods* trx,
-      aql::AstNode const* node, aql::Variable const* reference,
-      IndexIteratorOptions const& opts, int mutableConditionIdx);
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      int mutableConditionIdx);
 
   Index::SortCosts supportsSortCondition(
       aql::SortCondition const* sortCondition, aql::Variable const* reference,
@@ -156,13 +157,14 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
   bool matchesDefinition(velocypack::Slice const& other) const final;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) final {
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx) final {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
-        &IResearchDataStore::collection(), trx, node, reference, opts,
+        monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
         mutableConditionIdx);
   }
 
