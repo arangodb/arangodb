@@ -164,10 +164,6 @@ class Supervision : public arangodb::Thread {
 
   void setGracePeriod(double d) noexcept { _gracePeriod = d; }
 
-  void setDelayAddFollower(double d) noexcept { _delayAddFollower = d; }
-
-  void setDelayFailedFollower(double d) noexcept { _delayFailedFollower = d; }
-
   /// @brief notifies the supervision and triggers a new run
   void notify() noexcept;
 
@@ -315,8 +311,6 @@ class Supervision : public arangodb::Thread {
   double _frequency;
   double _gracePeriod;
   double _okThreshold;
-  double _delayAddFollower;
-  double _delayFailedFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
