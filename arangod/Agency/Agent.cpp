@@ -263,7 +263,7 @@ priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
 }
 
 /// Get copy of momentary configuration
-config_t const Agent::config() const { return _config; }
+config_t const& Agent::config() const { return _config; }
 
 /// Adjust timeoutMult:
 void Agent::adjustTimeoutMult(int64_t timeoutMult) {
@@ -2512,6 +2512,22 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
         << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
     _supervision->setGracePeriod(d);
+  }
+  slice = data.get("delayAddFollower");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
+        << "Updating delayAddFollower to " << d;
+    _config.setSupervisionDelayAddFollower(d);
+    _supervision->setDelayAddFollower(d);
+  }
+  slice = data.get("delayFailedFollower");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
+        << "Updating delayFailedFollower to " << d;
+    _config.setSupervisionDelayFailedFollower(d);
+    _supervision->setDelayFailedFollower(d);
   }
 }
 

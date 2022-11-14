@@ -209,6 +209,8 @@ Supervision::Supervision(ArangodServer& server)
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
+      _delayAddFollower(0.),
+      _delayFailedFollower(0.),
       _jobId(0),
       _jobIdMax(0),
       _lastUpdateIndex(0),
@@ -3247,8 +3249,15 @@ void arangodb::consensus::enforceReplicationFunctional(
 
               if (actualReplicationFactor < replicationFactor &&
                   apparentReplicationFactor < 2 + replicationFactor) {
+                // Note: If apparentReplicationFactor is smaller than
+                // replicationFactor, then there are fewer servers in the
+                // plan than requested by the user. This means the AddFollower
+                // job is not subject to the configurable delay and is
+                // considered more urgent. This happens, if the
+                // repliactionFactor is increased by the user.
                 AddFollower(snapshot, nullptr, std::to_string(jobId++),
-                            "supervision", db_.first, col_.first, shard_.first)
+                            "supervision", db_.first, col_.first, shard_.first,
+                            apparentReplicationFactor < replicationFactor)
                     .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
@@ -3388,6 +3397,8 @@ bool Supervision::start(Agent* agent) {
   _frequency = _agent->config().supervisionFrequency();
   _okThreshold = _agent->config().supervisionOkThreshold();
   _gracePeriod = _agent->config().supervisionGracePeriod();
+  _delayAddFollower = _agent->config().supervisionDelayAddFollower();
+  _delayFailedFollower = _agent->config().supervisionDelayFailedFollower();
   return start();
 }
 

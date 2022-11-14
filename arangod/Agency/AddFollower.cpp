@@ -36,11 +36,12 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
                          std::string const& database,
                          std::string const& collection,
-                         std::string const& shard)
+                         std::string const& shard, bool executeImmediately)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
-      _shard(shard) {}
+      _shard(shard),
+      _executeImmediately(executeImmediately) {}
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
@@ -68,6 +69,10 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     // constructor
     finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
+  }
+  auto exImm = _snapshot.hasAsBool(path + "immediately");
+  if (exImm) {
+    _executeImmediately = exImm.value();
   }
 }
 
@@ -105,6 +110,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("immediately", VPackValue(_executeImmediately));
   }
 
   _status = TODO;
@@ -197,16 +203,21 @@ bool AddFollower::start(bool&) {
     return false;
   }
 
-  // Check if 5 mins have passed since the creation of the job:
-  auto now = std::chrono::system_clock::now();
-  std::chrono::system_clock::time_point created =
-      stringToTimepoint(_timeCreated);
-  if (now - created < std::chrono::minutes(1)) {
-    LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
-        << "shard " << _shard
-        << " needs addFollower but 1 minute has not yet passed, delaying job "
-        << _jobId;
-    return false;
+  // Check if configured delay has passed since the creation of the job,
+  // or we are in "urgent" mode:
+  if (!_executeImmediately) {
+    auto now = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point created =
+        stringToTimepoint(_timeCreated);
+    if (now - created < std::chrono::duration<double>(
+                            _agent->config().supervisionDelayAddFollower())) {
+      LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
+          << "shard " << _shard
+          << " needs addFollower but configured AddFollowerDelay has not yet "
+             "passed, delaying job "
+          << _jobId;
+      return false;
+    }
   }
 
   // Now find some new servers to add:

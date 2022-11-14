@@ -173,6 +173,19 @@ bool FailedFollower::start(bool& aborts) {
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
+
+  // Check if configured delay has passed since the creation of the job:
+  auto now = std::chrono::system_clock::now();
+  if (now - _created < std::chrono::duration<double>(
+                           _agent->config().supervisionDelayFailedFollower())) {
+    LOG_TOPIC("1de2d", DEBUG, Logger::SUPERVISION)
+        << "shard " << _shard
+        << " needs FailedFollower but configured FailedFollowerDelay has not "
+           "yet passed, delaying job "
+        << _jobId;
+    return false;
+  }
+
   auto failoverCands =
       Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;

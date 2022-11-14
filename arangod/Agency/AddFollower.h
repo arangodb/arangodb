@@ -33,7 +33,7 @@ struct AddFollower : public Job {
   AddFollower(Node const& snapshot, AgentInterface* agent,
               std::string const& jobId, std::string const& creator,
               std::string const& database, std::string const& collection,
-              std::string const& shard);
+              std::string const& shard, bool executeImmediately = false);
 
   AddFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
               std::string const& jobId);
@@ -51,6 +51,7 @@ struct AddFollower : public Job {
   std::string _collection;
   std::string _shard;
   std::string _timeCreated;
+  bool _executeImmediately;
 };
 
 }  // namespace consensus
