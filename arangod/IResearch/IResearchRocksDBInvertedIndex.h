@@ -27,6 +27,8 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace iresearch {
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
@@ -107,13 +109,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   bool matchesDefinition(velocypack::Slice const& other) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx) override {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
-        &IResearchDataStore::collection(), trx, node, reference, opts,
+        monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
         mutableConditionIdx);
   }
 

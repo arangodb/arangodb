@@ -44,6 +44,7 @@ namespace arangodb {
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
+struct ResourceMonitor;
 
 namespace velocypack {
 class Builder;
@@ -431,20 +432,15 @@ class Index {
 
   /// @brief create a new index iterator for the (specialized) condition
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   bool canUseConditionPart(
       aql::AstNode const* access, aql::AstNode const* other,
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
-
-  /// @brief Transform the list of search slices to search values.
-  ///        This will multiply all IN entries and simply return all other
-  ///        entries.
-  void expandInSearchValues(velocypack::Slice const,
-                            velocypack::Builder&) const;
 
   virtual Result scheduleWarmup();
 

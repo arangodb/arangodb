@@ -84,7 +84,7 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_without_local_log) {
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
                                     planStates, currentStates, serverId, errors,
                                     dirtyset, callNotify, actions);
-  ASSERT_EQ(actions.size(), 0);
+  ASSERT_EQ(actions.size(), 0U);
 }
 
 TEST_F(ReplicatedStateMaintenanceTest, create_state_test_with_local_log) {
@@ -123,7 +123,7 @@ TEST_F(ReplicatedStateMaintenanceTest, create_state_test_with_local_log) {
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
                                     planStates, currentStates, serverId, errors,
                                     dirtyset, callNotify, actions);
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_STATE);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -184,7 +184,7 @@ TEST_F(ReplicatedStateMaintenanceTest,
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
                                     planStates, currentStates, serverId, errors,
                                     dirtyset, callNotify, actions);
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_STATE);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -248,7 +248,7 @@ TEST_F(ReplicatedStateMaintenanceTest, do_nothing_if_stable) {
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
                                     planStates, currentStates, serverId, errors,
                                     dirtyset, callNotify, actions);
-  ASSERT_EQ(actions.size(), 0);
+  ASSERT_EQ(actions.size(), 0U);
 }
 
 TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
@@ -302,7 +302,7 @@ TEST_F(ReplicatedStateMaintenanceTest, check_resync_if_generation_changes) {
   maintenance::diffReplicatedStates(database, localLogs, localStates, planLogs,
                                     planStates, currentStates, serverId, errors,
                                     dirtyset, callNotify, actions);
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_STATE);
   EXPECT_EQ(action->get(DATABASE), database);

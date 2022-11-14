@@ -28,7 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -52,7 +52,6 @@
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "Utilities/IsArangoExecutable.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
@@ -73,7 +72,13 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-static std::string const DEFAULT_CLIENT_MODULE = "client.js";
+namespace {
+// this variable's value can be changed by the exit or quit commands.
+// if it's set, the main REPL loop will be aborted
+bool exitRepl = false;
+
+std::string const DEFAULT_CLIENT_MODULE = "client.js";
+}  // namespace
 
 namespace arangodb {
 
@@ -513,7 +518,7 @@ ErrorCode V8ShellFeature::runShell(
   bool lastEmpty = isBatch;
   double lastDuration = 0.0;
 
-  while (true) {
+  while (!::exitRepl) {
     console.setLastDuration(lastDuration);
     console.setPromptError(promptError);
     auto prompt = console.buildPrompt(client);
@@ -537,16 +542,6 @@ ErrorCode V8ShellFeature::runShell(
 
     console.log(prompt._plain + input + "\n");
 
-    std::string i = StringUtils::trim(input);
-
-    if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      break;
-    }
-
-    if (i == "help" || i == "help;") {
-      input = "help()";
-    }
-
     v8LineEditor.addHistory(input);
 
     v8::TryCatch tryCatch(isolate);
@@ -556,7 +551,7 @@ ErrorCode V8ShellFeature::runShell(
     // assume the command succeeds
     promptError = false;
 
-    // execute command and register its result in __LAST__
+    // execute command and register its result in _last
     v8LineEditor.setExecutingCommand(true);
     double t1 = TRI_microtime();
 
@@ -590,14 +585,6 @@ ErrorCode V8ShellFeature::runShell(
 
       console.printErrorLine(exception);
       console.log(exception);
-      i = extractShellExecutableName(i);
-      if (!i.empty()) {
-        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
-            << "This command must be executed in a system shell and cannot be "
-               "used inside of arangosh: '"
-            << i << "'";
-      }
-
       // this will change the prompt for the next round
       promptError = true;
     }
@@ -1116,7 +1103,7 @@ static void JS_VersionClient(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exit now
+/// @brief set the arangosh exit code
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1137,6 +1124,14 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
   isolate->TerminateExecution();
 
   TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interrupt arangosh repl loop
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ExitRepl(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ::exitRepl = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1293,6 +1288,9 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
                                TRI_V8_STD_STRING(_isolate, binaryPath));
+
+  TRI_AddGlobalFunctionVocbase(
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_EXIT_REPL"), JS_ExitRepl);
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(

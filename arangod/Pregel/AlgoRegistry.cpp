@@ -43,6 +43,7 @@
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 #include "Pregel/Algos/ReadWrite.h"
 #endif
+#include "Pregel/Algos/ColorPropagation.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -80,6 +81,8 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
+  } else if (algorithm == "colorpropagation") {
+    return new algos::ColorPropagation(server, userParams);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
@@ -168,6 +171,10 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
                         feature);
+  } else if (algorithm == "colorpropagation") {
+    return createWorker(vocbase,
+                        new algos::ColorPropagation(server, userParams), body,
+                        feature);
   }
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
   else if (algorithm == "readwrite") {
@@ -181,7 +188,6 @@ template<typename V, typename E, typename M>
                             server, userParams),
                         body, feature);
   }
-
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");
 }

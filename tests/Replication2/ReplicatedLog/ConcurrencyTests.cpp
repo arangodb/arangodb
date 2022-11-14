@@ -118,7 +118,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
           auto fut = log->waitFor(idx);
           fut.get();
           auto snapshot = log->getReplicatedLogSnapshot();
-          ASSERT_LT(0, idx.value);
+          ASSERT_LT(0U, idx.value);
           ASSERT_LE(idx.value, snapshot.size());
           auto const& entry = snapshot[idx.value - 1];
           EXPECT_EQ(idx, entry.entry().logIndex());
@@ -161,7 +161,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         auto const payload = std::optional(
             LogPayload::createFromString(genPayload(threadIdx, i + k)));
         auto const idx = idxs[k];
-        ASSERT_LT(0, idx.value);
+        ASSERT_LT(0U, idx.value);
         ASSERT_LE(idx.value, snapshot.size());
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.entry().logIndex());

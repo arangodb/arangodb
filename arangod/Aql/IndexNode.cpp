@@ -43,6 +43,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -661,7 +662,7 @@ void IndexNode::prepareProjections() {
     // if we have a covering index and a post-filter condition,
     // extract which projections we will need just to execute
     // the filter condition
-    std::unordered_set<AttributeNamePath> attributes;
+    containers::FlatHashSet<AttributeNamePath> attributes;
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),

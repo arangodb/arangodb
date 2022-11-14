@@ -22,7 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./SingleServerProvider.h"
+#include "SingleServerProvider.h"
 
 #include "Aql/QueryContext.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
@@ -84,12 +84,13 @@ SingleServerProvider<Step>::SingleServerProvider(
     arangodb::aql::QueryContext& queryContext,
     SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
-    : _trx(std::make_unique<arangodb::transaction::Methods>(
+    : _monitor(resourceMonitor),
+      _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
-             _opts.getEdgeProjections()),
+             _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
@@ -137,8 +138,6 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Fetching...";
   std::vector<Step*> result{};
-  result.reserve(looseEnds.size());
-
   return futures::makeFuture(std::move(result));
 }
 
@@ -254,9 +253,14 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
-      trx(), _opts.tmpVar(), _opts.indexInformations().first,
+      monitor(), trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
       _opts.hasWeightMethod() /*, requiresFullDocument*/);
+}
+
+template<class Step>
+ResourceMonitor& SingleServerProvider<Step>::monitor() {
+  return _monitor;
 }
 
 template<class Step>

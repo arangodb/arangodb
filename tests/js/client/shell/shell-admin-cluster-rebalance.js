@@ -73,15 +73,10 @@ function getServersHealth() {
   return result.parsedBody.Health;
 }
 
-function getMovesWithAllFlagsTrue() {
-  const result = getRebalancePlan(true, true, true);
-  return result.result.moves;
-}
-
 function clusterRebalanceSuite() {
   let prevDB = null;
   return {
-    setUpAll: function () {
+    setUpAll: function() {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
@@ -93,7 +88,7 @@ function clusterRebalanceSuite() {
       resignServer(getDBServers()[0].id);
     },
 
-    tearDownAll: function () {
+    tearDownAll: function() {
       for (let i = 0; i < 20; i++) {
         db._drop("col" + i);
       }
@@ -101,18 +96,18 @@ function clusterRebalanceSuite() {
       db._dropDatabase(database);
     },
 
-    testGetImbalance: function () {
+    testGetImbalance: function() {
       let result = arango.GET('/_admin/cluster/rebalance');
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
     },
-    testCalcRebalanceVersion: function () {
+    testCalcRebalanceVersion: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 3
       });
       assertEqual(result.code, 400);
     },
-    testCalcRebalance: function () {
+    testCalcRebalance: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -129,7 +124,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testCalcRebalanceAndExecute: function () {
+    testCalcRebalanceAndExecute: function() {
       let result = arango.POST('/_admin/cluster/rebalance', {
         version: 1,
         moveLeaders: true,
@@ -166,7 +161,7 @@ function clusterRebalanceSuite() {
       }
     },
 
-    testExecuteRebalanceVersion: function () {
+    testExecuteRebalanceVersion: function() {
       let result = arango.POST('/_admin/cluster/rebalance/execute', {
         version: 3, moves: []
       });
@@ -181,7 +176,7 @@ function clusterRebalanceOtherOptionsSuite() {
 
   return {
 
-    setUpAll: function () {
+    setUpAll: function() {
       prevDB = db._name();
       db._createDatabase(database);
       db._useDatabase(database);
@@ -199,12 +194,12 @@ function clusterRebalanceOtherOptionsSuite() {
       }
     },
 
-    tearDownAll: function () {
+    tearDownAll: function() {
       db._useDatabase(prevDB);
       db._dropDatabase(database);
     },
 
-    testCalcRebalanceStopServer: function () {
+    testCalcRebalanceStopServer: function() {
       const dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
       for (let i = 0; i < dbServers.length; ++i) {
@@ -254,7 +249,6 @@ function clusterRebalanceOtherOptionsSuite() {
 
           result = getRebalancePlan(true, true, true);
           let moves = result.result.moves;
-          assertTrue(moves.length > 0);
           for (const job of moves) {
             assertNotEqual(job.to, dbServer.id);
           }
@@ -276,7 +270,7 @@ function clusterRebalanceOtherOptionsSuite() {
       }
     },
 
-    testCalcRebalanceNotMoveLeaders: function () {
+    testCalcRebalanceNotMoveLeaders: function() {
       const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
       Object.entries(plan).forEach((shardInfo) => {
         const [shardName, servers] = shardInfo;
@@ -292,20 +286,16 @@ function clusterRebalanceOtherOptionsSuite() {
         assertNotNull(leaderId);
         result = getRebalancePlan(false, true, false);
         let moves = result.result.moves;
-        const movesAllFlagsTrue = getMovesWithAllFlagsTrue();
-        assertTrue(movesAllFlagsTrue.length > moves.length);
-        if (moves.length > 0) {
-          for (const job of moves) {
-            if (job.shard === shardName) {
-              assertNotEqual(job.from, leaderId);
-              assertFalse(job.isLeader);
-            }
+        for (const job of moves) {
+          if (job.shard === shardName) {
+            assertNotEqual(job.from, leaderId);
+            assertFalse(job.isLeader);
           }
         }
       });
     },
 
-    testCalcRebalanceNotMoveFollowers: function () {
+    testCalcRebalanceNotMoveFollowers: function() {
       const plan = arango.GET("/_admin/cluster/shardDistribution").results["col1"].Plan;
       Object.entries(plan).forEach((shardInfo) => {
         const [shardName, servers] = shardInfo;
@@ -322,7 +312,6 @@ function clusterRebalanceOtherOptionsSuite() {
 
         result = getRebalancePlan(true, false, true);
         let moves = result.result.moves;
-        assertTrue(moves.length > 0);
         for (const job of moves) {
           if (job.shard === shardName) {
             assertNotEqual(job.from, followerId);

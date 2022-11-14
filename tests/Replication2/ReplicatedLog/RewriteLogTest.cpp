@@ -110,7 +110,7 @@ TEST_F(RewriteLogTest, rewrite_old_leader) {
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
     // AppendEntries with new lci
-    EXPECT_EQ(number_of_runs, 3);
+    EXPECT_EQ(number_of_runs, 3U);
   }
 
   {

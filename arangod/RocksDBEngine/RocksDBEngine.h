@@ -230,14 +230,14 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief flushes the RocksDB WAL.
   /// the optional parameter "waitForSync" is currently only used when the
-  /// "waitForCollector" parameter is also set to true. If "waitForCollector"
-  /// is true, all the RocksDB column family memtables are flushed, and, if
-  /// "waitForSync" is set, additionally synced to disk. The only call site
-  /// that uses "waitForCollector" currently is hot backup.
+  /// "flushColumnFamilies" parameter is also set to true. If
+  /// "flushColumnFamilies" is true, all the RocksDB column family memtables are
+  /// flushed, and, if "waitForSync" is set, additionally synced to disk. The
+  /// only call site that uses "flushColumnFamilies" currently is hot backup.
   /// The function parameter name are a remainder from MMFiles times, when
   /// they made more sense. This can be refactored at any point, so that
   /// flushing column families becomes a separate API.
-  Result flushWal(bool waitForSync, bool waitForCollector) override;
+  Result flushWal(bool waitForSync, bool flushColumnFamilies) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
@@ -245,7 +245,7 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 ErrorCode& status) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                   velocypack::Slice const& slice) override;
+                                   velocypack::Slice slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
@@ -296,8 +296,7 @@ class RocksDBEngine final : public StorageEngine {
                                   LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection,
-                        bool doSync) override;
+                        LogicalCollection const& collection) override;
 
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                     LogicalCollection const& collection,
@@ -328,10 +327,10 @@ class RocksDBEngine final : public StorageEngine {
 
   rocksdb::TransactionDB* db() const { return _db; }
 
-  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
+  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice slice,
                              RocksDBLogValue&& logValue);
   Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                     velocypack::Slice const& slice,
+                                     velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
@@ -463,8 +462,9 @@ class RocksDBEngine final : public StorageEngine {
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);
   ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
-  ErrorCode saveReplicationApplierConfiguration(
-      RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
+  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                velocypack::Slice slice,
+                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
