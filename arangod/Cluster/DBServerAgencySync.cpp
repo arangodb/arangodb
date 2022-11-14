@@ -369,7 +369,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyCommResult r =
               comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
-            LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
+            LOG_TOPIC("d73b8", DEBUG, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
                 << " message: " << r.errorMessage()
                 << ". This can be ignored, since it will be retried "
