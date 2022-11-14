@@ -388,7 +388,8 @@ class IResearchDataStore {
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job

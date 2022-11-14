@@ -41,9 +41,6 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
-constexpr char kTypeDelimiter = '\0';
-constexpr char kAnalyzerDelimiter = '\1';
-
 std::string_view constexpr kNullSuffix{"\0_n", 3};
 std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};

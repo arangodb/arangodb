@@ -35,6 +35,8 @@
 
 namespace arangodb::iresearch::kludge {
 
+inline constexpr char kTypeDelimiter = '\0';
+inline constexpr char kAnalyzerDelimiter = '\1';
 inline constexpr char kNestedDelimiter = '\2';
 
 #ifdef USE_ENTERPRISE

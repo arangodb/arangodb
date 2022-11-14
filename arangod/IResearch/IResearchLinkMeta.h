@@ -102,13 +102,22 @@ struct FieldMeta {
           _fields(mask),
           _includeAllFields(mask),
           _trackListPositions(mask),
-          _storeValues(mask) {}
+          _storeValues(mask)
+#ifdef USE_ENTERPRISE
+          ,
+          _cache(mask)
+#endif
+    {
+    }
 
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
     bool _trackListPositions;
     bool _storeValues;
+#ifdef USE_ENTERPRISE
+    bool _cache;
+#endif
   };
 
   [[nodiscard]] static Analyzer const& identity();
@@ -195,6 +204,8 @@ struct FieldMeta {
   bool _trackListPositions{false};
 #ifdef USE_ENTERPRISE
   bool _hasNested{false};
+  // field's norms columns should be cached in RAM
+  bool _cache{false};
 #endif
 };
 
@@ -212,7 +223,14 @@ struct IResearchLinkMeta : public FieldMeta {
           _storedValues(mask),
           _sortCompression(mask),
           _collectionName(mask),
-          _version(mask) {}
+          _version(mask)
+#ifdef USE_ENTERPRISE
+          ,
+          _sortCache(mask),
+          _pkCache(mask)
+#endif 
+    {
+    }
 
     bool _analyzerDefinitions;
     bool _sort;
@@ -220,6 +238,10 @@ struct IResearchLinkMeta : public FieldMeta {
     bool _sortCompression;
     bool _collectionName;
     bool _version;
+#ifdef USE_ENTERPRISE
+    bool _sortCache;
+    bool _pkCache;
+#endif
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
@@ -237,6 +259,12 @@ struct IResearchLinkMeta : public FieldMeta {
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
   std::string_view collectionName() const noexcept { return _collectionName; }
+
+#ifdef USE_ENTERPRISE
+  bool _sortCache{false};
+  bool _pkCache{false};
+#endif
+
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;

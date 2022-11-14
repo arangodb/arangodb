@@ -15,6 +15,10 @@ target_link_libraries(arango_indexes
   arango_replication2
   immer
   date_interface)
+  
+target_include_directories(arango_indexes
+    PUBLIC ${IRESEARCH_INCLUDE}
+)
 
 target_include_directories(arango_indexes PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
