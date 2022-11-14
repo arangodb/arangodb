@@ -43,8 +43,9 @@ struct TrivialScheduler {
 };
 
 struct TrivialState {
+  TrivialState(std::string state) : state(std::move(state)) {}
   std::string state;
-  std::size_t called;
+  std::size_t called{};
 };
 
 struct TrivialActorMessage : public MPSCQueue<TrivialActorMessage>::Node {
@@ -53,10 +54,10 @@ struct TrivialActorMessage : public MPSCQueue<TrivialActorMessage>::Node {
 };
 
 struct TrivialHandler {
-  auto operator()(TrivialState state, std::unique_ptr<TrivialActorMessage> msg)
-      -> TrivialState {
-    state.called++;
-    state.state += msg->store;
+  auto operator()(std::unique_ptr<TrivialState> state, std::unique_ptr<TrivialActorMessage> msg)
+      -> std::unique_ptr<TrivialState> {
+    state->called++;
+    state->state += msg->store;
     return state;
   }
 };
@@ -66,14 +67,14 @@ using MyActor = Actor<TrivialScheduler, TrivialHandler, TrivialState, TrivialAct
 TEST(Actor, processes_message) {
   auto scheduler = TrivialScheduler{};
 
-  auto actor = MyActor(scheduler, {.state = "Hello"});
+  auto actor = MyActor(scheduler, std::make_unique<TrivialState>("Hello"));
 
   send(actor, std::make_unique<TrivialActorMessage>("hello"));
   send(actor, std::make_unique<TrivialActorMessage>("world"));
   send(actor, std::make_unique<TrivialActorMessage>("!"));
 
-  ASSERT_EQ(actor.state.called, 3u);
-  ASSERT_EQ(actor.state.state, "Hellohelloworld!");
+  ASSERT_EQ(actor.state->called, 3u);
+  ASSERT_EQ(actor.state->state, "Hellohelloworld!");
 }
 
 struct NonTrivialScheduler {
@@ -85,8 +86,9 @@ struct NonTrivialScheduler {
 };
 
 struct NonTrivialState {
+  NonTrivialState(std::string state) : state(std::move(state)) {}
   std::string state;
-  std::size_t called;
+  std::size_t called{};
 };
 
 struct NonTrivialActorMessage : public MPSCQueue<NonTrivialActorMessage>::Node {
@@ -95,10 +97,10 @@ struct NonTrivialActorMessage : public MPSCQueue<NonTrivialActorMessage>::Node {
 };
 
 struct NonTrivialHandler {
-  auto operator()(NonTrivialState state, std::unique_ptr<NonTrivialActorMessage> msg)
-      -> NonTrivialState {
-    state.called++;
-    state.state += msg->store;
+  auto operator()(std::unique_ptr<NonTrivialState> state, std::unique_ptr<NonTrivialActorMessage> msg)
+      -> std::unique_ptr<NonTrivialState> {
+    state->called++;
+    state->state += msg->store;
     return state;
   }
 };
@@ -108,7 +110,7 @@ using MyActor2 =
 
 TEST(Actor, trivial_thread_scheduler) {
    auto scheduler = NonTrivialScheduler();
-   auto actor = MyActor2(scheduler, {.state = "Hello"});
+   auto actor = MyActor2(scheduler, std::make_unique<NonTrivialState>("Hello"));
 
    for (std::size_t i = 0; i < 100; i++) {
      send(actor, std::make_unique<NonTrivialActorMessage>("hello"));
@@ -117,6 +119,7 @@ TEST(Actor, trivial_thread_scheduler) {
    }
    // joinen.
    scheduler.threads.joinAll();
-   fmt::print("I got called {} times, accumulated {}\n", actor.state.called,
-              actor.state.state);
+   fmt::print("I got called {} times, accumulated {}\n", actor.state->called,
+              actor.state->state);
 }
+

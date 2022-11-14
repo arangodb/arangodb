@@ -33,11 +33,11 @@ namespace arangodb::pregel::actor {
 template<typename Scheduler, typename MessageHandler, typename State,
          typename Message>
 struct Actor {
-  Actor(Scheduler& schedule, State initialState)
-      : schedule(schedule), state(initialState) {}
+  Actor(Scheduler& schedule, std::unique_ptr<State> initialState)
+      : schedule(schedule), state(std::move(initialState)) {}
 
-  Actor(Scheduler& schedule, State initialState, std::size_t batchSize)
-      : batchSize(batchSize), schedule(schedule), state(initialState) {}
+  Actor(Scheduler& schedule, std::unique_ptr<State> initialState, std::size_t batchSize)
+      : batchSize(batchSize), schedule(schedule), state(std::move(initialState)) {}
 
   void process(std::unique_ptr<Message> msg) {
     inbox.push(std::move(msg));
@@ -55,7 +55,7 @@ struct Actor {
       auto i = batchSize;
 
       while(auto msg = inbox.pop()) {
-        state = handler(state, std::move(msg));
+        state = handler(std::move(state), std::move(msg));
         i--;
         if(i == 0) {
           break;
@@ -70,7 +70,7 @@ struct Actor {
   arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
   Scheduler& schedule;
   MessageHandler handler{};
-  State state;
+  std::unique_ptr<State> state;
 };
 
 template<typename Scheduler, typename MessageHandler, typename State,
