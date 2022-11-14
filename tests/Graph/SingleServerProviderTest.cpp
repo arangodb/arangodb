@@ -165,24 +165,6 @@ TEST_F(SingleServerProviderTest, it_can_provide_edges) {
   }
 }
 
-/* Move all the test code below to optimizer2 related directory */
-TEST_F(SingleServerProviderTest,
-       transform_query_plan_to_intermediate_representation) {
-  MockGraph g;      // note: Not needed itself, but ...
-  makeProvider(g);  // ... this call will initialize everything we need
-  // to actually generate our plan.
-
-  std::shared_ptr<arangodb::aql::Query> myQuery =
-      singleServer->getQuery("RETURN 1", {"v", "e"});
-  auto actualQuery = myQuery.get();
-  auto oldPlan = actualQuery->plan();
-
-  arangodb::aql::optimizer2::plan::InspectablePlan newPlan =
-      oldPlan->toInspectable();
-  EXPECT_TRUE(newPlan.success());
-  EXPECT_EQ(newPlan.amountOfNodes(), 3);
-}
-
 }  // namespace single_server_provider_test
 }  // namespace tests
 }  // namespace arangodb
