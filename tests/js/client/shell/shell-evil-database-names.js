@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
+const isEnterprise = require("internal").isEnterprise();
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬", "let%2Fus%26test%3Fthis"];
 
 function EvilDatabaseNamesSuite () {
@@ -81,14 +82,25 @@ function EvilDatabaseNamesSuite () {
     },
 
     testViewCreationDeletion: function () {
+      if(!isEnterprise) {
+        print("enterpise");
+      }
       dbs.forEach((database) => {
         db._useDatabase(database);
-        const view = db._createView("view123", "arangosearch", {});
+        let tmpColl = db._create("tmpColl");
+        let view;
+        if (isEnterprise) {
+          view = db._createView("view123", "arangosearch", {"links": {"tmpColl": {"fields": {"a": {"nested": {"b": {}}}}}}});
+          print(view.properties())
+        } else {
+          view = db._createView("view123", "arangosearch", {});
+        }
         const views = db._views().map((view) => view.name());
         assertNotEqual(views.indexOf("view123"), -1);
         view.properties({cleanupIntervalStep: 12});
         assertEqual(view.properties().cleanupIntervalStep, 12);
         db._dropView("view123");
+        db._drop("tmpColl");
         assertEqual(db._views(), []);
       });
     },
