@@ -253,6 +253,8 @@ struct FollowerStateManager
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   void handleApplyEntriesResult(Result);
+  auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
     [[nodiscard]] auto updateCommitIndex(LogIndex index)
         -> std::optional<futures::Future<Result>>;
@@ -261,6 +263,8 @@ struct FollowerStateManager
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
     [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
+    void registerSnapshotError(Result error) noexcept;
+    void clearSnapshotErrors() noexcept;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
@@ -269,6 +273,8 @@ struct FollowerStateManager
     WaitForQueue _waitQueue{};
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
+    std::optional<Result> _lastSnapshotError{};
+    std::uint64_t _snapshotErrorCounter{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
   };
   Guarded<GuardedData> _guardedData;

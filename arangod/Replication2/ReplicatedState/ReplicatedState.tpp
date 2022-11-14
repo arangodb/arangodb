@@ -483,9 +483,90 @@ FollowerStateManager<S>::FollowerStateManager(
       _metrics(std::move(metrics)),
       _guardedData{std::move(followerState), std::move(stream)} {}
 
+namespace {
+inline auto delayedFuture(std::chrono::steady_clock::duration duration)
+    -> futures::Future<futures::Unit> {
+  if (SchedulerFeature::SCHEDULER) {
+    return SchedulerFeature::SCHEDULER->delay(duration);
+  }
+
+  std::this_thread::sleep_for(duration);
+  return futures::Future<futures::Unit>{std::in_place};
+}
+
+inline auto calcRetryDuration(std::uint64_t retryCount)
+    -> std::chrono::steady_clock::duration {
+  // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+  // until at most 100us * 2 ** 17 == 13.11s.
+  auto executionDelay = std::chrono::microseconds{100} *
+                        (1u << std::min(retryCount, std::uint64_t{17}));
+  return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+      executionDelay);
+}
+}  // namespace
+
+template<typename S>
+auto FollowerStateManager<S>::backOffSnapshotRetry()
+    -> futures::Future<futures::Unit> {
+  constexpr static auto countSuffix = [](auto count) {
+    switch (count) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  };
+  constexpr static auto fmtTime = [](auto duration) {
+    using namespace std::chrono_literals;
+    using namespace std::chrono;
+    if (duration < 10us) {
+      return fmt::format("{}ns", duration_cast<nanoseconds>(duration).count());
+    } else if (duration < 10ms) {
+      return fmt::format("{}us", duration_cast<microseconds>(duration).count());
+    } else if (duration < 10s) {
+      return fmt::format("{}ms", duration_cast<milliseconds>(duration).count());
+    } else if (duration < 10min) {
+      return fmt::format("{}s", duration_cast<seconds>(duration).count());
+    } else {
+      return fmt::format("{}min", duration_cast<minutes>(duration).count());
+    }
+  };
+
+  auto const retryCount =
+      this->_guardedData.getLockedGuard()->_snapshotErrorCounter;
+  auto const duration = calcRetryDuration(retryCount);
+  LOG_CTX("2ea59", TRACE, _loggerContext)
+      << "retry snapshot transfer after " << fmtTime(duration) << ", "
+      << retryCount << countSuffix(retryCount) << " retry";
+  return delayedFuture(duration);
+}
+
+template<typename S>
+void FollowerStateManager<S>::registerSnapshotError(Result error) noexcept {
+  _guardedData.getLockedGuard()->registerSnapshotError(std::move(error));
+}
+
+template<typename S>
+void FollowerStateManager<S>::GuardedData::registerSnapshotError(
+    Result error) noexcept {
+  TRI_ASSERT(error.fail());
+  _lastSnapshotError = std::move(error);
+  _snapshotErrorCounter += 1;
+}
+
+template<typename S>
+void FollowerStateManager<S>::GuardedData::clearSnapshotErrors() noexcept {
+  _lastSnapshotError = std::nullopt;
+  _snapshotErrorCounter = 0;
+}
+
 template<typename S>
 void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
-  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquiring snapshot";
+  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
   MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       _metrics->replicatedStateNumberWaitingForSnapshot);
@@ -502,16 +583,18 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
                                                       std::move(rttGuard),
                                                   snapshotCounter = std::move(
                                                       snapshotCounter),
-                                                  leader, index]() mutable {
+                                                  leader = std::move(leader),
+                                                  index]() mutable {
     std::move(fut).thenFinal(
         [weak = std::move(weak), rttGuard = std::move(rttGuard),
-         snapshotCounter = std::move(snapshotCounter), leader,
+         snapshotCounter = std::move(snapshotCounter),
+         leader = std::move(leader),
          index](futures::Try<Result>&& tryResult) mutable noexcept {
           rttGuard.fire();
           snapshotCounter.fire();
           if (auto self = weak.lock(); self != nullptr) {
-            LOG_CTX("13f07", DEBUG, self->_loggerContext)
-                << "acquireSnapshot returned";
+            LOG_CTX("13f07", TRACE, self->_loggerContext)
+                << "acquire snapshot returned";
             auto result =
                 basics::catchToResult([&] { return tryResult.get(); });
             if (result.ok()) {
@@ -519,6 +602,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
                   << "snapshot transfer successfully completed, informing "
                      "replicated log";
               auto guard = self->_guardedData.getLockedGuard();
+              guard->clearSnapshotErrors();
               auto res =
                   static_cast<replicated_log::IReplicatedLogFollowerMethods&>(
                       guard->_stream->methods())
@@ -527,10 +611,22 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
               ADB_PROD_ASSERT(res.ok());
             } else {
               LOG_CTX("9a68a", ERR, self->_loggerContext)
-                  << "failed to transfer snapshot: " << result.errorMessage()
+                  << "failed to transfer snapshot: " << result
                   << " - retry scheduled";
-              // TODO implement a more graceful retry loop with a back-off
-              self->acquireSnapshot(leader, index);
+              self->registerSnapshotError(std::move(result));
+              self->backOffSnapshotRetry().thenFinal(
+                  [weak = std::move(weak), leader = std::move(leader),
+                   index](futures::Try<futures::Unit>&& x) mutable noexcept
+                  -> void {
+                    auto const result =
+                        basics::catchVoidToResult([&] { x.get(); });
+                    ADB_PROD_ASSERT(result.ok())
+                        << "Unexpected error when backing off snapshot retry: "
+                        << result;
+                    if (auto self = weak.lock(); self != nullptr) {
+                      self->acquireSnapshot(std::move(leader), index);
+                    }
+                  });
             }
           }
         });
