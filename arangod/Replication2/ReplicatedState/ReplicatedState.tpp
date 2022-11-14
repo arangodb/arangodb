@@ -384,8 +384,27 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
     }
     guard->_applyEntriesIndexInFlight = std::nullopt;
 
+    if (res.fail()) {
+      switch (static_cast<int>(res.errorNumber())) {
+        case static_cast<int>(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED): {
+          // Log follower has resigned, we'll be resigned as well. We just stop
+          // working.
+          return std::nullopt;
+        }
+        case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND): {
+          // TODO this is a temporary fix, see CINFRA-588
+          return std::nullopt;
+        }
+      }
+    }
+
+    ADB_PROD_ASSERT(!res.fail())
+        << _loggerContext
+        << " Unexpected error returned by apply entries: " << res;
+
     if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-      return guard->maybeScheduleAppendEntries();
+      return guard->maybeScheduleApplyEntries();
     }
     return std::nullopt;
   }();
@@ -411,11 +430,11 @@ auto FollowerStateManager<S>::GuardedData::updateCommitIndex(
     return std::nullopt;
   }
   _commitIndex = std::max(_commitIndex, commitIndex);
-  return maybeScheduleAppendEntries();
+  return maybeScheduleApplyEntries();
 }
 
 template<typename S>
-auto FollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
+auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries()
     -> std::optional<futures::Future<Result>> {
   if (_stream == nullptr) {
     return std::nullopt;
@@ -593,7 +612,8 @@ template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
   ADB_PROD_ASSERT(_stream != nullptr)
-      << "Replicated leader state: stream accessed before service was started.";
+      << "Replicated leader state: stream accessed before service was "
+         "started.";
 
   return _stream;
 }

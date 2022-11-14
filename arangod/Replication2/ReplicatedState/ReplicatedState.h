@@ -256,7 +256,7 @@ struct FollowerStateManager
   struct GuardedData {
     [[nodiscard]] auto updateCommitIndex(LogIndex index)
         -> std::optional<futures::Future<Result>>;
-    [[nodiscard]] auto maybeScheduleAppendEntries()
+    [[nodiscard]] auto maybeScheduleApplyEntries()
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
