@@ -1056,74 +1056,77 @@ QueryResult Query::doExplain(bool optimize) {
     if (_queryOptions.allPlans) {
       VPackArrayBuilder guard(result.data.get());
 
-          auto const& plans = opt->getPlans();
-          for (auto& it : plans) {
-            auto& pln = it.first;
-            TRI_ASSERT(pln != nullptr);
+      auto const& plans = opt->getPlans();
+      for (auto& it : plans) {
+        auto& pln = it.first;
+        TRI_ASSERT(pln != nullptr);
 
-            preparePlanForSerialization(pln);
-            pln->toVelocyPack(*result.data, parser.ast(), flags);
-
-        }
-        // cacheability not available here
-        result.cached = false;
-      } else {
-
-        std::unique_ptr<ExecutionPlan> bestPlan =
-            opt->stealBest();  // Now we own the best one again
-        TRI_ASSERT(bestPlan != nullptr);
-
-        preparePlanForSerialization(bestPlan);
-        bestPlan->toVelocyPack(*result.data,parser.ast(), flags);
+        preparePlanForSerialization(pln);
+        pln->toVelocyPack(*result.data, parser.ast(), flags);
       }
+      // cacheability not available here
+      result.cached = false;
     } else {
-      preparePlanForSerialization(plan);
-      result.data = plan->toVelocyPack(parser.ast(), flags);
-    }
+      std::unique_ptr<ExecutionPlan> bestPlan =
+          opt->stealBest();  // Now we own the best one again
+      TRI_ASSERT(bestPlan != nullptr);
 
-    // cacheability
-    result.cached = (!_queryString.empty() && !isModificationQuery() &&
-                     _warnings.empty() && _ast->root()->isCacheable());
-
-    // technically no need to commit, as we are only explaining here
-    auto commitResult = _trx->commit();
-    if (commitResult.fail()) {
-      THROW_ARANGO_EXCEPTION(commitResult);
+      preparePlanForSerialization(bestPlan);
+      bestPlan->toVelocyPack(*result.data, parser.ast(), flags);
     }
-
-    result.extra = std::make_shared<VPackBuilder>();
-    {
-      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
-      _warnings.toVelocyPack(*result.extra);
-      if (opt != nullptr) {
-        result.extra->add(VPackValue("stats"));
-        opt->_stats.toVelocyPack(*result.extra);
-      }
-    }
-  } catch (Exception const& ex) {
-    result.reset(Result(
-        ex.code(),
-        ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
-  } catch (std::bad_alloc const&) {
-    result.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
-  } catch (std::exception const& ex) {
-    result.reset(Result(
-        TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-  } catch (...) {
-    result.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+  }
+  else {
+    preparePlanForSerialization(plan);
+    result.data = plan->toVelocyPack(parser.ast(), flags);
   }
 
-  // will be returned in success or failure case
-  return result;
+  // cacheability
+  result.cached = (!_queryString.empty() && !isModificationQuery() &&
+                   _warnings.empty() && _ast->root()->isCacheable());
+
+  // technically no need to commit, as we are only explaining here
+  auto commitResult = _trx->commit();
+  if (commitResult.fail()) {
+    THROW_ARANGO_EXCEPTION(commitResult);
+  }
+
+  result.extra = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
+    _warnings.toVelocyPack(*result.extra);
+    if (opt != nullptr) {
+      result.extra->add(VPackValue("stats"));
+      opt->_stats.toVelocyPack(*result.extra);
+    }
+  }
+}
+catch (Exception const& ex) {
+  result.reset(Result(
+      ex.code(),
+      ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
+}
+catch (std::bad_alloc const&) {
+  result.reset(
+      Result(TRI_ERROR_OUT_OF_MEMORY,
+             StringUtils::concatT(
+                 TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                 QueryExecutionState::toStringWithPrefix(_execState))));
+}
+catch (std::exception const& ex) {
+  result.reset(
+      Result(TRI_ERROR_INTERNAL,
+             ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
+}
+catch (...) {
+  result.reset(
+      Result(TRI_ERROR_INTERNAL,
+             StringUtils::concatT(
+                 TRI_errno_string(TRI_ERROR_INTERNAL),
+                 QueryExecutionState::toStringWithPrefix(_execState))));
+}
+
+// will be returned in success or failure case
+return result;
 }
 
 bool Query::isModificationQuery() const noexcept {
