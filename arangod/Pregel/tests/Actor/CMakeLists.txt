@@ -4,7 +4,7 @@ add_executable(arangodbtests_actor
   ActorTest.cpp
   MPSCQueueTest.cpp
   SimpleQueueTest.cpp
-  ConductorTest.cpp
+  InitialStateActorTest.cpp
   )
 
 target_include_directories(arangodbtests_actor PRIVATE

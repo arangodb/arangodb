@@ -27,6 +27,7 @@
 #include <memory>
 #include <variant>
 
+#include "Actor/MPSCQueue.h"
 #include "gtest/gtest.h"
 #include "Actor/Actor.h"
 
@@ -39,34 +40,58 @@ using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::mpscqueue;
 
 // This scheduler just runs any function synchronously as soon as it comes in.
-struct ConductorScheduler {
+struct Scheduler {
   auto operator()(auto fn) { fn(); }
 };
 
-struct ConductorInitialState {
-  // workerApi
+struct State {
+  virtual ~State() = default;
+  virtual auto name() const -> std::string = 0;
+};
+struct InitialState : State {
+  ~InitialState() = default;
+  auto name() const -> std::string override { return "initial"; };
+};
+struct LoadingState : State {
+  ~LoadingState() = default;
+  auto name() const -> std::string override { return "loading"; };
+};
+
+struct InitStart {};
+struct InitDone {};
+struct MessagePayload : std::variant<InitStart, InitDone> {
+  using std::variant<InitStart, InitDone>::variant;
+};
+struct Message : public MessagePayload, public MPSCQueue<Message>::Node {
+  using MessagePayload::MessagePayload;
 };
 
 struct InitialHandler {
-  auto operator()(std::unique_ptr<ConductorInitialState> state,
-                  std::unique_ptr<InitStart> msg)
-      -> std::unique_ptr<TestConductorState> {
+  InitialHandler() = default;
+  InitialHandler(std::unique_ptr<State> state) : state{std::move(state)} {}
+  std::unique_ptr<State> state;
 
+  auto operator()(InitStart& msg) -> std::unique_ptr<State> {
+    fmt::print("got start message");
+    return std::move(state);
   }
-  auto operator()(std::unique_ptr<ConductorInitialState> state,
-                  std::unique_ptr<InitDone> msg)
-      -> std::unique_ptr<TestConductorState> {
-
+  auto operator()(InitDone& msg) -> std::unique_ptr<State> {
+    fmt::print("got done message");
+    return std::make_unique<LoadingState>();
   }
-  auto operator()(std::unique_ptr<ConductorInitialState> state,
-                  std::unique_ptr<???> msg)
-      -> std::unique_ptr<TestConductorState> {
-
+  auto operator()(auto&& msg) -> std::unique_ptr<State> {
+    fmt::print("got any message");
+    return std::move(state);
   }
 };
 
-using ConductorInitialActor = Actor<ConductorScheduler, InitialHandler, ConductorInitialState, TestConductorMessage>;
+using InitialActor = Actor<Scheduler, InitialHandler, State, Message>;
 
-TEST(IntialActor, acts_intially) {
+TEST(Actor, acts_intially) {
+  auto scheduler = Scheduler{};
+  auto actor = InitialActor(scheduler, std::make_unique<InitialState>());
 
+  ASSERT_EQ(actor.state->name(), "initial");
+  send(actor, std::make_unique<Message>(InitDone{}));
+  ASSERT_EQ(actor.state->name(), "loading");
 }

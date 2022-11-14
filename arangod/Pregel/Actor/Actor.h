@@ -36,8 +36,9 @@ struct Actor {
   Actor(Scheduler& schedule, std::unique_ptr<State> initialState)
       : schedule(schedule), state(std::move(initialState)) {}
 
-  Actor(Scheduler& schedule, std::unique_ptr<State> initialState, std::size_t batchSize)
-      : batchSize(batchSize), schedule(schedule), state(std::move(initialState)) {}
+  Actor(Scheduler& schedule, std::unique_ptr<State> initialState,
+        std::size_t batchSize)
+      : batchSize(batchSize), schedule(schedule) {}
 
   void process(std::unique_ptr<Message> msg) {
     inbox.push(std::move(msg));
@@ -54,22 +55,21 @@ struct Actor {
     if (busy.compare_exchange_strong(was_false, true)) {
       auto i = batchSize;
 
-      while(auto msg = inbox.pop()) {
-        state = handler(std::move(state), std::move(msg));
+      while (auto msg = inbox.pop()) {
+        state = std::visit(MessageHandler{std::move(state)}, *msg);
         i--;
-        if(i == 0) {
+        if (i == 0) {
           break;
         }
       }
       busy.store(false);
     }
   }
-      // TODO: this needs to be a constructor parameter
+  // TODO: this needs to be a constructor parameter
   std::size_t batchSize{16};
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
   Scheduler& schedule;
-  MessageHandler handler{};
   std::unique_ptr<State> state;
 };
 
