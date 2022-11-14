@@ -108,3 +108,6 @@ target_link_libraries(arangodbtests_replication2
     arangoserver
     boost_boost
     fmt)
+
+add_test(NAME replication2
+         COMMAND arangodbtests_replication2)

@@ -728,7 +728,7 @@ void assertFilterOptimized(
   plan->findNodesOfType(
       nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  EXPECT_EQ(nodes.size(), 1);
+  EXPECT_EQ(nodes.size(), 1U);
 
   auto* viewNode = arangodb::aql::ExecutionNode::castTo<
       arangodb::iresearch::IResearchViewNode*>(nodes.front());

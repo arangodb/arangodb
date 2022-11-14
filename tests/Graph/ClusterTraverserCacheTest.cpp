@@ -73,9 +73,9 @@ TEST_F(ClusterTraverserCacheTest,
   testee.appendVertex(std::string_view(vertexId), val);
   ASSERT_TRUE(val.isNull(false));
   auto all = q->warnings().all();
-  ASSERT_TRUE(all.size() == 1);
-  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_TRUE(all[0].second == expectedMessage);
+  ASSERT_EQ(all.size(), 1U);
+  ASSERT_EQ(all[0].first, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_EQ(all[0].second, expectedMessage);
 }
 
 TEST_F(ClusterTraverserCacheTest,
@@ -96,9 +96,9 @@ TEST_F(ClusterTraverserCacheTest,
   ASSERT_TRUE(sl.isNull());
 
   auto all = q->warnings().all();
-  ASSERT_TRUE(all.size() == 1);
-  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_TRUE(all[0].second == expectedMessage);
+  ASSERT_EQ(all.size(), 1U);
+  ASSERT_EQ(all[0].first, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_EQ(all[0].second, expectedMessage);
 }
 
 class RefactoredClusterTraverserCacheTest : public ::testing::Test {
@@ -119,7 +119,7 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
     // After every test ensure that the ResourceMonitor is conting down to 0
     // again
     _cache.reset();
-    EXPECT_EQ(_monitor.current(), 0)
+    EXPECT_EQ(_monitor.current(), 0U)
         << "Resource Monitor is not reset to 0 after deletion of the cache.";
   }
 
@@ -141,7 +141,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, gives_a_reference_to_a_datalake) {
   auto& lake = testee.datalake();
   // We only test that we can access a valid empty datalake after construction.
   // Datalake needs it's own test;
-  EXPECT_EQ(lake.numEntries(), 0);
+  EXPECT_EQ(lake.numEntries(), 0U);
 }
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {

@@ -16,6 +16,7 @@ add_subdirectory(Fuerte)
 
 add_subdirectory(Errors)
 
+add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 
@@ -300,9 +301,12 @@ if (LINUX)
     set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
   endif ()
 endif ()
-add_executable(
-  arangodbtests
+
+add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
+
+add_test(NAME arangodbtests
+	 COMMAND arangodbtests)
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -326,6 +330,7 @@ target_link_libraries(arangodbtests
   gtest
   boost_boost
   fmt
+  velocypack_utils
 )
 
 if (USE_ENTERPRISE)
