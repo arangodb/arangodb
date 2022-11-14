@@ -307,28 +307,13 @@ TEST(FutureTest, thenError) {
 
   // By reference
   {
-    std::cout << "foo" << std::endl;
-    try {
     auto f = makeFuture()
-                 .thenValue([](Unit) { std::cout << "in the woods" << std::endl; throw std::logic_error("abc"); })
+                 .thenValue([](Unit) { throw std::logic_error("abc"); })
                  .thenError<std::logic_error>(
                      [&](const std::logic_error& /* e */) noexcept { flag(); });
-    std::cout << "bar" << std::endl;
     EXPECT_FLAG();
-    std::cout << "barz" << std::endl;
-    try {
-      f.get();
-    } catch(std::exception e) {
-      std::cout << e.what();
-    }
-    // EXPECT_NO_THROW(f.get());
-    } catch(std::exception e) {
-      std::cout << e.what();
-    }
-
+    EXPECT_NO_THROW(f.get());
   }
-}
-#if 0
 
   // By auto reference
   {
@@ -597,7 +582,6 @@ TEST(FutureTest, thenError) {
 #undef EXPECT_FLAG
 #undef EXPECT_NO_FLAG
 }
-#endif
 
 TEST(FutureTest, special) {
   ASSERT_FALSE(std::is_copy_constructible<Future<int>>::value);
