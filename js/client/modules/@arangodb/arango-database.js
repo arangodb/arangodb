@@ -852,6 +852,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PUT(url, data);
@@ -932,6 +933,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PATCH(url, data);

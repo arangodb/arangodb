@@ -59,6 +59,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include "Logger/LogMacros.h"
+
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -117,6 +119,8 @@ Result RocksDBEdgeIndexWarmupTask::run() {
 
 namespace arangodb {
 class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
+  friend class RocksDBEdgeIndex;
+
  public:
   RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
                                  transaction::Methods* trx,
@@ -527,7 +531,7 @@ void RocksDBEdgeIndex::toVelocyPack(
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
                                 velocypack::Slice doc,
-                                OperationOptions const& /*options*/,
+                                OperationOptions const& options,
                                 bool /*performChecks*/) {
   Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
@@ -555,6 +559,16 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
+
+    if (_cache != nullptr &&
+        (options.refillIndexCaches || _collection.vocbase()
+                                          .server()
+                                          .getFeature<EngineSelectorFeature>()
+                                          .engine<RocksDBEngine>()
+                                          .refillIndexCaches())) {
+      RocksDBTransactionState::toState(&trx)->trackCacheRefill(
+          _collection.id(), id(), fromTo.stringView());
+    }
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -596,6 +610,28 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   }
 
   return res;
+}
+
+void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
+                                   std::vector<std::string> const& keys) {
+  if (_cache == nullptr) {
+    return;
+  }
+
+  transaction::BuilderLeaser builder(&trx);
+  std::unique_ptr<VPackBuilder> keysBuilder(builder.steal());
+
+  // this will do for now
+  keysBuilder->openArray(/*unindexed*/ true);
+  keysBuilder->close();
+
+  RocksDBEdgeIndexLookupIterator it(&_collection, &trx, this,
+                                    std::move(keysBuilder), _cache,
+                                    ReadOwnWrites::no);
+
+  for (auto const& key : keys) {
+    it.lookupInRocksDB(VPackStringRef(key.data(), key.size()));
+  }
 }
 
 /// @brief checks whether the index supports the condition

@@ -68,6 +68,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefiller.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -229,6 +230,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _createShaFiles(false),
 #endif
       _useRangeDeleteInWal(false),
+      _refillIndexCaches(false),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -525,6 +527,18 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Hidden))
       .setIntroducedIn(30903);
+
+  options
+      ->addOption("--rocksdb.refill-index-caches",
+                  "automatically (re-)populate edge index cache entry upon "
+                  "insert/update/replace",
+                  new BooleanParameter(&_refillIndexCaches),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(30906);
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
@@ -1140,6 +1154,14 @@ void RocksDBEngine::start() {
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _settingsManager->retrieveInitialValues();
 
+  _indexRefiller = std::make_unique<RocksDBIndexCacheRefiller>(
+      server().getFeature<DatabaseFeature>());
+  if (!_indexRefiller->start()) {
+    LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
+        << "could not start rocksdb index cache refiller";
+    FATAL_ERROR_EXIT();
+  }
+
   double const counterSyncSeconds = 2.5;
   _backgroundThread =
       std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
@@ -1226,6 +1248,16 @@ void RocksDBEngine::stop() {
     _syncThread.reset();
   }
 
+  if (_indexRefiller) {
+    _indexRefiller->beginShutdown();
+
+    // wait until background thread stops
+    while (_indexRefiller->isRunning()) {
+      std::this_thread::yield();
+    }
+    _indexRefiller.reset();
+  }
+
   waitForCompactionJobsToFinish();
 }
 
@@ -1256,6 +1288,10 @@ void RocksDBEngine::trackRevisionTreeMemoryDecrease(
     [[maybe_unused]] auto old = _metricsTreeMemoryUsage.fetch_sub(value);
     TRI_ASSERT(old >= value);
   }
+}
+
+bool RocksDBEngine::refillIndexCaches() const noexcept {
+  return _refillIndexCaches;
 }
 
 bool RocksDBEngine::hasBackgroundError() const {
@@ -2648,6 +2684,14 @@ void RocksDBEngine::pruneWalFiles() {
       << "prune WAL files started with " << initialSize
       << " prunable WAL files, "
       << "current number of prunable WAL files: " << _prunableWalFiles.size();
+}
+
+void RocksDBEngine::trackIndexCacheRefill(
+    std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
+    std::vector<std::string> keys) {
+  if (_indexRefiller != nullptr) {
+    _indexRefiller->trackIndexCacheRefill(collection, iid, std::move(keys));
+  }
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {

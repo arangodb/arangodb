@@ -122,12 +122,15 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/,
+                OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
                 velocypack::Slice doc) override;
+
+  void refillCache(transaction::Methods& trx,
+                   std::vector<std::string> const& keys) override;
 
  private:
   /// @brief create the iterator

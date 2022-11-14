@@ -190,6 +190,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew =
       _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches =
+      _request->parsedValue(StaticStrings::RefillIndexCachesString, false);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
@@ -511,6 +513,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches =
+      _request->parsedValue(StaticStrings::RefillIndexCachesString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 

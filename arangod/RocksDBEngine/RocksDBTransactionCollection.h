@@ -120,6 +120,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(IndexId iid, uint64_t hash);
 
+  void trackIndexCacheRefill(IndexId iid, std::string_view key);
+
   /// @brief tracked index operations
   struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
@@ -134,6 +136,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
     _trackedIndexOperations.swap(empty);
     return empty;
   }
+
+  void handleCacheRefills();
 
  private:
   /// @brief request a lock for a collection
@@ -161,6 +165,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
+
+  std::unordered_map<IndexId, std::vector<std::string>> _trackedCacheRefills;
 
   bool _usageLocked;
   bool _exclusiveWrites;

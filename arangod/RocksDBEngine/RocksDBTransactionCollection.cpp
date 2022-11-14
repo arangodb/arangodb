@@ -30,11 +30,13 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -287,6 +289,22 @@ void RocksDBTransactionCollection::trackIndexInsert(IndexId iid,
 void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
                                                     uint64_t hash) {
   _trackedIndexOperations[iid].removals.emplace_back(hash);
+}
+
+void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
+                                                         std::string_view key) {
+  _trackedCacheRefills[iid].emplace_back(key.data(), key.size());
+}
+
+void RocksDBTransactionCollection::handleCacheRefills() {
+  auto& vocbase = _collection->vocbase();
+  auto& engine = vocbase.server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
+
+  for (auto const& it : _trackedCacheRefills) {
+    engine.trackIndexCacheRefill(_collection, it.first, std::move(it.second));
+  }
 }
 
 /// @brief lock a collection

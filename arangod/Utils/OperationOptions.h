@@ -172,6 +172,8 @@ struct OperationOptions {
   // index.
   bool canDisableIndexing = true;
 
+  bool refillIndexCaches = false;
+
   // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
   // set temporarily.
   std::shared_ptr<ValidatorBase> schema = nullptr;

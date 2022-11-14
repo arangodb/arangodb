@@ -271,6 +271,16 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
     _cacheTx = nullptr;
+
+    for (auto& trxColl : _collections) {
+      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      try {
+        rcoll->handleCacheRefills();
+      } catch (...) {
+        // we have already successfully committed the transaction.
+        // we can ignore any errors caused by cache refilling
+      }
+    }
   }
 }
 
@@ -459,6 +469,17 @@ void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId,
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId,
                                                                       hash);
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+void RocksDBTransactionState::trackCacheRefill(DataSourceId cid, IndexId idxId,
+                                               std::string_view key) {
+  auto col = findCollection(cid);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackIndexCacheRefill(
+        idxId, key);
   } else {
     TRI_ASSERT(false);
   }
