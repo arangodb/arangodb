@@ -25,8 +25,8 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Basics/Guarded.h"
-#include "ExclusiveBool.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 
 namespace arangodb {
 template<typename T>
@@ -50,21 +50,6 @@ struct ISchedulerInterface {
   virtual ~ISchedulerInterface() = default;
   // virtual auto delay(clock::duration) -> futures::Future<futures::Unit> = 0;
   //  virtual auto post()
-};
-
-struct ICompactionManager {
-  struct CompactResult {
-    std::optional<result::Error> error;
-    CompactionStopReason stopReason;
-    LogRange compactedRange;
-  };
-
-  virtual ~ICompactionManager() = default;
-  virtual void updateReleaseIndex(LogIndex) noexcept = 0;
-  virtual void updateLargestIndexToKeep(LogIndex) noexcept = 0;
-  virtual auto compact() noexcept -> futures::Future<CompactResult> = 0;
-  [[nodiscard]] virtual auto getCompactionStatus() const noexcept
-      -> CompactionStatus = 0;
 };
 
 template<typename T>

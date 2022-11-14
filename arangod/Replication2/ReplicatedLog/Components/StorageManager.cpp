@@ -25,52 +25,44 @@
 #include <Futures/Future.h>
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/coro-helper.h"
 
-using namespace arangodb::replication2::replicated_log::comp;
+using namespace arangodb::replication2::replicated_log;
 
-StorageManager::StorageManager(std::unique_ptr<LogCore> core)
+struct comp::StorageManagerTransaction : IStorageTransaction {
+  using GuardType = Guarded<StorageManager::GuardedData>::mutex_guard_type;
+
+  auto getInMemoryLog() const noexcept -> InMemoryLog override {
+    return guard->inMemoryLog;
+  }
+  auto getLogBounds() const noexcept -> LogRange override {
+    return guard->inMemoryLog.getIndexRange();
+  }
+
+  auto removeFront(LogIndex stop) noexcept -> futures::Future<Result> override {
+    struct RemoveFrontAction {};
+    return Result{};
+  }
+
+  auto appendEntries(LogIndex appendAfter, InMemoryLogSlice slice) noexcept
+      -> futures::Future<Result> override {
+    return Result{};
+  }
+
+  explicit StorageManagerTransaction(GuardType guard)
+      : guard(std::move(guard)) {}
+
+  GuardType guard;
+};
+
+StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> core)
     : guardedData(std::move(core)) {}
-/*
-auto StorageManager::getInMemoryLog() const noexcept
-    -> arangodb::replication2::replicated_log::InMemoryLog {
-  return guardedData.getLockedGuard()->inMemoryLog;
+
+auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
+  auto guard = guardedData.getLockedGuard();
+  return nullptr;
 }
 
-auto StorageManager::removeFront(arangodb::replication2::LogIndex stop) noexcept
-    -> arangodb::futures::Future<arangodb::Result> {
-  auto [newLog, f] = guardedData.doUnderLock([stop](GuardedData& data) {
-    auto newLog = data.inMemoryLog.release(stop);
-    auto f = data.core->removeFront(stop);
-    return std::make_pair(std::move(newLog), std::move(f));
-  });
-  return std::move(f).thenValue(
-      [newLog = std::move(newLog), weak = weak_from_this()](
-          ResultT<replicated_state::IStorageEngineMethods::SequenceNumber>
-              result) mutable {
-        if (auto self = weak.lock(); self) {
-          auto guard = self->guardedData.getLockedGuard();
-          guard->inMemoryLog = std::move(newLog);
-        }
-
-        return result.result();
-      });
-}
-*/
-auto StorageManager::resign() -> std::unique_ptr<LogCore> {
-  return std::move(guardedData.getLockedGuard()->core);
-}
-
-StorageManager::GuardedData::GuardedData(std::unique_ptr<LogCore> core)
+StorageManager::GuardedData::GuardedData(
+    std::unique_ptr<IStorageEngineMethods> core)
     : core(std::move(core)) {}
-/*
-auto StorageTransaction::removeFront(
-    arangodb::replication2::LogIndex stop) noexcept
-    -> arangodb::futures::Future<arangodb::Result> {
-  return interface->removeFront(stop);
-}
-
-auto StorageTransaction::getInMemoryLog() const noexcept
-    -> const arangodb::replication2::replicated_log::InMemoryLog& {
-  return interface->getInMemoryLog();
-}
-*/

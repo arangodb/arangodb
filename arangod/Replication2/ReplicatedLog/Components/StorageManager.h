@@ -21,44 +21,45 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Basics/Guarded.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Futures/Promise.h"
 
 namespace arangodb {
-namespace futures {
-template<typename T>
-class Future;
+namespace replication2::replicated_state {
+struct IStorageEngineMethods;
 }
-class Result;
 namespace replication2::replicated_log {
 inline namespace comp {
 
-struct IStorageTransaction {
-  virtual ~IStorageTransaction() = default;
-  virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
-  virtual auto getLogBounds() const noexcept -> LogRange = 0;
-  virtual auto removeFront(LogIndex stop) noexcept
-      -> futures::Future<Result> = 0;
-  virtual auto appendEntries(LogIndex appendAfter, InMemoryLogSlice) noexcept
-      -> futures::Future<Result> = 0;
-};
-
-struct IStorageManager {
-  virtual ~IStorageManager() = default;
-  virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
-};
-
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
-  explicit StorageManager(std::unique_ptr<LogCore> core);
+  using IStorageEngineMethods = replicated_state::IStorageEngineMethods;
 
-  auto resign() -> std::unique_ptr<LogCore>;
+  explicit StorageManager(std::unique_ptr<IStorageEngineMethods> core);
+  auto resign() -> std::unique_ptr<IStorageEngineMethods>;
 
  private:
+  friend struct StorageManagerTransaction;
+
+  struct StorageOperation {
+    virtual ~StorageOperation() = default;
+    virtual auto run(IStorageEngineMethods& methods) noexcept
+        -> futures::Future<Result> = 0;
+  };
+
+  struct StorageRequest {
+    std::unique_ptr<StorageOperation> operation;
+    futures::Promise<Result> promise;
+  };
+
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<LogCore> core);
+    explicit GuardedData(std::unique_ptr<IStorageEngineMethods> core);
+
     InMemoryLog inMemoryLog;
-    std::unique_ptr<LogCore> core;
+    std::unique_ptr<IStorageEngineMethods> core;
+    std::deque<std::unique_ptr<StorageRequest>> queue;
   };
   Guarded<GuardedData> guardedData;
 };

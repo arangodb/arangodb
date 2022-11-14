@@ -231,10 +231,6 @@ TEST_F(CompactionManagerTest, manual_compaction_call_nothing_to_compact_ok) {
   EXPECT_TRUE(result.compactedRange.empty());
 }
 
-constexpr auto operator"" _Lx(unsigned long long idx) noexcept -> LogIndex {
-  return LogIndex{idx};
-}
-
 TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
   EXPECT_CALL(storageManagerMock, transaction).Times(2);
   ON_CALL(storageManagerMock, transaction).WillByDefault([&] {
@@ -247,8 +243,8 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
 
   // compaction possible upto 40, but threshold blocks
   options->_thresholdLogCompaction = 100;
-  compactionManager->updateReleaseIndex(40_Lx);
-  compactionManager->updateLargestIndexToKeep(40_Lx);
+  compactionManager->updateReleaseIndex(LogIndex{40});
+  compactionManager->updateLargestIndexToKeep(LogIndex{40});
 
   {
     auto status = compactionManager->getCompactionStatus();
