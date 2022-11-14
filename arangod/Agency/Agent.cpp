@@ -2516,14 +2516,14 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
   slice = data.get("delayAddFollower");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("12343", DEBUG, Logger::SUPERVISION)
         << "Updating delayAddFollower to " << d;
     _config.setSupervisionDelayAddFollower(d);
   }
   slice = data.get("delayFailedFollower");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("12344", DEBUG, Logger::SUPERVISION)
         << "Updating delayFailedFollower to " << d;
     _config.setSupervisionDelayFailedFollower(d);
   }
