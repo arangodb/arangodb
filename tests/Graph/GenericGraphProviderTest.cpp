@@ -130,7 +130,7 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), _emptyShardMap);
+          *_expressionContext.get(), _emptyShardMap, /*produceVertices*/ true);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
@@ -228,8 +228,8 @@ class GraphProviderTest : public ::testing::Test {
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(),
-                                      false);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false,
+                                      /*produceVertices*/ true);
       return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

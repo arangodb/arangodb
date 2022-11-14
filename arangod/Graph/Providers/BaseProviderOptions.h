@@ -83,7 +83,8 @@ struct BaseProviderOptions {
           indexInfo,
       aql::FixedVarExpressionContext& expressionContext,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      bool produceVertices);
 
   BaseProviderOptions(BaseProviderOptions const&) = delete;
   BaseProviderOptions(BaseProviderOptions&&) = default;
@@ -98,7 +99,9 @@ struct BaseProviderOptions {
 
   aql::FixedVarExpressionContext& expressionContext() const;
 
-  bool hasWeightMethod() const;
+  bool hasWeightMethod() const noexcept;
+
+  bool produceVertices() const noexcept;
 
   double weightEdge(double prefixWeight,
                     arangodb::velocypack::Slice edge) const;
@@ -125,18 +128,22 @@ struct BaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+  bool const _produceVertices;
 };
 
 struct ClusterBaseProviderOptions {
  public:
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
-      std::unordered_map<ServerID, aql::EngineId> const* engines,
-      bool backward);
+      std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
+      bool produceVertices);
 
   RefactoredClusterTraverserCache* getCache();
 
-  bool isBackward() const;
+  bool isBackward() const noexcept;
+
+  bool produceVertices() const noexcept;
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
@@ -146,7 +153,9 @@ struct ClusterBaseProviderOptions {
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
-  bool _backward;
+  bool const _backward;
+
+  bool const _produceVertices;
 };
 
 }  // namespace graph

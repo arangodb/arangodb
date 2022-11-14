@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertNotEqual, assertFalse, assertTrue, assertNotNull, AQL_EXPLAIN, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -1455,7 +1455,123 @@ function kPathsTestSuite () {
 
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
-    }
+    },
+    
+    testkPathsWithVertices1: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+    },
+    
+    testkPathsWithVertices2: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+    },
+    
+    testkPathsNoVertices: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'KShortestPathsNode');
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+    },
   };
 }
 

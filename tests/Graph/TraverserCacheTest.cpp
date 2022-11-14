@@ -66,7 +66,7 @@ class TraverserCacheTest : public ::testing::Test {
     _monitor = &query->resourceMonitor();
     traverserCache = std::make_unique<RefactoredTraverserCache>(
         trx.get(), query.get(), query->resourceMonitor(), stats,
-        collectionToShardMap);
+        collectionToShardMap, /*produceVertices*/ true);
   }
 
   ~TraverserCacheTest() = default;

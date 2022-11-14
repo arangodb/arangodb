@@ -6,8 +6,10 @@ v3.9.6 (XXXX-XX-XX)
   sync. This fixes a bug which could block a shard under certain circumstances.
   This fixes BTS-1110.
 
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
-v3.9.5 (XXXX-XX-XX)
+
+v3.9.5 (2022-11-10)
 -------------------
 
 * Show number of HTTP requests in cluster query profiles.
