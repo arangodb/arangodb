@@ -899,7 +899,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
       // See the comment in the else branch for details.
       if (follower.snapshotAvailableMessageId < response.messageId) {
         if (follower.snapshotAvailable != response.snapshotAvailable) {
-          LOG_CTX("efd44", INFO, follower.logContext)
+          LOG_CTX("efd44", DEBUG, follower.logContext)
               << "snapshot status changed old = " << follower.snapshotAvailable
               << " new = " << response.snapshotAvailable;
           follower.snapshotAvailable = response.snapshotAvailable;

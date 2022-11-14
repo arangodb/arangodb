@@ -423,7 +423,12 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
                                               _commitIndex);
     }
 
-    _follower._stateHandle->updateCommitIndex(newCommitIndex);
+    // Only call updateCommitIndex after the snapshot is completed. Otherwise,
+    // the state manager can trigger applyEntries calls while the snapshot
+    // is still being transferred.
+    if (_snapshotProgress == SnapshotProgress::kCompleted) {
+      _follower._stateHandle->updateCommitIndex(newCommitIndex);
+    }
     _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
         _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
