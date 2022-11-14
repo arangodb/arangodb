@@ -264,8 +264,9 @@ struct FollowerStateManager
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
-    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
-    WaitForQueue _waitQueue;
+    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
+        _logMethods{};
+    WaitForQueue _waitQueue{};
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
