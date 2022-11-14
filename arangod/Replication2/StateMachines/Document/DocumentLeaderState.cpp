@@ -39,20 +39,22 @@ DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
-    : loggerContext(
+    : gid(core->getGid()),
+      loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
-      gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager),
+      _snapshotHandler(_handlersFactory->createSnapshotHandler(gid)),
       _isResigning(false) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
 
-  _snapshots.getLockedGuard()->clear();
+  auto snapshotsGuard = _snapshotHandler.getLockedGuard();
+  snapshotsGuard.get()->clear();
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     for (auto const& trx : activeTransactions.getTransactions()) {
@@ -176,102 +178,79 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   return LogIndex{idx};
 }
 
-auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params,
-                                        TRI_vocbase_t& vocbase)
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     -> ResultT<SnapshotBatch> {
-  auto logicalCollection = vocbase.lookupCollection(shardId);
-  if (logicalCollection == nullptr) {
-    return ResultT<SnapshotBatch>::error(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        fmt::format("Collection {} not found", shardId));
+  auto snapshot = _snapshotHandler.doUnderLock([&](auto& handler) {
+    if (_isResigning.load()) {
+      return ResultT<Snapshot*>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
+    }
+
+    return handler->create(shardId);
+  });
+
+  if (snapshot.fail()) {
+    return snapshot.result();
   }
-
-  return _snapshots.doUnderLock(
-      [&, logicalCollection =
-              std::move(logicalCollection)](auto& snapshots) mutable {
-        if (_isResigning.load()) {
-          return ResultT<SnapshotBatch>::error(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-              fmt::format("Leader resigned for shard {}", shardId));
-        }
-
-        auto emplacement = snapshots.emplace(
-            std::piecewise_construct, std::forward_as_tuple(params.id),
-            std::forward_as_tuple(params.id, std::move(logicalCollection)));
-        TRI_ASSERT(emplacement.second);
-
-        return emplacement.first->second.fetch();
-      });
+  return snapshot.get()->fetch();
 }
 
 auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
     -> ResultT<SnapshotBatch> {
-  return _snapshots.doUnderLock([&](auto& snapshots) {
+  auto snapshot = _snapshotHandler.doUnderLock([&](auto& handler) {
     if (_isResigning.load()) {
-      return ResultT<SnapshotBatch>::error(
+      return ResultT<Snapshot*>::error(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
           fmt::format("Leader resigned for shard {}", shardId));
     }
-    auto it = snapshots.find(params.id);
-    if (it == snapshots.end()) {
-      return ResultT<SnapshotBatch>::error(
-          TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", params.id));
-    }
-    return it->second.fetch();
+    return handler->find(params.id);
   });
+
+  if (snapshot.fail()) {
+    return snapshot.result();
+  }
+  return snapshot.get()->fetch();
 }
 
 auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
     -> Result {
-  return _snapshots.doUnderLock([&](auto& snapshots) {
+  auto snapshot = _snapshotHandler.doUnderLock([&](auto& handler) {
     if (_isResigning.load()) {
-      return Result(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                    fmt::format("Leader resigned for shard {}", shardId));
+      return ResultT<Snapshot*>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
     }
-    auto it = snapshots.find(params.id);
-    if (it == snapshots.end()) {
-      return Result{TRI_ERROR_INTERNAL,
-                    fmt::format("Snapshot {} not found", params.id)};
-    }
-    return it->second.finish();
+    return handler->find(params.id);
   });
+
+  if (snapshot.fail()) {
+    return snapshot.result();
+  }
+  return snapshot.get()->finish();
 }
 
 auto DocumentLeaderState::snapshotStatus(SnapshotId id)
     -> ResultT<SnapshotStatus> {
-  return _snapshots.doUnderLock([&](auto& snapshots) {
+  auto snapshot = _snapshotHandler.doUnderLock([&](auto& handler) {
     if (_isResigning.load()) {
-      return ResultT<SnapshotStatus>::error(
+      return ResultT<Snapshot*>::error(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
           fmt::format("Leader resigned for shard {}", shardId));
     }
-
-    auto it = snapshots.find(id);
-    if (it == snapshots.end()) {
-      return ResultT<SnapshotStatus>::error(
-          TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
-    }
-    return ResultT<SnapshotStatus>::success(it->second.status());
+    return handler->find(id);
   });
+
+  if (snapshot.fail()) {
+    return snapshot.result();
+  }
+  return snapshot.get()->status();
 }
 
 auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
-  return _snapshots.doUnderLock([&](auto& snapshots) {
-    if (_isResigning.load()) {
-      return ResultT<AllSnapshotsStatus>::error(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-          fmt::format("Leader resigned for shard {}", shardId));
-    }
-
-    std::unordered_map<SnapshotId, SnapshotStatus> result;
-    for (auto& it : snapshots) {
-      result.emplace(it.first, it.second.status());
-    }
-    return ResultT<AllSnapshotsStatus>::success(
-        AllSnapshotsStatus{std::move(result)});
-  });
+  return _snapshotHandler.doUnderLock(
+      [&](auto& handler) { return handler->status(); });
 }
-
 }  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

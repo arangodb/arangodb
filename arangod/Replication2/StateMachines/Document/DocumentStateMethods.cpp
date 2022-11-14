@@ -56,7 +56,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     return std::visit(
         overload{
             [&](document::SnapshotParams::Start& params) {
-              return processResult(leader->snapshotStart(params, _vocbase));
+              return processResult(leader->snapshotStart(params));
             },
             [&](document::SnapshotParams::Next& params) {
               return processResult(leader->snapshotNext(params));

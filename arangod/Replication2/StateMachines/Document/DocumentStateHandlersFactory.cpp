@@ -22,9 +22,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
+#include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
@@ -33,7 +35,6 @@
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
-
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
     network::ConnectionPool* connectionPool,
@@ -54,6 +55,23 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
   return std::make_shared<DocumentStateShardHandler>(std::move(gid),
                                                      _maintenanceFeature);
+}
+
+auto DocumentStateHandlersFactory::createSnapshotHandler(
+    GlobalLogIdentifier const& gid)
+    -> std::unique_ptr<IDocumentStateSnapshotHandler> {
+  auto* vocbase = _databaseFeature.lookupDatabase(gid.database);
+  if (vocbase == nullptr) {
+    // TODO this is a temporary fix, see CINFRA-588
+    /*
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+        fmt::format("database {} not found", gid.database));
+     */
+    return nullptr;
+  }
+  return std::make_unique<DocumentStateSnapshotHandler>(
+      std::make_unique<CollectionReaderFactory>(*vocbase));
 }
 
 auto DocumentStateHandlersFactory::createTransactionHandler(

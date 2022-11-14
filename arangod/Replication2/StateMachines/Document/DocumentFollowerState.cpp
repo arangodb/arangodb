@@ -159,8 +159,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
     futures::Future<ResultT<SnapshotBatch>>&& transferFuture) noexcept
     -> futures::Future<Result> {
   return std::move(transferFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader),
-             waitForIndex](futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
+                futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
         if (self == nullptr) {
@@ -179,7 +179,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         // Will be removed once we introduce collection groups
-        TRI_ASSERT(snapshotRes->shard == self->shardId);
+        TRI_ASSERT(snapshotRes->shardId == self->shardId);
 
         auto& docs = snapshotRes->payload;
         auto insertRes = self->_guardedData.doUnderLock(
@@ -195,7 +195,8 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         if (snapshotRes->hasMore) {
           auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
-          return self->handleSnapshotTransfer(std::move(leader), waitForIndex, std::move(fut));
+          return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                              std::move(fut));
         }
 
         return leader->finishSnapshot(snapshotRes->snapshotId);

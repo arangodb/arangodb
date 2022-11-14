@@ -27,34 +27,29 @@
 #include "Inspection/Status.h"
 #include "Inspection/Transformers.h"
 #include "Inspection/VPack.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Rest/GeneralRequest.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "StorageEngine/ReplicationIterator.h"
-
-#include <velocypack/SharedSlice.h>
 
 #include <memory>
 #include <optional>
 #include <variant>
 
-namespace arangodb {
-class LogicalCollection;
-
-namespace transaction {
-class Context;
+namespace arangodb::replication2::replicated_state::document {
+struct ICollectionReader;
 }
-}  // namespace arangodb
 
+/*
+ * Unique ID used to identify a snapshot between the leader and the follower.
+ */
 namespace arangodb::replication2::replicated_state::document {
 class SnapshotId : public arangodb::basics::Identifier {
  public:
   using arangodb::basics::Identifier::Identifier;
 
-  explicit SnapshotId() : Identifier(TRI_HybridLogicalClock()){};
-
   static auto fromString(std::string_view) noexcept
       -> std::optional<SnapshotId>;
+
+  static SnapshotId create();
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
@@ -94,7 +89,7 @@ struct std::hash<
 namespace arangodb::replication2::replicated_state::document {
 namespace {
 inline constexpr auto kStringSnapshotId = std::string_view{"snapshotId"};
-inline constexpr auto kStringShard = std::string_view{"shard"};
+inline constexpr auto kStringShardId = std::string_view{"shardId"};
 inline constexpr auto kStringHasMore = std::string_view{"hasMore"};
 inline constexpr auto kStringPayload = std::string_view{"payload"};
 inline constexpr auto kStringState = std::string_view{"state"};
@@ -115,7 +110,6 @@ struct SnapshotParams {
   // Initiate a new snapshot.
   struct Start {
     LogIndex waitForIndex;
-    SnapshotId id{};
   };
 
   // Fetch the next batch of an existing snapshot.
@@ -142,70 +136,57 @@ struct SnapshotParams {
  */
 struct SnapshotBatch {
   SnapshotId snapshotId;
-  ShardID shard;
+  ShardID shardId;
   bool hasMore{false};
   velocypack::SharedSlice payload{};
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotBatch& s) {
     return f.object(s).fields(f.field(kStringSnapshotId, s.snapshotId),
-                              f.field(kStringShard, s.shard),
+                              f.field(kStringShardId, s.shardId),
                               f.field(kStringHasMore, s.hasMore),
                               f.field(kStringPayload, s.payload));
   }
 };
 
-namespace snapshot {
+/*
+ * This namespace encloses the different states a snapshot can be in.
+ */
+namespace state {
 // Actively ongoing snapshot, although it may have had run out of documents.
-class Ongoing {
- public:
-  explicit Ongoing(SnapshotId id,
-                   std::shared_ptr<LogicalCollection> logicalCollection);
-  auto next() -> SnapshotBatch;
-  [[nodiscard]] bool hasMore() const;
-  [[nodiscard]] auto getTotalDocs() const -> std::optional<uint64_t>;
-
- private:
-  static inline constexpr std::size_t kBatchSizeLimit{1024 * 1024};  // 1MB
-
-  SnapshotId _id;
-  std::shared_ptr<LogicalCollection> _logicalCollection;
-  std::shared_ptr<transaction::Context> _ctx;
-  std::unique_ptr<SingleCollectionTransaction> _trx;
-  std::unique_ptr<ReplicationIterator> _it;
-  std::optional<uint64_t> _totalDocs{std::nullopt};
-};
+struct Ongoing {};
 
 // Snapshot that has been aborted due to inactivity.
-class Aborted {
-  ShardID _shard;
-};
+struct Aborted {};
 
 // Snapshot that has been explicitly marked as finished by the follower.
-class Finished {
-  ShardID _shard;
-};
+struct Finished {};
+}  // namespace state
 
-using State = std::variant<Ongoing, Aborted, Finished>;
+using SnapshotState =
+    std::variant<state::Ongoing, state::Aborted, state::Finished>;
 
 struct SnapshotStateTransformer {
   using SerializedType = std::string;
-  auto toSerialized(State const& source, SerializedType& target) const
+  auto toSerialized(SnapshotState const& source, SerializedType& target) const
       -> inspection::Status {
-    target = std::string{std::visit(
-        overload{
-            [](snapshot::Ongoing const&) { return kStringOngoing; },
-            [](snapshot::Finished const&) { return kStringFinished; },
-            [](snapshot::Aborted const&) { return kStringAborted; },
-        },
-        source)};
+    target = std::string{
+        std::visit(overload{
+                       [](state::Ongoing const&) { return kStringOngoing; },
+                       [](state::Finished const&) { return kStringFinished; },
+                       [](state::Aborted const&) { return kStringAborted; },
+                   },
+                   source)};
     return {};
   }
 };
-}  // namespace snapshot
 
+/*
+ * Used to retrieve information about the current state of a snapshot.
+ */
 struct SnapshotStatus {
-  snapshot::State const& state;
+  SnapshotState const& state;
+  ShardID shardId;
   std::optional<uint64_t> totalDocs;
   uint64_t docsSent{0};
   std::size_t batchesSent{0};
@@ -213,36 +194,26 @@ struct SnapshotStatus {
   std::chrono::system_clock::time_point startTime{
       std::chrono::system_clock::now()};
   std::chrono::system_clock::time_point lastUpdated{startTime};
-  std::optional<ShardID> shard{std::nullopt};
-
-  explicit SnapshotStatus(snapshot::State const& state) : state(state) {
-    totalDocs = std::visit(
-        [](auto const& arg) -> decltype(totalDocs) {
-          using T = std::decay_t<decltype(arg)>;
-          if constexpr (std::is_same_v<T, snapshot::Ongoing>) {
-            return static_cast<snapshot::Ongoing const&>(arg).getTotalDocs();
-          } else {
-            return std::nullopt;
-          }
-        },
-        state);
-  }
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotStatus& s) {
     return f.object(s).fields(
         f.field(kStringState, s.state)
-            .transformWith(snapshot::SnapshotStateTransformer{}),
+            .transformWith(SnapshotStateTransformer{}),
         f.field(kStringTotalBatches, s.batchesSent),
         f.field(kStringTotalBytes, s.bytesSent),
         f.field(kStringStartTime, s.startTime)
             .transformWith(inspection::TimeStampTransformer{}),
         f.field(kStringLastUpdated, s.lastUpdated)
             .transformWith(inspection::TimeStampTransformer{}),
-        f.field(kStringShard, s.shard));
+        f.field(kStringShardId, s.shardId));
   }
 };
 
+/*
+ * Used when we want to retrieve information about all snapshots taken by a
+ * leader.
+ */
 struct AllSnapshotsStatus {
   std::unordered_map<SnapshotId, SnapshotStatus> snapshots;
 
@@ -257,20 +228,24 @@ struct AllSnapshotsStatus {
  */
 class Snapshot {
  public:
-  explicit Snapshot(SnapshotId id,
-                    std::shared_ptr<LogicalCollection> logicalCollection);
+  static inline constexpr std::size_t kBatchSizeLimit{1024 * 1024};  // 1MB
+
+  explicit Snapshot(SnapshotId id, ShardID shardId,
+                    std::unique_ptr<ICollectionReader> reader);
 
   Snapshot(Snapshot const&) = delete;
   Snapshot const& operator=(Snapshot const&) = delete;
+  Snapshot(Snapshot&&) = default;
 
   auto fetch() -> ResultT<SnapshotBatch>;
   auto finish() -> Result;
   auto abort() -> Result;
-  auto status() -> SnapshotStatus;
+  [[nodiscard]] auto status() const -> SnapshotStatus;
 
  private:
   SnapshotId _id;
-  snapshot::State _state;
+  std::unique_ptr<ICollectionReader> _reader;
+  SnapshotState _state;
   SnapshotStatus _status;
 };
 }  // namespace arangodb::replication2::replicated_state::document

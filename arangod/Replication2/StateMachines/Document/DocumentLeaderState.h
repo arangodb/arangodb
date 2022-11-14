@@ -26,7 +26,7 @@
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
@@ -60,17 +60,17 @@ struct DocumentLeaderState
     return _activeTransactions.getLockedGuard()->size();
   }
 
-  auto snapshotStart(SnapshotParams::Start const& params,
-                     TRI_vocbase_t& vocbase) -> ResultT<SnapshotBatch>;
+  auto snapshotStart(SnapshotParams::Start const& params)
+      -> ResultT<SnapshotBatch>;
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
   auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
   auto allSnapshotsStatus() -> ResultT<AllSnapshotsStatus>;
 
+  GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
   std::string_view const shardId;
-  GlobalLogIdentifier const gid;
 
  private:
   struct GuardedData {
@@ -85,8 +85,9 @@ struct DocumentLeaderState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
+  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
+          basics::UnshackledMutex>
+      _snapshotHandler;
   std::atomic_bool _isResigning;
-  Guarded<std::unordered_map<SnapshotId, Snapshot>, basics::UnshackledMutex>
-      _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document
