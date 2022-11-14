@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/*global assertEqual, assertNull, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for DOCUMENT function
@@ -41,6 +41,26 @@ function ahuacatlDocumentSuite () {
 
     tearDown : function () {
       db._drop(cn);
+    },
+    
+    testDocumentEmptyKey : function () {
+      let res = AQL_EXECUTE("RETURN DOCUMENT('')").json;
+      let doc = res[0];
+      assertNull(doc);
+      
+      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', '')").json;
+      doc = res[0];
+      assertNull(doc);
+    },
+    
+    testDocumentEmptyKeys : function () {
+      let res = AQL_EXECUTE("RETURN DOCUMENT(['', ''])").json;
+      let doc = res[0];
+      assertEqual([], doc);
+      
+      res = AQL_EXECUTE("RETURN DOCUMENT('" + cn + "', ['', ''])").json;
+      doc = res[0];
+      assertEqual([], doc);
     },
 
     testDocumentSingleShard : function () {

@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
+
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
