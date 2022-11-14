@@ -52,8 +52,33 @@ struct FutureAwaitable {
 };
 
 template<typename T>
-auto operator co_await(futures::Future<T>&& f) {
+auto operator co_await(Future<T>&& f) noexcept {
   return FutureAwaitable<T>{std::move(f)};
+}
+
+template<typename T>
+struct FutureTryAwaitable {
+  [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
+  void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    std::move(_future).thenFinal(
+        [coro, this](futures::Try<T>&& result) noexcept {
+          _result = std::move(result);
+          coro.resume();
+        });
+  }
+  auto await_resume() noexcept -> futures::Try<T> {
+    return std::move(_result.value());
+  }
+  explicit FutureTryAwaitable(Future<T> fut) : _future(std::move(fut)) {}
+
+ private:
+  Future<T> _future;
+  std::optional<futures::Try<T>> _result;
+};
+
+template<typename T>
+auto asTry(Future<T>&& f) noexcept {
+  return FutureTryAwaitable<T>{std::move(f)};
 }
 
 }  // namespace arangodb::futures

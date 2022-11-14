@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::replication2::replicated_log;
 
@@ -40,8 +41,17 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   }
 
   auto removeFront(LogIndex stop) noexcept -> futures::Future<Result> override {
-    struct RemoveFrontAction {};
-    return Result{};
+    struct RemoveFrontAction : StorageManager::StorageOperation {
+      explicit RemoveFrontAction(LogIndex stop) : stop(stop) {}
+      auto run(StorageManager::IStorageEngineMethods& methods) noexcept
+          -> arangodb::futures::Future<arangodb::Result> override {
+        return methods.removeFront(stop, {}).thenValue(
+            [](auto&& res) { return res.result(); });
+      }
+      LogIndex stop;
+    };
+    return manager.scheduleOperation(std::move(guard),
+                                     std::make_unique<RemoveFrontAction>(stop));
   }
 
   auto appendEntries(LogIndex appendAfter, InMemoryLogSlice slice) noexcept
@@ -49,10 +59,11 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     return Result{};
   }
 
-  explicit StorageManagerTransaction(GuardType guard)
-      : guard(std::move(guard)) {}
+  explicit StorageManagerTransaction(GuardType guard, StorageManager& manager)
+      : guard(std::move(guard)), manager(manager) {}
 
   GuardType guard;
+  StorageManager& manager;
 };
 
 StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> core)
@@ -66,3 +77,44 @@ auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
 StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> core)
     : core(std::move(core)) {}
+
+auto StorageManager::scheduleOperation(
+    GuardType&& guard, std::unique_ptr<StorageOperation> operation)
+    -> futures::Future<arangodb::Result> {
+  auto f = guard->queue.emplace_back(std::move(operation)).promise.getFuture();
+  triggerQueueWorker(std::move(guard));
+  return f;
+}
+
+void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
+  auto const worker = [](GuardType guard, std::shared_ptr<StorageManager> self)
+      -> futures::Future<futures::Unit> {
+    while (true) {
+      if (guard->queue.empty()) {
+        guard->workerActive = false;
+        break;
+      }
+
+      auto req = std::move(guard->queue.front());
+      guard->queue.pop_front();
+      auto f = req.operation->run(*guard->core);
+      guard.unlock();
+      auto result = co_await asTry(std::move(f));
+      req.promise.setTry(std::move(result));
+      guard = self->guardedData.getLockedGuard();
+    }
+
+    co_return futures::unit;
+  };
+
+  // check if a thread is working on the queue
+  if (not guard->workerActive) {
+    // otherwise start a worker
+    worker(std::move(guard), shared_from_this());
+  }
+}
+
+auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
+  return std::make_unique<StorageManagerTransaction>(
+      guardedData.getLockedGuard(), *this);
+}

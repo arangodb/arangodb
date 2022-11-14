@@ -23,7 +23,8 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
-#include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>

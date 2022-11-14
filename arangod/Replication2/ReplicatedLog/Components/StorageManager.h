@@ -39,6 +39,7 @@ struct StorageManager : IStorageManager,
 
   explicit StorageManager(std::unique_ptr<IStorageEngineMethods> core);
   auto resign() -> std::unique_ptr<IStorageEngineMethods>;
+  auto transaction() -> std::unique_ptr<IStorageTransaction> override;
 
  private:
   friend struct StorageManagerTransaction;
@@ -52,6 +53,9 @@ struct StorageManager : IStorageManager,
   struct StorageRequest {
     std::unique_ptr<StorageOperation> operation;
     futures::Promise<Result> promise;
+
+    explicit StorageRequest(std::unique_ptr<StorageOperation> op)
+        : operation(std::move(op)) {}
   };
 
   struct GuardedData {
@@ -59,9 +63,15 @@ struct StorageManager : IStorageManager,
 
     InMemoryLog inMemoryLog;
     std::unique_ptr<IStorageEngineMethods> core;
-    std::deque<std::unique_ptr<StorageRequest>> queue;
+    std::deque<StorageRequest> queue;
+    bool workerActive{false};
   };
   Guarded<GuardedData> guardedData;
+  using GuardType = Guarded<GuardedData>::mutex_guard_type;
+
+  auto scheduleOperation(GuardType&&, std::unique_ptr<StorageOperation>)
+      -> futures::Future<Result>;
+  void triggerQueueWorker(GuardType&&) noexcept;
 };
 
 }  // namespace comp
