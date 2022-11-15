@@ -73,8 +73,8 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
-      _supervisionDelayAddFollower(0.0),
-      _supervisionDelayFailedFollower(0.0),
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0),
       _version(0),
       _startup("origin"),
       _maxAppendSize(250),
@@ -83,7 +83,7 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
                    bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
-                   double p, double o, double q, double r, size_t a)
+                   double p, double o, uint64_t q, uint64_t r, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _minPing(minp),
@@ -184,12 +184,12 @@ double config_t::supervisionOkThreshold() const {
   return _supervisionOkThreshold;
 }
 
-double config_t::supervisionDelayAddFollower() const {
+uint64_t config_t::supervisionDelayAddFollower() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionDelayAddFollower;
 }
 
-double config_t::supervisionDelayFailedFollower() const {
+uint64_t config_t::supervisionDelayFailedFollower() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionDelayFailedFollower;
 }
@@ -729,11 +729,11 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   }
   if (other.hasKey(supervisionDelayAddFollowerStr)) {
     _supervisionDelayAddFollower =
-        other.get(supervisionDelayAddFollowerStr).getNumber<double>();
+        other.get(supervisionDelayAddFollowerStr).getNumber<uint64_t>();
   }
   if (other.hasKey(supervisionDelayFailedFollowerStr)) {
     _supervisionDelayFailedFollower =
-        other.get(supervisionDelayFailedFollowerStr).getNumber<double>();
+        other.get(supervisionDelayFailedFollowerStr).getNumber<uint64_t>();
   }
   if (other.hasKey(compactionStepSizeStr)) {
     _compactionStepSize =

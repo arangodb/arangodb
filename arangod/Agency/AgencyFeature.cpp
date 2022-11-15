@@ -68,8 +68,8 @@ AgencyFeature::AgencyFeature(Server& server)
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _supervisionOkThreshold(5.0),
-      _supervisionDelayAddFollower(0.0),
-      _supervisionDelayFailedFollower(0.0) {
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0) {
   setOptional(true);
   startsAfter<application_features::FoxxFeaturePhase>();
 }
@@ -165,7 +165,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--agency.supervision-delay-add-follower",
           "delay in supervision, before an AddFollower job is executed [s]",
-          new DoubleParameter(&_supervisionDelayAddFollower),
+          new UInt64Parameter(&_supervisionDelayAddFollower),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent))
@@ -176,7 +176,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption(
           "--agency.supervision-delay-failed-follower",
           "delay in supervision, before a FailedFollower job is executed [s]",
-          new DoubleParameter(&_supervisionDelayFailedFollower),
+          new UInt64Parameter(&_supervisionDelayFailedFollower),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnAgent))

@@ -36,12 +36,12 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
                          std::string const& database,
                          std::string const& collection,
-                         std::string const& shard, bool executeImmediately)
+                         std::string const& shard, std::string const& notBefore)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _executeImmediately(executeImmediately) {}
+      _notBefore(notBefore) {}
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
@@ -70,9 +70,9 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
   }
-  auto exImm = _snapshot.hasAsBool(path + "immediately");
-  if (exImm) {
-    _executeImmediately = exImm.value();
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+  if (tmp_notBefore) {
+    _notBefore = tmp_notBefore.value();
   }
 }
 
@@ -110,7 +110,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
-    _jb->add("immediately", VPackValue(_executeImmediately));
+    _jb->add("notBefore", VPackValue(_notBefore));
   }
 
   _status = TODO;
@@ -205,12 +205,11 @@ bool AddFollower::start(bool&) {
 
   // Check if configured delay has passed since the creation of the job,
   // or we are in "urgent" mode:
-  if (!_executeImmediately) {
+  if (!_notBefore.empty()) {
     auto now = std::chrono::system_clock::now();
-    std::chrono::system_clock::time_point created =
-        stringToTimepoint(_timeCreated);
-    if (now - created < std::chrono::duration<double>(
-                            _agent->config().supervisionDelayAddFollower())) {
+    std::chrono::system_clock::time_point notBefore =
+        stringToTimepoint(_notBefore);
+    if (now < notBefore) {
       LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
           << "shard " << _shard
           << " needs addFollower but configured AddFollowerDelay has not yet "
@@ -255,7 +254,8 @@ bool AddFollower::start(bool&) {
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
-        << " does not have enough candidates to add followers, waiting, jobId="
+        << " does not have enough candidates to add followers, waiting, "
+           "jobId="
         << _jobId;
     return false;
   }

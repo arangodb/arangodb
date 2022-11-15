@@ -209,8 +209,8 @@ Supervision::Supervision(ArangodServer& server)
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
-      _delayAddFollower(0.),
-      _delayFailedFollower(0.),
+      _delayAddFollower(0),
+      _delayFailedFollower(0),
       _jobId(0),
       _jobIdMax(0),
       _lastUpdateIndex(0),
@@ -416,7 +416,8 @@ void handleOnStatusDBServer(
     Agent* agent, Node const& snapshot, HealthRecord& persisted,
     HealthRecord& transisted, std::string const& serverID,
     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
-    std::unordered_set<std::string> const& dbServersInMaintenance) {
+    std::unordered_set<std::string> const& dbServersInMaintenance,
+    uint64_t delayFailedFollower) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -445,8 +446,14 @@ void handleOnStatusDBServer(
       if (!dbServersInMaintenance.contains(serverID)) {
         envelope = std::make_shared<VPackBuilder>();
         agent->supervision()._supervision_failed_server_counter.operator++();
+        std::string notBefore;
+        if (delayFailedFollower > 0) {
+          auto now = std::chrono::system_clock::now();
+          notBefore = timepointToString(
+              now + std::chrono::seconds(delayFailedFollower));
+        }
         FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
-                     serverID)
+                     serverID, notBefore)
             .create(envelope);
       }
     }
@@ -517,10 +524,12 @@ void handleOnStatus(
     Agent* agent, Node const& snapshot, HealthRecord& persisted,
     HealthRecord& transisted, std::string const& serverID,
     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
-    std::unordered_set<std::string> const& dbServersInMaintenance) {
+    std::unordered_set<std::string> const& dbServersInMaintenance,
+    uint64_t delayFailedFollower) {
   if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID,
-                           jobId, envelope, dbServersInMaintenance);
+                           jobId, envelope, dbServersInMaintenance,
+                           delayFailedFollower);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
@@ -763,7 +772,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId,
-                       envelope, _DBServersInMaintenance);
+                       envelope, _DBServersInMaintenance, _delayFailedFollower);
         persist =
             transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
@@ -3128,7 +3137,7 @@ void Supervision::cleanupReplicatedStates() {
 // unit tests:
 void arangodb::consensus::enforceReplicationFunctional(
     Node const& snapshot, uint64_t& jobId,
-    std::shared_ptr<VPackBuilder> envelope) {
+    std::shared_ptr<VPackBuilder> envelope, uint64_t delayAddFollower) {
   // First check the number of AddFollower and RemoveFollower jobs in ToDo:
   // We always maintain that we have at most maxNrAddRemoveJobsInTodo
   // AddFollower or RemoveFollower jobs in ToDo. These are all long-term
@@ -3255,9 +3264,15 @@ void arangodb::consensus::enforceReplicationFunctional(
                 // job is not subject to the configurable delay and is
                 // considered more urgent. This happens, if the
                 // repliactionFactor is increased by the user.
+                std::string notBefore;
+                if (apparentReplicationFactor >= replicationFactor) {
+                  auto now = std::chrono::system_clock::now();
+                  notBefore = timepointToString(
+                      now + std::chrono::seconds(delayAddFollower));
+                }
                 AddFollower(snapshot, nullptr, std::to_string(jobId++),
                             "supervision", db_.first, col_.first, shard_.first,
-                            apparentReplicationFactor < replicationFactor)
+                            notBefore)
                     .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
@@ -3287,8 +3302,8 @@ void Supervision::enforceReplication() {
   {
     VPackArrayBuilder guard1(envelope.get());
     VPackObjectBuilder guard2(envelope.get());
-    arangodb::consensus::enforceReplicationFunctional(snapshot(), _jobId,
-                                                      envelope);
+    arangodb::consensus::enforceReplicationFunctional(
+        snapshot(), _jobId, envelope, _delayAddFollower);
   }
   if (envelope->slice()[0].length() > 0) {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);

@@ -322,7 +322,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   ASSERT_EQ(result.size(), 1u);
   auto const& f = result.at(0);
   EXPECT_EQ(f.getVertex().getID().toString(), "v/1");
-  EXPECT_EQ(f.getPrevious(), 0);
+  EXPECT_EQ(f.getPrevious(), 0u);
 
   {
     TraversalStats stats = testee.stealStats();
