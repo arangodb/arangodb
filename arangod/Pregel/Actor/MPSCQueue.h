@@ -58,6 +58,14 @@ struct MPSCQueue {
     push_internal(ptr);
   }
 
+  auto empty() -> bool {
+    // We read first tail and then head, because
+    auto currentTail = tail.load();
+    auto currentHead = head.load();
+
+    return currentHead == currentTail;
+  }
+
   [[nodiscard]] auto pop() -> std::unique_ptr<T> {
     auto current = tail.load();
     auto next = current->next.load();

@@ -63,9 +63,13 @@ struct Actor {
         }
       }
       busy.store(false);
+
+      if(!inbox.empty()) {
+        kick();
+      }
     }
+
   }
-  // TODO: this needs to be a constructor parameter
   std::size_t batchSize{16};
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
