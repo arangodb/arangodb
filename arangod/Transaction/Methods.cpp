@@ -1694,15 +1694,6 @@ Result transaction::Methods::insertLocalHelper(
     TRI_ASSERT(newRevisionId.isSet());
     TRI_ASSERT(newDocumentBuilder.slice().isObject());
 
-    if (batchOptions.validateSmartJoinAttribute) {
-      auto r = transaction::Methods::validateSmartJoinAttribute(
-          collection, newDocumentBuilder.slice());
-
-      if (r != TRI_ERROR_NO_ERROR) {
-        return res.reset(r);
-      }
-    }
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     StorageEngine& engine = collection.vocbase()
                                 .server()
@@ -1719,6 +1710,15 @@ Result transaction::Methods::insertLocalHelper(
     if (!isMock) {
       res = collection.validate(batchOptions.schema, newDocumentBuilder.slice(),
                                 transactionContextPtr()->getVPackOptions());
+    }
+
+    if (batchOptions.validateSmartJoinAttribute) {
+      auto r = transaction::Methods::validateSmartJoinAttribute(
+          collection, newDocumentBuilder.slice());
+
+      if (r != TRI_ERROR_NO_ERROR) {
+        return res.reset(r);
+      }
     }
   }
 
