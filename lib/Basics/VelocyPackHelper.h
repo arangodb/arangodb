@@ -352,13 +352,12 @@ class VelocyPackHelper {
   /// @brief Compares two VelocyPack slices
   /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0 if rhs >
   /// lhs
-  static int compare(arangodb::velocypack::Slice lhs,
+  [[nodiscard]] static int compare(arangodb::velocypack::Slice lhs,
                      arangodb::velocypack::Slice rhs, bool useUTF8,
                      arangodb::velocypack::Options const* options =
                          &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
-                     arangodb::velocypack::Slice const* rhsBase = nullptr)
-      ADB_WARN_UNUSED_RESULT;
+                     arangodb::velocypack::Slice const* rhsBase = nullptr);
 
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
