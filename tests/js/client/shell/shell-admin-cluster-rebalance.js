@@ -117,7 +117,6 @@ function clusterRebalanceSuite() {
       assertEqual(result.code, 200); // should be refused
       assertEqual(result.error, false); // should be refused
       const moves = result.result.moves;
-      assertTrue(moves.length > 0);
       for (const job of moves) {
         assertNotEqual(job.database, "_system");
       }
@@ -134,7 +133,6 @@ function clusterRebalanceSuite() {
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
       let moves = result.result.moves;
-      assertTrue(moves.length > 0);
       for (const job of moves) {
         assertNotEqual(job.database, "_system");
       }

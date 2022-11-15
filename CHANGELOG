@@ -1,6 +1,10 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
