@@ -28,72 +28,25 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
 
 std::string const Utils::apiPrefix = "/_api/pregel/";
-std::string const Utils::conductorPrefix = "conductor";
-std::string const Utils::workerPrefix = "worker";
-
-std::string const Utils::startExecutionPath = "startExecution";
-std::string const Utils::finishedStartupPath = "finishedStartup";
-std::string const Utils::statusUpdatePath = "statusUpdate";
-std::string const Utils::prepareGSSPath = "prepareGSS";
-std::string const Utils::startGSSPath = "startGSS";
-std::string const Utils::finishedWorkerStepPath = "finishedStep";
-std::string const Utils::finishedWorkerFinalizationPath =
-    "finishedFinalization";
-std::string const Utils::cancelGSSPath = "cancelGSS";
-std::string const Utils::messagesPath = "messages";
-std::string const Utils::finalizeExecutionPath = "finalizeExecution";
-std::string const Utils::startRecoveryPath = "startRecovery";
-std::string const Utils::continueRecoveryPath = "continueRecovery";
-std::string const Utils::finishedRecoveryPath = "finishedRecovery";
-std::string const Utils::finalizeRecoveryPath = "finalizeRecovery";
-std::string const Utils::storeCheckpointPath = "storeCheckpoint";
-std::string const Utils::aqlResultsPath = "aqlResult";
 
 std::string const Utils::executionNumberKey = "exn";
-std::string const Utils::algorithmKey = "algorithm";
-std::string const Utils::coordinatorIdKey = "coordinatorId";
-std::string const Utils::collectionPlanIdMapKey = "collectionPlanIdMap";
-std::string const Utils::edgeCollectionRestrictionsKey =
-    "edgeCollectionRestrictions";
-std::string const Utils::vertexShardsKey = "vertexShards";
-std::string const Utils::edgeShardsKey = "edgeShards";
-std::string const Utils::globalShardListKey = "globalShardList";
-std::string const Utils::userParametersKey = "userparams";
-std::string const Utils::asyncModeKey = "asyncMode";
+std::string const Utils::senderKey = "sender";
+
+std::string const Utils::threshold = "threshold";
+std::string const Utils::maxNumIterations = "maxNumIterations";
+std::string const Utils::maxGSS = "maxGSS";
 std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
-std::string const Utils::activateAllKey = "reset-all-active";
 
 std::string const Utils::globalSuperstepKey = "gss";
 std::string const Utils::phaseFirstStepKey = "phase-first-step";
-std::string const Utils::vertexCountKey = "vertexCount";
-std::string const Utils::edgeCountKey = "edgeCount";
-std::string const Utils::shardIdKey = "shrdId";
-std::string const Utils::messagesKey = "msgs";
-std::string const Utils::senderKey = "sender";
-std::string const Utils::payloadKey = "payload";
-std::string const Utils::recoveryMethodKey = "rmethod";
-std::string const Utils::storeResultsKey = "storeResults";
 std::string const Utils::aggregatorValuesKey = "aggregators";
-std::string const Utils::activeCountKey = "activeCount";
-std::string const Utils::receivedCountKey = "receivedCount";
-std::string const Utils::sendCountKey = "sendCount";
-std::string const Utils::enterNextGSSKey = "nextGSS";
-std::string const Utils::maxNumIterations = "maxNumIterations";
-std::string const Utils::threshold = "threshold";
-std::string const Utils::maxGSS = "maxGSS";
-
-std::string const Utils::compensate = "compensate";
-std::string const Utils::rollback = "rollback";
-std::string const Utils::reportsKey = "reports";
-
-std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
-std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
 
 std::string const Utils::equivalenceClass = "equivalenceClass";
 std::string const Utils::inputColorsFieldName = "inputColorsFieldName";
@@ -103,10 +56,6 @@ std::string const Utils::colors = "colors";
 
 size_t const Utils::batchOfVerticesStoredBeforeUpdatingStatus = 1000;
 size_t const Utils::batchOfVerticesProcessedBeforeUpdatingStatus = 1000;
-
-std::string Utils::baseUrl(std::string const& prefix) {
-  return Utils::apiPrefix + prefix + "/";
-}
 
 ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
                               std::string const& collectionName,
