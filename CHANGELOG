@@ -1,6 +1,10 @@
 devel
 -----
 
+* Changed complex query js test for the queries to have no memory limit 
+  because some queries were failing in this test with the error that the query
+  would use more memory than allowed for for specific "darwin" OS machines.
+
 * Updated arangosync to v2.13.0-preview-4.
 
 * Delay a MoveShard operation for leader change, until the old leader has
