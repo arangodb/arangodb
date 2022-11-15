@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.13.0-preview-4.
+
 * Delay a MoveShard operation for leader change, until the old leader has
   actually assumed its leadership and until the new leader is actually in
   sync. This fixes a bug which could block a shard under certain circumstances.
