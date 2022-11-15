@@ -28,6 +28,7 @@
 #include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"

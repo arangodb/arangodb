@@ -27,6 +27,8 @@
 
 #include <Agency/AsyncAgencyComm.h>
 #include <Basics/application-exit.h>
+#include <Logger/LogMacros.h>
+
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 

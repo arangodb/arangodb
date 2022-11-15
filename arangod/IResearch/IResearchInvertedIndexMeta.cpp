@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchKludge.h"
 #include "RestServer/SystemDatabaseFeature.h"

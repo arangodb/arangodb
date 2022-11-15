@@ -39,6 +39,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "Logger/LogMacros.h"
+
 #include <atomic>
 
 namespace arangodb {

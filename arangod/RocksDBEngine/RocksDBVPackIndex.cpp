@@ -39,6 +39,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"

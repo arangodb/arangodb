@@ -35,6 +35,7 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"

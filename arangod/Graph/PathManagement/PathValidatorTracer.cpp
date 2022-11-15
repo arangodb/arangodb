@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
+#include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"

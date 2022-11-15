@@ -48,6 +48,7 @@
 #include "ExecutorExpressionContext.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 #include "V8/v8-globals.h"
 

@@ -41,6 +41,7 @@
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/DatabaseFeature.h"

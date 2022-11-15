@@ -27,6 +27,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"

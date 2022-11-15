@@ -28,6 +28,7 @@
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"

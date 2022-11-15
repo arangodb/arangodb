@@ -31,6 +31,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"

@@ -29,6 +29,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
+#include "Logger/LogMacros.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBBuilderIndexEE.h"
 #endif

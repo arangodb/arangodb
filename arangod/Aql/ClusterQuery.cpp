@@ -32,6 +32,7 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"

@@ -26,6 +26,8 @@
 #include <Futures/Future.h>
 #include <Futures/Unit.h>
 
+#include <Basics/debugging.h>
+
 using namespace arangodb;
 
 auto WaitForBag::addWaitFor() -> futures::Future<futures::Unit> {

@@ -39,6 +39,7 @@
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

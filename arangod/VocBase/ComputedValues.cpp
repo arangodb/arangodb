@@ -39,6 +39,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/debugging.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
