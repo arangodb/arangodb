@@ -88,5 +88,7 @@ struct MoveShard : public Job {
   void addMoveShardFromServerCanUnLock(Builder& ops) const;
 
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
+  bool checkLeaderFollowerCurrent(
+      std::vector<Job::shard_t> const& shardsLikeMe);
 };
 }  // namespace arangodb::consensus

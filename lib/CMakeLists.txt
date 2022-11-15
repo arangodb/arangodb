@@ -193,9 +193,8 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/ScriptLoader.cpp
-  Utilities/IsArangoExecutable.cpp
   Utilities/NameValidator.cpp
+  Utilities/ScriptLoader.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
