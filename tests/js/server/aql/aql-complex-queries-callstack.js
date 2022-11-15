@@ -37,7 +37,7 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = NOOPT(v${i - 1} + 1)\n`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, { memoryLimit: 0 }).toArray();
       assertEqual(res[0], cnt);
     },
 
@@ -49,7 +49,7 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q).toArray();
+      const res = db._query(q, null, { memoryLimit: 0 }).toArray();
       assertEqual(res[0], 1);
     },
 
@@ -60,7 +60,7 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = NOOPT(${i})`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, { memoryLimit: 0 }).toArray();
       assertEqual(res[0], cnt - 1);
     },
 
@@ -73,7 +73,7 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, { memoryLimit: 0 }).toArray();
       assertEqual(res[0], []);
     },
 
@@ -85,7 +85,7 @@ function ComplexQueriesTestSuite() {
                 RETURN doc.name)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, { memoryLimit: 0 }).toArray();
       assertEqual(res[0], ["test1"]);
     },
   };
