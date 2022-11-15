@@ -2519,6 +2519,7 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
     LOG_TOPIC("12343", DEBUG, Logger::SUPERVISION)
         << "Updating delayAddFollower to " << d;
     _config.setSupervisionDelayAddFollower(d);
+    _supervision->setDelayAddFollower(d);
   }
   slice = data.get("delayFailedFollower");
   if (slice.isNumber()) {
@@ -2526,6 +2527,7 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
     LOG_TOPIC("12344", DEBUG, Logger::SUPERVISION)
         << "Updating delayFailedFollower to " << d;
     _config.setSupervisionDelayFailedFollower(d);
+    _supervision->setDelayFailedFollower(d);
   }
 }
 

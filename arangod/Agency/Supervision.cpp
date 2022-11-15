@@ -209,6 +209,8 @@ Supervision::Supervision(ArangodServer& server)
       _frequency(1.),
       _gracePeriod(10.),
       _okThreshold(5.),
+      _delayAddFollower(0.),
+      _delayFailedFollower(0.),
       _jobId(0),
       _jobIdMax(0),
       _lastUpdateIndex(0),
@@ -3395,6 +3397,8 @@ bool Supervision::start(Agent* agent) {
   _frequency = _agent->config().supervisionFrequency();
   _okThreshold = _agent->config().supervisionOkThreshold();
   _gracePeriod = _agent->config().supervisionGracePeriod();
+  _delayAddFollower = _agent->config().supervisionDelayAddFollower();
+  _delayFailedFollower = _agent->config().supervisionDelayFailedFollower();
   return start();
 }
 
