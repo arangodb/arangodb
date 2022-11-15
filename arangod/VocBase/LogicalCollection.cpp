@@ -788,7 +788,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(VPackValue(StaticStrings::ComputedValues));
   computedValuesToVelocyPack(build);
 
-  // Internal CollectionType
+  // Internal collection validator type
   build.add(StaticStrings::InternalValidatorTypes,
             VPackValue(_internalValidatorTypes));
   // Cluster Specific
