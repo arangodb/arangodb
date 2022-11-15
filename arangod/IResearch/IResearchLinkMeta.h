@@ -261,6 +261,8 @@ struct IResearchLinkMeta : public FieldMeta {
   std::string_view collectionName() const noexcept { return _collectionName; }
 
 #ifdef USE_ENTERPRISE
+  bool sortCache() const noexcept { return _sortCache; }
+
   bool _sortCache{false};
   bool _pkCache{false};
 #endif

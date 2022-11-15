@@ -59,6 +59,12 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
 
   auto sortCompression() const noexcept { return _sortCompression; }
 
+#ifdef USE_ENTERPRISE
+  bool cache() const noexcept {
+    return _cache;
+  }
+#endif
+
   std::string_view Locale() const noexcept { return _locale.getName(); }
 
   size_t memory() const noexcept {
@@ -71,6 +77,9 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
  private:
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
   icu::Locale _locale;
+#ifdef USE_ENTERPRISE
+  bool _cache{false};
+#endif
 };
 
 struct InvertedIndexField {
@@ -139,6 +148,9 @@ struct InvertedIndexField {
   /// @brief Field is array/value mix as for arangosearch views.
   ///        Field is excluded from inverted index optimizations for filter!
   bool _isSearchField{false};
+#ifdef USE_ENTERPRISE
+  bool _cache{false};
+#endif
 };
 
 struct IResearchInvertedIndexMeta;
@@ -231,6 +243,11 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 
   bool hasNested() const noexcept { return _hasNested; }
 
+#ifdef USE_ENTERPRISE
+  bool sortCache() const noexcept { return _sort.cache(); }
+#endif
+
+
   std::unique_ptr<IResearchInvertedIndexMetaIndexingContext> _indexingContext;
 
   InvertedIndexField::AnalyzerDefinitions _analyzerDefinitions;
@@ -241,5 +258,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
   bool _hasNested{false};
+#ifdef USE_ENTERPRISE
+  bool _pkCache{false};
+#endif
 };
 }  // namespace arangodb::iresearch

@@ -178,7 +178,7 @@ class IResearchFeature final : public ArangodFeature {
   metrics::Gauge<uint64_t>& _outOfSyncLinks;
 
 #ifdef USE_ENTERPRISE
-  Gauge<int64_t>& _columnsCacheMemoryUsed;
+  metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
   uint64_t _columnsCacheLimit{0};
 #endif
 

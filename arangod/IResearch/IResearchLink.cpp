@@ -35,6 +35,7 @@
 #include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"

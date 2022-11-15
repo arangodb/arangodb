@@ -355,6 +355,20 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
   }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
+
+#ifdef USE_ENTERPRISE
+  {
+    auto const pkCacheSlice = slice.get(StaticStrings::kCachePrimaryKeyField);
+    if (!pkCacheSlice.isNone()) {
+      if (!pkCacheSlice.isBool()) {
+        errorField = StaticStrings::kPrimarySortCacheField;
+        return false;
+      }
+      _pkCache = pkCacheSlice.getBool();
+    }
+  }
+#endif
+
   if (!InvertedIndexField::init(
           slice, _analyzerDefinitions, static_cast<LinkVersion>(_version),
           extendedNames, analyzers, *this, defaultVocbase, true, errorField)) {
@@ -421,6 +435,12 @@ bool IResearchInvertedIndexMeta::json(
     builder.add(StaticStrings::CollectionNameField,
                 velocypack::Value{_collectionName});
   }
+
+#ifdef USE_ENTERPRISE
+  if (_pkCache) {
+    builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
+  }
+#endif
 
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
 }
@@ -519,6 +539,13 @@ bool InvertedIndexField::json(
     builder.add(kIsSearchField, VPackValue(_isSearchField));
   }
 
+#ifdef USE_ENTERPRISE
+  if ( (rootMode && _cache) ||
+       (!rootMode && _cache != parent._cache)) {
+    builder.add(StaticStrings::kCacheField, velocypack::Value(_cache));
+  }
+#endif
+
   if (!_fields.empty() || rootMode) {
     auto fieldsAttributeName =
         rootMode ? kFieldsFieldName : kNestedFieldsFieldName;
@@ -548,6 +575,9 @@ bool InvertedIndexField::init(
     _overrideValue = parent._overrideValue;
     _expression = parent._expression;
     _isSearchField = parent._isSearchField;
+#ifdef USE_ENTERPRISE
+    _cache = parent._cache;
+#endif
   }
   std::vector<basics::AttributeName> fieldParts;
   if (slice.isString()) {
@@ -726,6 +756,20 @@ bool InvertedIndexField::init(
       !analyzer()->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object)
           ? 1
           : 0;
+
+#ifdef USE_ENTERPRISE
+  {
+    auto cacheSlice = slice.get(StaticStrings::kCacheField);
+    if (!cacheSlice.isNone()) {
+      if (!cacheSlice.isBool()) {
+        errorField = StaticStrings::kCacheField;
+        return false;
+      }
+      _cache = cacheSlice.getBool();
+    }
+  }
+#endif
+
   if (!rootMode) {
     // we only allow one expansion
     size_t expansionCount{0};
@@ -897,6 +941,11 @@ bool IResearchInvertedIndexSort::toVelocyPack(
   // if (!_locale.isBogus()) {
   //  builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
   //}
+#ifdef USE_ENTERPRISE
+  if (_cache) {
+    builder.add(StaticStrings::kCacheField, _cache);
+  }
+#endif
   return true;
 }
 
@@ -944,7 +993,16 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
       return false;
     }
   }
-
+#ifdef USE_ENTERPRISE
+  auto cacheSlice = slice.get(StaticStrings::kCacheField);
+  if (!cacheSlice.isNone()) {
+    if (!cacheSlice.isBool()) {
+      error = StaticStrings::kCacheField;
+      return false;
+    }
+    _cache = cacheSlice.getBool();
+  }
+#endif
   return true;
 }
 

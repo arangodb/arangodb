@@ -895,7 +895,7 @@ IResearchFeature::IResearchFeature(Server& server)
           arangodb_search_num_out_of_sync_links{}))
 #ifdef USE_ENTERPRISE
       ,
-      _columnsCacheMemoryUsed(server.getFeature<arangodb::MetricsFeature>().add(
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_search_columns_cache_size{}))
 #endif
 {
