@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
 * Delay a MoveShard operation for leader change, until the old leader has
   actually assumed its leadership and until the new leader is actually in
   sync. This fixes a bug which could block a shard under certain circumstances.
