@@ -205,6 +205,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartEdgeCollection() const noexcept { return false; }
   bool isSatToSmartEdgeCollection() const noexcept { return false; }
   bool isSmartToSatEdgeCollection() const noexcept { return false; }
+  bool isSmartVertexCollection() const noexcept { return false; }
 #endif
 
   /// @brief return the name of the SmartJoin attribute (empty string
