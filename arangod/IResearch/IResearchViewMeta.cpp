@@ -212,7 +212,14 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferSizeMax(mask),
       _primarySort(mask),
       _storedValues(mask),
-      _primarySortCompression(mask) {}
+      _primarySortCompression(mask)
+#ifdef USE_ENTERPRISE
+      ,
+      _sortCache(mask),
+      _pkCache(mask)
+#endif
+{
+}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
@@ -262,6 +269,10 @@ void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
   _primarySort = other._primarySort;
   _storedValues = other._storedValues;
   _primarySortCompression = other._primarySortCompression;
+#ifdef USE_ENTERPRISE
+  _sortCache = other._sortCache;
+  _pkCache = other._pkCache;
+#endif
 }
 
 void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
@@ -279,6 +290,10 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
   _primarySort = std::move(other._primarySort);
   _storedValues = std::move(other._storedValues);
   _primarySortCompression = other._primarySortCompression;
+#ifdef USE_ENTERPRISE
+  _sortCache = other._sortCache;
+  _pkCache = other._pkCache;
+#endif
 }
 
 void IResearchViewMeta::storePartial(IResearchViewMeta&& other) noexcept {
@@ -323,6 +338,11 @@ bool IResearchViewMeta::operator==(
       _storedValues != other._storedValues) {
     return false;
   }
+#ifdef USE_ENTERPRISE
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache) {
+    return false;
+  }
+#endif
 
   return true;
 }
@@ -604,6 +624,34 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       }
     }
   }
+#ifdef USE_ENTERPRISE
+  {
+    auto const field = slice.get(StaticStrings::kPrimarySortCacheField);
+    mask->_sortCache = !field.isNone();
+    if (mask->_sortCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kPrimarySortCacheField;
+        return false;
+      }
+      _sortCache = field.getBoolean();
+    } else {
+      _sortCache = defaults._sortCache;
+    }
+  }
+  {
+    auto const field = slice.get(StaticStrings::kCachePrimaryKeyField);
+    mask->_pkCache = !field.isNone();
+    if (mask->_pkCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kCachePrimaryKeyField;
+        return false;
+      }
+      _pkCache = field.getBool();
+    } else {
+      _pkCache = defaults._pkCache;
+    }
+  }
+#endif
   return true;
 }
 
@@ -692,6 +740,20 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
                  irs::string_ref{StaticStrings::PrimarySortCompressionField},
                  compression);
   }
+
+#ifdef USE_ENTERPRISE
+  if ((!mask || mask->_sortCache) &&
+      ((!ignoreEqual && _sortCache) ||
+       (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
+    builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
+  }
+
+  if ((!mask || mask->_pkCache) &&
+      ((!ignoreEqual && _pkCache) ||
+       (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
+    builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
+  }
+#endif
 
   return true;
 }
