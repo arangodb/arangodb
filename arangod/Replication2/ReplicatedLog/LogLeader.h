@@ -204,7 +204,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
-    bool snapshotAvailable{false};
+    bool snapshotAvailable{true};
     MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
 
