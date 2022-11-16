@@ -1027,7 +1027,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
         .flags = flags->second});
 
     largestCommonIndex =
-        std::min(largestCommonIndex, follower->lastAckedCommitIndex);
+        std::min(largestCommonIndex, follower->lastAckedIndex.index);
   }
 
   return {largestCommonIndex, std::move(participantStates)};
