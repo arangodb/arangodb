@@ -295,7 +295,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
     template<class ValueType, class... Args>
     Status load(bool& retryDifferentType, Args&&... args) {
-      ValueType read;
+      ValueType read{};
       auto result = _inspector.apply(read);
       if (!result.ok()) {
         retryDifferentType = true;
