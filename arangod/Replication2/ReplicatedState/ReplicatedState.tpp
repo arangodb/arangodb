@@ -617,7 +617,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
               // TODO (How) can we handle this more gracefully?
               ADB_PROD_ASSERT(res.ok());
             } else {
-              LOG_CTX("9a68a", ERR, self->_loggerContext)
+              LOG_CTX("9a68a", INFO, self->_loggerContext)
                   << "failed to transfer snapshot: " << result
                   << " - retry scheduled";
               self->registerSnapshotError(std::move(result));

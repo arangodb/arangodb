@@ -109,8 +109,9 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
       return ResultT<DocumentStateType>::error(
-          TRI_ERROR_CLUSTER_NOT_LEADER,
-          fmt::format("Failed to get leader of DocumentState with id {}",
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
+          fmt::format("Failed to get leader of DocumentState with id {}; this "
+                      "is not a leader instance.",
                       logId));
     }
     return leader;
