@@ -196,6 +196,9 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'foo'});
       tc.save({_key: 'bar'});
 
+      // TODO this is not safe, we might loose already committed log entries.
+      //      either force the leader in the first place, or make sure a leader
+      //      election is done (by deleting the current leader when increasing the term)
       replicatedLogsHelper.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
