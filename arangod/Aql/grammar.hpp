@@ -36,8 +36,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
-# define YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
+#ifndef YY_AQL_GRAMMAR_HPP_INCLUDED
+# define YY_AQL_GRAMMAR_HPP_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -140,7 +140,7 @@ extern int Aqldebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 43 "Aql/grammar.y"
+#line 43 "grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -150,7 +150,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 153 "Aql/grammar.hpp"
+#line 153 "grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -178,4 +178,4 @@ struct YYLTYPE
 int Aqlparse (arangodb::aql::Parser* parser);
 
 
-#endif /* !YY_AQL_AQL_GRAMMAR_HPP_INCLUDED  */
+#endif /* !YY_AQL_GRAMMAR_HPP_INCLUDED  */

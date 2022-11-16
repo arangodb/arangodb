@@ -31,6 +31,7 @@ const fs = require('fs');
 if (getOptions === true) {
   return {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
+    'log.force-direct': 'true',
     'rocksdb.wal-archive-size-limit': '10000000', // roughly 10MB
     'rocksdb.wal-file-timeout-initial': '10',
   };
@@ -45,13 +46,13 @@ function WalArchiveSizeLimitSuiteSmall() {
       
   let suite = {
     testDoesNotForceDeleteWalFiles: function() {
-      let filtered = sendLargeServerOperation();
+      let res = sendLargeServerOperation(300);
 
       // this will fail if warning d9793 was *not* logged
       let found = false;
-      assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 0; i < filtered.length; ++i) {
-        if (filtered[i].match(/d9793/)) {
+      assertTrue(res[0].match(/testmann: start/));
+      for (let i = 0; i < res.length; ++i) {
+        if (res[i].match(/d9793/)) {
           found = true;
           break;
         }

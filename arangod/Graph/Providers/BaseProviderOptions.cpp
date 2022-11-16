@@ -86,7 +86,7 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     std::unordered_map<std::string, std::vector<std::string>> const&
         collectionToShardMap,
     aql::Projections const& vertexProjections,
-    aql::Projections const& edgeProjections)
+    aql::Projections const& edgeProjections, bool produceVertices)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
@@ -94,7 +94,8 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
       _weightCallback(std::nullopt),
       _filterConditionVariables(filterConditionVariables),
       _vertexProjections{vertexProjections},
-      _edgeProjections{edgeProjections} {}
+      _edgeProjections{edgeProjections},
+      _produceVertices(produceVertices) {}
 
 aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -117,8 +118,12 @@ SingleServerBaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool SingleServerBaseProviderOptions::hasWeightMethod() const {
+bool SingleServerBaseProviderOptions::hasWeightMethod() const noexcept {
   return _weightCallback.has_value();
+}
+
+bool SingleServerBaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
 }
 
 void SingleServerBaseProviderOptions::setWeightEdgeCallback(
@@ -195,9 +200,11 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   return _cache.get();
 }
 
-bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+bool ClusterBaseProviderOptions::isBackward() const noexcept {
+  return _backward;
+}
 
-bool ClusterBaseProviderOptions::produceVertices() const {
+bool ClusterBaseProviderOptions::produceVertices() const noexcept {
   return _produceVertices;
 }
 

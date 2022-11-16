@@ -270,6 +270,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
 // simon: this API will no longer be used in 3.7
 void InternalRestTraverserHandler::destroyEngine() {
+  TRI_ASSERT(false);
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {
     // DELETE requires the id as path parameter

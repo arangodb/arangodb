@@ -32,6 +32,9 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/DownCast.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -73,7 +76,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
 #include <sstream>
@@ -86,6 +88,19 @@ template<typename T>
 using Future = futures::Future<T>;
 
 namespace {
+
+template<Methods::CallbacksTag tag>
+struct ToType;
+
+template<>
+struct ToType<Methods::CallbacksTag::StatusChange> {
+  using Type = Methods::StatusChangeCallback;
+};
+
+template<>
+struct ToType<Methods::CallbacksTag::PreCommit> {
+  using Type = Methods::PreCommitCallback;
+};
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
@@ -261,22 +276,18 @@ getDataSourceRegistrationCallbacks() {
 
 /// @return the status change callbacks stored in state
 ///         or nullptr if none and !create
-std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>*
-getStatusChangeCallbacks(arangodb::TransactionState& state,
-                         bool create = false) {
-  struct CookieType : public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>
-        _callbacks;
+template<Methods::CallbacksTag tag>
+auto* getCallbacks(TransactionState& state, bool create = false) {
+  using Callback = typename ToType<tag>::Type;
+  struct CookieType : public TransactionState::Cookie {
+    std::vector<Callback const*> _callbacks;
   };
 
-  static const int key = 0;  // arbitrary location in memory, common for all
+  // arbitrary location in memory, common for all
+  static const auto key = tag;
 
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
-#else
-  auto* cookie = static_cast<CookieType*>(state.cookie(&key));
-#endif
+  // TODO FIXME find a better way to look up a ViewState
+  auto* cookie = basics::downCast<CookieType>(state.cookie(&key));
 
   if (!cookie && create) {
     auto ptr = std::make_unique<CookieType>();
@@ -294,8 +305,8 @@ getStatusChangeCallbacks(arangodb::TransactionState& state,
 arangodb::Result applyDataSourceRegistrationCallbacks(
     LogicalDataSource& dataSource, arangodb::transaction::Methods& trx) {
   for (auto& callback : getDataSourceRegistrationCallbacks()) {
-    TRI_ASSERT(
-        callback);  // addDataSourceRegistrationCallback(...) ensures valid
+    // addDataSourceRegistrationCallback(...) ensures valid
+    TRI_ASSERT(callback);
 
     try {
       auto res = callback(dataSource, trx);
@@ -314,22 +325,16 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-Result applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
-                                  arangodb::transaction::Status status) noexcept
-    try {
-  TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
-             arangodb::transaction::Status::COMMITTED == status ||
-             arangodb::transaction::Status::RUNNING == status);
-
+Result applyStatusChangeCallbacks(Methods& trx, Status status) noexcept try {
+  TRI_ASSERT(Status::ABORTED == status || Status::COMMITTED == status ||
+             Status::RUNNING == status);
   auto* state = trx.state();
   if (!state) {
     return {};  // nothing to apply
   }
 
   TRI_ASSERT(trx.isMainTransaction());
-
-  auto* callbacks = getStatusChangeCallbacks(*state);
-
+  auto* callbacks = getCallbacks<Methods::CallbacksTag::StatusChange>(*state);
   if (!callbacks) {
     return {};  // no callbacks to apply
   }
@@ -366,6 +371,28 @@ Result applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   return res;
 } catch (...) {
   return Result(TRI_ERROR_OUT_OF_MEMORY);
+}
+
+void applyPreCommitCallbacks(transaction::Methods& trx) {
+  auto* state = trx.state();
+  if (!state) {
+    return;  // nothing to apply
+  }
+  TRI_ASSERT(trx.isMainTransaction());
+  auto* callbacks = getCallbacks<Methods::CallbacksTag::PreCommit>(*state);
+  if (!callbacks) {
+    return;  // no callbacks to apply
+  }
+  // no need to lock since transactions are single-threaded
+  for (auto& callback : *callbacks) {
+    TRI_ASSERT(callback);  // addStatusChangeCallback(...) ensures valid
+    try {
+      (*callback)(trx);
+    } catch (...) {
+      // we must not propagate exceptions from here
+      // TODO maybe make them noexcept?
+    }
+  }
 }
 
 void throwCollectionNotFound(std::string const& name) {
@@ -412,15 +439,15 @@ OperationResult emptyResult(OperationOptions const& options) {
   }
 }
 
-bool transaction::Methods::addStatusChangeCallback(
-    StatusChangeCallback const* callback) {
+template<transaction::Methods::CallbacksTag tag, typename Callback>
+bool transaction::Methods::addCallbackImpl(Callback const* callback) {
   if (!callback || !*callback) {
     return true;  // nothing to call back
   } else if (!_state) {
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, true);
+  auto* statusChangeCallbacks = getCallbacks<tag>(*_state, true);
 
   TRI_ASSERT(nullptr != statusChangeCallbacks);  // 'create' was specified
 
@@ -428,6 +455,16 @@ bool transaction::Methods::addStatusChangeCallback(
   statusChangeCallbacks->emplace_back(callback);
 
   return true;
+}
+
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback) {
+  return addCallbackImpl<CallbacksTag::StatusChange>(callback);
+}
+
+bool transaction::Methods::addPreCommitCallback(
+    PreCommitCallback const* callback) {
+  return addCallbackImpl<CallbacksTag::PreCommit>(callback);
 }
 
 bool transaction::Methods::removeStatusChangeCallback(
@@ -438,7 +475,8 @@ bool transaction::Methods::removeStatusChangeCallback(
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, false);
+  auto* statusChangeCallbacks =
+      getCallbacks<CallbacksTag::StatusChange>(*_state, false);
   if (statusChangeCallbacks) {
     auto it = std::find(statusChangeCallbacks->begin(),
                         statusChangeCallbacks->end(), callback);
@@ -785,10 +823,13 @@ OperationResult transaction::Methods::anyLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ANY,
+                ReadOwnWrites::no);
 
   iterator->nextDocument(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -2415,10 +2456,13 @@ OperationResult transaction::Methods::allLocal(
     }
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   resultBuilder.openArray();
 
-  auto iterator = indexScan(
-      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator =
+      indexScan(monitor, collectionName, transaction::Methods::CursorType::ALL,
+                ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
@@ -2760,9 +2804,10 @@ OperationResult transaction::Methods::countLocal(
 
 /// @brief factory for IndexIterator objects from AQL
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
-    IndexHandle const& idx, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
+    ResourceMonitor& monitor, IndexHandle const& idx,
+    arangodb::aql::AstNode const* condition, arangodb::aql::Variable const* var,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2780,16 +2825,16 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
-                                   mutableConditionIdx);
+  return idx->iteratorForCondition(monitor, this, condition, var, opts,
+                                   readOwnWrites, mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
-    std::string const& collectionName, CursorType cursorType,
-    ReadOwnWrites readOwnWrites) {
+    ResourceMonitor& monitor, std::string const& collectionName,
+    CursorType cursorType, ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
   if (ADB_UNLIKELY(_state->isCoordinator())) {
@@ -3299,7 +3344,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
               << "'";
           return res;
         }
-
+        applyPreCommitCallbacks(*this);
         return _state->commitTransaction(this);
       })
       .thenValue([this](Result res) -> Result {

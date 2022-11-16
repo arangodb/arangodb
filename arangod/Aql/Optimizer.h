@@ -48,7 +48,7 @@ class Optimizer {
 
     ::arangodb::containers::RollingVector<Entry> list;
 
-    PlanList() { list.reserve(4); }
+    PlanList() { list.reserve(8); }
 
     /// @brief constructor with a plan
     PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
@@ -130,7 +130,7 @@ class Optimizer {
                        bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
+  ::arangodb::containers::RollingVector<PlanList::Entry> const& getPlans() {
     return _plans.list;
   }
 

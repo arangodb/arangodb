@@ -121,11 +121,11 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
 
     // Will throw all network errors here
     std::vector<Step*> preparedEnds = std::move(futureEnds.get());
-
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
+  TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);

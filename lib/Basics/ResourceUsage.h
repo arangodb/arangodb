@@ -122,7 +122,9 @@ class ResourceUsageScope {
   void decrease(std::uint64_t value) noexcept;
 
   // memory tracked by this particlular scope instance
-  auto tracked() const noexcept { return _value; }
+  std::uint64_t tracked() const noexcept { return _value; }
+
+  std::uint64_t trackedAndSteal() noexcept;
 
  private:
   ResourceMonitor& _resourceMonitor;

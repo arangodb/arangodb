@@ -128,10 +128,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::LocalDocumentId const& token,
       arangodb::IndexIterator::DocumentCallback const& cb,
       arangodb::ReadOwnWrites) const override;
-  virtual bool readDocument(arangodb::transaction::Methods* trx,
-                            arangodb::LocalDocumentId const& token,
-                            arangodb::ManagedDocumentResult& result,
-                            arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result lookupDocument(
       arangodb::transaction::Methods& trx, arangodb::LocalDocumentId token,
       arangodb::velocypack::Builder& builder, bool readCache, bool fillCache,
@@ -165,7 +161,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::velocypack::Slice newDocument,
       arangodb::OperationOptions const& options) override;
   virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) override;
+      arangodb::velocypack::Slice slice) override;
 
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
@@ -215,6 +211,7 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::futures::Future<arangodb::Result>
   performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
+  uint64_t numPrimitiveOperations() const noexcept override { return 0; }
   virtual uint64_t numCommits() const noexcept override;
   virtual uint64_t numIntermediateCommits() const noexcept override;
   virtual void addIntermediateCommits(uint64_t value) override;
@@ -248,9 +245,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void addRestHandlers(
       arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
-  virtual void changeCollection(TRI_vocbase_t& vocbase,
-                                arangodb::LogicalCollection const& collection,
-                                bool doSync) override;
+  virtual void changeCollection(
+      TRI_vocbase_t& vocbase,
+      arangodb::LogicalCollection const& collection) override;
   arangodb::Result changeView(arangodb::LogicalView const& view,
                               arangodb::velocypack::Slice update) override;
 

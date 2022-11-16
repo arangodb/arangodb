@@ -48,7 +48,6 @@ class LocalDocumentId;
 class Index;
 class IndexIterator;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
 
@@ -63,8 +62,8 @@ class PhysicalCollection {
   // path to logical collection
   virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
+  virtual arangodb::Result updateProperties(velocypack::Slice slice) = 0;
+
   virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
 
   /// @brief export properties
@@ -190,12 +189,6 @@ class PhysicalCollection {
                                 velocypack::Builder& builder, bool readCache,
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
-
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
-                            ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
 
   /**
    * @brief Perform document insert, may generate a '_key' value

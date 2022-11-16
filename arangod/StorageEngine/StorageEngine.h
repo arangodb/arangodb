@@ -159,7 +159,7 @@ class StorageEngine : public ArangodFeature {
   virtual std::vector<std::string> currentWalFiles() const = 0;
 
   virtual Result flushWal(bool waitForSync = false,
-                          bool waitForCollector = false) = 0;
+                          bool flushColumnFamilies = false) = 0;
 
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
@@ -182,7 +182,7 @@ class StorageEngine : public ArangodFeature {
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                           velocypack::Slice const& slice);
+                                           velocypack::Slice slice);
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -261,8 +261,7 @@ class StorageEngine : public ArangodFeature {
   // not fail. the WAL entry for the propery change will be written *after* the
   // call to "changeCollection" returns
   virtual void changeCollection(TRI_vocbase_t& vocbase,
-                                LogicalCollection const& collection,
-                                bool doSync) = 0;
+                                LogicalCollection const& collection) = 0;
 
   // asks the storage engine to persist renaming of a collection
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,

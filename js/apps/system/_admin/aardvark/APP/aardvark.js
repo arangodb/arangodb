@@ -946,13 +946,10 @@ authRouter.get('/graph/:name', function (req, res) {
             }
           } else if (config.nodeColorAttribute !== '') {
             var attr = node[config.nodeColorAttribute];
-            if (attr) {
-              if (tmpObjNodes.hasOwnProperty(attr)) {
+            if (attr !== undefined && attr !== null) {
+                nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
+                nodeObj['nodeColorAttributeValue'] = attr;
                 nodeObj.color = tmpObjNodes[attr];
-              } else {
-                tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
-                nodeObj.color = tmpObjNodes[attr];
-              }
             }
           }
 
@@ -991,7 +988,8 @@ authRouter.get('/graph/:name', function (req, res) {
       edges: edgesArr,
       settings: {
         vertexCollections: vertexCollections,
-        startVertex: startVertex
+        startVertex: startVertex,
+        nodeColorAttribute: config.nodeColorAttribute
       }
     };
     if (isEnterprise) {

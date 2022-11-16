@@ -24,6 +24,7 @@
 #pragma once
 
 #include <functional>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
@@ -96,6 +97,8 @@ struct AttributeNamePath {
 
   std::vector<std::string> path;
 };
+
+std::ostream& operator<<(std::ostream& stream, AttributeNamePath const& path);
 
 }  // namespace arangodb::aql
 
