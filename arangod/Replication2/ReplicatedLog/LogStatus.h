@@ -102,7 +102,7 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  TermIndexPair nextPrevLogIndex;
+  LogIndex nextPrevLogIndex;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept

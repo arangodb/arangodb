@@ -190,7 +190,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex,
+                          LogIndex lastLogIndex,
                           LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
@@ -198,7 +198,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
-    TermIndexPair nextPrevLogIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
