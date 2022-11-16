@@ -814,11 +814,6 @@ template<typename S>
 void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
-  // opportunistic check that we're the only user.
-  // note that there might be false positives (due to memory_order_relaxed),
-  // and races where a weak_ptr is promoted to a shared_ptr again.
-  // so: TODO remove this later!
-  TRI_ASSERT(stateHandle.use_count() == 1);
 
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
     std::unique_ptr<CoreType> core;
