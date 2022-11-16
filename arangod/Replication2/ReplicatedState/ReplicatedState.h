@@ -263,7 +263,8 @@ struct FollowerStateManager
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
     [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
-    void registerSnapshotError(Result error) noexcept;
+    void registerSnapshotError(Result error,
+                               metrics::Counter& counter) noexcept;
     void clearSnapshotErrors() noexcept;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;

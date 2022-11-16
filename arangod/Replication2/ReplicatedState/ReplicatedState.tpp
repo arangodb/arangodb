@@ -32,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/MetricsHelper.h"
@@ -369,6 +370,8 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
       auto const index = guard->_lastAppliedIndex =
           *guard->_applyEntriesIndexInFlight;
+      // TODO
+      //   _metrics->replicatedStateNumberProcessedEntries->count(range.count());
 
       auto queue = guard->getResolvablePromises(index);
       auto& scheduler = *SchedulerFeature::SCHEDULER;
@@ -385,6 +388,7 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
     guard->_applyEntriesIndexInFlight = std::nullopt;
 
     if (res.fail()) {
+      _metrics->replicatedStateNumberApplyEntriesErrors->operator++();
       switch (static_cast<int>(res.errorNumber())) {
         case static_cast<int>(
             TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED): {
@@ -441,6 +445,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries()
   }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
+    // TODO MeasureTimeGuard rttGuard(_metrics->replicatedStateApplyEntriesRtt);
     auto log = _stream->methods().getLogSnapshot();
     _applyEntriesIndexInFlight = _commitIndex;
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
@@ -547,15 +552,17 @@ auto FollowerStateManager<S>::backOffSnapshotRetry()
 
 template<typename S>
 void FollowerStateManager<S>::registerSnapshotError(Result error) noexcept {
-  _guardedData.getLockedGuard()->registerSnapshotError(std::move(error));
+  _guardedData.getLockedGuard()->registerSnapshotError(
+      std::move(error), *_metrics->replicatedStateNumberAcquireSnapshotErrors);
 }
 
 template<typename S>
 void FollowerStateManager<S>::GuardedData::registerSnapshotError(
-    Result error) noexcept {
+    Result error, metrics::Counter& counter) noexcept {
   TRI_ASSERT(error.fail());
   _lastSnapshotError = std::move(error);
   _snapshotErrorCounter += 1;
+  counter.operator++();
 }
 
 template<typename S>
