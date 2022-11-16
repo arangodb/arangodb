@@ -312,7 +312,8 @@ struct arangodb::VocBaseLogManager {
         statesAndLogs;
 
     auto buildReplicatedState(
-        replication2::LogId id, std::string_view type, VPackSlice parameters,
+        replication2::LogId const id, std::string_view type,
+        VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
         TRI_vocbase_t& vocbase)
@@ -407,8 +408,8 @@ struct arangodb::VocBaseLogManager {
             logContext, myself);
       });
 
-      auto& state = stateAndLog.state =
-          feature.createReplicatedState(type, vocbase.name(), log, logContext);
+      auto& state = stateAndLog.state = feature.createReplicatedState(
+          type, vocbase.name(), id, log, logContext);
 
       auto maybeMetadata = stateAndLog.storage->readMetadata();
       if (!maybeMetadata) {

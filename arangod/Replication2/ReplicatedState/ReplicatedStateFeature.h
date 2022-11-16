@@ -69,10 +69,12 @@ struct ReplicatedStateFeature {
    * @return
    */
   auto createReplicatedState(std::string_view name, std::string_view database,
+                             LogId logId,
                              std::shared_ptr<replicated_log::ReplicatedLog> log)
       -> std::shared_ptr<ReplicatedStateBase>;
 
   auto createReplicatedState(std::string_view name, std::string_view database,
+                             LogId logId,
                              std::shared_ptr<replicated_log::ReplicatedLog> log,
                              LoggerContext const& loggerContext)
       -> std::shared_ptr<ReplicatedStateBase>;
