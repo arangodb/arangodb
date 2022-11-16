@@ -21,6 +21,8 @@
 /// @author Tobias Gödderz
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <algorithm>
 #include <array>
 #include <iostream>
 #include <utility>
