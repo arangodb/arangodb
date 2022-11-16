@@ -79,7 +79,6 @@ add_executable(
   arangodbtests-iresearch
   ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-  ../main.cpp
 )
 
 set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
@@ -90,6 +89,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests-iresearch
+  arango_tests_basics
   arango_agency
   arango_cluster_engine
   arango_rocksdb
