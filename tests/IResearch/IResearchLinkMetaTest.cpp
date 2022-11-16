@@ -62,6 +62,7 @@
 #if USE_ENTERPRISE
 #include "fakeit.hpp"
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 
 namespace {
@@ -4160,7 +4161,7 @@ class mock_term_reader : public irs::term_reader {
 };
 
 void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
-                           IResearchLinkMeta const& meta,
+                           arangodb::iresearch::IResearchLinkMeta const& meta,
                            std::set<irs::field_id> expected) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
