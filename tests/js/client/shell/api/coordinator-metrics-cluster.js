@@ -36,7 +36,7 @@ const db = arangodb.db;
 function checkMetrics(metrics) {
 
   if (isEnterprise) {
-    // nested documents are treated like a real document
+    // nested documents are treated like a real documents
     assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 2000);
     assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 4001);
     assertEqual(metrics["arangodb_search_num_docs"]["foo3"], 7002);

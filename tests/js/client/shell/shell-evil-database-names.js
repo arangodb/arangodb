@@ -124,17 +124,26 @@ function EvilDatabaseNamesSuite () {
         db._create("collection123");
         assertNotNull(db._collection("collection123"));
         db["collection123"].ensureIndex({type: 'persistent', name: 'test123', fields: ['value']});
-        assertEqual(db["collection123"].indexes().length, 2);
+        if (isEnterprise) {
+          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: { "name": "value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}});
+        } else {
+          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: ['value']});
+        }
+
+        assertEqual(db["collection123"].indexes().length, 3);
         assertEqual(db["collection123"].index("test123").name, "test123");
+        assertEqual(db["collection123"].index("inverted").name, "inverted");
+
         db["collection123"].dropIndex("test123");
+        db["collection123"].dropIndex("inverted");
         assertEqual(db["collection123"].indexes().length, 1);
         try{
           assertEqual(db["collection123"].index("test123"));
+          assertEqual(db["collection123"].index("inverted"));
           fail();
         } catch(err) {
           assertEqual(err.errorNum, arangodb.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
         }
-
       });
     },
 
