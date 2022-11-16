@@ -1335,6 +1335,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("common/bootstrap/scaffolding.js");
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
   files.push_back("common/bootstrap/errors.js");            // deps: internal
+  files.push_back("common/bootstrap/exitcodes.js");         // deps: internal
   files.push_back("client/bootstrap/modules/internal.js");  // deps: internal
   files.push_back("common/bootstrap/modules/vm.js");        // deps: internal
   files.push_back("common/bootstrap/modules/console.js");   // deps: internal
