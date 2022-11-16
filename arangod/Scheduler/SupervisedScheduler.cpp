@@ -272,9 +272,11 @@ SupervisedScheduler::~SupervisedScheduler() = default;
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,
                                     bool bounded) {
-  if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
-    return false;
-  }
+  TRI_ASSERT(_acceptingNewJobs.load())
+      << "Something tried to queue an item after the SchedulerFeature was "
+         "stopped. This is a bug: If the feature uses the Scheduler, it must "
+         "rely on the SchedulerFeature, and thus should have been stopped "
+         "already.";
 
   TRI_ASSERT(lane != RequestLane::UNDEFINED);
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));

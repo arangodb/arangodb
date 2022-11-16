@@ -74,7 +74,7 @@ class LifoQueue {
   }
 
   bool firstIsVertexFetched() const {
-    if (not isEmpty()) {
+    if (!isEmpty()) {
       auto const& first = _queue.front();
       return first.vertexFetched();
     }

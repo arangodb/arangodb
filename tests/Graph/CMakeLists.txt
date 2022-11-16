@@ -36,3 +36,6 @@ target_link_libraries(arangodbtests_graph
     arangoserver
     boost_boost
     fmt)
+
+add_test(NAME graph
+         COMMAND arangodbtests_graph)
