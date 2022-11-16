@@ -1,6 +1,9 @@
 devel
 -----
 
+* Forward the `ttl` cursor option for AQL queries in the JavaScript API
+  from the `db._query()` and the `db._createStatement()` methods to the server.
+
 * Updated arangosync to v2.13.0-preview-4.
 
 * Delay a MoveShard operation for leader change, until the old leader has

@@ -73,9 +73,15 @@ ArangoStatement.prototype.execute = function () {
   var opts = this._options || { };
   if (typeof opts === 'object') {
     opts.count = this._doCount;
+
     if (this._cache !== undefined) {
       opts.cache = this._cache;
     }
+
+    if (this._ttl !== undefined) {
+      opts.ttl = this._ttl;
+    }
+
     if (opts.stream) {
       return new ArangoQueryStreamCursor(this._query, this._bindVars, opts);
     }
