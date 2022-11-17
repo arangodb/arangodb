@@ -68,7 +68,6 @@ struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
-struct IStateManagerBase {};
 template<typename S>
 struct IReplicatedStateImplBase;
 template<typename S>
@@ -398,24 +397,6 @@ struct ReplicatedState final
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
-  struct IStateManager : IStateManagerBase {
-    virtual ~IStateManager() = default;
-    virtual void run() = 0;
-
-    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
-    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
-
-    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
-    [[nodiscard]] virtual auto resign() && noexcept
-        -> std::tuple<std::unique_ptr<CoreType>,
-                      std::unique_ptr<ReplicatedStateToken>,
-                      DeferredAction> = 0;
-
-    virtual auto resign2() && noexcept -> std::tuple<
-        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>,
-        std::unique_ptr<CoreType>> = 0;
-  };
-
  private:
   auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
@@ -434,7 +415,6 @@ struct ReplicatedState final
     explicit GuardedData(ReplicatedState& self) : _self(self) {}
 
     ReplicatedState& _self;
-    std::shared_ptr<IStateManager> currentManager = nullptr;
     std::unique_ptr<CoreType> oldCore = nullptr;
   };
   Guarded<GuardedData> guardedData;

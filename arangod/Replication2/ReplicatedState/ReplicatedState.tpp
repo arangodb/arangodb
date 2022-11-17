@@ -819,13 +819,8 @@ void ReplicatedState<S>::drop(
     std::unique_ptr<CoreType> core;
     DeferredAction action;
 
-    // TODO remove data.oldCore and data.currentManager
-    if (data.currentManager == nullptr) {
-      core = std::move(data.oldCore);
-    } else {
-      std::tie(core, std::ignore, action) =
-          std::move(*data.currentManager).resign();
-    }
+    // TODO remove data.oldCore
+    core = std::move(data.oldCore);
     ADB_PROD_ASSERT(core == nullptr);
     auto stateManager =
         std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
