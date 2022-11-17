@@ -4,7 +4,6 @@ add_library(arango_vocbase STATIC
   LogicalCollection.cpp
   LogicalDataSource.cpp
   LogicalView.cpp
-  ManagedDocumentResult.cpp
   Validators.cpp
   VocbaseInfo.cpp
   ticks.cpp
