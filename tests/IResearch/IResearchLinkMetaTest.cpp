@@ -4442,4 +4442,103 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
   makeCachedColumnsTest(mockedFields, meta, expected);
 }
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":true,
+      "includeAllFields":true,
+      "fields" : {
+        "nothot": {
+          "cache":false,
+          "nested": {
+            "nested" :{
+              "cache":true
+            }
+          }
+        },
+        "field": {
+          "fields": {
+            "foo": {
+              "nested": {
+                "subfoo": {
+                  "nested": {
+                    "subsubfoo": {
+                    },
+                    "subsubfoo2": {
+                      "cache":false
+                    }
+                  }
+                }
+              }
+            },
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\2.nested\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo2\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 3};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+}
 #endif
