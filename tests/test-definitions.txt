@@ -22,7 +22,7 @@ http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
 active_failover parallelity=3 single
-agency priority=350 parallelity=3 single -- --dumpAgencyOnError true
+agency priority=350 parallelity=4 single -- --dumpAgencyOnError true
 agency-restart priority=250 parallelity=3 single
 arangobench parallelity=2 priority=1000 single
 arangosh single
