@@ -51,7 +51,7 @@ Snapshot::Snapshot(SnapshotId id, ShardID shardId,
     : _id(id),
       _reader{std::move(reader)},
       _state{state::Ongoing{}},
-      _status{_state, std::move(shardId), reader->getDocCount()} {}
+      _status{_state, std::move(shardId), _reader->getDocCount()} {}
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
@@ -65,9 +65,7 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
                                        .payload = builder.sharedSlice()};
             ++_status.batchesSent;
             _status.bytesSent += batch.payload.byteSize();
-            if (batch.payload.isArray()) {
-              _status.docsSent += batch.payload.length();
-            }
+            _status.docsSent += batch.payload.length();
             _status.lastUpdated = std::chrono::system_clock::now();
             return ResultT<SnapshotBatch>::success(std::move(batch));
           },

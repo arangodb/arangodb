@@ -23,7 +23,6 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
-#include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
@@ -57,24 +56,23 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  return _guardedData.doUnderLock(
-      [self = shared_from_this(), &destination,
-       waitForIndex](auto& data) -> futures::Future<Result> {
+  auto truncateRes = _guardedData.doUnderLock(
+      [self = shared_from_this()](auto& data) -> Result {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-
-        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
-          return truncateRes;
-        }
-
-        // A follower may request a snapshot before leadership has been
-        // established. A retry will occur in that case.
-        auto leader = self->_networkHandler->getLeaderInterface(destination);
-        auto fut = leader->startSnapshot(waitForIndex);
-        return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                            std::move(fut));
+        return self->truncateLocalShard();
       });
+  if (truncateRes.fail()) {
+    return truncateRes;
+  }
+
+  // A follower may request a snapshot before leadership has been
+  // established. A retry will occur in that case.
+  auto leader = _networkHandler->getLeaderInterface(destination);
+  auto fut = leader->startSnapshot(waitForIndex);
+  return handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
@@ -103,17 +101,28 @@ auto DocumentFollowerState::applyEntries(
         return res;
       }
 
-      if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-        self->_activeTransactions.clear();
-        self->getStream()->release(
-            self->_activeTransactions.getReleaseIndex(entry->first));
-      } else if (doc.operation == OperationType::kCommit ||
-                 doc.operation == OperationType::kAbort) {
-        self->_activeTransactions.erase(doc.tid);
-        self->getStream()->release(
-            self->_activeTransactions.getReleaseIndex(entry->first));
-      } else {
-        self->_activeTransactions.emplace(doc.tid, entry->first);
+      try {
+        if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+          self->_activeTransactions.clear();
+          self->getStream()->release(
+              self->_activeTransactions.getReleaseIndex(entry->first));
+        } else if (doc.operation == OperationType::kCommit ||
+                   doc.operation == OperationType::kAbort) {
+          self->_activeTransactions.erase(doc.tid);
+          self->getStream()->release(
+              self->_activeTransactions.getReleaseIndex(entry->first));
+        } else {
+          self->_activeTransactions.emplace(doc.tid, entry->first);
+        }
+      } catch (basics::Exception& e) {
+        return Result{e.code(), e.message()};
+      } catch (std::exception& e) {
+        return Result{
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::format(
+                "replicated state {} of type {} is unavailable, exception "
+                "durin applyEntries: {}",
+                self->shardId, DocumentState::NAME, e.what())};
       }
     }
 
@@ -156,9 +165,9 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     LogIndex waitForIndex,
-    futures::Future<ResultT<SnapshotBatch>>&& transferFuture) noexcept
+    futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
-  return std::move(transferFuture)
+  return std::move(snapshotFuture)
       .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {

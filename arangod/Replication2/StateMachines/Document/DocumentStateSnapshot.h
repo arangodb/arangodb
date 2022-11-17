@@ -186,8 +186,8 @@ struct SnapshotStateTransformer {
  */
 struct SnapshotStatus {
   SnapshotState const& state;
-  ShardID shardId;
-  std::optional<uint64_t> totalDocs;
+  ShardID shardId{};
+  std::optional<uint64_t> totalDocs{std::nullopt};
   uint64_t docsSent{0};
   std::size_t batchesSent{0};
   std::size_t bytesSent{0};
@@ -234,8 +234,9 @@ class Snapshot {
                     std::unique_ptr<ICollectionReader> reader);
 
   Snapshot(Snapshot const&) = delete;
+  Snapshot(Snapshot&&) = delete;
   Snapshot const& operator=(Snapshot const&) = delete;
-  Snapshot(Snapshot&&) = default;
+  Snapshot const& operator=(Snapshot&&) = delete;
 
   auto fetch() -> ResultT<SnapshotBatch>;
   auto finish() -> Result;

@@ -86,19 +86,17 @@ CollectionReader::CollectionReader(
 
 void CollectionReader::read(VPackBuilder& builder,
                             std::size_t const softLimit) {
+  VPackArrayBuilder ab(&builder);
   if (!_it->hasMore()) {
     return;
   }
 
   std::size_t batchSize{0};
-  {
-    VPackArrayBuilder ab(&builder);
-    for (auto& revIterator = dynamic_cast<RevisionReplicationIterator&>(*_it);
-         revIterator.hasMore() && batchSize < softLimit; revIterator.next()) {
-      auto slice = revIterator.document();
-      batchSize += slice.byteSize();
-      builder.add(slice);
-    }
+  for (auto& revIterator = dynamic_cast<RevisionReplicationIterator&>(*_it);
+       revIterator.hasMore() && batchSize < softLimit; revIterator.next()) {
+    auto slice = revIterator.document();
+    batchSize += slice.byteSize();
+    builder.add(slice);
   }
 }
 
@@ -106,7 +104,7 @@ CollectionReaderFactory::CollectionReaderFactory(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase) {}
 
 auto CollectionReaderFactory::createCollectionReader(
-    std::string_view const& collectionName)
+    std::string_view collectionName)
     -> ResultT<std::unique_ptr<ICollectionReader>> {
   auto logicalCollection = _vocbase.lookupCollection(collectionName);
   if (logicalCollection == nullptr) {

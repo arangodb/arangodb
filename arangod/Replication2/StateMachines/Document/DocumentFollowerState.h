@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 

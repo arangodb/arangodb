@@ -85,7 +85,7 @@ class CollectionReader : public ICollectionReader {
  */
 struct ICollectionReaderFactory {
   virtual ~ICollectionReaderFactory() = default;
-  virtual auto createCollectionReader(std::string_view const& collectionName)
+  virtual auto createCollectionReader(std::string_view collectionName)
       -> ResultT<std::unique_ptr<ICollectionReader>> = 0;
 };
 
@@ -93,7 +93,7 @@ class CollectionReaderFactory : public ICollectionReaderFactory {
  public:
   explicit CollectionReaderFactory(TRI_vocbase_t& vocbase);
 
-  auto createCollectionReader(std::string_view const& collectionName)
+  auto createCollectionReader(std::string_view collectionName)
       -> ResultT<std::unique_ptr<ICollectionReader>> override;
 
  private:

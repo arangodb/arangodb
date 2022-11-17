@@ -29,36 +29,37 @@ DocumentStateSnapshotHandler::DocumentStateSnapshotHandler(
     std::unique_ptr<ICollectionReaderFactory> collectionReaderFactory)
     : _collectionReaderFactory(std::move(collectionReaderFactory)) {}
 
-auto DocumentStateSnapshotHandler::create(std::string_view const& shardId)
-    -> ResultT<Snapshot*> {
+auto DocumentStateSnapshotHandler::create(std::string_view shardId)
+    -> ResultT<std::weak_ptr<Snapshot>> {
   auto readerRes = _collectionReaderFactory->createCollectionReader(shardId);
   if (readerRes.fail()) {
-    return ResultT<Snapshot*>::error(readerRes.result());
+    return ResultT<std::weak_ptr<Snapshot>>::error(readerRes.result());
   }
 
   auto reader = std::move(readerRes.get());
   auto id = SnapshotId::create();
   auto emplacement = _snapshots.emplace(
-      id, Snapshot{id, std::string{shardId}, std::move(reader)});
+      id,
+      std::make_shared<Snapshot>(id, std::string{shardId}, std::move(reader)));
   TRI_ASSERT(emplacement.second);
 
-  return &emplacement.first->second;
+  return ResultT<std::weak_ptr<Snapshot>>::success(emplacement.first->second);
 }
 
 auto DocumentStateSnapshotHandler::find(SnapshotId const& id)
-    -> ResultT<Snapshot*> {
+    -> ResultT<std::weak_ptr<Snapshot>> {
   auto it = _snapshots.find(id);
   if (it == _snapshots.end()) {
-    return ResultT<Snapshot*>::error(TRI_ERROR_INTERNAL,
-                                     fmt::format("Snapshot {} not found", id));
+    return ResultT<std::weak_ptr<Snapshot>>::error(
+        TRI_ERROR_INTERNAL, fmt::format("Snapshot {} not found", id));
   }
-  return ResultT<Snapshot*>::success(&it->second);
+  return ResultT<std::weak_ptr<Snapshot>>::success(it->second);
 }
 
 auto DocumentStateSnapshotHandler::status() const -> AllSnapshotsStatus {
   AllSnapshotsStatus result;
   for (auto const& it : _snapshots) {
-    result.snapshots.emplace(it.first, it.second.status());
+    result.snapshots.emplace(it.first, it.second->status());
   }
   return result;
 }

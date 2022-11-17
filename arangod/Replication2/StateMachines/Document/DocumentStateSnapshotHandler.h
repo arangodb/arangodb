@@ -37,9 +37,10 @@ struct ICollectionReaderFactory;
  */
 struct IDocumentStateSnapshotHandler {
   virtual ~IDocumentStateSnapshotHandler() = default;
-  virtual auto create(std::string_view const& shardId)
-      -> ResultT<Snapshot*> = 0;
-  virtual auto find(SnapshotId const& id) -> ResultT<Snapshot*> = 0;
+  virtual auto create(std::string_view shardId)
+      -> ResultT<std::weak_ptr<Snapshot>> = 0;
+  virtual auto find(SnapshotId const& id)
+      -> ResultT<std::weak_ptr<Snapshot>> = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
   virtual void clear() = 0;
   virtual void checkSnapshots() = 0;
@@ -51,10 +52,11 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
       std::unique_ptr<ICollectionReaderFactory> collectionReaderFactory);
 
   // Create a new snapshot
-  auto create(std::string_view const& shardId) -> ResultT<Snapshot*> override;
+  auto create(std::string_view shardId)
+      -> ResultT<std::weak_ptr<Snapshot>> override;
 
   // Find a snapshot by id
-  auto find(SnapshotId const& id) -> ResultT<Snapshot*> override;
+  auto find(SnapshotId const& id) -> ResultT<std::weak_ptr<Snapshot>> override;
 
   // Get the status of every snapshot
   auto status() const -> AllSnapshotsStatus override;
@@ -67,6 +69,6 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
 
  private:
   std::unique_ptr<ICollectionReaderFactory> _collectionReaderFactory;
-  std::unordered_map<SnapshotId, Snapshot> _snapshots;
+  std::unordered_map<SnapshotId, std::shared_ptr<Snapshot>> _snapshots;
 };
 }  // namespace arangodb::replication2::replicated_state::document
