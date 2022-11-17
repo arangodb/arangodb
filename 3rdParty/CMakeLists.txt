@@ -26,7 +26,8 @@ endif ()
 ################################################################################
 
 UpdateModule(${GIT_EXECUTABLE} "gtest" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
-set(INSTALL_GTEST, "OFF")
+set(INSTALL_GTEST "OFF")
+set(BUILD_GMOCK "ON")
 add_subdirectory(gtest)
 
 ################################################################################
