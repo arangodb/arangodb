@@ -89,6 +89,7 @@ target_include_directories(arango_tests_replication2 PUBLIC
 
 target_link_libraries(arango_tests_replication2
     gtest
+    gmock
     arango
     arango_replication2
     velocypack
