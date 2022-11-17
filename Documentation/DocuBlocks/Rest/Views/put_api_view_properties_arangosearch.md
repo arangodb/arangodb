@@ -14,6 +14,26 @@ and the link properties as attribute values. See
 [ArangoSearch View Link Properties](https://www.arangodb.com/docs/stable/arangosearch-views.html#link-properties)
 for details.
 
+@RESTBODYPARAM{primarySortCache,boolean,optional,}
+If you enable this option, then the primary sort columns are always cached in
+memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
+performance of queries that utilize the primary sort order. Otherwise, these
+values are memory-mapped and it is up to the operating system to load them from
+disk into memory and to evict them from memory.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache.
+
+@RESTBODYPARAM{primaryKeyCache,boolean,optional,}
+If you enable this option, then the primary key columns are always cached in
+memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
+performance of queries that return many documents. Otherwise, these values are
+memory-mapped and it is up to the operating system to load them from disk into
+memory and to evict them from memory.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache.
+
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 2, to disable use: 0).
@@ -22,7 +42,8 @@ of commit+consolidate), a lower value will cause a lot of disk space to be
 wasted.
 For the case where the consolidation policies rarely merge segments (i.e. few
 inserts/deletes), a higher value will impact performance without any added
-benefits.<br/>
+benefits.
+
 _Background:_
   With every "commit" or "consolidate" operation a new state of the View
   internal data-structures is created on disk.
@@ -40,7 +61,8 @@ commit, will cause the index not to account for them and memory usage would
 continue to grow.
 For the case where there are a few inserts/updates, a higher value will impact
 performance and waste disk space for each commit call without any added
-benefits.<br/>
+benefits.
+
 _Background:_
   For data retrieval ArangoSearch Views follow the concept of
   "eventually-consistent", i.e. eventually all the data in ArangoDB will be
@@ -61,7 +83,8 @@ For the case where there are a lot of data modification operations, a higher
 value could potentially have the data store consume more space and file handles.
 For the case where there are a few data modification operations, a lower value
 will impact performance due to no segment candidates available for
-consolidation.<br/>
+consolidation.
+
 _Background:_
   For data modification ArangoSearch Views follow the concept of a
   "versioned data store". Thus old versions of data may be removed once there
@@ -71,7 +94,8 @@ _Background:_
 
 @RESTBODYPARAM{consolidationPolicy,object,optional,}
 The consolidation policy to apply for selecting which segments should be merged
-(default: {})<br/>
+(default: {})
+
 _Background:_
   With each ArangoDB transaction that inserts documents one or more
   ArangoSearch internal segments gets created.
@@ -82,7 +106,8 @@ _Background:_
   A "consolidation" operation selects one or more segments and copies all of
   their valid documents into a single new segment, thereby allowing the
   search algorithm to perform more optimally and for extra file handles to be
-  released once old segments are no longer used.<br/>
+  released once old segments are no longer used.
+
 Sub-properties:
   - `type` (string, _optional_):
     The segment candidates for the "consolidation" operation are selected based
