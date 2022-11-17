@@ -154,6 +154,11 @@ bool SimpleRocksDBTransactionState::hasOperations() const noexcept {
   return _rocksMethods->hasOperations();
 }
 
+uint64_t SimpleRocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
+}
+
 uint64_t SimpleRocksDBTransactionState::numOperations() const noexcept {
   return _rocksMethods->numOperations();
 }
