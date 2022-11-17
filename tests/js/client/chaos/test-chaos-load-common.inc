@@ -126,30 +126,28 @@ const checkViewConsistency = (cn, isMaterialize) => {
   } else {
     expected = runQuery("FOR d IN " + cn + " RETURN d").length;
   }
-  // TODO uncomment assert when will be fixed SEARCH-419
-  print("Collection: " + expected + " materialize: " + isMaterialize);
   let vn;
-  const checkView = (isMaterialize, check) => {
+  const checkView = (isMaterialize) => {
     let result;
     if (isMaterialize) {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d").length;
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    print(vn + ": " + result);
+    assertEqual(expected, result);
   };
 
   vn = viewName(cn + "_view");
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps");
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_sv");
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps_sv");
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 };
 
 const clearAllFailurePoints = () => {
@@ -230,7 +228,10 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      //createViews();
+      testOpts.withViews = !testOpts.withIntermediateCommits;
+      if (testOpts.withViews) {
+        createViews();
+      }
       db._create(coordination_cn);
       
       if (testOpts.withFailurePoints) {
@@ -272,7 +273,9 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      //removeViews();
+      if (testOpts.withViews) {
+        removeViews();
+      }
       db._drop(cn);
       
       const shells = db[coordination_cn].all();
@@ -389,7 +392,9 @@ function BaseChaosSuite(testOpts) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv") + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              //lookupViews();
+              if (testOpts.withViews) {
+                lookupViews();
+              }
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -435,10 +440,11 @@ function BaseChaosSuite(testOpts) {
       print("Finished load test - waiting for cluster to get in sync before checking consistency.");
       clearAllFailurePoints();
       waitForShardsInSync(cn);
-      //require("internal").sleep(60);
       checkCollectionConsistency(cn);
-      //checkViewConsistency(cn, false);
-      //checkViewConsistency(cn, true);
+      if (testOpts.withViews) {
+        checkViewConsistency(cn, false);
+        checkViewConsistency(cn, true);
+      }
     }
   };
 }
