@@ -82,7 +82,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "velocypack/Slice.h"
@@ -1974,7 +1973,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
   {
     {
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
       auto collection =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       arangodb::transaction::Methods trx(
