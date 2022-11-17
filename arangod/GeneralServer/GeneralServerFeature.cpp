@@ -230,7 +230,7 @@ HTTP DELETE request which, to the outside world, looks like an HTTP GET request.
 This allows you to bypass proxies and tools that only let certain request types
 pass.
 
-Enabling this option may impose a security risk. You should only used it in
+Enabling this option may impose a security risk. You should only use it in
 controlled environments.)");
 
   options

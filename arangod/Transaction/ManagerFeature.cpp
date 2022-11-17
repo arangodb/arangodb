@@ -101,7 +101,7 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800)
-      .setLongDescription(R"(Stream transactions automatically expire after
+      .setLongDescription(R"(Stream Transactions automatically expire after
 this period when no further operations are posted into them. Posting an
 operation into a non-expired Stream Transaction resets the transaction's
 timeout to the configured idle timeout.)");
