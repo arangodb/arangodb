@@ -62,18 +62,31 @@ memory consumption of this cache.
 An array of objects to describe which document attributes to store in the View
 index (introduced in v3.7.1). It can then cover search queries, which means the
 data can be taken from the index directly and accessing the storage engine can
-be avoided.<br/>
-Each object is expected in the form
-`{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none" }`,
-where the required `fields` attribute is an array of strings with one or more
-document attribute paths. The specified attributes are placed into a single
-column of the index. A column with all fields that are involved in common
-search queries is ideal for performance. The column should not include too many
-unneeded fields however. The optional `compression` attribute defines the
-compression type used for the internal column-store, which can be `"lz4"`
-(LZ4 fast compression, default) or `"none"` (no compression).<br/>
-This option is immutable. Not to be confused with `storeValues`, which allows
-to store meta data about attribute values in the View index.
+be avoided.
+
+This option is immutable.
+
+Each object is expected in the following form:
+
+`{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none", "cache": false }`
+
+- The required `fields` attribute is an array of strings with one or more
+  document attribute paths. The specified attributes are placed into a single
+  column of the index. A column with all fields that are involved in common
+  search queries is ideal for performance. The column should not include too
+  many unneeded fields, however.
+
+- The optional `compression` attribute defines the compression type used for
+  the internal column-store, which can be `"lz4"` (LZ4 fast compression, default)
+  or `"none"` (no compression).
+- The optional `cache` attribute allows you to always cache stored values in
+  memory (introduced in v3.9.5, Enterprise Edition only). This can improve
+  the query performance if stored values are involved. See the
+  `--arangosearch.columns-cache-limit` startup option
+  to control the memory consumption of this cache.
+
+The `storedValues` option is not to be confused with the `storeValues` option,
+which allows to store meta data about attribute values in the View index.
 
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
