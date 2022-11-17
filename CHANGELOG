@@ -4,8 +4,6 @@ v3.10.1 (XXXX-XX-XX)
 * Added detailed explanations for some startup options.
   They are only exposed via `--dump-options` under the `longDescription` key.
 
-* Improved shard distribution during collection creation.
-
 * Updated OpenSSL to 1.1.1s.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
