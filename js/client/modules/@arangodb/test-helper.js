@@ -30,10 +30,6 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const { 
-  getServerById,
-  getServersByType,
-  getEndpointById,
-  getEndpointsByType,
   Helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
@@ -41,6 +37,7 @@ const {
   isEqual,
   compareStringIds,
   endpointToURL,
+  getInstanceInfo
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -54,11 +51,6 @@ const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const isServer = require("@arangodb").isServer;
 
-exports.getUrlById = getUrlById;
-exports.getServerById = getServerById;
-exports.getServersByType = getServersByType;
-exports.getEndpointById = getEndpointById;
-exports.getEndpointsByType = getEndpointsByType;
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
