@@ -975,6 +975,20 @@ function(add_cxx_flags_if_supported var)
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
 
+function(add_compile_warnings_flags lib)
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        target_compile_options(${lib} PRIVATE -Wno-unused-command-line-argument)
+      endif()
+    else ()
+      target_compile_options(${lib} PRIVATE -Werror -Wno-error=deprecated-declarations)
+    endif ()
+  endif ()
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()

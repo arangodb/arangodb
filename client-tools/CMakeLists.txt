@@ -30,6 +30,8 @@ target_link_libraries(arango_shell
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+add_compile_warnings_flags(arango_shell)
+
 ################################################################################
 ## arangobench
 ################################################################################
@@ -477,17 +479,7 @@ if (USE_ENTERPRISE)
 endif()
 
 foreach (TARGET IN LISTS TARGETS)
-  if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
-      endif()
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
-  endif ()
+  add_compile_warnings_flags(${TARGET})
 endforeach ()
 
 ################################################################################

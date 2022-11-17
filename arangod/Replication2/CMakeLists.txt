@@ -23,6 +23,8 @@ target_include_directories(arango_replication2 PRIVATE
 target_compile_options(arango_replication2 PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 
+add_compile_warnings_flags(arango_replication2)
+
 add_subdirectory(Exceptions)
 add_subdirectory(ReplicatedLog)
 add_subdirectory(ReplicatedState)

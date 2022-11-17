@@ -122,5 +122,7 @@ target_include_directories(arango_rocksdb PRIVATE
 target_compile_options(arango_rocksdb PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 
+add_compile_warnings_flags(arango_rocksdb)
+
 add_subdirectory(Listeners)
 add_subdirectory(Methods)

@@ -28,3 +28,5 @@ target_include_directories(arango_cluster_engine PRIVATE
 
 target_compile_options(arango_cluster_engine PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
+
+add_compile_warnings_flags(arango_cluster_engine)

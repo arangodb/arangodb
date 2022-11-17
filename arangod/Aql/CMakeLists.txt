@@ -189,6 +189,7 @@ target_include_directories(arango_aql PRIVATE
 
 target_compile_options(arango_aql PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
+add_compile_warnings_flags(arango_aql)
 
 ################################################################################
 ## BISON/FLEX

@@ -13,3 +13,5 @@ target_include_directories(arango_cluster_methods PRIVATE
 
 target_compile_options(arango_cluster_methods PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
+
+add_compile_warnings_flags(arango_cluster_methods)

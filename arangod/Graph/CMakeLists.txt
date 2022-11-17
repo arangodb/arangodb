@@ -38,6 +38,8 @@ target_include_directories(arango_graph PRIVATE
 target_compile_options(arango_graph PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 
+add_compile_warnings_flags(arango_graph)
+
 add_subdirectory(Cache)
 add_subdirectory(Cursors)
 add_subdirectory(Enumerators)

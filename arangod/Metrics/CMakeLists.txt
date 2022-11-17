@@ -19,3 +19,5 @@ target_include_directories(arango_metrics PRIVATE
 
 target_compile_options(arango_metrics PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
+
+add_compile_warnings_flags(arango_metrics)

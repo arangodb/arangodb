@@ -36,7 +36,7 @@ add_executable(${BIN_ARANGOD}
   ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
-
+  
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
@@ -56,6 +56,8 @@ target_include_directories(${BIN_ARANGOD} PRIVATE
 target_compile_options(${BIN_ARANGOD} PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
+
+add_compile_warnings_flags(${BIN_ARANGOD})
 
 ################################################################################
 ## installation

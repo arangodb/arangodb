@@ -31,4 +31,6 @@ target_include_directories(arango_pregel PRIVATE
 target_compile_options(arango_pregel PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 
+add_compile_warnings_flags(arango_pregel)
+
 add_subdirectory(Algos)
