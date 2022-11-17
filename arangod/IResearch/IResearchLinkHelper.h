@@ -96,6 +96,7 @@ struct IResearchLinkHelper {
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
+      bool const* pkCache = nullptr, bool const* sortCache = nullptr,
       velocypack::Slice idSlice = velocypack::Slice(),
       std::string_view collectionName = std::string_view{});
 
