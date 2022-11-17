@@ -167,6 +167,14 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
 
+  bool hasNested() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _hasNested;
+#else
+    return false;
+#endif
+  }
+
   // Analyzers to apply to every field.
   std::vector<Analyzer> _analyzers;
   // Offset of the first non-primitive analyzer.
