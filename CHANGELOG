@@ -45,8 +45,6 @@ devel
 * Added detailed explanations for some startup options.
   They are only exposed via `--dump-options` under the `longDescription` key.
 
-* Improved shard distribution during collection creation.
-
 * Updated OpenSSL to 1.1.1s.
 
 * BTS_483: Added restriction for usage of query cache for streaming and JS 
