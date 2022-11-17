@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added option to exclude system collection from rebalance shards plan.
+
 * Updated arangosync to v2.13.0-preview-4.
 
 * Delay a MoveShard operation for leader change, until the old leader has
