@@ -221,14 +221,14 @@ function queryAnalysisSuite () {
       assertTrue(Array.isArray(doc.parsedBody), doc);
       assertEqual(doc.parsedBody.length, 1, doc);
       // This string is exactly 64 bytes long;
-      let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L";
-      let found = contains_query(doc.parsedBody, shortened + "...");
+      let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L... (38)";
+      let found = contains_query(doc.parsedBody, shortened);
       assertTrue(found, doc);
       assertTrue(found.hasOwnProperty("query"), doc);
-      assertEqual(found["query"], shortened + "...", doc);
+      assertEqual(found["query"], shortened, doc);
       assertEqual(found["bindVars"], {}, doc);
     },
-
+    
     test_should_properly_truncate_UTF8_symbols: function() {
       arango.PUT(properties, {slowQueryThreshold: 0.1, maxQueryStringLength: 64});
       arango.POST(queryEndpoint, {query: 'FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= "ööööööö" RETURN c'});
@@ -237,11 +237,11 @@ function queryAnalysisSuite () {
       assertTrue(Array.isArray(doc.parsedBody), doc);
       assertEqual(doc.parsedBody.length, 1, doc);
       // This string is exactly 64 bytes long;
-      let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö";
-      let found = contains_query(doc.parsedBody, shortened + "...");
+      let shortened = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö... (20)";
+      let found = contains_query(doc.parsedBody, shortened);
       assertTrue(found, doc);
       assertTrue(found.hasOwnProperty("query"), doc);
-      assertEqual(found["query"], shortened + "...", doc);
+      assertEqual(found["query"], shortened, doc);
       assertEqual(found["bindVars"], {}, doc);
     },
 
@@ -265,7 +265,8 @@ function queryAnalysisSuite () {
       assertTrue(Array.isArray(doc.parsedBody), doc);
       found = contains_query(doc.parsedBody, queryBody.query);
       assertFalse(found, doc);
-    }
+    },
+  
   };
 }
 
