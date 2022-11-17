@@ -30,7 +30,9 @@ sort direction (`"asc` for ascending, `"desc"` for descending):
 @RESTBODYPARAM{primarySortCompression,string,optional,string}
 Defines how to compress the primary sort data (introduced in v3.7.1).
 ArangoDB v3.5 and v3.6 always compress the index using LZ4.
+
 This option is immutable.
+
 - `"lz4"` (default): use LZ4 fast compression.
 - `"none"`: disable compression to trade space for speed.
 
@@ -40,6 +42,8 @@ memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
 performance of queries that utilize the primary sort order. Otherwise, these
 values are memory-mapped and it is up to the operating system to load them from
 disk into memory and to evict them from memory.
+
+This option is immutable.
 
 See the `--arangosearch.columns-cache-limit` startup option to control the
 memory consumption of this cache.

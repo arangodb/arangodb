@@ -14,26 +14,6 @@ and the link properties as attribute values. See
 [ArangoSearch View Link Properties](https://www.arangodb.com/docs/stable/arangosearch-views.html#link-properties)
 for details.
 
-@RESTBODYPARAM{primarySortCache,boolean,optional,}
-If you enable this option, then the primary sort columns are always cached in
-memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
-performance of queries that utilize the primary sort order. Otherwise, these
-values are memory-mapped and it is up to the operating system to load them from
-disk into memory and to evict them from memory.
-
-See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
-
-@RESTBODYPARAM{primaryKeyCache,boolean,optional,}
-If you enable this option, then the primary key columns are always cached in
-memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
-performance of queries that return many documents. Otherwise, these values are
-memory-mapped and it is up to the operating system to load them from disk into
-memory and to evict them from memory.
-
-See the `--arangosearch.columns-cache-limit` startup option to control the
-memory consumption of this cache.
-
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
 ArangoSearch data directory (default: 2, to disable use: 0).
