@@ -283,7 +283,7 @@ RestStatus RestDocumentStateHandler::handleDeleteSnapshot(
   auto const& suffixes = _request->suffixes();
   auto params = std::invoke([&]() -> ResultT<document::SnapshotParams> {
     if (suffixes[2] == "finish") {
-      if (suffixes.size() != 3) {
+      if (suffixes.size() != 4) {
         return ResultT<document::SnapshotParams>::error(
             TRI_ERROR_BAD_PARAMETER,
             fmt::format("expect DELETE "
