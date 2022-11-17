@@ -177,7 +177,7 @@ regular cluster, which needs to handle only a part of the overall load.)");
                          arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-keep-size",
-                     "Keep as many indices before compaction point.",
+                     "Keep as many Agency log entries before compaction point.",
                      new UInt64Parameter(&_compactionKeepSize),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,

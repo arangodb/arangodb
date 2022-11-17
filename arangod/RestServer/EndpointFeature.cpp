@@ -135,24 +135,7 @@ link-local address may be `fe80::6257:18ff:fe82:3ec6%eth0` (IPv6 address plus
 interface name). A local IPv6 address may be `fd12:3456::789a`.
 To bind ArangoDB to it, start `arangod` with
 `--server.endpoint tcp://[fe80::6257:18ff:fe82:3ec6%eth0]:8529`.
-Use `telnet` to test the connection.
-
-```bash
-> telnet fe80::6257:18ff:fe82:3ec6%eth0 8529
-Trying fe80::6257:18ff:fe82:3ec6...
-Connected to my-machine.
-Escape character is '^]'.
-GET / HTTP/1.1
-
-HTTP/1.1 301 Moved Permanently
-Location: /_db/_system/_admin/aardvark/index.html
-Content-Type: text/html
-Server: ArangoDB
-Connection: Keep-Alive
-Content-Length: 197
-
-<html><head><title>Moved</title></head><body><h1>Moved</h1><p>This page has moved to <a href="/_db/_system/_admin/aardvark/index.html">/_db/_system/_admin/aardvark/index.html</a>.</p></body></html>
-```)");
+You can use `telnet` to test the connection.)");
 
   options->addSection("tcp", "TCP features");
 

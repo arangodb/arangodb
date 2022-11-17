@@ -139,7 +139,7 @@ struct Option {
   std::string toVersionString(std::vector<uint32_t> const& version) const;
 
   // provide a detailed explanation of an option
-  Option& setLongDescription(char const* longDesc) {
+  Option& setLongDescription(std::string_view longDesc) noexcept {
     longDescription = longDesc;
     return *this;
   }
@@ -161,7 +161,7 @@ struct Option {
   }
 
   // returns whether or not a long description was set
-  bool hasLongDescription() const { return !longDescription.empty(); }
+  bool hasLongDescription() const noexcept { return !longDescription.empty(); }
 
   // returns whether or not we know in which version(s) an option was added
   bool hasIntroducedIn() const { return !introducedInVersions.empty(); }
