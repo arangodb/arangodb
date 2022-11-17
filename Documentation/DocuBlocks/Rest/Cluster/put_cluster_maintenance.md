@@ -24,12 +24,16 @@ To disable the maintenance mode the request body must contain the string `"off"`
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200} is returned when everything went well.
+@RESTRETURNCODE{200}
+is returned when everything went well.
 
-@RESTRETURNCODE{400} if the request contained an invalid body
+@RESTRETURNCODE{400}
+if the request contained an invalid body
 
-@RESTRETURNCODE{501} if the request was sent to a node other than a Coordinator or single-server
+@RESTRETURNCODE{501}
+if the request was sent to a node other than a Coordinator or single-server
 
-@RESTRETURNCODE{504} if the request timed out while enabling the maintenance mode
+@RESTRETURNCODE{504}
+if the request timed out while enabling the maintenance mode
 
 @endDocuBlock
