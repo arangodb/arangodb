@@ -1072,8 +1072,6 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
   auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
 
   try {
-    auto const lastTickBeforeCommit = _engine->currentTick();
-
     auto commitLock = irs::make_unique_lock(_commitMutex, std::try_to_lock);
 
     if (!commitLock.owns_lock()) {
@@ -1092,6 +1090,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
 
       commitLock.lock();
     }
+    auto lastTickBeforeCommit = _engine->currentTick();
     _commitStageOne = true;
     auto const lastCommittedTick = _lastCommittedTickStageOne;
 
@@ -1142,6 +1141,7 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
       }
     }
 #endif
+    lastTickBeforeCommit = _engine->currentTick();
     _commitStageOne = false;
     auto lastCommittedTickStageTwo = _lastCommittedTickStageTwo;
     // now commit what has possibly accumulated in the second flush context
@@ -1153,7 +1153,8 @@ Result IResearchLink::commitUnsafeImpl(bool wait, CommitResult* code) {
           << "Second commit for arangosearch link '" << id() << "' result is "
           << secondCommit << " tick " << _lastCommittedTickStageTwo;
       if (!secondCommit) {
-        _lastCommittedTickStageTwo = _lastCommittedTickStageOne;
+        _lastCommittedTickStageOne = lastTickBeforeCommit;
+        _lastCommittedTickStageTwo = lastTickBeforeCommit;
       }
     } catch (...) {
       // restore last committed tick in case of any error
