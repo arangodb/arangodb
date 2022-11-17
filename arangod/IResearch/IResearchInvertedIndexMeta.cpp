@@ -595,6 +595,18 @@ bool InvertedIndexField::init(
       return false;
     }
   } else if (slice.isObject()) {
+#ifdef USE_ENTERPRISE
+    {
+      auto cacheSlice = slice.get(StaticStrings::kCacheField);
+      if (!cacheSlice.isNone()) {
+        if (!cacheSlice.isBool()) {
+          errorField = StaticStrings::kCacheField;
+          return false;
+        }
+        _cache = cacheSlice.getBool();
+      }
+    }
+#endif
     if (slice.hasKey(kIsSearchField)) {
       auto value = slice.get(kIsSearchField);
       if (value.isBoolean()) {
@@ -756,19 +768,6 @@ bool InvertedIndexField::init(
       !analyzer()->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object)
           ? 1
           : 0;
-
-#ifdef USE_ENTERPRISE
-  {
-    auto cacheSlice = slice.get(StaticStrings::kCacheField);
-    if (!cacheSlice.isNone()) {
-      if (!cacheSlice.isBool()) {
-        errorField = StaticStrings::kCacheField;
-        return false;
-      }
-      _cache = cacheSlice.getBool();
-    }
-  }
-#endif
 
   if (!rootMode) {
     // we only allow one expansion
