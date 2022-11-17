@@ -28,6 +28,8 @@
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 const fs = require('fs');

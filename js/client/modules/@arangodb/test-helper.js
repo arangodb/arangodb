@@ -32,7 +32,6 @@ const internal = require('internal'); // OK: processCsvFile
 const { 
   getServerById,
   getServersByType,
-  getUrlById,
   getEndpointById,
   getEndpointsByType,
   Helper,
@@ -41,6 +40,7 @@ const {
   typeName,
   isEqual,
   compareStringIds,
+  endpointToURL,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
