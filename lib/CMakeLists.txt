@@ -65,6 +65,8 @@ add_library(arango STATIC
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  Assertions/AssertionLogger.cpp
+  Assertions/AssertionConditionalLogger.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp

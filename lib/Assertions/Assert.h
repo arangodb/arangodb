@@ -22,33 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-// Ensures that the macro TRI_ASSERT is defined. There are three possible modes
+// Ensures that the macro TRI_ASSERT is defined. There are two possible modes
 //
-// * USE_ARANGODB_LIGHT_ASSERTIONS -- a light version of assertions that does not
-//   require ArangoDB's CrashHandler
-//   The motivation for "light mode" is to resduce dependencies on ArangoDB code
-//   for C++ unittests.
 // * MAINTAINER_MODE -- in maintainer mode, when the condition in TRI_ASSERT is
 //   false, the program crashes using ArangoDB's CrashHandler
 // * Production mode: Assertions are compiled away. Except that the expression
 //   in the assertion is actually evaluated, still, but the process does not
 //   crash if the assertion fails.
 //
-#if defined(USE_ARANGODB_LIGHT_ASSERTIONS)
 
-#include "AssertionLightLogger.h"
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                              \
-  (ADB_LIKELY(expr))                                                      \
-      ? (void)nullptr                                                     \
-      : ::arangodb::debug::AssertionLightLogger{__FILE__, __LINE__,       \
-                                                ARANGODB_PRETTY_FUNCTION, \
-                                                #expr} &                  \
-            ::arangodb::debug::AssertionLightLogger::assertionStringStream
-
-
-#elif defined(ARANGODB_ENABLE_MAINTAINER_MODE)
-
+#include "Basics/system-compiler.h"
 #include "AssertionLogger.h"
 
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \

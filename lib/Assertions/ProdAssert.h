@@ -23,12 +23,8 @@
 
 #pragma once
 
-// Ensures that the macro ADB_PROD_ASSERT is defined. There are three possible modes
+// Ensures that the macro ADB_PROD_ASSERT is defined. There are two possible modes
 //
-// * USE_ARANGODB_LIGHT_ASSERTIONS -- a light version of assertions that does not
-//   require ArangoDB's CrashHandler
-//   The motivation for "light mode" is to resduce dependencies on ArangoDB code
-//   for C++ unittests.
 // * MAINTAINER_MODE -- in maintainer mode, when the condition in ADB_PROD_ASSERT
 //   is false, the program crashes using ArangoDB's CrashHandler and the string
 //   expression that follows the assertion is always evaluated regardless of
@@ -37,15 +33,7 @@
 //   the string that can follow ADB_ASSERT is not evaluated if the assertion
 //   does not fail.
 
-#if defined(USE_ARANGODB_LIGHT_ASSERTIONS)
-
-#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                            \
-  ::arangodb::debug::AssertionLightLogger{__FILE__, __LINE__,                \
-                                          ARANGODB_PRETTY_FUNCTION, #expr} & \
-      ::arangodb::debug::AssertionLightLogger::assertionStringStream         \
-          .withCondition(expr)
-
-#elif defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 
 #include "AssertionConditionalLogger.h"
 

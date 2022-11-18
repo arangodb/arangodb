@@ -21,24 +21,9 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
-#include "Basics/CrashHandler.h"
+#include "AssertionLogger.h"
 
 namespace arangodb::debug {
-struct AssertionLogger {
-  [[noreturn]] void operator&(std::ostringstream const& stream) const {
-    std::cerr << file << ":" << line << " " << function << " " << expression " "
-              << stream.str() << std::endl();
-    std::flush(std::cerr);
-    std::terminate();
-  }
-
-  const char* file;
-  int line;
-  const char* function;
-  const char* expr;
-
-  static thread_local std::ostringstream assertionStringStream;
-};
-}  // namespace arangodb::debug
+thread_local std::ostringstream
+    arangodb::debug::AssertionLogger::assertionStringStream;
+}
