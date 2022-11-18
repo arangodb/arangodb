@@ -67,52 +67,52 @@ function WalArchiveSizeLimitSuite() {
 
     testDoesNotForceDeleteWalFiles: function() {
       // insert larger amounts of data on the server
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
+      const body = `
+let fs = require('fs');
+let getLogLines = (logfile) => {
+  let content = fs.readFileSync(logfile, 'ascii');
+  let lines = content.split('\\n');
+
+  return lines.filter((line) => {
+    // logId "d9793" from RocksDBEngine.cpp
+    return line.match(/(testmann: |d9793)/);
+  });
+};
+      
+let logfiles = require('internal').options()["log.output"];
+const logfile = logfiles[logfiles.length - 1].replace(/^file:\\/\\//, '');
+
 require('console').log("testmann: start"); 
 let docs = [];
-for (let i = 0; i < 1000; ++i) {
+for (let i = 0; i < 2000; ++i) {
   docs.push({ value1: "test" + i, payload: Array(512).join("x") });
 }
 let db = require("internal").db;
 let time = require("internal").time;
+let i = 0;
 let start = time();
 do {
   db.UnitTestsCollection.insert(docs);
-} while (time() - start < 20);
+  if (i++ % 10 === 0) {
+    let lines = getLogLines(logfile);
+    if (lines.length >= 2) {
+      break;
+    }
+  }
+} while (time() - start < 300);
   
 require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
+return getLogLines(logfile);
+`;
+
+      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", body);
 
       assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          // logId "d9793" from RocksDBEngine.cpp
-          return line.match(/(testmann: |d9793)/);
-        });
-
-        if (filtered.length >= 2) {
-          break;
-        }
-
-        require("internal").sleep(0.5);
-      }
-
-      // this will fail if warning d9793 was *not* logged
       let found = false;
-      assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 0; i < filtered.length; ++i) {
-        if (filtered[i].match(/d9793/)) {
+      assertTrue(res[0].match(/testmann: start/));
+      for (let i = 0; i < res.length; ++i) {
+        if (res[i].match(/d9793/)) {
           found = true;
           break;
         }
