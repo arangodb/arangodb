@@ -13,5 +13,6 @@ TEST(CrashHandler, asserts) {
   EXPECT_EXIT(CrashHandler::assertionFailure(__FILE__, __LINE__, "asserts",
                                              "no context", "zebras"),
               testing::KilledBySignal(SIGABRT),
-              testing::MatchesRegex("\\[LightCrashHandler\\] Assertion failed in file.*"));
+              testing::MatchesRegex(
+                  "\\[LightCrashHandler\\] Assertion failed in file.*"));
 }
