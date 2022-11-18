@@ -78,16 +78,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                             bool& foundInCache) const;
 
   /// @brief reads a revision id from the primary index
-  /// if the document does not exist, this function will return false
-  /// if the document exists, the function will return true
   /// the revision id will only be non-zero if the primary index
   /// value contains the document's revision id. note that this is not
   /// the case for older collections
   /// in this case the caller must fetch the revision id from the actual
   /// document
-  bool lookupRevision(transaction::Methods* trx, std::string_view key,
-                      LocalDocumentId& id, RevisionId& revisionId,
-                      ReadOwnWrites) const;
+  Result lookupRevision(transaction::Methods* trx, std::string_view key,
+                        LocalDocumentId& id, RevisionId& revisionId,
+                        ReadOwnWrites, bool lockForUpdate = false) const;
 
   Index::FilterCosts supportsFilterCondition(
       transaction::Methods& trx,

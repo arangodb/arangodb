@@ -681,11 +681,12 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// the case for older collections
 /// in this case the caller must fetch the revision id from the actual
 /// document
-bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
-                                         std::string_view keyRef,
-                                         LocalDocumentId& documentId,
-                                         RevisionId& revisionId,
-                                         ReadOwnWrites readOwnWrites) const {
+Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
+                                           std::string_view keyRef,
+                                           LocalDocumentId& documentId,
+                                           RevisionId& revisionId,
+                                           ReadOwnWrites readOwnWrites,
+                                           bool lockForUpdate) const {
   documentId = LocalDocumentId::none();
   revisionId = RevisionId::none();
 
@@ -696,9 +697,15 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   RocksDBMethods* mthds =
       RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
-  rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+  rocksdb::Status s;
+  if (lockForUpdate) {
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::yes);
+    s = mthds->GetForUpdate(_cf, key->string(), &val);
+  } else {
+    s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+  }
   if (!s.ok()) {
-    return false;
+    return rocksutils::convertStatus(s, rocksutils::StatusHint::document);
   }
 
   documentId = RocksDBValue::documentId(val);
@@ -706,7 +713,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   // this call will populate revisionId if the revision id value is
   // stored in the primary index
   revisionId = RocksDBValue::revisionId(val);
-  return true;
+  return Result{};
 }
 
 Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
@@ -766,13 +773,8 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         LocalDocumentId const& /*documentId*/,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  TRI_ASSERT(keySlice.isString());
-
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
-
-  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
+  // this is already handled earlier - nothing to do here!
+  return {};
 }
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
@@ -803,15 +805,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
-  Result res;
-
-  if (performChecks) {
-    res = probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
+  // we do not need to perform any additional checks here since the document key
+  // is already locked at the beginning of the insert operation
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // invalidate new index cache entry to avoid caching without committing
@@ -825,10 +820,11 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   rocksdb::Status s =
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
-    res.reset(rocksutils::convertStatus(s, rocksutils::index));
+    Result res = rocksutils::convertStatus(s, rocksutils::index);
     addErrorMsg(res, keySlice.copyString());
+    return res;
   }
-  return res;
+  return {};
 }
 
 Result RocksDBPrimaryIndex::update(

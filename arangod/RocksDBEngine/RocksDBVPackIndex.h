@@ -168,6 +168,19 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
  private:
+  Result insertUnique(transaction::Methods& trx, RocksDBMethods* mthds,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      containers::SmallVector<RocksDBKey, 4> const& elements,
+                      containers::SmallVector<uint64_t, 4> hashes,
+                      OperationOptions const& options, bool performChecks);
+
+  Result insertNonUnique(transaction::Methods& trx, RocksDBMethods* mthds,
+                         LocalDocumentId const& documentId,
+                         velocypack::Slice doc,
+                         containers::SmallVector<RocksDBKey, 4> const& elements,
+                         containers::SmallVector<uint64_t, 4> hashes,
+                         OperationOptions const& options);
+
   void expandInSearchValues(ResourceMonitor& monitor, velocypack::Slice base,
                             velocypack::Builder& result,
                             IndexIteratorOptions const& opts) const;
