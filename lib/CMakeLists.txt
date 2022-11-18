@@ -82,7 +82,6 @@ add_library(arango STATIC
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
@@ -142,6 +141,7 @@ add_library(arango STATIC
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
   Containers/ImmerMemoryPolicy.h
+  CrashHandler/CrashHandler.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -298,7 +298,7 @@ target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
 
-
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
+add_subdirectory(CrashHandler)
