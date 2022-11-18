@@ -3,6 +3,8 @@ devel
 
 * BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
 
+* Updated arangosync to v2.13.0-preview-5.
+
 * Added option to exclude system collection from rebalance shards plan.
 
 * Updated arangosync to v2.13.0-preview-4.
