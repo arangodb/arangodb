@@ -47,6 +47,16 @@ void OptionsCheckFeature::prepare() {
         << "please be sure to read the manual section about changed options";
   }
 
+  options->walk(
+      [](Section const&, Option const& option) {
+        if (option.hasDeprecatedIn()) {
+          LOG_TOPIC("78b1e", WARN, Logger::STARTUP)
+              << "option '" << option.displayName() << "' is deprecated since "
+              << option.deprecatedInString();
+        }
+      },
+      true, true);
+
   // inform about obsolete options
   options->walk(
       [](Section const&, Option const& option) {
