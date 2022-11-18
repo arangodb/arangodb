@@ -92,7 +92,6 @@ target_link_libraries(arango_iresearch
   arango_cluster_engine
   arango_indexes
   arango_vocbase
-  boost_locale # required by IResearch
   boost_thread # required by IResearchView upgrade_mutex
 	iresearch-static
   s2 # needed for some includes
