@@ -32,10 +32,10 @@
 
 #include "debugging.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -207,9 +207,3 @@ char const conpar<false>::open = '[';
 template<>
 char const conpar<false>::close = ']';
 
-thread_local std::ostringstream
-    arangodb::debug::AssertionLogger::assertionStringStream;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-thread_local arangodb::debug::AssertionConditionalStream
-    arangodb::debug::AssertionConditionalLogger::assertionStringStream;
-#endif

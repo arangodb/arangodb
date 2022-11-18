@@ -141,7 +141,6 @@ add_library(arango STATIC
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
   Containers/ImmerMemoryPolicy.h
-  CrashHandler/CrashHandler.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -206,6 +205,7 @@ target_link_libraries(arango PUBLIC
   boost_system
   boost_boost
   arango_static_strings
+  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
