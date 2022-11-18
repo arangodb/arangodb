@@ -26,10 +26,10 @@
 //
 // * MAINTAINER_MODE -- in maintainer mode, when the condition in TRI_ASSERT is
 //   false, the program crashes using ArangoDB's CrashHandler
-// * Production mode: Assertions are compiled away. Except that the expression
-//   in the assertion is actually evaluated, still, but the process does not
-//   crash if the assertion fails.
-//
+// * Production mode: The expression used in the assertion is very likely
+//   to be removed by the compiler. We do not just omit the expression
+//   inside the macro as otherwise the compiler will complain about
+//   unused auxiliary variables computed before the assertion is applied.
 
 #if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
 
