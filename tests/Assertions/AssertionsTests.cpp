@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,23 +21,20 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include <gtest/gtest.h>
 
-#include <sstream>
+#include <Assertions/Assert.h>
+#include <Assertions/ProdAssert.h>
 
-namespace arangodb::debug {
-    struct AssertionConditionalStream {
-  bool condition{false};
-  std::ostringstream stream;
-  template<typename T>
-  auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
-    stream << v;
-    return *this;
-  }
-  auto withCondition(bool c) -> AssertionConditionalStream& {
-    condition = c;
-    return *this;
-  }
-};
+using namespace arangodb;
 
+TEST(Assertions, tri_assert) {
+  EXPECT_EXIT((TRI_ASSERT(false) << "BOOM"), testing::KilledBySignal(SIGABRT),
+              "BOOM");
+}
+
+TEST(Assertions, adb_prod_assert) {
+  EXPECT_EXIT((ADB_PROD_ASSERT(false) << "BOOM"),
+              testing::KilledBySignal(SIGABRT),
+              "BOOM");
 }
