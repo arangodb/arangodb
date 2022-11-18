@@ -18,43 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
+#include <memory>
+#include <string_view>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
 
 namespace arangodb {
-namespace application_features {
-class V8ShellFeaturePhase;
-}
+class LoggerFeature;
 
-class ShellFeature;
-class V8ShellFeature;
-class V8SecurityFeature;
-class V8PlatformFeature;
-class LanguageFeature;
-class FileSystemFeature;
-class ShellConsoleFeature;
-class TempFeature;
-class EncryptionFeature;
+class OptionsCheckFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "OptionsCheck"; }
 
-using ArangoshFeatures = TypeList<
-    // Phases
-    BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
-    // Features
-    VersionFeature,  // VersionFeature must go first
-#ifdef USE_ENTERPRISE
-    EncryptionFeature,
-#endif
-    ShellConsoleFeature, HttpEndpointProvider, ConfigFeature, LoggerFeature,
-    OptionsCheckFeature, FileSystemFeature, RandomFeature, ShellColorsFeature,
-    ShutdownFeature, SslFeature, V8ShellFeaturePhase, ShellFeature,
-    V8PlatformFeature, V8ShellFeature, LanguageFeature, V8SecurityFeature,
-    TempFeature>;
-using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
-using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
+  template<typename Server>
+  OptionsCheckFeature(Server& server)
+      : application_features::ApplicationFeature{server, *this} {
+    static_assert(Server::template isCreatedAfter<LoggerFeature>());
+
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
+
+  void prepare() override final;
+};
 
 }  // namespace arangodb

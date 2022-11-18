@@ -92,6 +92,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
 class RandomFeature;
@@ -233,6 +234,7 @@ using ArangodFeatures = TypeList<
     MaxMapCountFeature,
     NetworkFeature,
     NonceFeature,
+    OptionsCheckFeature,
     PrivilegeFeature,
     QueryRegistryFeature,
     RandomFeature,

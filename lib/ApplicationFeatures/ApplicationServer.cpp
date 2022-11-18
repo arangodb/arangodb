@@ -437,31 +437,6 @@ void ApplicationServer::validateOptions() {
       feature.state(ApplicationFeature::State::VALIDATED);
     }
   }
-
-  auto const& modernizedOptions = _options->modernizedOptions();
-  if (!modernizedOptions.empty()) {
-    for (auto const& it : modernizedOptions) {
-      LOG_TOPIC("3e342", WARN, Logger::STARTUP)
-          << "please note that the specified option '--" << it.first
-          << " has been renamed to '--" << it.second
-          << "' in this ArangoDB version";
-    }
-
-    LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
-        << "please be sure to read the manual section about changed options";
-  }
-
-  // inform about obsolete options
-  _options->walk(
-      [](Section const&, Option const& option) {
-        if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
-          LOG_TOPIC("6843e", WARN, Logger::STARTUP)
-              << "obsolete option '" << option.displayName()
-              << "' used in configuration. "
-              << "setting this option will not have any effect.";
-        }
-      },
-      true, true);
 }
 
 // setup and validate all feature dependencies, determine feature order
