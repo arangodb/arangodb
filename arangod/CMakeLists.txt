@@ -15,6 +15,8 @@ if (USE_FAIL_ON_WARNINGS)
   endif ()
 endif ()
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## arangod executable
 ################################################################################
@@ -56,8 +58,6 @@ target_include_directories(${BIN_ARANGOD} PRIVATE
 target_compile_options(${BIN_ARANGOD} PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
-
-add_compile_warnings_flags(${BIN_ARANGOD})
 
 ################################################################################
 ## installation

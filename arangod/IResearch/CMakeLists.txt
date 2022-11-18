@@ -108,4 +108,3 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>")
 target_compile_options(arango_iresearch PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
-add_compile_warnings_flags(arango_iresearch)

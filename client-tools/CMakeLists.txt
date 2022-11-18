@@ -2,6 +2,8 @@
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## shell common
 ################################################################################
@@ -29,8 +31,6 @@ target_link_libraries(arango_shell
 )
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-add_compile_warnings_flags(arango_shell)
 
 ################################################################################
 ## arangobench
@@ -462,25 +462,6 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc_build)
 endif ()
-
-################################################################################
-## common target compile options
-################################################################################
-SET(TARGETS
-  arangobench
-  arangodump
-  arangoexport
-  arangoimport
-  arangorestore
-  arangosh
-  arangovpack)
-if (USE_ENTERPRISE)
-  LIST(APPEND TARGETS arangobackup)
-endif()
-
-foreach (TARGET IN LISTS TARGETS)
-  add_compile_warnings_flags(${TARGET})
-endforeach ()
 
 ################################################################################
 ## foxx-manager

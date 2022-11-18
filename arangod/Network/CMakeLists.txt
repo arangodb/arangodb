@@ -20,5 +20,3 @@ target_include_directories(arango_network PRIVATE
 
 target_compile_options(arango_network PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
-
-add_compile_warnings_flags(arango_network)

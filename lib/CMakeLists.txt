@@ -1,5 +1,7 @@
 # -*- mode: CMAKE; -*-
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
@@ -263,8 +265,6 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-add_compile_warnings_flags(arango)
-
 ################################################################################
 ## LIB_ARANGO_AIR_SOURCES
 ################################################################################
@@ -286,9 +286,6 @@ add_library(arango_greenspun STATIC
 target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
-
-add_compile_warnings_flags(arango_greenspun)
-
 
 add_subdirectory(Geo)
 add_subdirectory(V8)

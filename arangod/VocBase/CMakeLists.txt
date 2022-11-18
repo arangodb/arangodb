@@ -31,7 +31,6 @@ target_include_directories(arango_vocbase PRIVATE
 
 target_compile_options(arango_vocbase PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
-add_compile_warnings_flags(arango_vocbase)
 
 add_subdirectory(Identifiers)
 add_subdirectory(Methods)

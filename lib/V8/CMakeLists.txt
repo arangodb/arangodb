@@ -24,8 +24,6 @@ target_include_directories(arango_v8
   ${OPENSSL_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR})
 
-add_compile_warnings_flags(arango_v8)
-
 add_library(arango_v8_deadline STATIC
   v8-deadline.cpp)
 target_link_libraries(arango_v8_deadline
@@ -34,7 +32,6 @@ target_link_libraries(arango_v8_deadline
   velocypack)
 target_include_directories(arango_v8_deadline PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR})
-add_compile_warnings_flags(arango_v8_deadline)
 
 add_library(arango_v8_no_deadline STATIC
   v8-no-deadline.cpp)
@@ -44,4 +41,3 @@ target_link_libraries(arango_v8_no_deadline
   velocypack)
 target_include_directories(arango_v8_no_deadline PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR})
-add_compile_warnings_flags(arango_v8_no_deadline)

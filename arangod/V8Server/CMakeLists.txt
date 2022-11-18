@@ -39,5 +39,3 @@ target_include_directories(arango_v8server PRIVATE
 
 target_compile_options(arango_v8server PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
-
-add_compile_warnings_flags(arango_v8server)

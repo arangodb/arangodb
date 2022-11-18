@@ -28,5 +28,3 @@ target_include_directories(arango_replication PRIVATE
 
 target_compile_options(arango_replication PRIVATE
 	${CMAKE_DEPRECATE_OPTIONS})
-
-add_compile_warnings_flags(arango_replication)
