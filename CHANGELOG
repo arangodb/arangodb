@@ -4,6 +4,10 @@ devel
 * Fix setting query memory limit to 0 for certain queries if a global memory
   limit is set, but overriding the memory limit is allowed.
 
+* BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
+
+* Updated arangosync to v2.13.0-preview-5.
+
 * Added option to exclude system collection from rebalance shards plan.
 
 * Updated arangosync to v2.13.0-preview-4.
@@ -49,7 +53,7 @@ devel
 
 * Updated OpenSSL to 1.1.1s.
 
-* BTS_483: Added restriction for usage of query cache for streaming and JS 
+* BTS-483: Added restriction for usage of query cache for streaming and JS 
   transactions when they are not read-only.
 
 * Remove map and map.gz files from repository and add them to gitignore.
