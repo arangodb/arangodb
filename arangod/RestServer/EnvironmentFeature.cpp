@@ -235,8 +235,8 @@ void EnvironmentFeature::prepare() {
 #endif
 
 #ifdef __linux__
-  {
 #ifdef ARANGODB_HAVE_JEMALLOC
+  {
     char const* v = getenv("LD_PRELOAD");
     if (v != nullptr && (strstr(v, "/valgrind/") != nullptr ||
                          strstr(v, "/vgpreload") != nullptr)) {
@@ -247,8 +247,9 @@ void EnvironmentFeature::prepare() {
           << "this is unsupported in combination with jemalloc and may cause "
              "undefined behavior at least with memcheck!";
     }
-#endif
   }
+#endif
+#endif
 
   {
     char const* v = getenv("MALLOC_CONF");
@@ -260,6 +261,7 @@ void EnvironmentFeature::prepare() {
     }
   }
 
+#ifdef __linux__
   // check overcommit_memory & overcommit_ratio
   try {
     std::string content =
@@ -321,6 +323,7 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+#endif
 
   // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
@@ -331,6 +334,7 @@ void EnvironmentFeature::prepare() {
       << (NumberOfCores::overridden() ? " (overriden by environment variable)"
                                       : "");
 
+#ifdef __linux__
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {
