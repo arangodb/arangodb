@@ -55,6 +55,10 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] Result performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return 0;
+  }
+
   /// @brief return number of commits, including intermediate commits
   [[nodiscard]] uint64_t numCommits() const override;
 
