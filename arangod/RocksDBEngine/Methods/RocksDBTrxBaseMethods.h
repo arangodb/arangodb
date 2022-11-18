@@ -62,6 +62,10 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
   }
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return _numInserts + 2 * _numUpdates + _numRemoves;
+  }
+
   uint64_t numOperations() const noexcept final override {
     return _numInserts + _numUpdates + _numRemoves;
   }

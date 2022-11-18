@@ -76,6 +76,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 
   virtual bool hasOperations() const noexcept = 0;
 
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
+
   virtual uint64_t numOperations() const noexcept = 0;
 
   virtual void prepareOperation(DataSourceId cid, RevisionId rid,

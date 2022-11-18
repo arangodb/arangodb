@@ -157,19 +157,12 @@ class IResearchLink : public IResearchDataStore {
   /// this call, false otherwise
   bool setCollectionName(irs::string_ref name) noexcept;
 
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
-  /// params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
-
   std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
   std::string getCollectionName() const;
   std::string const& getShardName() const noexcept;
 
-  bool hasNested() const noexcept;
+  auto const& meta() const noexcept { return _meta; }
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
