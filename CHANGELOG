@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+
 * Updated arangosync to v2.13.0-preview-5.
 
 * Added option to exclude system collection from rebalance shards plan.

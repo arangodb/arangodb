@@ -97,7 +97,7 @@ class Expression {
   bool willUseV8();
 
   /// @brief whether or not the expression can be used inside a PRUNE statement
-  bool canBeUsedInPrune(bool isOneShard);
+  bool canBeUsedInPrune(bool isOneShard, std::string& errorReason);
 
   /// @brief clone the expression, needed to clone execution plans
   std::unique_ptr<Expression> clone(Ast* ast, bool deepCopy = false);
