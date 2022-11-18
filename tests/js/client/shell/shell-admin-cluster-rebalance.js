@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango, instanceManager, ArangoClusterInfo */
+/* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango, instanceManager */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoDB Enterprise License Tests
