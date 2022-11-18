@@ -5,6 +5,8 @@ devel
   rebalance plan to always have moves, but there were cases in which all 
   there are none.
 
+* Added option to exclude system collection from rebalance shards plan.
+
 * Updated arangosync to v2.13.0-preview-4.
 
 * Delay a MoveShard operation for leader change, until the old leader has
