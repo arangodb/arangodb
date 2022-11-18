@@ -23,6 +23,8 @@
 
 #include "CrashHandler.h"
 
+#include <iostream>
+
 // This is a Light/Mock version of ArangoDB's crash handler without
 // dependencies on the remainder of ArangoDB.
 
@@ -30,6 +32,8 @@ namespace arangodb {
 void CrashHandler::logBacktrace() {}
 
 [[noreturn]] void CrashHandler::crash(std::string_view context) {
+  std::cerr << "[LightCrashHandler] " << context << std::endl;
+  std::flush(std::cerr);
   std::terminate();
 };
 
