@@ -24,6 +24,7 @@
 #include "CrashHandler.h"
 
 #include <iostream>
+#include <sstream>
 
 // This is a Light/Mock version of ArangoDB's crash handler without
 // dependencies on the remainder of ArangoDB.
@@ -41,16 +42,28 @@ void CrashHandler::logBacktrace() {}
                                                  char const* func,
                                                  char const* context,
                                                  const char* message) {
-  CrashHandler::crash("BOOM");
+  auto msg = std::ostringstream{};
+
+  msg << "Assertion failed in file " << file << ":" << line << ", expression "
+      << context << " with message " << message << std::endl;
+  CrashHandler::crash(msg.str());
 }
 
-void CrashHandler::setHardKill() {}
+void CrashHandler::setHardKill() {
+  CrashHandler::crash("setHardKill is not implemented");
+}
 
-void CrashHandler::disableBacktraces() {}
+void CrashHandler::disableBacktraces() {
+  CrashHandler::crash("disabledBacktraces is not implemented.");
+}
 
-void CrashHandler::installCrashHandler() {}
+void CrashHandler::installCrashHandler() {
+  CrashHandler::crash("installCrashHandler is not implemented.");
+}
 
 #ifdef _WIN32
-void CrashHandler::setMiniDumpDirectory(std::string path) {}
+void CrashHandler::setMiniDumpDirectory(std::string path) {
+  CrashHandler::crash("setMiniDumpDirectory is not implemented.");
+}
 #endif
 }  // namespace arangodb
