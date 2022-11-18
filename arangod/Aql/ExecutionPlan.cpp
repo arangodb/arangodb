@@ -1297,6 +1297,18 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
 
+  std::string errorReason;
+  if (pruneExpression != nullptr &&
+      !pruneExpression->canBeUsedInPrune(_ast->query().vocbase().isOneShard(),
+                                         errorReason)) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        std::string("Invalid PRUNE expression: ") + errorReason);
+  }
+
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
 

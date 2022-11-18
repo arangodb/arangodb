@@ -1,6 +1,8 @@
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
 
