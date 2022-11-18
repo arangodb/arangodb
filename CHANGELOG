@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
