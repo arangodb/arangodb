@@ -129,6 +129,7 @@ add_library(arango STATIC
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
   Containers/ImmerMemoryPolicy.h
+  CrashHandler/CrashHandler.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
