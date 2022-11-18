@@ -141,6 +141,13 @@ class IResearchFeature final : public ArangodFeature {
 
 #ifdef USE_ENTERPRISE
   bool trackColumnsCacheUsage(int64_t diff) noexcept;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  int64_t columnsCacheUsage() const noexcept;
+
+  void setCacheUsageLimit(uint64_t limit) noexcept {
+    _columnsCacheLimit = limit;
+  }
+#endif
 #endif
 
  private:

@@ -1295,6 +1295,11 @@ void IResearchFeature::registerRecoveryHelper() {
 }
 
 #ifdef USE_ENTERPRISE
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+int64_t IResearchFeature::columnsCacheUsage() const noexcept {
+  return _columnsCacheMemoryUsed.load();
+}
+#endif
 bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
   bool done = false;
   int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
