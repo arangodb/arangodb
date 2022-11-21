@@ -69,7 +69,7 @@ bool isIgnoredHiddenEnterpriseCollection(std::string_view cName) {
    * This should be fine. Another attempt could be to rewrite the links itself,
    * but more code changes will then be necessary.
    */
-  if (!arangodb::ServerState::instance()->isSingleServer()) {
+  if (arangodb::ServerState::instance()->isSingleServer()) {
     if (cName.starts_with(arangodb::StaticStrings::FullLocalPrefix) ||
         cName.starts_with(arangodb::StaticStrings::FullFromPrefix) ||
         cName.starts_with(arangodb::StaticStrings::FullToPrefix)) {
