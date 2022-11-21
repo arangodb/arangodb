@@ -36,7 +36,6 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
