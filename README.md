@@ -122,7 +122,9 @@ To chat with the community and the developers we offer a Slack chat:
 [https://slack.arangodb.com/](https://slack.arangodb.com/)
 
 Learn more about ArangoDB with our YouTube channel: 
+
 [https://www.youtube.com/@ArangoDB](https://www.youtube.com/@ArangoDB)
 
 Follow us on Twitter to stay up to date: 
+
 [https://twitter.com/arangodb](https://twitter.com/arangodb)
