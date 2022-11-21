@@ -30,7 +30,6 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const errors = internal.errors;
-const isCoordinator = require('@arangodb/cluster').isCoordinator();
   
 function PruneExpressionsSuite() {
   const vn = "UnitTestsVertex";
