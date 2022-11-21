@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Repair "load indexes into memory" function in the web UI.
+
 * Fixed issue #17367: FILTER fails when using negation (!) on variable whose
   name starts with "in". Add trailing context to NOT IN token.
 
