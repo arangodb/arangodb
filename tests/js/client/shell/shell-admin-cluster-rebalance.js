@@ -358,8 +358,8 @@ function clusterRebalanceWithMovesToMakeSuite() {
       const end = start + 300;
       for (let i = 1; i <= 3; ++i) {
         const toServer = "DBServer000" + i;
+        db._create(cn, {numberOfShards: 8, replicationFactor: 1});
         try {
-          db._create(cn, {numberOfShards: 8, replicationFactor: 1});
           const plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
           Object.entries(plan).forEach((shardInfo) => {
             const [shardName, servers] = shardInfo;
@@ -390,7 +390,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
               if (res2.status === "Finished") {
                 break;
               }
-              internal.wait(1);
+              internal.wait(0.5);
             }
           });
           const plan2 = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
