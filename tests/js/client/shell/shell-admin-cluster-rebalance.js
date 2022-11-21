@@ -380,7 +380,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
             assertEqual(result.code, 202);
             let iterationStart = internal.time();
             while (true) {
-              if (require("internal").time() >= end) {
+              if (internal.time() >= end) {
                 assertFalse(true, "test timed out");
               }
               if (internal.time() - iterationStart > 15) {
