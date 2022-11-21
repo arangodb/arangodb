@@ -79,7 +79,7 @@ function getInstanceInfo () {
   return instanceInfo;
 };
 
-exports = {getInstanceInfo}
+exports = {getInstanceInfo};
 
 exports.getServerById = function (id) {
   const instanceInfo = getInstanceInfo();
