@@ -215,6 +215,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// number, because it will also include intermediate commits.
   virtual uint64_t numCommits() const = 0;
 
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
+
   virtual bool hasFailedOperations() const = 0;
 
   virtual void beginQuery(bool /*isModificationQuery*/) {}

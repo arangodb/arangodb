@@ -1,7 +1,30 @@
-v3.10.1 (XXXX-XX-XX)
+v3.10.2 (XXXX-XX-XX)
 --------------------
 
 * Repair "load indexes into memory" function in the web UI.
+
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
+* Fix disk space metrics rocksdb_free_disk_space and rocksdb_total_disk_space 
+  on macOS. Previously, they seem to have reported wrong values.
+
+* Show number of HTTP requests in cluster query profiles.
+
+* Removed assertions from cluster rebalance js test that obligated the rebalance
+  plan to always have moves, but there were cases in which all there are none.
+
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, and
+  the addition of the AT LEAST and WITH COUNT INTO constructs.
+
+
+v3.10.1 (2022-11-04)
+--------------------
+
+* Updated OpenSSL to 1.1.1s.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
   filters with very long lists. Free sub-iterators as soon as they are
@@ -38,10 +61,6 @@ v3.10.1 (XXXX-XX-XX)
   RAND() LIMIT 1` is used. Here, the estimated number of items is at most 1.
 
 * Improved shard distribution during collection creation.
-
-* BTS-941: The HTTP API now delivers the correct list of the collection's shards
-  in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
-  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
 
 * Changed the encoding of revision ids returned by the following REST APIs:
   - GET /_api/collection/<collection-name>/revision: the revision id was

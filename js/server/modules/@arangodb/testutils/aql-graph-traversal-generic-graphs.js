@@ -141,12 +141,6 @@ class TestGraph {
     this.numberOfShards = numberOfShards;
     this.unconnectedVertices = unconnectedVertices;
     this.addProjectionPayload = addProjectionPayload;
-    this.verificationProperties = {
-      isDisjoint: false,
-      isSmart: false,
-      isEnterprise: false,
-      isSatellite: false
-    };
   }
   
   hasProjectionPayload() {
@@ -172,7 +166,6 @@ class TestGraph {
           smartGraphAttribute: ProtoGraph.smartAttr(),
           isSmart: true
         };
-        this.verificationProperties.isSmart = true;
         sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), false);
         break;
@@ -184,8 +177,6 @@ class TestGraph {
           isSmart: true,
           isDisjoint: true
         };
-        this.verificationProperties.isSmart = true;
-        this.verificationProperties.isDisjoint = true;
         sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), true);
         break;
@@ -195,9 +186,6 @@ class TestGraph {
           numberOfShards: this.numberOfShards,
           isSmart: true
         };
-        this.verificationProperties.isSmart = true;
-        this.verificationProperties.isEnterprise = true;
-        this.verificationProperties.isDisjoint = false;
         sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), false);
         break;
@@ -208,9 +196,6 @@ class TestGraph {
           isSmart: true,
           isDisjoint: true
         };
-        this.verificationProperties.isSmart = true;
-        this.verificationProperties.isEnterprise = true;
-        this.verificationProperties.isDisjoint = true;
         sgm._create(this.name(), [this.eRel], [this.on], options);
         verifySmartGraph(this.name(), true);
         break;
@@ -219,7 +204,6 @@ class TestGraph {
         const options = {
           replicationFactor: 'satellite'
         };
-        this.verificationProperties.isSatellite = true;
         satgm._create(this.name(), [this.eRel], [this.on], options);
         verifySatelliteGraph(this.name());
         break;
@@ -248,16 +232,8 @@ class TestGraph {
     return this.en;
   }
 
-  vertexCollectionName() {
-    return this.vn;
-  }
-
   weightAttribute() {
     return graphWeightAttribute;
-  }
-
-  amountOfShards() {
-    return this.numberOfShards;
   }
 
   indexedAttribute() {
@@ -266,22 +242,6 @@ class TestGraph {
 
   vertex(name) {
     return this.verticesByName[name];
-  }
-
-  isSmart() {
-    return this.verificationProperties.isSmart;
-  }
-
-  isDisjoint() {
-    return this.verificationProperties.isDisjoint;
-  }
-
-  isSatellite() {
-    return this.verificationProperties.isSatellite;
-  }
-
-  isEnterprise() {
-    return this.verificationProperties.isEnterprise;
   }
 
   /**

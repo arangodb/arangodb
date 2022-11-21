@@ -126,7 +126,7 @@ class Parser;
   return T_DESC;
 }
 
-(?i:NOT[ \t\r\n]+IN) {
+(?i:NOT[ \t\r\n]+IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 
@@ -278,7 +278,7 @@ class Parser;
   return T_ASSIGN;
 }
 
-(?i:![ \t\r\n]*IN) {
+(?i:![ \t\r\n]*IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 

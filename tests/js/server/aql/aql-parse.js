@@ -519,7 +519,48 @@ function ahuacatlParseTestSuite () {
       assertEqual("value", sub[1].subNodes[1].type);
       assertEqual(8, sub[1].subNodes[1].value);
     },
-    
+
+    testNotInAmbiguity : function() {
+      let result = AQL_PARSE("LET in_time = 1 RETURN NOT in_time").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("let", result[0].type);
+      let sub = result[0].subNodes;
+
+      assertEqual("variable", sub[0].type);
+      assertEqual("in_time", sub[0].name);
+
+      assertEqual("return", result[1].type);
+      sub = result[1].subNodes;
+
+      assertEqual("unary not", sub[0].type);
+      sub = sub[0].subNodes;
+
+      assertEqual("reference", sub[0].type);
+      assertEqual("in_time", sub[0].name);
+
+
+      result = AQL_PARSE("RETURN 3 NOT IN[1,2]").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("compare not in", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("value", result[0].type);
+      assertEqual("array", result[1].type);
+      result = result[1].subNodes;
+
+      assertEqual("value", result[0].type);
+      assertEqual("value", result[1].type);
+    },
+
     testNotLike : function() {
       let result = AQL_PARSE("RETURN 'a' NOT LIKE 'b'").ast;
 
