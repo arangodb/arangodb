@@ -354,50 +354,57 @@ function clusterRebalanceWithMovesToMakeSuite() {
 
 
     testCalcRebalanceAfterUnbalanced: function() {
+      const start = require("internal").time();
+      const end = start + 300;
       for (let i = 1; i <= 3; ++i) {
         const toServer = "DBServer000" + i;
-        db._create(cn, {numberOfShards: 10, replicationFactor: 1});
-        const plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-        Object.entries(plan).forEach((shardInfo) => {
-          const [shardName, servers] = shardInfo;
-          const leader = servers.leader;
-          if (leader === toServer) {
-            return;
-          }
-          let moveShardJob = {
-            database: database,
-            collection: cn,
-            shard: shardName,
-            fromServer: leader,
-            toServer: toServer,
-            isLeader: true,
-            remainsFollower: false
-          };
-          const result = arango.POST("/_admin/cluster/moveShard", moveShardJob);
-          assertEqual(result.code, 202);
-          let start = internal.time();
-          while (true) {
-            if (internal.time() - start > 120) {
-              assertTrue(false, "timeout waiting for shards being in sync");
+        try {
+          db._create(cn, {numberOfShards: 8, replicationFactor: 1});
+          const plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
+          Object.entries(plan).forEach((shardInfo) => {
+            const [shardName, servers] = shardInfo;
+            const leader = servers.leader;
+            if (leader === toServer) {
               return;
             }
-            let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
-            if (res2.status === "Finished") {
-              break;
+            let moveShardJob = {
+              database: database,
+              collection: cn,
+              shard: shardName,
+              fromServer: leader,
+              toServer: toServer,
+              isLeader: true,
+              remainsFollower: false
+            };
+            const result = arango.POST("/_admin/cluster/moveShard", moveShardJob);
+            assertEqual(result.code, 202);
+            let iterationStart = internal.time();
+            while (true) {
+              if (require("internal").time() >= end) {
+                assertFalse(true, "test timed out");
+              }
+              if (internal.time() - iterationStart > 15) {
+                assertFalse(true, "timeout waiting for shards being in sync");
+              }
+              let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
+              if (res2.status === "Finished") {
+                break;
+              }
+              internal.wait(1);
             }
-            internal.wait(1);
-          }
-        });
-        const plan2 = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
-        Object.entries(plan2).forEach((shardInfo) => {
-          const [, servers] = shardInfo;
-          const leader = servers.leader;
-          assertEqual(leader, toServer);
-        });
-        const result = getRebalancePlan(true, true, true);
-        const moves = result.result.moves;
-        assertTrue(moves.length > 0);
-        db._drop(cn);
+          });
+          const plan2 = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
+          Object.entries(plan2).forEach((shardInfo) => {
+            const [, servers] = shardInfo;
+            const leader = servers.leader;
+            assertEqual(leader, toServer);
+          });
+          const result = getRebalancePlan(true, true, true);
+          const moves = result.result.moves;
+          assertTrue(moves.length > 0);
+        } finally {
+          db._drop(cn);
+        }
       }
     },
   };
