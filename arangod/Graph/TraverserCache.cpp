@@ -40,7 +40,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -98,7 +97,7 @@ void TraverserCache::clear() {
                                                ::costPerPersistedString);
 
   _persistedStrings.clear();
-  _mmdr.clear();
+  _docBuilder.clear();
   _stringHeap.clear();
 }
 
@@ -114,8 +113,12 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->getPhysical()->readDocument(_trx, idToken.localDocumentId(), _mmdr,
-                                        ReadOwnWrites::no)) {
+  _docBuilder.clear();
+  if (col->getPhysical()
+          ->lookupDocument(*_trx, idToken.localDocumentId(), _docBuilder,
+                           /*readCache*/ true, /*fillCache*/ true,
+                           ReadOwnWrites::no)
+          .fail()) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
@@ -126,7 +129,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  return VPackSlice(_mmdr.vpack());
+  return _docBuilder.slice();
 }
 
 bool TraverserCache::appendVertex(std::string_view id,
