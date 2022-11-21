@@ -354,7 +354,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
 
 
     testCalcRebalanceAfterUnbalanced: function() {
-      const start = require("internal").time();
+      const start = internal.time();
       const end = start + 300;
       for (let i = 1; i <= 3; ++i) {
         const toServer = "DBServer000" + i;
