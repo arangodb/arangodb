@@ -17,7 +17,7 @@
 #include <cstddef>
 
 #if (_MSC_VER != 0)
-#pragma warning(disable : 2220)  
+#pragma warning(disable : 4267)  
 #endif
 
 namespace immer {
