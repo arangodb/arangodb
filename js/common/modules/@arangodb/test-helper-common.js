@@ -77,7 +77,7 @@ exports.getInstanceInfo = function () {
     }
   }
   return instanceInfo;
-}
+};
 
 exports.getServerById = function (id) {
   const instanceInfo = getInstanceInfo();
