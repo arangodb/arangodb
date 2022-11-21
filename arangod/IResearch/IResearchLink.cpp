@@ -167,7 +167,8 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
 #else
                          false,
 #endif
-                         _meta._storedValues.columns(), _meta._sortCompression, readerOptions);
+                         _meta._storedValues.columns(), _meta._sortCompression,
+                         readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }

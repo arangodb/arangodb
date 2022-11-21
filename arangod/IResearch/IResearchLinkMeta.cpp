@@ -672,8 +672,7 @@ bool IResearchLinkMeta::operator==(
     return false;
   }
 
-  if (_sort != other._sort ||
-      _storedValues != other._storedValues ||
+  if (_sort != other._sort || _storedValues != other._storedValues ||
       _sortCompression != other._sortCompression ||
       _version != other._version) {
     return false;

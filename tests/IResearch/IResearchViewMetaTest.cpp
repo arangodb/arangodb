@@ -674,7 +674,6 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
             std::move(*arangodb::velocypack::Parser::fromJson(
                 "{ \"type\": \"bytes_accum\", \"threshold\": 0.2 }")));
 
-
 #ifdef USE_ENTERPRISE
     meta._pkCache = true;
 #endif

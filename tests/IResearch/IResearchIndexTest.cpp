@@ -1079,7 +1079,8 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: 'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
+        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
     ASSERT_TRUE(result.result.ok());

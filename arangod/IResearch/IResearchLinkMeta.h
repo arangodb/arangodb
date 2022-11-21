@@ -228,7 +228,7 @@ struct IResearchLinkMeta : public FieldMeta {
           ,
           _sortCache(mask),
           _pkCache(mask)
-#endif 
+#endif
     {
     }
 
@@ -266,7 +266,6 @@ struct IResearchLinkMeta : public FieldMeta {
   bool _sortCache{false};
   bool _pkCache{false};
 #endif
-
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;

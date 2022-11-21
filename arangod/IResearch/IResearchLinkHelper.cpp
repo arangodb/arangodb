@@ -307,8 +307,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         normalized, link, true, view.vocbase(), defaultVersion,
         &view.primarySort(), &view.primarySortCompression(),
         &view.storedValues(), &pkCache, &sortCache,
-        link.get(arangodb::StaticStrings::IndexId),
-        collectionName);
+        link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
       return res;
@@ -705,7 +704,7 @@ namespace iresearch {
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
     bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
-    velocypack::Slice idSlice,                     /* = velocypack::Slice()*/
+    velocypack::Slice idSlice, /* = velocypack::Slice()*/
     std::string_view collectionName /*= std::string_view{}*/) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,

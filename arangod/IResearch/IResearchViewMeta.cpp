@@ -47,7 +47,8 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _sortCache(mask),
       _pkCache(mask),
 #endif
-      _primarySortCompression(mask) {}
+      _primarySortCompression(mask) {
+}
 
 IResearchViewMeta::IResearchViewMeta()
     : _primarySortCompression{getDefaultCompression()} {}

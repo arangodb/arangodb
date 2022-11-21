@@ -60,9 +60,7 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
   auto sortCompression() const noexcept { return _sortCompression; }
 
 #ifdef USE_ENTERPRISE
-  bool cache() const noexcept {
-    return _cache;
-  }
+  bool cache() const noexcept { return _cache; }
 #endif
 
   std::string_view Locale() const noexcept { return _locale.getName(); }
@@ -247,7 +245,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
 #ifdef USE_ENTERPRISE
   bool sortCache() const noexcept { return _sort.cache(); }
 #endif
-
 
   std::unique_ptr<IResearchInvertedIndexMetaIndexingContext> _indexingContext;
 

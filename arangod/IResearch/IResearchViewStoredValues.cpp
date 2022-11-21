@@ -219,8 +219,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
         }
 #endif
         if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                        uniqueColumns, fieldNames,
-                                        compression, cached)) {
+                                        uniqueColumns, fieldNames, compression,
+                                        cached)) {
           errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
           return false;
         }

@@ -355,7 +355,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
   }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
-
 #ifdef USE_ENTERPRISE
   {
     auto const pkCacheSlice = slice.get(StaticStrings::kCachePrimaryKeyField);
@@ -540,8 +539,7 @@ bool InvertedIndexField::json(
   }
 
 #ifdef USE_ENTERPRISE
-  if ( (rootMode && _cache) ||
-       (!rootMode && _cache != parent._cache)) {
+  if ((rootMode && _cache) || (!rootMode && _cache != parent._cache)) {
     builder.add(StaticStrings::kCacheField, velocypack::Value(_cache));
   }
 #endif

@@ -168,8 +168,7 @@ struct StaticStrings {
       "primarySortCompression"};
 
   // enables caching for primary sort column
-  static constexpr std::string_view kPrimarySortCacheField{
-      "primarySortCache"};
+  static constexpr std::string_view kPrimarySortCacheField{"primarySortCache"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the

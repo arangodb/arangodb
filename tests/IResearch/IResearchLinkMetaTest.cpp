@@ -4131,13 +4131,9 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::bytes_view (min)() const override {
-    return {};
-  }
+  irs::bytes_view(min)() const override { return {}; }
 
-  irs::bytes_view (max)() const override {
-    return {};
-  }
+  irs::bytes_view(max)() const override { return {}; }
 
   irs::attribute* get_mutable(irs::type_info::type_id) override {
     return nullptr;
@@ -4545,7 +4541,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(hasHotFields(meta));
 }
-
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
