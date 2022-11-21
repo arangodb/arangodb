@@ -339,14 +339,6 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   return r;
 }
 
-Result IResearchLink::insert(transaction::Methods& trx,
-                             LocalDocumentId const documentId,
-                             velocypack::Slice const doc) {
-  return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                    IResearchLinkMeta>(trx, documentId, doc,
-                                                       _meta);
-}
-
 bool IResearchLink::isHidden() {
   // hide links unless we are on a DBServer
   return !ServerState::instance()->isDBServer();
@@ -493,14 +485,6 @@ std::string const& IResearchLink::getShardName() const noexcept {
     return _collection.name();
   }
   return arangodb::StaticStrings::Empty;
-}
-
-bool IResearchLink::hasNested() const noexcept {
-#ifdef USE_ENTERPRISE
-  return _meta._hasNested;
-#else
-  return false;
-#endif
 }
 
 void IResearchLink::insertMetrics() {

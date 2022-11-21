@@ -101,7 +101,7 @@ set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "1")
+  set(ARANGODB_VERSION_PATCH "2")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -1515,5 +1515,10 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #   endforeach ()
 # endif ()
 
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
+if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
+endif ()
