@@ -111,7 +111,7 @@ class AsyncValue {
   /// @brief If return true then reset was call
   //////////////////////////////////////////////////////////////////////////////
   [[nodiscard]] bool empty() const noexcept {
-    return _count.load(std::memory_order_acquire) & kReset;
+    return _count.load() & kReset;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -121,7 +121,7 @@ class AsyncValue {
     if (empty()) {
       return {};
     }
-    if (_count.fetch_add(kRef, std::memory_order_acquire) & kDestroy) {
+    if (_count.fetch_add(kRef) & kDestroy) {
       return {};
     }
     return {*this};
@@ -132,7 +132,7 @@ class AsyncValue {
   ///        and waits until all locks on resource have been released.
   //////////////////////////////////////////////////////////////////////////////
   void reset() {
-    auto count = _count.fetch_or(kReset, std::memory_order_release);
+    auto count = _count.fetch_or(kReset);
     if (!(count & kReset)) {
       destroy();
     }
@@ -148,11 +148,9 @@ class AsyncValue {
   static constexpr size_t kRef = 4;
 
   void destroy() {
-    auto count = _count.fetch_sub(kRef, std::memory_order_release) - kRef;
+    auto count = _count.fetch_sub(kRef) - kRef;
     if (count == kReset  // acquire for fetch_sub, release for fetch_add
-        && _count.compare_exchange_strong(count, kReset | kDestroy,
-                                          std::memory_order_acq_rel,
-                                          std::memory_order_relaxed)) {
+        && _count.compare_exchange_strong(count, kReset | kDestroy)) {
       std::lock_guard lock{_m};
       _resource = nullptr;
       _cv.notify_all();  // should be under lock
