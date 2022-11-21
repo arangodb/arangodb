@@ -1889,17 +1889,15 @@ bool Expression::willUseV8() {
 bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
   errorReason.clear();
 
-  if (ServerState::instance()->isRunningInCluster()) {
-    if (willUseV8()) {
-      errorReason = "JavaScript expressions cannot be used inside PRUNE";
-      return false;
-    }
-    if (!canRunOnDBServer(isOneShard)) {
-      errorReason =
-          "PRUNE expression contains a function that cannot be used on "
-          "DB-Servers";
-      return false;
-    }
+  if (willUseV8()) {
+    errorReason = "JavaScript expressions cannot be used inside PRUNE";
+    return false;
+  }
+  if (!canRunOnDBServer(isOneShard)) {
+    errorReason =
+        "PRUNE expression contains a function that cannot be used on "
+        "DB-Servers";
+    return false;
   }
 
   TRI_ASSERT(errorReason.empty());

@@ -30,7 +30,6 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const errors = internal.errors;
-const isCoordinator = require('@arangodb/cluster').isCoordinator();
   
 function PruneExpressionsSuite() {
   const vn = "UnitTestsVertex";
@@ -75,31 +74,21 @@ function PruneExpressionsSuite() {
 
     testV8Expression: function () {
       let q = `WITH ${vn} FOR v, e, p IN 1..3 OUTBOUND '${vn}/test1' ${en} PRUNE e.value == V8('0') RETURN v`;
-      if (isCoordinator) {
-        try {
-          db._query(q);
-          fail();
-        } catch (err) {
-          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-        }
-      } else {
-        let res = db._query(q).toArray();
-        assertEqual(2, res.length);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
     
     testUDFExpression: function () {
       let q = `WITH ${vn} FOR v, e, p IN 1..3 OUTBOUND '${vn}/test1' ${en} PRUNE e.value == ${udf}() RETURN v`;
-      if (isCoordinator) {
-        try {
-          db._query(q);
-          fail();
-        } catch (err) {
-          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-        }
-      } else {
-        let res = db._query(q).toArray();
-        assertEqual(2, res.length);
+      try {
+        db._query(q);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
     
