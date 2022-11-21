@@ -79,8 +79,6 @@ function getInstanceInfo () {
   return instanceInfo;
 };
 
-exports = {getInstanceInfo};
-
 exports.getServerById = function (id) {
   const instanceInfo = getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))[0];
@@ -376,3 +374,5 @@ exports.checkIndexMetrics = (checkFunction) => {
     }
   }
 };
+
+exports.getInstanceInfo = getInstanceInfo;
