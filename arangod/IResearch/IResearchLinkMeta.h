@@ -102,22 +102,20 @@ struct FieldMeta {
           _fields(mask),
           _includeAllFields(mask),
           _trackListPositions(mask),
-          _storeValues(mask)
 #ifdef USE_ENTERPRISE
-          ,
-          _cache(mask)
+          _cache(mask),
 #endif
-    {
+          _storeValues(mask) {
     }
 
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
     bool _trackListPositions;
-    bool _storeValues;
 #ifdef USE_ENTERPRISE
     bool _cache;
 #endif
+    bool _storeValues;
   };
 
   [[nodiscard]] static Analyzer const& identity();
@@ -223,13 +221,11 @@ struct IResearchLinkMeta : public FieldMeta {
           _storedValues(mask),
           _sortCompression(mask),
           _collectionName(mask),
-          _version(mask)
 #ifdef USE_ENTERPRISE
-          ,
           _sortCache(mask),
-          _pkCache(mask)
+          _pkCache(mask),
 #endif
-    {
+          _version(mask) {
     }
 
     bool _analyzerDefinitions;
@@ -248,6 +244,11 @@ struct IResearchLinkMeta : public FieldMeta {
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+#ifdef USE_ENTERPRISE
+  bool _sortCache{false};
+  bool _pkCache{false};
+#endif
   // The version of the iresearch interface e.g. which how
   // data is stored in iresearch (default == 0).
   uint32_t _version;
@@ -262,9 +263,6 @@ struct IResearchLinkMeta : public FieldMeta {
 
 #ifdef USE_ENTERPRISE
   bool sortCache() const noexcept { return _sortCache; }
-
-  bool _sortCache{false};
-  bool _pkCache{false};
 #endif
 
   IResearchLinkMeta();
