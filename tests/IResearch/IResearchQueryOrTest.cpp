@@ -100,7 +100,7 @@ class QueryOr : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
