@@ -139,7 +139,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job,
-                                         std::string const& server);
+                                         std::string const& server,
+                                         bool reclaimShardLeadership = false);
 
   RestStatus handleFailureOracleStatus();
   RestStatus handleFailureOracleFlush();

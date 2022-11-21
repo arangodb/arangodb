@@ -34,6 +34,7 @@
 #include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
@@ -50,10 +51,12 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_reclaimShards = _snapshot.hasAsBool(path + "reclaimShards");
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
     _creator = tmp_creator.value();
+    _reclaimShards = tmp_reclaimShards.value_or(false);
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -172,6 +175,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add("server", VPackValue(_server));
       _jb->add("jobId", VPackValue(_jobId));
       _jb->add("creator", VPackValue(_creator));
+      _jb->add("reclaimShards", VPackValue(_reclaimShards));
       _jb->add("timeCreated",
                VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -372,6 +376,9 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
       _snapshot.hasAsChildren(planColPrefix).value().get();
   size_t sub = 0;
 
+  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
+      curServersKnown, _server, "/", StaticStrings::RebootId));
+
   for (auto const& database : databases) {
     bool const isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
     // Find shardsLike dependencies
@@ -430,6 +437,13 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
               .withParent(_jobId)
               .create(trx);
 
+          if (_reclaimShards and rebootId) {
+            // arango/Target/ReclaimShards/Server/<rebootId>/<database>/<collection>/<shard>
+            auto path = basics::StringUtils::joinT(
+                "/", "/Target/ReclaimShards", _server, rebootId.value(),
+                database.first, collptr.first, shard.first);
+            trx->add(path, VPackSlice::emptyObjectSlice());
+          }
         } else {
           // Intentionally do nothing. RemoveServer will remove the failed
           // follower

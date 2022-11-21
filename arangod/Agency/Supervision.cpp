@@ -58,6 +58,7 @@
 #include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
+#include "MoveShard.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -1784,6 +1785,10 @@ void Supervision::handleJobs() {
       << "Begin checkBrokenAnalyzers";
   checkBrokenAnalyzers();
 
+  LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
+      << "Begin checkReclaimShardActions";
+  checkReclaimShardActions();
+
   LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedStates";
   checkReplicatedStates();
@@ -3466,6 +3471,102 @@ void Supervision::removeTransactionBuilder(
           VPackObjectBuilder oper(&del);
           del.add("op", VPackValue("delete"));
         }
+      }
+    }
+  }
+}
+
+void Supervision::checkReclaimShardActions() {
+  auto const getShardLeader =
+      [&](std::string_view database, std::string_view collection,
+          std::string_view shard) -> std::optional<std::string> {
+    auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
+                                           collection, "shards", shard);
+    auto servers = snapshot().hasAsArray(path);
+    if (not servers) {
+      return std::nullopt;
+    }
+    TRI_ASSERT(servers->isArray() && servers->length() > 0);
+    auto leader = servers->at(0).copyString();
+    if (leader[0] == '_') {
+      return std::nullopt;
+    }
+    return leader;
+  };
+
+  auto const reclaimShards =
+      [&](std::shared_ptr<VPackBuilder> const& trx, std::string_view path,
+          std::string const& server, std::shared_ptr<Node> objects) {
+        for (auto const& [database, collections] : objects->children()) {
+          for (auto const& [collection, shards] : collections->children()) {
+            for (auto const& [shard, emptyObject] : shards->children()) {
+              auto fromServer = getShardLeader(database, collection, shard);
+              if (not fromServer) {
+                continue;
+              }
+              auto const& toServer = server;
+
+              MoveShard(*_snapshot, _agent, std::to_string(_jobId++),
+                        "supervision", database, collection, shard, *fromServer,
+                        toServer, true, true)
+                  .create(trx);
+
+              trx->add(VPackValue(basics::StringUtils::joinT(
+                  "/", path, database, collection, shard)));
+              {
+                VPackObjectBuilder ob(trx.get());
+                trx->add("op", VPackValue("delete"));
+              }
+            }
+          }
+        }
+      };
+
+  auto claims = snapshot().hasAsChildren("Target/ReclaimShards");
+  if (not claims) {
+    return;
+  }
+
+  for (auto const& [dbserver, instances] : claims->get()) {
+    // get server health
+    if (serverHealth(dbserver) != HEALTH_STATUS_GOOD) {
+      continue;
+    }
+
+    // get current reboot id
+    auto rebootId = snapshot().hasAsUInt(basics::StringUtils::concatT(
+        curServersKnown, dbserver, "/", StaticStrings::RebootId));
+    if (not rebootId) {
+      continue;
+    }
+
+    // check if reboot id is bigger than the stored one
+    auto trx = std::make_shared<VPackBuilder>();
+    {
+      VPackArrayBuilder env(trx.get());
+      {
+        VPackObjectBuilder ops(trx.get());
+        for (auto const& [lastRebootIdStr, objects] : instances->children()) {
+          auto lastRebootId = basics::StringUtils::uint64(lastRebootIdStr);
+          if (lastRebootId < *rebootId) {
+            auto path = basics::StringUtils::joinT("/", "/Target/ReclaimShards",
+                                                   dbserver, lastRebootId);
+            // reclaim all shards
+            reclaimShards(trx, path, dbserver, objects);
+          }
+        }
+      }
+      {
+        VPackObjectBuilder precs(trx.get());
+        // TODO
+      }
+    }
+    if (trx->slice()[0].length() > 0) {
+      write_ret_t res = singleWriteTransaction(_agent, *trx, false);
+
+      if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+        LOG_TOPIC("fad4b", INFO, Logger::SUPERVISION)
+            << "Failed to insert jobs: " << trx->toJson();
       }
     }
   }

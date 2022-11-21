@@ -1176,9 +1176,10 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
 
   if (body.isObject()) {
     VPackSlice server = body.get("server");
+    bool reclaimLeadership = body.get("reclaimShardLeadership").isTrue();
     if (server.isString()) {
       std::string serverId = resolveServerNameID(server.copyString());
-      return handleCreateSingleServerJob(job, serverId);
+      return handleCreateSingleServerJob(job, serverId, reclaimLeadership);
     }
   }
 
@@ -1188,7 +1189,8 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
 }
 
 RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
-    std::string const& job, std::string const& serverId) {
+    std::string const& job, std::string const& serverId,
+    bool reclaimShardLeadership) {
   std::string jobId = std::to_string(
       server().getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto jobToDoPath =
@@ -1201,6 +1203,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
     builder.add("server", VPackValue(serverId));
     builder.add("jobId", VPackValue(jobId));
     builder.add("creator", VPackValue(ServerState::instance()->getId()));
+    builder.add("reclaimShards", VPackValue(reclaimShardLeadership));
     builder.add(
         "timeCreated",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
