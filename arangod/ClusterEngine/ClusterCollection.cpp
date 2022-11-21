@@ -335,14 +335,6 @@ Result ClusterCollection::lookupDocument(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-// read using a token!
-bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
-                                     LocalDocumentId const& /*documentId*/,
-                                     ManagedDocumentResult& /*result*/,
-                                     ReadOwnWrites /*readOwnWrites*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 Result ClusterCollection::insert(transaction::Methods&, RevisionId,
                                  velocypack::Slice, OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -360,8 +352,9 @@ Result ClusterCollection::replace(transaction::Methods&, LocalDocumentId,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::remove(transaction::Methods&, LocalDocumentId,
-                                 RevisionId, velocypack::Slice,
+Result ClusterCollection::remove(transaction::Methods&,
+                                 CollectionIndexes::ReadLocked const&,
+                                 LocalDocumentId, RevisionId, velocypack::Slice,
                                  OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

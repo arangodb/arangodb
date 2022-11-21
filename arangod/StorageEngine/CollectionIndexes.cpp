@@ -51,6 +51,14 @@ CollectionIndexes::ReadLocked::indexes() const {
   return _indexes;
 }
 
+size_t CollectionIndexes::ReadLocked::size() const noexcept {
+  return _indexes.size();
+}
+
+bool CollectionIndexes::ReadLocked::empty() const noexcept {
+  return _indexes.empty();
+}
+
 CollectionIndexes::WriteLocked::WriteLocked(
     basics::ReadWriteLock& lock, std::atomic<std::thread::id>& owner,
     CollectionIndexes::IndexContainerType& indexes)

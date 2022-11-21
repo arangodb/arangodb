@@ -44,7 +44,7 @@ global.clearTimeout = global.clearTimeout || function () {};
 // / @brief start paging
 // //////////////////////////////////////////////////////////////////////////////
 
-global.start_pager = function start_pager () {
+global.start_pager = function () {
   require('internal').startPager();
 };
 
@@ -52,7 +52,7 @@ global.start_pager = function start_pager () {
 // / @brief stop paging
 // //////////////////////////////////////////////////////////////////////////////
 
-global.stop_pager = function stop_pager () {
+global.stop_pager = function () {
   require('internal').stopPager();
 };
 
@@ -60,7 +60,7 @@ global.stop_pager = function stop_pager () {
 // / @brief print the overall help
 // //////////////////////////////////////////////////////////////////////////////
 
-global.help = function help () {
+global.help = function () {
   let internal = require('internal');
   let arangodb = require('@arangodb');
   let arangosh = require('@arangodb/arangosh');
@@ -71,6 +71,13 @@ global.help = function help () {
   arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoQueryCursor.prototype._help();
   internal.print(arangosh.helpExtended);
+};
+
+global.help._PRINT = function (context) {
+  let internal = require('internal');
+  internal.startCaptureMode();
+  global.help();
+  context.output = internal.stopCaptureMode();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -193,7 +200,6 @@ if (!(
   global.IS_JS_LINT
   )) {
   try {
-    // this will not work from within a browser
     let __fs__ = require('fs');
     let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
 

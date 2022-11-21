@@ -29,6 +29,7 @@
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/utilities.h"
+#include "StorageEngine/CollectionIndexes.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <chrono>
@@ -48,6 +49,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
       std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+      CollectionIndexes::ReadLocked const& indexes,
       ReplicationMetricsFeature::InitialSyncStats& stats,
       std::string const& keysId, uint64_t chunkId, std::string const& lowString,
       std::string const& highString, std::vector<std::string> const& markers);

@@ -42,6 +42,9 @@ Allow moving leaders. (Default: `false`)
 @RESTSTRUCT{moveFollowers,rebalance_compute,boolean,optional,}
 Allow moving followers. (Default: `false`)
 
+@RESTSTRUCT{excludeSystemCollections,rebalance_compute,boolean,optional,}
+Remove system collections from the rebalance plan. (Default: `false`)
+
 @RESTSTRUCT{piFactor,rebalance_compute,number,optional,}
 (Default: `256e6`)
 

@@ -74,7 +74,6 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -1061,34 +1060,6 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                              readOwnWrites);
 }
 
-// read using a local document id
-bool RocksDBCollection::readDocument(transaction::Methods* trx,
-                                     LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result,
-                                     ReadOwnWrites readOwnWrites) const {
-  ::ReadTimeTracker timeTracker(
-      _statistics._readWriteMetrics,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
-
-  bool ret = false;
-
-  if (documentId.isSet()) {
-    std::string* buffer = result.setManaged();
-    rocksdb::PinnableSlice ps(buffer);
-    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
-                                     /*fillCache*/ true, readOwnWrites);
-    if (res.ok()) {
-      if (ps.IsPinned()) {
-        buffer->assign(ps.data(), ps.size());
-      }  // else value is already assigned
-      ret = true;
-    }
-  }
-
-  return ret;
-}
-
 Result RocksDBCollection::insert(transaction::Methods& trx,
                                  RevisionId newRevisionId,
                                  velocypack::Slice newDocument,
@@ -1192,6 +1163,7 @@ Result RocksDBCollection::performUpdateOrReplace(
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx,
+                                 CollectionIndexes::ReadLocked const& indexes,
                                  LocalDocumentId previousDocumentId,
                                  RevisionId previousRevisionId,
                                  velocypack::Slice previousDocument,

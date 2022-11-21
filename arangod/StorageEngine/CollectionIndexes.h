@@ -63,6 +63,9 @@ class CollectionIndexes {
 
     IndexContainerType const& indexes() const;
 
+    size_t size() const noexcept;
+    bool empty() const noexcept;
+
    private:
     RecursiveReadLocker<basics::ReadWriteLock> _locker;
     IndexContainerType const& _indexes;

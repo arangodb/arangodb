@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "Rest/CommonDefines.h"
+#include "StorageEngine/CollectionIndexes.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
 #include "Transaction/MethodsApi.h"
@@ -131,14 +131,19 @@ class Methods {
   typedef Result (*DataSourceRegistrationCallback)(
       LogicalDataSource& dataSource, Methods& trx);
 
+  enum class CallbacksTag {
+    StatusChange = 0,
+    PreCommit = 1,
+  };
+
   /// @brief definition from TransactionState::StatusChangeCallback
   /// @param status the new status of the transaction
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx,
-                             transaction::Status status)>
-      StatusChangeCallback;
+  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
+                                                  transaction::Status status)>;
+  using PreCommitCallback = std::function<void(transaction::Methods& trx)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -147,10 +152,12 @@ class Methods {
       DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
-  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @param callback nullptr and empty functors are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
   bool removeStatusChangeCallback(StatusChangeCallback const* callback);
+
+  bool addPreCommitCallback(PreCommitCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -495,6 +502,7 @@ class Methods {
                                       OperationOptions& options);
 
   Result removeLocalHelper(LogicalCollection& collection,
+                           CollectionIndexes::ReadLocked const& indexes,
                            velocypack::Slice value,
                            LocalDocumentId previousDocumentId,
                            RevisionId previousRevisionId,
@@ -592,6 +600,9 @@ class Methods {
       OperationOptions const& options,
       velocypack::Builder const& replicationData,
       TRI_voc_document_operation_e operation);
+
+  template<CallbacksTag tag, typename Callback>
+  [[nodiscard]] bool addCallbackImpl(Callback const* callback);
 
   /// @brief the state
   std::shared_ptr<TransactionState> _state;

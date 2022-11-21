@@ -53,7 +53,8 @@ namespace arangodb {
 
 // remove all keys that are below first remote key or beyond last remote key
 Result removeKeysOutsideRange(
-    VPackSlice chunkSlice, LogicalCollection* coll, OperationOptions& options,
+    VPackSlice chunkSlice, LogicalCollection* coll,
+    CollectionIndexes::ReadLocked const& indexes, OperationOptions& options,
     ReplicationMetricsFeature::InitialSyncStats& stats) {
   size_t const numChunks = chunkSlice.length();
 
@@ -116,7 +117,7 @@ Result removeKeysOutsideRange(
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
-            r = physical->remove(trx, documentId,
+            r = physical->remove(trx, indexes, documentId,
                                  RevisionId::fromSlice(builder.slice()),
                                  builder.slice(), options);
           }
@@ -162,7 +163,7 @@ Result removeKeysOutsideRange(
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
-            r = physical->remove(trx, documentId,
+            r = physical->remove(trx, indexes, documentId,
                                  RevisionId::fromSlice(builder.slice()),
                                  builder.slice(), options);
           }
@@ -185,6 +186,7 @@ Result removeKeysOutsideRange(
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                         SingleCollectionTransaction* trx,
+                        CollectionIndexes::ReadLocked const& indexes,
                         ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString,
@@ -342,7 +344,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
-            r = physical->remove(*trx, documentId, revisionId,
+            r = physical->remove(*trx, indexes, documentId, revisionId,
                                  tempBuilder->slice(), options);
           }
         }
@@ -410,7 +412,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
         if (r.ok()) {
           TRI_ASSERT(tempBuilder->slice().isObject());
-          r = physical->remove(*trx, documentId, revisionId,
+          r = physical->remove(*trx, indexes, documentId, revisionId,
                                tempBuilder->slice(), options);
         }
       }
@@ -578,7 +580,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
-            r = physical->remove(*trx, documentId, revisionId,
+            r = physical->remove(*trx, indexes, documentId, revisionId,
                                  tempBuilder->slice(), options);
           }
         }
@@ -761,9 +763,17 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
   }
 
+  // acquire a read lock on the collection's list of indexes. this
+  // will prevent concurrent operations from modifying the list of
+  // indexes for the collection while our operation is ongoing.
+  // it does not read-lock the indexes itself for insertion and removal.
+  CollectionIndexes::ReadLocked indexes =
+      col->getPhysical()->readLockedIndexes();
+
   {
     // remove all keys that are below first remote key or beyond last remote key
-    Result res = removeKeysOutsideRange(chunkSlice, col, options, stats);
+    Result res =
+        removeKeysOutsideRange(chunkSlice, col, indexes, options, stats);
 
     if (res.fail()) {
       return res;
@@ -860,8 +870,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     VPackBuilder tempBuilder;
 
     std::function<void(std::string, RevisionId)> compareChunk =
-        [&trx, &physical, &options, &foundLowKey, &markers, &localHash,
-         &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
+        [&trx, &physical, &indexes, &options, &foundLowKey, &markers,
+         &localHash, &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
          &resetChunk, &compareChunk, &lowKey, &highKey, &tempBuilder,
          &stats](std::string const& docKey, RevisionId docRev) {
           int cmp1 = docKey.compare(lowKey);
@@ -884,7 +894,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());
-                r = physical->remove(*trx, documentId, revisionId,
+                r = physical->remove(*trx, indexes, documentId, revisionId,
                                      tempBuilder.slice(), options);
               }
             }
@@ -942,7 +952,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           if (nextChunk) {  // we are out of range, see next chunk
             if (rangeUnequal && currentChunkId < numChunks) {
               Result res =
-                  syncChunkRocksDB(syncer, trx.get(), stats, keysId,
+                  syncChunkRocksDB(syncer, trx.get(), indexes, stats, keysId,
                                    currentChunkId, lowKey, highKey, markers);
               if (!res.ok()) {
                 THROW_ARANGO_EXCEPTION(res);
@@ -985,7 +995,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      Result res = syncChunkRocksDB(syncer, trx.get(), stats, keysId,
+      Result res = syncChunkRocksDB(syncer, trx.get(), indexes, stats, keysId,
                                     currentChunkId, lowKey, highKey, markers);
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);

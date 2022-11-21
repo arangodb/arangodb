@@ -60,7 +60,6 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -106,6 +105,7 @@ std::string const kDataString = "data";
 arangodb::Result removeRevisions(
     arangodb::transaction::Methods& trx,
     arangodb::LogicalCollection& collection,
+    arangodb::CollectionIndexes::ReadLocked const& indexes,
     std::vector<arangodb::RevisionId>& toRemove,
     arangodb::ReplicationMetricsFeature::InitialSyncStats& stats) {
   using arangodb::PhysicalCollection;
@@ -132,8 +132,8 @@ arangodb::Result removeRevisions(
                                         arangodb::ReadOwnWrites::yes);
 
       if (r.ok()) {
-        r = physical->remove(trx, documentId, rid, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexes, documentId, rid,
+                             tempBuilder->slice(), options);
       }
 
       if (r.ok()) {
@@ -153,6 +153,7 @@ arangodb::Result removeRevisions(
 
 arangodb::Result fetchRevisions(
     arangodb::NetworkFeature& netFeature, arangodb::transaction::Methods& trx,
+    arangodb::CollectionIndexes::ReadLocked const& indexes,
     arangodb::DatabaseInitialSyncer::Configuration& config,
     arangodb::Syncer::SyncerState& state,
     arangodb::LogicalCollection& collection, std::string const& leader,
@@ -208,8 +209,8 @@ arangodb::Result fetchRevisions(
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
-        r = physical->remove(trx, documentId, revisionId, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexes, documentId, revisionId,
+                             tempBuilder->slice(), options);
       }
     }
 
@@ -249,6 +250,8 @@ arangodb::Result fetchRevisions(
        config.leader.patchVersion < 1)) {
     queueSize = 1;
   }
+
+  arangodb::velocypack::Builder docBuilder;
 
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
@@ -383,9 +386,13 @@ arangodb::Result fetchRevisions(
 
           // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
-          arangodb::ManagedDocumentResult mdr;
-          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
-                                     mdr, arangodb::ReadOwnWrites::yes)) {
+          docBuilder.clear();
+          if (physical
+                  ->lookupDocument(trx, arangodb::LocalDocumentId(rid.id()),
+                                   docBuilder, /*readCache*/ true,
+                                   /*fillCache*/ true,
+                                   arangodb::ReadOwnWrites::yes)
+                  .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);
             break;
@@ -1800,6 +1807,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     return Result(ex.code());
   }
 
+  // acquire a read lock on the collection's list of indexes. this
+  // will prevent concurrent operations from modifying the list of
+  // indexes for the collection while our operation is ongoing.
+  // it does not read-lock the indexes itself for insertion and removal.
+  CollectionIndexes::ReadLocked indexes =
+      coll->getPhysical()->readLockedIndexes();
+
   // we must be able to read our own writes here - otherwise the end result
   // can be wrong. do not enable NO_INDEXING here!
 
@@ -2107,14 +2121,14 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         }
       }
 
-      res = ::removeRevisions(*trx, *coll, toRemove, stats);
+      res = ::removeRevisions(*trx, *coll, indexes, toRemove, stats);
       if (res.fail()) {
         return res;
       }
       toRemove.clear();
 
-      res = ::fetchRevisions(nf, *trx, _config, _state, *coll, leaderColl,
-                             encodeAsHLC, toFetch, stats);
+      res = ::fetchRevisions(nf, *trx, indexes, _config, _state, *coll,
+                             leaderColl, encodeAsHLC, toFetch, stats);
       if (res.fail()) {
         return res;
       }

@@ -45,7 +45,6 @@ class LocalDocumentId;
 class Index;
 class IndexIterator;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
 
@@ -188,12 +187,6 @@ class PhysicalCollection {
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
-                            ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
-
   /**
    * @brief Perform document insert, may generate a '_key' value
    * If (options.returnNew == false && !options.silent) result might
@@ -219,6 +212,7 @@ class PhysicalCollection {
                          OperationOptions const& options) = 0;
 
   virtual Result remove(transaction::Methods& trx,
+                        CollectionIndexes::ReadLocked const& indexes,
                         LocalDocumentId previousDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,

@@ -33,6 +33,7 @@ class LogicalCollection;
 
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                         SingleCollectionTransaction* trx,
+                        CollectionIndexes::ReadLocked const& indexes,
                         ReplicationMetricsFeature::InitialSyncStats& stats,
                         std::string const& keysId, uint64_t chunkId,
                         std::string const& lowString,
