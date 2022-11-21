@@ -41,7 +41,6 @@ function testSuite() {
       db._create("c0");
     },
     tearDown: function() {
-      try { tasks.unregister(taskCreateLinkInBackground); } catch(e) {}
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -64,7 +63,7 @@ function testSuite() {
           "includeAllFields": true,
           "analyzer": "identity"
       });
-      let properties = db.c0.getIndexes().find(function (idx) { return idx.name === "c0_cached"});
+      let properties = db.c0.getIndexes().find(function (idx) { return idx.name === "c0_cached";});
       if (isEnterprise) {
         assertTrue(properties.fields[0].cache);
         assertTrue(properties.primaryKeyCache);
