@@ -1016,7 +1016,8 @@ IResearchInvertedIndexMetaIndexingContext::
       _hasNested(field->_hasNested),
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
-      _isSearchField(field->_isSearchField) {
+      _isSearchField(field->_isSearchField),
+      _cache(field->_cache) {
   setFeatures(field->_features);
   if (add) {
     addField(*field, false);
@@ -1057,6 +1058,7 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
         current->_isSearchField = f._isSearchField;
+        current->_cache = f._cache;
         current->setFeatures(f._features);
       }
     }

@@ -89,13 +89,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests-iresearch
+    gtest
   arango_tests_basics
   arango_agency
   arango_cluster_engine
   arango_rocksdb
   arango_v8server
   arangoserver
-  gtest
   boost_boost
 )
 
@@ -110,8 +110,9 @@ target_include_directories(arangodbtests-iresearch PRIVATE
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
+#  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
 )
+
 target_link_libraries(arangodbtests-iresearch v8_interface)
 
 if (USE_JEMALLOC)
