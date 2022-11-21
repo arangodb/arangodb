@@ -378,13 +378,9 @@ function clusterRebalanceWithMovesToMakeSuite() {
             };
             const result = arango.POST("/_admin/cluster/moveShard", moveShardJob);
             assertEqual(result.code, 202);
-            let iterationStart = internal.time();
             while (true) {
               if (internal.time() >= end) {
                 assertFalse(true, "test timed out");
-              }
-              if (internal.time() - iterationStart > 15) {
-                assertFalse(true, "timeout waiting for shards being in sync");
               }
               let res2 = arango.GET(`/_admin/cluster/queryAgencyJob?id=${result.id}`);
               if (res2.status === "Finished") {
