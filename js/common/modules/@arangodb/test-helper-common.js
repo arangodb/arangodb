@@ -67,7 +67,7 @@ exports.truncateFailure = function (collection) {
   internal.debugTerminate('crashing server');
 };
 
-exports.getInstanceInfo = function () {
+function getInstanceInfo () {
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -78,6 +78,8 @@ exports.getInstanceInfo = function () {
   }
   return instanceInfo;
 };
+
+exports = {getInstanceInfo}
 
 exports.getServerById = function (id) {
   const instanceInfo = getInstanceInfo();
