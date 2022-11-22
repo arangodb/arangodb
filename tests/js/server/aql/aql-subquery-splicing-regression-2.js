@@ -83,5 +83,6 @@ function subquerySplicingLimitDroppingOuterRowsSuite() {
 }
 
 jsunity.run(subquerySplicingCrashRegressionSuite);
+jsunity.run(subquerySplicingLimitDroppingOuterRowsSuite);
 
 return jsunity.done();
