@@ -1,6 +1,9 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Add serverId parameter to _admin/log/level. Allows to forward the request to
+  other servers.
+
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
 * BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
