@@ -2968,11 +2968,10 @@ static void ProcessStatisticsToV8(
   }
 
   auto context = TRI_IGETC;
-  auto scClkTck = (double)info._scClkTck;
   auto userTime = (double)info._userTime;
   auto systemTime = (double)info._systemTime;
 
-  if (scClkTck != 0.0) {
+  if (info._scClkTck != 0) {
     userTime = userTime / (double)info._scClkTck;
     systemTime = systemTime / (double)info._scClkTck;
   }

@@ -4,6 +4,15 @@ devel
 * Log startup warnings for any experimental, deprecated, obsolete or renamed
   options at startup of arangod or any of the client tools.
 
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution,
+  which is not available on DB-servers in a cluster, and also isn't
+  necessarily available for regular queries on single servers (a V8 context
+  is only available if a query was executed inside Foxx or from inside a JS
+  transaction, but not otherwise).
+
 * Fix setting query memory limit to 0 for certain queries if a global memory
   limit is set, but overriding the memory limit is allowed.
 
