@@ -288,8 +288,13 @@ void PrototypeLeaderState::handlePollResult(
 
 auto PrototypeLeaderState::GuardedData::resetAndApplyEntries(
     std::unique_ptr<EntryIterator> ptr) -> DeferredAction {
+  // Restore the latest valid ongoing state.
+  auto fromIndex = ptr->range().from;
+  core->update(fromIndex);
+  core->resetOngoingStates();
+
+  // Apply the rest of entries to the state machine.
   auto upToIndex = ptr->range().to;
-  core->clearOngoingStates();
   core->applyEntries(std::move(ptr));
   return applyEntries(upToIndex);
 }

@@ -105,7 +105,7 @@ struct PrototypeCore {
 
   auto getReadState() -> StorageType;
   void applyToOngoingState(LogIndex, PrototypeLogEntry const&);
-  void clearOngoingStates();
+  void resetOngoingStates();
 
   [[nodiscard]] auto getLastPersistedIndex() const noexcept -> LogIndex const&;
   [[nodiscard]] auto getLogId() const noexcept -> GlobalLogIdentifier const&;

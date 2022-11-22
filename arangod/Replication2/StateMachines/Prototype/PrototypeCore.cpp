@@ -140,7 +140,12 @@ void PrototypeCore::applyToOngoingState(LogIndex idx,
   _ongoingStates.emplace_back(idx, _store);
 }
 
-void PrototypeCore::clearOngoingStates() { _ongoingStates.clear(); }
+void PrototypeCore::resetOngoingStates() {
+  if (!_ongoingStates.empty()) {
+    _store = _ongoingStates.back().second;
+  }
+  _ongoingStates.clear();
+}
 
 auto PrototypeCore::getLastPersistedIndex() const noexcept -> LogIndex const& {
   return _lastPersistedIndex;
