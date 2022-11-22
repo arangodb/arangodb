@@ -95,7 +95,7 @@ struct FakeLogFollower : replicated_log::ILogFollower {
   explicit FakeLogFollower(std::unique_ptr<replicated_log::LogCore> core)
       : core(std::move(core)) {}
   auto getParticipantId() const noexcept -> ParticipantId const& override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    TRI_ASSERT(false);
   }
   auto appendEntries(replicated_log::AppendEntriesRequest request)
       -> futures::Future<replicated_log::AppendEntriesResult> override {

@@ -100,7 +100,8 @@ auto FakeStorageEngineMethods::insert(
         while (auto entry = iter->next()) {
           auto const res =
               _self.log.try_emplace(entry->logIndex(), entry.value());
-          TRI_ASSERT(res.second);
+          TRI_ASSERT(res.second)
+              << "duplicated log entry " << entry->logIndex();
 
           TRI_ASSERT(entry->logIndex() > lastIndex);
           lastIndex = entry->logIndex();

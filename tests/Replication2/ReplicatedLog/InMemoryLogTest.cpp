@@ -151,7 +151,7 @@ TEST_P(InMemoryLogAppendTest, append_peristed_entries) {
   auto const log = createLogForRangeSingleTerm(range, LogTerm{1});
   auto const toAppend = getPersistedEntriesVector(range.to, length, LogTerm{2});
 
-  auto const newLog = log.append(LoggerContext(Logger::FIXME), toAppend);
+  auto const newLog = log.append(toAppend);
   for (auto idx : LogRange(range.from, range.to + length)) {
     auto memtry = newLog.getEntryByIndex(idx);
     ASSERT_TRUE(memtry.has_value()) << "idx = " << idx;

@@ -264,7 +264,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
           << req.entries.front().entry().logTermIndexPair() << ".";
       return InMemoryLog{req.entries};
     }
-    return dataGuard->_inMemoryLog.append(_loggerContext, req.entries);
+    return dataGuard->_inMemoryLog.append(req.entries);
   });
   auto iter = std::make_unique<InMemoryPersistedLogIterator>(req.entries);
 
@@ -827,6 +827,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStop()
     ADB_PROD_ASSERT(false) << "stopIndex is " << stopIndex
                            << " releaseIndex = " << _releaseIndex
                            << " lowestIndexToKeep = " << _lowestIndexToKeep;
+    FATAL_ERROR_ABORT();
   }
 }
 

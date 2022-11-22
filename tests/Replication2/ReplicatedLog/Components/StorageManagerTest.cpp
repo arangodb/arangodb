@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <immer/flex_vector_transient.hpp>
 
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
@@ -32,37 +33,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
-
-struct StorageEngineMethodsGMock : IStorageEngineMethods {
-  MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
-  MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
-  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, read, (LogIndex),
-              (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, insert,
-              (std::unique_ptr<PersistedLogIterator>, WriteOptions const&),
-              (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeFront,
-              (LogIndex stop, WriteOptions const&), (override));
-  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeBack,
-              (LogIndex start, WriteOptions const&), (override));
-  MOCK_METHOD(std::uint64_t, getObjectId, (), (override));
-  MOCK_METHOD(LogId, getLogId, (), (override));
-  MOCK_METHOD(SequenceNumber, getSyncedSequenceNumber, (), (override));
-  MOCK_METHOD(futures::Future<futures::Unit>, waitForSync, (SequenceNumber),
-              (override));
-};
-
-struct StorageEngineMethodsMockFactory {
-  auto create() -> std::unique_ptr<StorageEngineMethodsGMock> {
-    auto ptr = std::make_unique<StorageEngineMethodsGMock>();
-    lastPtr = ptr.get();
-    return ptr;
-  }
-  auto operator->() noexcept -> StorageEngineMethodsGMock* { return lastPtr; }
-
- private:
-  StorageEngineMethodsGMock* lastPtr{nullptr};
-};
 
 struct StorageManagerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
@@ -120,4 +90,34 @@ TEST_F(StorageManagerTest, transaction_remove_back) {
   auto trx2 = storageManager->transaction();
   auto logBounds = trx2->getLogBounds();
   EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{49}}));
+}
+
+namespace {
+auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
+  InMemoryLog::log_type log;
+  auto transient = log.transient();
+  for (auto idx : range) {
+    transient.push_back(InMemoryLogEntry{
+        PersistingLogEntry{term, idx, LogPayload::createFromString("")}});
+  }
+  return InMemoryLog(transient.persistent());
+}
+}  // namespace
+
+TEST_F(StorageManagerTest, transaction_append) {
+  auto trx = storageManager->transaction();
+  auto f =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}));
+
+  EXPECT_FALSE(f.isReady());
+  executor->runOnce();
+  ASSERT_TRUE(f.isReady());
+
+  EXPECT_EQ(methods.log.size(), 119);  // [1, 120)
+  EXPECT_EQ(methods.log.begin()->first, LogIndex{1});
+  EXPECT_EQ(methods.log.rbegin()->first, LogIndex{119});
+
+  auto trx2 = storageManager->transaction();
+  auto logBounds = trx2->getLogBounds();
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{120}}));
 }

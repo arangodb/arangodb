@@ -46,8 +46,8 @@ struct StorageTransactionMock : IStorageTransaction {
               (noexcept, override));
   MOCK_METHOD(futures::Future<Result>, removeBack, (LogIndex),
               (noexcept, override));
-  MOCK_METHOD(futures::Future<Result>, appendEntries,
-              (LogIndex, InMemoryLogSlice), (noexcept, override));
+  MOCK_METHOD(futures::Future<Result>, appendEntries, (InMemoryLog),
+              (noexcept, override));
 };
 
 struct StorageManagerMock : IStorageManager {

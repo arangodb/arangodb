@@ -23,10 +23,13 @@
 #include "StorageManager.h"
 
 #include <Futures/Future.h>
+
+#include <utility>
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/coro-helper.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
 using namespace arangodb::replication2::replicated_log;
 
@@ -40,37 +43,54 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     return guard->inMemoryLog.getIndexRange();
   }
 
+  template<typename F>
+  auto scheduleOperation(InMemoryLog newLog, F&& fn) noexcept {
+    return manager
+        .scheduleOperationLambda(std::move(guard), std::forward<F>(fn))
+        .thenValue([newLog = std::move(newLog),
+                    &manager = manager](Result res) mutable {
+          if (res.ok()) {
+            manager.guardedData.getLockedGuard()->inMemoryLog =
+                std::move(newLog);
+          }
+          return res;
+        });
+  }
+
   auto removeFront(LogIndex stop) noexcept -> futures::Future<Result> override {
-    struct RemoveFrontAction : StorageManager::StorageOperation {
-      explicit RemoveFrontAction(LogIndex stop) : stop(stop) {}
-      auto run(StorageManager::IStorageEngineMethods& methods) noexcept
-          -> arangodb::futures::Future<arangodb::Result> override {
-        return methods.removeFront(stop, {}).thenValue(
-            [](auto&& res) { return res.result(); });
-      }
-      LogIndex stop;
-    };
-    return manager.scheduleOperation(std::move(guard),
-                                     std::make_unique<RemoveFrontAction>(stop));
+    auto newLog = guard->inMemoryLog.removeFront(stop);
+    return scheduleOperation(
+        std::move(newLog),
+        [stop](StorageManager::IStorageEngineMethods& methods) noexcept {
+          return methods.removeFront(stop, {}).thenValue(
+              [](auto&& res) { return res.result(); });
+        });
   }
 
   auto removeBack(LogIndex start) noexcept -> futures::Future<Result> override {
-    struct RemoveBackAction : StorageManager::StorageOperation {
-      explicit RemoveBackAction(LogIndex start) : start(start) {}
-      auto run(StorageManager::IStorageEngineMethods& methods) noexcept
-          -> arangodb::futures::Future<arangodb::Result> override {
-        return methods.removeBack(start, {}).thenValue(
-            [](auto&& res) { return res.result(); });
-      }
-      LogIndex start;
-    };
-    return manager.scheduleOperation(std::move(guard),
-                                     std::make_unique<RemoveBackAction>(start));
+    auto newLog = guard->inMemoryLog.removeBack(start);
+    return scheduleOperation(
+        std::move(newLog),
+        [start](StorageManager::IStorageEngineMethods& methods) noexcept {
+          return methods.removeBack(start, {}).thenValue(
+              [](auto&& res) { return res.result(); });
+        });
   }
 
-  auto appendEntries(LogIndex appendAfter, InMemoryLogSlice slice) noexcept
+  auto appendEntries(InMemoryLog slice) noexcept
       -> futures::Future<Result> override {
-    return Result{};
+    ADB_PROD_ASSERT(slice.getFirstIndex() ==
+                    guard->inMemoryLog.getLastIndex() + 1);
+    auto iter = slice.getPersistedLogIterator();
+    auto newLog = guard->inMemoryLog.append(slice);
+    return scheduleOperation(
+        std::move(newLog),
+        [slice = std::move(slice), iter = std::move(iter)](
+            StorageManager::IStorageEngineMethods& methods) mutable noexcept {
+          return methods.insert(std::move(iter), {}).thenValue([](auto&& res) {
+            return res.result();
+          });
+        });
   }
 
   explicit StorageManagerTransaction(GuardType guard, StorageManager& manager)
@@ -91,7 +111,9 @@ auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
 
 StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> core)
-    : core(std::move(core)) {}
+    : core(std::move(core)) {
+  inMemoryLog = InMemoryLog::loadFromMethods(*this->core);
+}
 
 auto StorageManager::scheduleOperation(
     GuardType&& guard, std::unique_ptr<StorageOperation> operation)
@@ -99,6 +121,23 @@ auto StorageManager::scheduleOperation(
   auto f = guard->queue.emplace_back(std::move(operation)).promise.getFuture();
   triggerQueueWorker(std::move(guard));
   return f;
+}
+
+template<typename F>
+auto StorageManager::scheduleOperationLambda(GuardType&& guard, F&& fn)
+    -> futures::Future<Result> {
+  struct LambdaOperation : F, StorageOperation {
+    explicit LambdaOperation(F&& fn) : F(std::move(fn)) {}
+    static_assert(std::is_nothrow_invocable_r_v<futures::Future<Result>, F,
+                                                IStorageEngineMethods&>);
+    auto run(IStorageEngineMethods& methods) noexcept
+        -> futures::Future<Result> override {
+      return F::operator()(methods);
+    }
+  };
+
+  return scheduleOperation(
+      std::move(guard), std::make_unique<LambdaOperation>(std::forward<F>(fn)));
 }
 
 void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {

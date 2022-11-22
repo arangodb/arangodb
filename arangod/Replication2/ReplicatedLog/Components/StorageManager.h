@@ -44,6 +44,8 @@ struct StorageManager : IStorageManager,
  private:
   friend struct StorageManagerTransaction;
 
+  struct GuardedData;
+
   struct StorageOperation {
     virtual ~StorageOperation() = default;
     virtual auto run(IStorageEngineMethods& methods) noexcept
@@ -71,6 +73,8 @@ struct StorageManager : IStorageManager,
 
   auto scheduleOperation(GuardType&&, std::unique_ptr<StorageOperation>)
       -> futures::Future<Result>;
+  template<typename F>
+  auto scheduleOperationLambda(GuardType&&, F&&) -> futures::Future<Result>;
   void triggerQueueWorker(GuardType&&) noexcept;
 };
 

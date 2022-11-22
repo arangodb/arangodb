@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
@@ -126,13 +127,6 @@ auto replicated_log::InMemoryLog::getLastIndexOfTerm(
   } else {
     return std::nullopt;
   }
-}
-
-auto replicated_log::InMemoryLog::release(LogIndex stop) const
-    -> replicated_log::InMemoryLog {
-  auto [from, to] = getIndexRange();
-  auto newLog = slice(stop, to);
-  return InMemoryLog(newLog);
 }
 
 replicated_log::InMemoryLog::InMemoryLog(log_type log)
@@ -262,6 +256,11 @@ auto replicated_log::InMemoryLog::getInternalIteratorRange(LogIndex fromIdx,
   return std::make_unique<InMemoryPersistedLogIterator>(std::move(log));
 }
 
+auto replicated_log::InMemoryLog::getPersistedLogIterator() const
+    -> std::unique_ptr<PersistedLogIterator> {
+  return std::make_unique<InMemoryPersistedLogIterator>(_log);
+}
+
 auto replicated_log::InMemoryLog::getIteratorRange(LogIndex fromIdx,
                                                    LogIndex toIdx) const
     -> std::unique_ptr<LogRangeIterator> {
@@ -284,8 +283,18 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
   _log = _log.push_back(std::move(entry));
 }
 
-auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
-                                         log_type entries) const
+auto replicated_log::InMemoryLog::append(InMemoryLog const& entries) const
+    -> InMemoryLog {
+  ADB_PROD_ASSERT(entries.empty() || getNextIndex() == entries.getFirstIndex())
+      << std::boolalpha << "entries.empty() = " << entries.empty()
+      << ", front = " << entries.getFirstIndex()
+      << ", getNextIndex = " << getNextIndex();
+  auto transient = _log.transient();
+  transient.append(entries._log.transient());
+  return InMemoryLog{std::move(transient).persistent(), _first};
+}
+
+auto replicated_log::InMemoryLog::append(log_type entries) const
     -> InMemoryLog {
   ADB_PROD_ASSERT(entries.empty() ||
                   getNextIndex() == entries.front().entry().logIndex())
@@ -298,8 +307,7 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 }
 
 auto replicated_log::InMemoryLog::append(
-    LoggerContext const& logContext, log_type_persisted const& entries) const
-    -> InMemoryLog {
+    log_type_persisted const& entries) const -> InMemoryLog {
   ADB_PROD_ASSERT(entries.empty() ||
                   getNextIndex() == entries.front().logIndex())
       << std::boolalpha << "entries.empty() = " << entries.empty()
@@ -314,9 +322,26 @@ auto replicated_log::InMemoryLog::append(
 
 auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(
     LogIndex until) const -> InMemoryLog {
+  return removeBack(until + 1);
+}
+
+auto replicated_log::InMemoryLog::removeBack(LogIndex until) const
+    -> InMemoryLog {
   ADB_PROD_ASSERT(_first <= (until + 1))
       << "first = " << _first << " until = " << until;
-  return InMemoryLog{_log.take(until.value - _first.value + 1), _first};
+  return InMemoryLog{_log.take(until.value - _first.value - 1), _first};
+}
+
+auto replicated_log::InMemoryLog::removeFront(LogIndex stop) const
+    -> replicated_log::InMemoryLog {
+  auto [from, to] = getIndexRange();
+  auto newLog = slice(stop, to);
+  return InMemoryLog(newLog);
+}
+
+auto replicated_log::InMemoryLog::release(LogIndex stop) const
+    -> replicated_log::InMemoryLog {
+  return removeFront(stop);
 }
 
 auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
@@ -384,6 +409,16 @@ auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
 auto replicated_log::InMemoryLog::loadFromLogCore(
     replicated_log::LogCore const& core) -> replicated_log::InMemoryLog {
   auto iter = core.read(LogIndex{0});
+  auto log = log_type::transient_type{};
+  while (auto entry = iter->next()) {
+    log.push_back(InMemoryLogEntry(std::move(entry).value()));
+  }
+  return InMemoryLog{log.persistent()};
+}
+
+auto replicated_log::InMemoryLog::loadFromMethods(
+    replicated_state::IStorageEngineMethods& methods) -> InMemoryLog {
+  auto iter = methods.read(LogIndex{0});
   auto log = log_type::transient_type{};
   while (auto entry = iter->next()) {
     log.push_back(InMemoryLogEntry(std::move(entry).value()));
