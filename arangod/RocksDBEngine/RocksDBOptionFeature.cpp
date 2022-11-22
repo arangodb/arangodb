@@ -971,7 +971,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.enable-blob-files",
-                  "enable blob files for documents column family",
+                  "Enable blob files for the documents column family.",
                   new BooleanParameter(&_enableBlobFiles),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
