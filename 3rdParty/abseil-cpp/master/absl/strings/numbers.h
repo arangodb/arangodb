@@ -23,12 +23,10 @@
 #ifndef ABSL_STRINGS_NUMBERS_H_
 #define ABSL_STRINGS_NUMBERS_H_
 
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-
 #ifdef _MSC_VER
 #include <intrin.h>
+#elif defined(__SSSE3__)
+#include <tmmintrin.h>
 #endif
 
 #include <cstddef>
