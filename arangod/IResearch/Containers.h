@@ -301,6 +301,8 @@ class UnorderedRefKeyMap
     const KeyType& key() const noexcept { return _itr->first; }
     const V& value() const noexcept { return _itr->second.second; }
 
+    using iterator_category = std::forward_iterator_tag;
+
    private:
     friend UnorderedRefKeyMap;
     typename MapType::const_iterator _itr;
