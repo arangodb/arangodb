@@ -1,6 +1,10 @@
 devel
 -----
 
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
 * Log startup warnings for any experimental, deprecated, obsolete or renamed
   options at startup of arangod or any of the client tools.
 
