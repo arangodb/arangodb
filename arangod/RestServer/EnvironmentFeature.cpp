@@ -74,6 +74,8 @@ std::string_view trimProcName(std::string_view content) {
 using namespace arangodb::basics;
 
 namespace arangodb {
+class OptionsCheckFeature;
+class SharedPRNGFeature;
 
 EnvironmentFeature::EnvironmentFeature(Server& server)
     : ArangodFeature{server, *this} {
@@ -82,6 +84,7 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
 
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
+  startsAfter<OptionsCheckFeature>();
   startsAfter<SharedPRNGFeature>();
 }
 

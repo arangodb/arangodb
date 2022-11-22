@@ -1,6 +1,9 @@
 devel
 -----
 
+* Log startup warnings for any experimental, deprecated, obsolete or renamed
+  options at startup of arangod or any of the client tools.
+
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
   Traversal PRUNE expressions containing JavaScript user-defined functions
   (UDFs) are now properly rejected in single server and cluster mode.
