@@ -1011,8 +1011,8 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.blob-file-size",
-                  "size limit for blob files in the documents column family "
-                  "(in bytes, requires `--rocksdb.enable-blob-files`)",
+                  "The size limit for blob files in the documents column "
+                  "family (in bytes). Requires `--rocksdb.enable-blob-files`.",
                   new UInt64Parameter(&_blobFileSize),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
