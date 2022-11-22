@@ -143,12 +143,13 @@ struct InvertedIndexField {
   bool _overrideValue{false};
   /// @brief if the field is with expansion - calculated value
   bool _hasExpansion{false};
+#ifdef USE_ENTERPRISE
+  // is cached column
+  bool _cache{false};
+#endif
   /// @brief Field is array/value mix as for arangosearch views.
   ///        Field is excluded from inverted index optimizations for filter!
   bool _isSearchField{false};
-#ifdef USE_ENTERPRISE
-  bool _cache{false};
-#endif
 };
 
 struct IResearchInvertedIndexMeta;

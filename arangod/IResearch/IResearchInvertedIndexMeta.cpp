@@ -1014,8 +1014,10 @@ IResearchInvertedIndexMetaIndexingContext::
       _hasNested(field->_hasNested),
       _includeAllFields(field->_includeAllFields),
       _trackListPositions(field->_trackListPositions),
-      _isSearchField(field->_isSearchField),
-      _cache(field->_cache) {
+#ifdef USE_ENTERPRISE
+      _cache(field->_cache),
+#endif
+      _isSearchField(field->_isSearchField) {
   setFeatures(field->_features);
   if (add) {
     addField(*field, false);
