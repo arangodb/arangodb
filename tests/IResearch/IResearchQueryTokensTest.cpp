@@ -49,11 +49,12 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
     if (slice.isString()) {
-      return std::make_unique<TestDelimAnalyzer>(arangodb::iresearch::getStringRef(slice));
+      return std::make_unique<TestDelimAnalyzer>(
+          arangodb::iresearch::getStringRef(slice));
     } else if (slice.isObject() && slice.hasKey("args") &&
                slice.get("args").isString()) {
       return std::make_unique<TestDelimAnalyzer>(
-                arangodb::iresearch::getStringRef(slice.get("args")));
+          arangodb::iresearch::getStringRef(slice.get("args")));
     } else {
       return nullptr;
     }

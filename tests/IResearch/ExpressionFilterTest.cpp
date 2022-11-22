@@ -173,8 +173,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_field_collector();
       }
 
-      return std::make_unique<custom_sort::prepared::field_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
     virtual irs::ScoreFunction prepare_scorer(
@@ -213,8 +212,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_term_collector();
       }
 
-      return std::make_unique<custom_sort::prepared::term_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::term_collector>(sort_);
     }
 
    private:
