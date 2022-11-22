@@ -131,7 +131,6 @@ set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
-set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 ################################################################################
 ## Velocypack

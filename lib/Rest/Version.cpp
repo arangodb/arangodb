@@ -46,6 +46,8 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
+#include "boost/version.hpp"
+
 #include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
@@ -364,11 +366,12 @@ std::string Version::getServerVersion() {
 
 // get BOOST version
 std::string Version::getBoostVersion() {
-#ifdef ARANGODB_BOOST_VERSION
-  return std::string(ARANGODB_BOOST_VERSION);
-#else
-  return std::string();
-#endif
+  auto major = BOOST_VERSION / 100000;
+  auto minor = BOOST_VERSION / 100 % 1000;
+  auto patch = BOOST_VERSION % 100;
+
+  return std::to_string(major) + "." + std::to_string(minor) + "." +
+         std::to_string(patch);
 }
 
 // get boost reactor type
