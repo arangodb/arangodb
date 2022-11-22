@@ -998,8 +998,8 @@ void RocksDBOptionFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.min-blob-size",
-          "minimum size threshold for storing blobs in the documents column "
-          "family (in bytes, requires `--rocks.enable-blob-files`)",
+          "The minimum size threshold for storing blobs in the documents "
+          "column family (in bytes). Requires `--rocks.enable-blob-files`.",
           new UInt64Parameter(&_minBlobSize),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Experimental,
