@@ -984,7 +984,8 @@ void RocksDBOptionFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.enable-blob-cache",
-          "enable caching of blobs in block cache for documents column family",
+          "Enable caching of blobs in the block cache for the documents "
+          "column family.",
           new BooleanParameter(&_enableBlobCache),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Experimental,
