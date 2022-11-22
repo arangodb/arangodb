@@ -37,9 +37,9 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <atomic>
+#include <filesystem>
 
 namespace arangodb {
 
@@ -308,7 +308,7 @@ class IResearchDataStore {
     irs::directory::ptr _directory;
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
-    irs::utf8_path _path;
+    std::filesystem::path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
@@ -520,7 +520,7 @@ class IResearchDataStore {
 #endif
 };
 
-irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchDataStore const& link);
 
 }  // namespace iresearch

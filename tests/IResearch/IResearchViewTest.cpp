@@ -28,7 +28,7 @@
 #include "analysis/analyzers.hpp"
 #include "search/scorers.hpp"
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "utils/lz4compression.hpp"
 
 #include "velocypack/Iterator.h"
@@ -102,13 +102,11 @@ struct DocIdScorer : public irs::sort {
   }
 
   static ptr make(std::string_view) {
-    PTR_NAMED(DocIdScorer, ptr);
-    return ptr;
+    return std::make_unique<DocIdScorer>();
   }
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
   virtual sort::prepared::ptr prepare() const override {
-    PTR_NAMED(Prepared, ptr);
-    return ptr;
+    return std::make_unique<Prepared>();
   }
 
   struct Prepared : public irs::PreparedSortBase<void> {
@@ -1890,7 +1888,7 @@ TEST_F(IResearchViewTest, test_drop) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
@@ -1929,7 +1927,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
@@ -1967,7 +1965,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   arangodb::Result res = view->properties(links->slice(), true, true);
   EXPECT_TRUE(true == res.ok());
   EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -4203,7 +4201,7 @@ TEST_F(IResearchViewTest, test_open) {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                     testDBInfo(server.server()));
     std::string dataPath =
-        ((((irs::utf8_path() /= testFilesystemPath) /=
+        ((((std::filesystem::path() /= testFilesystemPath) /=
            std::string("databases")) /=
           (std::string("database-") + std::to_string(vocbase.id()))) /=
          std::string("arangosearch-123"))

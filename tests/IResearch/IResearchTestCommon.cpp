@@ -73,8 +73,7 @@ auto TestAnalyzer::make(std::string_view args) -> ptr {
   auto slice = arangodb::iresearch::slice(args);
   if (slice.isNull()) throw std::exception();
   if (slice.isNone()) return nullptr;
-  PTR_NAMED(TestAnalyzer, ptr);
-  return ptr;
+  return std::make_unique<TestAnalyzer>();
 }
 
 irs::attribute* TestAnalyzer::get_mutable(

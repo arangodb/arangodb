@@ -1678,7 +1678,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-    auto ptr = irs::memory::make_unique<IResearchTrxState>(
+    auto ptr = std::make_unique<IResearchTrxState>(
         std::move(linkLock), *(_dataStore._writer));
 
     ctx = ptr.get();
@@ -2103,9 +2103,9 @@ void IResearchDataStore::initClusterMetrics() const {
 ///        <DatabasePath>/<IResearchLink::type()>-<link id>
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchDataStore const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
+  std::filesystem::path dataPath(dbPathFeature.directory());
 
   dataPath /= "databases";
   dataPath /= "database-";

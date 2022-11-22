@@ -46,7 +46,7 @@
 #include "index/index_writer.hpp"
 #include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <absl/strings/str_cat.h>
 
@@ -941,7 +941,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     void const* key = reinterpret_cast<uint8_t const*>(this) + 1;
     auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
     if (!ctx) {
-      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
+      auto ptr = std::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
       state.cookie(key, std::move(ptr));
 
