@@ -30,12 +30,12 @@
 #include "IResearch/IResearchViewSort.h"
 
 #include <velocypack/Iterator.h>
-#include <utils/utf8_path.hpp>
+#include <filesystem>
 
 TEST(IResearchComparerTest, test_comparer_single_entry) {
   arangodb::tests::init(true);
 
-  irs::utf8_path resource;
+  std::filesystem::path resource;
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 
@@ -86,7 +86,7 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
 TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   arangodb::tests::init(true);
 
-  irs::utf8_path resource;
+  std::filesystem::path resource;
   resource /= std::string_view(arangodb::tests::testResourceDir);
   resource /= std::string_view("simple_sequential.json");
 

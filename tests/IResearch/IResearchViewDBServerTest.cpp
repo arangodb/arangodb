@@ -54,7 +54,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "common.h"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "velocypack/Parser.h"
 
 #include "IResearch/MakeViewSnapshot.h"
@@ -385,7 +385,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     std::string dataPath =
-        (((irs::utf8_path() /= server.testFilesystemPath()) /=
+        (((std::filesystem::path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
             .string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(

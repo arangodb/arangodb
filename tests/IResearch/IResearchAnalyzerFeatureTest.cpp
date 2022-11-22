@@ -28,7 +28,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
@@ -137,10 +137,13 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 
   static ptr make(std::string_view args) {
     auto slice = arangodb::iresearch::slice(args);
-    if (slice.isNull()) throw std::exception();
-    if (slice.isNone()) return nullptr;
-    PTR_NAMED(ReNormalizingAnalyzer, ptr);
-    return ptr;
+    if (slice.isNull()) {
+      throw std::exception();
+    }
+    if (slice.isNone()) {
+      return nullptr;
+    }
+    return std::make_unique<ReNormalizingAnalyzer>();
   }
 
   // test implementation
@@ -186,8 +189,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(std::string_view args) {
-    PTR_NAMED(TestTokensTypedAnalyzer, ptr, args);
-    return ptr;
+    return std::make_unique<TestTokensTypedAnalyzer>(args);
   }
 
   static bool normalize(std::string_view args, std::string& out) {

@@ -199,7 +199,6 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
-  using MetaTraits = IndexMetaTraits<IndexMetaStruct>;
   void setRoot();
 
   enum class NestedNullsResult { kNone, kContinue, kReturn };
