@@ -233,11 +233,11 @@ struct IResearchLinkMeta : public FieldMeta {
     bool _storedValues;
     bool _sortCompression;
     bool _collectionName;
-    bool _version;
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
 #endif
+    bool _version;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
