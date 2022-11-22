@@ -715,6 +715,9 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
 
             db._create("failCollection");
             for (let i = 1; i <= failDefinitions.length; i++) {
+                if (i === 1 && isEnterprise) {
+                    continue;
+                }
                 let d = failDefinitions[i - 1];
                 try {
                     db.failCollection.ensureIndex(d);
@@ -966,8 +969,6 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
     };
 }
 
-if (!isEnterprise) {
-    jsunity.run(IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity);
-}
+jsunity.run(IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity);
 
 return jsunity.done();
