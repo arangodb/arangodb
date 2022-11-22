@@ -56,6 +56,7 @@ struct RocksDBLogPersistor;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
+class RocksDBIndexCacheRefiller;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -249,6 +250,10 @@ class RocksDBEngine final : public StorageEngine {
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
+  void trackIndexCacheRefill(
+      std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
+      std::vector<std::string> keys);
+
   // wal in recovery
   RecoveryState recoveryState() noexcept override;
 
@@ -380,6 +385,8 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
+
+  bool refillIndexCaches() const noexcept;
 
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -522,6 +529,8 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Local wal access abstraction
   std::unique_ptr<RocksDBWalAccess> _walAccess;
 
+  std::unique_ptr<RocksDBIndexCacheRefiller> _indexRefiller;
+
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
@@ -605,6 +614,8 @@ class RocksDBEngine final : public StorageEngine {
 
   // whether or not to issue range delete markers in the write-ahead log
   bool _useRangeDeleteInWal;
+
+  bool _refillIndexCaches;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive

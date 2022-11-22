@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -60,6 +61,8 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "Logger/LogMacros.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -118,6 +121,8 @@ Result RocksDBEdgeIndexWarmupTask::run() {
 
 namespace arangodb {
 class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
+  friend class RocksDBEdgeIndex;
+
   // used for covering edge index lookups.
   // holds both the indexed attribute (_from/_to) and the opposite
   // attribute (_to/_from). Avoids copying the data and is thus
@@ -525,6 +530,11 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
               .engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
+      _forceCacheRefill(collection.vocbase()
+                            .server()
+                            .getFeature<EngineSelectorFeature>()
+                            .engine<RocksDBEngine>()
+                            .refillIndexCaches()),
       _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString
@@ -582,7 +592,7 @@ void RocksDBEdgeIndex::toVelocyPack(
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
                                 velocypack::Slice doc,
-                                OperationOptions const& /*options*/,
+                                OperationOptions const& options,
                                 bool /*performChecks*/) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
@@ -609,6 +619,11 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
+
+    if (_cache != nullptr && (_forceCacheRefill || options.refillIndexCaches)) {
+      RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+          _collection.id(), id(), fromToRef);
+    }
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -650,6 +665,27 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   }
 
   return res;
+}
+
+void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
+                                   std::vector<std::string> const& keys) {
+  if (_cache == nullptr) {
+    return;
+  }
+
+  VPackBuilder keysBuilder;
+
+  // intentionally empty
+  keysBuilder.add(VPackSlice::emptyArraySlice());
+
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+  RocksDBEdgeIndexLookupIterator it(monitor, &_collection, &trx, this,
+                                    std::move(keysBuilder), _cache,
+                                    ReadOwnWrites::no);
+
+  for (auto const& key : keys) {
+    it.lookupInRocksDB(VPackStringRef(key.data(), key.size()));
+  }
 }
 
 /// @brief checks whether the index supports the condition

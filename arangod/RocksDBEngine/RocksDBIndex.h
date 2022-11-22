@@ -134,6 +134,9 @@ class RocksDBIndex : public Index {
                         velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
+  virtual void refillCache(transaction::Methods& trx,
+                           std::vector<std::string> const& keys);
+
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
   rocksdb::Comparator const* comparator() const;

@@ -1585,7 +1585,9 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
         .param(StaticStrings::MergeObjectsString,
                (options.mergeObjects ? "true" : "false"))
         .param(StaticStrings::SkipDocumentValidation,
-               (options.validate ? "false" : "true"));
+               (options.validate ? "false" : "true"))
+        .param(StaticStrings::RefillIndexCachesString,
+               (options.refillIndexCaches ? "true" : "false"));
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
@@ -2552,6 +2554,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
              (options.ignoreRevs ? "true" : "false"))
       .param(StaticStrings::SkipDocumentValidation,
              (options.validate ? "false" : "true"))
+      .param(StaticStrings::RefillIndexCachesString,
+             (options.refillIndexCaches ? "true" : "false"))
       .param(StaticStrings::IsRestoreString,
              (options.isRestore ? "true" : "false"));
 

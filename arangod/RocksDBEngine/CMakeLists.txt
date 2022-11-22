@@ -14,6 +14,7 @@ add_library(arango_rocksdb STATIC
   RocksDBGeoIndex.cpp
   RocksDBIncrementalSync.cpp
   RocksDBIndex.cpp
+  RocksDBIndexCacheRefiller.cpp
   RocksDBIndexFactory.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp

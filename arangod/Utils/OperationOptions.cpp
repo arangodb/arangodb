@@ -25,15 +25,14 @@
 
 #include "Basics/debugging.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <ostream>
+#endif
+
 using namespace arangodb;
 
-OperationOptions::OperationOptions(ExecContext const& context)
-    : OperationOptions() {
-  _context = &context;
-}
-
 namespace {
-const char* indexOpModeString(IndexOperationMode mode) {
+std::string_view indexOpModeString(IndexOperationMode mode) noexcept {
   switch (mode) {
     case IndexOperationMode::normal:
       return "normal";
@@ -47,27 +46,39 @@ const char* indexOpModeString(IndexOperationMode mode) {
 }
 }  // namespace
 
+OperationOptions::OperationOptions(ExecContext const& context)
+    : OperationOptions() {
+  _context = &context;
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::ostream& arangodb::operator<<(std::ostream& os,
                                    OperationOptions const& ops) {
   // clang-format off
-  os << "OperationOptions : " << std::boolalpha
+  os << "OperationOptions: " << std::boolalpha
      << "{ isSynchronousReplicationFrom : '" << ops.isSynchronousReplicationFrom << "'"
-     << ", indexOperationMode : " << ::indexOpModeString(ops.indexOperationMode)
-     << ", waitForSync : " << ops.waitForSync
-     << ", validate : " << ops.validate
-     << ", keepNull : " << ops.keepNull
-     << ", mergeObjects : " << ops.mergeObjects
-     << ", silent : " << ops.silent
-     << ", ignoreRevs : " << ops.ignoreRevs
-     << ", returnOld :" << ops.returnOld
-     << ", returnNew : "  << ops.returnNew
-     << ", isRestore : " << ops.isRestore
-     << ", overwriteMode : " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
-     << ", canDisableIndexing : " << ops.canDisableIndexing
+     << ", indexOperationMode: " << ::indexOpModeString(ops.indexOperationMode)
+     << ", overwriteMode: " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
+     << ", waitForSync: " << ops.waitForSync
+     << ", validate: " << ops.validate
+     << ", keepNull: " << ops.keepNull
+     << ", mergeObjects: " << ops.mergeObjects
+     << ", silent: " << ops.silent
+     << ", ignoreRevs: " << ops.ignoreRevs
+     << ", returnOld:" << ops.returnOld
+     << ", returnNew: "  << ops.returnNew
+     << ", isRestore: " << ops.isRestore
+     << ", checkUniqueConstraintsInPreflight: " << ops.checkUniqueConstraintsInPreflight
+     << ", truncateCompact: " << ops.truncateCompact
+     << ", documentCallFromAql: " << ops.documentCallFromAql
+     << ", canDisableIndexing: " << ops.canDisableIndexing
+     << ", refillIndexCaches: " << ops.refillIndexCaches
+     << ", allowDirtyReads: " << ops.allowDirtyReads
      << " }" << std::endl;
   // clang-format on
   return os;
 }
+#endif
 
 // get associate execution context
 ExecContext const& OperationOptions::context() const {
@@ -78,8 +89,8 @@ ExecContext const& OperationOptions::context() const {
 }
 
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(
-    OperationOptions::OverwriteMode mode) {
+std::string_view OperationOptions::stringifyOverwriteMode(
+    OperationOptions::OverwriteMode mode) noexcept {
   switch (mode) {
     case OverwriteMode::Unknown:
       return "unknown";
@@ -97,7 +108,7 @@ char const* OperationOptions::stringifyOverwriteMode(
 }
 
 OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(
-    std::string_view value) {
+    std::string_view value) noexcept {
   if (value == "conflict") {
     return OverwriteMode::Conflict;
   }

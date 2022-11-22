@@ -933,7 +933,7 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore", "refillIndexCaches"].forEach(function(key) {
       if (options[key]) {
         url = appendBoolParameter(url, key, options[key]);
       }
@@ -1199,6 +1199,9 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   if (options.returnNew) {
     url = appendBoolParameter(url, 'returnNew', options.returnNew);
   }
+  if (options.refillIndexCaches) {
+    url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
+  }
   if (options.silent) {
     url = appendBoolParameter(url, 'silent', options.silent);
   }
@@ -1324,6 +1327,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
   if (options.returnNew) {
     url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  }
+  if (options.refillIndexCaches) {
+    url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
   }
   if (options.silent) {
     url = appendBoolParameter(url, 'silent', options.silent);
