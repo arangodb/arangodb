@@ -1024,8 +1024,8 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.blob-file-starting-level",
-                  "level from which on to use blob files in the documents "
-                  "column family (requires `--rocksdb.enable-blob-files`)",
+                  "The level from which on to use blob files in the documents "
+                  "column family. Requires `--rocksdb.enable-blob-files`.",
                   new UInt32Parameter(&_blobFileStartingLevel),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
