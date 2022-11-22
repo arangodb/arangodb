@@ -44,7 +44,7 @@ void OptionsCheckFeature::prepare() {
     }
 
     LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
-        << "please be sure to read the manual section about changed options";
+        << "please read the release notes about changed options";
   }
 
   options->walk(
