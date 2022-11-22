@@ -24,7 +24,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");
-let analyzers = require("@arangodb/analyzers");
 let db = arangodb.db;
 let internal = require("internal");
 let jsunity = require("jsunity");
@@ -41,12 +40,15 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         try { db._dropDatabase(dbName); } catch (err) { }
     };
 
-    var assertInvertedIndexCreation = function (collName, inedxDefinition, isNewlyCreated = true) {
-        var collection = db._collection(collName);
-        var res;
-        assertTrue(collection != null);
-        res = collection.ensureIndex(inedxDefinition);
+    let assertInvertedIndexCreation = function (collName, indexDefinition, isNewlyCreated = true) {
+        let collection = db._collection(collName);
+        assertNotEqual(collection, null);
+        let res;
+        res = collection.ensureIndex(indexDefinition);
         assertEqual(res["isNewlyCreated"], isNewlyCreated);
+        // SEARCH-385
+        res = collection.ensureIndex(indexDefinition);
+        assertEqual(res["isNewlyCreated"], false);
     };
 
     return {
@@ -56,7 +58,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            var analyzers = require("@arangodb/analyzers");
+            const analyzers = require("@arangodb/analyzers");
             analyzers.save("AqlAnalyzerRound", "aql", { queryString: "RETURN ROUND(@param)" }, ["frequency", "norm", "position"]);
             analyzers.save("myDelimiterAnalyzer", "delimiter", { delimiter: " " }, ["frequency", "norm", "position"]);
             analyzers.save("AqlAnalyzerHash", "aql", { queryString: "return to_hex(to_string(@param))" }, []);
@@ -74,7 +76,6 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
 
 
         testCreation: function () {
-
             // CREATE INDEXES
             {
                 // useless index
@@ -648,7 +649,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         },
 
         testNegativeInvertedIndexCreation: function () {
-            var failDefinitions = [
+            let failDefinitions = [
                 {
                     'type': 'inverted', 'name': 'nest0', // nested fields - EE only
                     'fields': [
@@ -713,11 +714,11 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             ];
 
             db._create("failCollection");
-            for (let i = 0; i < failDefinitions.length; i++) {
-                let d = failDefinitions[i];
+            for (let i = 1; i <= failDefinitions.length; i++) {
+                let d = failDefinitions[i - 1];
                 try {
                     db.failCollection.ensureIndex(d);
-                    assertTrue(false);
+                    assertFalse(i);
                 } catch (e) {
                     assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
                     assertEqual(db.failCollection.indexes().length, 1);
@@ -726,8 +727,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         },
 
         testInvertedIndexRegressions: function () {
-
-            var testColl = db._create("testColl", { replicationFactor: 1, writeConcern: 1, numberOfShards: 1 });
+            let testColl = db._create("testColl", { replicationFactor: 1, writeConcern: 1, numberOfShards: 1 });
             for (let i = 0; i < 5; i++) {
                 let cv_field = String(i) + String(i + 1);
                 testColl.save({ a: "foo", b: "bar", c: i, cv_field: cv_field });
@@ -780,8 +780,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         },
 
         testNegativeSearchAliasCreation: function () {
-
-            var failDefinitions = [
+            let failDefinitions = [
                 { indexes: [{ 'collection': 'wrong_collection', 'index': 'c0_i0', 'operation': 'add' }] }, // not existing collection
                 { indexes: [{ 'collection': 'c0', 'index': 'wrong_index' }] }, // not existing index
                 {    // index duplication
@@ -952,12 +951,12 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                     ]
                 }
             ];
-            for (let i = 0; i < failDefinitions.length; i++) {
-                let d = failDefinitions[i];
-                let viewName = `failed${i}`;
+            for (let i = 1; i <= failDefinitions.length; i++) {
+                let d = failDefinitions[i - 1];
+                let viewName = `failed${i - 1}`;
                 try {
                     db._createView(viewName, 'search-alias', d);
-                    assertTrue(false);
+                    assertFalse(i);
                 } catch (e) {
                     assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
                     assertEqual(db._view(viewName), null);
