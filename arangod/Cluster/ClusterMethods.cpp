@@ -71,6 +71,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -1081,27 +1082,66 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
+  std::vector<std::string> shards;
+
+  auto addShards = [](std::vector<std::string>& result,
+                      std::shared_ptr<LogicalCollection> const& collection) {
+    if (collection == nullptr) {
+      return;
+    }
+    auto shardIds = collection->shardIds();
+    for (auto const& it : *shardIds) {
+      result.emplace_back(it.first);
+    }
+  };
+
+  addShards(shards, collinfo);
+
+#ifdef USE_ENTERPRISE
+  if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
+    // SmartGraph galore
+    auto theEdge = dynamic_cast<arangodb::VirtualClusterSmartEdgeCollection*>(
+        collinfo.get());
+    if (theEdge != nullptr) {
+      CollectionNameResolver resolver(collinfo->vocbase());
+
+      std::string name =
+          resolver.getCollectionNameCluster(theEdge->getLocalCid());
+      auto c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+
+      name = resolver.getCollectionNameCluster(theEdge->getFromCid());
+      c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+
+      name = resolver.getCollectionNameCluster(theEdge->getToCid());
+      c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+    }
+  }
+#endif
+  // now make shards in vector unique
+  std::sort(shards.begin(), shards.end());
+  shards.erase(std::unique(shards.begin(), shards.end()), shards.end());
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-
   network::RequestOptions opts;
   opts.database = dbname;
   opts.timeout = network::Timeout(300.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(shards->size());
+  futures.reserve(shards.size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  for (auto const& p : *shards) {
+  for (auto const& p : shards) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     auto future = network::sendRequestRetry(
-        pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) +
+        pool, "shard:" + p, fuerte::RestVerb::Put,
+        "/_api/collection/" + StringUtils::urlEncode(p) +
             "/loadIndexesIntoMemory",
         std::move(buffer), opts);
     futures.emplace_back(std::move(future));

@@ -39,10 +39,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
-
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
@@ -443,8 +439,7 @@ class Index {
   void expandInSearchValues(velocypack::Slice const,
                             velocypack::Builder&) const;
 
-  virtual void warmup(transaction::Methods* trx,
-                      std::shared_ptr<basics::LocalTaskQueue> queue);
+  virtual Result scheduleWarmup();
 
   static size_t sortWeight(aql::AstNode const* node);
 
