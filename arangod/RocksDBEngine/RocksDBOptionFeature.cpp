@@ -1051,9 +1051,9 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.blob-garbage-collection-force-threshold",
-                  "garbage threshold for scheduling targeted compactions for "
-                  "oldest blob files in the documents column family (requires "
-                  "`--rocksdb.enable-blob-files`)",
+                  "The garbage threshold for scheduling targeted compactions "
+                  "for the oldest blob files in the documents column family. "
+                  "Requires `--rocksdb.enable-blob-files`.",
                   new DoubleParameter(&_blobGarbageCollectionForceThreshold,
                                       1.0, 0.0, 1.0),
                   arangodb::options::makeFlags(
