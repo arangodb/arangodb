@@ -64,7 +64,7 @@ void OptionsCheckFeature::prepare() {
           LOG_TOPIC("6843e", WARN, Logger::STARTUP)
               << "obsolete option '" << option.displayName()
               << "' used in configuration. "
-              << "setting this option will not have any effect.";
+              << "Setting this option does not have any effect.";
         }
       },
       true, true);
