@@ -1083,8 +1083,8 @@ void RocksDBOptionFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.enable-blob-garbage-collection",
-          "enable blob garbage compaction during compaction in the documents "
-          "column family (requires `--rocksdb.enable-blob-files`)",
+          "Enable blob garbage compaction during compaction in the "
+          "documents column family. Requires `--rocksdb.enable-blob-files`.",
           new BooleanParameter(&_enableBlobGarbageCollection),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Experimental,
