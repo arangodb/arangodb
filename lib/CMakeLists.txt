@@ -1,5 +1,7 @@
 # -*- mode: CMAKE; -*-
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
@@ -264,18 +266,6 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-if (USE_FAIL_ON_WARNINGS)
-  if (MSVC)
-    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-      # There's a warning about /MP being unused if compiling only a single file
-      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
-    endif()
-  else ()
-    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
-  endif ()
-endif ()
-
 ################################################################################
 ## LIB_ARANGO_AIR_SOURCES
 ################################################################################
@@ -297,7 +287,6 @@ add_library(arango_greenspun STATIC
 target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
-
 
 add_subdirectory(Geo)
 add_subdirectory(V8)
