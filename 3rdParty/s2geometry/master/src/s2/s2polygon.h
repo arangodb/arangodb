@@ -1009,10 +1009,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
     }
   } else {
     i = prev_loop_.load(std::memory_order_relaxed);
-    if (e >= start[i] && e < start[i + 1]) {
+    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
       // This edge belongs to the same loop as the previous call.
     } else {
-      if (e == start[i + 1]) {
+      if (e == static_cast<int>(start[i + 1])) {
         // This edge immediately follows the loop from the previous call.
         // Note that S2Polygon does not allow empty loops.
         ++i;
