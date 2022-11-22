@@ -255,16 +255,25 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
+template <int offset>
+  requires(-1 <= offset && offset <= 1)
 auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
     -> std::vector<size_t> {
   size_t const n = _inputs.size();
   std::vector<size_t> skipped{};
   skipped.reserve(n);
   for (auto& input : _inputs) {
-    skipped.emplace_back(input.skipAllShadowRowsOfDepth(depth));
+    skipped.emplace_back(input.skipAllShadowRowsOfDepth<offset>(depth));
   }
   return skipped;
 }
+
+template auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth<-1>(
+    size_t depth) -> std::vector<size_t>;
+template auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth<0>(
+    size_t depth) -> std::vector<size_t>;
+template auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth<1>(
+    size_t depth) -> std::vector<size_t>;
 
 // Subtract up to count rows from the local _skipped state
 auto MultiAqlItemBlockInputRange::skipForDependency(size_t dependency,

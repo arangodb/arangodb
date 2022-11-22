@@ -82,6 +82,8 @@ class AqlItemBlockInputRange {
 
   size_t skipAllRemainingDataRows();
 
+  template<int offset>
+    requires(-1 <= offset && offset <= 1)
   size_t skipAllShadowRowsOfDepth(size_t depth);
 
   // Subtract up to this many rows from the local `_skipped` state; return

@@ -164,22 +164,32 @@ size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
   return skipped;
 }
 
+template <int offset>
+  requires(-1 <= offset && offset <= 1)
 size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
   size_t skipped = 0;
+  if constexpr (offset == 1) {
+    // In this case, we're at an SQE
+    depth += 1;
+  }
   while (hasValidRow()) {
     if (hasDataRow()) {
       _rowIndex++;
     } else {
       ShadowAqlItemRow row{_block, _rowIndex};
-      auto d = row.getDepth();
-      if (d > depth) {
+      auto rowDepth = row.getDepth();
+      if constexpr (offset == -1) {
+        // In this case, we're at an SQS
+        rowDepth += 1;
+      }
+      if (rowDepth > depth) {
         // We found a row, that we should not skip
         // Keep it and stay there;
         return skipped;
       }
       // We throw away this row
       _rowIndex++;
-      if (d == depth) {
+      if (rowDepth == depth) {
         // We skipped
         skipped++;
       }
@@ -187,6 +197,10 @@ size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
   }
   return skipped;
 }
+
+template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<-1>(size_t depth);
+template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<0>(size_t depth);
+template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<1>(size_t depth);
 
 template<AqlItemBlockInputRange::LookAhead doPeek,
          AqlItemBlockInputRange::RowType type>
