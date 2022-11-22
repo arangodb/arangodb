@@ -1,9 +1,9 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
-* Removed more assertions from cluster rebalance js test that obligated the 
-  rebalance plan to always have moves, but there were cases in which all 
-  there are none.
+* Removed more assertions from cluster rebalance js test that obligated the
+  rebalance plan to always have moves, but there were cases in which all there
+  are none.
 
 * Fix setting query memory limit to 0 for certain queries if a global memory
   limit is set, but overriding the memory limit is allowed.
