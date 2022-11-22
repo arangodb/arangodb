@@ -1067,8 +1067,9 @@ void RocksDBOptionFeature::collectOptions(
   TRI_ASSERT(::compressionTypes.contains(_blobCompressionType));
   options
       ->addOption("--rocksdb.blob-compression-type",
-                  "compression algorithm to use for blobs within the documents "
-                  "column family (requires `--rocksdb.enable-blob-files`)",
+                  "The compression algorithm to use for blobs within the "
+                  "documents column family. "
+                  "Requires `--rocksdb.enable-blob-files`.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_blobCompressionType, ::compressionTypes),
                   arangodb::options::makeFlags(
