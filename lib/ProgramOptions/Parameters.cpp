@@ -33,7 +33,8 @@ std::string removeCommentsFromNumber(std::string const& value) {
   // the following regex objects are function-local statics, because
   // we cannot have them statically initialized on the TU level.
   static std::regex const removeComments("#.*$", std::regex::ECMAScript);
-  static std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
+  static std::regex const removeTabs("^[ \t\r\n]+|[ \t\r\n]+$",
+                                     std::regex::ECMAScript);
 
   // replace trailing comments
   auto noComment = std::regex_replace(value, removeComments, "");

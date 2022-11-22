@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/Arithmetic.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
@@ -45,83 +46,89 @@ namespace options {
 // helper function to strip-non-numeric data from a string
 std::string removeCommentsFromNumber(std::string const& value);
 
-// convert a string into a number, base version for signed or unsigned integer
-// types
-template<typename T>
-inline T toNumber(std::string value, T base = 1) {
+template<typename T, typename internal>
+inline T toNumberHelper(std::string value, T base = 1) {
+  constexpr internal oneKiB = 1'024;
+  constexpr internal oneKB = 1'000;
+
+  constexpr std::array<std::pair<std::string_view, internal>, 28> units = {{
+      {std::string_view{"kib"}, oneKiB},
+      {std::string_view{"KiB"}, oneKiB},
+      {std::string_view{"KIB"}, oneKiB},
+      {std::string_view{"mib"}, oneKiB * oneKiB},
+      {std::string_view{"MiB"}, oneKiB * oneKiB},
+      {std::string_view{"MIB"}, oneKiB * oneKiB},
+      {std::string_view{"gib"}, oneKiB * oneKiB * oneKiB},
+      {std::string_view{"GiB"}, oneKiB * oneKiB * oneKiB},
+      {std::string_view{"GIB"}, oneKiB * oneKiB * oneKiB},
+      {std::string_view{"tib"}, oneKiB * oneKiB * oneKiB * oneKiB},
+      {std::string_view{"TiB"}, oneKiB * oneKiB * oneKiB * oneKiB},
+      {std::string_view{"TIB"}, oneKiB * oneKiB * oneKiB * oneKiB},
+      {std::string_view{"kb"}, oneKB},
+      {std::string_view{"KB"}, oneKB},
+      {std::string_view{"mb"}, oneKB * oneKB},
+      {std::string_view{"MB"}, oneKB * oneKB},
+      {std::string_view{"gb"}, oneKB * oneKB * oneKB},
+      {std::string_view{"GB"}, oneKB * oneKB * oneKB},
+      {std::string_view{"tb"}, oneKB * oneKB * oneKB * oneKB},
+      {std::string_view{"TB"}, oneKB * oneKB * oneKB * oneKB},
+      {std::string_view{"k"}, oneKB},
+      {std::string_view{"K"}, oneKB},
+      {std::string_view{"m"}, oneKB * oneKB},
+      {std::string_view{"M"}, oneKB * oneKB},
+      {std::string_view{"g"}, oneKB * oneKB * oneKB},
+      {std::string_view{"G"}, oneKB * oneKB * oneKB},
+      {std::string_view{"t"}, oneKB * oneKB * oneKB * oneKB},
+      {std::string_view{"T"}, oneKB * oneKB * oneKB * oneKB},
+  }};
+
   // replace leading spaces, replace trailing spaces & comments
   value = removeCommentsFromNumber(value);
 
-  auto n = value.size();
-  int64_t m = 1;
-  int64_t d = 1;
-  bool seen = false;
-  if (n > 3) {
-    std::string suffix = value.substr(n - 3);
-
-    if (suffix == "kib" || suffix == "KiB" || suffix == "KIB") {
-      m = 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "mib" || suffix == "MiB" || suffix == "MIB") {
-      m = 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "gib" || suffix == "GiB" || suffix == "GIB") {
-      m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    }
-  }
-  if (!seen && n > 2) {
-    std::string suffix = value.substr(n - 2);
-
-    if (suffix == "kb" || suffix == "KB") {
-      m = 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    }
-  }
-  if (!seen && n > 1) {
-    std::string suffix = value.substr(n - 1);
-
-    if (suffix == "k" || suffix == "K") {
-      m = 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "m" || suffix == "M") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "g" || suffix == "G") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "%") {
-      m = static_cast<int64_t>(base);
-      d = 100;
-      value = value.substr(0, n - 1);
+  // handle unit suffixes
+  internal m = 1;
+  std::string_view suffix;
+  for (auto const& unit : units) {
+    if (value.ends_with(unit.first)) {
+      suffix = unit.first;
+      m = unit.second;
+      break;
     }
   }
 
-  char const* p = value.data();
-  char const* e = p + value.size();
-  // skip leading whitespace
-  while (p < e && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
-    ++p;
+  // handle % suffix
+  internal d = 1;
+  if (suffix.empty() && value.ends_with('%')) {
+    suffix = "%";
+    m = static_cast<internal>(base);
+    d = 100;
   }
 
   bool valid = true;
-  auto v = arangodb::NumberUtils::atoi<T>(p, e, valid);
+  auto v = arangodb::NumberUtils::atoi<T>(
+      value.data(), value.data() + value.size() - suffix.size(), valid);
   if (!valid) {
     throw std::out_of_range(value);
   }
+  if (isUnsafeMultiplication(static_cast<internal>(v), m)) {
+    throw std::out_of_range(value);
+  }
+  internal r = static_cast<internal>(v) * m;
+  if (r < std::numeric_limits<T>::min() || r > std::numeric_limits<T>::max()) {
+    throw std::out_of_range(value);
+  }
   return static_cast<T>(v * m / d);
+}
+
+// convert a string into a number, base version for signed and unsigned integer
+// types
+template<typename T>
+inline T toNumber(std::string value, T base = 1) {
+  if constexpr (std::is_signed_v<T>) {
+    return toNumberHelper<T, int64_t>(value, base);
+  } else {
+    return toNumberHelper<T, uint64_t>(value, base);
+  }
 }
 
 // convert a string into a number, version for double values
