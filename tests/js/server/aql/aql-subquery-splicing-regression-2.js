@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual} = jsunity.jsUnity.assertions;
 const internal = require("internal");
 const errors = internal.errors;
 const db = require("@arangodb").db;
@@ -55,6 +56,28 @@ function subquerySplicingCrashRegressionSuite() {
       // Data
       const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
       const res = q.toArray();
+    },
+  };
+}
+
+// Regression test for https://github.com/arangodb/arangodb/issues/16451
+function subquerySplicingLimitDroppingOuterRowsSuite() {
+  return {
+    testNestedSubqueryInnerLimitDroppingOuterRows: function () {
+      // In the noted bug, the second SQS node (which starts the sqInner subquery)
+      // got confused when called to write its third batch, misinterpreting the
+      // already saturated limit to also drop remaining rows of the outermost query.
+      // This lead to a result of size 666.
+      const query = `
+        FOR i IN 1..1000
+        LET sqOuter = (
+            LET sqInner = (RETURN null)
+            LIMIT 1
+          RETURN null)
+        RETURN null`;
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const res = q.toArray();
+      assertEqual(1000, res.length);
     },
   };
 }
