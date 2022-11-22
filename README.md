@@ -15,6 +15,7 @@ Oasis is the simplest way to run ArangoDB. Users can make deployments on all maj
 Getting Started
 ------------------------
 
+- [ArangoDB University](https://university.arangodb.com/)
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
 - [Training Center](https://www.arangodb.com/learn/)
 - [Documentation](https://www.arangodb.com/docs/stable/)
@@ -119,3 +120,11 @@ StackOverflow is great for questions about AQL, usage scenarios etc.
 To chat with the community and the developers we offer a Slack chat:
 
 [https://slack.arangodb.com/](https://slack.arangodb.com/)
+
+Learn more about ArangoDB with our YouTube channel: 
+
+[https://www.youtube.com/@ArangoDB](https://www.youtube.com/@ArangoDB)
+
+Follow us on Twitter to stay up to date: 
+
+[https://twitter.com/arangodb](https://twitter.com/arangodb)
