@@ -729,7 +729,7 @@ void RocksDBOptionFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.block-cache-estimated-entry-charge",
-          "estimated charge of cache entries (in bytes) for hyper-clock cache",
+          "The estimated charge of cache entries (in bytes) for the hyper-clock cache.",
           new UInt64Parameter(&_blockCacheEstimatedEntryCharge),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Experimental,
