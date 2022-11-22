@@ -905,6 +905,9 @@ bool InvertedIndexField::operator==(
         _overrideValue == other._overrideValue &&
         _expression == other._expression &&
         _isSearchField == other._isSearchField &&
+#ifdef USE_ENTERPRISE
+        _cache == other._cache &&
+#endif
         _fields.size() == other._fields.size())) {
     return false;
   }
@@ -1058,7 +1061,9 @@ void IResearchInvertedIndexMetaIndexingContext::addField(
         current->_includeAllFields = f._includeAllFields;
         current->_trackListPositions = f._trackListPositions;
         current->_isSearchField = f._isSearchField;
+#ifdef USE_ENTERPRISE
         current->_cache = f._cache;
+#endif
         current->setFeatures(f._features);
       }
     }

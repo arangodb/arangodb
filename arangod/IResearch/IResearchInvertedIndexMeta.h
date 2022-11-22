@@ -191,8 +191,10 @@ struct IResearchInvertedIndexMetaIndexingContext {
   bool _hasNested;
   bool _includeAllFields;
   bool _trackListPositions;
-  bool _isSearchField;
+#ifdef USE_ENTERPRISE
   bool _cache;
+#endif
+  bool _isSearchField;
 
  private:
   Features _features;
