@@ -534,7 +534,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
                             .server()
                             .getFeature<EngineSelectorFeature>()
                             .engine<RocksDBEngine>()
-                            .refillIndexCaches()),
+                            .autoRefillIndexCaches()),
       _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString

@@ -26,6 +26,8 @@
 #include "Basics/ConditionLocker.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "Transaction/StandaloneContext.h"
@@ -36,10 +38,21 @@
 
 using namespace arangodb;
 
-RocksDBIndexCacheRefiller::RocksDBIndexCacheRefiller(ArangodServer& server)
+DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
+                "Total number of auto-refilled in-memory cache items");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
+                "Total number of dropped items for in-memory cache refilling");
+
+RocksDBIndexCacheRefiller::RocksDBIndexCacheRefiller(ArangodServer& server,
+                                                     size_t maxCapacity)
     : ServerThread<ArangodServer>(server, "RocksDBCacheRefiller"),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
-      _numQueued(0) {}
+      _maxCapacity(maxCapacity),
+      _numQueued(0),
+      _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_loaded_total{})),
+      _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_dropped_total{})) {}
 
 RocksDBIndexCacheRefiller::~RocksDBIndexCacheRefiller() { shutdown(); }
 
@@ -55,24 +68,50 @@ void RocksDBIndexCacheRefiller::trackIndexCacheRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
     std::vector<std::string> keys) {
   TRI_ASSERT(!keys.empty());
+  size_t const n = keys.size();
 
-  CONDITION_LOCKER(guard, _condition);
+  {
+    CONDITION_LOCKER(guard, _condition);
 
-  // will be created if it doesn't exist yet
-  auto& target = _operations[collection->vocbase().id()][collection->id()][iid];
+    if (_numQueued + n >= _maxCapacity) {
+      // we have reached the maximum queueing capacity, so give up on whatever
+      // keys we received just now
+      _totalNumDropped += n;
+      return;
+    }
 
-  size_t minSize = target.size() + keys.size();
-  size_t newCapacity = std::max(size_t(8), target.capacity());
-  while (newCapacity < minSize) {
-    newCapacity *= 2;
+    // the map entries for the database/collection will be created if they don't
+    // yet exist
+    auto& entries = _operations[collection->vocbase().id()][collection->id()];
+
+    auto it = entries.find(iid);
+    if (it == entries.end()) {
+      // no entry yet for this particular index id. now move all keys over at
+      // once, which is most efficient. this should be the usual case, as we
+      // are normally clearing all stored data after every round
+      entries.emplace(iid, std::move(keys));
+    } else {
+      // entry for particular index id already existed
+      auto& target = (*it).second;
+      size_t minSize = target.size() + n;
+      size_t newCapacity = std::max(size_t(8), target.capacity());
+      while (newCapacity < minSize) {
+        // grow capacity with factor of 2 growth strategy
+        newCapacity *= 2;
+      }
+      target.reserve(newCapacity);
+
+      // move keys over to us
+      for (auto& key : keys) {
+        target.emplace_back(std::move(key));
+      }
+    }
+    _numQueued += n;
+
+    guard.signal();
   }
-  target.reserve(newCapacity);
-  for (auto& key : keys) {
-    target.emplace_back(std::move(key));
-    ++_numQueued;
-  }
 
-  guard.signal();
+  _totalNumQueued += n;
 }
 
 void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase, DataSourceId cid,
@@ -86,9 +125,11 @@ void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase, DataSourceId cid,
     return;
   }
 
+  // loop over all the indexes in the given collection
   for (auto const& it : data) {
     auto idx = trx.documentCollection()->lookupIndex(it.first);
     if (idx == nullptr) {
+      // index doesn't exist anymore
       continue;
     }
     static_cast<RocksDBIndex*>(idx.get())->refillCache(trx, it.second);
@@ -97,6 +138,7 @@ void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase, DataSourceId cid,
 
 void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase,
                                        CollectionValues const& data) {
+  // loop over every collection in the given database
   for (auto const& it : data) {
     try {
       refill(vocbase, it.first, it.second);
@@ -107,6 +149,7 @@ void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase,
 }
 
 void RocksDBIndexCacheRefiller::refill(DatabaseValues const& data) {
+  // loop over all databases that we have data for
   for (auto const& it : data) {
     try {
       DatabaseGuard guard(_databaseFeature, it.first);
@@ -131,6 +174,10 @@ void RocksDBIndexCacheRefiller::run() {
       }
 
       if (!operations.empty()) {
+        // note: if refill somehow throws, it is not the end of the world.
+        // we will then not have repopulated some cache entries, but it
+        // should not matter too much, as repopulating the cache entries
+        // is best effort only and does not affect correctness.
         refill(operations);
 
         LOG_TOPIC("9b2f5", TRACE, Logger::ENGINES)

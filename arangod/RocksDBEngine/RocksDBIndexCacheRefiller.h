@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -44,7 +45,7 @@ class LogicalCollection;
 
 class RocksDBIndexCacheRefiller final : public ServerThread<ArangodServer> {
  public:
-  explicit RocksDBIndexCacheRefiller(ArangodServer& server);
+  explicit RocksDBIndexCacheRefiller(ArangodServer& server, size_t maxCapacity);
 
   ~RocksDBIndexCacheRefiller();
 
@@ -69,8 +70,17 @@ class RocksDBIndexCacheRefiller final : public ServerThread<ArangodServer> {
   void refill(TRI_vocbase_t& vocbase, CollectionValues const& data);
   void refill(DatabaseValues const& data);
 
+  size_t const _maxCapacity;
+
+  // protects _operations and _numQueued
   basics::ConditionVariable _condition;
   DatabaseValues _operations;
+  // current number of items queued
   size_t _numQueued;
+
+  // total number of items ever queued
+  metrics::Counter& _totalNumQueued;
+  // total number of items ever dropped (because of queue full)
+  metrics::Counter& _totalNumDropped;
 };
 }  // namespace arangodb

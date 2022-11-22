@@ -249,6 +249,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _syncDelayThreshold(5000),
       _requiredDiskFreePercentage(0.01),
       _requiredDiskFreeBytes(16 * 1024 * 1024),
+      _refillIndexCachesMaxCapacity(128 * 1024),
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
@@ -260,7 +261,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _createShaFiles(false),
 #endif
       _useRangeDeleteInWal(true),
-      _refillIndexCaches(false),
+      _autoRefillIndexCaches(false),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -556,18 +557,6 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30903);
 
-  options
-      ->addOption(
-          "--rocksdb.refill-index-caches",
-          "Automatically (re-)populate in-memory index cache entries upon "
-          "insert/update/replace.",
-          new BooleanParameter(&_refillIndexCaches),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30906);
-
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
@@ -610,6 +599,28 @@ void RocksDBEngine::collectOptions(
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle,
           arangodb::options::Flags::Uncommon));
+
+  options
+      ->addOption("--rocksdb.auto-refill-index-caches",
+                  "Automatically (re-)fill in-memory index cache entries upon "
+                  "insert/update/replace.",
+                  new BooleanParameter(&_autoRefillIndexCaches),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30906);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-refill-index-cache-queue-capacity",
+          "Maximum capacity for automatic in-memory index cache refill queue.",
+          new SizeTParameter(&_refillIndexCachesMaxCapacity),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30906);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -1010,10 +1021,11 @@ void RocksDBEngine::start() {
 
   _settingsManager->retrieveInitialValues();
 
-  _indexRefiller = std::make_unique<RocksDBIndexCacheRefiller>(server());
+  _indexRefiller = std::make_unique<RocksDBIndexCacheRefiller>(
+      server(), _refillIndexCachesMaxCapacity);
   if (!_indexRefiller->start()) {
     LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
-        << "could not start rocksdb index cache refiller";
+        << "could not start rocksdb index cache refiller thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -1022,7 +1034,7 @@ void RocksDBEngine::start() {
       std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager";
+        << "could not start rocksdb counter manager thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -1136,8 +1148,12 @@ void RocksDBEngine::trackRevisionTreeMemoryDecrease(
   }
 }
 
-bool RocksDBEngine::refillIndexCaches() const noexcept {
-  return _refillIndexCaches;
+bool RocksDBEngine::autoRefillIndexCaches() const noexcept {
+  return _autoRefillIndexCaches;
+}
+
+size_t RocksDBEngine::refillIndexCachesMaxCapacity() const noexcept {
+  return _refillIndexCachesMaxCapacity;
 }
 
 bool RocksDBEngine::hasBackgroundError() const {

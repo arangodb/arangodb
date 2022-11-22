@@ -386,7 +386,8 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
-  bool refillIndexCaches() const noexcept;
+  bool autoRefillIndexCaches() const noexcept;
+  size_t refillIndexCachesMaxCapacity() const noexcept;
 
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -593,6 +594,10 @@ class RocksDBEngine final : public StorageEngine {
   /// checks.
   uint64_t _requiredDiskFreeBytes;
 
+  // maximum capacity of queue used for automatic refilling of in-memory index
+  // caches
+  size_t _refillIndexCachesMaxCapacity;
+
   // use write-throttling
   bool _useThrottle;
 
@@ -615,7 +620,9 @@ class RocksDBEngine final : public StorageEngine {
   // whether or not to issue range delete markers in the write-ahead log
   bool _useRangeDeleteInWal;
 
-  bool _refillIndexCaches;
+  // whether or not in-memory cache values for indexes are automatically
+  // refilled
+  bool _autoRefillIndexCaches;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive
