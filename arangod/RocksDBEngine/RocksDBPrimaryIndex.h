@@ -134,12 +134,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
                 bool /*performChecks*/) override;
 
  private:
-  /// @brief test if the specified key (keySlice) already exists.
-  /// if it exists and the key exists, lock it for updates!
-  Result probeKey(transaction::Methods& trx, RocksDBMethods* mthd,
-                  RocksDBKeyLeaser const& key, velocypack::Slice keySlice,
-                  OperationOptions const& options, bool insert);
-
   /// @brief create the iterator, for a single attribute, IN operator
   std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
                                                   transaction::Methods*,

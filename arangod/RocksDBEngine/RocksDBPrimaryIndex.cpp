@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
@@ -716,58 +717,6 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   return Result{};
 }
 
-Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
-                                     RocksDBMethods* mthd,
-                                     RocksDBKeyLeaser const& key,
-                                     velocypack::Slice keySlice,
-                                     OperationOptions const& options,
-                                     bool insert) {
-  TRI_ASSERT(keySlice.isString());
-
-  bool const lock =
-      !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
-
-  transaction::StringLeaser leased(&trx);
-  rocksdb::PinnableSlice ps(leased.get());
-  rocksdb::Status s;
-  if (lock) {
-    s = mthd->GetForUpdate(_cf, key->string(), &ps);
-  } else {
-    // modifications always need to observe all changes in order to validate
-    // uniqueness constraints
-    s = mthd->Get(_cf, key->string(), &ps, ReadOwnWrites::yes);
-  }
-
-  Result res;
-  if (insert) {
-    // INSERT case
-    if (s.ok()) {  // detected conflicting primary key
-      IndexOperationMode mode = options.indexOperationMode;
-      if (mode == IndexOperationMode::internal) {
-        // in this error mode, we return the conflicting document's key
-        // inside the error message string (and nothing else)!
-        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         keySlice.copyString());
-      }
-      // build a proper error message
-      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-      return addErrorMsg(res, keySlice.copyString());
-    } else if (!s.IsNotFound()) {
-      // IsBusy(), IsTimedOut() etc... this indicates a conflict
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)),
-                         keySlice.copyString());
-    }
-  } else {
-    // UPDATE/REPLACE case
-    if (!s.ok()) {
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)),
-                         keySlice.copyString());
-    }
-  }
-
-  return res;
-}
-
 Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& /*documentId*/,
@@ -782,13 +731,8 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          LocalDocumentId const& /*documentId*/,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  TRI_ASSERT(keySlice.isString());
-
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
-
-  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ false);
+  // this is already handled earlier - nothing to do here!
+  return {};
 }
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
