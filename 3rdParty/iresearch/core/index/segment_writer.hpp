@@ -438,7 +438,8 @@ class IRESEARCH_API segment_writer : util::noncopyable {
     }
   }
 
-  size_t flush_doc_mask(const segment_meta& meta); // flushes document mask to directory, returns number of masked documens
+  // flushes document mask to directory, returns number of masked documents
+  size_t flush_doc_mask(const segment_meta& meta, const doc_map& docmap);
   void flush_fields(const doc_map& docmap); // flushes indexed fields to directory
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
