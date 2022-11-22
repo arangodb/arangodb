@@ -319,6 +319,9 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
         _jb->add("creator", VPackValue(_creator));
         _jb->add("timeCreated",
                  VPackValue(timepointToString(system_clock::now())));
+        if (!_notBefore.empty()) {
+          _jb->add("notBefore", VPackValue(_notBefore));
+        }
       }
       // FailedServers entry []
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
