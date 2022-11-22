@@ -34,11 +34,11 @@ auto operator<<(std::ostream& out, ClusterProviderStep const& step)
 }
 }  // namespace arangodb::graph
 
-ClusterProviderStep::ClusterProviderStep(const VertexType& v)
+ClusterProviderStep::ClusterProviderStep(VertexType const& v)
     : _vertex(v), _edge(), _fetchedStatus(FetchedType::UNFETCHED) {}
 
-ClusterProviderStep::ClusterProviderStep(const VertexType& v,
-                                         const EdgeType& edge, size_t prev)
+ClusterProviderStep::ClusterProviderStep(VertexType const& v,
+                                         EdgeType const& edge, size_t prev)
     : BaseStep(prev),
       _vertex(v),
       _edge(edge),
@@ -76,9 +76,15 @@ ClusterProviderStep::ClusterProviderStep(VertexType v, size_t depth,
 
 ClusterProviderStep::~ClusterProviderStep() = default;
 
-VertexType const& ClusterProviderStep::Vertex::getID() const { return _vertex; }
+VertexType const& ClusterProviderStep::Vertex::getID() const noexcept {
+  return _vertex;
+}
 
-ClusterProviderStep::EdgeType const& ClusterProviderStep::Edge::getID() const {
+ClusterProviderStep::EdgeType const& ClusterProviderStep::Edge::getID()
+    const noexcept {
   return _edge;
 }
-bool ClusterProviderStep::Edge::isValid() const { return !_edge.empty(); };
+
+bool ClusterProviderStep::Edge::isValid() const noexcept {
+  return !_edge.empty();
+}
