@@ -39,8 +39,7 @@ void OptionsCheckFeature::prepare() {
     for (auto const& it : modernizedOptions) {
       LOG_TOPIC("3e342", WARN, Logger::STARTUP)
           << "please note that the specified option '--" << it.first
-          << " has been renamed to '--" << it.second
-          << "' in this ArangoDB version";
+          << " has been renamed to '--" << it.second << "'";
     }
 
     LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
