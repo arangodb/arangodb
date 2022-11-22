@@ -1096,7 +1096,7 @@ void RocksDBOptionFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
-                  "prepopulate blob cache on flushes",
+                  "Prepopulate the blob cache on flushes.",
                   new BooleanParameter(&_prepopulateBlobCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
