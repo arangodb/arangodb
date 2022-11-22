@@ -140,6 +140,8 @@ void PrototypeCore::applyToOngoingState(LogIndex idx,
   _ongoingStates.emplace_back(idx, _store);
 }
 
+void PrototypeCore::clearOngoingStates() { _ongoingStates.clear(); }
+
 auto PrototypeCore::getLastPersistedIndex() const noexcept -> LogIndex const& {
   return _lastPersistedIndex;
 }
@@ -164,6 +166,23 @@ void PrototypeCore::applyToLocalStore(PrototypeLogEntry const& entry) {
                  _store = _store.set(op.key, op.newValue);
                }},
       entry.op);
+}
+
+/*
+ * Advances through the deque.
+ */
+void PrototypeCore::update(LogIndex lastIndexToApply) {
+  // Meta-entries are never seen by the state machine, but still increase the
+  // log index, creating gaps between ongoing states. Hence,
+  // lastIndexToApply could be greater than the last index of the current
+  // ongoing state, but smaller than that of the next ongoing state, in which
+  // case we prefer to keep the current one. We have to look ahead in the
+  // deque to make sure this stays correct.
+  while (_ongoingStates.size() > 1 &&
+         _ongoingStates[1].first <= lastIndexToApply) {
+    _ongoingStates.pop_front();
+  }
+  _lastAppliedIndex = lastIndexToApply;
 }
 
 void PrototypeDump::toVelocyPack(velocypack::Builder& b) {

@@ -57,7 +57,7 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         if (data.didResign()) {
           return {Result{TRI_ERROR_CLUSTER_NOT_LEADER}, DeferredAction{}};
         }
-        auto resolvePromises = data.applyEntries(std::move(ptr));
+        auto resolvePromises = data.resetAndApplyEntries(std::move(ptr));
         return std::make_pair(Result{TRI_ERROR_NO_ERROR},
                               std::move(resolvePromises));
       });
@@ -261,9 +261,9 @@ void PrototypeLeaderState::handlePollResult(
           THROW_ARANGO_EXCEPTION(result.result());
         }
 
+        auto upToIndex = result.get()->range().to;
         auto resolvePromises =
-            self->_guardedData.getLockedGuard()->applyEntries(
-                std::move(result.get()));
+            self->_guardedData.getLockedGuard()->applyEntries(upToIndex);
         resolvePromises.fire();
 
         self->handlePollResult(self->pollNewEntries());
@@ -286,14 +286,21 @@ void PrototypeLeaderState::handlePollResult(
       });
 }
 
-auto PrototypeLeaderState::GuardedData::applyEntries(
+auto PrototypeLeaderState::GuardedData::resetAndApplyEntries(
     std::unique_ptr<EntryIterator> ptr) -> DeferredAction {
+  auto upToIndex = ptr->range().to;
+  core->clearOngoingStates();
+  core->applyEntries(std::move(ptr));
+  return applyEntries(upToIndex);
+}
+
+auto PrototypeLeaderState::GuardedData::applyEntries(LogIndex upToIndex)
+    -> DeferredAction {
   if (didResign()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
   }
-  auto toIndex = ptr->range().to;
-  core->update(std::move(ptr));
-  nextWaitForIndex = toIndex;
+  core->update(upToIndex.saturatedDecrement());
+  nextWaitForIndex = upToIndex;
 
   if (core->flush()) {
     auto stream = self.getStream();
