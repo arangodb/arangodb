@@ -21,27 +21,17 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedState/StateCommon.h"
+#include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 
-namespace arangodb::replication2 {
-namespace replicated_log {
+namespace arangodb::replication2::replicated_log {
 inline namespace comp {
-enum class SnapshotState { INVALID, AVAILABLE };
-
-struct ISnapshotManager {
-  virtual ~ISnapshotManager() = default;
-  virtual void updateSnapshotState(SnapshotState) = 0;
-  [[nodiscard]] virtual auto getSnapshotStatus() const noexcept
-      -> replicated_state::SnapshotStatus = 0;
-  virtual auto checkSnapshotState() noexcept -> SnapshotState = 0;
-};
-
 struct SnapshotManager : ISnapshotManager {
   void updateSnapshotState(SnapshotState state) override;
-  [[nodiscard]] auto getSnapshotStatus() const noexcept
-      -> replicated_state::SnapshotStatus override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
+
+  struct GuardedData {
+    SnapshotState state{};
+  };
 };
 }  // namespace comp
-}  // namespace replicated_log
-}  // namespace arangodb::replication2
+}  // namespace arangodb::replication2::replicated_log

@@ -54,16 +54,18 @@ struct StorageManager : IStorageManager,
 
   struct StorageRequest {
     std::unique_ptr<StorageOperation> operation;
+    InMemoryLog logResult;
     futures::Promise<Result> promise;
 
-    explicit StorageRequest(std::unique_ptr<StorageOperation> op)
-        : operation(std::move(op)) {}
+    explicit StorageRequest(std::unique_ptr<StorageOperation> op,
+                            InMemoryLog logResult)
+        : operation(std::move(op)), logResult(std::move(logResult)) {}
   };
 
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> core);
 
-    InMemoryLog inMemoryLog;
+    InMemoryLog onDiskLog, spearheadLog;
     std::unique_ptr<IStorageEngineMethods> core;
     std::deque<StorageRequest> queue;
     bool workerActive{false};
@@ -71,10 +73,12 @@ struct StorageManager : IStorageManager,
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
 
-  auto scheduleOperation(GuardType&&, std::unique_ptr<StorageOperation>)
+  auto scheduleOperation(GuardType&&, InMemoryLog result,
+                         std::unique_ptr<StorageOperation>)
       -> futures::Future<Result>;
   template<typename F>
-  auto scheduleOperationLambda(GuardType&&, F&&) -> futures::Future<Result>;
+  auto scheduleOperationLambda(GuardType&&, InMemoryLog result, F&&)
+      -> futures::Future<Result>;
   void triggerQueueWorker(GuardType&&) noexcept;
 };
 

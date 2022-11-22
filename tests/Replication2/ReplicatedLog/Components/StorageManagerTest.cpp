@@ -92,6 +92,32 @@ TEST_F(StorageManagerTest, transaction_remove_back) {
   EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{49}}));
 }
 
+TEST_F(StorageManagerTest, concurrent_remove_front_back) {
+  auto f1 = [&] {
+    auto trx = storageManager->transaction();
+    return trx->removeBack(LogIndex{70});
+  }();
+
+  auto f2 = [&] {
+    auto trx = storageManager->transaction();
+    return trx->removeFront(LogIndex{40});
+  }();
+
+  EXPECT_FALSE(f1.isReady());
+  EXPECT_FALSE(f2.isReady());
+  executor->runAll();
+  ASSERT_TRUE(f1.isReady());
+  ASSERT_TRUE(f2.isReady());
+
+  EXPECT_EQ(methods.log.size(), 30);  // [40, 70)
+  EXPECT_EQ(methods.log.begin()->first, LogIndex{40});
+  EXPECT_EQ(methods.log.rbegin()->first, LogIndex{69});
+
+  auto trx2 = storageManager->transaction();
+  auto logBounds = trx2->getLogBounds();
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{40}, LogIndex{69}}));
+}
+
 namespace {
 auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
   InMemoryLog::log_type log;
@@ -121,3 +147,41 @@ TEST_F(StorageManagerTest, transaction_append) {
   auto logBounds = trx2->getLogBounds();
   EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{120}}));
 }
+
+struct StorageEngineMethodsGMock : IStorageEngineMethods {
+  MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
+  MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
+  MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, read, (LogIndex),
+              (override));
+  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, insert,
+              (std::unique_ptr<PersistedLogIterator>, WriteOptions const&),
+              (override));
+  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeFront,
+              (LogIndex stop, WriteOptions const&), (override));
+  MOCK_METHOD(futures::Future<ResultT<SequenceNumber>>, removeBack,
+              (LogIndex start, WriteOptions const&), (override));
+  MOCK_METHOD(std::uint64_t, getObjectId, (), (override));
+  MOCK_METHOD(LogId, getLogId, (), (override));
+  MOCK_METHOD(SequenceNumber, getSyncedSequenceNumber, (), (override));
+  MOCK_METHOD(futures::Future<futures::Unit>, waitForSync, (SequenceNumber),
+              (override));
+};
+
+struct StorageEngineMethodsMockFactory {
+  auto create() -> std::unique_ptr<StorageEngineMethodsGMock> {
+    auto ptr = std::make_unique<StorageEngineMethodsGMock>();
+    lastPtr = ptr.get();
+    return ptr;
+  }
+  auto operator->() noexcept -> StorageEngineMethodsGMock* { return lastPtr; }
+
+ private:
+  StorageEngineMethodsGMock* lastPtr{nullptr};
+};
+
+struct StorageManagerGMockTest : ::testing::Test {
+  StorageEngineMethodsMockFactory methods;
+
+  std::shared_ptr<StorageManager> storageManager =
+      std::make_shared<StorageManager>(methods.create());
+};

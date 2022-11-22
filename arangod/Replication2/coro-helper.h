@@ -56,29 +56,49 @@ auto operator co_await(Future<T>&& f) noexcept {
   return FutureAwaitable<T>{std::move(f)};
 }
 
-template<typename T>
-struct FutureTryAwaitable {
+template<typename T, typename F>
+struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
-          _result = std::move(result);
+          _result = F::operator()(std::move(result));
           coro.resume();
         });
   }
-  auto await_resume() noexcept -> futures::Try<T> {
+  using ResultType = std::invoke_result_t<F, futures::Try<T>&&>;
+  auto await_resume() noexcept -> ResultType {
     return std::move(_result.value());
   }
-  explicit FutureTryAwaitable(Future<T> fut) : _future(std::move(fut)) {}
+  explicit FutureTransformAwaitable(Future<T> fut, F&& f)
+      : F(std::forward<F>(f)), _future(std::move(fut)) {}
 
  private:
+  static_assert(std::is_nothrow_invocable_v<F, futures::Try<T>&&>);
   Future<T> _future;
-  std::optional<futures::Try<T>> _result;
+  std::optional<ResultType> _result;
 };
 
 template<typename T>
 auto asTry(Future<T>&& f) noexcept {
-  return FutureTryAwaitable<T>{std::move(f)};
+  return FutureTransformAwaitable{
+      std::move(f),
+      [](futures::Try<T>&& res) noexcept { return std::move(res); }};
+}
+
+auto asResult(Future<Result>&& f) noexcept {
+  return FutureTransformAwaitable{
+      std::move(f), [](futures::Try<Result>&& res) noexcept -> Result {
+        return basics::catchToResult([&] { return res.get(); });
+      }};
+}
+
+template<typename T>
+auto asResult(Future<ResultT<T>>&& f) noexcept {
+  return FutureTransformAwaitable{
+      std::move(f), [](futures::Try<ResultT<T>>&& res) noexcept -> ResultT<T> {
+        return basics::catchToResult([&] { return res.get(); });
+      }};
 }
 
 }  // namespace arangodb::futures

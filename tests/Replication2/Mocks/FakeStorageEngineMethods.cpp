@@ -112,6 +112,7 @@ auto FakeStorageEngineMethods::insert(
         return {_self.lastSequenceNumber++};
       });
 }
+
 auto FakeStorageEngineMethods::removeFront(
     LogIndex stop,
     const replicated_state::IStorageEngineMethods::WriteOptions& options)

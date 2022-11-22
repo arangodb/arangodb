@@ -29,7 +29,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
-/*
+
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   auto guard = guarded.getLockedGuard();
@@ -53,19 +53,21 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       // LOG_CTX("6262d", INFO, _loggerContext)
       //     << "Log truncated - invalidating snapshot";
       // triggers new snapshot transfer
-      guard->snapshot.updateSnapshotState(SnapshotState::INVALID);
+      guard->snapshot.updateSnapshotState(SnapshotState::MISSING);
     }
   }
 
-  auto f = std::invoke([&]() -> futures::Future<Result> {
-    auto store = guard->storage.transaction();
-    if (store.getInMemoryLog().getLastIndex() != request.prevLogEntry.index) {
-      return store.removeBack(request.prevLogEntry.index + 1);
-    } else {
-      return {TRI_ERROR_NO_ERROR};
-    }
-  });
-  guard.unlock();
+  auto f = std::invoke(
+      [&](Guarded<GuardedData>::mutex_guard_type&&) -> futures::Future<Result> {
+        auto store = guard->storage.transaction();
+        if (store->getInMemoryLog().getLastIndex() !=
+            request.prevLogEntry.index) {
+          return store->removeBack(request.prevLogEntry.index + 1);
+        } else {
+          return {TRI_ERROR_NO_ERROR};
+        }
+      },
+      std::move(guard));
 
   return std::move(f).thenValue(
       [request = std::move(request),
@@ -78,8 +80,16 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
         auto guard = self->guarded.getLockedGuard();
         auto store = guard->storage.transaction();
+        auto f = store->appendEntries(InMemoryLog{request.entries});
+        guard.unlock();
+        return std::move(f).thenValue([self](Result const& result) {
+          if (result.fail()) {
+            return AppendEntriesResult::withPersistenceError(
+                LogTerm{1}, MessageId{0}, result, false);
+          }
 
-        store.appendEntries(request.prevLogEntry.index, request.entries);
+          return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
+        });
       });
 }
 
@@ -95,4 +105,3 @@ auto AppendEntriesManager::GuardedData::preflightChecks()
     -> std::optional<AppendEntriesResult> {
   return std::nullopt;
 }
-*/

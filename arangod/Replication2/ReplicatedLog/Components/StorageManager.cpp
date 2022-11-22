@@ -37,28 +37,20 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   using GuardType = Guarded<StorageManager::GuardedData>::mutex_guard_type;
 
   auto getInMemoryLog() const noexcept -> InMemoryLog override {
-    return guard->inMemoryLog;
+    return guard->spearheadLog;
   }
   auto getLogBounds() const noexcept -> LogRange override {
-    return guard->inMemoryLog.getIndexRange();
+    return guard->spearheadLog.getIndexRange();
   }
 
   template<typename F>
-  auto scheduleOperation(InMemoryLog newLog, F&& fn) noexcept {
-    return manager
-        .scheduleOperationLambda(std::move(guard), std::forward<F>(fn))
-        .thenValue([newLog = std::move(newLog),
-                    &manager = manager](Result res) mutable {
-          if (res.ok()) {
-            manager.guardedData.getLockedGuard()->inMemoryLog =
-                std::move(newLog);
-          }
-          return res;
-        });
+  auto scheduleOperation(InMemoryLog result, F&& fn) noexcept {
+    return manager.scheduleOperationLambda(std::move(guard), std::move(result),
+                                           std::forward<F>(fn));
   }
 
   auto removeFront(LogIndex stop) noexcept -> futures::Future<Result> override {
-    auto newLog = guard->inMemoryLog.removeFront(stop);
+    auto newLog = guard->spearheadLog.removeFront(stop);
     return scheduleOperation(
         std::move(newLog),
         [stop](StorageManager::IStorageEngineMethods& methods) noexcept {
@@ -68,7 +60,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   }
 
   auto removeBack(LogIndex start) noexcept -> futures::Future<Result> override {
-    auto newLog = guard->inMemoryLog.removeBack(start);
+    auto newLog = guard->spearheadLog.removeBack(start);
     return scheduleOperation(
         std::move(newLog),
         [start](StorageManager::IStorageEngineMethods& methods) noexcept {
@@ -80,9 +72,12 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   auto appendEntries(InMemoryLog slice) noexcept
       -> futures::Future<Result> override {
     ADB_PROD_ASSERT(slice.getFirstIndex() ==
-                    guard->inMemoryLog.getLastIndex() + 1);
+                    guard->spearheadLog.getLastIndex() + 1)
+        << "tried to append non matching slice - first entry in current log: "
+        << guard->spearheadLog.getLastIndex() << " new piece starts at "
+        << slice.getFirstIndex();
     auto iter = slice.getPersistedLogIterator();
-    auto newLog = guard->inMemoryLog.append(slice);
+    auto newLog = guard->spearheadLog.append(slice);
     return scheduleOperation(
         std::move(newLog),
         [slice = std::move(slice), iter = std::move(iter)](
@@ -105,6 +100,7 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> core)
 
 auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
   auto guard = guardedData.getLockedGuard();
+  // TODO wait for queue to be empty
   ADB_PROD_ASSERT(guard->queue.empty());
   return std::move(guard->core);
 }
@@ -112,19 +108,23 @@ auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
 StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> core)
     : core(std::move(core)) {
-  inMemoryLog = InMemoryLog::loadFromMethods(*this->core);
+  spearheadLog = onDiskLog = InMemoryLog::loadFromMethods(*this->core);
 }
 
 auto StorageManager::scheduleOperation(
-    GuardType&& guard, std::unique_ptr<StorageOperation> operation)
+    GuardType&& guard, InMemoryLog result,
+    std::unique_ptr<StorageOperation> operation)
     -> futures::Future<arangodb::Result> {
-  auto f = guard->queue.emplace_back(std::move(operation)).promise.getFuture();
+  guard->spearheadLog = result;
+  auto f = guard->queue.emplace_back(std::move(operation), std::move(result))
+               .promise.getFuture();
   triggerQueueWorker(std::move(guard));
   return f;
 }
 
 template<typename F>
-auto StorageManager::scheduleOperationLambda(GuardType&& guard, F&& fn)
+auto StorageManager::scheduleOperationLambda(GuardType&& guard,
+                                             InMemoryLog result, F&& fn)
     -> futures::Future<Result> {
   struct LambdaOperation : F, StorageOperation {
     explicit LambdaOperation(F&& fn) : F(std::move(fn)) {}
@@ -137,7 +137,8 @@ auto StorageManager::scheduleOperationLambda(GuardType&& guard, F&& fn)
   };
 
   return scheduleOperation(
-      std::move(guard), std::make_unique<LambdaOperation>(std::forward<F>(fn)));
+      std::move(guard), std::move(result),
+      std::make_unique<LambdaOperation>(std::forward<F>(fn)));
 }
 
 void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
@@ -153,9 +154,31 @@ void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
       guard->queue.pop_front();
       auto f = req.operation->run(*guard->core);
       guard.unlock();
-      auto result = co_await asTry(std::move(f));
-      req.promise.setTry(std::move(result));
-      guard = self->guardedData.getLockedGuard();
+      Result result = co_await asResult(std::move(f));
+      // lock guard to make effects visible
+      if (result.ok()) {
+        // resolve and continue
+        req.promise.setValue(std::move(result));
+        guard = self->guardedData.getLockedGuard();
+        guard->onDiskLog = std::move(req.logResult);
+      } else {
+        // TODO test error case
+        // lock directly, and flush all the queue.
+        // If we resolve directly (which could result in a retry) we would
+        // immediately abort any retries with `precondition` failed
+        guard = self->guardedData.getLockedGuard();
+        // restore old state
+        guard->spearheadLog = guard->onDiskLog;
+        // clear queue
+        auto queue = std::move(guard->queue);
+        guard->queue.clear();
+        guard.unlock();
+        // resolve everything else
+        req.promise.setValue(std::move(result));
+        for (auto& r : queue) {
+          r.promise.setValue(TRI_ERROR_ARANGO_CONFLICT);
+        }
+      }
     }
 
     co_return futures::unit;

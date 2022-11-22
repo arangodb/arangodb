@@ -20,12 +20,16 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include "SnapshotManager.h"
-using namespace arangodb::replication2::replicated_log::comp;
+namespace arangodb::replication2::replicated_log {
+inline namespace comp {
+enum class SnapshotState { MISSING, AVAILABLE };
 
-auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
-  return SnapshotState::MISSING;
-}
-
-void SnapshotManager::updateSnapshotState(SnapshotState state) {}
+struct ISnapshotManager {
+  virtual ~ISnapshotManager() = default;
+  virtual void updateSnapshotState(SnapshotState) = 0;
+  virtual auto checkSnapshotState() noexcept -> SnapshotState = 0;
+};
+}  // namespace comp
+}  // namespace arangodb::replication2::replicated_log
