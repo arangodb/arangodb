@@ -727,16 +727,16 @@ void RocksDBOptionFeature::collectOptions(
           arangodb::options::Flags::OnSingle));
 
   options
-      ->addOption(
-          "--rocksdb.block-cache-estimated-entry-charge",
-          "The estimated charge of cache entries (in bytes) for the hyper-clock cache.",
-          new UInt64Parameter(&_blockCacheEstimatedEntryCharge),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Experimental,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
+      ->addOption("--rocksdb.block-cache-estimated-entry-charge",
+                  "The estimated charge of cache entries (in bytes) for the "
+                  "hyper-clock cache.",
+                  new UInt64Parameter(&_blockCacheEstimatedEntryCharge),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
