@@ -751,8 +751,8 @@ void RocksDBOptionFeature::collectOptions(
   TRI_ASSERT(::blockCacheTypes.contains(_blockCacheType));
   options
       ->addOption("--rocksdb.block-cache-type",
-                  "block cache type to use (note: 'hyper-clock' cache type is "
-                  "experimental)",
+                  "The block cache type to use (note: the 'hyper-clock' cache "
+                  "type is experimental).",
                   new DiscreteValuesParameter<StringParameter>(
                       &_blockCacheType, ::blockCacheTypes))
       .setIntroducedIn(31100);
