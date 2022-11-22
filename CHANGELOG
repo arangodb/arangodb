@@ -1,6 +1,9 @@
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
+* Fixed BTS-1125 Fixes handling of primarySortCache and primaryKeyCache
+  properties in ArangoSearch views.
+
 * Do not query vertex data in K_PATHS queries if vertex data is not needed.
 
 
@@ -10,8 +13,6 @@ v3.9.5 (2022-11-10)
 * Show number of HTTP requests in cluster query profiles.
 
 * Repair "load indexes into memory" function in the web UI.
-
-* Fixed SEARCH-408: Added ArangoSearch cached columns.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
   filters with very long lists. Free sub-iterators as soon as they are
@@ -48,7 +49,7 @@ v3.9.5 (2022-11-10)
 
 * Improved shard distribution during collection creation.
 
-* SEARCH-408 Added "cached" columns feature for the ArangoSearch
+* SEARCH-408 Added "cached" columns feature for the ArangoSearch.
 
 
 v3.9.4 (2022-10-18)

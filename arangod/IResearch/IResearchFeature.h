@@ -115,6 +115,14 @@ class IResearchFeature final : public application_features::ApplicationFeature {
 
 #ifdef USE_ENTERPRISE
   bool trackColumnsCacheUsage(int64_t diff) noexcept;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto columnsCacheUsage() const noexcept {
+    return _columnsCacheMemoryUsed.load();
+  }
+  void setCacheUsageLimit(uint64_t limit) noexcept {
+    _columnsCacheLimit = limit;
+  }
+#endif
 #endif
  private:
   void registerRecoveryHelper();
