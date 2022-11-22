@@ -5,6 +5,11 @@ v3.10.2 (XXXX-XX-XX)
   rebalance plan to always have moves, but there were cases in which all 
   there are none.
 
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
+
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
 * BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
 
 * Repair "load indexes into memory" function in the web UI.
