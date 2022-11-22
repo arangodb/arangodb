@@ -1038,8 +1038,8 @@ void RocksDBOptionFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.blob-garbage-collection-age-cutoff",
-          "age cutoff for garbage collecting blobs in the documents column "
-          "family (requires `--rocksdb.enable-blob-files`)",
+          "The age cutoff for garbage collecting blobs in the documents "
+          "column family. Requires `--rocksdb.enable-blob-files`.",
           new DoubleParameter(&_blobGarbageCollectionAgeCutoff, 1.0, 0.0, 1.0),
           arangodb::options::makeFlags(
               arangodb::options::Flags::Experimental,
