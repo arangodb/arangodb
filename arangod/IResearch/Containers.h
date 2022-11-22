@@ -283,6 +283,11 @@ class UnorderedRefKeyMap
   class ConstIterator {
    public:
     using iterator_category = std::forward_iterator_tag;
+    using value_type = V;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = ptrdiff_t;
+    using const_pointer = const value_type*;
 
     bool operator==(ConstIterator const& other) const noexcept {
       return _itr == other._itr;
