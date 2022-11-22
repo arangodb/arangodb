@@ -25,12 +25,12 @@
 #pragma once
 
 #include "gtest/gtest.h"
-#include <filesystem>
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
+#include <filesystem>
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"

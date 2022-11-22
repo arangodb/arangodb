@@ -428,7 +428,7 @@ void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
   }
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
-  _hasNested = MetaTraits::hasNested(linkMeta);
+  _hasNested = linkMeta._hasNested;
 #endif
   pushLevel(doc, linkMeta, filter);
   next();

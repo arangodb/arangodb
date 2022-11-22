@@ -29,16 +29,27 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
+
 class Index;
 class LogicalCollection;
 
+namespace application_features {
+
+class ApplicationServer;
+
+}  // namespace application_features
 namespace velocypack {
+
 class Builder;
 class Slice;
+
 }  // namespace velocypack
+namespace helpers {
+
+IndexId extractId(velocypack::Slice slice) noexcept;
+std::string_view extractName(velocypack::Slice slice) noexcept;
+
+}  // namespace helpers
 
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type

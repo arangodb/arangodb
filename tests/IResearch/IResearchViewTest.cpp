@@ -103,7 +103,7 @@ struct DocIdScorer : public irs::sort {
 
   static ptr make(std::string_view) { return std::make_unique<DocIdScorer>(); }
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
-  virtual sort::prepared::ptr prepare() const override {
+  sort::prepared::ptr prepare() const override {
     return std::make_unique<Prepared>();
   }
 

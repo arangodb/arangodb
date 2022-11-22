@@ -243,7 +243,6 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     if (returnNullFromMake) {
       return nullptr;
     }
-
     return std::make_unique<InvalidAnalyzer>();
   }
 

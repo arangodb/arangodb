@@ -27,6 +27,7 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
+#include <filesystem>
 
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchLinkMeta.h"
