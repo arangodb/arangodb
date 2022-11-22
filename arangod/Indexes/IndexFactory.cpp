@@ -39,6 +39,10 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_cat.h>
+
 #include <limits.h>
 
 #include <regex>
@@ -80,6 +84,9 @@ namespace helpers {
 
 IndexId extractId(velocypack::Slice slice) noexcept {
   auto id = IndexId::none();
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    return id;
+  }
   auto value = slice.get(StaticStrings::IndexId);
   if (value.isNumber()) {
     id = IndexId{value.getNumber<IndexId::BaseType>()};
@@ -93,6 +100,9 @@ IndexId extractId(velocypack::Slice slice) noexcept {
 }
 
 std::string_view extractName(velocypack::Slice slice) noexcept {
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    return {};
+  }
   if (auto value = slice.get(StaticStrings::IndexName); value.isString()) {
     return value.stringView();
   }

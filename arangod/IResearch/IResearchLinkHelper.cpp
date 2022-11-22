@@ -805,7 +805,7 @@ namespace iresearch {
 
 #if USE_ENTERPRISE
     bool isIgnoredCollection =
-        isIgnoredHiddenEnterpriseCollection(collectionName.copyString());
+        isIgnoredHiddenEnterpriseCollection(collectionName.stringView());
 #else
     bool isIgnoredCollection = false;
 #endif
