@@ -282,6 +282,8 @@ class UnorderedRefKeyMap
 
   class ConstIterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+
     bool operator==(ConstIterator const& other) const noexcept {
       return _itr == other._itr;
     }
@@ -301,8 +303,6 @@ class UnorderedRefKeyMap
     const KeyType& key() const noexcept { return _itr->first; }
     const V& value() const noexcept { return _itr->second.second; }
 
-    using iterator_category = std::forward_iterator_tag;
-
    private:
     friend UnorderedRefKeyMap;
     typename MapType::const_iterator _itr;
@@ -313,6 +313,8 @@ class UnorderedRefKeyMap
 
   class Iterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+
     bool operator==(Iterator const& other) const noexcept {
       return _itr == other._itr;
     }
