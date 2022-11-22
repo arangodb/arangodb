@@ -1,6 +1,9 @@
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
+
 * Fixed BTS-1125 Fixes handling of primarySortCache and primaryKeyCache
   properties in ArangoSearch views.
 
