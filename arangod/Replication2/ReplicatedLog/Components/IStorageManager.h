@@ -47,6 +47,8 @@ struct IStorageTransaction {
   [[nodiscard]] virtual auto getLogBounds() const noexcept -> LogRange = 0;
   virtual auto removeFront(LogIndex stop) noexcept
       -> futures::Future<Result> = 0;
+  virtual auto removeBack(LogIndex start) noexcept
+      -> futures::Future<Result> = 0;
   virtual auto appendEntries(LogIndex appendAfter, InMemoryLogSlice) noexcept
       -> futures::Future<Result> = 0;
 };

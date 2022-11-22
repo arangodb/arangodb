@@ -34,9 +34,11 @@ struct FakeStorageEngineMethodsContext {
 
   FakeStorageEngineMethodsContext(
       std::uint64_t objectId, LogId logId,
-      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor);
+      std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor,
+      LogRange range = {});
 
   auto getMethods() -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
+  void emplaceLogRange(LogRange, LogTerm term = LogTerm{1});
 
   std::uint64_t const objectId;
   LogId const logId;

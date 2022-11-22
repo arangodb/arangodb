@@ -25,13 +25,15 @@
 #include "Basics/Result.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Mocks/FakeStorageEngineMethods.h"
+#include "Replication2/Mocks/FakeAsyncExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
 
-struct StorageEngineMethodsMock : IStorageEngineMethods {
+struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
   MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
   MOCK_METHOD(std::unique_ptr<PersistedLogIterator>, read, (LogIndex),
@@ -51,19 +53,71 @@ struct StorageEngineMethodsMock : IStorageEngineMethods {
 };
 
 struct StorageEngineMethodsMockFactory {
-  auto create() -> std::unique_ptr<StorageEngineMethodsMock> {
-    auto ptr = std::make_unique<StorageEngineMethodsMock>();
+  auto create() -> std::unique_ptr<StorageEngineMethodsGMock> {
+    auto ptr = std::make_unique<StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
     return ptr;
   }
-  auto operator->() noexcept -> StorageEngineMethodsMock* { return lastPtr; }
+  auto operator->() noexcept -> StorageEngineMethodsGMock* { return lastPtr; }
 
  private:
-  StorageEngineMethodsMock* lastPtr{nullptr};
+  StorageEngineMethodsGMock* lastPtr{nullptr};
 };
 
 struct StorageManagerTest : ::testing::Test {
-  StorageEngineMethodsMockFactory methods;
+  std::uint64_t const objectId = 1;
+  LogId const logId = LogId{12};
+  std::shared_ptr<test::DelayedExecutor> executor =
+      std::make_shared<test::DelayedExecutor>();
+  test::FakeStorageEngineMethodsContext methods{
+      objectId, logId, executor, LogRange{LogIndex{1}, LogIndex{100}}};
   std::shared_ptr<StorageManager> storageManager =
-      std::make_shared<StorageManager>(methods.create());
+      std::make_shared<StorageManager>(methods.getMethods());
 };
+
+TEST_F(StorageManagerTest, transaction_resign) {
+  auto trx = storageManager->transaction();
+  trx.reset();
+  auto methods = storageManager->resign();
+}
+
+TEST_F(StorageManagerTest, transaction_resign_transaction) {
+  auto trx = storageManager->transaction();
+  trx.reset();
+  auto methods = storageManager->resign();
+  EXPECT_ANY_THROW({ std::ignore = storageManager->transaction(); });
+}
+
+TEST_F(StorageManagerTest, transaction_remove_front) {
+  auto trx = storageManager->transaction();
+  auto f = trx->removeFront(LogIndex{50});
+
+  EXPECT_FALSE(f.isReady());
+  executor->runOnce();
+  ASSERT_TRUE(f.isReady());
+
+  EXPECT_EQ(methods.log.size(), 50);  // [50, 100)
+  EXPECT_EQ(methods.log.begin()->first, LogIndex{50});
+  EXPECT_EQ(methods.log.rbegin()->first, LogIndex{99});
+
+  auto trx2 = storageManager->transaction();
+  auto logBounds = trx2->getLogBounds();
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{50}, LogIndex{100}}));
+}
+
+TEST_F(StorageManagerTest, transaction_remove_back) {
+  auto trx = storageManager->transaction();
+  auto f = trx->removeBack(LogIndex{50});
+
+  EXPECT_FALSE(f.isReady());
+  executor->runOnce();
+  ASSERT_TRUE(f.isReady());
+
+  EXPECT_EQ(methods.log.size(), 49);  // [1, 50)
+  EXPECT_EQ(methods.log.begin()->first, LogIndex{1});
+  EXPECT_EQ(methods.log.rbegin()->first, LogIndex{49});
+
+  auto trx2 = storageManager->transaction();
+  auto logBounds = trx2->getLogBounds();
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{49}}));
+}

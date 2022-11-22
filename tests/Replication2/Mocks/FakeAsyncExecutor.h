@@ -42,9 +42,23 @@ struct ThreadAsyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
   bool stopping{false};
 };
 
-struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
-  void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
-    std::move(f).operator()();
-  }
+struct DelayedExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+  using Func = fu2::unique_function<void() noexcept>;
+
+  void operator()(Func fn) override;
+
+  ~DelayedExecutor() override;
+  DelayedExecutor();
+
+  void runOnce() noexcept;
+  void runAll() noexcept;
+
+ private:
+  std::deque<Func> queue;
 };
+
+struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+  void operator()(fu2::unique_function<void() noexcept> f) noexcept override;
+};
+
 }  // namespace arangodb::replication2::test

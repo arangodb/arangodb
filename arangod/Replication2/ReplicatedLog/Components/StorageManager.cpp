@@ -54,6 +54,20 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
                                      std::make_unique<RemoveFrontAction>(stop));
   }
 
+  auto removeBack(LogIndex start) noexcept -> futures::Future<Result> override {
+    struct RemoveBackAction : StorageManager::StorageOperation {
+      explicit RemoveBackAction(LogIndex start) : start(start) {}
+      auto run(StorageManager::IStorageEngineMethods& methods) noexcept
+          -> arangodb::futures::Future<arangodb::Result> override {
+        return methods.removeBack(start, {}).thenValue(
+            [](auto&& res) { return res.result(); });
+      }
+      LogIndex start;
+    };
+    return manager.scheduleOperation(std::move(guard),
+                                     std::make_unique<RemoveBackAction>(start));
+  }
+
   auto appendEntries(LogIndex appendAfter, InMemoryLogSlice slice) noexcept
       -> futures::Future<Result> override {
     return Result{};
@@ -71,7 +85,8 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> core)
 
 auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
   auto guard = guardedData.getLockedGuard();
-  return nullptr;
+  ADB_PROD_ASSERT(guard->queue.empty());
+  return std::move(guard->core);
 }
 
 StorageManager::GuardedData::GuardedData(
@@ -115,6 +130,10 @@ void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
 }
 
 auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
-  return std::make_unique<StorageManagerTransaction>(
-      guardedData.getLockedGuard(), *this);
+  auto guard = guardedData.getLockedGuard();
+  if (guard->core == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+  return std::make_unique<StorageManagerTransaction>(std::move(guard), *this);
 }
