@@ -544,6 +544,7 @@ class instance {
               print("ERROR: " + line);
             }
             this.assertLines.push(line);
+            crashUtils.GDB_OUTPUT += line;
           }
         }
       }
