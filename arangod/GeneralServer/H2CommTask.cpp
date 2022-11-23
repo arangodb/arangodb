@@ -43,12 +43,6 @@
 using namespace arangodb::basics;
 using arangodb::velocypack::StringRef;
 
-namespace {
-constexpr std::string_view switchingProtocols(
-    "HTTP/1.1 101 Switching Protocols\r\nConnection: "
-    "Upgrade\r\nUpgrade: h2c\r\n\r\n");
-}  // namespace
-
 namespace arangodb {
 namespace rest {
 
