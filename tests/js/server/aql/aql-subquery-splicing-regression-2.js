@@ -79,6 +79,29 @@ function subquerySplicingLimitDroppingOuterRowsSuite() {
       const res = q.toArray();
       assertEqual(1000, res.length);
     },
+
+    testSubqueryEnd: function () {
+      // This brings the SubqueryEnd node in a similar situation as the previous
+      // test does the SubqueryStart. It's not a regression test (at the point of
+      // writing, it already worked correctly), but just for completeness' sake.
+
+      const query = `
+        FOR i IN 1..1000
+          LET sq2 = (
+            FOR k IN 1..3
+              LET sq1 = (
+                LET sq0 = (RETURN null)
+                LIMIT 1
+                RETURN null
+              )
+            RETURN null
+          )
+        RETURN null`;
+
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const res = q.toArray();
+      assertEqual(1000, res.length);
+    },
   };
 }
 
