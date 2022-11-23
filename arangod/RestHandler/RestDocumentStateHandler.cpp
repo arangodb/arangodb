@@ -65,9 +65,10 @@ RestStatus RestDocumentStateHandler::executeByMethod(
 RestStatus RestDocumentStateHandler::handleGetRequest(
     replication2::DocumentStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect GET /_api/document-state/<state-id>");
+  if (suffixes.size() < 3) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expect GET /_api/document-state/<state-id>/snapshot/<action>");
     return RestStatus::DONE;
   }
 
@@ -82,15 +83,10 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
     return RestStatus::DONE;
   }
 
-  if (suffixes.size() < 2) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect GET /_api/document-state/<state-id>/<verb>");
-    return RestStatus::DONE;
-  }
-
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    return handleGetSnapshot(methods, logId.value());
+    return processSnapshotRequest(methods, logId.value(),
+                                  parseGetSnapshotParams());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
@@ -98,50 +94,35 @@ RestStatus RestDocumentStateHandler::handleGetRequest(
   return RestStatus::DONE;
 }
 
-RestStatus RestDocumentStateHandler::handleGetSnapshot(
-    replication2::DocumentStateMethods const& methods,
-    replication2::LogId const& logId) {
+auto RestDocumentStateHandler::parseGetSnapshotParams()
+    -> ResultT<replication2::replicated_state::document::SnapshotParams> {
   using namespace replication2::replicated_state;
 
   auto const& suffixes = _request->suffixes();
-  auto params = std::invoke([&]() -> ResultT<document::SnapshotParams> {
-    if (suffixes[2] == "status") {
-      if (suffixes.size() < 4) {
-        return document::SnapshotParams{document::SnapshotParams::Status{}};
-      }
-      auto id = document::SnapshotId::fromString(suffixes[3]);
-      if (!id.has_value()) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_HTTP_BAD_PARAMETER,
-            fmt::format("Invalid snapshot id: {}", suffixes[3]));
-      }
-      return document::SnapshotParams{document::SnapshotParams::Status{*id}};
-    } else {
+  if (suffixes[2] == "status") {
+    if (suffixes.size() < 4) {
+      return document::SnapshotParams{document::SnapshotParams::Status{}};
+    }
+    auto id = document::SnapshotId::fromString(suffixes[3]);
+    if (!id.has_value()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_HTTP_BAD_PARAMETER,
-          "expect GET one of the following actions: status");
+          fmt::format("Invalid snapshot id: {}", suffixes[3]));
     }
-  });
-
-  if (params.fail()) {
-    generateError(params.result());
-    return RestStatus::DONE;
+    return document::SnapshotParams{document::SnapshotParams::Status{*id}};
   }
-  auto result = methods.processSnapshotRequest(logId, *params);
-  if (result.fail()) {
-    generateError(result.result());
-  } else {
-    generateOk(rest::ResponseCode::OK, result.get().slice());
-  }
-  return RestStatus::DONE;
+  return ResultT<document::SnapshotParams>::error(
+      TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expect GET one of the following actions: status");
 }
 
 RestStatus RestDocumentStateHandler::handlePostRequest(
     replication2::DocumentStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect POST /_api/document-state/<state-id>");
+  if (suffixes.size() < 3) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expect POST /_api/document-state/<state-id>/snapshot/<action>");
     return RestStatus::DONE;
   }
 
@@ -156,16 +137,10 @@ RestStatus RestDocumentStateHandler::handlePostRequest(
     return RestStatus::DONE;
   }
 
-  if (suffixes.size() < 3) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expect POST /_api/document-state/<state-id>/snapshot/<action>");
-    return RestStatus::DONE;
-  }
-
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    return handlePostSnapshot(methods, logId.value());
+    return processSnapshotRequest(methods, logId.value(),
+                                  parsePostSnapshotParams());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
@@ -173,77 +148,63 @@ RestStatus RestDocumentStateHandler::handlePostRequest(
   return RestStatus::DONE;
 }
 
-RestStatus RestDocumentStateHandler::handlePostSnapshot(
-    replication2::DocumentStateMethods const& methods,
-    replication2::LogId const& logId) {
+auto RestDocumentStateHandler::parsePostSnapshotParams()
+    -> ResultT<replication2::replicated_state::document::SnapshotParams> {
   using namespace replication2::replicated_state;
 
   auto const& suffixes = _request->suffixes();
-  auto params = std::invoke([&]() -> ResultT<document::SnapshotParams> {
-    if (suffixes[2] == "start") {
-      if (suffixes.size() != 3) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("expect POST "
-                        "/_api/document-state/<state-id>/snapshot/"
-                        "start?waitForIndex=<index>"));
-      }
-
-      auto waitForIndexParam =
-          _request->parsedValue<decltype(replication2::LogIndex::value)>(
-              "waitForIndex");
-      if (!waitForIndexParam.has_value()) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_HTTP_BAD_PARAMETER,
-            "invalid waitForIndex parameter, expect POST "
-            "/_api/document-state/<state-id>/snapshot/"
-            "start?waitForIndex=<index>");
-      }
-
-      return document::SnapshotParams{document::SnapshotParams::Start{
-          .waitForIndex = replication2::LogIndex{*waitForIndexParam}}};
-    } else if (suffixes[2] == "next") {
-      if (suffixes.size() != 4) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_HTTP_BAD_PARAMETER,
-            "expect POST "
-            "/_api/document-state/<state-id>/snapshot/next/<snapshot-id>");
-      }
-
-      auto id = document::SnapshotId::fromString(suffixes[3]);
-      if (!id.has_value()) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("Invalid snapshot id: {}", suffixes[3]));
-      }
-
-      return document::SnapshotParams{document::SnapshotParams::Next{*id}};
+  if (suffixes[2] == "start") {
+    if (suffixes.size() != 3) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("expect POST "
+                      "/_api/document-state/<state-id>/snapshot/"
+                      "start?waitForIndex=<index>"));
     }
 
-    return ResultT<document::SnapshotParams>::error(
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expect POST one of the following actions: 'start', 'next'");
-  });
+    auto waitForIndexParam =
+        _request->parsedValue<decltype(replication2::LogIndex::value)>(
+            "waitForIndex");
+    if (!waitForIndexParam.has_value()) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "invalid waitForIndex parameter, expect POST "
+          "/_api/document-state/<state-id>/snapshot/"
+          "start?waitForIndex=<index>");
+    }
 
-  if (params.fail()) {
-    generateError(params.result());
-    return RestStatus::DONE;
+    return document::SnapshotParams{document::SnapshotParams::Start{
+        .waitForIndex = replication2::LogIndex{*waitForIndexParam}}};
+  } else if (suffixes[2] == "next") {
+    if (suffixes.size() != 4) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "expect POST "
+          "/_api/document-state/<state-id>/snapshot/next/<snapshot-id>");
+    }
+
+    auto id = document::SnapshotId::fromString(suffixes[3]);
+    if (!id.has_value()) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("Invalid snapshot id: {}", suffixes[3]));
+    }
+
+    return document::SnapshotParams{document::SnapshotParams::Next{*id}};
   }
-  auto result = methods.processSnapshotRequest(logId, *params);
-  if (result.fail()) {
-    generateError(result.result());
-  } else {
-    generateOk(rest::ResponseCode::OK, result.get().slice());
-  }
-  return RestStatus::DONE;
+
+  return ResultT<document::SnapshotParams>::error(
+      TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expect POST one of the following actions: 'start', 'next'");
 }
 
 RestStatus RestDocumentStateHandler::handleDeleteRequest(
     replication2::DocumentStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect POST /_api/document-state/<state-id>");
+  if (suffixes.size() < 3) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expect DELETE /_api/document-state/<state-id>/snapshot/<action>");
     return RestStatus::DONE;
   }
 
@@ -258,16 +219,10 @@ RestStatus RestDocumentStateHandler::handleDeleteRequest(
     return RestStatus::DONE;
   }
 
-  if (suffixes.size() < 3) {
-    generateError(
-        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expect DELETE /_api/document-state/<state-id>/snapshot/<action>");
-    return RestStatus::DONE;
-  }
-
   auto const& verb = suffixes[1];
   if (verb == "snapshot") {
-    return handleDeleteSnapshot(methods, logId.value());
+    return processSnapshotRequest(methods, logId.value(),
+                                  parseDeleteSnapshotParams());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "expected one of the resources: 'snapshot'");
@@ -275,37 +230,40 @@ RestStatus RestDocumentStateHandler::handleDeleteRequest(
   return RestStatus::DONE;
 }
 
-RestStatus RestDocumentStateHandler::handleDeleteSnapshot(
-    replication2::DocumentStateMethods const& methods,
-    replication2::LogId const& logId) {
+auto RestDocumentStateHandler::parseDeleteSnapshotParams()
+    -> ResultT<replication2::replicated_state::document::SnapshotParams> {
   using namespace replication2::replicated_state;
 
   auto const& suffixes = _request->suffixes();
-  auto params = std::invoke([&]() -> ResultT<document::SnapshotParams> {
-    if (suffixes[2] == "finish") {
-      if (suffixes.size() != 4) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("expect DELETE "
-                        "/_api/document-state/<state-id>/snapshot/"
-                        "finish/<snapshot-id>"));
-      }
-
-      auto id = document::SnapshotId::fromString(suffixes[3]);
-      if (!id.has_value()) {
-        return ResultT<document::SnapshotParams>::error(
-            TRI_ERROR_BAD_PARAMETER,
-            fmt::format("Invalid snapshot id: {}", suffixes[3]));
-      }
-
-      return document::SnapshotParams{document::SnapshotParams::Finish{*id}};
+  if (suffixes[2] == "finish") {
+    if (suffixes.size() != 4) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("expect DELETE "
+                      "/_api/document-state/<state-id>/snapshot/"
+                      "finish/<snapshot-id>"));
     }
 
-    return ResultT<document::SnapshotParams>::error(
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expect DELETE one of the following actions: 'finish'");
-  });
+    auto id = document::SnapshotId::fromString(suffixes[3]);
+    if (!id.has_value()) {
+      return ResultT<document::SnapshotParams>::error(
+          TRI_ERROR_BAD_PARAMETER,
+          fmt::format("Invalid snapshot id: {}", suffixes[3]));
+    }
 
+    return document::SnapshotParams{document::SnapshotParams::Finish{*id}};
+  }
+
+  return ResultT<document::SnapshotParams>::error(
+      TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expect DELETE one of the following actions: 'finish'");
+}
+
+RestStatus RestDocumentStateHandler::processSnapshotRequest(
+    replication2::DocumentStateMethods const& methods,
+    replication2::LogId const& logId,
+    ResultT<replication2::replicated_state::document::SnapshotParams>&&
+        params) {
   if (params.fail()) {
     generateError(params.result());
     return RestStatus::DONE;
