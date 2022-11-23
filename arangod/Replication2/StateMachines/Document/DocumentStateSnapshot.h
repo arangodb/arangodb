@@ -36,12 +36,10 @@
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
-}
 
 /*
  * Unique ID used to identify a snapshot between the leader and the follower.
  */
-namespace arangodb::replication2::replicated_state::document {
 class SnapshotId : public arangodb::basics::Identifier {
  public:
   using arangodb::basics::Identifier::Identifier;
@@ -56,16 +54,7 @@ class SnapshotId : public arangodb::basics::Identifier {
 
 template<class Inspector>
 auto inspect(Inspector& f, SnapshotId& x) {
-  if constexpr (Inspector::isLoading) {
-    auto v = uint64_t{0};
-    auto res = f.apply(v);
-    if (res.ok()) {
-      x = SnapshotId{v};
-    }
-    return res;
-  } else {
-    return f.apply(x.id());
-  }
+  return f.apply(static_cast<basics::Identifier&>(*this));
 }
 
 auto to_string(SnapshotId snapshotId) -> std::string;
