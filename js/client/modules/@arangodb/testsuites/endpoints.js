@@ -74,6 +74,7 @@ class endpointRunner extends tu.runInArangoshRunner {
     return this.endpoint;
   }
   run() {
+    let unixDomainSocketPath = 'unix://tmp/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
     let obj = this;
     this.instanceManager = new im.instanceManager(this.options.protocol,
                                                   this.options,
@@ -229,7 +230,7 @@ class endpointRunner extends tu.runInArangoshRunner {
         serverArgs: function () {
           // use a random filename
           return {
-            'server.endpoint': 'unix://' + obj.dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8)
+            'server.endpoint': unixDomainSocketPath
           };
         },
         shellTests: [
@@ -338,6 +339,9 @@ class endpointRunner extends tu.runInArangoshRunner {
     }, { failed: 0, shutdown: true });
     if (this.options.cleanup) {
       fs.removeDirectoryRecursive(this.dummyDir, true);
+      if (fs.exists(unixDomainSocketPath)) {
+        fs.remove(unixDomainSocketPath);
+      }
     }
   }
 }
