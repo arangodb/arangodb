@@ -37,7 +37,10 @@
 namespace arangodb::options::UnitsHelper {
 
 // turns a number string with an optional unit suffix into a numeric
-// value. will throw std::out_of_range for invalid values
+// value. will throw std::out_of_range for invalid values.
+// it is required that any input value to this function is stripped of
+// any leading and trailing whitespace characters. otherwise the
+// function will throw an exception
 template<typename T, typename internal>
 inline T parseNumberWithUnit(std::string_view value, T base = 1) {
   constexpr internal oneKiB = 1'024;
