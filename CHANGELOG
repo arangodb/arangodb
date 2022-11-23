@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
 * Added option to exclude system collection from rebalance shards plan.
 
 * Updated arangosync to v2.13.0-preview-4.
