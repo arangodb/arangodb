@@ -546,6 +546,10 @@ if (NOT "${EXIT_CODE}" EQUAL "0")
   message(FATAL_ERROR "python shutil.which package is required! ")
 endif()
 
+# Flex and Bison for generating the AQL tokens and grammar files
+find_package(FLEX REQUIRED)
+find_package(BISON REQUIRED)
+
 # FIXME the build containers seem to have a
 # /usr/bin/ch(mod|own) to prevent the search
 # to find those files the NO_DEFAULT_PATH
@@ -797,8 +801,6 @@ if (USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
 
-  find_package(FLEX REQUIRED)
-  find_package(BISON REQUIRED)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
   find_program(SED_EXECUTABLE sed)
