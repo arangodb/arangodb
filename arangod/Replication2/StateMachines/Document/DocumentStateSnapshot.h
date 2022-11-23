@@ -54,7 +54,7 @@ class SnapshotId : public arangodb::basics::Identifier {
 
 template<class Inspector>
 auto inspect(Inspector& f, SnapshotId& x) {
-  return f.apply(static_cast<basics::Identifier&>(*this));
+  return f.apply(static_cast<basics::Identifier&>(x));
 }
 
 auto to_string(SnapshotId snapshotId) -> std::string;
@@ -76,7 +76,6 @@ struct std::hash<
 };
 
 namespace arangodb::replication2::replicated_state::document {
-namespace {
 inline constexpr auto kStringSnapshotId = std::string_view{"snapshotId"};
 inline constexpr auto kStringShardId = std::string_view{"shardId"};
 inline constexpr auto kStringHasMore = std::string_view{"hasMore"};
@@ -90,7 +89,6 @@ inline constexpr auto kStringSnapshots = std::string_view{"snapshots"};
 inline constexpr auto kStringOngoing = std::string_view{"ongoing"};
 inline constexpr auto kStringAborted = std::string_view{"aborted"};
 inline constexpr auto kStringFinished = std::string_view{"finished"};
-}  // namespace
 
 /*
  * Indicates what type of action is expected from the leader.
