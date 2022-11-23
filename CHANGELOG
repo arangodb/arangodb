@@ -1,6 +1,8 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Updated OpenSSL to 1.1.1s.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
