@@ -284,6 +284,21 @@ index 0efaba84248..328393d2ffd 100644
  #define STDIN_FILENO 0
  #define STDOUT_FILENO 1
  #define STDERR_FILENO 2
+diff --git a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
+index cbc4fe9aa46..9de05c61d73 100644
+--- a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
++++ b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
+@@ -413,7 +413,9 @@ class compact_array_base {
+     value_allocator_type allocator;
+ 
+     T* new_ptr = allocator.allocate(capacity());
+-    memcpy(new_ptr, Array(), old_capacity * sizeof(T));
++    if (old_capacity != 0) {
++      memcpy(new_ptr, Array(), old_capacity * sizeof(T));
++    }
+     allocator.deallocate(Array(), old_capacity);
+ 
+     SetArray(new_ptr);
 ```
 
 ## snappy
