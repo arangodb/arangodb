@@ -154,7 +154,9 @@ struct SnapshotBatch {
  */
 namespace state {
 // Actively ongoing snapshot, although it may have had run out of documents.
-struct Ongoing {};
+struct Ongoing {
+  VPackBuilder builder;
+};
 
 // Snapshot that has been aborted due to inactivity.
 struct Aborted {};

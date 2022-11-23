@@ -57,12 +57,13 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
-            VPackBuilder builder;
-            _reader->read(builder, kBatchSizeLimit);
-            auto batch = SnapshotBatch{.snapshotId = _id,
-                                       .shardId = _status.shardId,
-                                       .hasMore = _reader->hasMore(),
-                                       .payload = builder.sharedSlice()};
+            _reader->read(ongoing.builder, kBatchSizeLimit);
+            auto batch =
+                SnapshotBatch{.snapshotId = _id,
+                              .shardId = _status.shardId,
+                              .hasMore = _reader->hasMore(),
+                              .payload = ongoing.builder.sharedSlice()};
+            ongoing.builder.clear();
             ++_status.batchesSent;
             _status.bytesSent += batch.payload.byteSize();
             _status.docsSent += batch.payload.length();
