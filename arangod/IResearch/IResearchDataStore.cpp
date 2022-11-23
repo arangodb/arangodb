@@ -51,6 +51,7 @@
 #endif
 
 #include <index/column_info.hpp>
+#include <store/caching_directory.hpp>
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
@@ -1285,13 +1286,13 @@ Result IResearchDataStore::initDataStore(
                          "' while initializing ArangoSearch index '", _id.id(),
                          "'")};
   }
-  if (initCallback) {
-    _dataStore._directory = std::make_unique<irs::mmap_directory>(
-        _dataStore._path.u8string(), initCallback());
-  } else {
-    _dataStore._directory =
-        std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
-  }
+
+  constexpr size_t kDirectoryCacheSize = 32768;
+
+  _dataStore._directory = std::make_unique<
+      irs::CachingDirectory<irs::mmap_directory, irs::MaxCountAcceptor>>(
+      irs::MaxCountAcceptor{kDirectoryCacheSize}, _dataStore._path.u8string(),
+      initCallback ? initCallback() : irs::directory_attributes{});
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
