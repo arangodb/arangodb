@@ -139,6 +139,17 @@ class IResearchFeature final : public ArangodFeature {
 
   bool failQueriesOnOutOfSync() const noexcept;
 
+#ifdef USE_ENTERPRISE
+  bool trackColumnsCacheUsage(int64_t diff) noexcept;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  int64_t columnsCacheUsage() const noexcept;
+
+  void setCacheUsageLimit(uint64_t limit) noexcept {
+    _columnsCacheLimit = limit;
+  }
+#endif
+#endif
+
  private:
   void registerRecoveryHelper();
 
@@ -172,6 +183,11 @@ class IResearchFeature final : public ArangodFeature {
 
   // number of links/indexes currently out of sync
   metrics::Gauge<uint64_t>& _outOfSyncLinks;
+
+#ifdef USE_ENTERPRISE
+  metrics::Gauge<int64_t>& _columnsCacheMemoryUsed;
+  uint64_t _columnsCacheLimit{0};
+#endif
 
   // helper object, only useful during WAL recovery
   std::shared_ptr<IResearchRocksDBRecoveryHelper> _recoveryHelper;
