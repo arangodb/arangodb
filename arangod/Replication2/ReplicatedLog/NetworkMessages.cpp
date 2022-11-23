@@ -136,22 +136,23 @@ auto AppendEntriesRequest::operator=(
 }
 
 auto replicated_log::operator++(MessageId& id) -> MessageId& {
-  ++id.value;
+  ++id._value;
   return id;
 }
 
 auto replicated_log::operator<<(std::ostream& os, MessageId id)
     -> std::ostream& {
-  return os << id.value;
+  return os << id._value;
 }
 
 auto replicated_log::to_string(MessageId id) -> std::string {
-  return std::to_string(id.value);
+  return std::to_string(id._value);
 }
 
 MessageId::operator velocypack::Value() const noexcept {
-  return velocypack::Value(value);
+  return velocypack::Value(_value);
 }
+auto MessageId::value() -> std::uint64_t { return _value; }
 
 void replicated_log::AppendEntriesResult::toVelocyPack(
     velocypack::Builder& builder) const {

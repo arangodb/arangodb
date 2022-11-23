@@ -68,7 +68,6 @@ struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
-struct IStateManagerBase {};
 template<typename S>
 struct IReplicatedStateImplBase;
 template<typename S>
@@ -183,13 +182,13 @@ struct ProducerStreamProxy
 };
 
 template<typename S>
-struct NewLeaderStateManager
-    : std::enable_shared_from_this<NewLeaderStateManager<S>> {
+struct LeaderStateManager
+    : std::enable_shared_from_this<LeaderStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   using Serializer = typename ReplicatedStateTraits<S>::Serializer;
-  explicit NewLeaderStateManager(
+  explicit LeaderStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
@@ -227,13 +226,13 @@ struct NewLeaderStateManager
 };
 
 template<typename S>
-struct NewFollowerStateManager
-    : std::enable_shared_from_this<NewFollowerStateManager<S>> {
+struct FollowerStateManager
+    : std::enable_shared_from_this<FollowerStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
-  explicit NewFollowerStateManager(
+  explicit FollowerStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
@@ -253,32 +252,40 @@ struct NewFollowerStateManager
   LoggerContext const _loggerContext;
   std::shared_ptr<ReplicatedStateMetrics> const _metrics;
   void handleApplyEntriesResult(Result);
+  auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
     [[nodiscard]] auto updateCommitIndex(LogIndex index)
         -> std::optional<futures::Future<Result>>;
-    [[nodiscard]] auto maybeScheduleAppendEntries()
+    [[nodiscard]] auto maybeScheduleApplyEntries()
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;
     [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
+    void registerSnapshotError(Result error,
+                               metrics::Counter& counter) noexcept;
+    void clearSnapshotErrors() noexcept;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
     std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
-    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> _logMethods;
-    WaitForQueue _waitQueue;
+    std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
+        _logMethods{};
+    WaitForQueue _waitQueue{};
     LogIndex _commitIndex = LogIndex{0};
     LogIndex _lastAppliedIndex = LogIndex{0};
+    std::optional<Result> _lastSnapshotError{};
+    std::uint64_t _snapshotErrorCounter{0};
     std::optional<LogIndex> _applyEntriesIndexInFlight = std::nullopt;
   };
   Guarded<GuardedData> _guardedData;
 };
 
 template<typename S>
-struct NewUnconfiguredStateManager
-    : std::enable_shared_from_this<NewUnconfiguredStateManager<S>> {
+struct UnconfiguredStateManager
+    : std::enable_shared_from_this<UnconfiguredStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  explicit NewUnconfiguredStateManager(LoggerContext loggerContext,
-                                       std::unique_ptr<CoreType>) noexcept;
+  explicit UnconfiguredStateManager(LoggerContext loggerContext,
+                                    std::unique_ptr<CoreType>) noexcept;
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
                    std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
@@ -346,9 +353,9 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
     explicit GuardedData(Args&&... args)
         : _currentManager(std::forward<Args>(args)...) {}
 
-    std::variant<std::shared_ptr<NewUnconfiguredStateManager<S>>,
-                 std::shared_ptr<NewLeaderStateManager<S>>,
-                 std::shared_ptr<NewFollowerStateManager<S>>>
+    std::variant<std::shared_ptr<UnconfiguredStateManager<S>>,
+                 std::shared_ptr<LeaderStateManager<S>>,
+                 std::shared_ptr<FollowerStateManager<S>>>
         _currentManager;
   };
   Guarded<GuardedData> _guarded;
@@ -390,24 +397,6 @@ struct ReplicatedState final
       std::optional<velocypack::SharedSlice> const& coreParameter)
       -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
-  struct IStateManager : IStateManagerBase {
-    virtual ~IStateManager() = default;
-    virtual void run() = 0;
-
-    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
-    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
-
-    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
-    [[nodiscard]] virtual auto resign() && noexcept
-        -> std::tuple<std::unique_ptr<CoreType>,
-                      std::unique_ptr<ReplicatedStateToken>,
-                      DeferredAction> = 0;
-
-    virtual auto resign2() && noexcept -> std::tuple<
-        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods>,
-        std::unique_ptr<CoreType>> = 0;
-  };
-
  private:
   auto buildCore(std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
@@ -426,7 +415,6 @@ struct ReplicatedState final
     explicit GuardedData(ReplicatedState& self) : _self(self) {}
 
     ReplicatedState& _self;
-    std::shared_ptr<IStateManager> currentManager = nullptr;
     std::unique_ptr<CoreType> oldCore = nullptr;
   };
   Guarded<GuardedData> guardedData;

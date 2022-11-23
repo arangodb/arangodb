@@ -284,6 +284,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
+    if (data->didResign()) {
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+    }
 
     auto const& res = tryRes.get();
     {
@@ -419,7 +423,12 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
                                               _commitIndex);
     }
 
-    _follower._stateHandle->updateCommitIndex(newCommitIndex);
+    // Only call updateCommitIndex after the snapshot is completed. Otherwise,
+    // the state manager can trigger applyEntries calls while the snapshot
+    // is still being transferred.
+    if (_snapshotProgress == SnapshotProgress::kCompleted) {
+      _follower._stateHandle->updateCommitIndex(newCommitIndex);
+    }
     _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
         _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
@@ -454,7 +463,9 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.term = _currentTerm;
     status.lowestIndexToKeep = followerData._lowestIndexToKeep;
     status.compactionStatus = followerData.compactionStatus;
-    // TODO add snapshot status?
+    status.snapshotAvailable =
+        followerData._snapshotProgress ==
+        GuardedFollowerData::SnapshotProgress::kCompleted;
     return LogStatus{std::move(status)};
   });
 }
@@ -530,6 +541,9 @@ auto LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>,
   {
     auto methods = _stateHandle->resignCurrentState();
     ADB_PROD_ASSERT(methods != nullptr);
+    // We *must not* use this handle any longer. Its ownership is shared with
+    // our parent ReplicatedLog, which will pass it as necessary.
+    _stateHandle = nullptr;
   }
   return result;
 }
@@ -781,24 +795,25 @@ Result LogFollower::onSnapshotCompleted() {
   ADB_PROD_ASSERT(guard->_snapshotProgress ==
                   GuardedFollowerData::SnapshotProgress::kInProgress);
   guard->_snapshotProgress = GuardedFollowerData::SnapshotProgress::kCompleted;
-  leaderCommunicator->reportSnapshotAvailable().thenFinal(
-      [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
-        auto realRes = basics::catchToResult([&] { return res.get(); });
-        if (realRes.fail()) {
-          LOG_CTX("9db47", ERR, self->_loggerContext)
-              << "failed to update snapshot status on leader";
-          FATAL_ERROR_EXIT();  // TODO this has to be more resilient
-        }
-        LOG_CTX("600de", DEBUG, self->_loggerContext)
-            << "snapshot status updated on leader";
-      });
+  leaderCommunicator->reportSnapshotAvailable(guard->_lastRecvMessageId)
+      .thenFinal(
+          [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
+            auto realRes = basics::catchToResult([&] { return res.get(); });
+            if (realRes.fail()) {
+              LOG_CTX("9db47", ERR, self->_loggerContext)
+                  << "failed to update snapshot status on leader";
+              FATAL_ERROR_EXIT();  // TODO this has to be more resilient
+            }
+            LOG_CTX("600de", DEBUG, self->_loggerContext)
+                << "snapshot status updated on leader";
+          });
   return {};
 }
 
 auto LogFollower::compact() -> ResultT<CompactionResult> {
   auto guard = _guardedFollowerData.getLockedGuard();
   auto const& [stopIndex, reason] = guard->calcCompactionStop();
-  LOG_CTX("aed29", INFO, _loggerContext)
+  LOG_CTX("aed29", DEBUG, _loggerContext)
       << "starting explicit compaction up to index " << stopIndex << "; "
       << reason;
   return guard->runCompaction(true);

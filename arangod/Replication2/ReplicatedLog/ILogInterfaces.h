@@ -26,6 +26,7 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Basics/ResultT.h"
 
@@ -98,7 +99,11 @@ struct ILogFollower : ILogParticipant, AbstractFollower {};
 struct ILeaderCommunicator {
   virtual ~ILeaderCommunicator() = default;
   virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
-  virtual auto reportSnapshotAvailable() noexcept
+  /// @param mid Last message id received from the leader. This is reported to
+  ///            the leader, so it can ignore snapshot status updates from
+  ///            append entries responses that are lower than or equal to this
+  ///            id, as they are less recent than this information.
+  virtual auto reportSnapshotAvailable(MessageId mid) noexcept
       -> futures::Future<Result> = 0;
 };
 

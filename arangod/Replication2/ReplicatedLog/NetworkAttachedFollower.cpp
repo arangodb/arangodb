@@ -91,16 +91,23 @@ auto NetworkLeaderCommunicator::getParticipantId() const noexcept
   return leader;
 }
 
-auto NetworkLeaderCommunicator::reportSnapshotAvailable() noexcept
+auto NetworkLeaderCommunicator::reportSnapshotAvailable(MessageId mid) noexcept
     -> futures::Future<Result> {
-  auto path = basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal,
-                                         logId, "update-snapshot-status");
+  auto path =
+      basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal, logId,
+                                 StaticStrings::ApiUpdateSnapshotStatus);
   network::RequestOptions opts;
   opts.database = database;
   opts.parameters["follower"] = ServerState::instance()->getId();
-  auto f =
-      network::sendRequest(pool, "server:" + leader,
-                           arangodb::fuerte::RestVerb::Post, path, {}, opts);
+  auto payload = velocypack::Buffer<uint8_t>();
+  {
+    auto const message = SnapshotAvailableReport{.messageId = mid};
+    auto builder = velocypack::Builder(payload);
+    velocypack::serialize(builder, message);
+  }
+  auto f = network::sendRequest(pool, "server:" + leader,
+                                arangodb::fuerte::RestVerb::Post, path,
+                                std::move(payload), opts);
 
   return std::move(f).thenValue(
       [](network::Response result) { return result.combinedResult(); });

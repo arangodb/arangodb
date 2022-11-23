@@ -291,8 +291,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     testReplicateOperationsModify: function() {
       const opType = "Update";
 
+      // Choose two distinct random numbers
+      const numDocs = 2;
+      const nums = new Set();
+      while(nums.size !== numDocs) {
+        nums.add(_.random(1000));
+      }
+
       // Update single document
-      let documents = [{_key: `test${_.random(1000)}`}, {_key: `test${_.random(1000)}`}];
+      const documents = [...nums].map(i => ({_key: `test${i}`}));
       let docHandles = [];
       documents.forEach(doc => {
         let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
@@ -838,6 +845,9 @@ const replicatedStateSnapshotTransferSuite = function () {
       // Trigger compaction intentionally.
       log.compact();
 
+      // TODO this is not safe, we might loose already committed log entries.
+      //      either force the leader in the first place, or make sure a leader
+      //      election is done (by deleting the current leader when increasing the term)
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
       // Skipping some documents to save time

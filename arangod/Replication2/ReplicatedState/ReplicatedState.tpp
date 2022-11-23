@@ -32,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/MetricsHelper.h"
@@ -55,7 +56,7 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
     : _loggerContext(std::move(loggerContext)),
       _metrics(std::move(metrics)),
       _factory(std::move(factory)),
-      _guarded{std::make_shared<NewUnconfiguredStateManager<S>>(
+      _guarded{std::make_shared<UnconfiguredStateManager<S>>(
           _loggerContext.with<logContextKeyStateRole>(
               static_strings::StringUnconfigured),
           std::move(logCore))} {}
@@ -66,7 +67,7 @@ void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [&](std::shared_ptr<NewFollowerStateManager<S>>& manager) {
+                 [&](std::shared_ptr<FollowerStateManager<S>>& manager) {
                    LOG_CTX("52a11", DEBUG, _loggerContext)
                        << "try to acquire a new snapshot, starting at "
                        << commitIndex;
@@ -98,7 +99,7 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
                          }
                        });
                  },
-                 [](std::shared_ptr<NewUnconfiguredStateManager<S>>& manager) {
+                 [](std::shared_ptr<UnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";
                  },
@@ -116,11 +117,11 @@ auto ReplicatedStateManager<S>::resignCurrentState() noexcept
   // TODO Is it allowed to happen that resign() is called on an unconfigured
   //      state?
   ADB_PROD_ASSERT(
-      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+      std::holds_alternative<std::shared_ptr<UnconfiguredStateManager<S>>>(
           guard->_currentManager) == (methods == nullptr));
   guard->_currentManager
-      .template emplace<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
-          std::make_shared<NewUnconfiguredStateManager<S>>(
+      .template emplace<std::shared_ptr<UnconfiguredStateManager<S>>>(
+          std::make_shared<UnconfiguredStateManager<S>>(
               _loggerContext.template with<logContextKeyStateRole>(
                   static_strings::StringUnconfigured),
               std::move(core)));
@@ -132,10 +133,10 @@ void ReplicatedStateManager<S>::leadershipEstablished(
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods) {
   auto guard = _guarded.getLockedGuard();
   ADB_PROD_ASSERT(
-      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+      std::holds_alternative<std::shared_ptr<UnconfiguredStateManager<S>>>(
           guard->_currentManager));
   auto&& [core, oldMethods] =
-      std::move(*std::get<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+      std::move(*std::get<std::shared_ptr<UnconfiguredStateManager<S>>>(
                     guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
@@ -149,8 +150,8 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   leaderState->setStream(stream);
   auto& manager =
       guard->_currentManager
-          .template emplace<std::shared_ptr<NewLeaderStateManager<S>>>(
-              std::make_shared<NewLeaderStateManager<S>>(
+          .template emplace<std::shared_ptr<LeaderStateManager<S>>>(
+              std::make_shared<LeaderStateManager<S>>(
                   _loggerContext.template with<logContextKeyStateRole>(
                       static_strings::StringLeader),
                   _metrics, std::move(leaderState), std::move(stream)));
@@ -170,10 +171,10 @@ void ReplicatedStateManager<S>::becomeFollower(
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> methods) {
   auto guard = _guarded.getLockedGuard();
   ADB_PROD_ASSERT(
-      std::holds_alternative<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+      std::holds_alternative<std::shared_ptr<UnconfiguredStateManager<S>>>(
           guard->_currentManager));
   auto&& [core, oldMethods] =
-      std::move(*std::get<std::shared_ptr<NewUnconfiguredStateManager<S>>>(
+      std::move(*std::get<std::shared_ptr<UnconfiguredStateManager<S>>>(
                     guard->_currentManager))
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
@@ -182,13 +183,13 @@ void ReplicatedStateManager<S>::becomeFollower(
   auto stream = std::make_shared<StreamProxy<EntryType, Deserializer>>(
       std::move(methods));
   followerState->setStream(stream);
-  auto stateManager = std::make_shared<NewFollowerStateManager<S>>(
+  auto stateManager = std::make_shared<FollowerStateManager<S>>(
       _loggerContext.template with<logContextKeyStateRole>(
           static_strings::StringFollower),
       _metrics, followerState, std::move(stream));
   followerState->setStateManager(stateManager);
   guard->_currentManager
-      .template emplace<std::shared_ptr<NewFollowerStateManager<S>>>(
+      .template emplace<std::shared_ptr<FollowerStateManager<S>>>(
           std::move(stateManager));
 }
 
@@ -214,7 +215,7 @@ auto ReplicatedStateManager<S>::getFollower() const
   auto guard = _guarded.getLockedGuard();
   return std::visit(
       overload{
-          [](std::shared_ptr<NewFollowerStateManager<S>> const& manager) {
+          [](std::shared_ptr<FollowerStateManager<S>> const& manager) {
             return std::dynamic_pointer_cast<IReplicatedFollowerStateBase>(
                 manager->getStateMachine());
           },
@@ -229,7 +230,7 @@ auto ReplicatedStateManager<S>::getLeader() const
     -> std::shared_ptr<IReplicatedLeaderStateBase> {
   auto guard = _guarded.getLockedGuard();
   return std::visit(
-      overload{[](std::shared_ptr<NewLeaderStateManager<S>> const& manager) {
+      overload{[](std::shared_ptr<LeaderStateManager<S>> const& manager) {
                  return std::dynamic_pointer_cast<IReplicatedLeaderStateBase>(
                      manager->getStateMachine());
                },
@@ -267,7 +268,7 @@ auto StreamProxy<EntryType, Deserializer, Interface,
 }
 
 template<typename S>
-void NewLeaderStateManager<S>::recoverEntries() {
+void LeaderStateManager<S>::recoverEntries() {
   auto future = _guardedData.getLockedGuard()->recoverEntries();
   std::move(future).thenFinal(
       [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
@@ -282,7 +283,7 @@ void NewLeaderStateManager<S>::recoverEntries() {
 }
 
 template<typename S>
-auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
+auto LeaderStateManager<S>::GuardedData::recoverEntries() {
   auto logSnapshot = _stream->methods().getLogSnapshot();
   auto logIter = logSnapshot.getRangeIteratorFrom(LogIndex{0});
   auto deserializedIter =
@@ -298,7 +299,7 @@ auto NewLeaderStateManager<S>::GuardedData::recoverEntries() {
 }
 
 template<typename S>
-NewLeaderStateManager<S>::NewLeaderStateManager(
+LeaderStateManager<S>::LeaderStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
@@ -310,27 +311,27 @@ NewLeaderStateManager<S>::NewLeaderStateManager(
                    std::move(stream)} {}
 
 template<typename S>
-auto NewLeaderStateManager<S>::resign() && noexcept
+auto LeaderStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   return std::move(_guardedData.getLockedGuard().get()).resign();
 }
 
 template<typename S>
-auto NewLeaderStateManager<S>::getStatus() const -> StateStatus {
+auto LeaderStateManager<S>::getStatus() const -> StateStatus {
   LeaderStatus status;
   // TODO remove
   return StateStatus{.variant = std::move(status)};
 }
 
 template<typename S>
-auto NewLeaderStateManager<S>::getStateMachine() const
+auto LeaderStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedLeaderState<S>> {
   return _guardedData.getLockedGuard()->_leaderState;
 }
 
 template<typename S>
-auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
+auto LeaderStateManager<S>::GuardedData::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto core = std::move(*_leaderState).resign();
@@ -341,7 +342,7 @@ auto NewLeaderStateManager<S>::GuardedData::resign() && noexcept
 }
 
 template<typename S>
-void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
+void FollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto maybeFuture =
       _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
   // note that we release the lock before calling "then"
@@ -362,14 +363,15 @@ void NewFollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
 }
 
 template<typename S>
-void NewFollowerStateManager<S>::handleApplyEntriesResult(
-    arangodb::Result res) {
+void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
   auto maybeFuture = [&]() -> std::optional<futures::Future<Result>> {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
       auto const index = guard->_lastAppliedIndex =
           *guard->_applyEntriesIndexInFlight;
+      // TODO
+      //   _metrics->replicatedStateNumberProcessedEntries->count(range.count());
 
       auto queue = guard->getResolvablePromises(index);
       auto& scheduler = *SchedulerFeature::SCHEDULER;
@@ -385,8 +387,28 @@ void NewFollowerStateManager<S>::handleApplyEntriesResult(
     }
     guard->_applyEntriesIndexInFlight = std::nullopt;
 
+    if (res.fail()) {
+      _metrics->replicatedStateNumberApplyEntriesErrors->operator++();
+      switch (static_cast<int>(res.errorNumber())) {
+        case static_cast<int>(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED): {
+          // Log follower has resigned, we'll be resigned as well. We just stop
+          // working.
+          return std::nullopt;
+        }
+        case static_cast<int>(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND): {
+          // TODO this is a temporary fix, see CINFRA-588
+          return std::nullopt;
+        }
+      }
+    }
+
+    ADB_PROD_ASSERT(!res.fail())
+        << _loggerContext
+        << " Unexpected error returned by apply entries: " << res;
+
     if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-      return guard->maybeScheduleAppendEntries();
+      return guard->maybeScheduleApplyEntries();
     }
     return std::nullopt;
   }();
@@ -404,7 +426,7 @@ void NewFollowerStateManager<S>::handleApplyEntriesResult(
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
+auto FollowerStateManager<S>::GuardedData::updateCommitIndex(
     LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
   LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
                       << commitIndex;
@@ -412,17 +434,18 @@ auto NewFollowerStateManager<S>::GuardedData::updateCommitIndex(
     return std::nullopt;
   }
   _commitIndex = std::max(_commitIndex, commitIndex);
-  return maybeScheduleAppendEntries();
+  return maybeScheduleApplyEntries();
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
+auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries()
     -> std::optional<futures::Future<Result>> {
   if (_stream == nullptr) {
     return std::nullopt;
   }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
+    // TODO MeasureTimeGuard rttGuard(_metrics->replicatedStateApplyEntriesRtt);
     auto log = _stream->methods().getLogSnapshot();
     _applyEntriesIndexInFlight = _commitIndex;
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
@@ -438,13 +461,13 @@ auto NewFollowerStateManager<S>::GuardedData::maybeScheduleAppendEntries()
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::GuardedData::getResolvablePromises(
+auto FollowerStateManager<S>::GuardedData::getResolvablePromises(
     LogIndex index) noexcept -> WaitForQueue {
   return _waitQueue.splitLowerThan(index + 1);
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
+auto FollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
     -> WaitForQueue::WaitForFuture {
   if (index <= _lastAppliedIndex) {
     // Resolve the promise immediately before returning the future
@@ -456,7 +479,7 @@ auto NewFollowerStateManager<S>::GuardedData::waitForApplied(LogIndex index)
 }
 
 template<typename S>
-NewFollowerStateManager<S>::NewFollowerStateManager(
+FollowerStateManager<S>::FollowerStateManager(
     LoggerContext loggerContext,
     std::shared_ptr<ReplicatedStateMetrics> metrics,
     std::shared_ptr<IReplicatedFollowerState<S>> followerState,
@@ -465,10 +488,92 @@ NewFollowerStateManager<S>::NewFollowerStateManager(
       _metrics(std::move(metrics)),
       _guardedData{std::move(followerState), std::move(stream)} {}
 
+namespace {
+inline auto delayedFuture(std::chrono::steady_clock::duration duration)
+    -> futures::Future<futures::Unit> {
+  if (SchedulerFeature::SCHEDULER) {
+    return SchedulerFeature::SCHEDULER->delay(duration);
+  }
+
+  std::this_thread::sleep_for(duration);
+  return futures::Future<futures::Unit>{std::in_place};
+}
+
+inline auto calcRetryDuration(std::uint64_t retryCount)
+    -> std::chrono::steady_clock::duration {
+  // Capped exponential backoff. Wait for 100us, 200us, 400us, ...
+  // until at most 100us * 2 ** 17 == 13.11s.
+  auto executionDelay = std::chrono::microseconds{100} *
+                        (1u << std::min(retryCount, std::uint64_t{17}));
+  return std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+      executionDelay);
+}
+}  // namespace
+
 template<typename S>
-void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
-                                                 LogIndex index) {
-  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquiring snapshot";
+auto FollowerStateManager<S>::backOffSnapshotRetry()
+    -> futures::Future<futures::Unit> {
+  constexpr static auto countSuffix = [](auto count) {
+    switch (count) {
+      case 1:
+        return "st";
+      case 2:
+        return "nd";
+      case 3:
+        return "rd";
+      default:
+        return "th";
+    }
+  };
+  constexpr static auto fmtTime = [](auto duration) {
+    using namespace std::chrono_literals;
+    using namespace std::chrono;
+    if (duration < 10us) {
+      return fmt::format("{}ns", duration_cast<nanoseconds>(duration).count());
+    } else if (duration < 10ms) {
+      return fmt::format("{}us", duration_cast<microseconds>(duration).count());
+    } else if (duration < 10s) {
+      return fmt::format("{}ms", duration_cast<milliseconds>(duration).count());
+    } else if (duration < 10min) {
+      return fmt::format("{}s", duration_cast<seconds>(duration).count());
+    } else {
+      return fmt::format("{}min", duration_cast<minutes>(duration).count());
+    }
+  };
+
+  auto const retryCount =
+      this->_guardedData.getLockedGuard()->_snapshotErrorCounter;
+  auto const duration = calcRetryDuration(retryCount);
+  LOG_CTX("2ea59", TRACE, _loggerContext)
+      << "retry snapshot transfer after " << fmtTime(duration) << ", "
+      << retryCount << countSuffix(retryCount) << " retry";
+  return delayedFuture(duration);
+}
+
+template<typename S>
+void FollowerStateManager<S>::registerSnapshotError(Result error) noexcept {
+  _guardedData.getLockedGuard()->registerSnapshotError(
+      std::move(error), *_metrics->replicatedStateNumberAcquireSnapshotErrors);
+}
+
+template<typename S>
+void FollowerStateManager<S>::GuardedData::registerSnapshotError(
+    Result error, metrics::Counter& counter) noexcept {
+  TRI_ASSERT(error.fail());
+  _lastSnapshotError = std::move(error);
+  _snapshotErrorCounter += 1;
+  counter.operator++();
+}
+
+template<typename S>
+void FollowerStateManager<S>::GuardedData::clearSnapshotErrors() noexcept {
+  _lastSnapshotError = std::nullopt;
+  _snapshotErrorCounter = 0;
+}
+
+template<typename S>
+void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
+  LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
   MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       _metrics->replicatedStateNumberWaitingForSnapshot);
@@ -485,16 +590,18 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                                                       std::move(rttGuard),
                                                   snapshotCounter = std::move(
                                                       snapshotCounter),
-                                                  leader, index]() mutable {
+                                                  leader = std::move(leader),
+                                                  index]() mutable {
     std::move(fut).thenFinal(
         [weak = std::move(weak), rttGuard = std::move(rttGuard),
-         snapshotCounter = std::move(snapshotCounter), leader,
+         snapshotCounter = std::move(snapshotCounter),
+         leader = std::move(leader),
          index](futures::Try<Result>&& tryResult) mutable noexcept {
           rttGuard.fire();
           snapshotCounter.fire();
           if (auto self = weak.lock(); self != nullptr) {
-            LOG_CTX("13f07", DEBUG, self->_loggerContext)
-                << "acquireSnapshot returned";
+            LOG_CTX("13f07", TRACE, self->_loggerContext)
+                << "acquire snapshot returned";
             auto result =
                 basics::catchToResult([&] { return tryResult.get(); });
             if (result.ok()) {
@@ -502,6 +609,7 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
                   << "snapshot transfer successfully completed, informing "
                      "replicated log";
               auto guard = self->_guardedData.getLockedGuard();
+              guard->clearSnapshotErrors();
               auto res =
                   static_cast<replicated_log::IReplicatedLogFollowerMethods&>(
                       guard->_stream->methods())
@@ -509,11 +617,23 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
               // TODO (How) can we handle this more gracefully?
               ADB_PROD_ASSERT(res.ok());
             } else {
-              LOG_CTX("9a68a", ERR, self->_loggerContext)
-                  << "failed to transfer snapshot: " << result.errorMessage()
+              LOG_CTX("9a68a", INFO, self->_loggerContext)
+                  << "failed to transfer snapshot: " << result
                   << " - retry scheduled";
-              // TODO implement a more graceful retry loop with a back-off
-              self->acquireSnapshot(leader, index);
+              self->registerSnapshotError(std::move(result));
+              self->backOffSnapshotRetry().thenFinal(
+                  [weak = std::move(weak), leader = std::move(leader),
+                   index](futures::Try<futures::Unit>&& x) mutable noexcept
+                  -> void {
+                    auto const result =
+                        basics::catchVoidToResult([&] { x.get(); });
+                    ADB_PROD_ASSERT(result.ok())
+                        << "Unexpected error when backing off snapshot retry: "
+                        << result;
+                    if (auto self = weak.lock(); self != nullptr) {
+                      self->acquireSnapshot(std::move(leader), index);
+                    }
+                  });
             }
           }
         });
@@ -521,7 +641,7 @@ void NewFollowerStateManager<S>::acquireSnapshot(ServerID leader,
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::resign() && noexcept
+auto FollowerStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
@@ -546,32 +666,32 @@ auto NewFollowerStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::getStatus() const -> StateStatus {
+auto FollowerStateManager<S>::getStatus() const -> StateStatus {
   auto followerStatus = FollowerStatus();
   // TODO remove
   return StateStatus{.variant = std::move(followerStatus)};
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::getStateMachine() const
+auto FollowerStateManager<S>::getStateMachine() const
     -> std::shared_ptr<IReplicatedFollowerState<S>> {
   return _guardedData.getLockedGuard()->_followerState;
 }
 
 template<typename S>
-auto NewFollowerStateManager<S>::waitForApplied(LogIndex index)
+auto FollowerStateManager<S>::waitForApplied(LogIndex index)
     -> WaitForQueue::WaitForFuture {
   return _guardedData.getLockedGuard()->waitForApplied(index);
 }
 
 template<typename S>
-NewUnconfiguredStateManager<S>::NewUnconfiguredStateManager(
+UnconfiguredStateManager<S>::UnconfiguredStateManager(
     LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
     : _loggerContext(std::move(loggerContext)),
       _guardedData{GuardedData{._core = std::move(core)}} {}
 
 template<typename S>
-auto NewUnconfiguredStateManager<S>::resign() && noexcept
+auto UnconfiguredStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
   auto guard = _guardedData.getLockedGuard();
@@ -579,14 +699,14 @@ auto NewUnconfiguredStateManager<S>::resign() && noexcept
 }
 
 template<typename S>
-auto NewUnconfiguredStateManager<S>::getStatus() const -> StateStatus {
+auto UnconfiguredStateManager<S>::getStatus() const -> StateStatus {
   auto unconfiguredStatus = UnconfiguredStatus();
   // TODO remove
   return StateStatus{.variant = std::move(unconfiguredStatus)};
 }
 
 template<typename S>
-auto NewUnconfiguredStateManager<S>::GuardedData::resign() && noexcept
+auto UnconfiguredStateManager<S>::GuardedData::resign() && noexcept
     -> std::unique_ptr<CoreType> {
   return std::move(_core);
 }
@@ -595,7 +715,8 @@ template<typename S>
 auto IReplicatedLeaderState<S>::getStream() const noexcept
     -> std::shared_ptr<Stream> const& {
   ADB_PROD_ASSERT(_stream != nullptr)
-      << "Replicated leader state: stream accessed before service was started.";
+      << "Replicated leader state: stream accessed before service was "
+         "started.";
 
   return _stream;
 }
@@ -611,7 +732,7 @@ auto IReplicatedFollowerState<S>::getStream() const noexcept
 
 template<typename S>
 void IReplicatedFollowerState<S>::setStateManager(
-    std::shared_ptr<NewFollowerStateManager<S>> manager) noexcept {
+    std::shared_ptr<FollowerStateManager<S>> manager) noexcept {
   _manager = manager;
 }
 
@@ -620,7 +741,7 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
     -> futures::Future<futures::Unit> {
   if (auto manager = _manager.lock(); manager != nullptr) {
     return manager->waitForApplied(index).thenValue(
-        [index](LogIndex index_) { return futures::Unit(); });
+        [](LogIndex) { return futures::Unit(); });
   } else {
     WaitForAppliedFuture future(
         std::make_exception_ptr(replicated_log::ParticipantResignedException(
@@ -682,7 +803,7 @@ auto ReplicatedState<S>::buildCore(
     auto params = velocypack::deserialize<typename S::CoreParameterType>(
         coreParameter->slice());
     PersistedStateInfo info;
-    info.stateId = log->getId();
+    info.stateId = gid.id;
     info.specification.type = S::NAME;
     info.specification.parameters = *coreParameter;
     return factory->constructCore(gid, std::move(params));
@@ -693,23 +814,13 @@ template<typename S>
 void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
-  // opportunistic check that we're the only user.
-  // note that there might be false positives (due to memory_order_relaxed),
-  // and races where a weak_ptr is promoted to a shared_ptr again.
-  // so: TODO remove this later!
-  TRI_ASSERT(stateHandle.use_count() == 1);
 
   auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
     std::unique_ptr<CoreType> core;
     DeferredAction action;
 
-    // TODO remove data.oldCore and data.currentManager
-    if (data.currentManager == nullptr) {
-      core = std::move(data.oldCore);
-    } else {
-      std::tie(core, std::ignore, action) =
-          std::move(*data.currentManager).resign();
-    }
+    // TODO remove data.oldCore
+    core = std::move(data.oldCore);
     ADB_PROD_ASSERT(core == nullptr);
     auto stateManager =
         std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);

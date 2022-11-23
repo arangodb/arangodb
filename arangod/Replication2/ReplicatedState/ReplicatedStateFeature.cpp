@@ -21,6 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
 #include "ReplicatedStateFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -37,19 +38,18 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::string_view database,
+    std::string_view name, std::string_view database, LogId logId,
     std::shared_ptr<replicated_log::ReplicatedLog> log,
     LoggerContext const& loggerContext)
     -> std::shared_ptr<ReplicatedStateBase> {
   auto name_str = std::string{name};
   if (auto iter = implementations.find(name_str);
       iter != std::end(implementations)) {
-    auto logId = log->getId();
     auto lc = loggerContext.with<logContextKeyStateImpl>(name_str)
                   .with<logContextKeyLogId>(logId);
     LOG_CTX("24af7", TRACE, lc)
         << "Creating replicated state of type `" << name << "`.";
-    auto gid = GlobalLogIdentifier(std::string(database), log->getId());
+    auto gid = GlobalLogIdentifier(std::string(database), logId);
     return iter->second.factory->createReplicatedState(
         std::move(gid), std::move(log), std::move(lc), iter->second.metrics);
   }
@@ -58,10 +58,10 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
-    std::string_view name, std::string_view database,
+    std::string_view name, std::string_view database, LogId logId,
     std::shared_ptr<replicated_log::ReplicatedLog> log)
     -> std::shared_ptr<ReplicatedStateBase> {
-  return createReplicatedState(name, database, std::move(log),
+  return createReplicatedState(name, database, logId, std::move(log),
                                LoggerContext(Logger::REPLICATED_STATE));
 }
 

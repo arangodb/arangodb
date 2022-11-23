@@ -658,10 +658,16 @@ JOB_STATUS MoveShard::status() {
 
 std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
-  // arango/Current/ReplicatedState/<database>/<replicated-state-id>/supervision/version
+  // arango/Current/ReplicatedLogs/<database>/<replicated-state-id>/supervision/targetVersion
   auto stateId = LogicalCollection::shardIdToStateId(_shard);
-  return _snapshot.hasAsUInt("Current/ReplicatedLogs/" + _database + "/" +
-                             to_string(stateId) + "/supervision/version");
+  using namespace cluster::paths;
+  auto path = aliases::current()
+                  ->replicatedLogs()
+                  ->database(_database)
+                  ->log(stateId)
+                  ->supervision()
+                  ->targetVersion();
+  return _snapshot.hasAsUInt(path->str(SkipComponents{1}));
 }
 
 JOB_STATUS MoveShard::pendingReplication2() {

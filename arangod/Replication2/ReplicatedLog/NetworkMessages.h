@@ -55,8 +55,8 @@ class Result;
 namespace arangodb::replication2::replicated_log {
 
 struct MessageId {
-  constexpr MessageId() noexcept : value{0} {}
-  constexpr explicit MessageId(std::uint64_t value) noexcept : value{value} {}
+  constexpr MessageId() noexcept : _value{0} {}
+  constexpr explicit MessageId(std::uint64_t value) noexcept : _value{value} {}
 
   friend auto operator<=>(MessageId, MessageId) noexcept = default;
   friend auto operator++(MessageId& id) -> MessageId&;
@@ -65,13 +65,34 @@ struct MessageId {
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 
+  template<class Inspector>
+  friend auto inspect(Inspector&, MessageId&);
+  friend struct fmt::formatter<MessageId>;
+
+ protected:
+  auto value() -> std::uint64_t;
+
  private:
-  std::uint64_t value;
+  std::uint64_t _value;
 };
 
 auto operator++(MessageId& id) -> MessageId&;
 auto operator<<(std::ostream& os, MessageId id) -> std::ostream&;
 auto to_string(MessageId id) -> std::string;
+
+template<class Inspector>
+auto inspect(Inspector& f, MessageId& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = std::uint64_t{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = MessageId{v};
+    }
+    return res;
+  } else {
+    return f.apply(x.value());
+  }
+}
 
 #if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic push
@@ -146,6 +167,20 @@ struct AppendEntriesRequest {
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesRequest;
 };
 
+struct SnapshotAvailableReport {
+  /// Last message id received from the leader. This is reported to
+  /// the leader, so it can ignore snapshot status updates from
+  /// append entries responses that are lower than or equal to this
+  /// id, as they are less recent than this information.
+  MessageId messageId;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, SnapshotAvailableReport& x) {
+  using namespace arangodb;
+  return f.object(x).fields(f.field(StaticStrings::MessageId, x.messageId));
+}
+
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb {
@@ -158,3 +193,17 @@ struct velocypack::Extractor<replication2::replicated_log::MessageId> {
   }
 };
 }  // namespace arangodb
+
+template<>
+struct fmt::formatter<::arangodb::replication2::replicated_log::MessageId>
+    : fmt::formatter<std::uint64_t> {
+  template<class FormatContext>
+  auto format(::arangodb::replication2::replicated_log::MessageId mid,
+              FormatContext& fc) const {
+    return ::fmt::formatter<typename std::uint64_t>::format(mid.value(), fc);
+  }
+  template<typename ParseContext>
+  auto parse(ParseContext& ctx) {
+    return ::fmt::formatter<typename std::uint64_t>::parse(ctx);
+  }
+};

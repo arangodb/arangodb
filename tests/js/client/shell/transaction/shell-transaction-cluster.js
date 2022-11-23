@@ -87,7 +87,7 @@ function transactionReplication2ReplicateOperationSuite() {
         let entries = log.head(1000);
         allEntries[log.id()] = entries;
         for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
+          if (entry.hasOwnProperty("payload") && entry.payload.operation === "Abort") {
             ++abortCount;
             break;
           }
@@ -134,7 +134,7 @@ function transactionReplication2ReplicateOperationSuite() {
         // Gather all log entries and see if we have any inserts on this shard.
         for (const entry of entries) {
           if (entry.hasOwnProperty("payload")) {
-            let payload = entry.payload[1];
+            let payload = entry.payload;
             assertEqual(shardId, payload.shardId);
             if (payload.operation === "Commit") {
               commitFound = true;
@@ -196,6 +196,9 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'foo'});
       tc.save({_key: 'bar'});
 
+      // TODO this is not safe, we might loose already committed log entries.
+      //      either force the leader in the first place, or make sure a leader
+      //      election is done (by deleting the current leader when increasing the term)
       replicatedLogsHelper.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
@@ -212,7 +215,7 @@ function transactionReplication2ReplicateOperationSuite() {
       const shards = c.shards();
       const logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-      const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload[1].operation === 'Commit'));
+      const logsWithCommit = logs.filter(log => log.head(1000).some(entry => entry.hasOwnProperty('payload') && entry.payload.operation === 'Commit'));
       if (logsWithCommit.length > 0) {
         fail(`Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
       }

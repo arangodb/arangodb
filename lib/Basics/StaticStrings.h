@@ -373,6 +373,14 @@ class StaticStrings {
   static std::string const ReleaseIndex;
   static std::string const LowestIndexToKeep;
   static std::string const Outcome;
+  constexpr static std::string_view MessageId = "messageId";
+
+  // Replication 2.0 API Strings
+  static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiDocumentStateExternal;
+  constexpr static std::string_view ApiUpdateSnapshotStatus =
+      "update-snapshot-status";
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -427,12 +435,6 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
-
-  // API Strings
-  static std::string_view const ApiLogInternal;
-  static std::string_view const ApiLogExternal;
-  static std::string_view const ApiReplicatedStateExternal;
-  static std::string_view const ApiDocumentStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

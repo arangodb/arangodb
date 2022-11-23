@@ -169,7 +169,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   auto getParticipantConfigGenerations() const noexcept
       -> std::pair<std::size_t, std::optional<std::size_t>>;
 
-  auto setSnapshotAvailable(ParticipantId const&) -> Result;
+  auto setSnapshotAvailable(ParticipantId const& participantId,
+                            SnapshotAvailableReport report) -> Result;
 
  protected:
   // Use the named constructor construct() to create a leader!
@@ -189,7 +190,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   struct alignas(64) FollowerInfo {
     explicit FollowerInfo(std::shared_ptr<AbstractFollower> impl,
-                          TermIndexPair lastLogIndex,
+                          LogIndex lastLogIndex,
                           LoggerContext const& logContext);
 
     std::chrono::steady_clock::duration _lastRequestLatency{};
@@ -197,13 +198,14 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::chrono::steady_clock::time_point _errorBackoffEndTP{};
     std::shared_ptr<AbstractFollower> _impl;
     TermIndexPair lastAckedIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
-    TermIndexPair nextPrevLogIndex = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    LogIndex nextPrevLogIndex = LogIndex{0};
     LogIndex lastAckedCommitIndex = LogIndex{0};
     LogIndex lastAckedLowestIndexToKeep = LogIndex{0};
     MessageId lastSentMessageId{0};
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
-    bool snapshotAvailable{false};
+    bool snapshotAvailable{true};
+    MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
 
     enum class State {
@@ -345,7 +347,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
-  std::shared_ptr<IReplicatedStateHandle> const _stateHandle;
+  std::shared_ptr<IReplicatedStateHandle> _stateHandle;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
   ParticipantId const _id;
   LogTerm const _currentTerm;

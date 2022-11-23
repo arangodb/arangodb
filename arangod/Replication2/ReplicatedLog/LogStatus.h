@@ -102,7 +102,7 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  TermIndexPair nextPrevLogIndex;
+  LogIndex nextPrevLogIndex;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept
@@ -199,6 +199,7 @@ struct FollowerStatus {
   LogTerm term;
   LogIndex lowestIndexToKeep;
   CompactionStatus compactionStatus;
+  bool snapshotAvailable{false};
 };
 
 template<class Inspector>
@@ -208,7 +209,8 @@ auto inspect(Inspector& f, FollowerStatus& x) {
                             f.field("term", x.term),
                             f.field("compactionStatus", x.compactionStatus),
                             f.field("lowestIndexToKeep", x.lowestIndexToKeep),
-                            f.field("leader", x.leader));
+                            f.field("leader", x.leader),
+                            f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 struct UnconfiguredStatus {};

@@ -93,31 +93,35 @@ auto replicated_log::ReplicatedLog::updateConfig(
     agency::LogPlanTermSpecification term, agency::ParticipantsConfig config)
     -> futures::Future<futures::Unit> {
   auto guard = _guarded.getLockedGuard();
-  LOG_CTX("acb02", DEBUG, _logContext)
-      << "reconfiguring replicated log " << _id << " with term = " << term
-      << " and config = " << config;
-  ADB_PROD_ASSERT(not guard->latest || term.term > guard->latest->term.term ||
-                  term == guard->latest->term)
-      << "term should always increase old = "
-      << (guard->latest
-              ? arangodb::basics::velocypackhelper::toJson(guard->latest->term)
-              : "(none)")
-      << " new = " << term;
-  ADB_PROD_ASSERT(not guard->latest ||
-                  config.generation > guard->latest->config.generation ||
-                  config == guard->latest->config)
-      << "config generation should always increase. old = "
-      << (guard->latest ? arangodb::basics::velocypackhelper::toJson(
-                              guard->latest->config)
-                        : "(none)")
-      << " new = " << config;
 
-  if (guard->latest->term.term < term.term) {
+  if (guard->latest) {
+    TRI_ASSERT(not(guard->latest->term.term < term.term and
+                   guard->latest->config.generation > config.generation) and
+               not(guard->latest->term.term > term.term and
+                   guard->latest->config.generation < config.generation))
+        << "While we may see outdated updates here, it must not happen that we "
+           "see a new term with an old generation, or the other way round. "
+           "current configuration: "
+        << guard->latest->config << ", new configuration: " << config
+        << ", current term: " << guard->latest->term << ", new term: " << term;
+  }
+
+  bool const termChanged =
+      not guard->latest or guard->latest->term.term < term.term;
+  bool const generationChanged =
+      not guard->latest or guard->latest->config.generation < config.generation;
+
+  if (termChanged) {
     resetParticipant(guard.get());
   }
 
-  guard->latest.emplace(std::move(term), std::move(config));
-  return tryBuildParticipant(guard.get());
+  if (termChanged or generationChanged) {
+    guard->latest.emplace(std::move(term), std::move(config));
+    return tryBuildParticipant(guard.get());
+  } else {
+    // nothing changed, don't do anything
+    return {futures::Unit{}};
+  }
 }
 
 auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
