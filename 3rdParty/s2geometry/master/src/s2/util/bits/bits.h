@@ -39,29 +39,29 @@ namespace Bits {
 
 inline int FindLSBSetNonZero(uint32 n) {
   S2_ASSUME(n != 0);
-  return absl::countr_zero(n);
+  return static_cast<int>(absl::countr_zero(n));
 }
 
 inline int FindLSBSetNonZero64(uint64 n) {
   S2_ASSUME(n != 0);
-  return absl::countr_zero(n);
+  return static_cast<int>(absl::countr_zero(n));
 }
 
 inline int Log2FloorNonZero(uint32 n) {
   S2_ASSUME(n != 0);
-  return absl::bit_width(n) - 1;
+  return static_cast<int>(absl::bit_width(n)) - 1;
 }
 
 inline int Log2FloorNonZero64(uint64 n) {
   S2_ASSUME(n != 0);
-  return absl::bit_width(n) - 1;
+  return static_cast<int>(absl::bit_width(n)) - 1;
 }
 
 inline int FindMSBSetNonZero(uint32 n) { return Log2FloorNonZero(n); }
 inline int FindMSBSetNonZero64(uint64 n) { return Log2FloorNonZero64(n); }
 
 inline int Log2Ceiling(uint32 n) {
-  int floor = absl::bit_width(n) - 1;
+  int floor = static_cast<int>(absl::bit_width(n)) - 1;
   if ((n & (n - 1)) == 0) {  // zero or a power of two
     return floor;
   } else {
