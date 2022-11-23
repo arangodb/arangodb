@@ -66,10 +66,11 @@ struct IStorageManager {
   virtual ~IStorageManager() = default;
   virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
   [[nodiscard]] virtual auto getCommittedLog() const -> InMemoryLog = 0;
+  [[nodiscard]] virtual auto getCommittedMetaInfo() const
+      -> replicated_state::PersistedStateInfo = 0;
 
-  virtual auto beginStateInfoTrx()
-      -> std::unique_ptr<IStateInfoTransaction> = 0;
-  virtual auto commitStateInfoTrx(std::unique_ptr<IStateInfoTransaction>)
+  virtual auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> = 0;
+  virtual auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction>)
       -> Result = 0;
 };
 

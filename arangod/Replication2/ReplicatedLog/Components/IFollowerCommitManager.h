@@ -21,22 +21,26 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <tuple>
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/Components/IWaitQueueManager.h"
 
-namespace arangodb::replication2::replicated_log {
+namespace arangodb {
+struct DeferredAction;
+namespace replication2 {
+struct LogIndex;
+namespace replicated_log {
+
 inline namespace comp {
 
-struct WaitQueueManager : IWaitQueueManager {
-  auto waitFor(LogIndex index) noexcept
-      -> ILogParticipant::WaitForFuture override;
-  auto waitForIterator(LogIndex index) noexcept
-      -> ILogParticipant::WaitForIteratorFuture override;
-  auto resolveIndex(LogIndex index, futures::Try<ResolveType> result)
-      -> DeferredAction override;
-  auto resolveAll(futures::Try<ResolveType> aTry) -> DeferredAction override;
+struct IFollowerCommitManager {
+  virtual ~IFollowerCommitManager() = default;
+  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
+  virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
+  virtual auto waitFor(LogIndex index) noexcept
+      -> ILogParticipant::WaitForFuture = 0;
+  virtual auto waitForIterator(LogIndex index) noexcept
+      -> ILogParticipant::WaitForIteratorFuture = 0;
 };
-
 }  // namespace comp
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace replicated_log
+}  // namespace replication2
+}  // namespace arangodb

@@ -21,43 +21,45 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
+#include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/Guarded.h"
-#include "Replication2/ReplicatedLog/Components/ExclusiveBool.h"
-#include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
-#include "IFollowerCommitManager.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
 struct IStorageManager;
-struct ISnapshotManager;
-struct ICompactionManager;
 
-struct AppendEntriesManager
-    : IAppendEntriesManager,
-      std::enable_shared_from_this<AppendEntriesManager> {
-  AppendEntriesManager(IStorageManager& storage, ISnapshotManager& snapshot,
-                       ICompactionManager& compaction,
-                       IFollowerCommitManager& commit);
+struct FollowerCommitManager : IFollowerCommitManager {
+  explicit FollowerCommitManager(IStorageManager&);
+  auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
+  auto getCommitIndex() const noexcept -> LogIndex override;
 
-  auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override;
+  auto waitFor(LogIndex index) noexcept
+      -> ILogParticipant::WaitForFuture override;
+  auto waitForIterator(LogIndex index) noexcept
+      -> ILogParticipant::WaitForIteratorFuture override;
+
+ private:
+  using ResolveType = std::pair<WaitForResult, InMemoryLog>;
+  using ResolveFuture = futures::Future<ResolveType>;
+  using ResolvePromise = futures::Promise<ResolveType>;
+  using WaitForQueue = std::multimap<LogIndex, ResolvePromise>;
+
+  auto waitForBoth(LogIndex) noexcept -> ResolveFuture;
 
   struct GuardedData {
-    GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
-                ICompactionManager& compaction, IFollowerCommitManager& commit);
-    auto preflightChecks() -> std::optional<AppendEntriesResult>;
-
-    ExclusiveBool requestInFlight;
+    explicit GuardedData(IStorageManager&);
+    LogIndex commitIndex{0};
+    LogIndex resolveIndex{0};
+    WaitForQueue waitQueue;
 
     IStorageManager& storage;
-    ISnapshotManager& snapshot;
-    ICompactionManager& compaction;
-    IFollowerCommitManager& commit;
   };
 
-  Guarded<GuardedData> guarded;
+  Guarded<GuardedData> guardedData;
 };
+
 }  // namespace comp
+
 }  // namespace arangodb::replication2::replicated_log

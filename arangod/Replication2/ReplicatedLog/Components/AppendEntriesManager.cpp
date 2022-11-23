@@ -22,19 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
-#include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
+#include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
+#include "Replication2/DeferredExecution.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
-  auto guard = guarded.getLockedGuard();
-  auto self = shared_from_this();
+  Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
+  auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
     co_return AppendEntriesResult::withRejection(
@@ -43,6 +44,11 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
             AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
         false);
   }
+
+  // TODO handle message ids properly
+  // TODO add snapshot status to response
+  // TODO metrics
+  // TODO logging
 
   if (auto error = guard->preflightChecks(); error) {
     co_return {std::move(*error)};
@@ -55,7 +61,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       // LOG_CTX("6262d", INFO, _loggerContext)
       //     << "Log truncated - invalidating snapshot";
       // triggers new snapshot transfer
-      guard->snapshot.updateSnapshotState(SnapshotState::MISSING);
+      guard->snapshot.invalidateSnapshotState();
     }
   }
 
@@ -70,33 +76,45 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
             LogTerm{1}, MessageId{0}, result, false);
       }
       guard = self->guarded.getLockedGuard();
+      store = guard->storage.transaction();
+    }
+
+    if (not request.entries.empty()) {
+      auto f = store->appendEntries(InMemoryLog{request.entries});
+      guard.unlock();
+      auto result = co_await asResult(std::move(f));
+      if (result.fail()) {
+        co_return AppendEntriesResult::withPersistenceError(
+            LogTerm{1}, MessageId{0}, result, false);
+      }
+      guard = self->guarded.getLockedGuard();
     }
   }
 
-  {
-    auto store = guard->storage.transaction();
-    auto f = store->appendEntries(InMemoryLog{request.entries});
-    guard.unlock();
-    auto result = co_await asResult(std::move(f));
-    if (result.fail()) {
-      co_return AppendEntriesResult::withPersistenceError(
-          LogTerm{1}, MessageId{0}, result, false);
-    }
-  }
-
-  // TODO update commit index
+  guard->compaction.updateLargestIndexToKeep(request.lowestIndexToKeep);
+  auto action = guard->commit.updateCommitIndex(request.leaderCommit);
+  guard.unlock();
+  action.fire();
   co_return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
 }
 
 AppendEntriesManager::AppendEntriesManager(IStorageManager& storage,
-                                           ISnapshotManager& snapshot)
-    : guarded(storage, snapshot) {}
+                                           ISnapshotManager& snapshot,
+                                           ICompactionManager& compaction,
+                                           IFollowerCommitManager& commit)
+    : guarded(storage, snapshot, compaction, commit) {}
 
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
-                                               ISnapshotManager& snapshot)
-    : storage(storage), snapshot(snapshot) {}
+                                               ISnapshotManager& snapshot,
+                                               ICompactionManager& compaction,
+                                               IFollowerCommitManager& commit)
+    : storage(storage),
+      snapshot(snapshot),
+      compaction(compaction),
+      commit(commit) {}
 
 auto AppendEntriesManager::GuardedData::preflightChecks()
     -> std::optional<AppendEntriesResult> {
+  std::abort();  // TODO
   return std::nullopt;
 }

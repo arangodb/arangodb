@@ -29,7 +29,6 @@
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/coro-helper.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Basics/Guarded.h"
 
 using namespace arangodb::replication2::replicated_log;
@@ -154,6 +153,13 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
 
       auto req = std::move(guard->queue.front());
       guard->queue.pop_front();
+      if (not guard->core) {
+        guard.unlock();
+        req.promise.setValue(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+        guard = self->guardedData.getLockedGuard();
+        continue;
+      }
       auto f = req.operation->run(*guard->core);
       guard.unlock();
       Result result = co_await asResult(std::move(f));
@@ -221,7 +227,7 @@ struct comp::StateInfoTransaction : IStateInfoTransaction {
   StorageManager& manager;
 };
 
-auto StorageManager::beginStateInfoTrx()
+auto StorageManager::beginMetaInfoTrx()
     -> std::unique_ptr<IStateInfoTransaction> {
   auto guard = guardedData.getLockedGuard();
   if (guard->core == nullptr) {
@@ -231,7 +237,7 @@ auto StorageManager::beginStateInfoTrx()
   return std::make_unique<StateInfoTransaction>(std::move(guard), *this);
 }
 
-arangodb::Result StorageManager::commitStateInfoTrx(
+arangodb::Result StorageManager::commitMetaInfoTrx(
     std::unique_ptr<IStateInfoTransaction> ptr) {
   auto& trx = dynamic_cast<StateInfoTransaction&>(*ptr);
   auto guard = std::move(trx.guard);
@@ -240,4 +246,9 @@ arangodb::Result StorageManager::commitStateInfoTrx(
   }
   guard->info = std::move(trx.info);
   return {};
+}
+
+auto StorageManager::getCommittedMetaInfo() const
+    -> replicated_state::PersistedStateInfo {
+  return guardedData.getLockedGuard()->info;
 }

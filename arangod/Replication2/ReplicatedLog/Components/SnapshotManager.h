@@ -22,16 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
+#include "Basics/Guarded.h"
 
+namespace arangodb {
+class Result;
+}
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
+struct IStorageManager;
+
 struct SnapshotManager : ISnapshotManager {
-  void updateSnapshotState(SnapshotState state) override;
+  auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 
+  auto updateSnapshotState(SnapshotState state) -> Result;
+  void triggerSnapshotTransfer();
+
   struct GuardedData {
-    SnapshotState state{};
+    explicit GuardedData(IStorageManager& storage);
+    IStorageManager& storage;
+    SnapshotState state;
   };
+
+  Guarded<GuardedData> guardedData;
 };
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log

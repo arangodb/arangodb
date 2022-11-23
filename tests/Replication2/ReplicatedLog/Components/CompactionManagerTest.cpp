@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
@@ -54,9 +55,11 @@ struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
   MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const override));
-  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginStateInfoTrx, (),
+  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
+              (const override));
+  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
               (override));
-  MOCK_METHOD(Result, commitStateInfoTrx,
+  MOCK_METHOD(Result, commitMetaInfoTrx,
               (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 

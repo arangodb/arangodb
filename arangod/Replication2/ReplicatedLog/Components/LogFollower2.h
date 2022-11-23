@@ -45,7 +45,6 @@
 #include <mutex>
 
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
-#include "Replication2/ReplicatedLog/Components/WaitQueueManager.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
@@ -71,11 +70,7 @@ struct StateHandleManager : IStateHandleManager {
   std::shared_ptr<IReplicatedStateHandle> const stateHandle;
 };
 
-struct IFollowerCommitManager {
-  virtual ~IFollowerCommitManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
-  virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
-};
+
 
 struct FollowerManager {
   explicit FollowerManager(std::unique_ptr<LogCore> methods)

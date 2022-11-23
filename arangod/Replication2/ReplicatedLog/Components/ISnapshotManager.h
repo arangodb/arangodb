@@ -22,13 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+namespace arangodb {
+class Result;
+}
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 enum class SnapshotState { MISSING, AVAILABLE };
 
 struct ISnapshotManager {
   virtual ~ISnapshotManager() = default;
-  virtual void updateSnapshotState(SnapshotState) = 0;
+  virtual auto invalidateSnapshotState() -> Result = 0;
   virtual auto checkSnapshotState() noexcept -> SnapshotState = 0;
 };
 }  // namespace comp

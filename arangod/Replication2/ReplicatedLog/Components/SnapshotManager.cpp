@@ -22,10 +22,43 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SnapshotManager.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
-  return SnapshotState::MISSING;
+  return guardedData.getLockedGuard()->state;
 }
 
-void SnapshotManager::updateSnapshotState(SnapshotState state) {}
+auto SnapshotManager::invalidateSnapshotState() -> arangodb::Result {
+  return updateSnapshotState(SnapshotState::MISSING);
+}
+
+auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
+  auto guard = guardedData.getLockedGuard();
+  if (guard->state != state) {
+    auto trx = guard->storage.beginMetaInfoTrx();
+    trx->get().snapshot.status =
+        state == SnapshotState::AVAILABLE
+            ? replicated_state::SnapshotStatus::kCompleted
+            : replicated_state::SnapshotStatus::kInvalidated;
+    auto result = guard->storage.commitMetaInfoTrx(std::move(trx));
+    if (result.fail()) {
+      return result;
+    }
+    guard->state = state;
+    triggerSnapshotTransfer();
+  }
+  return {};
+}
+
+void SnapshotManager::triggerSnapshotTransfer() { std::abort(); }
+
+SnapshotManager::GuardedData::GuardedData(IStorageManager& storage)
+    : storage(storage) {
+  auto meta = storage.getCommittedMetaInfo();
+  state = meta.snapshot.status == replicated_state::SnapshotStatus::kCompleted
+              ? SnapshotState::AVAILABLE
+              : SnapshotState::MISSING;
+}

@@ -155,30 +155,30 @@ TEST_F(StorageManagerTest, transaction_append) {
 }
 
 TEST_F(StorageManagerTest, read_meta_data) {
-  auto trx = storageManager->beginStateInfoTrx();
+  auto trx = storageManager->beginMetaInfoTrx();
   EXPECT_EQ(trx->get().stateId, LogId{12});
 }
 
 TEST_F(StorageManagerTest, update_meta_data) {
   {
-    auto trx = storageManager->beginStateInfoTrx();
+    auto trx = storageManager->beginMetaInfoTrx();
     auto& meta = trx->get();
     meta.snapshot.status = SnapshotStatus::kCompleted;
-    storageManager->commitStateInfoTrx(std::move(trx));
+    storageManager->commitMetaInfoTrx(std::move(trx));
   }
 
   ASSERT_TRUE(methods.meta.has_value());
   EXPECT_EQ(methods.meta->snapshot.status, SnapshotStatus::kCompleted);
 
   {
-    auto trx = storageManager->beginStateInfoTrx();
+    auto trx = storageManager->beginMetaInfoTrx();
     EXPECT_EQ(trx->get().snapshot.status, SnapshotStatus::kCompleted);
   }
 }
 
 TEST_F(StorageManagerTest, update_meta_data_abort) {
   {
-    auto trx = storageManager->beginStateInfoTrx();
+    auto trx = storageManager->beginMetaInfoTrx();
     auto& meta = trx->get();
     meta.snapshot.status = SnapshotStatus::kCompleted;
     // just drop the trx
@@ -189,7 +189,7 @@ TEST_F(StorageManagerTest, update_meta_data_abort) {
   EXPECT_EQ(methods.meta->snapshot.status, SnapshotStatus::kFailed);
 
   {
-    auto trx = storageManager->beginStateInfoTrx();
+    auto trx = storageManager->beginMetaInfoTrx();
     EXPECT_EQ(trx->get().snapshot.status, SnapshotStatus::kFailed);
   }
 }

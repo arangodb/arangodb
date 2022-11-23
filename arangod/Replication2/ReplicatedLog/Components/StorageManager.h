@@ -38,9 +38,11 @@ struct StorageManager : IStorageManager,
   auto resign() -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLog() const -> InMemoryLog override;
-  auto beginStateInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
-  auto commitStateInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
+  auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
+  auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
       -> Result override;
+  auto getCommittedMetaInfo() const
+      -> replicated_state::PersistedStateInfo override;
 
  private:
   friend struct StorageManagerTransaction;

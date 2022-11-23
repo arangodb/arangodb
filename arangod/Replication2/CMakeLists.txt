@@ -7,7 +7,7 @@ add_library(arango_replication2 STATIC
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp ReplicatedLog/Components/LogFollower2.cpp ReplicatedLog/Components/LogFollower2.h ReplicatedLog/Components/StorageManager.cpp ReplicatedLog/Components/StorageManager.h ReplicatedLog/Components/CompactionManager.cpp ReplicatedLog/Components/CompactionManager.h ReplicatedLog/Components/WaitQueueManager.cpp ReplicatedLog/Components/WaitQueueManager.h ReplicatedLog/Components/SnapshotManager.cpp ReplicatedLog/Components/SnapshotManager.h ReplicatedLog/Components/AppendEntriesManager.cpp ReplicatedLog/Components/AppendEntriesManager.h ReplicatedLog/Components/ExclusiveBool.h)
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp ReplicatedLog/Components/LogFollower2.cpp ReplicatedLog/Components/LogFollower2.h ReplicatedLog/Components/StorageManager.cpp ReplicatedLog/Components/StorageManager.h ReplicatedLog/Components/CompactionManager.cpp ReplicatedLog/Components/CompactionManager.h ReplicatedLog/Components/SnapshotManager.cpp ReplicatedLog/Components/SnapshotManager.h ReplicatedLog/Components/AppendEntriesManager.cpp ReplicatedLog/Components/AppendEntriesManager.h ReplicatedLog/Components/ExclusiveBool.h ReplicatedLog/Components/FollowerCommitManager.cpp ReplicatedLog/Components/FollowerCommitManager.h)
 
 target_link_libraries(arango_replication2
   arango
