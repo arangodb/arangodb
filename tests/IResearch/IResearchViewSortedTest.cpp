@@ -27,7 +27,7 @@
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <velocypack/Iterator.h>
 
@@ -234,7 +234,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -540,7 +540,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 

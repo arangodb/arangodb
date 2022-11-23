@@ -1,6 +1,31 @@
 devel
 -----
 
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
+* Log startup warnings for any experimental, deprecated, obsolete or renamed
+  options at startup of arangod or any of the client tools.
+
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution,
+  which is not available on DB-servers in a cluster, and also isn't
+  necessarily available for regular queries on single servers (a V8 context
+  is only available if a query was executed inside Foxx or from inside a JS
+  transaction, but not otherwise).
+
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
+
+* BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
+
+* Updated arangosync to v2.13.0-preview-5.
+
+* Added option to exclude system collection from rebalance shards plan.
+
 * Updated arangosync to v2.13.0-preview-4.
 
 * Delay a MoveShard operation for leader change, until the old leader has
@@ -44,7 +69,7 @@ devel
 
 * Updated OpenSSL to 1.1.1s.
 
-* BTS_483: Added restriction for usage of query cache for streaming and JS 
+* BTS-483: Added restriction for usage of query cache for streaming and JS 
   transactions when they are not read-only.
 
 * Remove map and map.gz files from repository and add them to gitignore.
