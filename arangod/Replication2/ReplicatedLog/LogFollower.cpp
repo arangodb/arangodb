@@ -843,6 +843,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStop()
                            << " releaseIndex = " << _releaseIndex
                            << " lowestIndexToKeep = " << _lowestIndexToKeep;
   }
+  std::abort();  // avoid warnings
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
