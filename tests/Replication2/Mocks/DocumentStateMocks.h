@@ -228,7 +228,7 @@ struct MockDocumentStateSnapshotHandler
   MOCK_METHOD(replicated_state::document::AllSnapshotsStatus, status, (),
               (const, override));
   MOCK_METHOD(void, clear, (), (override));
-  MOCK_METHOD(void, checkSnapshots, (), (override));
+  MOCK_METHOD(void, clearInactiveSnapshots, (), (override));
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateSnapshotHandler>

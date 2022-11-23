@@ -62,8 +62,8 @@ MockDocumentStateSnapshotHandler::MockDocumentStateSnapshotHandler(
           });
   ON_CALL(*this, status()).WillByDefault([this]() { return _real->status(); });
   ON_CALL(*this, clear()).WillByDefault([this]() { _real->clear(); });
-  ON_CALL(*this, checkSnapshots()).WillByDefault([this]() {
-    _real->checkSnapshots();
+  ON_CALL(*this, clearInactiveSnapshots()).WillByDefault([this]() {
+    _real->clearInactiveSnapshots();
   });
 }
 

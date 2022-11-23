@@ -43,7 +43,7 @@ struct IDocumentStateSnapshotHandler {
       -> ResultT<std::weak_ptr<Snapshot>> = 0;
   [[nodiscard]] virtual auto status() const -> AllSnapshotsStatus = 0;
   virtual void clear() = 0;
-  virtual void checkSnapshots() = 0;
+  virtual void clearInactiveSnapshots() = 0;
 };
 
 class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
@@ -65,7 +65,7 @@ class DocumentStateSnapshotHandler : public IDocumentStateSnapshotHandler {
   void clear() override;
 
   // Clear finished and aborted snapshots
-  void checkSnapshots() override;
+  void clearInactiveSnapshots() override;
 
  private:
   std::unique_ptr<ICollectionReaderFactory> _collectionReaderFactory;

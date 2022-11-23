@@ -66,7 +66,7 @@ auto DocumentStateSnapshotHandler::status() const -> AllSnapshotsStatus {
 
 void DocumentStateSnapshotHandler::clear() { _snapshots.clear(); }
 
-void DocumentStateSnapshotHandler::checkSnapshots() {
+void DocumentStateSnapshotHandler::clearInactiveSnapshots() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 }  // namespace arangodb::replication2::replicated_state::document
