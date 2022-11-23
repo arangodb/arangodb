@@ -1067,14 +1067,25 @@ TEST_F(DocumentStateMachineTest, leader_follower_integration) {
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {
   auto id = SnapshotId::fromString("12345");
-  ASSERT_TRUE(id.has_value());
+  ASSERT_TRUE(id.ok()) << id.result();
   ASSERT_EQ(id->id(), 12345);
-  ASSERT_EQ(to_string(*id), "12345");
+  ASSERT_EQ(to_string(id.get()), "12345");
 }
 
-TEST(SnapshotIdTest, parse_snapshot_id_error) {
+TEST(SnapshotIdTest, parse_snapshot_id_error_bad_characters) {
   auto id = SnapshotId::fromString("#!@#abcd");
-  ASSERT_FALSE(id.has_value());
+  ASSERT_TRUE(id.fail());
+}
+
+TEST(SnapshotIdTest,
+     parse_snapshot_id_error_number_follower_by_bad_characters) {
+  auto id = SnapshotId::fromString("123$");
+  ASSERT_TRUE(id.fail());
+}
+
+TEST(SnapshotIdTest, parse_snapshot_id_error_overflow) {
+  auto id = SnapshotId::fromString("123456789012345678901234567890");
+  ASSERT_TRUE(id.fail());
 }
 
 TEST(SnapshotStatusTest, serialize_snapshot_status) {

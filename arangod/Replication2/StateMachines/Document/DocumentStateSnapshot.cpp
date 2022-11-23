@@ -28,12 +28,12 @@
 
 namespace arangodb::replication2::replicated_state::document {
 auto SnapshotId::fromString(std::string_view name) noexcept
-    -> std::optional<SnapshotId> {
-  if (std::all_of(name.begin(), name.end(),
-                  [](char c) { return std::isdigit(c); })) {
-    return SnapshotId{basics::StringUtils::uint64(name)};
+    -> ResultT<SnapshotId> {
+  auto id = basics::StringUtils::try_uint64(name);
+  if (id.fail()) {
+    return ResultT<SnapshotId>::error(id.result());
   }
-  return std::nullopt;
+  return ResultT<SnapshotId>::success(SnapshotId{id.get()});
 }
 
 [[nodiscard]] SnapshotId::operator velocypack::Value() const noexcept {

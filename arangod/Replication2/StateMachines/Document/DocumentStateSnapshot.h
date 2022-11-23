@@ -44,8 +44,7 @@ class SnapshotId : public arangodb::basics::Identifier {
  public:
   using arangodb::basics::Identifier::Identifier;
 
-  static auto fromString(std::string_view) noexcept
-      -> std::optional<SnapshotId>;
+  static auto fromString(std::string_view) noexcept -> ResultT<SnapshotId>;
 
   static SnapshotId create();
 

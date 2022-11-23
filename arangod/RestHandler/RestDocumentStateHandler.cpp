@@ -104,12 +104,13 @@ auto RestDocumentStateHandler::parseGetSnapshotParams()
       return document::SnapshotParams{document::SnapshotParams::Status{}};
     }
     auto id = document::SnapshotId::fromString(suffixes[3]);
-    if (!id.has_value()) {
+    if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_HTTP_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}", suffixes[3]));
+          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+                      id.result().errorMessage()));
     }
-    return document::SnapshotParams{document::SnapshotParams::Status{*id}};
+    return document::SnapshotParams{document::SnapshotParams::Status{id.get()}};
   }
   return ResultT<document::SnapshotParams>::error(
       TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -184,13 +185,14 @@ auto RestDocumentStateHandler::parsePostSnapshotParams()
     }
 
     auto id = document::SnapshotId::fromString(suffixes[3]);
-    if (!id.has_value()) {
+    if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}", suffixes[3]));
+          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+                      id.result().errorMessage()));
     }
 
-    return document::SnapshotParams{document::SnapshotParams::Next{*id}};
+    return document::SnapshotParams{document::SnapshotParams::Next{id.get()}};
   }
 
   return ResultT<document::SnapshotParams>::error(
@@ -245,13 +247,14 @@ auto RestDocumentStateHandler::parseDeleteSnapshotParams()
     }
 
     auto id = document::SnapshotId::fromString(suffixes[3]);
-    if (!id.has_value()) {
+    if (id.fail()) {
       return ResultT<document::SnapshotParams>::error(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Invalid snapshot id: {}", suffixes[3]));
+          fmt::format("Invalid snapshot id: {}! Error: {}", suffixes[3],
+                      id.result().errorMessage()));
     }
 
-    return document::SnapshotParams{document::SnapshotParams::Finish{*id}};
+    return document::SnapshotParams{document::SnapshotParams::Finish{id.get()}};
   }
 
   return ResultT<document::SnapshotParams>::error(
