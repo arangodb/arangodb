@@ -1164,7 +1164,21 @@ std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
   auto target =
       velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
           targetNode->get().toBuilder().slice());
-  return std::move(target);
+  return target;
+}
+
+std::optional<arangodb::replication2::replicated_state::agency::Plan>
+Job::readStatePlan(Node const& snap, std::string const& db,
+                   replication2::LogId stateId) {
+  auto planPath = "/Plan/ReplicatedStates/" + db + "/" + to_string(stateId);
+  auto planNode = snap.get(planPath);
+  if (not planNode.has_value()) {
+    return std::nullopt;
+  }
+  auto plan = velocypack::deserialize<
+      arangodb::replication2::replicated_state::agency::Plan>(
+      planNode->get().toBuilder().slice());
+  return plan;
 }
 
 std::optional<arangodb::replication2::agency::LogPlanSpecification>
@@ -1178,7 +1192,7 @@ Job::readLogPlan(Node const& snap, std::string const& db,
   auto plan = velocypack::deserialize<
       arangodb::replication2::agency::LogPlanSpecification>(
       planNode->get().toBuilder().slice());
-  return std::move(plan);
+  return plan;
 }
 
 std::string Job::findOtherHealthyParticipant(Node const& snap,

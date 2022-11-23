@@ -234,6 +234,11 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 std::string const StaticStrings::XArangoQueueTimeSeconds(
     "x-arango-queue-time-seconds");
+std::string const StaticStrings::ContentSecurityPolicy(
+    "content-security-policy");
+std::string const StaticStrings::Pragma("pragma");
+std::string const StaticStrings::Expires("expires");
+std::string const StaticStrings::HSTS("strict-transport-security");
 
 // mime types
 std::string const StaticStrings::MimeTypeDump(

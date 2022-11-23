@@ -54,7 +54,6 @@ class Index;
 class IndexIterator;
 class KeyGenerator;
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class Result;

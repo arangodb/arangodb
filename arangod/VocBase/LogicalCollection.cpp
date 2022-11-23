@@ -52,7 +52,6 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
 
 #ifdef USE_ENTERPRISE

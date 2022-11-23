@@ -101,8 +101,8 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
-  EXPECT_EQ(campaign.participantsAvailable, 3);  // TODO: Fixme
-                                                 // << campaign;
+  EXPECT_EQ(campaign.participantsAvailable, 3U);  // TODO: Fixme
+                                                  // << campaign;
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
   // TODO: FIXME<< campaign;
 
@@ -134,7 +134,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2});
 
-  EXPECT_EQ(campaign.participantsAvailable, 1);
+  EXPECT_EQ(campaign.participantsAvailable, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
 
   auto expectedElectible = std::set<ParticipantId>{"C"};
@@ -167,7 +167,7 @@ TEST_F(LeaderElectionCampaignTest,
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
-  EXPECT_EQ(campaign.participantsAvailable, 2);
+  EXPECT_EQ(campaign.participantsAvailable, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
 
   auto expectedElectible = std::set<ParticipantId>{"B", "C"};
@@ -427,7 +427,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   auto const& r = ctx.getReport();
 
-  EXPECT_EQ(r.size(), 1);
+  EXPECT_EQ(r.size(), 1U);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
@@ -598,7 +598,7 @@ TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 3);
+  ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
 TEST_F(LogSupervisionTest,
@@ -619,7 +619,7 @@ TEST_F(LogSupervisionTest,
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 3);
+  ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
 TEST_F(LogSupervisionTest,
@@ -640,7 +640,7 @@ TEST_F(LogSupervisionTest,
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 2);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
 TEST_F(
@@ -661,7 +661,7 @@ TEST_F(
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 2);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
 TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
@@ -754,7 +754,7 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
         << fmt::format("{}", r);
 
     auto const& elec = std::get<LeaderElectionAction>(r);
-    EXPECT_EQ(elec._assumedWriteConcern, 2);
-    EXPECT_EQ(elec._effectiveWriteConcern, 3);
+    EXPECT_EQ(elec._assumedWriteConcern, 2U);
+    EXPECT_EQ(elec._effectiveWriteConcern, 3U);
   }
 }

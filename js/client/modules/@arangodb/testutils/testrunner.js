@@ -416,6 +416,10 @@ class testRunner {
     throw new Error("must overload the runOneTest function!");
   }
 
+  filter(te, filtered) {
+    return tu.filterTestcaseByOptions(te, this.options, filtered);
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
@@ -491,7 +495,7 @@ class testRunner {
       let te = this.testList[i];
       let filtered = {};
 
-      if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
+      if (this.filter(te, filtered)) {
         let first = true;
         let loopCount = 0;
         count += 1;

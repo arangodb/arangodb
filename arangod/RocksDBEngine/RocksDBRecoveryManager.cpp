@@ -62,6 +62,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <absl/cleanup/cleanup.h>
 #include <atomic>
 
 using namespace arangodb::application_features;
@@ -640,6 +641,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
     }
+    auto helpersCleanup = absl::Cleanup{[&]() noexcept {
+      for (auto& helper : engine.recoveryHelpers()) {
+        helper->unprepare();
+      }
+    }};
 
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();

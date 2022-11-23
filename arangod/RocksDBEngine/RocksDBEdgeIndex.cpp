@@ -55,12 +55,11 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "Transaction/V8Context.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -94,8 +93,7 @@ Result RocksDBEdgeIndexWarmupTask::run() {
   DatabaseGuard databaseGuard(_databaseFeature, _dbName);
   CollectionGuard collectionGuard(&databaseGuard.database(), _collectionName);
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(
-      databaseGuard.database(), false);
+  auto ctx = transaction::StandaloneContext::Create(databaseGuard.database());
   SingleCollectionTransaction trx(ctx, *collectionGuard.collection(),
                                   AccessMode::Type::READ);
   Result res = trx.begin();
@@ -742,8 +740,7 @@ Result RocksDBEdgeIndex::scheduleWarmup() {
     return {};
   }
 
-  auto ctx =
-      transaction::V8Context::CreateWhenRequired(_collection.vocbase(), false);
+  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
   SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
@@ -849,7 +846,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   std::unique_ptr<rocksdb::Iterator> it(
       _engine.db()->NewIterator(options, _cf));
 
-  ManagedDocumentResult mdr;
+  velocypack::Builder docBuilder;
 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
@@ -906,19 +903,24 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
+      docBuilder.clear();
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       // warmup does not need to observe own writes
-      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no)) {
+      if (rocksColl
+              ->lookupDocument(*trx, docId, docBuilder, /*readCache*/ true,
+                               /*fillCache*/ true, ReadOwnWrites::no)
+              .fail()) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
       }
 
       builder.add(VPackValue(docId.id()));
-      VPackSlice doc(mdr.vpack());
       VPackSlice toFrom =
-          _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                       : transaction::helpers::extractFromFromDocument(doc);
+          _isFromIndex
+              ? transaction::helpers::extractToFromDocument(docBuilder.slice())
+              : transaction::helpers::extractFromFromDocument(
+                    docBuilder.slice());
       TRI_ASSERT(toFrom.isString());
       builder.add(toFrom);
     }
