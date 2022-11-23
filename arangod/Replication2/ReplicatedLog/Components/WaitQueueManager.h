@@ -23,30 +23,10 @@
 #pragma once
 #include <tuple>
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Replication2/ReplicatedLog/Components/IWaitQueueManager.h"
 
-namespace arangodb {
-template<typename T>
-class ResultT;
-namespace futures {
-template<typename T>
-class Future;
-}
-
-namespace replication2::replicated_log {
+namespace arangodb::replication2::replicated_log {
 inline namespace comp {
-
-struct IWaitQueueManager {
-  using ResolveType =
-      std::tuple<WaitForResult, std::unique_ptr<LogRangeIterator>>;
-
-  virtual ~IWaitQueueManager() = default;
-  virtual auto waitFor(LogIndex) noexcept -> ILogParticipant::WaitForFuture = 0;
-  virtual auto waitForIterator(LogIndex) noexcept
-      -> ILogParticipant::WaitForIteratorFuture = 0;
-  virtual auto resolveIndex(LogIndex, futures::Try<ResolveType>)
-      -> DeferredAction = 0;
-  virtual auto resolveAll(futures::Try<ResolveType>) -> DeferredAction = 0;
-};
 
 struct WaitQueueManager : IWaitQueueManager {
   auto waitFor(LogIndex index) noexcept
@@ -59,5 +39,4 @@ struct WaitQueueManager : IWaitQueueManager {
 };
 
 }  // namespace comp
-}  // namespace replication2::replicated_log
-}  // namespace arangodb
+}  // namespace arangodb::replication2::replicated_log

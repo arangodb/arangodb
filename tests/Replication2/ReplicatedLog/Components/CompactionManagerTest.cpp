@@ -53,6 +53,11 @@ struct StorageTransactionMock : IStorageTransaction {
 struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
+  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const override));
+  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginStateInfoTrx, (),
+              (override));
+  MOCK_METHOD(Result, commitStateInfoTrx,
+              (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
 struct SchedulerInterfaceMock : ISchedulerInterface {};

@@ -22,15 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Futures/Promise.h"
 
-namespace arangodb {
-namespace replication2::replicated_state {
-struct IStorageEngineMethods;
-}
-namespace replication2::replicated_log {
+namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
 struct StorageManager : IStorageManager,
@@ -40,9 +37,14 @@ struct StorageManager : IStorageManager,
   explicit StorageManager(std::unique_ptr<IStorageEngineMethods> core);
   auto resign() -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
+  auto getCommittedLog() const -> InMemoryLog override;
+  auto beginStateInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
+  auto commitStateInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
+      -> Result override;
 
  private:
   friend struct StorageManagerTransaction;
+  friend struct StateInfoTransaction;
 
   struct GuardedData;
 
@@ -63,11 +65,12 @@ struct StorageManager : IStorageManager,
   };
 
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<IStorageEngineMethods> core);
+    explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
     InMemoryLog onDiskLog, spearheadLog;
     std::unique_ptr<IStorageEngineMethods> core;
     std::deque<StorageRequest> queue;
+    replicated_state::PersistedStateInfo info;
     bool workerActive{false};
   };
   Guarded<GuardedData> guardedData;
@@ -83,5 +86,4 @@ struct StorageManager : IStorageManager,
 };
 
 }  // namespace comp
-}  // namespace replication2::replicated_log
-}  // namespace arangodb
+}  // namespace arangodb::replication2::replicated_log

@@ -31,7 +31,8 @@ class Future;
 class Result;
 namespace replication2::replicated_state {
 struct IStorageEngineMethods;
-}
+struct PersistedStateInfo;
+}  // namespace replication2::replicated_state
 namespace replication2 {
 struct LogRange;
 struct LogIndex;
@@ -53,9 +54,23 @@ struct IStorageTransaction {
       -> futures::Future<Result> = 0;
 };
 
+struct IStorageManager;
+
+struct IStateInfoTransaction {
+  using InfoType = replicated_state::PersistedStateInfo;
+  virtual ~IStateInfoTransaction() = default;
+  virtual auto get() noexcept -> InfoType& = 0;
+};
+
 struct IStorageManager {
   virtual ~IStorageManager() = default;
   virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
+  [[nodiscard]] virtual auto getCommittedLog() const -> InMemoryLog = 0;
+
+  virtual auto beginStateInfoTrx()
+      -> std::unique_ptr<IStateInfoTransaction> = 0;
+  virtual auto commitStateInfoTrx(std::unique_ptr<IStateInfoTransaction>)
+      -> Result = 0;
 };
 
 }  // namespace comp

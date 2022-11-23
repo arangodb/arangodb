@@ -27,15 +27,17 @@
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Replication2/coro-helper.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   auto guard = guarded.getLockedGuard();
+  auto self = shared_from_this();
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
-    return AppendEntriesResult::withRejection(
+    co_return AppendEntriesResult::withRejection(
         LogTerm{1}, MessageId{0},
         AppendEntriesErrorReason{
             AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
@@ -43,7 +45,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   }
 
   if (auto error = guard->preflightChecks(); error) {
-    return {std::move(*error)};
+    co_return {std::move(*error)};
   }
 
   {
@@ -57,40 +59,33 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     }
   }
 
-  auto f = std::invoke(
-      [&](Guarded<GuardedData>::mutex_guard_type&&) -> futures::Future<Result> {
-        auto store = guard->storage.transaction();
-        if (store->getInMemoryLog().getLastIndex() !=
-            request.prevLogEntry.index) {
-          return store->removeBack(request.prevLogEntry.index + 1);
-        } else {
-          return {TRI_ERROR_NO_ERROR};
-        }
-      },
-      std::move(guard));
+  {
+    auto store = guard->storage.transaction();
+    if (store->getInMemoryLog().getLastIndex() != request.prevLogEntry.index) {
+      auto f = store->removeBack(request.prevLogEntry.index + 1);
+      guard.unlock();
+      auto result = co_await asResult(std::move(f));
+      if (result.fail()) {
+        co_return AppendEntriesResult::withPersistenceError(
+            LogTerm{1}, MessageId{0}, result, false);
+      }
+      guard = self->guarded.getLockedGuard();
+    }
+  }
 
-  return std::move(f).thenValue(
-      [request = std::move(request),
-       self = shared_from_this()](Result const& result) mutable
-      -> futures::Future<AppendEntriesResult> {
-        if (result.fail()) {
-          return AppendEntriesResult::withPersistenceError(
-              LogTerm{1}, MessageId{0}, result, false);
-        }
+  {
+    auto store = guard->storage.transaction();
+    auto f = store->appendEntries(InMemoryLog{request.entries});
+    guard.unlock();
+    auto result = co_await asResult(std::move(f));
+    if (result.fail()) {
+      co_return AppendEntriesResult::withPersistenceError(
+          LogTerm{1}, MessageId{0}, result, false);
+    }
+  }
 
-        auto guard = self->guarded.getLockedGuard();
-        auto store = guard->storage.transaction();
-        auto f = store->appendEntries(InMemoryLog{request.entries});
-        guard.unlock();
-        return std::move(f).thenValue([self](Result const& result) {
-          if (result.fail()) {
-            return AppendEntriesResult::withPersistenceError(
-                LogTerm{1}, MessageId{0}, result, false);
-          }
-
-          return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
-        });
-      });
+  // TODO update commit index
+  co_return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
 }
 
 AppendEntriesManager::AppendEntriesManager(IStorageManager& storage,

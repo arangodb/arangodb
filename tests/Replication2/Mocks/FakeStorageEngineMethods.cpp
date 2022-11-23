@@ -169,8 +169,11 @@ auto FakeStorageEngineMethodsContext::getMethods()
 FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
     std::uint64_t objectId, arangodb::replication2::LogId logId,
     std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor,
-    LogRange range)
-    : objectId(objectId), logId(logId), executor(std::move(executor)) {
+    LogRange range, std::optional<replicated_state::PersistedStateInfo> meta)
+    : objectId(objectId),
+      logId(logId),
+      executor(std::move(executor)),
+      meta(std::move(meta)) {
   emplaceLogRange(range, LogTerm{1});
 }
 

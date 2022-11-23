@@ -21,36 +21,33 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
-#include "Basics/Guarded.h"
-#include "Replication2/ReplicatedLog/Components/ExclusiveBool.h"
-#include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
+#include <tuple>
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
 
-namespace arangodb::replication2::replicated_log {
+namespace arangodb {
+template<typename T>
+class ResultT;
+namespace futures {
+template<typename T>
+class Future;
+}
+
+namespace replication2::replicated_log {
 inline namespace comp {
 
-struct IStorageManager;
-struct ISnapshotManager;
+struct IWaitQueueManager {
+  using ResolveType =
+      std::tuple<WaitForResult, std::unique_ptr<LogRangeIterator>>;
 
-struct AppendEntriesManager
-    : IAppendEntriesManager,
-      std::enable_shared_from_this<AppendEntriesManager> {
-  AppendEntriesManager(IStorageManager& storage, ISnapshotManager& snapshot);
-
-  auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override;
-
-  struct GuardedData {
-    GuardedData(IStorageManager& storage, ISnapshotManager& snapshot);
-    auto preflightChecks() -> std::optional<AppendEntriesResult>;
-
-    ExclusiveBool requestInFlight;
-
-    IStorageManager& storage;
-    ISnapshotManager& snapshot;
-  };
-
-  Guarded<GuardedData> guarded;
+  virtual ~IWaitQueueManager() = default;
+  virtual auto waitFor(LogIndex) noexcept -> ILogParticipant::WaitForFuture = 0;
+  virtual auto waitForIterator(LogIndex) noexcept
+      -> ILogParticipant::WaitForIteratorFuture = 0;
+  virtual auto resolveIndex(LogIndex, futures::Try<ResolveType>)
+      -> DeferredAction = 0;
+  virtual auto resolveAll(futures::Try<ResolveType>) -> DeferredAction = 0;
 };
+
 }  // namespace comp
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace replication2::replicated_log
+}  // namespace arangodb

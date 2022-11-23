@@ -21,36 +21,23 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
-#include "Basics/Guarded.h"
-#include "Replication2/ReplicatedLog/Components/ExclusiveBool.h"
-#include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
 
-namespace arangodb::replication2::replicated_log {
+namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
+namespace replication2::replicated_log {
+struct AppendEntriesRequest;
+struct AppendEntriesResult;
 inline namespace comp {
 
-struct IStorageManager;
-struct ISnapshotManager;
-
-struct AppendEntriesManager
-    : IAppendEntriesManager,
-      std::enable_shared_from_this<AppendEntriesManager> {
-  AppendEntriesManager(IStorageManager& storage, ISnapshotManager& snapshot);
-
-  auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override;
-
-  struct GuardedData {
-    GuardedData(IStorageManager& storage, ISnapshotManager& snapshot);
-    auto preflightChecks() -> std::optional<AppendEntriesResult>;
-
-    ExclusiveBool requestInFlight;
-
-    IStorageManager& storage;
-    ISnapshotManager& snapshot;
-  };
-
-  Guarded<GuardedData> guarded;
+struct IAppendEntriesManager {
+  virtual ~IAppendEntriesManager() = default;
+  virtual auto appendEntries(AppendEntriesRequest request)
+      -> futures::Future<AppendEntriesResult> = 0;
 };
+
 }  // namespace comp
-}  // namespace arangodb::replication2::replicated_log
+}  // namespace replication2::replicated_log
+}  // namespace arangodb

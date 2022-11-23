@@ -40,7 +40,13 @@ struct StorageManagerTest : ::testing::Test {
   std::shared_ptr<test::DelayedExecutor> executor =
       std::make_shared<test::DelayedExecutor>();
   test::FakeStorageEngineMethodsContext methods{
-      objectId, logId, executor, LogRange{LogIndex{1}, LogIndex{100}}};
+      objectId,
+      logId,
+      executor,
+      {LogIndex{1}, LogIndex{100}},
+      replicated_state::PersistedStateInfo{
+          .stateId = LogId{12},
+          .snapshot = {.status = SnapshotStatus::kFailed}}};
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.getMethods());
 };
@@ -148,6 +154,46 @@ TEST_F(StorageManagerTest, transaction_append) {
   EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{120}}));
 }
 
+TEST_F(StorageManagerTest, read_meta_data) {
+  auto trx = storageManager->beginStateInfoTrx();
+  EXPECT_EQ(trx->get().stateId, LogId{12});
+}
+
+TEST_F(StorageManagerTest, update_meta_data) {
+  {
+    auto trx = storageManager->beginStateInfoTrx();
+    auto& meta = trx->get();
+    meta.snapshot.status = SnapshotStatus::kCompleted;
+    storageManager->commitStateInfoTrx(std::move(trx));
+  }
+
+  ASSERT_TRUE(methods.meta.has_value());
+  EXPECT_EQ(methods.meta->snapshot.status, SnapshotStatus::kCompleted);
+
+  {
+    auto trx = storageManager->beginStateInfoTrx();
+    EXPECT_EQ(trx->get().snapshot.status, SnapshotStatus::kCompleted);
+  }
+}
+
+TEST_F(StorageManagerTest, update_meta_data_abort) {
+  {
+    auto trx = storageManager->beginStateInfoTrx();
+    auto& meta = trx->get();
+    meta.snapshot.status = SnapshotStatus::kCompleted;
+    // just drop the trx
+    trx.reset();
+  }
+
+  ASSERT_TRUE(methods.meta.has_value());
+  EXPECT_EQ(methods.meta->snapshot.status, SnapshotStatus::kFailed);
+
+  {
+    auto trx = storageManager->beginStateInfoTrx();
+    EXPECT_EQ(trx->get().snapshot.status, SnapshotStatus::kFailed);
+  }
+}
+
 struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(Result, updateMetadata, (PersistedStateInfo), (override));
   MOCK_METHOD(ResultT<PersistedStateInfo>, readMetadata, (), (override));
@@ -175,6 +221,10 @@ struct StorageEngineMethodsMockFactory {
     EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
       auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
       return log.getPersistedLogIterator();
+    });
+
+    EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
+      return replicated_state::PersistedStateInfo{.stateId = LogId{1}};
     });
 
     return ptr;

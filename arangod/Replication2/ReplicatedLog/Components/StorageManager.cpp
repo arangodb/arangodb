@@ -30,6 +30,7 @@
 #include "Replication2/coro-helper.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
+#include "Basics/Guarded.h"
 
 using namespace arangodb::replication2::replicated_log;
 
@@ -106,9 +107,10 @@ auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
 }
 
 StorageManager::GuardedData::GuardedData(
-    std::unique_ptr<IStorageEngineMethods> core)
-    : core(std::move(core)) {
-  spearheadLog = onDiskLog = InMemoryLog::loadFromMethods(*this->core);
+    std::unique_ptr<IStorageEngineMethods> methods)
+    : core(std::move(methods)) {
+  spearheadLog = onDiskLog = InMemoryLog::loadFromMethods(*core);
+  info = core->readMetadata().get();
 }
 
 auto StorageManager::scheduleOperation(
@@ -200,4 +202,42 @@ auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
         TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
   return std::make_unique<StorageManagerTransaction>(std::move(guard), *this);
+}
+
+InMemoryLog StorageManager::getCommittedLog() const {
+  return guardedData.getLockedGuard()->onDiskLog;
+}
+
+struct comp::StateInfoTransaction : IStateInfoTransaction {
+  using GuardType = Guarded<StorageManager::GuardedData>::mutex_guard_type;
+
+  explicit StateInfoTransaction(GuardType guard, StorageManager& manager)
+      : info(guard->info), guard(std::move(guard)), manager(manager) {}
+
+  auto get() noexcept -> InfoType& override { return info; }
+
+  replicated_state::PersistedStateInfo info;
+  GuardType guard;
+  StorageManager& manager;
+};
+
+auto StorageManager::beginStateInfoTrx()
+    -> std::unique_ptr<IStateInfoTransaction> {
+  auto guard = guardedData.getLockedGuard();
+  if (guard->core == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+  return std::make_unique<StateInfoTransaction>(std::move(guard), *this);
+}
+
+arangodb::Result StorageManager::commitStateInfoTrx(
+    std::unique_ptr<IStateInfoTransaction> ptr) {
+  auto& trx = dynamic_cast<StateInfoTransaction&>(*ptr);
+  auto guard = std::move(trx.guard);
+  if (auto res = guard->core->updateMetadata(trx.info); res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  guard->info = std::move(trx.info);
+  return {};
 }
