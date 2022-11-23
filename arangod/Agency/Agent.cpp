@@ -2514,20 +2514,21 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
     _supervision->setGracePeriod(d);
   }
   slice = data.get("delayAddFollower");
+  uint64_t u;
   if (slice.isNumber()) {
-    d = slice.getNumber<uint64_t>();
+    u = slice.getNumber<uint64_t>();
     LOG_TOPIC("12343", DEBUG, Logger::SUPERVISION)
-        << "Updating delayAddFollower to " << d;
-    _config.setSupervisionDelayAddFollower(d);
-    _supervision->setDelayAddFollower(d);
+        << "Updating delayAddFollower to " << u;
+    _config.setSupervisionDelayAddFollower(u);
+    _supervision->setDelayAddFollower(u);
   }
   slice = data.get("delayFailedFollower");
   if (slice.isNumber()) {
-    d = slice.getNumber<uint64_t>();
+    u = slice.getNumber<uint64_t>();
     LOG_TOPIC("12344", DEBUG, Logger::SUPERVISION)
-        << "Updating delayFailedFollower to " << d;
-    _config.setSupervisionDelayFailedFollower(d);
-    _supervision->setDelayFailedFollower(d);
+        << "Updating delayFailedFollower to " << u;
+    _config.setSupervisionDelayFailedFollower(u);
+    _supervision->setDelayFailedFollower(u);
   }
 }
 
