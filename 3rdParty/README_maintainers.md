@@ -264,6 +264,26 @@ index f1d5d26cef3..ae063557aa3 100644
    if ((n & (n - 1)) == 0) {  // zero or a power of two
      return floor;
    } else {
+diff --git a/3rdParty/s2geometry/master/src/s2/base/port.h b/3rdParty/s2geometry/master/src/s2/base/port.h
+index 0efaba84248..328393d2ffd 100644
+--- a/3rdParty/s2geometry/master/src/s2/base/port.h
++++ b/3rdParty/s2geometry/master/src/s2/base/port.h
+@@ -59,6 +59,15 @@
+ #undef ERROR
+ #undef DELETE
+ #undef DIFFERENCE
++#undef S_IRUSR
++#undef S_IWUSR
++#undef S_IXUSR
++#undef S_IRGRP
++#undef S_IWGRP
++#undef S_IXGRP
++#undef S_IROTH
++#undef S_IWOTH
++#undef S_IXOTH
+ #define STDIN_FILENO 0
+ #define STDOUT_FILENO 1
+ #define STDERR_FILENO 2
 ```
 
 ## snappy
