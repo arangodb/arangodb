@@ -725,9 +725,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string scorer arg (expecting string)
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
     std::array expected{dummy_scorer::make(std::string_view{})};
@@ -741,9 +741,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string scorer arg (expecting jSON)
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
     std::array expected{dummy_scorer::make(std::string_view{})};
@@ -763,9 +763,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string jSON scorer arg (expecting string)
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
         "\\\"def\\\"}\") RETURN d";
@@ -785,9 +785,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string jSON scorer arg (expecting jSON)
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
         "\\\"def\\\"}\") RETURN d";
@@ -809,9 +809,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function raw jSON scorer arg
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, {\"abc\": "
         "\"def\"}) RETURN d";
@@ -830,9 +830,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function 2 string scorer args
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"def\") "
         "RETURN d";
@@ -850,9 +850,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string+jSON(string) scorer args
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", "
         "\"{\\\"def\\\": \\\"ghi\\\"}\") RETURN d";
@@ -871,9 +871,9 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   // function string+jSON(raw) scorer args
   {
     auto validateOrig = dummy_scorer::validateArgs;
-    auto restore = irs::make_finally([&validateOrig]() noexcept {
+    irs::Finally restore = [&validateOrig]() noexcept {
       dummy_scorer::validateArgs = validateOrig;
-    });
+    };
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", {\"def\": "
         "\"ghi\"}) RETURN d";
