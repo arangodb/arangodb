@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This
+  is desirable in case a DBServer fails and comes back quickly, because it
+  gives the cluster a chance to get in sync and fully resilient without
+  deploying additional shard replicas and thus without causing any data
+  imbalance.
+
 * Removed more assertions from cluster rebalance js test that obligated the 
   rebalance plan to always have moves, but there were cases in which all 
   there are none.
