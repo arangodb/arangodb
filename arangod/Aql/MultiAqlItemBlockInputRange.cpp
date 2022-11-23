@@ -255,7 +255,7 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
-template <int depthOffset>
+template<int depthOffset>
   requires(depthOffset == 0 || depthOffset == -1)
 auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
     -> std::vector<size_t> {

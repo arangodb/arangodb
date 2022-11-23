@@ -966,8 +966,9 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryStartExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1034,8 +1035,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
-    AqlCallStack& stack)
-    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
+    AqlCallStack& stack) -> ExecState
+  requires std::same_as<Executor, SubqueryEndExecutor>
+{
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1338,13 +1340,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // applied to our input.
         // For SQS nodes, this needs to be adjusted; in principle we'd just need
         //   depthToSkip += offset;
-        // , except depthToSkip is unsigned, and we would get integer underflows.
-        // So it's passed to skipAllShadowRowsOfDepth() instead.
+        // , except depthToSkip is unsigned, and we would get integer
+        // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
         // Note that SubqueryEnd nodes do *not* need this adjustment, as an
-        // additional call is pushed to the stack already when the ExecutionContext
-        // is constructed at the beginning of executeWithoutTrace, so input and
-        // call-stack already align at this point.
-        constexpr static int depthOffset = ([]() consteval -> int {
+        // additional call is pushed to the stack already when the
+        // ExecutionContext is constructed at the beginning of
+        // executeWithoutTrace, so input and call-stack already align at this
+        // point.
+        constexpr static int depthOffset = ([]() consteval->int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
           } else {
@@ -1353,7 +1356,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         })();
 
         auto skipped =
-            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(depthToSkip);
+            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+                depthToSkip);
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
                                        MultiAqlItemBlockInputRange>) {
@@ -2310,8 +2314,9 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
 //       ScatterExecutor and in DistributeClientExecutor
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
-    SharedAqlItemBlockPtr block, SkipResult skipped)
-    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
+    SharedAqlItemBlockPtr block, SkipResult skipped) -> void
+  requires std::same_as<Executor, IdExecutor<ConstFetcher>>
+{
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -2346,7 +2351,9 @@ auto ExecutionBlockImpl<Executor>::injectConstantBlock(
 // this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
-    -> RegisterId requires std::same_as<
-        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
+    -> RegisterId
+  requires std::same_as<Executor,
+                        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>
+{
   return _executorInfos.getOutputRegister();
 }

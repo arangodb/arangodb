@@ -85,7 +85,7 @@ class MultiAqlItemBlockInputRange {
   // Skips all ShadowRows of lower or equal depth then given in all
   // locally known ranges. Reports the amount of skipped equal depth
   // ShadowRows per depth.
-  template <int depthOffset>
+  template<int depthOffset>
     requires(depthOffset == 0 || depthOffset == -1)
   auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
 
