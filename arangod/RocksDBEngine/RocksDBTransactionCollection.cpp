@@ -298,6 +298,10 @@ void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
 }
 
 void RocksDBTransactionCollection::handleIndexCacheRefills() {
+  if (_trackedCacheRefills.empty()) {
+    return;
+  }
+
   auto& vocbase = _collection->vocbase();
   auto& engine = vocbase.server()
                      .getFeature<EngineSelectorFeature>()

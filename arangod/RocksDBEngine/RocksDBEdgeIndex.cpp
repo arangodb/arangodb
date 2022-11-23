@@ -669,7 +669,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
 void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
                                    std::vector<std::string> const& keys) {
-  if (_cache == nullptr) {
+  if (_cache == nullptr || keys.empty()) {
     return;
   }
 

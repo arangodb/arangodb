@@ -167,6 +167,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& options, bool performChecks) override;
 
+  void refillCache(transaction::Methods& trx,
+                   std::vector<std::string> const& keys) override;
+
  private:
   void expandInSearchValues(ResourceMonitor& monitor, velocypack::Slice base,
                             velocypack::Builder& result,
@@ -260,6 +263,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// effectively in use. for example, for system collections and on the
   /// coordinator, no cache will actually be used although this flag may be true
   bool const _cacheEnabled;
+
+  // if true, force a refill of the in-memory cache after each
+  // insert/update/replace operation
+  bool const _forceCacheRefill;
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool const _deduplicate;
