@@ -4,6 +4,8 @@
 const jsunity = require('jsunity');
 const tasks = require('@arangodb/tasks');
 const fs = require('fs');
+const internal = require('internal');
+const isEnterprise = internal.isEnterprise();
 
 function testSuite() {
   const db = require("@arangodb").db;
@@ -78,6 +80,32 @@ function testSuite() {
       let propertiesReturned = v.properties();
       assertTrue(undefined === propertiesReturned.links[colName].inBackground);
     },
+    testCachedColumns : function() {
+      const colName = 'TestCollectionCache';
+      const viewName = 'TestViewCache';
+      try {
+        let col = db._create(colName);
+        let v = db._createView(viewName, 'arangosearch', 
+          {
+            primarySortCache:true,
+            primaryKeyCache:true, 
+            links: {[colName] : { cache:true }}
+          });
+        let prop = v.properties();
+        if (isEnterprise) {
+          assertTrue(prop.primarySortCache);
+          assertTrue(prop.primaryKeyCache);
+          assertTrue(prop.links.TestCollectionCache.cache);
+        } else {
+          assertFalse(prop.hasOwnProperty("primarySortCache"));
+          assertFalse(prop.hasOwnProperty("primaryKeyCache"));
+          assertFalse(prop.links.TestCollectionCache.hasOwnProperty("cache"));
+        }
+      } finally {
+        db._dropView(viewName);
+        db._drop(colName);
+      }
+    }
   }; // return
 } // end of suite
 
