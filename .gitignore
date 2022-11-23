@@ -69,8 +69,6 @@ client-tools/cmake_install.cmake
 cmake_install.cmake
 lib/cmake_install.cmake
 
-arangod/Aql/grammar.output
-
 /bin
 logs/
 out/
