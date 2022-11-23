@@ -46,8 +46,8 @@ TEST_F(ParticipantsHealthTest, test_empty_and_does_not_crash) {
   ASSERT_EQ(health.validRebootId("A", RebootId{0}), false);
   ASSERT_EQ(health.getRebootId("A"), std::nullopt);
   ASSERT_EQ(health.contains("A"), false);
-  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{}), 0);
-  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{{"A", {}}}), 0);
+  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{}), 0U);
+  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{{"A", {}}}), 0U);
 }
 
 TEST_F(ParticipantsHealthTest, test_participants_health) {
@@ -69,8 +69,8 @@ TEST_F(ParticipantsHealthTest, test_participants_health) {
   ASSERT_EQ(health.getRebootId("C"), RebootId{14});
   ASSERT_EQ(health.contains("A"), true);
   ASSERT_EQ(health.contains("F"), false);
-  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{}), 0);
+  ASSERT_EQ(health.numberNotIsFailedOf(ParticipantsFlagsMap{}), 0U);
   ASSERT_EQ(
       health.numberNotIsFailedOf(ParticipantsFlagsMap{{"A", {}}, {"D", {}}}),
-      1);
+      1U);
 }

@@ -56,7 +56,7 @@
 namespace {
 
 #ifdef USE_ENTERPRISE
-bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
+bool isIgnoredHiddenEnterpriseCollection(std::string_view cName) {
   /*
    * Note: As IResearchView.cpp L204 says:
    * -> "create links on a best-effort basis, link creation failure does not
@@ -70,23 +70,16 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
    * but more code changes will then be necessary.
    */
   if (arangodb::ServerState::instance()->isSingleServer()) {
-    if (cName[0] == '_') {
-      if (strncmp(cName.c_str(),
-                  arangodb::StaticStrings::FullLocalPrefix.c_str(),
-                  arangodb::StaticStrings::FullLocalPrefix.size()) == 0 ||
-          strncmp(cName.c_str(),
-                  arangodb::StaticStrings::FullFromPrefix.c_str(),
-                  arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
-          strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
-                  arangodb::StaticStrings::FullToPrefix.size()) == 0) {
-        LOG_TOPIC("d921b", DEBUG, arangodb::Logger::VIEWS)
-            << "Ignoring link to '" << cName
-            << "'. Will only be initially created via SmartGraphs of a full "
-               "dump of a cluster."
-               "This link is not supposed to be restored in case you dump from "
-               "a cluster and then restore into a single-server instance.";
-        return true;
-      }
+    if (cName.starts_with(arangodb::StaticStrings::FullLocalPrefix) ||
+        cName.starts_with(arangodb::StaticStrings::FullFromPrefix) ||
+        cName.starts_with(arangodb::StaticStrings::FullToPrefix)) {
+      LOG_TOPIC("d921b", DEBUG, arangodb::Logger::VIEWS)
+          << "Ignoring link to '" << cName
+          << "'. Will only be initially created via SmartGraphs of a full "
+             "dump of a cluster."
+             "This link is not supposed to be restored in case you dump from "
+             "a cluster and then restore into a single-server instance.";
+      return true;
     }
   }
   return false;
@@ -812,14 +805,17 @@ namespace iresearch {
 
 #if USE_ENTERPRISE
     bool isIgnoredCollection =
-        isIgnoredHiddenEnterpriseCollection(collectionName.copyString());
+        isIgnoredHiddenEnterpriseCollection(collectionName.stringView());
 #else
     bool isIgnoredCollection = false;
 #endif
 
-    auto collection = resolver.getCollection(collectionName.copyString());
+    auto collection = resolver.getCollection(collectionName.stringView());
 
-    if (!isIgnoredCollection && !collection) {
+    if (!collection) {
+      if (isIgnoredCollection) {
+        continue;
+      }
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
               std::string("while validating arangosearch link definition, "
                           "error: collection '") +

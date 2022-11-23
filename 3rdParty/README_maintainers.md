@@ -493,60 +493,6 @@ Don't forget to update `iresearch.build/modules.h`, see [iresearch.build](#irese
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
-To fix a memleak in the snowball compiler that made our LSan-enabled builds
-fail, we applied the following patch for snowball:
-
-```
-diff --git a/3rdParty/snowball/compiler/driver.c b/3rdParty/snowball/compiler/driver.c
-index d887b1f23ca6..f6c764310d10 100644
---- a/3rdParty/snowball/compiler/driver.c
-+++ b/3rdParty/snowball/compiler/driver.c
-@@ -146,8 +146,17 @@ static int read_options(struct options * o, int argc, char * argv[]) {
-                 continue;
-             }
-             if (eq(s, "-n") || eq(s, "-name")) {
-+                char * new_name;
-+                size_t len;
-+
-                 check_lim(i, argc);
--                o->name = argv[i++];
-+                /* Take a copy of the argument here, because
-+                 * later we will free o->name */
-+                len = strlen(argv[i]);
-+                new_name = malloc(len + 1);
-+                memcpy(new_name, argv[i++], len);
-+                new_name[len] = '\0';
-+                o->name = new_name;
-                 continue;
-             }
- #ifndef DISABLE_JS
-@@ -599,6 +608,7 @@ extern int main(int argc, char * argv[]) {
-             lose_b(p->b); FREE(p); p = q;
-         }
-     }
-+    FREE(o->name);
-     FREE(o);
-     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
-     return 0;
-diff --git a/3rdParty/snowball/compiler/header.h b/3rdParty/snowball/compiler/header.h
-index 4da74a6f5529..986cc617cb21 100644
---- a/3rdParty/snowball/compiler/header.h
-+++ b/3rdParty/snowball/compiler/header.h
-@@ -338,7 +338,7 @@ struct options {
-     /* for the command line: */
-
-     const char * output_file;
--    const char * name;
-+    char * name;
-     FILE * output_src;
-     FILE * output_h;
-     byte syntax_tree;
-```
-
-The memleak has been reported to the upstream snowball repository via PR
-https://github.com/snowballstem/snowball/pull/166 and may or may not be fixed
-there.
-
 ## swagger-ui
 
 https://github.com/swagger-api/swagger-ui/releases

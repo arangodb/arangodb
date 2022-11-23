@@ -83,7 +83,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_current) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto statusReport = ctx.getReport();
-  ASSERT_EQ(statusReport.size(), 1);
+  ASSERT_EQ(statusReport.size(), 1U);
   auto& message = statusReport[0];
   EXPECT_EQ(message.code, RSA::StatusCode::kLogCurrentNotAvailable);
 }
@@ -111,7 +111,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_log_plan) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto statusReport = ctx.getReport();
-  ASSERT_EQ(statusReport.size(), 1);
+  ASSERT_EQ(statusReport.size(), 1U);
   auto& message = statusReport[0];
   EXPECT_EQ(message.code, RSA::StatusCode::kLogPlanNotAvailable);
 }
@@ -143,7 +143,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_snapshot) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto statusReport = ctx.getReport();
-  ASSERT_EQ(statusReport.size(), 3);
+  ASSERT_EQ(statusReport.size(), 3U);
 
   std::unordered_set<ParticipantId> participants;
 
@@ -190,7 +190,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_snapshot_complete) {
   EXPECT_EQ(action.flags, flagsSnapshotComplete);
 
   auto statusReport = ctx.getReport();
-  ASSERT_EQ(statusReport.size(), 2);
+  ASSERT_EQ(statusReport.size(), 2U);
 
   std::unordered_set<ParticipantId> participants;
 
@@ -297,7 +297,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_2) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto& report = ctx.getReport();
-  ASSERT_EQ(report.size(), 1);
+  ASSERT_EQ(report.size(), 1U);
   EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
 }
 
@@ -334,7 +334,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_1) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto& report = ctx.getReport();
-  ASSERT_EQ(report.size(), 1);
+  ASSERT_EQ(report.size(), 1U);
   EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
 }
 
@@ -406,7 +406,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
   EXPECT_TRUE(ctx.hasUpdates());
   ASSERT_TRUE(std::holds_alternative<CurrentConvergedAction>(ctx.getAction()));
   auto& action = std::get<CurrentConvergedAction>(ctx.getAction());
-  EXPECT_EQ(action.version, 12);
+  EXPECT_EQ(action.version, 12U);
 }
 
 TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_0) {
@@ -518,7 +518,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_2) {
   EXPECT_TRUE(ctx.hasUpdates());
   EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto& report = ctx.getReport();
-  ASSERT_EQ(report.size(), 3);
+  ASSERT_EQ(report.size(), 3U);
   std::sort(report.begin(), report.end(),
             [](auto const& left, auto const& right) {
               return std::tie(left.participant, left.code) <
@@ -567,7 +567,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_1) {
       std::get<RemoveParticipantFromStatePlanAction>(ctx.getAction());
   EXPECT_EQ(action.participant, "B");
   auto& report = ctx.getReport();
-  ASSERT_EQ(report.size(), 2);
+  ASSERT_EQ(report.size(), 2U);
   std::sort(report.begin(), report.end(),
             [](auto const& left, auto const& right) {
               return std::tie(left.participant, left.code) <
@@ -616,7 +616,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_2) {
   EXPECT_EQ(action.participant, "D");
   EXPECT_EQ(action.flags, flagsSnapshotComplete);
   auto& report = ctx.getReport();
-  ASSERT_EQ(report.size(), 2);
+  ASSERT_EQ(report.size(), 2U);
   std::sort(report.begin(), report.end(),
             [](auto const& left, auto const& right) {
               return std::tie(left.participant, left.code) <

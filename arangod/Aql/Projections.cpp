@@ -29,8 +29,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,64 +45,18 @@ constexpr std::string_view projectionsKey("projections");
 
 namespace arangodb::aql {
 
-Projections::Projections() {}
+Projections::Projections() = default;
 
 Projections::Projections(std::vector<AttributeNamePath> paths) {
-  _projections.reserve(paths.size());
-  for (auto& path : paths) {
-    if (path.empty()) {
-      // ignore all completely empty paths
-      continue;
-    }
-
-    // categorize the projection, based on the attribute name.
-    // we do this here only once in order to not do expensive string
-    // comparisons at runtime later
-    AttributeNamePath::Type type = path.type();
-    size_t length = path.size();
-    if (length >= std::numeric_limits<uint16_t>::max()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "attribute path too long for projection");
-    }
-    // take over the projection
-    _projections.emplace_back(
-        Projection{std::move(path), kNoCoveringIndexPosition,
-                   /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
-                   /*levelsToClose*/ static_cast<uint16_t>(length - 1), type});
-  }
-
-  TRI_ASSERT(_projections.size() <= paths.size());
-
-  init();
+  init(std::move(paths));
 }
 
 Projections::Projections(std::unordered_set<AttributeNamePath> paths) {
-  _projections.reserve(paths.size());
-  for (auto& path : paths) {
-    if (path.empty()) {
-      // ignore all completely empty paths
-      continue;
-    }
+  init(std::move(paths));
+}
 
-    // categorize the projection, based on the attribute name.
-    // we do this here only once in order to not do expensive string
-    // comparisons at runtime later
-    AttributeNamePath::Type type = path.type();
-    size_t length = path.size();
-    if (length >= std::numeric_limits<uint16_t>::max()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "attribute path too long for projection");
-    }
-    // take over the projection
-    _projections.emplace_back(
-        Projection{std::move(path), kNoCoveringIndexPosition,
-                   /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
-                   /*levelsToClose*/ static_cast<uint16_t>(length - 1), type});
-  }
-
-  TRI_ASSERT(_projections.size() <= paths.size());
-
-  init();
+Projections::Projections(containers::FlatHashSet<AttributeNamePath> paths) {
+  init(std::move(paths));
 }
 
 bool Projections::isCoveringIndexPosition(uint16_t position) noexcept {
@@ -372,7 +324,33 @@ void Projections::toVelocyPack(velocypack::Builder& b,
 }
 
 /// @brief shared init function
-void Projections::init() {
+template<typename T>
+void Projections::init(T paths) {
+  _projections.reserve(paths.size());
+  for (auto& path : paths) {
+    if (path.empty()) {
+      // ignore all completely empty paths
+      continue;
+    }
+
+    // categorize the projection, based on the attribute name.
+    // we do this here only once in order to not do expensive string
+    // comparisons at runtime later
+    AttributeNamePath::Type type = path.type();
+    size_t length = path.size();
+    if (length >= std::numeric_limits<uint16_t>::max()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "attribute path too long for projection");
+    }
+    // take over the projection
+    _projections.emplace_back(
+        Projection{std::move(path), kNoCoveringIndexPosition,
+                   /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
+                   /*levelsToClose*/ static_cast<uint16_t>(length - 1), type});
+  }
+
+  TRI_ASSERT(_projections.size() <= paths.size());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // validate that no projection contains an empty attribute
   std::for_each(_projections.begin(), _projections.end(),
@@ -407,13 +385,13 @@ void Projections::handleSharedPrefixes() {
   while (current != _projections.end()) {
     auto next = current + 1;
 
-    (*current).startsAtLevel = levelsOpen;
+    (*current).startsAtLevel = static_cast<uint16_t>(levelsOpen);
     size_t const currentLength = (*current).path.size();
     TRI_ASSERT(currentLength >= 1);
 
     if (next == _projections.end()) {
       // done
-      (*current).levelsToClose = currentLength - 1;
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
       break;
     }
 
@@ -437,10 +415,11 @@ void Projections::handleSharedPrefixes() {
       }
 
       TRI_ASSERT(currentLength - commonPrefixLength >= 1);
-      (*current).levelsToClose = currentLength - commonPrefixLength - 1;
+      (*current).levelsToClose =
+          static_cast<uint16_t>(currentLength - commonPrefixLength - 1);
       levelsOpen = commonPrefixLength;
     } else {
-      (*current).levelsToClose = currentLength - 1;
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
       levelsOpen = 0;
     }
     ++current;
@@ -481,5 +460,12 @@ std::ostream& operator<<(std::ostream& stream, Projections const& projections) {
   stream << " ]";
   return stream;
 }
+
+template void Projections::init<std::vector<AttributeNamePath>>(
+    std::vector<AttributeNamePath> paths);
+template void Projections::init<std::unordered_set<AttributeNamePath>>(
+    std::unordered_set<AttributeNamePath> paths);
+template void Projections::init<containers::FlatHashSet<AttributeNamePath>>(
+    containers::FlatHashSet<AttributeNamePath> paths);
 
 }  // namespace arangodb::aql

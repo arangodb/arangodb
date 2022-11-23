@@ -209,7 +209,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 
   cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
-      std::vector<std::string> const& excludedDatabases);
+      std::vector<std::string> const& excludedDatabases,
+      bool excludeSystemCollections);
 
   struct MoveShardCount {
     std::size_t todo;

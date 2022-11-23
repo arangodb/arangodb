@@ -128,10 +128,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::LocalDocumentId const& token,
       arangodb::IndexIterator::DocumentCallback const& cb,
       arangodb::ReadOwnWrites) const override;
-  virtual bool readDocument(arangodb::transaction::Methods* trx,
-                            arangodb::LocalDocumentId const& token,
-                            arangodb::ManagedDocumentResult& result,
-                            arangodb::ReadOwnWrites) const override;
   virtual arangodb::Result lookupDocument(
       arangodb::transaction::Methods& trx, arangodb::LocalDocumentId token,
       arangodb::velocypack::Builder& builder, bool readCache, bool fillCache,

@@ -25,7 +25,7 @@
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"

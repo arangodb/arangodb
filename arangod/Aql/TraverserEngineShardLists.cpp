@@ -68,16 +68,17 @@ TraverserEngineShardLists::TraverserEngineShardLists(
       _inaccessible.insert(std::to_string(col->id().id()));
     }
 #endif
-    auto shards =
+    _vertexCollections.try_emplace(
+        col->name(),
         getAllLocalShards(shardMapping, server, col->shardIds(restrictToShards),
-                          col->isSatellite() && node->isSmart());
-    _vertexCollections.try_emplace(col->name(), std::move(shards));
+                          col->isSatellite() && node->isSmart()));
   }
 }
 
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-    ServerID const& server, std::shared_ptr<std::vector<std::string>> shardIds,
+    ServerID const& server,
+    std::shared_ptr<std::vector<std::string>> const& shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {

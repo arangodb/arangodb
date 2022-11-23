@@ -28,7 +28,7 @@
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -98,8 +98,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(std::string_view args) {
-    PTR_NAMED(TestAnalyzer, ptr, args);
-    return ptr;
+    return std::make_unique<TestAnalyzer>(args);
   }
 
   static bool normalize(std::string_view args, std::string& out) {
@@ -555,7 +554,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::velocypack::Builder builder;
 
       try {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
@@ -597,7 +596,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       arangodb::velocypack::Builder builder;
 
       try {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
 
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");

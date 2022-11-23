@@ -113,6 +113,14 @@ class Utils {
   /// every GSS
   static std::string const masterToWorkerMessagesKey;
 
+  /// Used for input in ColorPropagation
+  static std::string const equivalenceClass;
+  static std::string const inputColorsFieldName;
+  static std::string const outputColorsFieldName;
+  static std::string const numColors;
+  /// Used for message passing in ColorPropagation
+  static std::string const colors;
+
   /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
 

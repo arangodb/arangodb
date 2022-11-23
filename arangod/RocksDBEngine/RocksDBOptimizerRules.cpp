@@ -41,7 +41,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -85,7 +85,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
   bool modified = false;
   VarSet vars;
-  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  containers::FlatHashSet<arangodb::aql::AttributeNamePath> attributes;
 
   for (auto n : nodes) {
     // isDeterministic is false for EnumerateCollectionNodes when the "random"

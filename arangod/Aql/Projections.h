@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
+#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
@@ -78,6 +79,7 @@ class Projections {
   /// attributes will be sorted and made unique inside
   explicit Projections(std::vector<AttributeNamePath> paths);
   explicit Projections(std::unordered_set<AttributeNamePath> paths);
+  explicit Projections(containers::FlatHashSet<AttributeNamePath> paths);
 
   Projections(Projections&&) = default;
   Projections& operator=(Projections&&) = default;
@@ -152,7 +154,8 @@ class Projections {
 
  private:
   /// @brief shared init function
-  void init();
+  template<typename T>
+  void init(T paths);
 
   /// @brief clean up projections, so that there are no 2 projections where one
   /// is a true prefix of another. also sets level attributes

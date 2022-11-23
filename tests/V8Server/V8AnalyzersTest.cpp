@@ -43,7 +43,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -99,8 +99,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   static ptr make(std::string_view) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<EmptyAnalyzer>();
   }
   static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
