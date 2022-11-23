@@ -105,7 +105,7 @@ class QueryScorer : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -135,7 +135,7 @@ class QueryScorer : public QueryTest {
           insertedDocsCollection;
 
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(arangodb::tests::testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 

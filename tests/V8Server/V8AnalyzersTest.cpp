@@ -99,8 +99,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   static ptr make(std::string_view) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<EmptyAnalyzer>();
   }
   static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
