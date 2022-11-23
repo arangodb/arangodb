@@ -1336,16 +1336,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // `depthToSkip` is the depth according to our call and output; when
         // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
         // applied to our input.
-        // For SQS and SQE nodes, this needs to be adjusted; in principle we'd
-        // just need
+        // For SQS nodes, this needs to be adjusted; in principle we'd just need
         //   depthToSkip += offset;
         // , except depthToSkip is unsigned, and we would get integer underflows.
         // So it's passed to skipAllShadowRowsOfDepth() instead.
+        // Note that SubqueryEnd nodes do *not* need this adjustment, as an
+        // additional call is pushed to the stack already when the ExecutionContext
+        // is constructed at the beginning of executeWithoutTrace, so input and
+        // call-stack already align at this point.
         constexpr static int depthOffset = ([]() consteval -> int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
-          } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-            return 1;
           } else {
             return 0;
           }
