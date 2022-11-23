@@ -103,6 +103,7 @@ class StaticStrings {
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
+  static std::string_view constexpr PregelQueriesCollection{"_pregelQueries"};
 
   // analyzers names
   static std::string const AnalyzersRevision;
