@@ -79,7 +79,7 @@ struct StorageManager : IStorageManager,
   template<typename F>
   auto scheduleOperationLambda(GuardType&&, InMemoryLog result, F&&)
       -> futures::Future<Result>;
-  void triggerQueueWorker(GuardType&&) noexcept;
+  void triggerQueueWorker(GuardType) noexcept;
 };
 
 }  // namespace comp

@@ -141,7 +141,7 @@ auto StorageManager::scheduleOperationLambda(GuardType&& guard,
       std::make_unique<LambdaOperation>(std::forward<F>(fn)));
 }
 
-void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
+void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
   auto const worker = [](GuardType guard, std::shared_ptr<StorageManager> self)
       -> futures::Future<futures::Unit> {
     while (true) {
@@ -162,7 +162,6 @@ void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
         guard = self->guardedData.getLockedGuard();
         guard->onDiskLog = std::move(req.logResult);
       } else {
-        // TODO test error case
         // lock directly, and flush all the queue.
         // If we resolve directly (which could result in a retry) we would
         // immediately abort any retries with `precondition` failed
@@ -178,6 +177,8 @@ void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
         for (auto& r : queue) {
           r.promise.setValue(TRI_ERROR_ARANGO_CONFLICT);
         }
+        // and lock again
+        guard = self->guardedData.getLockedGuard();
       }
     }
 
@@ -187,6 +188,7 @@ void StorageManager::triggerQueueWorker(GuardType&& guard) noexcept {
   // check if a thread is working on the queue
   if (not guard->workerActive) {
     // otherwise start a worker
+    guard->workerActive = true;
     worker(std::move(guard), shared_from_this());
   }
 }

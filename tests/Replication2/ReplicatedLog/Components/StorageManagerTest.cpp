@@ -171,9 +171,16 @@ struct StorageEngineMethodsMockFactory {
   auto create() -> std::unique_ptr<StorageEngineMethodsGMock> {
     auto ptr = std::make_unique<StorageEngineMethodsGMock>();
     lastPtr = ptr.get();
+
+    EXPECT_CALL(*ptr, read).Times(1).WillOnce([](LogIndex idx) {
+      auto log = makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{100}});
+      return log.getPersistedLogIterator();
+    });
+
     return ptr;
   }
   auto operator->() noexcept -> StorageEngineMethodsGMock* { return lastPtr; }
+  auto operator*() noexcept -> StorageEngineMethodsGMock& { return *lastPtr; }
 
  private:
   StorageEngineMethodsGMock* lastPtr{nullptr};
@@ -184,4 +191,38 @@ struct StorageManagerGMockTest : ::testing::Test {
 
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.create());
+
+  using StorageEngineFuture =
+      futures::Promise<ResultT<IStorageEngineMethods::SequenceNumber>>;
 };
+
+TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
+  std::optional<StorageEngineFuture> p1;
+
+  EXPECT_CALL(*methods, removeFront)
+      .Times(1)
+      .WillOnce(
+          [&p1](LogIndex stop, IStorageEngineMethods::WriteOptions const&) {
+            return p1.emplace().getFuture();
+          });
+
+  auto trx = storageManager->transaction();
+  auto f1 = trx->removeFront(LogIndex(20));
+
+  auto trx2 = storageManager->transaction();
+  auto f2 = trx2->removeBack(LogIndex{80});
+
+  EXPECT_FALSE(f1.isReady());
+  EXPECT_FALSE(f2.isReady());
+
+  // resolve first promise with error
+  p1->setValue(Result{TRI_ERROR_DEBUG});
+
+  // first one failed with original error
+  ASSERT_TRUE(f1.isReady());
+  EXPECT_EQ(f1.get().errorNumber(), TRI_ERROR_DEBUG);
+
+  // others are aborted due to conflict
+  ASSERT_TRUE(f2.isReady());
+  EXPECT_EQ(f2.get().errorNumber(), TRI_ERROR_ARANGO_CONFLICT);
+}
