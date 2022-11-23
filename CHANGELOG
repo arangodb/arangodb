@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Removed more assertions from cluster rebalance js test that obligated the
   rebalance plan to always have moves, but there were cases in which all there
   are none.

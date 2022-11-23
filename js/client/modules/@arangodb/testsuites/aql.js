@@ -32,7 +32,8 @@ const functionsDocumentation = {
   'shell_client_aql': 'AQL tests in the client',
   'shell_server_aql': 'AQL tests in the server',
   'shell_server_only': 'server specific tests',
-  'shell_client_transaction': 'transaction tests'
+  'shell_client_transaction': 'transaction tests',
+  'shell_client_traffic': 'traffic metrics tests',
 };
 const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
@@ -50,6 +51,7 @@ const testPaths = {
   'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
+  'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
 };
 
 /// ensure that we have enough db servers in cluster tests
@@ -213,6 +215,22 @@ function shellClientAql (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_traffic
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientTraffic(options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_client_traffic, options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+
+  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_traffic', {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_transaction
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -221,7 +239,7 @@ function shellClientTransaction(options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  var opts = ensureServers(options, 3);
+  let opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
@@ -245,6 +263,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['shell_server_aql'] = shellServerAql;
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
+  testFns['shell_client_traffic'] = shellClientTraffic;
 
   defaultFns.push('shell_api');
   defaultFns.push('shell_client');
@@ -252,6 +271,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   defaultFns.push('shell_client_aql');
   defaultFns.push('shell_server_aql');
   defaultFns.push('shell_client_transaction');
+  defaultFns.push('shell_client_traffic');
 
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
