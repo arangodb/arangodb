@@ -45,7 +45,7 @@ class Parser;
 }
 
 #include "Aql/AstNode.h"
-#include "Aql/grammar.hpp"
+#include "grammar.hpp"
 #include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
