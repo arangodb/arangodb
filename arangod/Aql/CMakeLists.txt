@@ -194,35 +194,33 @@ target_compile_options(arango_aql PRIVATE
 ## BISON/FLEX
 ################################################################################
 
-if (USE_MAINTAINER_MODE)
-  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On") # TODO: Remove this?
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tokens.cpp
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${FLEX_EXECUTABLE} -L -otokens.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
+  VERBATIM
+)
 
-  add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tokens.cpp
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${FLEX_EXECUTABLE} -L -otokens.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/tokens.ll
-    VERBATIM
-  )
-
-  # Find Git Bash on Windows. GITBASH_EXECUTABLE is not set for other OSes
-  if (MSVC)
-    get_filename_component(GITBASH_EXECUTABLE "[HKEY_LOCAL_MACHINE\\SOFTWARE\\GitForWindows;InstallPath]/bin/bash.exe" ABSOLUTE)
-    if (${GITBASH_EXECUTABLE} STREQUAL "/registry/bin/bash.exe")
-      message(FATAL_ERROR "Could not find Git for Windows' bash.exe, which is needed to run bison-c.sh for generating the AQL grammar.cpp")
-    endif()
+# Find Git Bash on Windows. GITBASH_EXECUTABLE is not set for other OSes
+if (MSVC)
+  get_filename_component(GITBASH_EXECUTABLE "[HKEY_LOCAL_MACHINE\\SOFTWARE\\GitForWindows;InstallPath]/bin/bash.exe" ABSOLUTE)
+  if (${GITBASH_EXECUTABLE} STREQUAL "/registry/bin/bash.exe")
+    message(FATAL_ERROR "Could not find Git for Windows' bash.exe, which is needed to run bison-c.sh for generating the AQL grammar.cpp")
   endif()
+endif()
 
-  add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/grammar.cpp
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    COMMAND ${GITBASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
-      ${BISON_EXECUTABLE} grammar.cpp ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
-    VERBATIM
-  )
-endif ()
+add_custom_command(
+  OUTPUT
+    ${CMAKE_CURRENT_BINARY_DIR}/grammar.cpp
+    ${CMAKE_CURRENT_BINARY_DIR}/grammar.hpp
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMAND ${GITBASH_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/bison-c.sh
+    ${BISON_EXECUTABLE} grammar.cpp ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/grammar.y
+  VERBATIM
+)
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare) # TODO: Set directory?
+  set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare) # TODO: Set build directory here?
 endif ()
