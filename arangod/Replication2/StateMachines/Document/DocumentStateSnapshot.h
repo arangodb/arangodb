@@ -217,7 +217,8 @@ struct AllSnapshotsStatus {
  */
 class Snapshot {
  public:
-  static inline constexpr std::size_t kBatchSizeLimit{1024 * 1024};  // 1MB
+  static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
+                                                      1024};  // 16MB
 
   explicit Snapshot(SnapshotId id, ShardID shardId,
                     std::unique_ptr<ICollectionReader> reader);
