@@ -81,10 +81,14 @@ inline constexpr auto kStringShardId = std::string_view{"shardId"};
 inline constexpr auto kStringHasMore = std::string_view{"hasMore"};
 inline constexpr auto kStringPayload = std::string_view{"payload"};
 inline constexpr auto kStringState = std::string_view{"state"};
+inline constexpr auto kStringTotalDocsToBeSent =
+    std::string_view{"totalDocsToBeSent"};
+inline constexpr auto kStringDocsSent = std::string_view{"docsSent"};
 inline constexpr auto kStringTotalBatches = std::string_view{"totalBatches"};
 inline constexpr auto kStringTotalBytes = std::string_view{"totalBytes"};
 inline constexpr auto kStringStartTime = std::string_view{"startTime"};
 inline constexpr auto kStringLastUpdated = std::string_view{"lastUpdated"};
+inline constexpr auto kStringLastBatchSent = std::string_view{"lastBatchSent"};
 inline constexpr auto kStringSnapshots = std::string_view{"snapshots"};
 inline constexpr auto kStringOngoing = std::string_view{"ongoing"};
 inline constexpr auto kStringAborted = std::string_view{"aborted"};
@@ -183,19 +187,25 @@ struct SnapshotStatus {
   std::chrono::system_clock::time_point startTime{
       std::chrono::system_clock::now()};
   std::chrono::system_clock::time_point lastUpdated{startTime};
+  std::optional<std::chrono::system_clock::time_point> lastBatchSent{
+      std::nullopt};
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, SnapshotStatus& s) {
     return f.object(s).fields(
         f.field(kStringState, s.state)
             .transformWith(SnapshotStateTransformer{}),
+        f.field(kStringShardId, s.shardId),
+        f.field(kStringTotalDocsToBeSent, s.totalDocs),
+        f.field(kStringDocsSent, s.docsSent),
         f.field(kStringTotalBatches, s.batchesSent),
         f.field(kStringTotalBytes, s.bytesSent),
         f.field(kStringStartTime, s.startTime)
             .transformWith(inspection::TimeStampTransformer{}),
         f.field(kStringLastUpdated, s.lastUpdated)
             .transformWith(inspection::TimeStampTransformer{}),
-        f.field(kStringShardId, s.shardId));
+        f.field(kStringLastBatchSent, s.lastBatchSent)
+            .transformWith(inspection::TimeStampTransformer{}));
   }
 };
 

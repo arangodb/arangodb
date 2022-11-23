@@ -67,7 +67,8 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
             ++_status.batchesSent;
             _status.bytesSent += batch.payload.byteSize();
             _status.docsSent += batch.payload.length();
-            _status.lastUpdated = std::chrono::system_clock::now();
+            _status.lastBatchSent = _status.lastUpdated =
+                std::chrono::system_clock::now();
             return ResultT<SnapshotBatch>::success(std::move(batch));
           },
           [&](state::Finished const&) -> ResultT<SnapshotBatch> {

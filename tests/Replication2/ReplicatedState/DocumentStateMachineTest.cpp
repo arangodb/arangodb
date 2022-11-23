@@ -1077,6 +1077,12 @@ TEST(SnapshotIdTest, parse_snapshot_id_error) {
   ASSERT_FALSE(id.has_value());
 }
 
+TEST(SnapshotStatusTest, serialize_snapshot_status) {
+  auto state = state::Ongoing{};
+  document::SnapshotStatus status{state};
+  ASSERT_EQ(velocypack::serialize(status).get("state").stringView(), "ongoing");
+}
+
 TEST(ActiveTransactionsQueueTest,
      test_activeTransactions_releaseIndex_calculation) {
   auto activeTrx = ActiveTransactionsQueue{};
