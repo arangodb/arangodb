@@ -102,12 +102,19 @@ struct FieldMeta {
           _fields(mask),
           _includeAllFields(mask),
           _trackListPositions(mask),
-          _storeValues(mask) {}
+#ifdef USE_ENTERPRISE
+          _cache(mask),
+#endif
+          _storeValues(mask) {
+    }
 
     bool _analyzers;
     bool _fields;
     bool _includeAllFields;
     bool _trackListPositions;
+#ifdef USE_ENTERPRISE
+    bool _cache;
+#endif
     bool _storeValues;
   };
 
@@ -195,6 +202,8 @@ struct FieldMeta {
   bool _trackListPositions{false};
 #ifdef USE_ENTERPRISE
   bool _hasNested{false};
+  // field's norms columns should be cached in RAM
+  bool _cache{false};
 #endif
 };
 
@@ -212,13 +221,22 @@ struct IResearchLinkMeta : public FieldMeta {
           _storedValues(mask),
           _sortCompression(mask),
           _collectionName(mask),
-          _version(mask) {}
+#ifdef USE_ENTERPRISE
+          _sortCache(mask),
+          _pkCache(mask),
+#endif
+          _version(mask) {
+    }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
     bool _collectionName;
+#ifdef USE_ENTERPRISE
+    bool _sortCache;
+    bool _pkCache;
+#endif
     bool _version;
   };
 
@@ -226,6 +244,11 @@ struct IResearchLinkMeta : public FieldMeta {
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+#ifdef USE_ENTERPRISE
+  bool _sortCache{false};
+  bool _pkCache{false};
+#endif
   // The version of the iresearch interface e.g. which how
   // data is stored in iresearch (default == 0).
   uint32_t _version;
@@ -237,6 +260,10 @@ struct IResearchLinkMeta : public FieldMeta {
   // _id attribute without doing agency request for collection name
   std::string _collectionName;
   std::string_view collectionName() const noexcept { return _collectionName; }
+
+#ifdef USE_ENTERPRISE
+  bool sortCache() const noexcept { return _sortCache; }
+#endif
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
