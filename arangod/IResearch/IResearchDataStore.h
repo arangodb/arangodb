@@ -37,9 +37,9 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include <filesystem>
 
 #include <atomic>
+#include <filesystem>
 
 namespace arangodb {
 
@@ -388,7 +388,8 @@ class IResearchDataStore {
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -502,7 +503,7 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
   std::atomic_uint64_t _cleanupTimeNum{0};
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
   std::atomic_uint64_t _consolidationTimeNum{0};
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
