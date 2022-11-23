@@ -73,7 +73,7 @@ TEST_F(ReplicatedStateTest, simple_become_follower_test) {
   auto followerState = state->getFollower();
   ASSERT_NE(followerState, nullptr);
   auto& store = followerState->store;
-  EXPECT_EQ(store.size(), 1);
+  EXPECT_EQ(store.size(), 1U);
   EXPECT_EQ(store["hello"], "world");
 }
 
@@ -247,7 +247,7 @@ TEST_F(ReplicatedStateTest, recreate_follower_on_new_term) {
   auto followerState = state->getFollower();
   ASSERT_NE(followerState, nullptr);
   auto& store = followerState->store;
-  EXPECT_EQ(store.size(), 1);
+  EXPECT_EQ(store.size(), 1U);
   EXPECT_EQ(store["hello"], "world");
 }
 
@@ -363,7 +363,7 @@ TEST_F(ReplicatedStateTest, simple_become_leader_recovery_test) {
 
     {
       auto& store = leaderState->store;
-      EXPECT_EQ(store.size(), 1);
+      EXPECT_EQ(store.size(), 1U);
       EXPECT_EQ(store["hello"], "world");
     }
   }

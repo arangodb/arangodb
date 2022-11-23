@@ -76,7 +76,7 @@ function recoverySuite () {
           // and its following line ===============================
           return false;
         }
-        if (internal.env["isAsan"] === "true" && line.match(/\[3ad54\].*=+/)) {
+        if (internal.env["isSan"] === "true" && line.match(/\[3ad54\].*=+/)) {
           // intentionally ignore "slow background settings sync: " in case of ASan
           return false;
         }
@@ -88,6 +88,11 @@ function recoverySuite () {
           // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;
         }
+        if (line.match(/\[de8f3\].*experimental option/)) {
+          // intentionally ignore experimental options warnings
+          return false;
+        }
+
         if (line.match(/\[d72fb\].*Your license will expire/)) {
           // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;

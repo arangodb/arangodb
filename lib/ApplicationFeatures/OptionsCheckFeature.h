@@ -21,22 +21,31 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ManagedDocumentResult.h"
-#include "Transaction/Helpers.h"
+#pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include <memory>
+#include <string_view>
 
-using namespace arangodb;
+#include "ApplicationFeatures/ApplicationFeature.h"
 
-void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
-  VPackSlice const slice(vpack);
-  _string.assign(slice.startAs<char>(), slice.byteSize());
-  _revisionId = transaction::helpers::extractRevFromDocument(slice);
-}
+namespace arangodb {
+class LoggerFeature;
 
-void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {
-  TRI_ASSERT(!empty());
-  TRI_ASSERT(!_string.empty());
-  builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
-}
+class OptionsCheckFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "OptionsCheck"; }
+
+  template<typename Server>
+  OptionsCheckFeature(Server& server)
+      : application_features::ApplicationFeature{server, *this} {
+    static_assert(Server::template isCreatedAfter<LoggerFeature>());
+
+    setOptional(false);
+    startsAfter<LoggerFeature, Server>();
+  }
+
+  void prepare() override final;
+};
+
+}  // namespace arangodb

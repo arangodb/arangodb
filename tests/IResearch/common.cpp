@@ -67,7 +67,7 @@
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -315,7 +315,7 @@ struct BoostScorer : public irs::sort {
   BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>();
+    return std::make_unique<Prepared>();
   }
 };  // BoostScorer
 
@@ -402,7 +402,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+    return std::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
@@ -627,7 +627,7 @@ uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
 }
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature) {
-  irs::utf8_path path;
+  std::filesystem::path path;
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
@@ -728,7 +728,7 @@ void assertFilterOptimized(
   plan->findNodesOfType(
       nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  EXPECT_EQ(nodes.size(), 1);
+  EXPECT_EQ(nodes.size(), 1U);
 
   auto* viewNode = arangodb::aql::ExecutionNode::castTo<
       arangodb::iresearch::IResearchViewNode*>(nodes.front());
