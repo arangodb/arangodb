@@ -1,10 +1,12 @@
 add_library(arango_crashhandler STATIC
-  CrashHandler.cpp)
+	CrashHandler.cpp)
+
 target_include_directories(arango_crashhandler
   PUBLIC
   ${PROJECT_SOURCE_DIR}/lib
   ${PROJECT_BINARY_DIR}/lib)
 target_link_libraries(arango_crashhandler
+  arango
   boost_system
   velocypack)
 
