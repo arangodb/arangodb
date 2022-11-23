@@ -2,6 +2,8 @@
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## shell common
 ################################################################################
@@ -460,35 +462,6 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc_build)
 endif ()
-
-################################################################################
-## common target compile options
-################################################################################
-SET(TARGETS
-  arangobench
-  arangodump
-  arangoexport
-  arangoimport
-  arangorestore
-  arangosh
-  arangovpack)
-if (USE_ENTERPRISE)
-  LIST(APPEND TARGETS arangobackup)
-endif()
-
-foreach (TARGET IN LISTS TARGETS)
-  if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
-      endif()
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
-  endif ()
-endforeach ()
 
 ################################################################################
 ## foxx-manager
