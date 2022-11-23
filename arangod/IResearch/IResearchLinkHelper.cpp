@@ -264,7 +264,8 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
             "error parsing link parameters from json for arangosearch view '") +
             view.name() + "'"};
   }
-
+  auto const pkCache = view.pkCache();
+  auto const sortCache = view.sortCache();
   std::vector<std::string> collectionsToLock;
   std::vector<std::pair<velocypack::Builder, IResearchLinkMeta>>
       linkDefinitions;
@@ -305,8 +306,8 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     auto res = IResearchLinkHelper::normalize(
         normalized, link, true, view.vocbase(), defaultVersion,
         &view.primarySort(), &view.primarySortCompression(),
-        &view.storedValues(), link.get(arangodb::StaticStrings::IndexId),
-        collectionName);
+        &view.storedValues(), &pkCache, &sortCache,
+        link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
       return res;
@@ -702,8 +703,9 @@ namespace iresearch {
     IResearchViewSort const* primarySort, /* = nullptr */
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
-    velocypack::Slice idSlice,                     /* = velocypack::Slice()*/
-    irs::string_ref collectionName /*= irs::string_ref::NIL*/) {
+    bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
+    velocypack::Slice idSlice, /* = velocypack::Slice()*/
+    std::string_ref collectionName /*= irs::string_ref::NIL*/) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid output buffer provided for arangosearch link normalized "
@@ -778,7 +780,15 @@ namespace iresearch {
     // normalize stored values if specified
     meta._storedValues = *storedValues;
   }
+#ifdef USE_ENTERPRISE
+  if (pkCache) {
+    meta._pkCache = *pkCache;
+  }
 
+  if (sortCache) {
+    meta._sortCache = *sortCache;
+  }
+#endif
   // 'isCreation' is set when forPersistence
   if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) {
     return {TRI_ERROR_BAD_PARAMETER,
