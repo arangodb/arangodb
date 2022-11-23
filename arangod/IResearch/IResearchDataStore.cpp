@@ -1874,12 +1874,12 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   auto linkLock = _asyncSelf->lock();
 
   bool ok{false};
-  auto computeMetrics = irs::make_finally([&]() noexcept {
+  irs::Finally computeMetrics = [&]() noexcept {
     // We don't measure time because we believe that it should tend to zero
     if (!ok && _numFailedCommits != nullptr) {
       _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
     }
-  });
+  };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

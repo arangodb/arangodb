@@ -788,9 +788,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
@@ -2505,9 +2505,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_FALSE(feature
                      .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2524,9 +2524,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     // create a new instance of an ApplicationServer and fill it with the
     // required features cannot use the existing server since its features
@@ -2608,9 +2608,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     arangodb::ArangodServer newServer(nullptr, nullptr);
     newServer.addFeature<arangodb::metrics::MetricsFeature>();
@@ -2679,9 +2679,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_TRUE(feature
                     .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2784,9 +2784,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   EXPECT_TRUE(feature.visit(
       [](auto) { return false; }));  // ensure feature is empty after creation
@@ -2846,9 +2846,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2923,9 +2923,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers
