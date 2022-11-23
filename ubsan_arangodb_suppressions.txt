@@ -23,3 +23,12 @@ vptr:s2cell.cc
 
 # fix some V8 false positive
 vptr:v8::Platform
+
+# Applying zero offset to null pointer not UB at least in C++20
+# https://github.com/libjpeg-turbo/libjpeg-turbo/issues/470
+pointer-overflow:3rdParty/nghttp2/lib/nghttp2_buf.c
+pointer-overflow:3rdParty/lz4/lib/lz4.c
+
+# Should be fixed in s2, not really affect as memcpy(null, null, 0)
+# https://github.com/google/s2geometry/issues/283
+nullability-arg:s2/util/gtl/compact_array.h
