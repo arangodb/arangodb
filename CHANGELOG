@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add support for terabyte units (t, tb, T, TB, TiB, TIB) in startup options.
+
 * Removed more assertions from cluster rebalance js test that obligated the 
   rebalance plan to always have moves, but there were cases in which all 
   there are none.

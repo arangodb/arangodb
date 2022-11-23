@@ -24,10 +24,11 @@
 #include "ProgramOptions/Parameters.h"
 
 #include <regex>
+#include <string>
 
 namespace arangodb::options {
 
-std::string removeCommentsFromNumber(std::string const& value) {
+std::string removeWhitespaceAndComments(std::string const& value) {
   // note:
   // this function is already called during static initialization.
   // the following regex objects are function-local statics, because

@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/fpconv.h"
+#include "ProgramOptions/UnitsHelper.h"
 
 #include <velocypack/Builder.h>
 
@@ -38,96 +39,24 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
-#include <stdexcept>
 
 namespace arangodb {
 namespace options {
 
 // helper function to strip-non-numeric data from a string
-std::string removeCommentsFromNumber(std::string const& value);
-
-template<typename T, typename internal>
-inline T toNumberHelper(std::string value, T base = 1) {
-  constexpr internal oneKiB = 1'024;
-  constexpr internal oneKB = 1'000;
-
-  constexpr std::array<std::pair<std::string_view, internal>, 28> units = {{
-      {std::string_view{"kib"}, oneKiB},
-      {std::string_view{"KiB"}, oneKiB},
-      {std::string_view{"KIB"}, oneKiB},
-      {std::string_view{"mib"}, oneKiB * oneKiB},
-      {std::string_view{"MiB"}, oneKiB * oneKiB},
-      {std::string_view{"MIB"}, oneKiB * oneKiB},
-      {std::string_view{"gib"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"GiB"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"GIB"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"tib"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"TiB"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"TIB"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"kb"}, oneKB},
-      {std::string_view{"KB"}, oneKB},
-      {std::string_view{"mb"}, oneKB * oneKB},
-      {std::string_view{"MB"}, oneKB * oneKB},
-      {std::string_view{"gb"}, oneKB * oneKB * oneKB},
-      {std::string_view{"GB"}, oneKB * oneKB * oneKB},
-      {std::string_view{"tb"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"TB"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"k"}, oneKB},
-      {std::string_view{"K"}, oneKB},
-      {std::string_view{"m"}, oneKB * oneKB},
-      {std::string_view{"M"}, oneKB * oneKB},
-      {std::string_view{"g"}, oneKB * oneKB * oneKB},
-      {std::string_view{"G"}, oneKB * oneKB * oneKB},
-      {std::string_view{"t"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"T"}, oneKB * oneKB * oneKB * oneKB},
-  }};
-
-  // replace leading spaces, replace trailing spaces & comments
-  value = removeCommentsFromNumber(value);
-
-  // handle unit suffixes
-  internal m = 1;
-  std::string_view suffix;
-  for (auto const& unit : units) {
-    if (value.ends_with(unit.first)) {
-      suffix = unit.first;
-      m = unit.second;
-      break;
-    }
-  }
-
-  // handle % suffix
-  internal d = 1;
-  if (suffix.empty() && value.ends_with('%')) {
-    suffix = "%";
-    m = static_cast<internal>(base);
-    d = 100;
-  }
-
-  bool valid = true;
-  auto v = arangodb::NumberUtils::atoi<T>(
-      value.data(), value.data() + value.size() - suffix.size(), valid);
-  if (!valid) {
-    throw std::out_of_range(value);
-  }
-  if (isUnsafeMultiplication(static_cast<internal>(v), m)) {
-    throw std::out_of_range(value);
-  }
-  internal r = static_cast<internal>(v) * m;
-  if (r < std::numeric_limits<T>::min() || r > std::numeric_limits<T>::max()) {
-    throw std::out_of_range(value);
-  }
-  return static_cast<T>(v * m / d);
-}
+std::string removeWhitespaceAndComments(std::string const& value);
 
 // convert a string into a number, base version for signed and unsigned integer
 // types
 template<typename T>
 inline T toNumber(std::string value, T base = 1) {
+  // replace leading spaces, replace trailing spaces & comments
+  value = removeWhitespaceAndComments(value);
+
   if constexpr (std::is_signed_v<T>) {
-    return toNumberHelper<T, int64_t>(value, base);
+    return UnitsHelper::parseNumberWithUnit<T, int64_t>(value, base);
   } else {
-    return toNumberHelper<T, uint64_t>(value, base);
+    return UnitsHelper::parseNumberWithUnit<T, uint64_t>(value, base);
   }
 }
 
@@ -135,7 +64,7 @@ inline T toNumber(std::string value, T base = 1) {
 template<>
 inline double toNumber<double>(std::string value, double /*base*/) {
   // replace leading spaces, replace trailing spaces & comments
-  return std::stod(removeCommentsFromNumber(value));
+  return std::stod(removeWhitespaceAndComments(value));
 }
 
 // convert a string into another type, specialized version for numbers
