@@ -211,7 +211,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_FALSE(meta._cache);
     EXPECT_FALSE(meta._pkCache);
     EXPECT_FALSE(meta._sortCache);
-    EXPECT_FALSE(hasHotFields(meta));
+    EXPECT_FALSE(arangodb::iresearch::hasHotFields(meta));
 #endif
     EXPECT_EQ(arangodb::iresearch::ValueStorage::NONE, meta._storeValues);
     EXPECT_EQ(1U, meta._analyzers.size());
@@ -4184,7 +4184,8 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
         &mockFieldIterator.get());
   });
   std::set<irs::field_id> actual;
-  collectCachedNormColumns(actual, mockFieldsReader.get(), meta);
+  arangodb::iresearch::collectCachedNormColumns(actual, mockFieldsReader.get(),
+                                                meta);
   ASSERT_EQ(actual, expected);
 }
 
@@ -4337,7 +4338,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15};
   makeCachedColumnsTest(mockedFields, meta, expected);
-  ASSERT_TRUE(hasHotFields(meta));
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
@@ -4438,7 +4439,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
   });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
   makeCachedColumnsTest(mockedFields, meta, expected);
-  ASSERT_TRUE(hasHotFields(meta));
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
@@ -4538,7 +4539,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
   });
   std::set<irs::field_id> expected{1, 3};
   makeCachedColumnsTest(mockedFields, meta, expected);
-  ASSERT_TRUE(hasHotFields(meta));
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
@@ -4637,6 +4638,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
   });
   std::set<irs::field_id> expected{1, 4};
   makeCachedColumnsTest(mockedFields, meta, expected);
-  ASSERT_TRUE(hasHotFields(meta));
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 #endif

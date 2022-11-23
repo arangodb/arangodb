@@ -77,7 +77,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
 
 add_executable(
   arangodbtests-iresearch
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
 )
 
