@@ -107,7 +107,7 @@ class StatisticsFeature final
                               statistics::Distribution const& dist,
                               std::string const& label,
                               std::initializer_list<std::string> const& les,
-                              bool v2);
+                              bool v2, bool isInteger);
   static void appendMetric(std::string& result, std::string const& val,
                            std::string const& label, bool v2);
 
@@ -115,9 +115,14 @@ class StatisticsFeature final
       TRI_vocbase_t& vocbase, double start,
       arangodb::velocypack::Builder& result) const;
 
-  bool allDatabases() const { return _statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
+  static void appendHistogram(std::string& result,
+                              statistics::Distribution const& dist,
+                              std::string const& label,
+                              std::initializer_list<std::string> const& les,
+                              bool isInteger);
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;

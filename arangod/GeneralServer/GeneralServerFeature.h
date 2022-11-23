@@ -73,6 +73,8 @@ class GeneralServerFeature final
     _requestBodySizeVst.count(bodySize);
   }
 
+  void countHttp1Connection() { _http1Connections.count(); }
+
   void countHttp2Connection() { _http2Connections.count(); }
 
   void countVstConnection() { _vstConnections.count(); }
@@ -100,6 +102,7 @@ class GeneralServerFeature final
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp1;
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp2;
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeVst;
+  Counter& _http1Connections;
   Counter& _http2Connections;
   Counter& _vstConnections;
 };

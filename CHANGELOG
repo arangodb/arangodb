@@ -1,6 +1,8 @@
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Fix setting query memory limit to 0 for certain queries if a global memory
   limit is set, but overriding the memory limit is allowed.
 

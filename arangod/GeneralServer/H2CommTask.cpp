@@ -44,6 +44,12 @@
 using namespace arangodb::basics;
 using arangodb::velocypack::StringRef;
 
+namespace {
+constexpr std::string_view switchingProtocols(
+    "HTTP/1.1 101 Switching Protocols\r\nConnection: "
+    "Upgrade\r\nUpgrade: h2c\r\n\r\n");
+}  // namespace
+
 namespace arangodb {
 namespace rest {
 
@@ -65,7 +71,7 @@ template<SocketType T>
     return 0;
   }
 
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
   me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
@@ -85,7 +91,7 @@ template<SocketType T>
                                         const uint8_t* value, size_t valuelen,
                                         uint8_t flags, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
 
   if (frame->hd.type != NGHTTP2_HEADERS ||
       frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -136,7 +142,7 @@ template<SocketType T>
     case NGHTTP2_DATA:  // GET or HEAD do not use DATA frames
     case NGHTTP2_HEADERS: {
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        const int32_t sid = frame->hd.stream_id;
+        int32_t const sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
             << "<http2> finalized request on stream " << sid << " with ptr "
             << me;
@@ -211,7 +217,7 @@ template<SocketType T>
     return 0;
   }
 
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
   LOG_TOPIC("d15e8", DEBUG, Logger::REQUESTS)
       << "sending RST on stream " << sid << " with error '"
       << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
@@ -345,7 +351,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   bool const wasHead = req->requestType() == RequestType::HEAD;
 
   std::string decoded = StringUtils::decodeBase64(settings);
-  uint8_t const* src = reinterpret_cast<const uint8_t*>(decoded.data());
+  uint8_t const* src = reinterpret_cast<uint8_t const*>(decoded.data());
   int rv =
       nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);
 
@@ -801,7 +807,7 @@ void H2CommTask<T>::queueHttp2Responses() {
         size_t nread = std::min(length, body.size() - strm->responseOffset);
         TRI_ASSERT(nread > 0);
 
-        const char* src = body.data() + strm->responseOffset;
+        char const* src = body.data() + strm->responseOffset;
         std::copy_n(src, nread, buf);
         strm->responseOffset += nread;
 
