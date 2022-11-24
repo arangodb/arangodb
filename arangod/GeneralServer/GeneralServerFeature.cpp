@@ -194,13 +194,13 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options->addOption(
-      "--server.io-threads", "number of threads used to handle IO",
+      "--server.io-threads", "The number of threads used to handle I/O.",
       new UInt64Parameter(&_numIoThreads),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--server.support-info-api",
-                  "policy for exposing support info API",
+                  "The policy for exposing the support info API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
@@ -211,49 +211,74 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--http.allow-method-override",
-                  "allow HTTP method override using special headers",
+                  "Allow HTTP method override using special headers.",
                   new BooleanParameter(&_allowMethodOverride),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30800);
+      .setDeprecatedIn(30800)
+      .setLongDescription(R"(If you set this option to `true`, the HTTP request
+method is optionally fetched from one of the following HTTP request headers if
+present in the request:
 
-  options->addOption("--http.keep-alive-timeout",
-                     "keep-alive timeout in seconds",
-                     new DoubleParameter(&_keepAliveTimeout));
+- `x-http-method`
+- `x-http-method-override`
+- `x-method-override`
+
+If the option is enabled and any of these headers is set, the request method is
+overridden by the value of the header. For example, this allows you to issue an
+HTTP DELETE request which, to the outside world, looks like an HTTP GET request.
+This allows you to bypass proxies and tools that only let certain request types
+pass.
+
+Enabling this option may impose a security risk. You should only use it in
+controlled environments.)");
 
   options
-      ->addOption("--http.hide-product-header",
-                  "do not expose \"Server: ArangoDB\" header in HTTP responses",
-                  new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+      ->addOption("--http.keep-alive-timeout",
+                  "The keep-alive timeout for HTTP connections (in seconds).",
+                  new DoubleParameter(&_keepAliveTimeout))
+      .setLongDescription(R"(Idle keep-alive connections are closed by the
+server automatically when the timeout is reached. A keep-alive-timeout value of
+`0` disables the keep-alive feature entirely.)");
+
+  options
+      ->addOption(
+          "--http.hide-product-header",
+          "Whether to omit the `Server: ArangoDB` header in HTTP responses.",
+          new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
       .setDeprecatedIn(30800);
 
   options->addOption(
       "--http.trusted-origin",
-      "trusted origin URLs for CORS requests with credentials",
+      "The trusted origin URLs for CORS requests with credentials.",
       new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
   options
-      ->addOption("--http.redirect-root-to", "redirect of root URL",
+      ->addOption("--http.redirect-root-to", "Redirect of the root URL.",
                   new StringParameter(&_redirectRootTo))
       .setIntroducedIn(30712);
 
   options
-      ->addOption(
-          "--http.permanently-redirect-root",
-          "if true, use a permanent redirect. If false, use a temporary",
-          new BooleanParameter(&_permanentRootRedirect))
+      ->addOption("--http.permanently-redirect-root",
+                  "Whether to use a permanent or temporary redirect.",
+                  new BooleanParameter(&_permanentRootRedirect))
       .setIntroducedIn(30712);
 
   options
       ->addOption("--http.return-queue-time-header",
-                  "If true, return the `x-arango-queue-time-seconds` header in "
-                  "responses.",
+                  "Whether to return the `x-arango-queue-time-seconds` header "
+                  "in all responses.",
                   new BooleanParameter(&_returnQueueTimeHeader))
-      .setIntroducedIn(30900);
+      .setIntroducedIn(30900)
+      .setLongDescription(R"(The value contained in this header indicates the
+current queueing/dequeuing time for requests in the scheduler (in seconds).
+Client applications and drivers can use this value to control the server load
+and also react on overload.)");
 
   options
       ->addOption("--server.early-connections",
-                  "allow requests to limited APIs early during server startup",
+                  "Allow requests to a limited set of APIs early during the "
+                  "server startup.",
                   new BooleanParameter(&_allowEarlyConnections))
       .setIntroducedIn(31000);
 
@@ -261,7 +286,7 @@ void GeneralServerFeature::collectOptions(
                         "web-interface.proxy-request-check");
 
   options->addOption("--web-interface.proxy-request-check",
-                     "enable proxy request checking",
+                     "Enable proxy request checking.",
                      new BooleanParameter(&_proxyCheck),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -271,20 +296,21 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("frontend.trusted-proxy",
                         "web-interface.trusted-proxy");
 
-  options->addOption("--web-interface.trusted-proxy",
-                     "List of proxies to trust (can be IP or network). Make "
-                     "sure `--web-interface.proxy-request-check` is enabled.",
-                     new VectorParameter<StringParameter>(&_trustedProxies),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--web-interface.trusted-proxy",
+      "The list of proxies to trust (can be IP or network). Make "
+      "sure `--web-interface.proxy-request-check` is enabled.",
+      new VectorParameter<StringParameter>(&_trustedProxies),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
       "--server.failure-point",
-      "failure point to set during server startup (requires compilation with "
-      "failure points support)",
+      "The failure point to set during server startup (requires compilation "
+      "with failure points support).",
       new VectorParameter<StringParameter>(&_failurePoints),
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
