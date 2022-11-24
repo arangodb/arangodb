@@ -51,6 +51,7 @@
 #endif
 
 #include <index/column_info.hpp>
+#include <store/caching_directory.hpp>
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
@@ -1286,13 +1287,13 @@ Result IResearchDataStore::initDataStore(
                          "' while initializing ArangoSearch index '", _id.id(),
                          "'")};
   }
-  if (initCallback) {
-    _dataStore._directory = std::make_unique<irs::mmap_directory>(
-        _dataStore._path.u8string(), initCallback());
-  } else {
-    _dataStore._directory =
-        std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
-  }
+
+  constexpr size_t kDirectoryCacheSize = 32768;
+
+  _dataStore._directory = std::make_unique<
+      irs::CachingDirectory<irs::mmap_directory, irs::MaxCountAcceptor>>(
+      irs::MaxCountAcceptor{kDirectoryCacheSize}, _dataStore._path.u8string(),
+      initCallback ? initCallback() : irs::directory_attributes{});
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
@@ -1875,12 +1876,12 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   auto linkLock = _asyncSelf->lock();
 
   bool ok{false};
-  auto computeMetrics = irs::make_finally([&]() noexcept {
+  irs::Finally computeMetrics = [&]() noexcept {
     // We don't measure time because we believe that it should tend to zero
     if (!ok && _numFailedCommits != nullptr) {
       _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
     }
-  });
+  };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
