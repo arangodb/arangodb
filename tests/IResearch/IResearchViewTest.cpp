@@ -4536,7 +4536,7 @@ TEST_F(IResearchViewTest, test_register_link) {
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
     irs::Finally restore = [&before]() noexcept {
-      StorageEngineMock::before = before;
+      StorageEngineMock::recoveryStateResult = before;
     };
     persisted = false;
 
@@ -4886,7 +4886,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
     irs::Finally restore = [&before]() noexcept {
-      StorageEngineMock::before = before;
+      StorageEngineMock::recoveryStateResult = before;
     };
     persisted = false;
     EXPECT_TRUE(
@@ -8913,8 +8913,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto before = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      irs::Finally restore = [&before]() noexcept {
-        StorageEngineMock::before = before;
+      irs::Finally restoreRecovery = [&before]() noexcept {
+        StorageEngineMock::recoveryStateResult = before;
       };
       persisted = false;
       EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
