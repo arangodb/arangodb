@@ -71,10 +71,13 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
 
 void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOldOption("server.disable-authentication",
-                        "server.authentication");
-  options->addOldOption("server.disable-authentication-unix-sockets",
-                        "server.authentication-unix-sockets");
+  options->addObsoleteOption(
+      "server.disable-authentication",
+      "Whether to use authentication for all client requests.", false);
+  options->addObsoleteOption(
+      "server.disable-authentication-unix-sockets",
+      "Whether to use authentication for requests via UNIX domain sockets.",
+      false);
   options->addOldOption("server.authenticate-system-only",
                         "server.authentication-system-only");
 

@@ -88,9 +88,7 @@ struct dummy_scorer : public irs::sort {
     return "TEST::TFIDF";
   }
   static ptr make(std::string_view args) {
-    if (!validateArgs(args)) {
-      return nullptr;
-    }
+    if (!validateArgs(args)) return nullptr;
     return std::make_unique<dummy_scorer>();
   }
   dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
