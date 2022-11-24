@@ -17,31 +17,32 @@ const isEnterprise = require("internal").isEnterprise();
 // crash the server when running.
 
 function ComplexQueriesTestSuite() {
+  // for the following tests, set the memory limit to 0 for the tests not to return with the error that the query is using more memory than allowed for certain mac machines
   const collectionName = "testCollection";
   return {
-    setUpAll: function () {
+    setUpAll: function() {
       db._create(collectionName);
       for (let i = 0; i < 50; ++i) {
         db[collectionName].insert({"name": "test" + i});
       }
     },
 
-    tearDownAll: function () {
+    tearDownAll: function() {
       db._drop(collectionName);
     },
 
-    testLargeQuery1: function () {
+    testLargeQuery1: function() {
       let q = "LET v0 = NOOPT(1)";
       const cnt = 3500;
       for (let i = 1; i < cnt; ++i) {
         q += ` LET v${i} = NOOPT(v${i - 1} + 1)\n`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], cnt);
     },
 
-    testLargeQuery2: function () {
+    testLargeQuery2: function() {
       let q = "";
       const cnt = 500;
       for (let i = 1; i < cnt; ++i) {
@@ -49,22 +50,22 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], 1);
     },
 
-    testLargeQuery3: function () { //this crashes without default maxNodesPerCallstack
+    testLargeQuery3: function() { //this crashes without default maxNodesPerCallstack
       let q = "LET v0 = NOOPT(1)";
       const cnt = 3900;
       for (let i = 1; i < cnt; ++i) {
         q += ` LET v${i} = NOOPT(${i})`;
       }
       q += ` RETURN v${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], cnt - 1);
     },
 
-    testLargeQuery4: function () {
+    testLargeQuery4: function() {
       let q = "";
       const cnt = 250;
       for (let i = 1; i < cnt; ++i) {
@@ -73,11 +74,11 @@ function ComplexQueriesTestSuite() {
         q += ` LET v${i} = 1`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], []);
     },
 
-    testLargeQuery5: function () {
+    testLargeQuery5: function() {
       let q = "";
       const cnt = 400;
       for (let i = 1; i < cnt; ++i) {
@@ -85,19 +86,20 @@ function ComplexQueriesTestSuite() {
                 RETURN doc.name)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q, {}, {}).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], ["test1"]);
     },
   };
 }
 
 function ComplexQueriesSmartGraphTestSuite() {
+  // for the following tests, set the memory limit to 0 for the tests not to return with the error that the query is using more memory than allowed for certain mac machines
   let smartGraphs = require("@arangodb/smart-graph");
   const edges = "SmartEdges";
   const vertex = "SmartVertices";
   const graph = "TestSmartGraph";
   return {
-    setUpAll: function () {
+    setUpAll: function() {
       smartGraphs._create(graph, [smartGraphs._relation(edges, vertex, vertex)], null, {
         numberOfShards: 3,
         smartGraphAttribute: "testi"
@@ -115,11 +117,11 @@ function ComplexQueriesSmartGraphTestSuite() {
       }
     },
 
-    tearDownAll: function () {
+    tearDownAll: function() {
       smartGraphs._drop(graph, true);
     },
 
-    testSmartQuery1: function () {
+    testSmartQuery1: function() {
       let q = `WITH ${vertex}`;
       const cnt = 500;
       for (let i = 1; i < cnt; ++i) {
@@ -127,11 +129,11 @@ function ComplexQueriesSmartGraphTestSuite() {
                 RETURN e.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], [0]);
     },
 
-    testSmartQuery2: function () {
+    testSmartQuery2: function() {
       let q = `WITH ${vertex}`;
       const cnt = 100;
       for (let i = 1; i < cnt; ++i) {
@@ -139,7 +141,7 @@ function ComplexQueriesSmartGraphTestSuite() {
                 OUTBOUND e1._from ${edges} FILTER CHECK_DOCUMENT(e1) RETURN e1.testi)`;
       }
       q += ` RETURN mySub${cnt - 1}`;
-      const res = db._query(q).toArray();
+      const res = db._query(q, {}, {memoryLimit: 0}).toArray();
       assertEqual(res[0], [0]);
     },
 

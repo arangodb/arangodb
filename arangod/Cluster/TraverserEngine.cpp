@@ -138,14 +138,12 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     _trx = std::make_unique<transaction::IgnoreNoAccessMethods>(
         _query.newTrxContext(), _query.queryOptions().transactionOptions);
-  } else {
+  }
+#endif
+  if (_trx == nullptr) {
     _trx = std::make_unique<transaction::Methods>(
         _query.newTrxContext(), _query.queryOptions().transactionOptions);
   }
-#else
-  _trx = std::make_unique<transaction::Methods>(
-      _query.newTrxContext(), _query.queryOptions().transactionOptions);
-#endif
 }
 
 BaseEngine::~BaseEngine() = default;
@@ -187,30 +185,31 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       // Maybe handle differently
     }
 
-    if (shouldProduceVertices) {
-      std::string_view vertex = id.substr(pos + 1);
-      for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(
-            shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
-              // FOUND. short circuit.
-              read++;
-              builder.add(v);
-              if (!options().getVertexProjections().empty()) {
-                VPackObjectBuilder guard(&builder);
-                options().getVertexProjections().toVelocyPackFromDocument(
-                    builder, doc, _trx.get());
-              } else {
-                builder.add(doc);
-              }
-              return true;
-            });
-        if (res.ok()) {
-          break;
-        }
-        if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-          // We are in a very bad condition here...
-          THROW_ARANGO_EXCEPTION(res);
-        }
+    if (!shouldProduceVertices) {
+      return;
+    }
+    std::string_view vertex = id.substr(pos + 1);
+    for (std::string const& shard : shards->second) {
+      Result res = _trx->documentFastPathLocal(
+          shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
+            // FOUND. short circuit.
+            read++;
+            builder.add(v);
+            if (!options().getVertexProjections().empty()) {
+              VPackObjectBuilder guard(&builder);
+              options().getVertexProjections().toVelocyPackFromDocument(
+                  builder, doc, _trx.get());
+            } else {
+              builder.add(doc);
+            }
+            return true;
+          });
+      if (res.ok()) {
+        break;
+      }
+      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // We are in a very bad condition here...
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
   };
@@ -260,17 +259,19 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
   graph::EdgeCursor* cursor = nullptr;
   if (_opts->hasSpecificCursorForDepth(currentDepth)) {
-    if (_depthSpecificCursors.find(currentDepth) ==
-        _depthSpecificCursors.end()) {
-      _depthSpecificCursors.emplace(currentDepth,
-                                    _opts->buildCursor(currentDepth));
+    auto it = _depthSpecificCursors.find(currentDepth);
+    if (it == _depthSpecificCursors.end()) {
+      it = _depthSpecificCursors
+               .emplace(currentDepth, _opts->buildCursor(currentDepth))
+               .first;
     }
-    cursor = _depthSpecificCursors.find(currentDepth)->second.get();
+    TRI_ASSERT(it != _depthSpecificCursors.end());
+    cursor = it->second.get();
   } else {
     if (_generalCursor == nullptr) {
       _generalCursor = _opts->buildCursor(currentDepth);
-      TRI_ASSERT(_generalCursor != nullptr);
     }
+    TRI_ASSERT(_generalCursor != nullptr);
     cursor = _generalCursor.get();
   }
   TRI_ASSERT(cursor != nullptr);
@@ -353,7 +354,7 @@ graph::BaseOptions const& BaseTraverserEngine::options() const {
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   if (variableSlice.isArray()) {
     _opts->clearVariableValues();
-    for (auto&& pair : VPackArrayIterator(variableSlice)) {
+    for (auto pair : VPackArrayIterator(variableSlice)) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);

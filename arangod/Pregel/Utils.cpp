@@ -95,6 +95,12 @@ std::string const Utils::reportsKey = "reports";
 std::string const Utils::workerToMasterMessagesKey = "workerToMasterMessages";
 std::string const Utils::masterToWorkerMessagesKey = "masterToWorkerMessages";
 
+std::string const Utils::equivalenceClass = "equivalenceClass";
+std::string const Utils::inputColorsFieldName = "inputColorsFieldName";
+std::string const Utils::outputColorsFieldName = "outputColorsFieldName";
+std::string const Utils::numColors = "numColors";
+std::string const Utils::colors = "colors";
+
 size_t const Utils::batchOfVerticesStoredBeforeUpdatingStatus = 1000;
 size_t const Utils::batchOfVerticesProcessedBeforeUpdatingStatus = 1000;
 

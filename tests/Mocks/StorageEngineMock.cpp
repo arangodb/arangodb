@@ -54,7 +54,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "Futures/Future.h"
 
@@ -1374,20 +1373,6 @@ arangodb::Result PhysicalCollectionMock::read(
     }
   }
   return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
-}
-
-bool PhysicalCollectionMock::readDocument(
-    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
-    arangodb::ManagedDocumentResult& result, arangodb::ReadOwnWrites) const {
-  before();
-  for (auto const& entry : _documents) {
-    auto& doc = entry.second;
-    if (doc.docId() == token) {
-      result.setManaged(doc.vptr());
-      return true;
-    }
-  }
-  return false;
 }
 
 arangodb::Result PhysicalCollectionMock::lookupDocument(

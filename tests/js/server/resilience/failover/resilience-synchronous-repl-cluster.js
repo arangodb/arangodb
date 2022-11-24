@@ -56,6 +56,7 @@ function SynchronousReplicationSuite () {
   var cinfo;
   var ccinfo;
   var shards;
+  var failedPIDs = [];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find out servers for the system collections
@@ -100,12 +101,23 @@ function SynchronousReplicationSuite () {
         // operation.
         wait(1);
         return true;
-      }  
+      }
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
     console.error("Replication did not finish");
     return false;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heal any not fixed instances
+////////////////////////////////////////////////////////////////////////////////
+  function healAny() {
+    failedPIDs.forEach(pid => {
+      console.warn(`heal any: healing ${pid}`);
+      assertTrue(continueExternal(pid));
+    });
+    failedPIDs = [];
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +131,9 @@ function SynchronousReplicationSuite () {
     var pos = _.findIndex(global.instanceManager.arangods,
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+    var pid = global.instanceManager.arangods[pos].pid;
+    failedPIDs.push(pid);
+    assertTrue(suspendExternal(pid));
     console.info("Have failed follower", follower);
     return pos;
   }
@@ -135,7 +149,9 @@ function SynchronousReplicationSuite () {
     var pos = _.findIndex(global.instanceManager.arangods,
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+    var pid = global.instanceManager.arangods[pos].pid;
+    assertTrue(continueExternal(pid));
+    failedPIDs.splice(failedPIDs.indexOf(pid), 1);
     console.info("Have healed follower", follower);
   }
 
@@ -150,7 +166,9 @@ function SynchronousReplicationSuite () {
     var pos = _.findIndex(global.instanceManager.arangods,
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
+    var pid = global.instanceManager.arangods[pos].pid;
+    failedPIDs.push(pid);
+    assertTrue(suspendExternal(pid));
     console.info("Have failed leader", leader);
     return leader;
   }
@@ -166,7 +184,9 @@ function SynchronousReplicationSuite () {
     var pos = _.findIndex(global.instanceManager.arangods,
                           x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
-    assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
+    var pid = global.instanceManager.arangods[pos].pid;
+    assertTrue(continueExternal(pid));
+    failedPIDs.splice(failedPIDs.indexOf(pid), 1);
     console.info("Have healed leader", leader);
   }
 
@@ -199,134 +219,138 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function runBasicOperations(failure, healing) {
-    if (failure.place === 1) { makeFailure(failure); }
+    try {
+      if (failure.place === 1) { makeFailure(failure); }
 
-    // Insert with check:
-    var id = c.insert({Hallo:12});
-    assertEqual(1, c.count());
+      // Insert with check:
+      var id = c.insert({Hallo:12});
+      assertEqual(1, c.count());
 
-    if (healing.place === 1) { healFailure(healing); }
-    if (failure.place === 2) { makeFailure(failure); }
-    
-    var doc = c.document(id._key);
-    assertEqual(12, doc.Hallo);
+      if (healing.place === 1) { healFailure(healing); }
+      if (failure.place === 2) { makeFailure(failure); }
 
-    if (healing.place === 2) { healFailure(healing); }
-    if (failure.place === 3) { makeFailure(failure); }
+      var doc = c.document(id._key);
+      assertEqual(12, doc.Hallo);
 
-    var ids = c.insert([{Hallo:13}, {Hallo:14}]);
-    assertEqual(3, c.count());
-    assertEqual(2, ids.length);
+      if (healing.place === 2) { healFailure(healing); }
+      if (failure.place === 3) { makeFailure(failure); }
 
-    if (healing.place === 3) { healFailure(healing); }
-    if (failure.place === 4) { makeFailure(failure); }
+      var ids = c.insert([{Hallo:13}, {Hallo:14}]);
+      assertEqual(3, c.count());
+      assertEqual(2, ids.length);
 
-    var docs = c.document([ids[0]._key, ids[1]._key]);
-    assertEqual(2, docs.length);
-    assertEqual(13, docs[0].Hallo);
-    assertEqual(14, docs[1].Hallo);
+      if (healing.place === 3) { healFailure(healing); }
+      if (failure.place === 4) { makeFailure(failure); }
 
-    if (healing.place === 4) { healFailure(healing); }
-    if (failure.place === 5) { makeFailure(failure); }
+      var docs = c.document([ids[0]._key, ids[1]._key]);
+      assertEqual(2, docs.length);
+      assertEqual(13, docs[0].Hallo);
+      assertEqual(14, docs[1].Hallo);
 
-    // Replace with check:
-    c.replace(id._key, {"Hallo": 100});
+      if (healing.place === 4) { healFailure(healing); }
+      if (failure.place === 5) { makeFailure(failure); }
 
-    if (healing.place === 5) { healFailure(healing); }
-    if (failure.place === 6) { makeFailure(failure); }
+      // Replace with check:
+      c.replace(id._key, {"Hallo": 100});
 
-    doc = c.document(id._key);
-    assertEqual(100, doc.Hallo);
+      if (healing.place === 5) { healFailure(healing); }
+      if (failure.place === 6) { makeFailure(failure); }
 
-    if (healing.place === 6) { healFailure(healing); }
-    if (failure.place === 7) { makeFailure(failure); }
+      doc = c.document(id._key);
+      assertEqual(100, doc.Hallo);
 
-    c.replace([ids[0]._key, ids[1]._key], [{Hallo:101}, {Hallo:102}]);
+      if (healing.place === 6) { healFailure(healing); }
+      if (failure.place === 7) { makeFailure(failure); }
 
-    if (healing.place === 7) { healFailure(healing); }
-    if (failure.place === 8) { makeFailure(failure); }
+      c.replace([ids[0]._key, ids[1]._key], [{Hallo:101}, {Hallo:102}]);
 
-    docs = c.document([ids[0]._key, ids[1]._key]);
-    assertEqual(2, docs.length);
-    assertEqual(101, docs[0].Hallo);
-    assertEqual(102, docs[1].Hallo);
+      if (healing.place === 7) { healFailure(healing); }
+      if (failure.place === 8) { makeFailure(failure); }
 
-    if (healing.place === 8) { healFailure(healing); }
-    if (failure.place === 9) { makeFailure(failure); }
+      docs = c.document([ids[0]._key, ids[1]._key]);
+      assertEqual(2, docs.length);
+      assertEqual(101, docs[0].Hallo);
+      assertEqual(102, docs[1].Hallo);
 
-    // Update with check:
-    c.update(id._key, {"Hallox": 105});
+      if (healing.place === 8) { healFailure(healing); }
+      if (failure.place === 9) { makeFailure(failure); }
 
-    if (healing.place === 9) { healFailure(healing); }
-    if (failure.place === 10) { makeFailure(failure); }
+      // Update with check:
+      c.update(id._key, {"Hallox": 105});
 
-    doc = c.document(id._key);
-    assertEqual(100, doc.Hallo);
-    assertEqual(105, doc.Hallox);
+      if (healing.place === 9) { healFailure(healing); }
+      if (failure.place === 10) { makeFailure(failure); }
 
-    if (healing.place === 10) { healFailure(healing); }
-    if (failure.place === 11) { makeFailure(failure); }
+      doc = c.document(id._key);
+      assertEqual(100, doc.Hallo);
+      assertEqual(105, doc.Hallox);
 
-    c.update([ids[0]._key, ids[1]._key], [{Hallox:106}, {Hallox:107}]);
+      if (healing.place === 10) { healFailure(healing); }
+      if (failure.place === 11) { makeFailure(failure); }
 
-    if (healing.place === 11) { healFailure(healing); }
-    if (failure.place === 12) { makeFailure(failure); }
+      c.update([ids[0]._key, ids[1]._key], [{Hallox:106}, {Hallox:107}]);
 
-    docs = c.document([ids[0]._key, ids[1]._key]);
-    assertEqual(2, docs.length);
-    assertEqual(101, docs[0].Hallo);
-    assertEqual(102, docs[1].Hallo);
-    assertEqual(106, docs[0].Hallox);
-    assertEqual(107, docs[1].Hallox);
+      if (healing.place === 11) { healFailure(healing); }
+      if (failure.place === 12) { makeFailure(failure); }
 
-    if (healing.place === 12) { healFailure(healing); }
-    if (failure.place === 13) { makeFailure(failure); }
+      docs = c.document([ids[0]._key, ids[1]._key]);
+      assertEqual(2, docs.length);
+      assertEqual(101, docs[0].Hallo);
+      assertEqual(102, docs[1].Hallo);
+      assertEqual(106, docs[0].Hallox);
+      assertEqual(107, docs[1].Hallox);
 
-    // AQL:
-    var q = db._query(`FOR x IN @@cn
+      if (healing.place === 12) { healFailure(healing); }
+      if (failure.place === 13) { makeFailure(failure); }
+
+      // AQL:
+      var q = db._query(`FOR x IN @@cn
                          FILTER x.Hallo > 0
                          SORT x.Hallo
                          RETURN {"Hallo": x.Hallo}`, {"@cn": cn});
-    docs = q.toArray();
-    assertEqual(3, docs.length);
-    assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], docs);
+      docs = q.toArray();
+      assertEqual(3, docs.length);
+      assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], docs);
 
-    if (healing.place === 13) { healFailure(healing); }
-    if (failure.place === 14) { makeFailure(failure); }
+      if (healing.place === 13) { healFailure(healing); }
+      if (failure.place === 14) { makeFailure(failure); }
 
-    // Remove with check:
-    c.remove(id._key);
+      // Remove with check:
+      c.remove(id._key);
 
-    if (healing.place === 14) { healFailure(healing); }
-    if (failure.place === 15) { makeFailure(failure); }
+      if (healing.place === 14) { healFailure(healing); }
+      if (failure.place === 15) { makeFailure(failure); }
 
-    try {
-      doc = c.document(id._key);
-      fail();
+      try {
+        doc = c.document(id._key);
+        fail();
+      }
+      catch (e1) {
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e1.errorNum);
+      }
+
+      if (healing.place === 15) { healFailure(healing); }
+      if (failure.place === 16) { makeFailure(failure); }
+
+      assertEqual(2, c.count());
+
+      if (healing.place === 16) { healFailure(healing); }
+      if (failure.place === 17) { makeFailure(failure); }
+
+      c.remove([ids[0]._key, ids[1]._key]);
+
+      if (healing.place === 17) { healFailure(healing); }
+      if (failure.place === 18) { makeFailure(failure); }
+
+      docs = c.document([ids[0]._key, ids[1]._key]);
+      assertEqual(2, docs.length);
+      assertTrue(docs[0].error);
+      assertTrue(docs[1].error);
+
+      if (healing.place === 18) { healFailure(healing); }
+    } finally {
+      healAny();
     }
-    catch (e1) {
-      assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e1.errorNum);
-    }
-
-    if (healing.place === 15) { healFailure(healing); }
-    if (failure.place === 16) { makeFailure(failure); }
-
-    assertEqual(2, c.count());
-
-    if (healing.place === 16) { healFailure(healing); }
-    if (failure.place === 17) { makeFailure(failure); }
-
-    c.remove([ids[0]._key, ids[1]._key]);
-
-    if (healing.place === 17) { healFailure(healing); }
-    if (failure.place === 18) { makeFailure(failure); }
-
-    docs = c.document([ids[0]._key, ids[1]._key]);
-    assertEqual(2, docs.length);
-    assertTrue(docs[0].error);
-    assertTrue(docs[1].error);
-
-    if (healing.place === 18) { healFailure(healing); }
   }
 
 ////////////////////////////////////////////////////////////////////////////////

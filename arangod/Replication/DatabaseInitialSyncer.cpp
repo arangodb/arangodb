@@ -60,7 +60,6 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -250,6 +249,8 @@ arangodb::Result fetchRevisions(
     queueSize = 1;
   }
 
+  arangodb::velocypack::Builder docBuilder;
+
   while (current < toFetch.size() || !futures.empty()) {
     // Send some requests off if not enough in flight and something to go
     while (futures.size() < queueSize && current < toFetch.size()) {
@@ -383,9 +384,13 @@ arangodb::Result fetchRevisions(
 
           // conflicting documents (that we just inserted), as documents may be
           // replicated in unexpected order.
-          arangodb::ManagedDocumentResult mdr;
-          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
-                                     mdr, arangodb::ReadOwnWrites::yes)) {
+          docBuilder.clear();
+          if (physical
+                  ->lookupDocument(trx, arangodb::LocalDocumentId(rid.id()),
+                                   docBuilder, /*readCache*/ true,
+                                   /*fillCache*/ true,
+                                   arangodb::ReadOwnWrites::yes)
+                  .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);
             break;

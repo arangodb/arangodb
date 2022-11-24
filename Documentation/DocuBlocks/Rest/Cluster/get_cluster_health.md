@@ -36,6 +36,7 @@ Queries the health of the cluster for monitoring purposes. The response is a JSO
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200} is returned when everything went well.
+@RESTRETURNCODE{200}
+is returned when everything went well.
 
 @endDocuBlock

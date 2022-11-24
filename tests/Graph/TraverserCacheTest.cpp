@@ -65,7 +65,8 @@ class TraverserCacheTest : public ::testing::Test {
     _monitor = &query->resourceMonitor();
     traverserCache = std::make_unique<RefactoredTraverserCache>(
         trx.get(), query.get(), query->resourceMonitor(), stats,
-        collectionToShardMap, _vertexProjections, _edgeProjections);
+        collectionToShardMap, _vertexProjections, _edgeProjections,
+        /*produceVertices*/ true);
   }
 
   ~TraverserCacheTest() = default;
@@ -91,14 +92,14 @@ TEST_F(TraverserCacheTest,
       stats, arangodb::velocypack::HashedStringRef(id), builder, false);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
-  ASSERT_EQ(all.size(), 1);
+  ASSERT_EQ(all.size(), 1U);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0);
-  EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getScannedIndex(), 0);
+  EXPECT_EQ(stats.getHttpRequests(), 0U);
+  EXPECT_EQ(stats.getFiltered(), 0U);
+  EXPECT_EQ(stats.getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -123,14 +124,14 @@ TEST_F(TraverserCacheTest,
   ASSERT_TRUE(builder.slice().isString());
   ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
   auto all = query->warnings().all();
-  ASSERT_EQ(all.size(), 1);
+  ASSERT_EQ(all.size(), 1U);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0);
-  EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getScannedIndex(), 0);
+  EXPECT_EQ(stats.getHttpRequests(), 0U);
+  EXPECT_EQ(stats.getFiltered(), 0U);
+  EXPECT_EQ(stats.getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -271,9 +272,9 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0);
-  EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getScannedIndex(), 1);
+  EXPECT_EQ(stats.getHttpRequests(), 0U);
+  EXPECT_EQ(stats.getFiltered(), 0U);
+  EXPECT_EQ(stats.getScannedIndex(), 1U);
 }
 
 TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
@@ -302,7 +303,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
       arangodb::ReadOwnWrites::no);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
-  ASSERT_NE(fetchedDocumentId, 0);
+  ASSERT_NE(fetchedDocumentId, 0U);
 
   DataSourceId dataSourceId{col->id()};                // valid
   LocalDocumentId localDocumentId{fetchedDocumentId};  // valid
@@ -316,9 +317,9 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   EXPECT_EQ(builder.slice().get("_to").toString(), "v/1");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0);
-  EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getScannedIndex(), 0);  // <- see note in method: appendEdge
+  EXPECT_EQ(stats.getHttpRequests(), 0U);
+  EXPECT_EQ(stats.getFiltered(), 0U);
+  EXPECT_EQ(stats.getScannedIndex(), 0U);  // <- see note in method: appendEdge
 }
 
 }  // namespace traverser_cache_test

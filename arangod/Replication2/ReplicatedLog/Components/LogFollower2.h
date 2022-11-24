@@ -104,6 +104,7 @@ struct FollowerManager {
 };
 
 struct MethodsProvider : IReplicatedLogFollowerMethods {
+  explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
   auto releaseIndex(LogIndex index) -> void override {
     follower.compaction->updateReleaseIndex(index);
   }

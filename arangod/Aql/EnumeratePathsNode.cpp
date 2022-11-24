@@ -421,12 +421,13 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
           opts->collectionToShard(), opts->getVertexProjections(),
-          opts->getEdgeProjections());
+          opts->getEdgeProjections(), opts->produceVertices());
 
       SingleServerBaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
           opts->getExpressionCtx(), {}, opts->collectionToShard(),
-          opts->getVertexProjections(), opts->getEdgeProjections());
+          opts->getVertexProjections(), opts->getEdgeProjections(),
+          opts->produceVertices());
 
       using Provider = SingleServerProvider<SingleServerProviderStep>;
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -588,12 +589,13 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
           opts->collectionToShard(), opts->getVertexProjections(),
-          opts->getEdgeProjections());
+          opts->getEdgeProjections(), opts->produceVertices());
 
       SingleServerBaseProviderOptions backwardProviderOptions(
           opts->tmpVar(), std::move(reversedUsedIndexes),
           opts->getExpressionCtx(), {}, opts->collectionToShard(),
-          opts->getVertexProjections(), opts->getEdgeProjections());
+          opts->getVertexProjections(), opts->getEdgeProjections(),
+          opts->produceVertices());
 
       // TODO [GraphRefactor]: Optimize useWeight section
       if (opts->useWeight()) {

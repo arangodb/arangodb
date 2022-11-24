@@ -25,8 +25,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringHeap.h"
-#include "VocBase/ManagedDocumentResult.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 
 #include <cstdint>
@@ -41,7 +41,6 @@ class Methods;
 }
 
 namespace velocypack {
-class Builder;
 class Slice;
 }  // namespace velocypack
 
@@ -144,11 +143,7 @@ class TraverserCache {
   virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-  ManagedDocumentResult _mmdr;
+  velocypack::Builder _docBuilder;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
