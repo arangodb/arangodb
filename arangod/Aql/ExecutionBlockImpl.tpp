@@ -966,9 +966,8 @@ auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
-    AqlCallStack& stack) -> ExecState
-  requires std::same_as<Executor, SubqueryStartExecutor>
-{
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryStartExecutor> {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -1035,9 +1034,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
-    AqlCallStack& stack) -> ExecState
-  requires std::same_as<Executor, SubqueryEndExecutor>
-{
+    AqlCallStack& stack)
+    -> ExecState requires std::same_as<Executor, SubqueryEndExecutor> {
   TRI_ASSERT(_outputItemRow);
   TRI_ASSERT(_outputItemRow->isInitialized());
   TRI_ASSERT(!_outputItemRow->allRowsUsed());
@@ -2314,9 +2312,8 @@ void ExecutionBlockImpl<Executor>::CallstackSplit::run(
 //       ScatterExecutor and in DistributeClientExecutor
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::injectConstantBlock(
-    SharedAqlItemBlockPtr block, SkipResult skipped) -> void
-  requires std::same_as<Executor, IdExecutor<ConstFetcher>>
-{
+    SharedAqlItemBlockPtr block, SkipResult skipped)
+    -> void requires std::same_as<Executor, IdExecutor<ConstFetcher>> {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -2351,9 +2348,7 @@ auto ExecutionBlockImpl<Executor>::injectConstantBlock(
 // this fact leads to instant crash on startup though.
 template<typename Executor>
 auto ExecutionBlockImpl<Executor>::getOutputRegisterId() const noexcept
-    -> RegisterId
-  requires std::same_as<Executor,
-                        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>
-{
+    -> RegisterId requires std::same_as<
+        Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> {
   return _executorInfos.getOutputRegister();
 }

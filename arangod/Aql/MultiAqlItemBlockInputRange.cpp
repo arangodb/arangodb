@@ -256,9 +256,9 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
 }
 
 template<int depthOffset>
-  requires(depthOffset == 0 || depthOffset == -1)
-auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
-    -> std::vector<size_t> {
+requires(depthOffset == 0 ||
+         depthOffset == -1) auto MultiAqlItemBlockInputRange::
+    skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t> {
   size_t const n = _inputs.size();
   std::vector<size_t> skipped{};
   skipped.reserve(n);
