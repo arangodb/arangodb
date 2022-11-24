@@ -70,8 +70,13 @@ struct IResearchTrxState final : public TransactionState::Cookie {
       : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
+    if (_ctx.GetLastTick() == 0) {
+      _removals.clear();
+      _ctx.reset();
+      return;
+    }
     if (_removals.empty()) {
-      return;  // nothing to do
+      return;
     }
     try {
       // hold references even after transaction
@@ -91,11 +96,6 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   void remove(StorageEngine& engine, LocalDocumentId const& value,
               bool nested) {
     _ctx.remove(_removals.emplace(engine, value, nested));
-  }
-
-  void reset() noexcept {
-    _removals.clear();
-    _ctx.reset();
   }
 };
 
@@ -491,9 +491,8 @@ class IResearchDataStore {
   std::mutex _commitMutex;
 
   // for insert(...)/remove(...)
-  std::function<void(transaction::Methods&)> _trxPreCommit;
-  std::function<void(transaction::Methods&, transaction::Status)>
-      _trxStatusChange;
+  TransactionState::BeforeCommitCallback _beforeCommitCallback;
+  TransactionState::AfterCommitCallback _afterCommitCallback;
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
