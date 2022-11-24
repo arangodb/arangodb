@@ -424,6 +424,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_0);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.0
@@ -434,6 +435,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_1);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.1
