@@ -1034,16 +1034,15 @@ but the returned data may be incomplete.)");
 
 #ifdef USE_ENTERPRISE
   options
-      ->addOption(
-          CACHE_LIMIT,
-          "The limit (in bytes) for ArangoSearch columns cache "
-          "(0 = no caching).",
-          new options::UInt64Parameter(&_columnsCacheLimit),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnSingle,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::Enterprise))
+      ->addOption(CACHE_LIMIT,
+                  "The limit (in bytes) for ArangoSearch columns cache "
+                  "(0 = no caching).",
+                  new options::UInt64Parameter(&_columnsCacheLimit),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30905);
 #endif
 }
