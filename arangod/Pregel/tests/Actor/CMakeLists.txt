@@ -4,7 +4,6 @@ add_executable(arangodbtests_actor
   ActorTest.cpp
   MPSCQueueTest.cpp
   SimpleQueueTest.cpp
-  InitialStateActorTest.cpp
   )
 
 target_include_directories(arangodbtests_actor PRIVATE
@@ -31,3 +30,5 @@ add_test(
   NAME actor
   COMMAND arangodbtests_actor --gtest_filter=Actor*
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
+add_subdirectory(ActorWithStates)

@@ -30,9 +30,16 @@
 
 namespace arangodb::pregel::actor {
 
-template<typename Scheduler, typename MessageHandler, typename State,
-         typename Message>
-struct Actor {
+struct ActorMessageBase {
+  virtual ~ActorMessageBase() = default;
+};
+
+struct ActorBase {
+  virtual ~ActorBase() = default;
+};
+
+template<typename Scheduler, typename MessageHandler, typename State>
+struct Actor : ActorBase {
   Actor(Scheduler& schedule, std::unique_ptr<State> initialState)
       : schedule(schedule), state(std::move(initialState)) {}
 
@@ -40,7 +47,7 @@ struct Actor {
         std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule) {}
 
-  void process(std::unique_ptr<Message> msg) {
+  void process(std::unique_ptr<ActorMessageBase> msg) {
     inbox.push(std::move(msg));
     kick();
   }
@@ -64,23 +71,21 @@ struct Actor {
       }
       busy.store(false);
 
-      if(!inbox.empty()) {
+      if (!inbox.empty()) {
         kick();
       }
     }
-
   }
   std::size_t batchSize{16};
   std::atomic<bool> busy;
-  arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
+  arangodb::pregel::mpscqueue::MPSCQueue<ActorMessageBase> inbox;
   Scheduler& schedule;
   std::unique_ptr<State> state;
 };
 
-template<typename Scheduler, typename MessageHandler, typename State,
-         typename Message>
-void send(Actor<Scheduler, MessageHandler, State, Message>& actor,
-          std::unique_ptr<Message> msg) {
+template<typename Scheduler, typename MessageHandler, typename State>
+void send(Actor<Scheduler, MessageHandler, State>& actor,
+          std::unique_ptr<ActorMessageBase> msg) {
   actor.process(std::move(msg));
 }
 
