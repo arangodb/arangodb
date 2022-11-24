@@ -23,6 +23,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "IResearchViewStoredValues.h"
+#include "IResearchCommon.h"
 
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
@@ -67,6 +68,12 @@ bool IResearchViewStoredValues::toVelocyPack(
     if (ADB_LIKELY(!irs::IsNull(encodedCompression))) {
       addStringRef(builder, COMPRESSION_COLUMN_PARAM, encodedCompression);
     }
+#ifdef USE_ENTERPRISE
+    // do not output falses to keep old definitions unchanged
+    if (column.cached) {
+      builder.add(StaticStrings::kCacheField, VPackValue(column.cached));
+    }
+#endif
   }
   return true;
 }
@@ -75,7 +82,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     velocypack::Slice const& columnSlice,
     containers::FlatHashSet<std::string>& uniqueColumns,
     std::vector<std::string_view>& fieldNames,
-    irs::type_info::type_id compression) {
+    irs::type_info::type_id compression, bool cached) {
   if (columnSlice.isArray()) {
     // skip empty column
     if (columnSlice.length() == 0) {
@@ -158,6 +165,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     }
     sc.name = std::move(columnName);
     sc.compression = compression;
+    sc.cached = cached;
     _storedColumns.emplace_back(std::move(sc));
   } else {
     return false;
@@ -198,9 +206,21 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
             return false;
           }
         }
+        bool cached = false;
+#ifdef USE_ENTERPRISE
+        auto cachedField = columnSlice.get(StaticStrings::kCacheField);
+        if (!cachedField.isNone()) {
+          if (!cachedField.isBool()) {
+            errorField = "[" + std::to_string(idx) + "]." +
+                         std::string(StaticStrings::kCacheField);
+            return false;
+          }
+          cached = cachedField.getBool();
+        }
+#endif
         if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                        uniqueColumns, fieldNames,
-                                        compression)) {
+                                        uniqueColumns, fieldNames, compression,
+                                        cached)) {
           errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
           return false;
         }
@@ -210,7 +230,7 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
       }
     } else {
       if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
-                                      getDefaultCompression())) {
+                                      getDefaultCompression(), false)) {
         errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
         return false;
       }
