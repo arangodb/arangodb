@@ -40,20 +40,6 @@ add_definitions("-DHAS_REMOTE_API=0")
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
-if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
-  if (DARWIN)
-    set(LIB_ASM_SOURCES Basics/crc1.S)
-  else()
-    set(LIB_ASM_SOURCES Basics/crc5.S)
-  endif()
-
-  add_definitions("-DENABLE_ASM_CRC32=1")
-  message(STATUS "Will compile in hand-optimized assembler code for CRC32.")
-else()
-  add_definitions("-DENABLE_ASM_CRC32=0")
-  message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
-endif()
-
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
