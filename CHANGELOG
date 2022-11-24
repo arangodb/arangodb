@@ -3,6 +3,12 @@ devel
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
+* Make the deprecated `--server.disable-authentication-unix-sockets` and
+  `--server.disable-authentication` startup options obsolete. They were
+  deprecated in v3.0 and mapped to `--server.authentication` and
+  `--server.authentication-unix-sockets`, which made them do the opposite
+  of what their names suggest.
+
 * Removed more assertions from cluster rebalance js test that obligated the 
   rebalance plan to always have moves, but there were cases in which all 
   there are none.
@@ -68,6 +74,9 @@ devel
 * Obsolete startup option `--database.force-sync-properties`. This option
   was useful with the MMFiles storage engine, but didn't have any useful
   effect when used with the RocksDB engine.
+
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
 
 * Updated OpenSSL to 1.1.1s.
 

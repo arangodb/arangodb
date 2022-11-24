@@ -1102,10 +1102,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1208,10 +1208,10 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1321,10 +1321,10 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1432,10 +1432,10 @@ TEST_F(IResearchLinkTest,
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1556,10 +1556,10 @@ TEST_F(
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
