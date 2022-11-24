@@ -43,6 +43,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -930,6 +931,15 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
 /// @brief execute an expression of type SIMPLE, JavaScript variant
 AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
                                                     bool& mustDestroy) {
+  if (ServerState::instance()->isDBServer()) {
+    // we actually should not get here, but in case we do due to some changes,
+    // it is better to abort the query with a proper error rather than crashing
+    // with assertion failure or segfault.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "user-defined functions cannot be executed on DB-Servers");
+  }
+
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
@@ -1702,6 +1712,24 @@ bool Expression::isDeterministic() {
 bool Expression::willUseV8() {
   TRI_ASSERT(_type != UNPROCESSED);
   return (_type == SIMPLE && _node->willUseV8());
+}
+
+bool Expression::canBeUsedInPrune(bool isOneShard, std::string& errorReason) {
+  errorReason.clear();
+
+  if (willUseV8()) {
+    errorReason = "JavaScript expressions cannot be used inside PRUNE";
+    return false;
+  }
+  if (!canRunOnDBServer(isOneShard)) {
+    errorReason =
+        "PRUNE expression contains a function that cannot be used on "
+        "DB-Servers";
+    return false;
+  }
+
+  TRI_ASSERT(errorReason.empty());
+  return true;
 }
 
 std::unique_ptr<Expression> Expression::clone(Ast* ast, bool deepCopy) {
