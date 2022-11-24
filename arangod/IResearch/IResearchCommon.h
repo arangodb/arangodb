@@ -92,7 +92,7 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
 }
 
-inline constexpr std::string_view PK_COLUMN{"@_PK"};
+inline constexpr ::iresearch::string_ref PK_COLUMN{"@_PK"};
 
 struct StaticStrings {
   static constexpr std::string_view ViewArangoSearchType = "arangosearch";
