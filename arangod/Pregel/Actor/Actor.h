@@ -30,12 +30,17 @@
 
 namespace arangodb::pregel::actor {
 
-struct ActorMessageBase {
-  virtual ~ActorMessageBase() = default;
-};
+struct ActorMessageBase;
 
 struct ActorBase {
   virtual ~ActorBase() = default;
+  virtual void process(std::unique_ptr<ActorMessageBase> msg) = 0;
+};
+
+struct ActorMessageBase {
+  virtual ~ActorMessageBase() = default;
+  std::shared_ptr<ActorBase> sender;
+  ActorMessageBase(std::shared_ptr<ActorBase> sender) : sender{sender} {}
 };
 
 template<typename Scheduler, typename MessageHandler, typename State>
@@ -47,7 +52,7 @@ struct Actor : ActorBase {
         std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule) {}
 
-  void process(std::unique_ptr<ActorMessageBase> msg) {
+  void process(std::unique_ptr<ActorMessageBase> msg) override {
     inbox.push(std::move(msg));
     kick();
   }
@@ -63,7 +68,7 @@ struct Actor : ActorBase {
       auto i = batchSize;
 
       while (auto msg = inbox.pop()) {
-        state = std::visit(MessageHandler{std::move(state)}, *msg);
+        state = std::visit(MessageHandler{std::move(state), msg->sender}, *msg);
         i--;
         if (i == 0) {
           break;
