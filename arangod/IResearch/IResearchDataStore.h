@@ -65,17 +65,17 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   LinkLock _linkLock;  // should be first field to destroy last
   irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
+  bool _wasCommit = false;
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
       : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
-    if (_ctx.GetLastTick() == 0) {
+    if (!_wasCommit) {
       _removals.clear();
       _ctx.reset();
       return;
-    }
-    if (_removals.empty()) {
+    } else if (_removals.empty()) {
       return;
     }
     try {

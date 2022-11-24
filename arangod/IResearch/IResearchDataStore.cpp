@@ -719,6 +719,8 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     if (ADB_LIKELY(!_engine->inRecovery())) {
       ctx._ctx.SetFirstTick(lastOperationTick - state.numPrimitiveOperations());
     }
+    TRI_ASSERT(ctx._wasCommit == false);
+    ctx._wasCommit = true;
   };
 }
 
