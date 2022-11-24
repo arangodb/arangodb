@@ -48,7 +48,6 @@ class LocalDocumentId;
 class Index;
 class IndexIterator;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
 
@@ -196,12 +195,6 @@ class PhysicalCollection {
                                 velocypack::Builder& builder, bool readCache,
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
-
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
-                            ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
 
   /**
    * @brief Perform document insert, may generate a '_key' value

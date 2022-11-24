@@ -18,12 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Wilfried Goesgens
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief tell whether str contains a string matching one of our executables
-//////////////////////////////////////////////////////////////////////////////
-std::string extractShellExecutableName(std::string const& input);
+#include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
+#include "V8Server/v8-vocbase.h"
+#include "VocBase/vocbase.h"
+
+void TRI_InitV8Pregel(v8::Isolate* isolate,
+                      v8::Handle<v8::ObjectTemplate> ArangoDBNS);

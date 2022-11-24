@@ -157,8 +157,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return "iresearch-document-empty";
   }
   static ptr make(std::string_view) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<EmptyAnalyzer>();
   }
   static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
@@ -190,8 +189,7 @@ class VPackAnalyzer : public irs::analysis::analyzer {
     return "iresearch-vpack-analyzer";
   }
   static ptr make(std::string_view) {
-    PTR_NAMED(VPackAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<VPackAnalyzer>();
   }
   static bool normalize(std::string_view, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
@@ -245,9 +243,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     if (returnNullFromMake) {
       return nullptr;
     }
-
-    PTR_NAMED(InvalidAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<InvalidAnalyzer>();
   }
 
   static bool normalize(std::string_view, std::string& out) {
@@ -285,8 +281,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(std::string_view args) {
-    PTR_NAMED(TypedAnalyzer, ptr, args);
-    return ptr;
+    return std::make_unique<TypedAnalyzer>(args);
   }
 
   static bool normalize(std::string_view args, std::string& out) {
@@ -371,8 +366,7 @@ class TypedArrayAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(std::string_view args) {
-    PTR_NAMED(TypedArrayAnalyzer, ptr, args);
-    return ptr;
+    return std::make_unique<TypedArrayAnalyzer>(args);
   }
 
   static bool normalize(std::string_view args, std::string& out) {

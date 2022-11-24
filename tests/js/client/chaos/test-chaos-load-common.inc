@@ -117,37 +117,36 @@ const viewName = (name, isSearchAlias) => {
 
 const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   let runQuery = (query) => {
-    return db._query(query).toArray()[0];
+    return db._query(query).toArray();
   };
-  let expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length");
-  // TODO uncomment assert when will be fixed SEARCH-419
-  print("Collection: " + expected + " search: " + isSearchAlias + " materialize: " + isMaterialize);
+  let expected;
+  if (!isMaterialize) {
+    expected = runQuery("FOR d IN " + cn + " COLLECT WITH COUNT INTO length RETURN length")[0];
+  } else {
+    expected = runQuery("FOR d IN " + cn + " RETURN d").length;
+  }
   let vn;
-  const checkView = (isMaterialize, check) => {
+  const checkView = (isMaterialize) => {
     let result;
     if (isMaterialize) {
-      result = runQuery("RETURN LENGTH(FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d)");
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d._key").length;
     } else {
-      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length");
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    if (check) {
-      assertEqual(expected, result);
-    } else {
-      print(result);
-    }
+    assertEqual(expected, result);
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps_sv", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 };
 
 const clearAllFailurePoints = () => {
@@ -271,11 +270,15 @@ function BaseChaosSuite(testOpts) {
       db._drop(cn);
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
-      db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      // createViews(false);
-      // createViews(true);
+      db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
+      // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
+      testOpts.withViews = !testOpts.withIntermediateCommits;
+      if (testOpts.withViews) {
+        createViews(false);
+        createViews(true);
+      }
       db._create(coordination_cn);
-      
+
       if (testOpts.withFailurePoints) {
         let servers = getDBServers();
         assertTrue(servers.length > 0);
@@ -315,10 +318,12 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      // removeViews(false);
-      // removeViews(true);
+      if (testOpts.withViews) {
+        removeViews(false);
+        removeViews(true);
+      }
       db._drop(cn);
-      
+
       const shells = db[coordination_cn].all();
       if (shells.length > 0) {
         print("Found remaining docs in coordination collection:");
@@ -427,17 +432,19 @@ function BaseChaosSuite(testOpts) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 } else if (r < 0.5) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
-                } else if (r < 0.75){
+                } else if (r < 0.75) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 } else {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              // if (Math.random() < 0.5) {
-              //   lookupViews(false);
-              // } else {
-              //   lookupViews(true);
-              // }
+              if (testOpts.withViews) {
+                if (Math.random() < 0.5) {
+                  lookupViews(false);
+                } else {
+                  lookupViews(true);
+                }
+              }
             } else if (d >= 0.65) {
               let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
@@ -484,10 +491,12 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
-      // checkViewConsistency(cn, false, false);
-      // checkViewConsistency(cn, true, false);
-      // checkViewConsistency(cn, false, true);
-      // checkViewConsistency(cn, true, true);
+      if (testOpts.withViews) {
+        checkViewConsistency(cn, false, false);
+        checkViewConsistency(cn, true, false);
+        checkViewConsistency(cn, false, true);
+        checkViewConsistency(cn, true, true);
+      }
     }
   };
 }

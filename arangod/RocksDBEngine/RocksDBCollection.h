@@ -122,10 +122,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
 
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites readOwnWrites) const override;
-
   Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                 velocypack::Slice newDocument,
                 OperationOptions const& options) override;

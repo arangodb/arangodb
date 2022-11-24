@@ -41,7 +41,6 @@ class Cache;
 }
 
 class LogicalCollection;
-class ManagedDocumentResult;
 class Result;
 class LocalDocumentId;
 
@@ -128,10 +127,6 @@ class ClusterCollection final : public PhysicalCollection {
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites) const override;
 
   Result lookupDocument(transaction::Methods& trx, LocalDocumentId token,
                         velocypack::Builder& builder, bool readCache,

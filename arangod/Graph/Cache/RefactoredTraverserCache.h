@@ -28,7 +28,6 @@
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "Aql/Projections.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/HashedStringRef.h>
 
@@ -49,7 +48,6 @@ class Slice;
 
 namespace aql {
 struct AqlValue;
-class Projections;
 class QueryContext;
 class TraversalStats;
 }  // namespace aql
