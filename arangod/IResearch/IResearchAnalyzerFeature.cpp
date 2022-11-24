@@ -1281,14 +1281,13 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // new analyzer creation, validate
   if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup =
-        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
-          // cppcheck-suppress knownConditionTrueFalse
-          if (erase) {
-            // ensure no broken analyzers are left behind
-            analyzers.erase(emplaceRes.first);
-          }
-        });
+    irs::Finally cleanup = [&erase, &analyzers, &emplaceRes]() noexcept {
+      // cppcheck-suppress knownConditionTrueFalse
+      if (erase) {
+        // ensure no broken analyzers are left behind
+        analyzers.erase(emplaceRes.first);
+      }
+    };
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features
@@ -1391,12 +1390,12 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = emplaceRes.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &emplaceRes]() noexcept {
+    irs::Finally cleanup = [&erase, this, &emplaceRes]() noexcept {
       if (erase) {
         // ensure no broken analyzers are left behind
         _analyzers.erase(emplaceRes.first);
       }
-    });
+    };
     auto pool = emplaceRes.first->second;
 
     // new pool creation
@@ -1598,14 +1597,14 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_view> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
+    irs::Finally cleanup = [&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
           // ensure no broken analyzers are left behind
           _analyzers.erase(s);
         }
       }
-    });
+    };
     for (auto const& slice : VPackArrayIterator(dumpedAnalyzers)) {
       if (!slice.isObject()) {
         continue;

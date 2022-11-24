@@ -2899,9 +2899,9 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
-    });
+    };
 
     for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
       auto const ridSlice = docSlice.get("rid");
@@ -3011,9 +3011,9 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
-    });
+    };
 
     for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
       auto const ridSlice = docSlice.get("rid");
@@ -3130,9 +3130,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  auto roleRestorer = irs::make_finally([oldRole]() noexcept {
+  irs::Finally roleRestorer = [oldRole]() noexcept {
     arangodb::ServerState::instance()->setRole(oldRole);
-  });
+  };
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 
