@@ -272,7 +272,7 @@ function BaseChaosSuite(testOpts) {
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
       // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
-      testOpts.withViews = !testOpts.withIntermediateCommits;
+      testOpts.withViews = true;
       if (testOpts.withViews) {
         createViews(false);
         createViews(true);
