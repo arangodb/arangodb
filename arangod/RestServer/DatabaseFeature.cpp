@@ -473,22 +473,29 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--database.wait-for-sync",
-      "default wait-for-sync behavior, can be overwritten "
-      "when creating a collection",
+      "The default waitForSync behavior. Can be overwritten when creating a "
+      "collection.",
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--database.force-sync-properties",
-      "force syncing of collection properties to disk, "
-      "will use waitForSync value of collection when "
-      "turned off",
-      new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--database.force-sync-properties",
+          "Force syncing of collection properties to disk after creating a "
+          "collection or updating its properties. Otherwise, let the "
+          "waitForSync "
+          "property of each collection determine it.",
+          new BooleanParameter(&_forceSyncProperties),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(If turned off, no fsync happens for the collection
+and database properties stored in `parameter.json` files in the file system. If
+you turn this option off, it speeds up workloads that create and drop a lot of
+collections (e.g. test suites).)");
 
   options->addOption(
       "--database.ignore-datafile-errors",
-      "load collections even if datafiles may contain errors",
+      "Load collections even if datafiles may contain errors.",
       new BooleanParameter(&_ignoreDatafileErrors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -504,7 +511,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.io-heartbeat",
-                  "perform IO heartbeat to test underlying volume",
+                  "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))

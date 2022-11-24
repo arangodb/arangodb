@@ -182,3 +182,34 @@ exports.waitForShardsInSync = function(cn, timeout) {
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
   return;
 };
+
+exports.getCoordinators = function () {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
+};
+
+exports.getDBServers = function() {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
+
+exports.triggerMetrics = function () {
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=write_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=trigger_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  require("internal").sleep(2);
+};
+
+exports.uniqid = global.ArangoClusterInfo.uniqid;
+exports.agency = global.ArangoAgency;
