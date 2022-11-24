@@ -2,13 +2,16 @@ v3.9.6 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
-  Traversal PRUNE expressions containing JavaScript user-defined functions 
-  (UDFs) are now properly rejected in single server and cluster mode. 
-  PRUNE expressions that use UDFs require a V8 context for execution, 
-  which is not available on DB-servers in a cluster, and also isn't 
-  necessarily available for regular queries on single servers (a V8 context
-  is only available if a query was executed inside Foxx or from inside a JS 
-  transaction, but not otherwise).
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution, which is
+  not available on DB-servers in a cluster, and also isn't necessarily available
+  for regular queries on single servers (a V8 context is only available if a
+  query was executed inside Foxx or from inside a JS transaction, but not
+  otherwise).
+
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
 
 * Fixed BTS-1125 Fixes handling of primarySortCache and primaryKeyCache
   properties in ArangoSearch views.
@@ -22,8 +25,6 @@ v3.9.5 (2022-11-10)
 * Show number of HTTP requests in cluster query profiles.
 
 * Repair "load indexes into memory" function in the web UI.
-
-* Fixed SEARCH-408: Added ArangoSearch cached columns.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
   filters with very long lists. Free sub-iterators as soon as they are
@@ -60,7 +61,7 @@ v3.9.5 (2022-11-10)
 
 * Improved shard distribution during collection creation.
 
-* SEARCH-408 Added "cached" columns feature for the ArangoSearch
+* SEARCH-408 Added "cached" columns feature for the ArangoSearch.
 
 
 v3.9.4 (2022-10-18)
