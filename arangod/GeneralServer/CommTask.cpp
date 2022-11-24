@@ -547,7 +547,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 
 void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
+  std::lock_guard guard{_statisticsMutex};
   _statisticsMap.insert_or_assign(id, std::move(stat));
 }
 
