@@ -103,7 +103,6 @@ target_link_libraries(arangodbtests_iresearch
   arango_rocksdb
   arango_v8server
   arangoserver
-  gtest
   boost_boost
   v8_interface
   arango_tests_iresearch)
