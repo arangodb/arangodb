@@ -47,6 +47,8 @@
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
 
 namespace arangodb::replication2::replicated_log::refactor {
 /*
@@ -69,15 +71,18 @@ struct StateHandleManager : IStateHandleManager {
  private:
   std::shared_ptr<IReplicatedStateHandle> const stateHandle;
 };
-
-
+*/
 
 struct FollowerManager {
-  explicit FollowerManager(std::unique_ptr<LogCore> methods)
+  explicit FollowerManager(
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
       : storage(std::make_shared<StorageManager>(std::move(methods))),
-        compaction(std::make_shared<CompactionManager>(*storage)),
-        waitQueue(std::make_shared<WaitQueueManager>()),
-        snapshot(std::make_shared<SnapshotManager>()) {}
+        compaction(std::make_shared<CompactionManager>(*storage, options)),
+        snapshot(std::make_shared<SnapshotManager>(*storage)),
+        commit(std::make_shared<FollowerCommitManager>(*storage)),
+        appendEntries(std::make_shared<AppendEntriesManager>(
+            *storage, *snapshot, *compaction, *commit)) {}
 
   auto getStatus() const -> LogStatus {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -88,20 +93,14 @@ struct FollowerManager {
   }
 
   auto resign() -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> {
-    stateHandle->resign();
-    futures::Try<WaitQueueManager::ResolveType> result;
-    result.set_exception(ParticipantResignedException{
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE});
-    auto action = waitQueue->resolveAll(std::move(result));
-    auto core = storage->resign();
-    return std::make_tuple(std::move(core), std::move(action));
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
-  std::shared_ptr<WaitQueueManager> const waitQueue;
   std::shared_ptr<SnapshotManager> const snapshot;
-  std::shared_ptr<StateHandleManager> const stateHandle;
+  std::shared_ptr<FollowerCommitManager> const commit;
+  std::shared_ptr<AppendEntriesManager> const appendEntries;
 };
 
 struct MethodsProvider : IReplicatedLogFollowerMethods {
@@ -110,21 +109,20 @@ struct MethodsProvider : IReplicatedLogFollowerMethods {
   }
 
   auto getLogSnapshot() -> InMemoryLog override {
-    return follower.storage->getInMemoryLog();
+    return follower.storage->getCommittedLog();
   }
 
   auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
-    return follower.waitQueue->waitFor(index);
+    return follower.commit->waitFor(index);
   }
 
   auto waitForIterator(LogIndex index)
       -> ILogParticipant::WaitForIteratorFuture override {
-    return follower.waitQueue->waitForIterator(index);
+    return follower.commit->waitForIterator(index);
   }
 
   auto snapshotCompleted() -> Result override {
-    follower.snapshot->updateSnapshotState(SnapshotState::AVAILABLE);
-    return {};
+    return follower.snapshot->updateSnapshotState(SnapshotState::AVAILABLE);
   }
 
  private:
@@ -146,14 +144,14 @@ struct LogFollowerImpl : ILogFollower {
   }
 
   auto waitFor(LogIndex index) -> WaitForFuture override {
-    return guarded.getLockedGuard()->waitQueue->waitFor(index);
+    return guarded.getLockedGuard()->commit->waitFor(index);
   }
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
-    return guarded.getLockedGuard()->waitQueue->waitForIterator(index);
+    return guarded.getLockedGuard()->commit->waitForIterator(index);
   }
 
   auto copyInMemoryLog() const -> InMemoryLog override {
-    return guarded.getLockedGuard()->storage->getInMemoryLog();
+    return guarded.getLockedGuard()->storage->getCommittedLog();
   }
 
   auto release(LogIndex doneWithIdx) -> Result override {
@@ -162,7 +160,15 @@ struct LogFollowerImpl : ILogFollower {
   }
 
   auto compact() -> ResultT<CompactionResult> override {
-    return guarded.getLockedGuard()->compaction->compact().get();
+    // TODO clean up CompacionResult vs ICompactionManager::CompactResult
+    auto result = guarded.getLockedGuard()->compaction->compact().get();
+    if (result.error) {
+      return Result{result.error->errorNumber(), result.error->errorMessage()};
+    }
+    return CompactionResult{
+        .numEntriesCompacted = result.compactedRange.count(),
+        .range = result.compactedRange,
+        .stopReason = result.stopReason};
   }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override {
@@ -171,12 +177,13 @@ struct LogFollowerImpl : ILogFollower {
 
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return guarded.getLockedGuard()->appendEntries->appendEntries(
+        std::move(request));
   }
 
   ParticipantId const myself;
 
   Guarded<FollowerManager> guarded;
 };
-*/
+
 }  // namespace arangodb::replication2::replicated_log::refactor

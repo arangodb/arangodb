@@ -62,3 +62,6 @@ SnapshotManager::GuardedData::GuardedData(IStorageManager& storage)
               ? SnapshotState::AVAILABLE
               : SnapshotState::MISSING;
 }
+
+SnapshotManager::SnapshotManager(IStorageManager& storage)
+    : guardedData(storage) {}

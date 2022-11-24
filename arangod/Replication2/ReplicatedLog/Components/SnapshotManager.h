@@ -32,6 +32,7 @@ inline namespace comp {
 struct IStorageManager;
 
 struct SnapshotManager : ISnapshotManager {
+  explicit SnapshotManager(IStorageManager& storage);
   auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 

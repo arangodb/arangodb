@@ -29,9 +29,9 @@
 using namespace arangodb::replication2::replicated_log::comp;
 
 CompactionManager::CompactionManager(
-    IStorageManager& storage, ISchedulerInterface& scheduler,
+    IStorageManager& storage,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    : guarded(storage, scheduler), options(std::move(options)) {}
+    : guarded(storage), options(std::move(options)) {}
 
 void CompactionManager::updateReleaseIndex(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
@@ -57,9 +57,8 @@ auto CompactionManager::getCompactionStatus() const noexcept
   return guarded.getLockedGuard()->status;
 }
 
-CompactionManager::GuardedData::GuardedData(IStorageManager& storage,
-                                            ISchedulerInterface& scheduler)
-    : storage(storage), scheduler(scheduler) {}
+CompactionManager::GuardedData::GuardedData(IStorageManager& storage)
+    : storage(storage) {}
 
 auto CompactionManager::GuardedData::isCompactionInProgress() const noexcept
     -> bool {

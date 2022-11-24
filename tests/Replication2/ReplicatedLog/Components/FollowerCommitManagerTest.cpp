@@ -47,12 +47,12 @@ struct StorageManagerMock : IStorageManager {
               (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
-auto makeRange(LogTerm term, LogRange range) -> InMemoryLog {
+auto makeRange(LogRange range) -> InMemoryLog {
   InMemoryLog::log_type log;
   auto transient = log.transient();
   for (auto idx : range) {
     transient.push_back(InMemoryLogEntry{
-        PersistingLogEntry{term, idx, LogPayload::createFromString("")}});
+        PersistingLogEntry{LogTerm{1}, idx, LogPayload::createFromString("")}});
   }
   return InMemoryLog(transient.persistent());
 }
@@ -68,7 +68,7 @@ struct FollowerCommitManagerTest : ::testing::Test {
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitFor(LogIndex{12});
@@ -82,7 +82,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitForIterator(LogIndex{12});
@@ -98,7 +98,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitFor(LogIndex{50});
@@ -113,7 +113,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
 TEST_F(FollowerCommitManagerTest,
        wait_for_iterator_update_commit_index_missing_log) {
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitForIterator(LogIndex{12});
@@ -129,7 +129,7 @@ TEST_F(FollowerCommitManagerTest,
 
 TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
   EXPECT_CALL(storage, getCommittedLog).Times(2).WillRepeatedly([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   commit->updateCommitIndex(LogIndex{30});
@@ -142,7 +142,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_already_resolved) {
   EXPECT_CALL(storage, getCommittedLog).Times(2).WillRepeatedly([] {
-    return makeRange(LogTerm{1}, {LogIndex{10}, LogIndex{45}});
+    return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   commit->updateCommitIndex(LogIndex{30});

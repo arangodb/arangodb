@@ -63,20 +63,16 @@ struct StorageManagerMock : IStorageManager {
               (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
-struct SchedulerInterfaceMock : ISchedulerInterface {};
-
 }  // namespace
 
 struct CompactionManagerTest : ::testing::Test {
   testing::StrictMock<StorageManagerMock> storageManagerMock;
-  SchedulerInterfaceMock scheduler;
 
   std::shared_ptr<ReplicatedLogGlobalSettings> options =
       std::make_shared<ReplicatedLogGlobalSettings>();
 
   std::shared_ptr<CompactionManager> compactionManager =
-      std::make_shared<CompactionManager>(storageManagerMock, scheduler,
-                                          options);
+      std::make_shared<CompactionManager>(storageManagerMock, options);
 };
 
 TEST_F(CompactionManagerTest, no_compaction_after_release_index_update) {

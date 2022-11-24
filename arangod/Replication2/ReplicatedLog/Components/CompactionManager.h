@@ -44,14 +44,6 @@ inline namespace comp {
 
 struct IStorageManager;
 
-struct ISchedulerInterface {
-  using clock = std::chrono::steady_clock;
-
-  virtual ~ISchedulerInterface() = default;
-  // virtual auto delay(clock::duration) -> futures::Future<futures::Unit> = 0;
-  //  virtual auto post()
-};
-
 template<typename T>
 struct ResolveAggregator {
   auto waitFor() -> futures::Future<T> {
@@ -92,7 +84,7 @@ struct ResolveAggregator {
 struct CompactionManager : ICompactionManager,
                            std::enable_shared_from_this<CompactionManager> {
   explicit CompactionManager(
-      IStorageManager& storage, ISchedulerInterface& scheduler,
+      IStorageManager& storage,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options);
 
   CompactionManager(CompactionManager const&) = delete;
@@ -108,8 +100,7 @@ struct CompactionManager : ICompactionManager,
 
  private:
   struct GuardedData {
-    explicit GuardedData(IStorageManager& storage,
-                         ISchedulerInterface& scheduler);
+    explicit GuardedData(IStorageManager& storage);
 
     [[nodiscard]] auto isCompactionInProgress() const noexcept -> bool;
 
@@ -121,7 +112,6 @@ struct CompactionManager : ICompactionManager,
     LogIndex largestIndexToKeep;
     CompactionStatus status;
     IStorageManager& storage;
-    ISchedulerInterface& scheduler;
   };
   Guarded<GuardedData> guarded;
 

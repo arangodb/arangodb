@@ -30,6 +30,11 @@ inline namespace comp {
 
 struct IStorageManager;
 
+struct ICommitUpdateReceiver {
+  virtual ~ICommitUpdateReceiver() = default;
+  virtual void updateCommitIndex(LogIndex) noexcept = 0;
+};
+
 struct FollowerCommitManager : IFollowerCommitManager {
   explicit FollowerCommitManager(IStorageManager&);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
