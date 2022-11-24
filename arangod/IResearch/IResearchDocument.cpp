@@ -82,7 +82,6 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-std::string_view const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     StringStreamPool(DEFAULT_POOL_SIZE);
