@@ -241,117 +241,302 @@ void QueryRegistryFeature::collectOptions(
 
   options
       ->addOption("--query.global-memory-limit",
-                  "memory threshold for all AQL queries combined (in bytes, 0 "
-                  "= no limit)",
+                  "The memory threshold for all AQL queries combined "
+                  "(in bytes, 0 = no limit).",
                   new UInt64Parameter(&_queryGlobalMemoryLimit,
                                       PhysicalMemory::getValue()),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(You can use this option to set a limit on the
+combined estimated memory usage of all AQL queries (in bytes). If this option
+has a value of `0`, then no global memory limit is in place. This is also the
+default value and the same behavior as in version 3.7 and older.
 
-  options->addOption(
-      "--query.memory-limit",
-      "memory threshold per AQL query (in bytes, 0 = no limit)",
-      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+If you set this option to a value greater than zero, then the total memory usage
+of all AQL queries is limited approximately to the configured value. The limit
+is enforced by each server node in a cluster independently, i.e. it can be set
+separately for Coordinators, DB-Servers etc. The memory usage of a query that
+runs on multiple servers in parallel is not summed up, but tracked separately on
+each server.
+
+If a memory allocation in a query would lead to the violation of the configured
+global memory limit, then the query is aborted with error code 32
+("resource limit exceeded").
+
+The global memory limit is approximate, in the same fashion as the per-query
+memory limit exposed by the option `--query.memory-limit` is. The global memory
+tracking has a granularity of 32 KiB chunks.
+
+If both, `--query.global-memory-limit` and `--query.memory-limit`, are set, you
+must set the former at least as high as the latter.)");
 
   options
       ->addOption(
-          "--query.memory-limit-override",
-          "allow increasing per-query memory limits for individual queries",
-          new BooleanParameter(&_queryMemoryLimitOverride))
-      .setIntroducedIn(30800);
+          "--query.memory-limit",
+          "The memory threshold per AQL query (in bytes, 0 = no limit).",
+          new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Dynamic))
+      .setLongDescription(R"(The default maximum amount of memory (in bytes)
+that a single AQL query can use. When a single AQL query reaches the specified
+limit value, the query is aborted with a *resource limit exceeded* exception.
+In a cluster, the memory accounting is done per server, so the limit value is
+effectively a memory limit per query per server node.
+
+Some operations, namely calls to AQL functions and their intermediate results, 
+are not properly tracked.
+
+You can override the limit by setting the `memoryLimit` option for individual
+queries when running them. Overriding the per-query limit value is only possible
+if the `--query.memory-limit-override` option is set to `true`.
+
+The default per-query memory limit value in version 3.8 and later depends on
+the amount of available RAM. In version 3.7 and older, the default value was
+`0`, meaning "unlimited".
+
+The default values are:
+
+```
+Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
+Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
+Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
+Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
+Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
+Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
+Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
+Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
+Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
+Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
+Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
+Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
+Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
+```
+
+You can set a global memory limit for the total memory used by all AQL queries
+that currently execute via the `--query.global-memory-limit` option.
+
+From ArangoDB 3.8 on, the per-query memory tracking has a granularity of 32 KB 
+chunks. That means checking for memory limits such as "1" (e.g. for testing) 
+may not make a query fail if the total memory allocations in the query don't 
+exceed 32 KiB. The effective lowest memory limit value that can be enforced is
+thus 32 KiB. Memory limit values higher than 32 KiB will be checked whenever the
+total memory allocations cross a 32 KiB boundary.)");
+
+  options
+      ->addOption("--query.memory-limit-override",
+                  "Allow increasing the per-query memory limits for individual "
+                  "queries.",
+                  new BooleanParameter(&_queryMemoryLimitOverride))
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(You can use this option to control whether
+individual AQL queries can increase their memory limit via the `memoryLimit`
+query option. This is the default, so a query that increases its memory limit is
+allowed to use more memory than set via the `--query.memory-limit` startup
+option value.
+
+If the option is set to `false`, individual queries can only lower their maximum
+allowed memory usage but not increase it.)");
 
   options
       ->addOption(
           "--query.max-runtime",
-          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
           new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
                               /*minValue*/ 0.0))
       .setIntroducedIn(30607)
-      .setIntroducedIn(30703);
+      .setIntroducedIn(30703)
+      .setLongDescription(R"(Sets a default maximum runtime for AQL queries.
 
-  options->addOption("--query.tracking", "whether to track queries",
+The default value is `0`, meaning that the runtime of AQL queries is not
+limited. If you set it to any positive value, it restricts the runtime of all
+AQL queries, unless you override it with the `maxRuntime` query option on a
+per-query basis.
+
+If a query exceeds the configured runtime, it is killed on the next occasion
+when the query checks its own status. Killing is best effort-based, so it is not
+guaranteed that a query will no longer than exactly the configured amount of
+time.
+
+**Warning**: This option affects all queries in all databases, including queries
+issued for administration and database-internal purposes.)");
+
+  options->addOption("--query.tracking", "Whether to track queries.",
                      new BooleanParameter(&_trackingEnabled));
 
   options
       ->addOption("--query.tracking-slow-queries",
-                  "whether to track slow queries",
+                  "Whether to track slow queries.",
                   new BooleanParameter(&_trackSlowQueries))
       .setIntroducedIn(30704);
 
   options
       ->addOption("--query.tracking-with-querystring",
-                  "whether to track the query string",
+                  "Whether to track the query string.",
                   new BooleanParameter(&_trackQueryString))
       .setIntroducedIn(30704);
 
-  options->addOption("--query.tracking-with-bindvars",
-                     "whether to track bind vars with AQL queries",
-                     new BooleanParameter(&_trackBindVars));
+  options
+      ->addOption("--query.tracking-with-bindvars",
+                  "Whether to track bind variable of AQL queries.",
+                  new BooleanParameter(&_trackBindVars))
+      .setLongDescription(R"(If set to `true`, then the bind variables are
+tracked and shown for all running and slow AQL queries. This also enables the
+display of bind variable values in the list of cached AQL query results. This
+option only has an effect if `--query.tracking` is set to `true` or if the query
+results cache is used.
+
+You can disable tracking and displaying bind variable values by setting the
+option to `false`.)");
 
   options
       ->addOption("--query.tracking-with-datasources",
-                  "whether to track data sources with AQL queries",
+                  "Whether to track data sources of AQL queries.",
                   new BooleanParameter(&_trackDataSources))
       .setIntroducedIn(30704);
 
-  options->addOption("--query.fail-on-warning",
-                     "whether AQL queries should fail with errors even for "
-                     "recoverable warnings",
-                     new BooleanParameter(&_failOnWarning));
+  options
+      ->addOption("--query.fail-on-warning",
+                  "Whether AQL queries should fail with errors even for "
+                  "recoverable warnings.",
+                  new BooleanParameter(&_failOnWarning))
+      .setLongDescription(R"(If set to `true`, AQL queries that produce
+warnings are instantly aborted and throw an exception. This option can be set
+to catch obvious issues with AQL queries early.
+
+If set to `false`, AQL queries that produce warnings are not aborted and return
+the warnings along with the query results.
+
+You can override the option for each individual AQL query via the
+`failOnWarning` attribute.)");
 
   options
       ->addOption("--query.require-with",
-                  "whether AQL queries should require the `WITH "
-                  "collection-name` clause even on single servers "
+                  "Whether AQL queries should require the "
+                  "`WITH collection-name` clause even on single servers "
                   "(enable this to remove this behavior difference between "
-                  "single server and cluster)",
+                  "single server and cluster).",
                   new BooleanParameter(&_requireWith))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30711)
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(If set to `true`, AQL queries in single server
+mode also require `WITH` clauses in AQL queries where a cluster installation
+would require them.
 
-  options->addOption("--query.slow-threshold",
-                     "threshold for slow AQL queries (in seconds)",
-                     new DoubleParameter(&_slowQueryThreshold));
+The option is set to `false` by default, but you can turn it on in single
+servers to remove this behavior difference between single servers and clusters,
+making a later transition from single server to cluster easier.)");
 
-  options->addOption("--query.slow-streaming-threshold",
-                     "threshold for slow streaming AQL queries (in seconds)",
-                     new DoubleParameter(&_slowStreamingQueryThreshold));
+  options
+      ->addOption("--query.slow-threshold",
+                  "The threshold for slow AQL queries (in seconds).",
+                  new DoubleParameter(&_slowQueryThreshold))
+      .setLongDescription(R"(You can control after what execution time an AQL
+query is considered "slow" with this option. Any slow queries that exceed the
+specified execution time are logged when they are finished.
 
-  options->addOption("--query.cache-mode",
-                     "Mode for the AQL query result cache. Can be \"on\", "
-                     "\"off\", or \"demand\".",
-                     new StringParameter(&_queryCacheMode));
+You can turn off the tracking of slow queries entirely by setting the option
+`--query.tracking` to `false`.)");
 
-  options->addOption(
-      "--query.cache-entries",
-      "maximum number of results in query result cache per database",
-      new UInt64Parameter(&_queryCacheMaxResultsCount));
+  options
+      ->addOption("--query.slow-streaming-threshold",
+                  "The threshold for slow streaming AQL queries "
+                  "(in seconds).",
+                  new DoubleParameter(&_slowStreamingQueryThreshold))
+      .setLongDescription(R"(You can control after what execution time
+streaming AQL queries are considered "slow" with this option. It exists to give
+streaming queries a separate, potentially higher timeout value than for regular
+queries. Streaming queries are often executed in lockstep with application data
+processing logic, which then also accounts for the queries' runtime. It is thus
+expected that the lifetime of streaming queries is longer than for regular
+queries.)");
 
-  options->addOption(
-      "--query.cache-entries-max-size",
-      "maximum cumulated size of results in query result cache per database",
-      new UInt64Parameter(&_queryCacheMaxResultsSize));
+  options
+      ->addOption("--query.cache-mode",
+                  "The mode for the AQL query result cache. Can be \"on\", "
+                  "\"off\", or \"demand\".",
+                  new StringParameter(&_queryCacheMode))
+      .setLongDescription(R"(Toggles the AQL query results cache behavior.
+The possible values are:
 
-  options->addOption(
-      "--query.cache-entry-max-size",
-      "maximum size of an invidiual result entry in query result cache",
-      new UInt64Parameter(&_queryCacheMaxEntrySize));
+- `off`: do not use query results cache
+- `on`: always use query results cache, except for queries that have their
+  `cache` attribute set to `false`
+- `demand`: use query results cache only for queries that have their `cache`
+  attribute set to `true`)");
 
-  options->addOption("--query.cache-include-system-collections",
-                     "whether or not to include system collection queries in "
-                     "the query result cache",
-                     new BooleanParameter(&_queryCacheIncludeSystem));
+  options
+      ->addOption(
+          "--query.cache-entries",
+          "The maximum number of results in query result cache per database.",
+          new UInt64Parameter(&_queryCacheMaxResultsCount))
+      .setLongDescription(R"(If a query is eligible for caching and the number
+of items in the database's query cache is equal to this threshold value, another
+cached query result is removed from the cache.
 
-  options->addOption(
-      "--query.optimizer-max-plans",
-      "maximum number of query plans to create for a query",
-      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1));
+This option only has an effect if the query cache mode is set to either `on` or
+`demand`.)");
+
+  options
+      ->addOption("--query.cache-entries-max-size",
+                  "The maximum cumulated size of results in the query result "
+                  "cache per database (in bytes).",
+                  new UInt64Parameter(&_queryCacheMaxResultsSize))
+      .setLongDescription(R"(When a query result is inserted into the query
+results cache, it is checked if the total size of cached results would exceed
+this value, and if so, another cached query result is removed from the cache
+before a new one is inserted.
+
+This option only has an effect if the query cache mode is set to either `on` or
+`demand`.)");
+
+  options
+      ->addOption("--query.cache-entry-max-size",
+                  "The maximum size of an individual result entry in query "
+                  "result cache (in bytes).",
+                  new UInt64Parameter(&_queryCacheMaxEntrySize))
+      .setLongDescription(R"(Query results are only eligible for caching if
+their size does not exceed this setting's value.)");
+
+  options
+      ->addOption("--query.cache-include-system-collections",
+                  "Whether to include system collection queries in "
+                  "the query result cache.",
+                  new BooleanParameter(&_queryCacheIncludeSystem))
+      .setLongDescription(R"(Not storing these results is normally beneficial
+if you use the query results cache, as queries on system collections are
+internal to ArangoDB and use space in the query results cache unnecessarily.)");
+
+  options
+      ->addOption(
+          "--query.optimizer-max-plans",
+          "The maximum number of query plans to create for a query.",
+          new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1))
+      .setLongDescription(R"(You can control how many different query execution
+plans the AQL query optimizer generates at most for any given AQL query with
+this option. Normally, the AQL query optimizer generates a single execution plan
+per AQL query, but there are some cases in which it creates multiple competing
+plans.
+
+More plans can lead to better optimized queries. However, plan creation has its
+costs. The more plans are created and shipped through the optimization pipeline,
+the more time is spent in the optimizer. You can lower the number to make the
+optimizer stop creating additional plans when it has already created enough
+plans.
+
+Note that this setting controls the default maximum number of plans to create.
+The value can still be adjusted on a per-query basis by setting the
+`maxNumberOfPlans` attribute for individual queries.)");
 
   options
       ->addOption("--query.max-nodes-per-callstack",
-                  "maximum number execution nodes on the callstack before "
-                  "splitting the remaining nodes into a separate thread",
+                  "The maximum number of execution nodes on the callstack "
+                  "before splitting the remaining nodes into a separate thread",
                   new UInt64Parameter(&_maxNodesPerCallstack),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -359,15 +544,16 @@ void QueryRegistryFeature::collectOptions(
 
   options->addOption(
       "--query.registry-ttl",
-      "default time-to-live of cursors and query snippets (in "
-      "seconds); if <= 0, value will default to 30 for "
-      "single-server instances or 600 for coordinator instances",
+      "The default time-to-live of cursors and query snippets (in seconds). "
+      "If set to 0 or lower, the value defaults to 30 for single server "
+      "instances and 600 for Coordinator instances.",
       new DoubleParameter(&_queryRegistryTTL),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
   options
-      ->addOption("--query.smart-joins", "enable SmartJoins query optimization",
+      ->addOption("--query.smart-joins",
+                  "Whether to enable the SmartJoins query optimization.",
                   new BooleanParameter(&_smartJoins),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -376,7 +562,7 @@ void QueryRegistryFeature::collectOptions(
 
   options
       ->addOption("--query.parallelize-traversals",
-                  "enable traversal parallelization",
+                  "Whether to enable traversal parallelization.",
                   new BooleanParameter(&_parallelizeTraversals),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -389,8 +575,8 @@ void QueryRegistryFeature::collectOptions(
   options
       ->addOption(
           "--query.max-parallelism",
-          "maximum number of threads to use for a single query; "
-          "actual query execution may use less depending on various factors",
+          "The maximum number of threads to use for a single query; the "
+          "actual query execution may use less depending on various factors.",
           new UInt64Parameter(&_maxParallelism),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon,
@@ -400,7 +586,7 @@ void QueryRegistryFeature::collectOptions(
 
   options
       ->addOption("--query.allow-collections-in-expressions",
-                  "allow full collections to be used in AQL expressions",
+                  "Allow full collections to be used in AQL expressions.",
                   new BooleanParameter(&_allowCollectionsInExpressions),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -408,12 +594,39 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30800)
-      .setDeprecatedIn(30900);
+      .setDeprecatedIn(30900)
+      .setLongDescription(R"(If set to `true`, using collection names in
+arbitrary places in AQL expressions is allowed, although using collection names
+like this is very likely unintended.
+
+For example, consider the following query:
+
+```aql
+FOR doc IN collection RETURN collection
+```
+
+Here, the collection name is `collection`, and its usage in the `FOR` loop is
+intended and valid. However, `collection` is also used in the `RETURN`
+statement, which is legal but potentially unintended. It should likely be
+`RETURN doc` or `RETURN doc.someAttribute` instead. Otherwise, the entire
+collection is materialized and returned as many times as there are documents in
+the collection. This can take a long time and even lead to out-of-memory crashes
+in the worst case.
+
+If you set the option to `false`, such unintentional usage of collection names
+in queries is prohibited, and instead makes the query fail with error 1568
+("collection used as expression operand").
+
+The default value of the option was `true` in v3.8, meaning that potentially
+unintended usage of collection names in queries were still allowed. In v3.9,
+the default value changes to `false`. The option is also deprecated from
+3.9.0 on and will be removed in future versions. From then on, unintended
+usage of collection names will always be disallowed.)");
 
   options
       ->addOption("--query.max-artifact-log-length",
-                  "maximum length of query strings and bind parameter values "
-                  "in logs before they get truncated",
+                  "The maximum length of query strings and bind parameter "
+                  "values in logs before they get truncated.",
                   new SizeTParameter(&_maxQueryStringLength),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -422,12 +635,13 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(This option allows you to truncate overly long
+query strings and bind parameter values to a reasonable length in log files.)");
 
   options
       ->addOption("--query.log-memory-usage-threshold",
-                  "log queries that have a peak memory usage larger than this "
-                  "threshold",
+                  "Log queries that have a peak memory usage larger than this "
+                  "threshold.",
                   new UInt64Parameter(&_peakMemoryUsageThreshold),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -436,10 +650,12 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(A warning is logged if queries exceed the
+specified threshold. This is useful for finding queries that use a large
+amount of memory.)");
 
   options
-      ->addOption("--query.log-failed", "log failed AQL queries",
+      ->addOption("--query.log-failed", "Whether to log failed AQL queries.",
                   new BooleanParameter(&_logFailedQueries),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -448,7 +664,9 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30905)
       .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setLongDescription(R"(If set to `true`, all failed AQL queries are
+logged to the server log. You can use this option during development, or to
+catch unexpected failed queries in production.)");
 }
 
 void QueryRegistryFeature::validateOptions(

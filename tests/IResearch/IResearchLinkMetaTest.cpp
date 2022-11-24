@@ -409,9 +409,9 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
 
 TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
-  auto restoreRole = irs::make_finally([oldRole]() noexcept {
+  irs::Finally restoreRole = [oldRole]() noexcept {
     arangodb::ServerState::instance()->setRole(oldRole);
-  });
+  };
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   auto json = VPackParser::fromJson(
@@ -1435,9 +1435,9 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
 TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
-  auto restoreRole = irs::make_finally([oldRole]() noexcept {
+  irs::Finally restoreRole = [oldRole]() noexcept {
     arangodb::ServerState::instance()->setRole(oldRole);
-  });
+  };
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   // not fullAnalyzerDefinition
@@ -1577,9 +1577,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -1772,9 +1772,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -1792,9 +1792,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -1812,9 +1812,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -1840,9 +1840,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(R"({
       "analyzerDefinitions": [ ],
@@ -1860,9 +1860,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -1920,9 +1920,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -1980,9 +1980,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2009,9 +2009,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(R"({
       "analyzerDefinitions": [ ],
@@ -2029,9 +2029,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2049,9 +2049,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2109,9 +2109,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2174,9 +2174,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -2200,9 +2200,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -2219,9 +2219,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -2259,9 +2259,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -2282,9 +2282,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2342,9 +2342,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2465,9 +2465,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -2513,9 +2513,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -2541,9 +2541,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -2603,12 +2603,11 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
       vocbase.name() + "::" + analyzerCustomName;
 
   // this is for test cleanup
-  auto testCleanup =
-      irs::make_finally([&analyzerCustomInSystem, &analyzers,
-                         &analyzerCustomInTestVocbase]() noexcept {
-        analyzers.remove(analyzerCustomInSystem);
-        analyzers.remove(analyzerCustomInTestVocbase);
-      });
+  irs::Finally testCleanup = [&analyzerCustomInSystem, &analyzers,
+                              &analyzerCustomInTestVocbase]() noexcept {
+    analyzers.remove(analyzerCustomInSystem);
+    analyzers.remove(analyzerCustomInTestVocbase);
+  };
 
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
@@ -2763,9 +2762,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -2905,9 +2904,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2925,9 +2924,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2945,9 +2944,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2973,9 +2972,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -2994,9 +2993,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3054,9 +3053,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_COORDINATOR);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3114,9 +3113,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3143,9 +3142,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3164,9 +3163,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3184,9 +3183,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3244,9 +3243,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       arangodb::ServerState::instance()->setRole(before);
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3309,9 +3308,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -3336,9 +3335,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -3355,9 +3354,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(
@@ -3395,9 +3394,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -3418,9 +3417,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3478,9 +3477,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     auto json = VPackParser::fromJson(
         "{ \
@@ -3601,9 +3600,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -3649,9 +3648,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
@@ -3677,9 +3676,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_TRUE(
