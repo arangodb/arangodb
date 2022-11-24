@@ -1,6 +1,8 @@
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.13.0.
+
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
   Traversal PRUNE expressions containing JavaScript user-defined functions
   (UDFs) are now properly rejected in single server and cluster mode.
