@@ -46,12 +46,11 @@ class CHashesTest : public ::testing::Test {
     IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
   }
 
-  uint32_t testCrc32(std::string& buffer) {
-    auto* begin = buffer.c_str();
-    auto* end = buffer.c_str() + strlen(buffer.c_str());
-    auto all_crc = static_cast<uint32_t>(
-        absl::ComputeCrc32c(std::string_view{begin, end}));
+  uint32_t testCrc32(std::string_view buffer) {
+    auto all_crc = static_cast<uint32_t>(absl::ComputeCrc32c(buffer));
 
+    auto* begin = buffer.data();
+    auto* end = buffer.data() + buffer.size();
     uint32_t block_crc = 0;
     while (begin + 3 < end) {
       auto* temp = begin + 3;
@@ -187,154 +186,154 @@ TEST_F(CHashesTest, tst_fnv64_simple) {
   buffer = "";
   EXPECT_TRUE(14695981039346656037ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(14695981039346656037ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(14695981039346656037ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = " ";
   EXPECT_TRUE(12638117931323064703ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638117931323064703ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638117931323064703ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "  ";
   EXPECT_TRUE(560038479724991597ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(560038479724991597ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(560038479724991597ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = "a";
   EXPECT_TRUE(12638187200555641996ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638187200555641996ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638187200555641996ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "A";
   EXPECT_TRUE(12638222384927744748ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638222384927744748ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638222384927744748ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = " a";
   EXPECT_TRUE(559967011469157882ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(559967011469157882ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(559967011469157882ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = " a ";
   EXPECT_TRUE(14038824050427892078ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(14038824050427892078ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(14038824050427892078ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "a ";
   EXPECT_TRUE(620373080799520836ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(620373080799520836ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(620373080799520836ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = "A ";
   EXPECT_TRUE(650913115778654372ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(650913115778654372ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(650913115778654372ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = " A";
   EXPECT_TRUE(560002195841260634ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(560002195841260634ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(560002195841260634ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = " A ";
   EXPECT_TRUE(14069504822895436622ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(14069504822895436622ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(14069504822895436622ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "0";
   EXPECT_TRUE(12638135523509116079ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638135523509116079ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638135523509116079ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "1";
   EXPECT_TRUE(12638134423997487868ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638134423997487868ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638134423997487868ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "11";
   EXPECT_TRUE(574370613795883607ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(574370613795883607ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(574370613795883607ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer = "111";
   EXPECT_TRUE(5002439360283388754ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(5002439360283388754ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(5002439360283388754ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 
   buffer = "2";
   EXPECT_TRUE(12638137722532372501ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638137722532372501ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638137722532372501ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "3";
   EXPECT_TRUE(12638136623020744290ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(12638136623020744290ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(12638136623020744290ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "the quick brown fox jumped over the lazy dog";
   EXPECT_TRUE(5742411339260295416ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(5742411339260295416ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(5742411339260295416ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 
   buffer = "The Quick Brown Fox Jumped Over The Lazy Dog";
   EXPECT_TRUE(11643291398347681368ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(11643291398347681368ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(11643291398347681368ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -368,10 +367,10 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "った。";
   EXPECT_TRUE(211184911024797733ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(211184911024797733ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(211184911024797733ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer =
       "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 "
@@ -380,10 +379,10 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "전체보기";
   EXPECT_TRUE(270676307504294177ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(270676307504294177ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(270676307504294177ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                     buffer.c_str(),
-                                                    strlen(buffer.c_str())));
+                                                    buffer.size()));
 
   buffer =
       "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联"
@@ -391,10 +390,10 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "务。";
   EXPECT_TRUE(14670566365397374664ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(14670566365397374664ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(14670566365397374664ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer =
       "כפי שסופיה קופולה היטיבה לבטא בסרטה אבודים בטוקיו, בתי מלון יוקרתיים "
@@ -406,10 +405,10 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "לבחור, ולהזמין מראש";
   EXPECT_TRUE(16145169633099782595ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(16145169633099782595ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(16145169633099782595ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer =
       "بان يأسف لمقتل لاجئين سوريين بتركيا المرزوقي يندد بعنف الأمن التونسي "
@@ -417,38 +416,38 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "بالصومال";
   EXPECT_TRUE(7398242043026945788ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(7398242043026945788ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(7398242043026945788ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 
   buffer =
       "Голкипер мадридского «Реала» Икер Касильяс призвал своих партнеров "
       "сосредоточить все мысли на предстоящем дерби с «Атлетико»";
   EXPECT_TRUE(10412552537249637418ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(10412552537249637418ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(10412552537249637418ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "   ";
   EXPECT_TRUE(4095843978425089933ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(4095843978425089933ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(4095843978425089933ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 
   buffer =
       "अ आ इ ई उ ऊ ऋ ॠ ऌ ॡ ए ऐ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ "
       "ब भ म य र ल व श ष स ह";
   EXPECT_TRUE(2927729442665428350ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(2927729442665428350ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(2927729442665428350ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 
   buffer =
       "tɜt kɐː mɔj ŋɨɜj siŋ za ɗew ɗɨɜk tɨɰ zɔ vɐː ɓiŋ ɗɐŋ vej ɲɜn fɜm vɐː "
@@ -456,18 +455,18 @@ TEST_F(CHashesTest, tst_fnv64_utf8) {
       "fɐːj ɗoj sɨ vɜj ɲɐw cɔŋ tiŋ ɓɐŋ hɨw.";
   EXPECT_TRUE(15359789603011345030ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(15359789603011345030ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(15359789603011345030ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                       buffer.c_str(),
-                                                      strlen(buffer.c_str())));
+                                                      buffer.size()));
 
   buffer = "äöüßÄÖÜ€µ";
   EXPECT_TRUE(2954195900047086928ULL == FnvHashString(buffer.c_str()));
   EXPECT_TRUE(2954195900047086928ULL ==
-              FnvHashPointer(buffer.c_str(), strlen(buffer.c_str())));
+              FnvHashPointer(buffer.c_str(), buffer.size()));
   EXPECT_TRUE(2954195900047086928ULL == FnvHashBlock(kFnvHashBlockInitial,
                                                      buffer.c_str(),
-                                                     strlen(buffer.c_str())));
+                                                     buffer.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
