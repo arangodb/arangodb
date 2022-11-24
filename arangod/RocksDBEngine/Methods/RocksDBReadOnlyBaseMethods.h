@@ -48,6 +48,10 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
 
   bool hasOperations() const noexcept override { return false; }
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return 0;
+  }
+
   uint64_t numOperations() const noexcept override { return 0; }
 
   void prepareOperation(DataSourceId cid, RevisionId rid,

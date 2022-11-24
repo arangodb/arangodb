@@ -735,7 +735,7 @@ namespace iresearch {
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
 
   if (ServerState::instance()->isClusterRole() && isCreation &&
-      !collectionName.empty() && meta._collectionName.empty()) {
+      meta._collectionName.empty()) {
     meta._collectionName = collectionName;
 #ifdef USE_ENTERPRISE
     ClusterMethods::realNameFromSmartName(meta._collectionName);

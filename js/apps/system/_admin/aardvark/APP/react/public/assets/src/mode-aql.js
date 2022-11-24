@@ -88,7 +88,11 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|at least|aggregate|like|k_shortest_paths|k_paths|all_shortest_paths|prune|window"
+        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|k_shortest_paths|k_paths|all_shortest_paths|window"
+    );
+
+    var pseudoKeywords = (
+        "search|keep|to|prune|options"
     );
 
     var builtinFunctions = (
@@ -115,9 +119,12 @@ var AqlHighlightRules = function() {
         "geo_equals|geo_distance|geo_area|geo_in_range"
     );
 
+    var aqlBindVariablePattern = "@(?:_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*)";
+
     var keywordMapper = this.createKeywordMapper({
         "support.function": builtinFunctions,
         "keyword": keywords,
+        "keyword.other": pseudoKeywords,
         "constant.language": "null",
         "constant.language.boolean": "true|false"
     }, "identifier", true);
@@ -132,44 +139,129 @@ var AqlHighlightRules = function() {
             next : "comment_ml"
         }, {
             token : "string",           // " string
-            regex : '".*?"'
+            regex : '"',
+            next: "string_double"
         }, {
             token : "string",           // ' string
-            regex : "'.*?'"
+            regex : "'",
+            next: "string_single"
         }, {
-            token : "string",           // ` string
-            regex : "`.*?`"
+            token : "variable.other",   // ` quoted identifier
+            regex : "`",
+            next: "identifier_backtick"
+        }, {
+            token : "variable.other",   // ´ quoted identifier
+            regex : "´",
+            next: "identifier_forwardtick"
         }, {
             token : "constant.numeric", // binary integer
-            regex : "0[bB][01]+\\b"
+            regex : /0[bB][01]+\b/
         }, {
             token : "constant.numeric", // hexadecimal integer
-            regex : "0[xX][0-9a-fA-F]+\\b"
+            regex : /0[xX][0-9a-fA-F]+\b/
         }, {
             token : "constant.numeric", // float
-            regex : "[+-]?\\d+(?:(?:\\.\\d*)?(?:[eE][+-]?\\d+)?)?\\b"
+            regex : /(?:(?:0|[1-9][0-9]*)(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][\-\+]?[0-9]+)?/
         }, {
-            token : keywordMapper,
-            regex : "[a-zA-Z_][a-zA-Z0-9_]*\\b"
+            token : "constant.numeric", // decimal integer
+            regex : /0|[1-9][0-9]*\b/
+        }, {
+            token : "variable.global",
+            regex : "@" + aqlBindVariablePattern
+        }, {
+            token : "variable",
+            regex : aqlBindVariablePattern
         }, {
             token : "keyword.operator",
-            regex : "\\+|\\-|\\/|\\/\\/|%|@>|<@|&&|\\|\\||!|<|>|<=|=>|==|!=|=|\\[\\*\\]"
+            regex : /=~|!~|==|!=|>=|>|<=|<|=|!|&&|\|\||\+|\-|\*|\/|%|\?|::|:|\.\./
         }, {
             token : "paren.lparen",
-            regex : "[\\(\\{]"
+            regex : /[\(\{\[]/
         }, {
             token : "paren.rparen",
-            regex : "[\\)\\}]"
+            regex : /[\)\}\]]/
+        }, {
+            token : "punctuation",
+            regex : /[\.,]/
+        }, {
+            // COLLECT ... WITH COUNT INTO
+            // BUG: Need to use character classes because caseInsensitive: true
+            // would affect all other rules, https://github.com/ajaxorg/ace/issues/4887
+            token : "keyword",
+            regex : /[Ww][Ii][Tt][Hh]\s+[Cc][Oo][Uu][Nn][Tt]\s+[Ii][Nn][Tt][Oo]\b/
+        }, {
+            // AT LEAST (...)
+            // BUG: See above
+            token : "keyword",
+            regex : /[Aa][Tt]\s+[Ll][Ee][Aa][Ss][Tt]\b/
+        }, {
+            token : "language.variable", // case sensitive
+            regex : /(?:CURRENT|NEW|OLD)\b/
+        }, {
+            token : keywordMapper,
+            regex : /(?:\$?|_+)[a-zA-Z]+[_a-zA-Z0-9]*\b/
         }, {
             token : "text",
-            regex : "\\s+"
+            regex : /\s+/
         } ],
         "comment_ml" : [ {
             token : "comment", 
             regex : /\*\//,
-            next : "start",
+            next : "start"
         }, {
           defaultToken : "comment"
+        } ],
+        "string_double" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\["'\\\/bfnrt]/
+        }, {
+            token : "string", 
+            regex : '"',
+            next : "start"
+        }, {
+            defaultToken : "string"
+        } ],
+        "string_single" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\["'\\\/bfnrt]/
+        }, {
+            token : "string", 
+            regex : "'",
+            next : "start"
+        }, {
+            defaultToken : "string"
+        } ],
+        "identifier_backtick" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\[`"'\\\/bfnrt]/
+        }, {
+            token : "variable.other", 
+            regex : "`",
+            next : "start"
+        }, {
+            defaultToken : "variable.other"
+        } ],
+        "identifier_forwardtick" : [ {
+            token : "constant.character.escape",
+            regex : /\\u[0-9a-fA-F]{4}/
+        }, {
+            token : "constant.character.escape",
+            regex : /\\[´"'\\\/bfnrt]/
+        }, {
+            token : "variable.other", 
+            regex : "´",
+            next : "start"
+        }, {
+          defaultToken : "variable.other"
         } ]
     };
 };

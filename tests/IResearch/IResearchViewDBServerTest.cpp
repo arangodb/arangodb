@@ -501,7 +501,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     // fill with test data
@@ -1027,7 +1028,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   // add a single document to view (do not sync)
