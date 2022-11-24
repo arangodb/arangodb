@@ -39,6 +39,10 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_cat.h>
+
 #include <limits.h>
 
 #include <regex>
@@ -76,6 +80,36 @@ struct InvalidIndexFactory : public IndexTypeFactory {
 }  // namespace
 
 namespace arangodb {
+namespace helpers {
+
+IndexId extractId(velocypack::Slice slice) noexcept {
+  auto id = IndexId::none();
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    return id;
+  }
+  auto value = slice.get(StaticStrings::IndexId);
+  if (value.isNumber()) {
+    id = IndexId{value.getNumber<IndexId::BaseType>()};
+  } else if (value.isString()) {
+    IndexId::BaseType base;
+    if (absl::SimpleAtoi(value.stringView(), &base)) {
+      id = IndexId{base};
+    }
+  }
+  return id;
+}
+
+std::string_view extractName(velocypack::Slice slice) noexcept {
+  if (ADB_UNLIKELY(!slice.isObject())) {
+    return {};
+  }
+  if (auto value = slice.get(StaticStrings::IndexName); value.isString()) {
+    return value.stringView();
+  }
+  return {};
+}
+
+}  // namespace helpers
 
 IndexTypeFactory::IndexTypeFactory(ArangodServer& server) : _server(server) {}
 
@@ -224,37 +258,25 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
   try {
     velocypack::ObjectBuilder b(&normalized);
-    auto idSlice = definition.get(StaticStrings::IndexId);
-    uint64_t id = 0;
-
-    if (idSlice.isNumber()) {
-      id = idSlice.getNumericValue<uint64_t>();
-    } else if (idSlice.isString()) {
-      id = basics::StringUtils::uint64(idSlice.copyString());
+    auto const id = helpers::extractId(definition);
+    if (id.isSet()) {
+      absl::AlphaNum toStr{id.id()};
+      normalized.add(StaticStrings::IndexId, velocypack::Value{toStr.Piece()});
     }
 
-    if (id) {
-      normalized.add(StaticStrings::IndexId,
-                     velocypack::Value(std::to_string(id)));
-    }
+    std::string name{helpers::extractName(definition)};
 
-    auto nameSlice = definition.get(StaticStrings::IndexName);
-    std::string name;
-
-    if (nameSlice.isString() && (nameSlice.getStringLength() != 0)) {
-      name = nameSlice.copyString();
-    } else {
-      // we should set the name for special types explicitly elsewhere, but just
-      // in case...
-      if (Index::type(type.copyString()) ==
-          Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    if (name.empty()) {
+      // we should set the name for special types explicitly elsewhere,
+      // but just in case...
+      if (auto t = Index::type(type.stringView());
+          t == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         name = StaticStrings::IndexNamePrimary;
-      } else if (Index::type(type.copyString()) ==
-                 Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      } else if (t == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
         name = StaticStrings::IndexNameEdge;
       } else {
         // generate a name
-        name = "idx_" + std::to_string(TRI_HybridLogicalClock());
+        name = absl::StrCat("idx_", TRI_HybridLogicalClock());
       }
     }
 
@@ -332,34 +354,27 @@ IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "expecting object for index definition");
   }
-
-  IndexId iid = IndexId::none();
-  auto value = info.get(StaticStrings::IndexId);
-
-  if (value.isString()) {
-    iid = IndexId{basics::StringUtils::uint64(value.copyString())};
-  } else if (value.isNumber()) {
-    iid = IndexId{basics::VelocyPackHelper::getNumericValue<IndexId::BaseType>(
-        info, StaticStrings::IndexId.c_str(), 0)};
-  } else if (!generateKey) {
+  auto const id = helpers::extractId(info);
+  if (id.isSet()) {
+    return id;
+  }
+  if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "cannot restore index without index identifier");
   }
-
-  if (iid.empty() && !isClusterConstructor) {
+  if (!isClusterConstructor) {
     // Restore is not allowed to generate an id
     VPackSlice type = info.get(StaticStrings::IndexType);
     // dont generate ids for indexes of type "primary"
     // id 0 is expected for primary indexes
     if (!type.isString() || !type.isEqualString("primary")) {
       TRI_ASSERT(generateKey);
-      iid = Index::generateId();
+      return Index::generateId();
     }
   }
-
-  return iid;
+  return IndexId::none();
 }
 
 Result IndexFactory::validateFieldsDefinition(VPackSlice definition,
