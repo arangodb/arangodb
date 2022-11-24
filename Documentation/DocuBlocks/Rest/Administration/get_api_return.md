@@ -43,9 +43,6 @@ The CPU architecture, i.e. *64bit*
 @RESTSTRUCT{asan,version_details_struct,string,optional,}
 has this been compiled with the asan address sanitizer turned on? (should be false)
 
-@RESTSTRUCT{asm-crc32,version_details_struct,string,optional,}
-do we have assembler implemented CRC functions?
-
 @RESTSTRUCT{assertions,version_details_struct,string,optional,}
 do we have assertions compiled in (=> developer version)
 
