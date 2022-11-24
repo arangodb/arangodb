@@ -502,7 +502,7 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
   std::atomic_uint64_t _cleanupTimeNum{0};
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
   std::atomic_uint64_t _consolidationTimeNum{0};
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
