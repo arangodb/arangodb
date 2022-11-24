@@ -483,21 +483,22 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--database.wait-for-sync",
-      "default wait-for-sync behavior, can be overwritten "
-      "when creating a collection",
+      "The default waitForSync behavior. Can be overwritten when creating a "
+      "collection.",
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // the following option was obsoleted in 3.9
-  options->addObsoleteOption("--database.force-sync-properties",
-                             "force syncing of collection properties to disk, "
-                             "will use waitForSync value of collection when "
-                             "turned off",
-                             false);
+  options->addObsoleteOption(
+      "--database.force-sync-properties",
+      "Force syncing of collection properties to disk after creating a "
+      "collection or updating its properties. Otherwise, let the waitForSync "
+      "property of each collection determine it.",
+      false);
 
   options->addOption(
       "--database.ignore-datafile-errors",
-      "load collections even if datafiles may contain errors",
+      "Load collections even if datafiles may contain errors.",
       new BooleanParameter(&_ignoreDatafileErrors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -513,7 +514,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.io-heartbeat",
-                  "perform IO heartbeat to test underlying volume",
+                  "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
