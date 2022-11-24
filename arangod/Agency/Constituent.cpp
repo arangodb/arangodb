@@ -654,7 +654,7 @@ void Constituent::run() {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
       LOG_TOPIC("29175", INFO, Logger::AGENCY)
-          << "Setting role to follower  in term " << _term;
+          << "Setting role to follower in term " << _term;
       _role = FOLLOWER;
     }
 
