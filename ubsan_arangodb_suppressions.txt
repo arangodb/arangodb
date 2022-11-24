@@ -30,4 +30,4 @@ pointer-overflow:3rdParty/lz4/lib/lz4.c
 
 # Should be fixed in s2, not really affect as memcpy(null, null, 0)
 # https://github.com/google/s2geometry/issues/283
-nullability-arg:s2/util/gtl/compact_array.h
+nullability-arg:3rdParty/s2geometry/0e7b146/src/s2/util/gtl/compact_array.h

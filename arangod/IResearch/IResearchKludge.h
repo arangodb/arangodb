@@ -36,6 +36,8 @@
 namespace arangodb::iresearch::kludge {
 
 inline constexpr char kNestedDelimiter = '\2';
+inline constexpr char kTypeDelimiter = '\0';
+inline constexpr char kAnalyzerDelimiter = '\1';
 
 #ifdef USE_ENTERPRISE
 bool isNestedField(irs::string_ref name) noexcept;
