@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -168,7 +169,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
 
-  std::unordered_map<IndexId, std::vector<std::string>> _trackedCacheRefills;
+  containers::FlatHashMap<IndexId, std::vector<std::string>>
+      _trackedCacheRefills;
 
   bool _usageLocked;
   bool _exclusiveWrites;

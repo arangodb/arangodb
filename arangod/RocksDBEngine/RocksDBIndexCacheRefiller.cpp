@@ -36,6 +36,8 @@
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <chrono>
+
 using namespace arangodb;
 
 DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
@@ -93,6 +95,7 @@ void RocksDBIndexCacheRefiller::trackIndexCacheRefill(
     } else {
       // entry for particular index id already existed
       auto& target = (*it).second;
+      TRI_ASSERT(!target.empty());
       size_t minSize = target.size() + n;
       size_t newCapacity = std::max(size_t(8), target.capacity());
       while (newCapacity < minSize) {
@@ -185,7 +188,9 @@ void RocksDBIndexCacheRefiller::run() {
       }
 
       CONDITION_LOCKER(guard, _condition);
-      guard.wait();
+      if (!isStopping()) {
+        guard.wait(std::chrono::microseconds(10'000'000));
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("443da", ERR, Logger::ENGINES)
           << "caught exception in RocksDBIndexCacheRefiller: " << ex.what();
