@@ -3,6 +3,15 @@ v3.10.2 (XXXX-XX-XX)
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution, which is
+  not available on DB-servers in a cluster, and also isn't necessarily available
+  for regular queries on single servers (a V8 context is only available if a
+  query was executed inside Foxx or from inside a JS transaction, but not
+  otherwise).
+
 * Removed more assertions from cluster rebalance js test that obligated the
   rebalance plan to always have moves, but there were cases in which all there
   are none.
@@ -36,6 +45,9 @@ v3.10.2 (XXXX-XX-XX)
 
 v3.10.1 (2022-11-04)
 --------------------
+
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
 
 * Updated OpenSSL to 1.1.1s.
 
