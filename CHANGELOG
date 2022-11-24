@@ -35,6 +35,9 @@ v3.10.2 (XXXX-XX-XX)
 v3.10.1 (2022-11-04)
 --------------------
 
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
+
 * Updated OpenSSL to 1.1.1s.
 
 * Solve a case of excessive memory consumption in certain AQL queries with IN
