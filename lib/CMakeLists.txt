@@ -214,6 +214,7 @@ target_link_libraries(arango PUBLIC
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
+  absl::crc32c
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
