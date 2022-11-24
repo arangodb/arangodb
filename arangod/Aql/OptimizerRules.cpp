@@ -4513,19 +4513,23 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           auto p = previous;
           while (p != nullptr) {
             switch (p->getType()) {
-              case ExecutionNode::REMOTE:
+              case ExecutionNode::REMOTE: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
                 auto col = getCollection(p);
-                if (col->numberOfShards() > 1) {
+                if (col->numberOfShards() > 1 ||
+                    (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;
                 }
-              } break;
-              case ExecutionNode::TRAVERSAL:
+                break;
+              }
+              case ExecutionNode::TRAVERSAL: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
                 auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
                 auto collections = viewNode.collections();
@@ -4537,7 +4541,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                   hasFoundMultipleShards =
                       collections.front().get().numberOfShards() > 1;
                 }
-              } break;
+                break;
+              }
               default:
                 break;
             }

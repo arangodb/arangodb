@@ -28,12 +28,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ const isCluster = require("@arangodb/cluster").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerCountTestSuite () {
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
@@ -690,10 +690,6 @@ function optimizerDoubleCollectTestSuite() {
     },
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerCountTestSuite);
 jsunity.run(optimizerCountWriteTestSuite);
