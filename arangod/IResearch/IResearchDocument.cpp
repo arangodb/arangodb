@@ -847,7 +847,7 @@ void FieldIterator<IndexMetaStruct>::next() {
 // --SECTION--                                DocumentPrimaryKey implementation
 // ----------------------------------------------------------------------------
 
-/* static */ irs::string_ref const& DocumentPrimaryKey::PK() noexcept {
+/* static */ std::string_view DocumentPrimaryKey::PK() noexcept {
   return PK_COLUMN;
 }
 

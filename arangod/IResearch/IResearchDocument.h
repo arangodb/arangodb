@@ -258,7 +258,7 @@ class FieldIterator {
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
 struct DocumentPrimaryKey {
-  static irs::string_ref const& PK() noexcept;  // stored primary key column
+  static std::string_view PK() noexcept;  // stored primary key column
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief encodes a specified PK value
