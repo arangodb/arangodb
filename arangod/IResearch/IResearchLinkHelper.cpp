@@ -698,7 +698,7 @@ namespace iresearch {
     IResearchViewStoredValues const* storedValues, /* = nullptr */
     bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
     velocypack::Slice idSlice, /* = velocypack::Slice()*/
-    std::string_ref collectionName /*= irs::string_ref::NIL*/) {
+    irs::string_ref collectionName /*= irs::string_ref::NIL*/) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid output buffer provided for arangosearch link normalized "
