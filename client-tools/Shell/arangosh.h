@@ -50,9 +50,10 @@ using ArangoshFeatures = TypeList<
     EncryptionFeature,
 #endif
     ShellConsoleFeature, HttpEndpointProvider, ConfigFeature, LoggerFeature,
-    FileSystemFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
-    SslFeature, V8ShellFeaturePhase, ShellFeature, V8PlatformFeature,
-    V8ShellFeature, LanguageFeature, V8SecurityFeature, TempFeature>;
+    OptionsCheckFeature, FileSystemFeature, RandomFeature, ShellColorsFeature,
+    ShutdownFeature, SslFeature, V8ShellFeaturePhase, ShellFeature,
+    V8PlatformFeature, V8ShellFeature, LanguageFeature, V8SecurityFeature,
+    TempFeature>;
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;
 

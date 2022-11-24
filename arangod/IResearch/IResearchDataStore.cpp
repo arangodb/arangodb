@@ -1235,7 +1235,8 @@ Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression) {
+    irs::type_info::type_id primarySortCompression,
+    irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1319,8 +1320,8 @@ Result IResearchDataStore::initDataStore(
 
   if (pathExists) {
     try {
-      _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory));
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                       nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
@@ -1440,7 +1441,8 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                     nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {
@@ -1676,8 +1678,8 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 
     TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
-    auto ptr = irs::memory::make_unique<IResearchTrxState>(
-        std::move(linkLock), *(_dataStore._writer));
+    auto ptr = std::make_unique<IResearchTrxState>(std::move(linkLock),
+                                                   *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
@@ -2101,9 +2103,9 @@ void IResearchDataStore::initClusterMetrics() const {
 ///        <DatabasePath>/<IResearchLink::type()>-<link id>
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                IResearchDataStore const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       IResearchDataStore const& link) {
+  std::filesystem::path dataPath(dbPathFeature.directory());
 
   dataPath /= "databases";
   dataPath /= "database-";

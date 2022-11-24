@@ -40,7 +40,6 @@ class Manager;
 }  // namespace cache
 
 class LogicalCollection;
-class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
 class LocalDocumentId;
@@ -115,10 +114,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites readOwnWrites) const override;
 
   Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                 velocypack::Slice newDocument,

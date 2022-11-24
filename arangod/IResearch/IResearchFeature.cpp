@@ -94,6 +94,11 @@ using namespace std::chrono_literals;
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
               "Number of arangosearch links/indexes currently out of sync");
 
+#ifdef USE_ENTERPRISE
+DECLARE_GAUGE(arangodb_search_columns_cache_size, int64_t,
+              "ArangoSearch columns cache usage in bytes");
+#endif
+
 namespace arangodb::aql {
 class Query;
 }  // namespace arangodb::aql
@@ -166,6 +171,7 @@ std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
 std::string const FAIL_ON_OUT_OF_SYNC(
     "--arangosearch.fail-queries-on-out-of-sync");
 std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
+std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
 
 aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
                         std::span<aql::AqlValue const>) {
@@ -472,7 +478,7 @@ bool upgradeSingleServerArangoSearchView0_1(
       return false;  // definition generation failure
     }
 
-    irs::utf8_path dataPath;
+    std::filesystem::path dataPath;
 
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
@@ -485,7 +491,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    dataPath = irs::utf8_path(dbPathFeature.directory());
+    dataPath = std::filesystem::path(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
@@ -886,7 +892,13 @@ IResearchFeature::IResearchFeature(Server& server)
       _threads(0),
       _threadsLimit(0),
       _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_search_num_out_of_sync_links{})) {
+          arangodb_search_num_out_of_sync_links{}))
+#ifdef USE_ENTERPRISE
+      ,
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{}))
+#endif
+{
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -1009,7 +1021,7 @@ sensible number based on the number of cores in the system.)");
 
   options
       ->addOption(FAIL_ON_OUT_OF_SYNC,
-                  "Whether or not retrieval queries on out-of-sync "
+                  "Whether retrieval queries on out-of-sync "
                   "View links and inverted indexes should fail.",
                   new options::BooleanParameter(&_failQueriesOnOutOfSync))
       .setIntroducedIn(30904)
@@ -1019,6 +1031,21 @@ out-of-sync links/indexes fail with the error 'collection/view is out of sync'
 
 If set to `false`, queries on out-of-sync links/indexes are answered normally,
 but the returned data may be incomplete.)");
+
+#ifdef USE_ENTERPRISE
+  options
+      ->addOption(
+          CACHE_LIMIT,
+          "The limit (in bytes) for ArangoSearch columns cache "
+          "(0 = no caching).",
+          new options::UInt64Parameter(&_columnsCacheLimit),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30905);
+#endif
 }
 
 void IResearchFeature::validateOptions(
@@ -1166,6 +1193,11 @@ void IResearchFeature::start() {
         << "] commit thread(s), "
         << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads
         << "] consolidation thread(s)";
+
+#ifdef USE_ENTERPRISE
+    LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch columns cache limit: " << _columnsCacheLimit;
+#endif
 
     {
       std::unique_lock lock{_startState->mtx};
@@ -1320,6 +1352,28 @@ void IResearchFeature::registerRecoveryHelper() {
                      res.errorMessage()));
   }
 }
+
+#ifdef USE_ENTERPRISE
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+int64_t IResearchFeature::columnsCacheUsage() const noexcept {
+  return _columnsCacheMemoryUsed.load();
+}
+#endif
+bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
+  bool done = false;
+  int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
+  do {
+    const auto newValue = current + diff;
+    if (newValue <= static_cast<int64_t>(_columnsCacheLimit)) {
+      TRI_ASSERT(newValue >= 0);
+      done = _columnsCacheMemoryUsed.compare_exchange_weak(current, newValue);
+    } else {
+      return false;
+    }
+  } while (!done);
+  return true;
+}
+#endif
 
 template<typename Engine, typename std::enable_if_t<
                               std::is_base_of_v<StorageEngine, Engine>, int>>

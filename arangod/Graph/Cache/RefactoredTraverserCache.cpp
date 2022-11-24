@@ -42,7 +42,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>

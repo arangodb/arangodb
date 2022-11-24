@@ -74,7 +74,6 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -497,7 +496,54 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
   auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
 
-  // Step 1. Create new index object
+  {
+    // Step 1. Check for existing matching index
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
+    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
+      // We already have this index.
+      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
+        // special handling for TTL indexes
+        // if there is exactly the same index present, we return it
+        if (!existingIdx->matchesDefinition(info)) {
+          // if there is another TTL index already, we make things abort here
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "there can only be one ttl index per collection");
+        }
+      }
+      // same index already exists. return it
+      created = false;
+      return existingIdx;
+    }
+
+    auto const id = helpers::extractId(info);
+    auto const name = helpers::extractName(info);
+
+    // check all existing indexes for id/new conflicts
+    for (auto const& other : _indexes) {
+      if (other->id() == id || other->name() == name) {
+        // definition shares an identifier with an existing index with a
+        // different definition
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        VPackBuilder builder;
+        other->toVelocyPack(
+            builder, static_cast<std::underlying_type<Index::Serialize>::type>(
+                         Index::Serialize::Basics));
+        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
+            << "attempted to create index '" << info.toJson()
+            << "' but found conflicting index '" << builder.slice().toJson()
+            << "'";
+#endif
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                                       "duplicate value for `" +
+                                           StaticStrings::IndexId + "` or `" +
+                                           StaticStrings::IndexName + "`");
+      }
+    }
+  }
+
+  // Step 2. Create new index object
   std::shared_ptr<Index> newIdx;
   try {
     newIdx = engine.indexFactory().prepareIndexFromSlice(
@@ -519,50 +565,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
       TRI_ASSERT(false);
     }
   });
-
-  {
-    // Step 2. Check for existing matching index
-    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-
-    if (auto existingIdx = findIndex(info, _indexes); existingIdx != nullptr) {
-      // We already have this index.
-      if (existingIdx->type() == arangodb::Index::TRI_IDX_TYPE_TTL_INDEX) {
-        // special handling for TTL indexes
-        // if there is exactly the same index present, we return it
-        if (!existingIdx->matchesDefinition(info)) {
-          // if there is another TTL index already, we make things abort here
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_BAD_PARAMETER,
-              "there can only be one ttl index per collection");
-        }
-      }
-      // same index already exists. return it
-      created = false;
-      return existingIdx;
-    }
-
-    // check all existing indexes for id/new conflicts
-    for (auto const& other : _indexes) {
-      if (other->id() == newIdx->id() || other->name() == newIdx->name()) {
-        // definition shares an identifier with an existing index with a
-        // different definition
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        VPackBuilder builder;
-        other->toVelocyPack(
-            builder, static_cast<std::underlying_type<Index::Serialize>::type>(
-                         Index::Serialize::Basics));
-        LOG_TOPIC("29d1c", WARN, Logger::ENGINES)
-            << "attempted to create index '" << info.toJson()
-            << "' but found conflicting index '" << builder.slice().toJson()
-            << "'";
-#endif
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-                                       "duplicate value for `" +
-                                           StaticStrings::IndexId + "` or `" +
-                                           StaticStrings::IndexName + "`");
-      }
-    }
-  }
 
   // until here we have been completely read only.
   // modifications start now...
@@ -1149,34 +1151,6 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 
   return lookupDocumentVPack(trx, documentId, cb, /*withCache*/ true,
                              readOwnWrites);
-}
-
-// read using a local document id
-bool RocksDBCollection::readDocument(transaction::Methods* trx,
-                                     LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result,
-                                     ReadOwnWrites readOwnWrites) const {
-  ::ReadTimeTracker timeTracker(
-      _statistics._readWriteMetrics,
-      [](TransactionStatistics::ReadWriteMetrics& metrics,
-         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
-
-  bool ret = false;
-
-  if (documentId.isSet()) {
-    std::string* buffer = result.setManaged();
-    rocksdb::PinnableSlice ps(buffer);
-    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
-                                     /*fillCache*/ true, readOwnWrites);
-    if (res.ok()) {
-      if (ps.IsPinned()) {
-        buffer->assign(ps.data(), ps.size());
-      }  // else value is already assigned
-      ret = true;
-    }
-  }
-
-  return ret;
 }
 
 Result RocksDBCollection::insert(transaction::Methods& trx,

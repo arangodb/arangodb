@@ -134,19 +134,17 @@ bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
     return false;
   }
 
-  if (_includeAllFields != rhs._includeAllFields) {
-    return false;
-  }
-
-  if (_trackListPositions != rhs._trackListPositions) {
-    return false;
-  }
-
-  if (_storeValues != rhs._storeValues) {
+  if (_includeAllFields != rhs._includeAllFields ||
+      _trackListPositions != rhs._trackListPositions ||
+      _storeValues != rhs._storeValues) {
     return false;
   }
 
 #ifdef USE_ENTERPRISE
+  if (_cache != rhs._cache) {
+    return false;
+  }
+
   if (_hasNested != rhs._hasNested) {
     return false;
   }
@@ -360,6 +358,23 @@ bool FieldMeta::init(
       _storeValues = itr->second;
     }
   }
+
+#ifdef USE_ENTERPRISE
+  // optional caching
+  {
+    auto const field = slice.get(StaticStrings::kCacheField);
+    mask->_cache = !field.isNone();
+    if (!mask->_cache) {
+      _cache = defaults._cache;
+    } else {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kCacheField;
+        return false;
+      }
+      _cache = field.getBool();
+    }
+  }
+#endif
 
   // .............................................................................
   // process fields last since children inherit from parent
@@ -616,6 +631,14 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     builder.add("storeValues", velocypack::Value(kPolicyToName[policyIdx]));
   }
 
+#ifdef USE_ENTERPRISE
+  if (((!ignoreEqual && _cache) ||
+       (ignoreEqual && _cache != ignoreEqual->_cache)) &&
+      (!mask || mask->_cache)) {
+    builder.add(StaticStrings::kCacheField, velocypack::Value(_cache));
+  }
+#endif
+
   return true;
 }
 
@@ -649,21 +672,17 @@ bool IResearchLinkMeta::operator==(
     return false;
   }
 
-  if (_sort != other._sort) {
+  if (_sort != other._sort || _storedValues != other._storedValues ||
+      _sortCompression != other._sortCompression ||
+      _version != other._version) {
     return false;
   }
 
-  if (_storedValues != other._storedValues) {
+#ifdef USE_ENTERPRISE
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache) {
     return false;
   }
-
-  if (_sortCompression != other._sortCompression) {
-    return false;
-  }
-
-  if (_version != other._version) {
-    return false;
-  }
+#endif
 
   // Intentionally do not compare _collectioName here.
   // It should be filled equally during upgrade/creation
@@ -719,6 +738,31 @@ bool IResearchLinkMeta::init(
       return false;
     }
   }
+
+#ifdef USE_ENTERPRISE
+  {
+    auto const field = slice.get(StaticStrings::kPrimarySortCacheField);
+    mask->_sortCache = !field.isNone();
+    if (mask->_sortCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kPrimarySortCacheField;
+        return false;
+      }
+      _sortCache = field.getBoolean();
+    }
+  }
+  {
+    auto const field = slice.get(StaticStrings::kCachePrimaryKeyField);
+    mask->_pkCache = !field.isNone();
+    if (mask->_pkCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kCachePrimaryKeyField;
+        return false;
+      }
+      _pkCache = field.getBool();
+    }
+  }
+#endif
 
   {
     // Optional version
@@ -957,6 +1001,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
                  columnCompressionToString(_sortCompression));
   }
 
+#ifdef USE_ENTERPRISE
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCache) &&
+      ((!ignoreEqual && _sortCache) ||
+       (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
+    builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
+  }
+#endif
+
   if (writeAnalyzerDefinition && (!mask || mask->_version)) {
     builder.add(StaticStrings::VersionField, VPackValue(_version));
   }
@@ -979,6 +1031,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
                                    // value to match stored definition
     addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
+
+#ifdef USE_ENTERPRISE
+  if (writeAnalyzerDefinition && (!mask || mask->_pkCache) &&
+      ((!ignoreEqual && _pkCache) ||
+       (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
+    builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
+  }
+#endif
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
 }
