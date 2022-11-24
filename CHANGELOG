@@ -4,6 +4,12 @@ devel
 * Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
   could erroneously reduce the number of results of the containing (sub)query.
 
+* Make the deprecated `--server.disable-authentication-unix-sockets` and
+  `--server.disable-authentication` startup options obsolete. They were
+  deprecated in v3.0 and mapped to `--server.authentication` and
+  `--server.authentication-unix-sockets`, which made them do the opposite
+  of what their names suggest.
+
 * Removed more assertions from cluster rebalance js test that obligated the 
   rebalance plan to always have moves, but there were cases in which all 
   there are none.
