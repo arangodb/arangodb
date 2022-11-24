@@ -154,7 +154,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
             std::move(forwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextForward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     SingleServerBaseProviderOptions backwardOpts(
         _tmpVarBackward,
@@ -162,7 +162,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
             std::move(backwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextBackward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     finder = new KShortestPathsFinder<
         SingleServerProvider<SingleServerProviderStep>>(
@@ -374,7 +374,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
             std::move(forwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextForward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     SingleServerBaseProviderOptions backwardOpts(
         _tmpVarBackward,
@@ -382,7 +382,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
             std::move(backwardUsedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContextBackward.get(), {}, _emptyShardMap,
-        _vertexProjections, _edgeProjections);
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
 
     forwardOpts.setWeightEdgeCallback(
         [weightAttribute = usedWeightAttribute, usedDefaultWeight](

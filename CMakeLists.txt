@@ -975,6 +975,20 @@ function(add_cxx_flags_if_supported var)
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
 
+function(add_compile_warnings_flags)
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      add_compile_options(/WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        add_compile_options(-Wno-unused-command-line-argument)
+      endif()
+    else ()
+      add_compile_options(-Werror -Wno-error=deprecated-declarations)
+    endif ()
+  endif ()
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()
@@ -1474,10 +1488,12 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #   endforeach ()
 # endif ()
 
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
 if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
   add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()

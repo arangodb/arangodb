@@ -360,7 +360,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
   isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;
-  unsigned finished_dims = 2 * dimensions;
+  unsigned finished_dims = static_cast<unsigned>(2 * dimensions);
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
     auto min_bit = min_reader.next().value_or(Bit::ZERO);

@@ -22,7 +22,7 @@ http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
 active_failover parallelity=3 single
-agency priority=350 parallelity=3 single -- --dumpAgencyOnError true
+agency priority=350 parallelity=4 single -- --dumpAgencyOnError true
 agency-restart priority=250 parallelity=3 single
 arangobench parallelity=2 priority=1000 single
 arangosh single
@@ -43,10 +43,10 @@ shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
 
-shell_client_aql priority=500 single suffix=http
-shell_client_aql priority=500 single suffix=http2 -- --http2 true
-shell_client_aql priority=500 single suffix=vst -- --vst true
-shell_client_aql priority=500 single enterprise suffix=encrypt -- --encryptionAtRest true
+shell_client_aql priority=250  single suffix=http
+shell_client_aql priority=500  single suffix=http2 -- --http2 true
+shell_client_aql priority=750  single suffix=vst -- --vst true
+shell_client_aql priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
@@ -81,7 +81,7 @@ recovery_cluster priority=2000 cluster buckets=8 -- --test search
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+#shell_client_replication2_recovery priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests

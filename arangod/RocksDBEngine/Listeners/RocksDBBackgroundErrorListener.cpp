@@ -27,6 +27,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <string_view>
+
 namespace arangodb {
 
 RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() = default;
@@ -39,7 +41,7 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(
   }
 
   if (!_called.exchange(true)) {
-    char const* operation = "unknown";
+    std::string_view operation = "unknown";
     switch (reason) {
       case rocksdb::BackgroundErrorReason::kFlush: {
         operation = "flush";
@@ -85,7 +87,7 @@ void RocksDBBackgroundErrorListener::OnErrorRecoveryCompleted(
     rocksdb::Status /* old_bg_error */) {
   _called.store(false, std::memory_order_relaxed);
 
-  LOG_TOPIC("8ff56", WARN, Logger::ROCKSDB)
+  LOG_TOPIC("8ff56", INFO, Logger::ROCKSDB)
       << "RocksDB resuming operations after background error";
 }
 
