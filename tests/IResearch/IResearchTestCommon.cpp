@@ -71,12 +71,8 @@ bool TestAnalyzer::normalize(std::string_view args, std::string& definition) {
 
 auto TestAnalyzer::make(std::string_view args) -> ptr {
   auto slice = arangodb::iresearch::slice(args);
-  if (slice.isNull()) {
-    throw std::exception();
-  }
-  if (slice.isNone()) {
-    return nullptr;
-  }
+  if (slice.isNull()) throw std::exception();
+  if (slice.isNone()) return nullptr;
   return std::make_unique<TestAnalyzer>();
 }
 

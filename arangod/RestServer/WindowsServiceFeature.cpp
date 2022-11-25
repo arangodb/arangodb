@@ -527,7 +527,7 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
 void WindowsServiceFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--start-service", "used to start as windows service",
+      "--start-service", "Start the server as a Windows service.",
       new BooleanParameter(&_startAsService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -535,7 +535,7 @@ void WindowsServiceFeature::collectOptions(
                                    arangodb::options::Flags::Command));
 
   options->addOption(
-      "--install-service", "used to register a service with windows",
+      "--install-service", "Register the server as a service in Windows.",
       new BooleanParameter(&_installService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -543,7 +543,7 @@ void WindowsServiceFeature::collectOptions(
                                    arangodb::options::Flags::Command));
 
   options->addOption(
-      "--uninstall-service", "used to unregister a service with windows",
+      "--uninstall-service", "Unregister the server as a service in Windows.",
       new BooleanParameter(&_unInstallService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -552,8 +552,8 @@ void WindowsServiceFeature::collectOptions(
 
   options->addOption(
       "--uninstall-service-force",
-      "specify to ovrerride the protection to uninstall the service of another "
-      "installation",
+      "Override the protection to uninstall the service of another "
+      "installation.",
       new BooleanParameter(&_forceUninstall),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -561,7 +561,7 @@ void WindowsServiceFeature::collectOptions(
                                    arangodb::options::Flags::Command));
 
   options->addOption(
-      "--servicectl-start", "command an already registered service to start",
+      "--servicectl-start", "Start an already registered service.",
       new BooleanParameter(&_startService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -570,7 +570,7 @@ void WindowsServiceFeature::collectOptions(
 
   options->addOption(
       "--servicectl-start-wait",
-      "command an already registered service to start and wait till it's up",
+      "Start an already registered service and wait until it is up.",
       new BooleanParameter(&_startWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -578,7 +578,7 @@ void WindowsServiceFeature::collectOptions(
                                    arangodb::options::Flags::Command));
 
   options->addOption(
-      "--servicectl-stop", "command an already registered service to stop",
+      "--servicectl-stop", "Stop an already registered service.",
       new BooleanParameter(&_stopService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -587,7 +587,7 @@ void WindowsServiceFeature::collectOptions(
 
   options->addOption(
       "--servicectl-stop-wait",
-      "command an already registered service to stop and wait till it's gone",
+      "Stop an already registered service and wait until it is gone.",
       new BooleanParameter(&_stopWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
