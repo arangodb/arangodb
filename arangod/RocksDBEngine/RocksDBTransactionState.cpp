@@ -167,7 +167,6 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }
-
   auto self =
       std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
   return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
@@ -177,6 +176,12 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
       ++self->statistics()._transactionsCommitted;
     } else {
       // what if this fails?
+      // TODO(MBkkt) What if we already committed some follower (other leaders?)
+      //  And then we going to already committed transaction and ask abort it?
+      //  It just doesn't work really correctly, at least because
+      //  iresearch cannot abort already committed transaction.
+      //  For such follower you need to create transaction with rollback
+      //  operations, it same as reverting intermediate commits.
       std::ignore = self->abortTransaction(activeTrx);  // deletes trx
     }
     TRI_ASSERT(!self->_cacheTx);

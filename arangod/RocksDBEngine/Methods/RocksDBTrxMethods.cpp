@@ -36,7 +36,7 @@
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState const* state,
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
                                      IRocksDBTransactionCallback& callback,
                                      rocksdb::TransactionDB* db)
     : RocksDBTrxBaseMethods(state, callback, db) {
