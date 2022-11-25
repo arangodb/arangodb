@@ -35,6 +35,5 @@ TEST(Assertions, tri_assert) {
 
 TEST(Assertions, adb_prod_assert) {
   EXPECT_EXIT((ADB_PROD_ASSERT(false) << "BOOM"),
-              testing::KilledBySignal(SIGABRT),
-              "BOOM");
+              testing::KilledBySignal(SIGABRT), "BOOM");
 }
