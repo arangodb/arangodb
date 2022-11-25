@@ -24,7 +24,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/CrashHandler.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
