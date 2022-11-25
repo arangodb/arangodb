@@ -437,27 +437,44 @@ TtlFeature::~TtlFeature() { shutdownThread(); }
 void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("ttl", "TTL index options");
 
-  options->addOption(
-      "ttl.frequency",
-      "frequency (in milliseconds) for the TTL background thread invocation. "
-      "a value of 0 turns the TTL background thread off entirely",
-      new UInt64Parameter(&_properties.frequency));
+  options
+      ->addOption(
+          "--ttl.frequency",
+          "The frequency (in milliseconds) for the TTL background thread "
+          "invocation (0 = turn the TTL background thread off entirely).",
+          new UInt64Parameter(&_properties.frequency))
+      .setLongDescription(R"(The lower this value, the more frequently the TTL
+background thread kicks in and scans all available TTL indexes for expired
+documents, and the earlier the expired documents are actually removed.)");
 
-  options->addOption(
-      "ttl.max-total-removes",
-      "maximum number of documents to remove per invocation of the TTL thread",
-      new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
-                          /*minValue*/ 1));
+  options
+      ->addOption("--ttl.max-total-removes",
+                  "The maximum number of documents to remove per invocation of "
+                  "the TTL thread.",
+                  new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
+                                      /*minValue*/ 1))
+      .setLongDescription(R"(In order to avoid "random" load spikes by the
+background thread suddenly kicking in and removing a lot of documents at once,
+you can cap the number of to-be-removed documents per thread invocation.
 
-  options->addOption(
-      "ttl.max-collection-removes",
-      "maximum number of documents to remove per collection",
-      new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
-                          /*minValue*/ 1));
+The TTL background thread goes back to sleep once it has removed the configured
+number of documents in one iteration. If more candidate documents are left for
+removal, they are removed in subsequent runs of the background thread.)");
+
+  options
+      ->addOption(
+          "--ttl.max-collection-removes",
+          "The maximum number of documents to remove per collection in each "
+          "invocation of the TTL thread.",
+          new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
+                              /*minValue*/ 1))
+      .setLongDescription(R"(You can configure this value separately from the
+total removal amount so that the per-collection time window for locking and
+potential write-write conflicts can be reduced.)");
 
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
-      "ttl.only-loaded-collection",
+      "--ttl.only-loaded-collection",
       "only consider already loaded collections for removal", false);
 }
 
