@@ -4,6 +4,11 @@ v3.10.2 (XXXX-XX-XX)
 * Add serverId parameter to _admin/log/level. Allows to forward the request to
   other servers.
 
+* Delay a MoveShard operation for leader change, until the old leader has
+  actually assumed its leadership and until the new leader is actually in sync.
+  This fixes a bug which could block a shard under certain circumstances. This
+  fixes BTS-1110.
+
 * Updated arangosync to v2.13.0.
 
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
