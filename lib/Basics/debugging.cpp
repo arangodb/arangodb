@@ -32,10 +32,10 @@
 
 #include "debugging.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
