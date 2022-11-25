@@ -412,13 +412,13 @@ function BaseChaosSuite(testOpts) {
               log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
             } else if (d >= 0.8) {
-              let o = opts(1);
               const limit = Math.floor(Math.random() * 200);
+              let o = opts(limit);
               log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
             } else if (d >= 0.7) {
-              let o = opts(1);
               const limit = Math.floor(Math.random() * 2000);
+              let o = opts(limit);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
             } else if (d >= 0.68) {
@@ -449,8 +449,8 @@ function BaseChaosSuite(testOpts) {
                 }
               }
             } else if (d >= 0.65) {
-              let o = opts(1);
               const limit = Math.floor(Math.random() * 10) + 1;
+              let o = opts(limit);
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
             } else if (d >= 0.25) {
