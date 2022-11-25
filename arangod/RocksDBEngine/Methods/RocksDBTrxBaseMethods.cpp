@@ -37,7 +37,7 @@
 using namespace arangodb;
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
-    RocksDBTransactionState const* state, IRocksDBTransactionCallback& callback,
+    RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
@@ -301,10 +301,12 @@ void RocksDBTrxBaseMethods::createTransaction() {
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
-  const_cast<RocksDBTransactionState*>(_state)->applyBeforeCommitCallbacks();
+  TRI_ASSERT(_state != nullptr);
+  _state->applyBeforeCommitCallbacks();
   auto r = doCommitImpl();
   if (r.ok()) {
-    const_cast<RocksDBTransactionState*>(_state)->applyAfterCommitCallbacks();
+    TRI_ASSERT(_state != nullptr);
+    _state->applyAfterCommitCallbacks();
   }
   return r;
 }

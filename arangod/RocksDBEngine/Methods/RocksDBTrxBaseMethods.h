@@ -37,7 +37,7 @@ struct IRocksDBTransactionCallback {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState const* state,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState* state,
                                  IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
