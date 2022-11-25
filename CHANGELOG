@@ -1,6 +1,8 @@
 devel
 -----
 
+* Deleted customizable Pregel (AIR) and Greenspun library
+
 * Updated arangosync to v2.13.0.
 
 * Make the deprecated `--server.disable-authentication-unix-sockets` and
