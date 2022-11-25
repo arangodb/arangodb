@@ -3,6 +3,11 @@ v3.9.6 (XXXX-XX-XX)
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
+* Delay a MoveShard operation for leader change, until the old leader has
+  actually assumed its leadership and until the new leader is actually in sync.
+  This fixes a bug which could block a shard under certain circumstances. This
+  fixes BTS-1110.
+
 * Updated arangosync to v2.13.0.
 
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
