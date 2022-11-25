@@ -90,15 +90,16 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "server connection");
 
   options->addOption("--server.database",
-                     "database name to use when connecting",
+                     "The database name to use when connecting.",
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
-                     "require authentication credentials when connecting (does "
-                     "not affect the server-side authentication settings)",
+                     "Require authentication credentials when connecting (does "
+                     "not affect the server-side authentication settings).",
                      new BooleanParameter(&_authentication));
 
-  options->addOption("--server.username", "username to use when connecting",
+  options->addOption("--server.username",
+                     "The username to use when connecting.",
                      new StringParameter(&_username));
 
   bool isArangosh = false;
@@ -110,12 +111,12 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   char const* endpointHelp;
   if (isArangosh) {
     endpointHelp =
-        "endpoint to connect to. Use 'none' to start without a server. "
+        "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://";
+        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://.";
   } else {
     endpointHelp =
-        "endpoint to connect to. Use 'none' to start without a server. "
+        "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
         "server endpoint, otherwise http+tcp:// or unix://";
   }
@@ -126,16 +127,16 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
 
   options->addOption("--server.password",
-                     "password to use when connecting. If not specified and "
-                     "authentication is required, the user will be prompted "
-                     "for a password",
+                     "The password to use when connecting. If not specified "
+                     "and authentication is required, the user is prompted for "
+                     "a password",
                      new StringParameter(&_password));
 
   if (isArangosh) {
     // this option is only available in arangosh
     options
         ->addOption("--server.force-json",
-                    "force to not use VelocyPack for easier debugging",
+                    "Force to not use VelocyPack for easier debugging.",
                     new BooleanParameter(&_forceJson),
                     arangodb::options::makeDefaultFlags(
                         arangodb::options::Flags::Uncommon))
@@ -147,41 +148,38 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
     // of the other client tools
     options->addOption(
         "--server.ask-jwt-secret",
-        "if this option is specified, the user will be prompted "
-        "for a JWT secret. This option is not compatible with "
-        "--server.username or --server.password. If specified, it will be used "
-        "for all "
-        "connections - even when a new connection to another server is "
-        "created",
+        "If enabled, you are prompted for a JWT secret. This option is not "
+        "compatible with --server.username and --server.password. "
+        "If specified, it is used for all connections - even if a new "
+        "connection to another server is created.",
         new BooleanParameter(&_askJwtSecret),
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
-        "if this option is specified, the jwt secret will be loaded "
-        "from the given file. This option is not compatible with "
-        "--server.ask-jwt-secret, --server.username or --server.password. "
-        "If specified, it will be used for all "
-        "connections - even when a new connection to another server is "
-        "created",
+        "If enabled, the JWT secret is loaded from the given file. This option "
+        "is not compatible with --server.ask-jwt-secret, --server.username and "
+        "--server.password. If specified, it is used for all connections - "
+        "even if a new connection to another server is created.",
         new StringParameter(&_jwtSecretFile),
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",
-                     "connection timeout in seconds",
+                     "The connection timeout (in seconds).",
                      new DoubleParameter(&_connectionTimeout));
 
-  options->addOption("--server.request-timeout", "request timeout in seconds",
+  options->addOption("--server.request-timeout",
+                     "The request timeout (in seconds).",
                      new DoubleParameter(&_requestTimeout));
 
   // note: the max-packet-size is used for all client tools that use the
   // SimpleHttpClient. fuerte does not use this
   options->addOption(
       "--server.max-packet-size",
-      "maximum packet size (in bytes) for client/server communication",
+      "The maximum packet size (in bytes) for client/server communication.",
       new UInt64Parameter(&_maxPacketSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -193,7 +191,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          &_sslProtocol, sslProtocols));
 #if _WIN32
   options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
       new UInt16Parameter(&_codePage),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
