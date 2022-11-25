@@ -293,60 +293,113 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("pregel", "Pregel jobs");
 
   options
-      ->addOption(
-          "--pregel.parallelism",
-          "default parallelism to use in a Pregel job if none is specified",
-          new SizeTParameter(&_defaultParallelism),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Dynamic,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      ->addOption("--pregel.parallelism",
+                  "The default parallelism to use in a Pregel job if none is "
+                  "specified.",
+                  new SizeTParameter(&_defaultParallelism),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(The default parallelism for a Pregel job is only
+used if you start a job without setting the `parallelism` attribute.
+
+Defaults to the number of available cores divided by 4. The result is limited to
+a value between 1 and 16.)");
 
   options
       ->addOption("--pregel.min-parallelism",
-                  "minimum parallelism usable in a Pregel job",
+                  "The minimum parallelism usable in a Pregel job.",
                   new SizeTParameter(&_minParallelism),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(Increasing the value of this option forces each
+Pregel job to run with at least this level of parallelism. In a cluster
+deployment, the limit applies per DB-Server.)");
 
   options
       ->addOption("--pregel.max-parallelism",
-                  "maximum parallelism usable in a Pregel job",
+                  "The maximum parallelism usable in a Pregel job.",
                   new SizeTParameter(&_maxParallelism),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(This option effectively limits the parallelism of
+each Pregel job to the specified value. In a cluster deployment, the limit
+applies per DB-Server.
+
+Defaults to the number of available cores.)");
 
   options
-      ->addOption("--pregel.memory-mapped-files",
-                  "use memory mapped files for storing Pregel temporary data "
-                  "(as opposed "
-                  "to storing in RAM) if nothing is specifed in a Pregel job",
-                  new BooleanParameter(&_useMemoryMaps),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      ->addOption(
+          "--pregel.memory-mapped-files",
+          "Whether to use memory mapped files for storing Pregel "
+          "temporary data (as opposed to storing it in RAM) by default.",
+          new BooleanParameter(&_useMemoryMaps),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(If set to `true`, Pregel jobs store their
+temporary data in disk-backed memory-mapped files. If set to `false`, the
+temporary data of Pregel jobs is buffered in main memory.
+
+Memory-mapped files are used by default. This has the advantage of a lower RAM
+utilization, which reduces the likelihood of out-of-memory situations. However,
+storing the files on disk requires a certain disk capacity, so that instead of
+running out of RAM, it is possible to run out of a disk space. Make sure to use
+a suitable storage location.
+
+You can override this option for each Pregel job by setting the `useMemoryMaps`
+attribute of the job.)");
 
   options
       ->addOption("--pregel.memory-mapped-files-location-type",
-                  "location for Pregel's temporary files",
+                  "The location for Pregel's temporary files.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_tempLocationType, ::tempLocationTypes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(You can configure the location for the
+memory-mapped files written by Pregel with this option. This option is only
+meaningful if you use memory-mapped files.
+
+The option can have one of the following values:
+
+- `temp-directory`: store memory-mapped files in the temporary directory, as
+  configured via `--temp.path`. If `--temp.path` is not set, the system's
+  temporary directory is used.
+- `database-directory`: store memory-mapped files in a separate directory
+  underneath the database directory.
+- `custom`: use a custom directory location for memory-mapped files. You can set
+  the location via the `--pregel.memory-mapped-files-custom-path` option.
+
+The default location for Pregel's memory-mapped files is the temporary directory 
+(`--temp.path`), which may not provide enough capacity for larger Pregel jobs.
+It may be more sensible to configure a custom directory for memory-mapped files
+and provide the necessary disk space there (`custom`). 
+Such custom directory can be mounted on ephemeral storage, as the files are only 
+needed temporarily. If a custom directory location is used, you need to specify 
+the actual location via the `--pregel.memory-mapped-files-custom-path`
+parameter.
+
+You can also use a subdirectory of the database directory as the storage
+location for the memory-mapped files (`--database.directory`). The database
+directory often provides a lot of disk space capacity, but when Pregel's
+temporary files are stored in there too, it has to provide enough capacity to
+store both the regular database data and the Pregel files.)");
 
   options
       ->addOption("--pregel.memory-mapped-files-custom-path",
@@ -357,7 +410,9 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(R"(If you use this option, you need to specify the
+storage directory location as an absolute path.)");
 }
 
 void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
