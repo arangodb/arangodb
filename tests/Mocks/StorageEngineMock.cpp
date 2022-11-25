@@ -2070,11 +2070,12 @@ arangodb::Result TransactionStateMock::beginTransaction(
 
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
+  applyBeforeCommitCallbacks();
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
   //  releaseUsage();
-
+  applyAfterCommitCallbacks();
   return arangodb::Result();
 }
 
