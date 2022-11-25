@@ -354,11 +354,14 @@ function BaseChaosSuite(testOpts) {
         };
 
         let c = db._collection(testOpts.collection);
-        const opts = () => {
+        const opts = (length) => {
           let result = {};
           if (testOpts.withIntermediateCommits) {
             if (Math.random() <= 0.5) {
               result.intermediateCommitCount = 7 + Math.floor(Math.random() * 10);
+              if (2 <= length && length <= result.intermediateCommitCount) {
+                result.intermediateCommitCount = length / 2;
+              }
             }
           }
           
@@ -404,17 +407,17 @@ function BaseChaosSuite(testOpts) {
               log("RUNNING TRUNCATE");
               c.truncate();
             } else if (d >= 0.9) {
-              let o = opts();
               let d = docs();
+              let o = opts(d.length);
               log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
             } else if (d >= 0.8) {
-              let o = opts();
+              let o = opts(1);
               const limit = Math.floor(Math.random() * 200);
               log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
             } else if (d >= 0.7) {
-              let o = opts();
+              let o = opts(1);
               const limit = Math.floor(Math.random() * 2000);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
@@ -446,13 +449,13 @@ function BaseChaosSuite(testOpts) {
                 }
               }
             } else if (d >= 0.65) {
-              let o = opts();
+              let o = opts(1);
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
             } else if (d >= 0.25) {
-              let o = opts();
               let d = docs();
+              let o = opts(d.length);
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               d = d.length === 1 ? d[0] : d;
               c.insert(d, o);
