@@ -26,7 +26,7 @@
 #include <sstream>
 
 namespace arangodb::debug {
-    struct AssertionConditionalStream {
+struct AssertionConditionalStream {
   bool condition{false};
   std::ostringstream stream;
   template<typename T>
@@ -40,4 +40,4 @@ namespace arangodb::debug {
   }
 };
 
-}
+}  // namespace arangodb::debug

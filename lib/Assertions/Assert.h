@@ -43,9 +43,7 @@
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
             ::arangodb::debug::AssertionLogger::assertionStringStream
 
-
-
-#else // Production
+#else  // Production
 
 #include "AssertionNoOpLogger.h"
 

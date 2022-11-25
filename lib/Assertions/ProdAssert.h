@@ -23,9 +23,11 @@
 
 #pragma once
 
-// Ensures that the macro ADB_PROD_ASSERT is defined. There are two possible modes
+// Ensures that the macro ADB_PROD_ASSERT is defined. There are two possible
+// modes
 //
-// * MAINTAINER_MODE -- in maintainer mode, when the condition in ADB_PROD_ASSERT
+// * MAINTAINER_MODE -- in maintainer mode, when the condition in
+// ADB_PROD_ASSERT
 //   is false, the program crashes using ArangoDB's CrashHandler and the string
 //   expression that follows the assertion is always evaluated regardless of
 //   whether the expression evaluates to false.
@@ -44,8 +46,7 @@
       ::arangodb::debug::AssertionConditionalLogger::assertionStringStream \
           .withCondition(expr)
 
-
-#else // Production
+#else  // Production
 
 #include "AssertionLogger.h"
 
