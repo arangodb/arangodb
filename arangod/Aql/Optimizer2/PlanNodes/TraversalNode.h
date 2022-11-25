@@ -27,7 +27,8 @@
 #include "Aql/Optimizer2/PlanNodeTypes/Variable.h"
 #include "Aql/Optimizer2/PlanNodeTypes/GraphOptions.h"
 
-#include "Inspection/VPackInspection.h"
+#include "Inspection/VPackWithErrorT.h"
+#include "Aql/Optimizer2/PlanNodeTypes/PostFilter.h"
 
 namespace arangodb::aql::optimizer2::nodes {
 /*
@@ -73,7 +74,7 @@ auto inspect(Inspector& f, GraphIndex& x) {
 struct TraversalNode : optimizer2::nodes::GraphNode {
   // inner structs
   optimizer2::types::TraverserOptions options;
-//  GraphIndex graphIndex;
+  //  GraphIndex graphIndex;
 
   // main
   std::optional<AttributeTypes::String> vertexId;
@@ -99,14 +100,11 @@ struct TraversalNode : optimizer2::nodes::GraphNode {
   std::optional<optimizer2::types::Expression> expression;
   std::optional<std::vector<optimizer2::types::Variable>> pruneVariables;
 
-  // filter
-  // TODO HINT: It seems that we have "expression" overlapping between
-  // postFilter and pruneExpression, see TraversalNode.cpp L488 & L505
-  // std::optional<optimizer2::types::Expression> expression;
-  std::optional<std::vector<optimizer2::types::Variable>> variables;
+  std::optional<optimizer2::types::PostFilter> postFilter;
 
   // variables
   std::optional<optimizer2::types::Variable> inVariable;
+  std::optional<optimizer2::types::Variable> pathOutVariable;
 
   // => [v,e,p]
   optimizer2::types::Variable pathOutVariable;
@@ -115,10 +113,10 @@ struct TraversalNode : optimizer2::nodes::GraphNode {
 template<typename Inspector>
 auto inspect(Inspector& f, TraversalNode& x) {
   return f.object(x).fields(
-      //structs
+      // structs
       f.embedFields(static_cast<optimizer2::nodes::GraphNode&>(x)),
       f.field("options", x.options),
-//      f.field("indexes", x.graphIndex),
+      //      f.field("indexes", x.graphIndex),
       // main
       f.field("vertexId", x.vertexId),
       // conditions

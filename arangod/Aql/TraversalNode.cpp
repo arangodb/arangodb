@@ -1389,15 +1389,19 @@ optimizer2::nodes::TraversalNode TraversalNode::toInspectable() const {
   std::optional<optimizer2::AttributeTypes::String> vertexId;
   std::optional<optimizer2::types::Variable> inVariable;
   std::optional<optimizer2::types::Expression> condition;
+  std::optional<std::vector<optimizer2::types::Variable>> conditionVariables;
+  std::optional<optimizer2::types::Variable> pathOutVariable;
   std::optional<std::vector<optimizer2::types::Expression>>
       globalEdgeConditions;
   std::optional<std::vector<optimizer2::types::Expression>>
       globalVertexConditions;
-  std::optional<std::vector<optimizer2::types::Variable>> conditionVariables;
-  std::optional<std::map<std::string, optimizer2::types::Expression>>
-      edgeConditions;
   std::optional<std::map<std::string, optimizer2::types::Expression>>
       vertexConditions;
+  std::optional<std::map<std::string, optimizer2::types::Expression>>
+      edgeConditions;
+  std::optional<optimizer2::types::Expression> expression;
+  std::optional<std::vector<optimizer2::types::Variable>> pruneVariables;
+  std::optional<optimizer2::types::PostFilter> postFilter;
 
   if (usesInVariable()) {
     inVariable.emplace(_inVariable->toInspectable());
@@ -1409,6 +1413,18 @@ optimizer2::nodes::TraversalNode TraversalNode::toInspectable() const {
     std::optional<optimizer2::types::Expression> tempCondition =
         _condition->toInspectable();
     condition.swap(tempCondition);
+  }
+
+  if (!_conditionVariables.empty()) {
+    std::vector<optimizer2::types::Variable> tempConditionVariables;
+    for (auto const& it : _conditionVariables) {
+      tempConditionVariables.push_back(it->toInspectable());
+    }
+    conditionVariables.emplace(tempConditionVariables);
+  }
+
+  if (isPathOutVariableUsedLater()) {
+    pathOutVariable.emplace(this->pathOutVariable()->toInspectable());
   }
 
   if (!_globalEdgeConditions.empty()) {
@@ -1427,25 +1443,44 @@ optimizer2::nodes::TraversalNode TraversalNode::toInspectable() const {
     globalVertexConditions.emplace(tempGlobalVertexConditions);
   }
 
-  if (!_conditionVariables.empty()) {
-    std::vector<optimizer2::types::Variable> tempConditionVariables;
-    for (auto const& it : _conditionVariables) {
-      tempConditionVariables.push_back(it->toInspectable());
+  if (!_vertexConditions.empty()) {
+    std::map<std::string, optimizer2::types::Expression> tempVertexConditions;
+    for (auto const& it : _vertexConditions) {
+      tempVertexConditions[basics::StringUtils::itoa(it.first)] = it.second->toInspectable(true);
     }
-    conditionVariables.emplace(tempConditionVariables);
   }
 
   if (!_edgeConditions.empty()) {
     std::map<std::string, optimizer2::types::Expression> tempEdgeCondtions;
     for (auto const& it : _edgeConditions) {
-      tempEdgeCondtions[basics::StringUtils::itoa(it.first)] = it.second;
+      tempEdgeCondtions[basics::StringUtils::itoa(it.first)] = it.second->toInspectable(true);
     }
     edgeConditions.emplace(tempEdgeCondtions);
   }
 
-  if (!_vertexConditions.empty()) {
-    std::map<std::string, optimizer2::types::Expression> tempVertexConditions;
-    for (auto const&)
+  if (_pruneExpression != nullptr) {
+    expression = _pruneExpression->toInspectable();
+    std::vector<optimizer2::types::Variable> tempPruneVariables;
+    for (auto const& it : _pruneVariables) {
+      tempPruneVariables.push_back(it->toInspectable());
+    }
+    pruneVariables.emplace(tempPruneVariables);
+  }
+
+  {
+    auto pFilter = postFilterExpression();
+    if (pFilter != nullptr) {
+      std::vector<optimizer2::types::Variable> variables;
+      for (auto const& it : _postFilterVariables) {
+        variables.push_back(it->toInspectable());
+      }
+
+      optimizer2::types::PostFilter tempPostFilter{
+          pFilter->toInspectable(),
+          variables
+      };
+      postFilter.emplace(tempPostFilter);
+    }
   }
 
   optimizer2::nodes::TraversalNode traversal_node{
@@ -1459,8 +1494,13 @@ optimizer2::nodes::TraversalNode TraversalNode::toInspectable() const {
       _fromCondition->toInspectable(true),
       _toCondition->toInspectable(true),
       edgeConditions,
-      vertexConditions
-      inVariable};
+      vertexConditions,
+      expression,
+      pruneVariables,
+      postFilter,
+      inVariable,
+      pathOutVariable
+  };
 
   return traversal_node;
 }

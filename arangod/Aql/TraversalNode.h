@@ -75,6 +75,10 @@ class TraversalNode : public virtual GraphNode {
     ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder&, bool);
+
+    optimizer2::types::Expression toInspectable(bool verbose) {
+      return _modCondition->toInspectable(verbose);
+    }
   };
 
   friend class ExecutionBlock;
