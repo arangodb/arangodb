@@ -4131,9 +4131,9 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::bytes_view(min)() const override { return {}; }
+  irs::bytes_ref const& (min)() const override { return {}; }
 
-  irs::bytes_view(max)() const override { return {}; }
+  irs::bytes_ref const& (max)() const override { return {}; }
 
   irs::attribute* get_mutable(irs::type_info::type_id) override {
     return nullptr;
