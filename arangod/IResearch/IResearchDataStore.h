@@ -74,9 +74,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     if (!_wasCommit) {
       _removals.clear();
       _ctx.reset();
-    } else {
-      TRI_ASSERT(_removals.empty());
     }
+    TRI_ASSERT(_removals.empty());
   }
 
   void remove(StorageEngine& engine, LocalDocumentId const& value,
