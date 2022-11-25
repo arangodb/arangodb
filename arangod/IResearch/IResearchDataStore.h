@@ -37,9 +37,9 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
 
 #include <atomic>
+#include <filesystem>
 
 namespace arangodb {
 
@@ -308,7 +308,7 @@ class IResearchDataStore {
     irs::directory::ptr _directory;
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
-    irs::utf8_path _path;
+    std::filesystem::path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
@@ -388,7 +388,8 @@ class IResearchDataStore {
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -502,7 +503,7 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
   std::atomic_uint64_t _cleanupTimeNum{0};
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
   std::atomic_uint64_t _consolidationTimeNum{0};
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
@@ -519,8 +520,8 @@ class IResearchDataStore {
 #endif
 };
 
-irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                IResearchDataStore const& link);
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       IResearchDataStore const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

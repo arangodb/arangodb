@@ -649,23 +649,44 @@ void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-statistics", "server.statistics");
 
-  options->addOption("--server.statistics",
-                     "turn statistics gathering and APIs on or off",
-                     new BooleanParameter(&_statistics));
+  options
+      ->addOption("--server.statistics",
+                  "Whether to enable statistics gathering and statistics APIs.",
+                  new BooleanParameter(&_statistics))
+      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
+statistics gathering is turned off. Statistics gathering causes regular
+background CPU activity, memory usage, and writes to the storage engine, so
+using this option to turn statistics off might relieve heavily-loaded instances
+a bit.
+
+A side effect of setting this option to `false` is that no statistics are
+shown in the dashboard of ArangoDB's web interface, and that the REST API for
+server statistics at `/_admin/statistics` returns HTTP 404.)");
 
   options
       ->addOption("--server.statistics-history",
-                  "turn storing statistics in database on or off",
+                  "Whether to store statistics in the database.",
                   new BooleanParameter(&_statisticsHistory),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30409)
-      .setIntroducedIn(30501);
+      .setIntroducedIn(30501)
+      .setLongDescription(R"(If you set this option to `false`, then ArangoDB's
+statistics gathering is turned off. Statistics gathering causes regular
+background CPU activity, memory usage, and writes to the storage engine, so
+using this option to turn statistics off might relieve heavily-loaded instances
+a bit.
+
+If set to `false`, no statistics are shown in the dashboard of ArangoDB's
+web interface, but the current statistics are available and can be queried
+using the REST API for server statistics at `/_admin/statistics`.
+This is less intrusive than setting the `--server.statistics` option to
+`false`.)");
 
   options
       ->addOption(
           "--server.statistics-all-databases",
-          "provide cluster statistics in web interface in all databases",
+          "Provide cluster statistics in the web interface for all databases.",
           new BooleanParameter(&_statisticsAllDatabases),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,

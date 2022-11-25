@@ -184,17 +184,17 @@ class UniqueHeapInstance {
                type  // prevent matching of copy/move constructor
            >
   explicit UniqueHeapInstance(Args&&... args)
-      : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {}
+      : _instance(std::make_unique<T>(std::forward<Args>(args)...)) {}
 
   UniqueHeapInstance(UniqueHeapInstance const& other)
-      : _instance(irs::memory::make_unique<T>(*(other._instance))) {}
+      : _instance(std::make_unique<T>(*(other._instance))) {}
 
   UniqueHeapInstance(UniqueHeapInstance&& other) noexcept
       : _instance(std::move(other._instance)) {}
 
   UniqueHeapInstance& operator=(UniqueHeapInstance const& other) {
     if (this != &other) {
-      _instance = irs::memory::make_unique<T>(*(other._instance));
+      _instance = std::make_unique<T>(*(other._instance));
     }
 
     return *this;
@@ -282,6 +282,13 @@ class UnorderedRefKeyMap
 
   class ConstIterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const V;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = ptrdiff_t;
+    using const_pointer = const value_type*;
+
     bool operator==(ConstIterator const& other) const noexcept {
       return _itr == other._itr;
     }
@@ -311,6 +318,13 @@ class UnorderedRefKeyMap
 
   class Iterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = V;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = ptrdiff_t;
+    using const_pointer = const value_type*;
+
     bool operator==(Iterator const& other) const noexcept {
       return _itr == other._itr;
     }

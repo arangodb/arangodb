@@ -46,9 +46,13 @@
 #include "index/index_writer.hpp"
 #include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <absl/strings/str_cat.h>
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
+#endif
 
 namespace {
 using namespace arangodb;
@@ -805,10 +809,15 @@ Result IResearchInvertedIndex::init(
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());
+    irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+    setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
+                                _meta);
+#endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
                            _meta.hasNested(), _meta._storedValues.columns(),
-                           _meta._sort.sortCompression());
+                           _meta._sort.sortCompression(), readerOptions);
     if (r.ok()) {
       _comparer.reset(_meta._sort);
     }
@@ -932,7 +941,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     void const* key = reinterpret_cast<uint8_t const*>(this) + 1;
     auto* ctx = basics::downCast<IResearchSnapshotState>(state.cookie(key));
     if (!ctx) {
-      auto ptr = irs::memory::make_unique<IResearchSnapshotState>();
+      auto ptr = std::make_unique<IResearchSnapshotState>();
       ctx = ptr.get();
       state.cookie(key, std::move(ptr));
 
