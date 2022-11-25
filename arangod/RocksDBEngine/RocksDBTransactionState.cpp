@@ -167,7 +167,6 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
   TRI_IF_FAILURE("TransactionWriteCommitMarker") {
     return Result(TRI_ERROR_DEBUG);
   }
-  applyBeforeCommitCallbacks();
   auto self =
       std::static_pointer_cast<RocksDBTransactionState>(shared_from_this());
   return doCommit().thenValue([self = std::move(self), activeTrx](auto&& res) {
@@ -175,7 +174,6 @@ futures::Future<Result> RocksDBTransactionState::commitTransaction(
       self->updateStatus(transaction::Status::COMMITTED);
       self->cleanupTransaction();  // deletes trx
       ++self->statistics()._transactionsCommitted;
-      self->applyAfterCommitCallbacks();
     } else {
       // what if this fails?
       std::ignore = self->abortTransaction(activeTrx);  // deletes trx

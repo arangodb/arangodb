@@ -328,6 +328,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
   }
 
+  const_cast<RocksDBTransactionState*>(_state)->applyBeforeCommitCallbacks();
   // we are actually going to attempt a commit
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
@@ -419,7 +420,10 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   TRI_ASSERT(this->numOperations() == 0);
 
   cleanupCollTrx.cancel();
-
+  auto guard = ScopeGuard{[&]() noexcept {
+    // TODO(MBkkt) I think call it before waitForSync is incorrect
+    const_cast<RocksDBTransactionState*>(_state)->applyAfterCommitCallbacks();
+  }};
   // wait for sync if required
   if (_state->waitForSync()) {
     auto& selector =

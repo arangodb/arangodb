@@ -231,12 +231,7 @@ void SimpleRocksDBTransactionState::cleanup() {
 }
 
 arangodb::Result SimpleRocksDBTransactionState::triggerIntermediateCommit() {
-  applyBeforeCommitCallbacks();
-  auto r = _rocksMethods->triggerIntermediateCommit();
-  if (r.ok()) {
-    applyAfterCommitCallbacks();
-  }
-  return r;
+  return _rocksMethods->triggerIntermediateCommit();
 }
 
 futures::Future<Result>

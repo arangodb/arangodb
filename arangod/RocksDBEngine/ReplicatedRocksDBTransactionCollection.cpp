@@ -237,12 +237,7 @@ ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
                              _transaction->id(), options)
         .thenValue([state = _transaction->shared_from_this(),
                     this](auto&& res) -> Result {
-          state->applyBeforeCommitCallbacks();
-          auto r = _rocksMethods->triggerIntermediateCommit();
-          if (r.ok()) {
-            state->applyAfterCommitCallbacks();
-          }
-          return r;
+          return _rocksMethods->triggerIntermediateCommit();
         });
   }
   return Result{};

@@ -210,17 +210,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     TRI_ASSERT(*callback != nullptr);
     _afterCommitCallbacks.push_back(callback);
   }
-  void applyBeforeCommitCallbacks() {
-    for (auto& callbacks : _beforeCommitCallbacks) {
-      (*callbacks)(*this);
-    }
-    _beforeCommitCallbacks.clear();
+  void applyBeforeCommitCallbacks() noexcept {
+    return applyCallbackImpl(_beforeCommitCallbacks);
   }
-  void applyAfterCommitCallbacks() {
-    for (auto& callbacks : _afterCommitCallbacks) {
-      (*callbacks)(*this);
-    }
-    _afterCommitCallbacks.clear();
+  void applyAfterCommitCallbacks() noexcept {
+    return applyCallbackImpl(_afterCommitCallbacks);
   }
 
   /// @brief begin a transaction
@@ -301,6 +295,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// called from other, public methods in this class.
  private:
   void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
 
  public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
