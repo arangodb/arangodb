@@ -3,6 +3,8 @@ v3.9.6 (XXXX-XX-XX)
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
+* Updated arangosync to v2.13.0.
+
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
   Traversal PRUNE expressions containing JavaScript user-defined functions
   (UDFs) are now properly rejected in single server and cluster mode.
@@ -23,6 +25,8 @@ v3.9.6 (XXXX-XX-XX)
 
 v3.9.5 (2022-11-10)
 -------------------
+
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
 
 * Show number of HTTP requests in cluster query profiles.
 
