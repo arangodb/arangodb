@@ -139,6 +139,7 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
+#ifdef __linux__
 #if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
@@ -235,6 +236,7 @@ void EnvironmentFeature::prepare() {
           << "unable to detect CPU type '" << filename << "'";
     }
   }
+#endif
 #endif
 
 #ifdef __linux__
