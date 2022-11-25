@@ -186,6 +186,50 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   return false;
 }
 
+bool MoveShard::checkLeaderFollowerCurrent(
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+  bool ok = true;
+  for (auto const& s : shardsLikeMe) {
+    auto sharedPath = _database + "/" + s.collection + "/";
+    auto currentServersPath = curColPrefix + sharedPath + s.shard + "/servers";
+    auto serverList = _snapshot.hasAsArray(currentServersPath);
+    if (serverList && (*serverList).length() > 0) {
+      if (_from != (*serverList)[0].stringView()) {
+        LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
+            << "MoveShard: From server " << _from
+            << " has not yet assumed leadership for collection " << s.collection
+            << " shard " << s.shard
+            << ", delaying start of MoveShard job for shard " << _shard;
+        ok = false;
+        break;
+      }
+      bool toFound = false;
+      for (auto server : VPackArrayIterator(*serverList)) {
+        if (_to == server.stringView()) {
+          toFound = true;
+          break;
+        }
+      }
+      if (!toFound) {
+        LOG_TOPIC("55262", DEBUG, Logger::SUPERVISION)
+            << "MoveShard: To server " << _to
+            << " is not in sync for collection " << s.collection << " shard "
+            << s.shard << ", delaying start of MoveShard job for shard "
+            << _shard;
+        ok = false;
+        break;
+      }
+    } else {
+      LOG_TOPIC("55263", INFO, Logger::SUPERVISION)
+          << "MoveShard: Did not find a non-empty server list in Current "
+             "for collection "
+          << s.collection << " and shard " << s.shard;
+      ok = false;  // not even a server list found
+    }
+  }
+  return ok;
+}
+
 bool MoveShard::start(bool&) {
   if (considerCancellation()) {
     return false;
@@ -368,6 +412,19 @@ bool MoveShard::start(bool&) {
     }
   }
 
+  if (_isLeader && _toServerIsFollower) {
+    // Further checks, before we can begin, we must make sure that the
+    // _fromServer has accepted its leadership already for all shards in the
+    // shard group and that the _toServer is actually in sync. Otherwise,
+    // if this job here asks the leader to resign, we would be stuck.
+    // If the _toServer is not in sync, the job would take overly long.
+    bool ok = checkLeaderFollowerCurrent(shardsLikeMe);
+    if (!ok) {
+      return false;  // Do not start job, but leave it in Todo.
+                     // Log messages already written.
+    }
+  }
+
   // Copy todo to pending
   Builder todo, pending;
 
@@ -545,7 +602,8 @@ JOB_STATUS MoveShard::pendingLeader() {
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("de056", DEBUG, Logger::SUPERVISION)
-        << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
+        << "MoveShard (leader): found FAILED server in Plan, aborting job, "
+           "db: "
         << _database << " coll: " << _collection << " shard: " << _shard;
     abort("failed server in Plan");
     return FAILED;
@@ -652,12 +710,12 @@ JOB_STATUS MoveShard::pendingLeader() {
 
     // We need to switch leaders:
     {
-      // First make sure that the server we want to go to is still in Current
-      // for all shards. This is important, since some transaction which the
-      // leader has still executed before its resignation might have dropped a
-      // follower for some shard, and this could have been our new leader. In
-      // this case we must abort and go back to the original leader, which is
-      // still perfectly safe.
+      // First make sure that the server we want to go to is still in
+      // Current for all shards. This is important, since some transaction
+      // which the leader has still executed before its resignation might
+      // have dropped a follower for some shard, and this could have been
+      // our new leader. In this case we must abort and go back to the
+      // original leader, which is still perfectly safe.
       for (auto const& sh : shardsLikeMe) {
         auto const shardPath =
             curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
@@ -766,8 +824,8 @@ JOB_STATUS MoveShard::pendingLeader() {
                   }
                 } else {
                   LOG_TOPIC("3294e", WARN, Logger::SUPERVISION)
-                      << "failed to iterate through current shard servers for "
-                         "shard "
+                      << "failed to iterate through current shard servers "
+                         "for shard "
                       << _shard << " or one of its clones";
                   TRI_ASSERT(false);
                   return;  // we don't increment done and remain PENDING
@@ -876,8 +934,8 @@ JOB_STATUS MoveShard::pendingFollower() {
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
-        << "MoveShard (follower): found FAILED server in Plan, aborting job, "
-           "db: "
+        << "MoveShard (follower): found FAILED server in Plan, aborting "
+           "job, db: "
         << _database << " coll: " << _collection << " shard: " << _shard;
     abort("failed server in Plan");
     return FAILED;
@@ -1055,8 +1113,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                 trx.add(VPackValue(_from));
                 if (plan.isArray()) {
                   for (VPackSlice srv : VPackArrayIterator(plan)) {
-                    // from could be in plan as <from> or <_from>. Exclude to
-                    // server always.
+                    // from could be in plan as <from> or <_from>. Exclude
+                    // to server always.
                     if (srv.isEqualString(_from) ||
                         srv.isEqualString("_" + _from) ||
                         srv.isEqualString(_to)) {
@@ -1072,8 +1130,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                   TRI_ASSERT(false);
                   return;
                 }
-                // Add to server last. Will be removed by removeFollower if to
-                // much
+                // Add to server last. Will be removed by removeFollower if
+                // too many.
                 trx.add(VPackValue(_to));
               }
             });
@@ -1125,8 +1183,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       VPackObjectBuilder preconditionObj(&trx);
       addMoveShardToServerCanUnLock(trx);
       addMoveShardFromServerCanUnLock(trx);
-      // If the collection is gone in the meantime, we do nothing here, but the
-      // round will move the job to Finished anyway:
+      // If the collection is gone in the meantime, we do nothing here, but
+      // the round will move the job to Finished anyway:
       addPreconditionCollectionStillThere(trx, _database, _collection);
     }
   }
@@ -1144,19 +1202,19 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       LOG_TOPIC("513e6", INFO, Logger::SUPERVISION)
           << "Precondition failed on MoveShard::abort() for shard " << _shard
           << " of collection " << _collection
-          << ", if the collection has been deleted in the meantime, the job "
-             "will be finished soon, if this message repeats, tell us.";
+          << ", if the collection has been deleted in the meantime, the "
+             "job will be finished soon, if this message repeats, tell us.";
       result = Result(
           TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
           std::string("Precondition failed while aborting moveShard job ") +
               _jobId);
       return result;
-      // We intentionally do not move the job object to Failed or Finished here!
-      // The failed precondition can either be one of the read locks, which
-      // suggests a fundamental problem, and in which case we will log this
-      // message in every round of the supervision. Or the collection has been
-      // dropped since we took the snapshot, in this case we will move the job
-      // to Finished in the next round.
+      // We intentionally do not move the job object to Failed or Finished
+      // here! The failed precondition can either be one of the read locks,
+      // which suggests a fundamental problem, and in which case we will log
+      // this message in every round of the supervision. Or the collection
+      // has been dropped since we took the snapshot, in this case we will
+      // move the job to Finished in the next round.
     }
     result = Result(
         TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
