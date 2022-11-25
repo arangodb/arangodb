@@ -183,6 +183,21 @@ class IResearchView final : public LogicalView {
     return _meta._primarySortCompression;
   }
 
+  bool pkCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._pkCache;
+#else
+    return false;
+#endif
+  }
+
+  bool sortCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._sortCache;
+#else
+    return false;
+#endif
+  }
   ///////////////////////////////////////////////////////////////////////////////
   /// @return stored values from links collections
   ///////////////////////////////////////////////////////////////////////////////

@@ -29,7 +29,7 @@
 if (getOptions === true) {
   return {
     'query.global-memory-limit': "0",
-    'query.memory-limit': "5000000"
+    'query.memory-limit': "5000000",
   };
 }
 const jsunity = require('jsunity');
@@ -67,6 +67,14 @@ function testSuite() {
       
       const currentValue = getMetric("arangodb_aql_local_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
+    },
+    
+    testQueryAboveLimitButAllowed: function() {
+      let crsr = db._query("LET testi = (FOR i IN 1..10000 FOR j IN 1..100 RETURN CONCAT('testmann-der-fuxxx', i, j)) RETURN testi", {}, {memoryLimit: 0});
+      let result = crsr.toArray();
+      assertEqual(1, result.length);
+      assertEqual(10000 * 100, result[0].length);
+      assertTrue(crsr.getExtra().stats.peakMemoryUsage > 5000000);
     },
     
   };
