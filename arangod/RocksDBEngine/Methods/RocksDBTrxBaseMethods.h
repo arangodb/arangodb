@@ -41,7 +41,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
                                  IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxBaseMethods();
+  ~RocksDBTrxBaseMethods() override;
 
   virtual bool isIndexingDisabled() const final override {
     return _indexingDisabled;
