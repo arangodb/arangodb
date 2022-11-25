@@ -28,6 +28,7 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -91,6 +92,8 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
 }
+
+inline constexpr irs::string_ref PK_COLUMN{"@_PK"};
 
 struct StaticStrings {
   static constexpr std::string_view ViewArangoSearchType = "arangosearch";
@@ -165,6 +168,9 @@ struct StaticStrings {
   static constexpr std::string_view PrimarySortCompressionField{
       "primarySortCompression"};
 
+  // enables caching for primary sort column
+  static constexpr std::string_view kPrimarySortCacheField{"primarySortCache"};
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
@@ -176,6 +182,12 @@ struct StaticStrings {
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  // enables caching for field
+  static constexpr std::string_view kCacheField{"cache"};
+
+  // enables caching for primary key column
+  static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the

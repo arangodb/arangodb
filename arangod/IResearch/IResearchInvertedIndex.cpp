@@ -49,6 +49,10 @@
 
 #include <absl/strings/str_cat.h>
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
+#endif
+
 namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -807,10 +811,15 @@ Result IResearchInvertedIndex::init(
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());
+    irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+    setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
+                                _meta);
+#endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
                            _meta.hasNested(), _meta._storedValues.columns(),
-                           _meta._sort.sortCompression());
+                           _meta._sort.sortCompression(), readerOptions);
     if (r.ok()) {
       _comparer.reset(_meta._sort);
     }
