@@ -486,6 +486,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
   }
   runOneTest(file) {
     let endpoint = arango.getEndpoint();
+    print(endpoint)
     if (this.options.vst || this.options.http2) {
       let newEndpoint = this.instanceManager.findEndpoint();
       if (endpoint !== newEndpoint) {
@@ -493,12 +494,16 @@ class runLocalInArangoshRunner extends testRunnerBase{
         arango.reconnect(newEndpoint, '_system', 'root', '');
       }
     }
-
+    print('get testcode')
     let testCode = getTestCode(file, this.options, this.instanceManager);
+    print(testCode)
     require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
+    print(require('internal').env.INSTANCEINFO)
     let testFunc;
     try {
+      print('eval')
       eval('testFunc = function () {\n' + testCode + "}");
+      print("eval'ed testcode")
     } catch (ex) {
       print(RED + 'test failed to parse:');
       print(ex);
@@ -511,7 +516,9 @@ class runLocalInArangoshRunner extends testRunnerBase{
     }
 
     try {
+      print('start')
       SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
+      print('go')
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
