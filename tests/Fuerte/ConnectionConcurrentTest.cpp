@@ -86,7 +86,7 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
 
   const size_t rep = repeat();
   for (size_t t = 0; t < threads(); t++) {
-    wg->add((unsigned)rep);
+    wg->add(static_cast<unsigned>(rep));
     joins.emplace([&connections, rep, &cb] {
       for (size_t i = 0; i < rep; i++) {
         auto request = fu::createRequest(fu::RestVerb::Get, "/_api/version");
@@ -145,7 +145,7 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
   auto joins = ThreadGuard(threads());
 
   for (size_t t = 0; t < threads(); t++) {
-    wg->add(repeat());
+    wg->add(static_cast<unsigned>(repeat()));
     joins.emplace([=, this] {
       for (size_t i = 0; i < repeat(); i++) {
         auto request =

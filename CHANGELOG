@@ -4,6 +4,8 @@ devel
 * BTS-128: Fixed http request not working when content-type is velocypack 
   and the request body is empty.
 
+* Updated arangosync to v2.13.0.
+
 * Make the deprecated `--server.disable-authentication-unix-sockets` and
   `--server.disable-authentication` startup options obsolete. They were
   deprecated in v3.0 and mapped to `--server.authentication` and
