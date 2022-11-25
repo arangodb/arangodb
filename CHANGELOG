@@ -3,6 +3,8 @@ v3.8.9 (XXXX-XX-XX)
 
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
+* Updated arangosync to v2.13.0.
+
 * Fixed issue #17291: Server crash on error in the PRUNE expression.
   Traversal PRUNE expressions containing JavaScript user-defined functions
   (UDFs) are now properly rejected in single server and cluster mode.
