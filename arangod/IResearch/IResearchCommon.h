@@ -28,6 +28,7 @@
 
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {
@@ -92,7 +93,7 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
 }
 
-inline constexpr std::string_view PK_COLUMN{"@_PK"};
+inline constexpr irs::string_ref PK_COLUMN{"@_PK"};
 
 struct StaticStrings {
   static constexpr std::string_view ViewArangoSearchType = "arangosearch";
