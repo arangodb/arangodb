@@ -22,26 +22,9 @@
 
 #pragma once
 
-#include "VocBase/Properties/ClusteringMutableProperties.h"
-#include "VocBase/Properties/ClusteringConstantProperties.h"
-
 namespace arangodb {
-class Result;
 
-struct UserInputCollectionProperties;
+struct InspectAgencyContext{};
+struct InspectUserContext{};
 
-struct ClusteringProperties : public ClusteringMutableProperties,
-                              public ClusteringConstantProperties {
-  bool operator==(ClusteringProperties const& other) const = default;
-
-  [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
-      DatabaseConfiguration const& config);
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, ClusteringProperties& props) {
-  return f.object(props).fields(
-      f.template embedFields<ClusteringMutableProperties>(props),
-      f.template embedFields<ClusteringConstantProperties>(props));
-}
 }

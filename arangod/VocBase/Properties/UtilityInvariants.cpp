@@ -91,30 +91,3 @@ auto UtilityInvariants::isValidCollectionType(
   }
   return {"Only 2 (document) and 3 (edge) are allowed."};
 }
-
-auto UtilityInvariants::areShardKeysValid(std::vector<std::string> const& keys)
-    -> inspection::Status {
-  if (keys.empty() || keys.size() > 8) {
-    return {"invalid number of shard keys for collection"};
-  }
-  for (auto const& sk : keys) {
-    auto key = std::string_view{sk};
-    // remove : char at the beginning or end (for enterprise)
-    std::string_view stripped;
-    if (!key.empty()) {
-      if (key.front() == ':') {
-        stripped = key.substr(1);
-      } else if (key.back() == ':') {
-        stripped = key.substr(0, key.size() - 1);
-      } else {
-        stripped = key;
-      }
-    }
-    // system attributes are not allowed (except _key, _from and _to)
-    if (stripped == StaticStrings::IdString ||
-        stripped == StaticStrings::RevString) {
-      return {"_id or _rev cannot be used as shard keys"};
-    }
-  }
-  return inspection::Status::Success{};
-}

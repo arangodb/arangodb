@@ -41,8 +41,7 @@ struct ClusteringConstantProperties {
       std::nullopt};
   std::optional<std::string> shardingStrategy =
       std::nullopt;  // defaultShardingStrategy
-  std::vector<std::string> shardKeys =
-      std::vector<std::string>{StaticStrings::KeyString};
+  inspection::NonNullOptional<std::vector<std::string>> shardKeys{std::nullopt};
 
   bool operator==(ClusteringConstantProperties const& other) const = default;
 
@@ -78,7 +77,6 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
           .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
       f.field("shardKeys", props.shardKeys)
           .fallback(f.keep())
-          .invariant(UtilityInvariants::areShardKeysValid)
 
   );
 }

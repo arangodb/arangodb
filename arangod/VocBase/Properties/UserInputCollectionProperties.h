@@ -38,6 +38,33 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
 
   [[nodiscard]] arangodb::Result applyDefaultsAndValidateDatabaseConfiguration(
       DatabaseConfiguration const& config);
+
+ private:
+  Result validateOrSetDefaultShardingStrategy();
+
+#ifdef USE_ENTERPRISE
+  Result validateOrSetDefaultShardingStrategyEE();
+#endif
+
+  void setDefaultShardKeys();
+
+#ifdef USE_ENTERPRISE
+  void setDefaultShardKeysEE();
+#endif
+
+  [[nodiscard]] arangodb::Result validateShardKeys();
+
+#ifdef USE_ENTERPRISE
+  [[nodiscard]] arangodb::Result validateShardKeysEE();
+#endif
+
+  [[nodiscard]] arangodb::Result validateOrSetShardingStrategy(
+      UserInputCollectionProperties const& leadingCollection);
+
+#ifdef USE_ENTERPRISE
+  [[nodiscard]] arangodb::Result validateOrSetShardingStrategyEE(
+      UserInputCollectionProperties const& leadingCollection);
+#endif
 };
 
 template<class Inspector>

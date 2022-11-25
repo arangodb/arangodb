@@ -145,90 +145,6 @@ TEST_F(ClusteringPropertiesTest, test_minimal_user_input) {
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }
 
-TEST_F(ClusteringPropertiesTest, test_distributeShardsLike_default) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto leader = defaultLeaderProps();
-  auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
-
-  VPackBuilder body;
-  { VPackObjectBuilder bodyBuilder{&body}; }
-  auto testee = parseWithDefaultOptions(body.slice(), config);
-  // Default value should be taken if none is set
-  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
-  EXPECT_EQ(testee->numberOfShards.value(), leader.numberOfShards.value());
-  EXPECT_EQ(testee->replicationFactor.value(),
-            leader.replicationFactor.value());
-  EXPECT_EQ(testee->writeConcern.value(), leader.writeConcern.value());
-}
-
-TEST_F(ClusteringPropertiesTest,
-       test_distributeShardsLike_default_other_values) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto leader = defaultLeaderProps();
-  auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
-
-  for (auto const& attribute : {"writeConcern", "replicationFactor",
-                                "numberOfShards", "minReplicationFactor"}) {
-    // 4 is not used by any of the above attributes
-    auto body = createMinimumBodyWithOneValue(attribute, 4);
-    auto testee = parseWithDefaultOptions(body.slice(), config);
-    // Default value should be taken if none is set
-    EXPECT_FALSE(testee.ok())
-        << "Managed to overwrite value '" << attribute
-        << "' given by distributeShardsLike body: " << body.toJson();
-  }
-}
-
-TEST_F(ClusteringPropertiesTest,
-       test_distributeShardsLike_default_same_values) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto leader = defaultLeaderProps();
-  auto config = defaultDBConfig({{defaultShardBy, leader}});
-  config.defaultDistributeShardsLike = defaultShardBy;
-
-  VPackBuilder body;
-  {
-    VPackObjectBuilder bodyBuilder{&body};
-    body.add("numberOfShards", VPackValue(leader.numberOfShards.value()));
-    body.add("replicationFactor", VPackValue(leader.replicationFactor.value()));
-    body.add("writeConcern", VPackValue(leader.writeConcern.value()));
-  }
-
-  auto testee = parseWithDefaultOptions(body.slice(), config);
-  // Default value should be taken if none is set
-  ASSERT_TRUE(testee.ok()) << "Failed on " << testee.errorMessage();
-  EXPECT_EQ(testee->distributeShardsLike.value(), defaultShardBy);
-  EXPECT_EQ(testee->numberOfShards.value(), leader.numberOfShards.value());
-  EXPECT_EQ(testee->replicationFactor.value(),
-            leader.replicationFactor.value());
-  EXPECT_EQ(testee->writeConcern.value(), leader.writeConcern.value());
-}
-
-TEST_F(ClusteringPropertiesTest, test_distributeShardsLike_default_ownValue) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  // OneShard and DistributeShardsLike only show up in pairs.
-  config.isOneShardDB = true;
-
-  auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
-  auto testee = parseWithDefaultOptions(body.slice(), config);
-  // Default value should be taken if none is set
-  EXPECT_FALSE(testee.ok())
-      << "Managed to set own distributeShardsLike and override DB setting";
-}
-
 TEST_F(ClusteringPropertiesTest, test_oneShardDBCannotBeSatellite) {
   VPackBuilder body;
   {
@@ -455,34 +371,6 @@ TEST_F(ClusteringPropertiesTest, test_internal_values_as_shardkeys) {
     auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
     EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
   }
-}
-
-TEST_F(ClusteringPropertiesTest, test_oneShard_forcesDistributeShardsLike) {
-  // We do not need any special configuration
-  // default is good enough
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
-
-  // Specific shardKey is disallowed
-  auto body = createMinimumBodyWithOneValue("distributeShardsLike", "test");
-  auto testee = parseWithDefaultOptions(body.slice(), config);
-  EXPECT_FALSE(testee.ok())
-      << "Distribute shards like violates oneShard database";
-}
-
-TEST_F(ClusteringPropertiesTest, test_oneShard_moreShards) {
-  // Configure oneShardDB properly
-  std::string defaultShardBy = "_graphs";
-  auto config = defaultDBConfig();
-  config.defaultDistributeShardsLike = defaultShardBy;
-  config.isOneShardDB = true;
-
-  // Specific shardKey is disallowed
-  auto body = createMinimumBodyWithOneValue("numberOfShards", 5);
-  auto testee = parseWithDefaultOptions(body.slice(), config);
-  EXPECT_FALSE(testee.ok()) << "Number of Shards violates oneShard database";
 }
 
 }  // namespace arangodb::tests

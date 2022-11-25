@@ -55,10 +55,7 @@ struct UtilityInvariants {
   [[nodiscard]] static auto isValidCollectionType(
       std::underlying_type_t<TRI_col_type_e> const& value)
       -> inspection::Status;
-
-  [[nodiscard]] static auto areShardKeysValid(
-      std::vector<std::string> const& value) -> inspection::Status;
-
+  
  private:
   // Never instantiate. only static methods
   UtilityInvariants() = default;

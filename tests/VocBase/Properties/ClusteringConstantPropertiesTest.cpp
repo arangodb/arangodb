@@ -94,8 +94,8 @@ TEST_F(ClusteringConstantPropertiesTest, test_minimal_user_input) {
   EXPECT_FALSE(testee->distributeShardsLike.has_value());
   // NOTE: We may want to add some context here
   EXPECT_FALSE(testee->shardingStrategy.has_value());
-  ASSERT_EQ(testee->shardKeys.size(), 1);
-  EXPECT_EQ(testee->shardKeys.at(0), StaticStrings::KeyString);
+  // Unfortunately this has to be set from the user input
+  EXPECT_FALSE(testee->shardKeys.has_value());
 
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
 }

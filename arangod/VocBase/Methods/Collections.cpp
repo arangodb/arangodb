@@ -666,8 +666,9 @@ Collections::create(         // create collection
       // we do not make use of the actual ComputedValueExecutor here
       // TODO: Can be replaced by a two step way inspect -> ComputedValuesInput
       // -> ComputedValues
-      auto result = ComputedValues::buildInstance(vocbase, col.shardKeys,
-                                                  col.computedValues.slice());
+      TRI_ASSERT(col.shardKeys.has_value());
+      auto result = ComputedValues::buildInstance(
+          vocbase, col.shardKeys.value(), col.computedValues.slice());
       if (result.fail()) {
         return result.result();
       }
