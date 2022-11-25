@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Add serverId parameter to _admin/log/level. Allows to forward the request to
   other servers.
 
