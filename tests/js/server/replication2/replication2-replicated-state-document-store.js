@@ -852,6 +852,69 @@ const replicatedStateSnapshotTransferSuite = function () {
 };
 
 
+/**
+ * This test suite checks the correctness of a DocumentState snapshot transfer and the related REST APIs.
+ */
+const replicatedStateTransactionsWithFailurePointsSuite = function () {
+  let collection = null;
+  let shards = null;
+  let logs = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 2});
+      shards = collection.shards();
+      logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+    }),
+    tearDown: tearDownAnd(() => {
+      let leaders = logs.map(log => lh.getReplicatedLogLeaderPlan(database, log.id()).leader);
+      leaders.forEach(leader => {helper.debugClearFailAt(lh.getServerUrl(leader),
+        "ReplicatedRocksDBTransactionState::doCommit");})
+
+      if (collection !== null) {
+        collection.drop();
+      }
+      collection = null;
+    }),
+
+    testInsertFailsPartially: function () {
+      let leaders = logs.map(log => lh.getReplicatedLogLeaderPlan(database, log.id()).leader);
+      leaders.forEach(leader => {
+        helper.debugSetFailAt(lh.getServerUrl(leader),
+          "ReplicatedRocksDBTransactionState::doCommit");
+      })
+
+      let docs = [{_key: "a"}, {_key: "b"}, {_key: "c"}, {_key: "d"}];
+      try {
+        collection.insert(docs);
+      } catch (err) {
+        assertEqual(err.errorNum, internal.errors.ERROR_DEBUG.code);
+      }
+
+      // Check that the transaction has been aborted.
+      for (const log of logs) {
+        let entry = log.tail(1)[0];
+        assertTrue(entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort",
+          `Log entries for log ${log.id()} are not as expected: ${JSON.stringify(log.head(1000))}`);
+      }
+
+      // Check that the documents are not in the collection.
+      for (const shardId of shards) {
+        let {current} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shardId));
+        let servers = Object.keys(current.participants).map(serverId => lh.getServerUrl(serverId));
+        for (let doc of docs) {
+          checkFollowersValue(servers, shardId, doc._key, null, true);
+        }
+      }
+    }
+  };
+};
+
 function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
 function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
 
@@ -863,5 +926,6 @@ jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
 jsunity.run(replicatedStateSnapshotTransferSuite);
+jsunity.run(replicatedStateTransactionsWithFailurePointsSuite);
 
 return jsunity.done();

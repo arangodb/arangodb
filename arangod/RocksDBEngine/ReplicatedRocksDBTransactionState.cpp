@@ -94,12 +94,19 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
       // We have to write to the log and wait for the log entry to be committed
       // (in the log sense), before we can commit locally.
       auto leader = rtc.leaderState();
-      commits.emplace_back(leader
-                               ->replicateOperation(velocypack::SharedSlice{},
-                                                    operation, id(), options)
-                               .thenValue([&rtc](auto&& res) -> Result {
-                                 return rtc.commitTransaction();
-                               }));
+      commits.emplace_back(
+          leader
+              ->replicateOperation(velocypack::SharedSlice{}, operation, id(),
+                                   options)
+              .thenValue([&rtc, &commits](auto&& res) -> Result {
+                TRI_IF_FAILURE("ReplicatedRocksDBTransactionState::doCommit") {
+                  // Fail the transaction only for some of the shards
+                  if (commits.size() % 2) {
+                    return Result{TRI_ERROR_DEBUG};
+                  }
+                }
+                return rtc.commitTransaction();
+              }));
     } else {
       // For read-only transactions the commit is a no-op, but we still have to
       // call it to ensure cleanup.
