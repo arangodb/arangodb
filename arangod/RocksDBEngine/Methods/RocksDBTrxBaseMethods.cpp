@@ -301,6 +301,8 @@ void RocksDBTrxBaseMethods::createTransaction() {
 }
 
 Result RocksDBTrxBaseMethods::doCommit() {
+  // We need to call callbacks always, even if hasOperations() == false,
+  // because it is like this in recovery
   TRI_ASSERT(_state != nullptr);
   _state->applyBeforeCommitCallbacks();
   auto r = doCommitImpl();
