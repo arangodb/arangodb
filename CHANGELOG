@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Updated arangosync to v2.13.0.
 
 * Make the deprecated `--server.disable-authentication-unix-sockets` and
