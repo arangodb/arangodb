@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <tuple>
-
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"
@@ -301,7 +299,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
 }
 
 /// @brief adds a method to an object
-bool TRI_AddMethodVocbase(
+void TRI_AddMethodVocbase(
     v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
@@ -312,7 +310,6 @@ bool TRI_AddMethodVocbase(
     // normal method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
-  return true;
 }
 
 /// @brief adds a global function to the given context

@@ -1288,11 +1288,8 @@ Result IResearchDataStore::initDataStore(
                          "'")};
   }
 
-  constexpr size_t kDirectoryCacheSize = 32768;
-
-  _dataStore._directory = std::make_unique<
-      irs::CachingDirectory<irs::mmap_directory, irs::MaxCountAcceptor>>(
-      irs::MaxCountAcceptor{kDirectoryCacheSize}, _dataStore._path.u8string(),
+  _dataStore._directory = std::make_unique<irs::mmap_directory>(
+      _dataStore._path.u8string(),
       initCallback ? initCallback() : irs::directory_attributes{});
 
   if (!_dataStore._directory) {
