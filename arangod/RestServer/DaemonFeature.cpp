@@ -82,7 +82,9 @@ DaemonFeature::DaemonFeature(Server& server) : ArangodFeature{server, *this} {
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--daemon", "background the server, running it as daemon",
+      "--daemon",
+      "Start the server as a daemon (background process). Requires --pid-file "
+      "to be set.",
       new BooleanParameter(&_daemon),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
@@ -90,14 +92,16 @@ void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                    arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--pid-file", "pid-file in daemon mode", new StringParameter(&_pidFile),
+      "--pid-file",
+      "The name of the process ID file to use if the server runs as a daemon.",
+      new StringParameter(&_pidFile),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
                                    arangodb::options::Flags::OsMac,
                                    arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--working-directory", "working directory in daemon mode",
+      "--working-directory", "The working directory in daemon mode.",
       new StringParameter(&_workingDirectory),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,
