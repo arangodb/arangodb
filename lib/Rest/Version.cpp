@@ -144,7 +144,6 @@ void Version::initialize() {
 #else
   Values["arm"] = "false";
 #endif
-  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();

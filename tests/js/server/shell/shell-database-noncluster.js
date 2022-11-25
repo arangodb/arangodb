@@ -68,7 +68,6 @@ function DatabaseSuite () {
       let keys = [
         "architecture",
         "asan",
-        "asm-crc32",
         "assertions",
         "boost-version",
         "build-date",
@@ -104,7 +103,6 @@ function DatabaseSuite () {
 
       let keys = [
         "asan",
-        "asm-crc32",
         "assertions",
         "debug",
         "failure-tests",
