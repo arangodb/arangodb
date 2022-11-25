@@ -2,9 +2,20 @@ v3.8.9 (XXXX-XX-XX)
 -------------------
 
 * Delay a MoveShard operation for leader change, until the old leader has
-  actually assumed its leadership and until the new leader is actually in
-  sync. This fixes a bug which could block a shard under certain circumstances.
-  This fixes BTS-1110.
+  actually assumed its leadership and until the new leader is actually in sync.
+  This fixes a bug which could block a shard under certain circumstances. This
+  fixes BTS-1110.
+
+* Updated arangosync to v2.13.0.
+
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution, which is
+  not available on DB-servers in a cluster, and also isn't necessarily available
+  for regular queries on single servers (a V8 context is only available if a
+  query was executed inside Foxx or from inside a JS transaction, but not
+  otherwise).
 
 * Updated OpenSSL to 1.1.1s.
 
