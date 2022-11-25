@@ -46,3 +46,12 @@ deadlock:consensus::Agent::setPersistedState
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
+
+# TODO It's "false positive" caused by code:
+# 1. ctx_lock lock
+# 2. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
+# 3. s[i].flush_mutex lock
+# 4. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
+# 5. s[i + 1].flush_mutex lock
+# It should be fixed in future, because current code doing a lot unnecessary stuff
+deadlock:iresearch::index_writer::flush_pending

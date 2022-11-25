@@ -1093,7 +1093,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
       l->insert(trx, pair.first, pair.second);
     }
   } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+    auto* l =
+        dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second);
@@ -1225,18 +1226,10 @@ arangodb::Result PhysicalCollectionMock::insert(
       }
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-      if (arangodb::ServerState::instance()->isCoordinator()) {
-        auto* l = static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(
-            index.get());
-        if (!l->insert(trx, id, newDocument).ok()) {
-          return {TRI_ERROR_BAD_PARAMETER};
-        }
-      } else {
-        auto* l =
-            static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
-        if (!l->insert(trx, id, newDocument).ok()) {
-          return {TRI_ERROR_BAD_PARAMETER};
-        }
+      auto* l =
+          static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
+      if (!l->insert(trx, id, newDocument).ok()) {
+        return {TRI_ERROR_BAD_PARAMETER};
       }
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {

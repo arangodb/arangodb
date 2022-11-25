@@ -2,13 +2,57 @@ v3.10.2 (XXXX-XX-XX)
 --------------------
 
 * Delay a MoveShard operation for leader change, until the old leader has
-  actually assumed its leadership and until the new leader is actually in
-  sync. This fixes a bug which could block a shard under certain circumstances.
-  This fixes BTS-1110.
+  actually assumed its leadership and until the new leader is actually in sync.
+  This fixes a bug which could block a shard under certain circumstances. This
+  fixes BTS-1110.
+
+* Updated arangosync to v2.13.0.
+
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution, which is
+  not available on DB-servers in a cluster, and also isn't necessarily available
+  for regular queries on single servers (a V8 context is only available if a
+  query was executed inside Foxx or from inside a JS transaction, but not
+  otherwise).
+
+* Removed more assertions from cluster rebalance js test that obligated the
+  rebalance plan to always have moves, but there were cases in which all there
+  are none.
+
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
+
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
+* BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
+
+* Repair "load indexes into memory" function in the web UI.
+
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
+* Fix disk space metrics rocksdb_free_disk_space and rocksdb_total_disk_space 
+  on macOS. Previously, they seem to have reported wrong values.
+
+* Show number of HTTP requests in cluster query profiles.
+
+* Removed assertions from cluster rebalance js test that obligated the rebalance
+  plan to always have moves, but there were cases in which all there are none.
+
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, and
+  the addition of the AT LEAST and WITH COUNT INTO constructs.
 
 
 v3.10.1 (2022-11-04)
 --------------------
+
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
 
 * Updated OpenSSL to 1.1.1s.
 

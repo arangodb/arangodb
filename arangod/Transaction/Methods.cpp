@@ -32,6 +32,9 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/DownCast.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -80,6 +83,19 @@ template<typename T>
 using Future = futures::Future<T>;
 
 namespace {
+
+template<Methods::CallbacksTag tag>
+struct ToType;
+
+template<>
+struct ToType<Methods::CallbacksTag::StatusChange> {
+  using Type = Methods::StatusChangeCallback;
+};
+
+template<>
+struct ToType<Methods::CallbacksTag::PreCommit> {
+  using Type = Methods::PreCommitCallback;
+};
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
@@ -255,22 +271,18 @@ getDataSourceRegistrationCallbacks() {
 
 /// @return the status change callbacks stored in state
 ///         or nullptr if none and !create
-std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>*
-getStatusChangeCallbacks(arangodb::TransactionState& state,
-                         bool create = false) {
-  struct CookieType : public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>
-        _callbacks;
+template<Methods::CallbacksTag tag>
+auto* getCallbacks(TransactionState& state, bool create = false) {
+  using Callback = typename ToType<tag>::Type;
+  struct CookieType : public TransactionState::Cookie {
+    std::vector<Callback const*> _callbacks;
   };
 
-  static const int key = 0;  // arbitrary location in memory, common for all
+  // arbitrary location in memory, common for all
+  static const auto key = tag;
 
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
-#else
-  auto* cookie = static_cast<CookieType*>(state.cookie(&key));
-#endif
+  // TODO FIXME find a better way to look up a ViewState
+  auto* cookie = basics::downCast<CookieType>(state.cookie(&key));
 
   if (!cookie && create) {
     auto ptr = std::make_unique<CookieType>();
@@ -288,8 +300,8 @@ getStatusChangeCallbacks(arangodb::TransactionState& state,
 arangodb::Result applyDataSourceRegistrationCallbacks(
     LogicalDataSource& dataSource, arangodb::transaction::Methods& trx) {
   for (auto& callback : getDataSourceRegistrationCallbacks()) {
-    TRI_ASSERT(
-        callback);  // addDataSourceRegistrationCallback(...) ensures valid
+    // addDataSourceRegistrationCallback(...) ensures valid
+    TRI_ASSERT(callback);
 
     try {
       auto res = callback(dataSource, trx);
@@ -328,7 +340,7 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
     return;  // nothing to apply
   }
 
-  auto* callbacks = getStatusChangeCallbacks(*state);
+  auto* callbacks = getCallbacks<Methods::CallbacksTag::StatusChange>(*state);
 
   if (!callbacks) {
     return;  // no callbacks to apply
@@ -342,6 +354,28 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
       (*callback)(trx, status);
     } catch (...) {
       // we must not propagate exceptions from here
+    }
+  }
+}
+
+void applyPreCommitCallbacks(transaction::Methods& trx) {
+  auto* state = trx.state();
+  if (!state) {
+    return;  // nothing to apply
+  }
+  TRI_ASSERT(trx.isMainTransaction());
+  auto* callbacks = getCallbacks<Methods::CallbacksTag::PreCommit>(*state);
+  if (!callbacks) {
+    return;  // no callbacks to apply
+  }
+  // no need to lock since transactions are single-threaded
+  for (auto& callback : *callbacks) {
+    TRI_ASSERT(callback);  // addStatusChangeCallback(...) ensures valid
+    try {
+      (*callback)(trx);
+    } catch (...) {
+      // we must not propagate exceptions from here
+      // TODO maybe make them noexcept?
     }
   }
 }
@@ -390,15 +424,15 @@ OperationResult emptyResult(OperationOptions const& options) {
   }
 }
 
-bool transaction::Methods::addStatusChangeCallback(
-    StatusChangeCallback const* callback) {
+template<transaction::Methods::CallbacksTag tag, typename Callback>
+bool transaction::Methods::addCallbackImpl(Callback const* callback) {
   if (!callback || !*callback) {
     return true;  // nothing to call back
   } else if (!_state) {
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, true);
+  auto* statusChangeCallbacks = getCallbacks<tag>(*_state, true);
 
   TRI_ASSERT(nullptr != statusChangeCallbacks);  // 'create' was specified
 
@@ -406,6 +440,16 @@ bool transaction::Methods::addStatusChangeCallback(
   statusChangeCallbacks->emplace_back(callback);
 
   return true;
+}
+
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback) {
+  return addCallbackImpl<CallbacksTag::StatusChange>(callback);
+}
+
+bool transaction::Methods::addPreCommitCallback(
+    PreCommitCallback const* callback) {
+  return addCallbackImpl<CallbacksTag::PreCommit>(callback);
 }
 
 bool transaction::Methods::removeStatusChangeCallback(
@@ -416,7 +460,8 @@ bool transaction::Methods::removeStatusChangeCallback(
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, false);
+  auto* statusChangeCallbacks =
+      getCallbacks<CallbacksTag::StatusChange>(*_state, false);
   if (statusChangeCallbacks) {
     auto it = std::find(statusChangeCallbacks->begin(),
                         statusChangeCallbacks->end(), callback);
@@ -608,13 +653,7 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
-      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
-    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
-      resolved.erase(0, StaticStrings::FullFromPrefix.size());
-    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
-      resolved.erase(0, StaticStrings::FullToPrefix.size());
-    }
+    ClusterMethods::realNameFromSmartName(resolved);
 #endif
     // build collection name
     temp.append(resolved);
@@ -3161,7 +3200,7 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
               << "'";
           return res;
         }
-
+        applyPreCommitCallbacks(*this);
         return _state->commitTransaction(this);
       })
       .thenValue([this](Result res) -> Result {

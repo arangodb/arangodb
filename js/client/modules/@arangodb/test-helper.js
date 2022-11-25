@@ -30,28 +30,27 @@
 
 const internal = require('internal'); // OK: processCsvFile
 const { 
-  getServerById,
-  getServersByType,
-  getUrlById,
-  getEndpointById,
-  getEndpointsByType,
   Helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
+  endpointToURL,
+  getInstanceInfo
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
+const request = require('@arangodb/request');
+const arangosh = require('@arangodb/arangosh');
+const jsunity = require('jsunity');
+const arango = internal.arango;
+const db = internal.db;
+const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const isServer = require("@arangodb").isServer;
 
-exports.getUrlById = getUrlById;
-exports.getServerById = getServerById;
-exports.getServersByType = getServersByType;
-exports.getEndpointById = getEndpointById;
-exports.getEndpointsByType = getEndpointsByType;
 exports.Helper = Helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
@@ -424,6 +423,52 @@ exports.getDBServers = function () {
 };
 exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
+};
+
+exports.getServerById = function (id) {
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.find((d) => (d.id === id));
+};
+
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter(isType);
+};
+
+exports.getEndpointById = function (id) {
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = getInstanceInfo();
+  const instance = instanceInfo.arangods.find(d => d.id === id);
+  return endpointToURL(toEndpoint(instance));
+};
+
+exports.getUrlById = function (id) {
+  const toUrl = (d) => (d.url);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+    .map(toUrl)[0];
+};
+
+exports.getEndpointsByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter(isType)
+    .map(toEndpoint)
+    .map(endpointToURL);
+};
+
+exports.triggerMetrics = function () {
+  let coordinators = exports.getEndpointsByType("coordinator");
+  exports.getRawMetric(coordinators[0], '?mode=write_global');
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    exports.getRawMetric(c, '?mode=trigger_global');
+  }
+  require("internal").sleep(2);
 };
 
 exports.getEndpoints = function (role) {

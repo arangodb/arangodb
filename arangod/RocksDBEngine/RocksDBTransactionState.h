@@ -113,12 +113,6 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] static RocksDBTransactionMethods* toMethods(
       transaction::Methods* trx, DataSourceId collectionId);
 
-  /// @brief make some internal preparations for accessing this state in
-  /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads();
-  /// @brief in parallel mode. READ-ONLY transactions
-  [[nodiscard]] bool inParallelMode() const;
-
   [[nodiscard]] RocksDBTransactionCollection::TrackedOperations&
   trackedOperations(DataSourceId cid);
 
@@ -163,15 +157,12 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
 
-  /// @brief cache transaction to unblock banished keys
-  cache::Transaction* _cacheTx;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::atomic<uint32_t> _users;
 #endif
 
-  /// @brief if true there key buffers will no longer be shared
-  bool _parallel;
+  /// @brief cache transaction to unblock banished keys
+  cache::Transaction* _cacheTx;
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

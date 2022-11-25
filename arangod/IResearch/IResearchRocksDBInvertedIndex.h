@@ -140,19 +140,36 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
+  Result insertInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId, VPackSlice doc,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::insert<
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+        IResearchInvertedIndexMetaIndexingContext>(
+        trx, documentId, doc, *meta()._indexingContext, &tick);
+  }
+
+  Result removeInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      &tick);
+  }
+
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
-                                                   *meta()._indexingContext);
+        IResearchInvertedIndexMetaIndexingContext>(
+        trx, documentId, doc, *meta()._indexingContext, nullptr);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested());
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      nullptr);
   }
 
  private:
