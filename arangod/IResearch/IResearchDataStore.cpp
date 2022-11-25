@@ -668,6 +668,12 @@ IResearchDataStore::IResearchDataStore(IndexId iid,
     }
     // TODO FIXME find a better way to look up a ViewState
     auto& ctx = basics::downCast<IResearchTrxState>(*prev);
+    if (!ctx._removals.empty()) {
+      // hold references even after transaction
+      auto filter =
+          std::make_unique<PrimaryKeyFilterContainer>(std::move(ctx._removals));
+      ctx._ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
+    }
     auto const lastOperationTick = state.lastOperationTick();
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {

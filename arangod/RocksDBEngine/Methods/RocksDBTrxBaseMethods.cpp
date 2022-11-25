@@ -300,7 +300,16 @@ void RocksDBTrxBaseMethods::createTransaction() {
   _rocksTransaction = _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
 }
 
-arangodb::Result RocksDBTrxBaseMethods::doCommit() {
+Result RocksDBTrxBaseMethods::doCommit() {
+  const_cast<RocksDBTransactionState*>(_state)->applyBeforeCommitCallbacks();
+  auto r = doCommitImpl();
+  if (r.ok()) {
+    const_cast<RocksDBTransactionState*>(_state)->applyAfterCommitCallbacks();
+  }
+  return r;
+}
+
+Result RocksDBTrxBaseMethods::doCommitImpl() {
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumKeys() == 0 &&
@@ -318,7 +327,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     // }
     // don't write anything if the transaction is empty
 #endif
-    return Result();
+    return {};
   }
 
   // we may need to block intermediate commits
@@ -328,7 +337,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
   }
 
-  const_cast<RocksDBTransactionState*>(_state)->applyBeforeCommitCallbacks();
   // we are actually going to attempt a commit
   ++_numCommits;
   uint64_t numOperations = this->numOperations();
@@ -420,10 +428,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
   TRI_ASSERT(this->numOperations() == 0);
 
   cleanupCollTrx.cancel();
-  auto guard = ScopeGuard{[&]() noexcept {
-    // TODO(MBkkt) I think call it before waitForSync is incorrect
-    const_cast<RocksDBTransactionState*>(_state)->applyAfterCommitCallbacks();
-  }};
+
   // wait for sync if required
   if (_state->waitForSync()) {
     auto& selector =
@@ -439,6 +444,5 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
       return RocksDBSyncThread::sync(engine.db()->GetBaseDB());
     }
   }
-
-  return Result();
+  return {};
 }

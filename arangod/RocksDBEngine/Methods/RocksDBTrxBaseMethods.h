@@ -113,7 +113,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief create a new rocksdb transaction
   virtual void createTransaction();
 
-  arangodb::Result doCommit();
+  Result doCommit();
+  Result doCommitImpl();
 
   IRocksDBTransactionCallback& _callback;
 

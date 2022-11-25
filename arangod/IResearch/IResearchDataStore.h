@@ -74,22 +74,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     if (!_wasCommit) {
       _removals.clear();
       _ctx.reset();
-      return;
-    } else if (_removals.empty()) {
-      return;
-    }
-    try {
-      // hold references even after transaction
-      auto filter =
-          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
-      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
-    } catch (std::exception const& e) {
-      LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals: "
-          << e.what();
-    } catch (...) {
-      LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals";
+    } else {
+      TRI_ASSERT(_removals.empty());
     }
   }
 
