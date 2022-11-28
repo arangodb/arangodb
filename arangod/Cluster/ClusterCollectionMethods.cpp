@@ -372,13 +372,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   }
 }
 
-
 [[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
 ClusterCollectionMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase) {
-
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     return Result{
@@ -390,7 +388,8 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
   // List of all sharding prototypes.
   // We retain a reference here ourselfs in case we need to retry due to server
   // failure, this way we can just to create the shards on other servers.
-  std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>> shardDistributionList;
+  std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
+      shardDistributionList;
 
   std::vector<arangodb::PlanCollectionEntry> collectionPlanEntries{};
   collectionPlanEntries.reserve(collections.size());

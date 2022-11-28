@@ -55,21 +55,21 @@ struct ClusterCollectionMethods {
   /// @param enforceReplicationFactor
   /// @param isNewDatabase
 
-  [[nodiscard]] static auto
-  createCollectionsOnCoordinator(
+  [[nodiscard]] static auto createCollectionsOnCoordinator(
       TRI_vocbase_t& vocbase,
       std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase)
-      -> arangodb::ResultT<
-      std::vector<std::shared_ptr<LogicalCollection>>>;
+      -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(
       CreateCollectionBody col, std::vector<ShardID> shardNames,
       std::shared_ptr<IShardDistributionFactory> distributeType,
       AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntry;
 
-  [[nodiscard]] static auto generateShardNames(ClusterInfo& ci, uint64_t numberOfShards) -> std::vector<ShardID>;
+  [[nodiscard]] static auto generateShardNames(ClusterInfo& ci,
+                                               uint64_t numberOfShards)
+      -> std::vector<ShardID>;
 
   [[nodiscard]] static auto selectDistributeType(
       ClusterInfo& ci, std::string_view databaseName,
@@ -79,4 +79,4 @@ struct ClusterCollectionMethods {
           allUsedDistrbitions) -> std::shared_ptr<IShardDistributionFactory>;
 };
 
-}
+}  // namespace arangodb
