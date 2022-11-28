@@ -27,8 +27,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <thread>
-#include <optional>
-#include <iostream>
+
 #include "Exceptions.h"
 #include "Promise.h"
 #include "SharedState.h"
@@ -519,7 +518,7 @@ class Future {
   void detach() noexcept {
     detail::SharedState<T>* state = nullptr;
     std::swap(state, _state);
-//     TRI_ASSERT(_state == nullptr);
+    TRI_ASSERT(_state == nullptr);
     if (state) {
       // may delete the shared state, so must be last action
       state->detachFuture();
