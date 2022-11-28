@@ -70,9 +70,9 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
     _requestBodySizeVst.count(bodySize);
   }
 
-  void countHttp2Connection() {
-    _http2Connections.count();
-  }
+  void countHttp1Connection() { _http1Connections.count(); }
+
+  void countHttp2Connection() { _http2Connections.count(); }
 
   void countVstConnection() {
     _vstConnections.count();
@@ -100,6 +100,7 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp1;
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeHttp2;
   Histogram<log_scale_t<uint64_t>>& _requestBodySizeVst;
+  Counter& _http1Connections;
   Counter& _http2Connections;
   Counter& _vstConnections;
 };

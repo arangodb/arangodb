@@ -107,7 +107,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   static void appendHistogram(
     std::string& result, statistics::Distribution const& dist,
     std::string const& label, std::initializer_list<std::string> const& les,
-    bool v2);
+    bool v2, bool isInteger);
   static void appendMetric(
     std::string& result, std::string const& val, std::string const& label,
     bool v2);
@@ -116,7 +116,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
                                     double start, 
                                     arangodb::velocypack::Builder& result) const;
 
-  bool allDatabases() const { return _statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
   bool _statistics;

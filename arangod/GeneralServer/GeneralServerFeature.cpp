@@ -131,6 +131,8 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
     "Body size of HTTP/2 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
     "Body size of VST requests");
+DECLARE_COUNTER(arangodb_http1_connections_total,
+    "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
     "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
@@ -149,6 +151,8 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
           server.getFeature<MetricsFeature>().add(arangodb_request_body_size_http2{})),
       _requestBodySizeVst(
           server.getFeature<MetricsFeature>().add(arangodb_request_body_size_vst{})),
+      _http1Connections(
+          server.getFeature<MetricsFeature>().add(arangodb_http1_connections_total{})),
       _http2Connections(
           server.getFeature<MetricsFeature>().add(arangodb_http2_connections_total{})),
       _vstConnections(

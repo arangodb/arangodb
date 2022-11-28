@@ -252,6 +252,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
   _parserSettings.on_message_complete = HttpCommTask<T>::on_message_complete;
   llhttp_init(&_parser, HTTP_REQUEST, &_parserSettings);
   _parser.data = this;
+
+  this->_generalServerFeature.countHttp1Connection();
 }
 
 template <SocketType T>
@@ -274,8 +276,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Inspect the received data
     size_t nparsed = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
-      const char* data = reinterpret_cast<const char*>(buffer.data());
-      const char* end = data + buffer.size();
+      char const* data = reinterpret_cast<char const*>(buffer.data());
+      char const* end = data + buffer.size();
       do {
         size_t datasize = end - data;
 
@@ -391,6 +393,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
                                                        std::move(me._protocol),
                                                        fuerte::vst::VST1_0);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.0
@@ -400,6 +403,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(me._server, me._connectionInfo,
                                                        std::move(me._protocol),
                                                        fuerte::vst::VST1_1);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.1
@@ -408,6 +412,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(me._server, me._connectionInfo,
                                                       std::move(me._protocol));
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // http2 upgrade
@@ -458,6 +463,7 @@ void HttpCommTask<T>::processRequest() {
     if (h2 == "h2c" && found && !settings.empty()) {
       auto task = std::make_shared<H2CommTask<T>>(this->_server, this->_connectionInfo,
                                                   std::move(this->_protocol));
+      task->setStatistics(1UL, this->stealStatistics(1UL));
       task->upgradeHttp1(std::move(_request));
       this->close();
       return;
@@ -697,7 +703,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   }
 
   this->_writing = true;
-  // FIXME measure performance w/o sync write
   asio_ns::async_write(this->_protocol->socket, buffers,
                        [self = this->shared_from_this(),
                         stat = std::move(stat)](asio_ns::error_code ec, size_t nwrite) {
