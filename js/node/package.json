@@ -39,5 +39,10 @@
     "ansi_up": "5.0.1",
     "eslint": "5.16.0",
     "parse-prometheus-text-format": "1.1.1"
+  },
+  "overrides": {
+    "joi": {
+      "hoek": "npm:@hapi/hoek@8.5.1"
+    }
   }
 }

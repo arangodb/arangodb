@@ -1,6 +1,9 @@
 devel
 -----
 
+* Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
+  CVE-2020-36604 in joi.
+
 * Deleted customizable Pregel (AIR) and Greenspun library
 
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
