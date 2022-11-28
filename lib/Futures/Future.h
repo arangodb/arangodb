@@ -210,7 +210,7 @@ class Future {
     if (this != &o) {
       detach();
       std::swap(_state, o._state);
-    //  TRI_ASSERT(o._state == nullptr);
+      TRI_ASSERT(o._state == nullptr);
     }
     return *this;
   }
