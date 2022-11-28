@@ -1,3 +1,5 @@
+add_compile_warnings_flags()
+
 # ----------------------------------------
 # Greenspun tests
 # ----------------------------------------
@@ -14,6 +16,8 @@ add_subdirectory(Fuerte)
 # Error tests
 # ----------------------------------------
 
+add_subdirectory(Assertions)
+add_subdirectory(CrashHandler)
 add_subdirectory(Errors)
 
 add_subdirectory(Zkd)
@@ -363,8 +367,6 @@ endif()
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
 )
 
 target_link_libraries(arangodbtests v8_interface)

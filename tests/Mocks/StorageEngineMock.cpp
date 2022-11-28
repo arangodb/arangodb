@@ -54,7 +54,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "Futures/Future.h"
 
@@ -1376,20 +1375,6 @@ arangodb::Result PhysicalCollectionMock::read(
   return arangodb::Result{TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
-bool PhysicalCollectionMock::readDocument(
-    arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
-    arangodb::ManagedDocumentResult& result, arangodb::ReadOwnWrites) const {
-  before();
-  for (auto const& entry : _documents) {
-    auto& doc = entry.second;
-    if (doc.docId() == token) {
-      result.setManaged(doc.vptr());
-      return true;
-    }
-  }
-  return false;
-}
-
 arangodb::Result PhysicalCollectionMock::lookupDocument(
     arangodb::transaction::Methods& /*trx*/, arangodb::LocalDocumentId token,
     arangodb::velocypack::Builder& builder, bool /*readCache*/,
@@ -2102,11 +2087,12 @@ arangodb::Result TransactionStateMock::beginTransaction(
 
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
+  applyBeforeCommitCallbacks();
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
   //  releaseUsage();
-
+  applyAfterCommitCallbacks();
   return arangodb::Result();
 }
 

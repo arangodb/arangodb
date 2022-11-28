@@ -56,11 +56,6 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 
 find_package(Git 1.5.3 REQUIRED)
 
-# don't use standalone boost asio
-# use this when asio is included outside of Boost
-# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
-# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
-
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
@@ -81,14 +76,6 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
 # ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
 #
-# This will set the following variables
-#
-# ARANGODB_DEBIAN_UPSTREAM
-# ARANGODB_DEBIAN_REVISION
-#
-# ARANGODB_RPM_UPSTREAM
-# ARANGODB_RPM_REVISION
-
 set(ARANGODB_VERSION_MAJOR "3")
 set(ARANGODB_VERSION_MINOR "11")
 
@@ -135,100 +122,6 @@ set(ARANGODB_JS_VERSION "js")
 message(STATUS "ARANGODB PLAIN VERSION: ${ARANGODB_PLAIN_VERSION}")
 message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
-
-################################################################################
-# DEBIAN, RPM, MacOS version
-################################################################################
-
-if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
-
-  # devel
-  if (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "devel")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.1.devel")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "devel")
-
-  # nightly
-  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.2.nightly")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "nightly")
-
-  # unstable version
-  elseif (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
-    endif()
-
-    if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha")
-      set(ARANGODB_RPM_REVISION_NUMBER 100)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta")
-      set(ARANGODB_RPM_REVISION_NUMBER 200)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone")
-      set(ARANGODB_RPM_REVISION_NUMBER 300)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview")
-      set(ARANGODB_RPM_REVISION_NUMBER 400)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-      set(ARANGODB_RPM_REVISION_NUMBER 500)
-    endif()
-
-    MATH(EXPR ARANGODB_RPM_REVISION_NUMBER "${ARANGODB_RPM_REVISION_NUMBER}+${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}~${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.${ARANGODB_RPM_REVISION_NUMBER}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-  # hot-fix
-  else()
-    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
-    endif()
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "1.${ARANGODB_VERSION_RELEASE_TYPE}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DARWIN_REVISION "")
-  endif()
-else()
-
-  # stable version
-  set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DEBIAN_REVISION "1")
-
-  set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_RPM_REVISION "1.0")
-
-  set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DARWIN_REVISION "")
-endif()
-
-message(STATUS "DEBIAN VERSION: ${ARANGODB_DEBIAN_UPSTREAM} / ${ARANGODB_DEBIAN_REVISION}")
-message(STATUS "RPM VERSION:    ${ARANGODB_RPM_UPSTREAM} / ${ARANGODB_RPM_REVISION}")
-message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
-
 
 ################################################################################
 # Windows version
@@ -893,9 +786,6 @@ function(CREATE_FLAGS OUTPUT GLUE)
   set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
 endfunction()
 
-# CREATE_FLAGS(IMPLICIT_C_INCLUDES "${CMAKE_C_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
-# CREATE_FLAGS(IMPLICIT_CXX_INCLUDES "${CMAKE_CXX_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
-
 # ------------------------------------------------------------------------------
 # JEMALLOC
 # ------------------------------------------------------------------------------
@@ -973,6 +863,20 @@ function(add_cxx_flags_if_supported var)
     endif()
   endforeach()
   set(${var} "${${var}}" PARENT_SCOPE)
+endfunction()
+
+function(add_compile_warnings_flags)
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      add_compile_options(/WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        add_compile_options(-Wno-unused-command-line-argument)
+      endif()
+    else ()
+      add_compile_options(-Werror -Wno-error=deprecated-declarations)
+    endif ()
+  endif ()
 endfunction()
 
 if (VERBOSE)
@@ -1232,20 +1136,6 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-# 3rdParty exports:
-#
-# V8_VERSION
-# V8_LIBS
-# V8_INCLUDE_DIR
-#
-# ICU_VERSION
-# ICU_LIBS
-# ICU_INCLUDE_DIR
-#
-# ZLIB_VERSION
-# ZLIB_LIBS
-# ZLIB_INCLUDE_DIR
-
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
@@ -1466,18 +1356,12 @@ add_custom_target(clean_autogenerated_files
 
 message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
-# if (VERBOSE)
-#   get_cmake_property(_variableNames VARIABLES)
-#
-#   foreach (_variableName ${_variableNames})
-#     message(STATUS "${_variableName}=${${_variableName}}")
-#   endforeach ()
-# endif ()
-
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
 if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
   add_definitions("-DUSE_ENTERPRISE=1")
   add_subdirectory(enterprise)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()

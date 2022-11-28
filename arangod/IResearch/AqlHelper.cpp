@@ -748,7 +748,8 @@ bool nameFromAttributeAccess(
   if (visitRes && !ctx.isSearchQuery) {
     auto const fields = ctx.fields;
     auto const it = getNested(name, fields);
-    visitRes = it != std::end(fields) && !it->_isSearchField;
+    visitRes = it != std::end(fields) && !it->_isSearchField &&
+               !it->_trackListPositions;
     if (visitRes && subFields) {
       *subFields = it->_fields;
     }

@@ -34,7 +34,7 @@
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "velocypack/Iterator.h"
 
@@ -173,8 +173,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_field_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::field_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
     virtual irs::ScoreFunction prepare_scorer(
@@ -213,8 +212,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_term_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::term_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::term_collector>(sort_);
     }
 
    private:
@@ -280,7 +278,7 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
                           false);  // must be first
-    system = irs::memory::make_unique<TRI_vocbase_t>(
+    system = std::make_unique<TRI_vocbase_t>(
         TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
@@ -386,7 +384,7 @@ struct FilterCtx : irs::attribute_provider {
 TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
-    irs::utf8_path resource;
+    std::filesystem::path resource;
     resource /= std::string_view(arangodb::tests::testResourceDir);
     resource /= std::string_view("simple_sequential.json");
     testData = arangodb::basics::VelocyPackHelper::velocyPackFromFile(

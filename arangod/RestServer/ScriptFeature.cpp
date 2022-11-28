@@ -51,7 +51,7 @@ ScriptFeature::ScriptFeature(Server& server, int* result)
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--javascript.script-parameter", "script parameter",
+  options->addOption("--javascript.script-parameter", "Script parameter.",
                      new VectorParameter<StringParameter>(&_scriptParameters));
 }
 

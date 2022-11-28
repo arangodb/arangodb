@@ -82,7 +82,6 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-std::string_view const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     StringStreamPool(DEFAULT_POOL_SIZE);
@@ -429,7 +428,7 @@ void FieldIterator<IndexMetaStruct>::reset(VPackSlice doc,
   }
 #ifdef USE_ENTERPRISE
   // this is set for root level as general mark.
-  _hasNested = MetaTraits::hasNested(linkMeta);
+  _hasNested = linkMeta._hasNested;
 #endif
   pushLevel(doc, linkMeta, filter);
   next();

@@ -152,8 +152,8 @@ struct ColorPropagationValue {
     auto const size = colors.size();
     result.reserve(size);
     for (size_t color = 0; color < size; ++color) {
-      if (contains(color)) {
-        result.push_back(color);
+      if (contains(static_cast<ColorType>(color))) {
+        result.push_back(static_cast<decltype(result)::value_type>(color));
       }
     }
     result.shrink_to_fit();

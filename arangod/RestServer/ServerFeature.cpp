@@ -63,34 +63,45 @@ ServerFeature::ServerFeature(Server& server, int* res)
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--console", "start a JavaScript emergency console",
-                     new BooleanParameter(&_console));
+  options
+      ->addOption("--console",
+                  "Start the server with a JavaScript emergency console.",
+                  new BooleanParameter(&_console))
+      .setLongDescription(R"(In this exclusive emergency mode, all networking
+and HTTP interfaces of the server are disabled. No requests can be made to the
+server in this mode, and the only way to work with the server in this mode is by
+using the emergency console.
+
+The server cannot be started in this mode if it is already running in this or
+another mode.)");
 
   options->addSection("server", "server features");
 
   options->addOption(
-      "--server.rest-server", "start a rest-server",
+      "--server.rest-server", "Start a REST server.",
       new BooleanParameter(&_restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
           "--server.validate-utf8-strings",
-          "perform UTF-8 string validation for incoming JSON and VelocyPack "
-          "data",
+          "Perform UTF-8 string validation for incoming JSON and VelocyPack "
+          "data.",
           new BooleanParameter(&_validateUtf8Strings),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30700);
 
-  options->addOption("--javascript.script", "run scripts and exit",
+  options->addOption("--javascript.script", "Run the script and exit.",
                      new VectorParameter<StringParameter>(&_scripts));
 
 #if _WIN32
   options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
       new UInt16Parameter(&_codePage),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsWindows,
+                                   arangodb::options::Flags::Uncommon));
 #endif
 
   // add several obsoleted options here

@@ -23,17 +23,6 @@ target_include_directories(arango_v8
   SYSTEM PUBLIC
   ${OPENSSL_INCLUDE_DIR}
   ${ICU_INCLUDE_DIR})
-if (USE_FAIL_ON_WARNINGS)
-  if (MSVC)
-    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-      # There's a warning about /MP being unused if compiling only a single file
-      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
-    endif()
-  else ()
-    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
-  endif ()
-endif ()
 
 add_library(arango_v8_deadline STATIC
   v8-deadline.cpp)
@@ -52,4 +41,3 @@ target_link_libraries(arango_v8_no_deadline
   velocypack)
 target_include_directories(arango_v8_no_deadline PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR})
-
