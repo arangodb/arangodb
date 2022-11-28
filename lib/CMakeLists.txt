@@ -65,12 +65,13 @@ add_library(arango STATIC
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  Assertions/AssertionLogger.cpp
+  Assertions/AssertionConditionalLogger.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
@@ -194,6 +195,7 @@ target_link_libraries(arango PUBLIC
   boost_system
   boost_boost
   arango_static_strings
+  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
@@ -278,3 +280,5 @@ target_link_libraries(arango_greenspun date_interface)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
+add_subdirectory(CrashHandler)
+add_subdirectory(Assertions)

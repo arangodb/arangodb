@@ -31,8 +31,8 @@ namespace arangodb {
 class RocksDBSingleOperationTrxMethods : public RocksDBTrxBaseMethods {
  public:
   explicit RocksDBSingleOperationTrxMethods(
-      RocksDBTransactionState const* state,
-      IRocksDBTransactionCallback& callback, rocksdb::TransactionDB* db);
+      RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
+      rocksdb::TransactionDB* db);
 
   rocksdb::ReadOptions iteratorReadOptions() const override;
 

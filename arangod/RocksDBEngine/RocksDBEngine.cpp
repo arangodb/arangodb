@@ -132,22 +132,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-namespace {
-#ifdef USE_SST_INGESTION
-void cleanUpTempFiles(std::string_view path) {
-  for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
-    TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
-  }
-}
-#endif
-
-std::unique_ptr<rocksdb::Env> createChecksumEnv(rocksdb::Env* baseEnv,
-                                                std::string const& path) {
-  return std::make_unique<arangodb::checksum::ChecksumEnv>(baseEnv, path);
-}
-
-}  // namespace
-
 namespace arangodb {
 
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
@@ -770,7 +754,7 @@ void RocksDBEngine::prepare() {
 
 void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   rocksdb::SstFileReader sstReader(options);
-  for (auto const& fileName : TRI_FullTreeDirectory(dataPath().data())) {
+  for (auto const& fileName : TRI_FullTreeDirectory(dataPath().c_str())) {
     if (!fileName.ends_with(".sst")) {
       continue;
     }
@@ -838,7 +822,9 @@ void RocksDBEngine::start() {
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
   if (basics::FileUtils::isDirectory(_idxPath)) {
-    ::cleanUpExtFiles(_idxPath);
+    for (auto const& fileName : TRI_FullTreeDirectory(_idxPath.c_str())) {
+      TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
+    }
   } else {
     auto errorMsg = TRI_ERROR_NO_ERROR;
     if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
@@ -884,7 +870,8 @@ void RocksDBEngine::start() {
   }
 
   if (_createShaFiles) {
-    _checksumEnv = createChecksumEnv(rocksdb::Env::Default(), _path);
+    _checksumEnv =
+        std::make_unique<checksum::ChecksumEnv>(rocksdb::Env::Default(), _path);
     _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()

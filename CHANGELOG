@@ -6,6 +6,11 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.8.
 
+* Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
+  options.
+
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
 * Updated arangosync to v2.13.0.
 
 * Make the deprecated `--server.disable-authentication-unix-sockets` and
