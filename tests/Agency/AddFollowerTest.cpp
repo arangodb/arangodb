@@ -771,15 +771,15 @@ TEST_F(AddFollowerTest, job_only_starting_with_no_delay) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](velocypack::Slice q,
+      .AlwaysDo([&](query_t const& q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q), "array");
-        EXPECT_EQ(q.length(), 1);
-        EXPECT_EQ(typeName(q[0]), "array");
-        EXPECT_EQ(q[0].length(), 2);
-        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q->slice()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(q->slice()[0].length(), 2);
+        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
-        auto writes = q[0][0];
+        auto writes = q->slice()[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
