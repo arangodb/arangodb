@@ -100,7 +100,8 @@ static void EnvGetter(v8::Local<v8::Name> property,
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
   if ((result > 0 || GetLastError() == ERROR_SUCCESS) && result < bufferSize) {
-    uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer_ptr);
+    uint16_t const* two_byte_buffer =
+        reinterpret_cast<uint16_t const*>(buffer_ptr);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif
