@@ -25,6 +25,7 @@
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 
+#include <numeric>
 #include <random>
 
 using namespace arangodb;
