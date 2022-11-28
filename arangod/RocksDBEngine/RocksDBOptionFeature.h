@@ -113,6 +113,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _enableBlobCache;
   double _blobGarbageCollectionAgeCutoff;
   double _blobGarbageCollectionForceThreshold;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
