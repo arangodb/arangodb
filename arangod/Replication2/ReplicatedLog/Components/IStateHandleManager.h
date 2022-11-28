@@ -27,11 +27,14 @@ namespace arangodb::replication2 {
 struct LogIndex;
 namespace replicated_log {
 struct IReplicatedStateHandle;
+struct IReplicatedLogFollowerMethods;
 inline namespace comp {
 struct IStateHandleManager {
   virtual ~IStateHandleManager() = default;
   virtual void updateCommitIndex(LogIndex) noexcept = 0;
   virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
+  virtual void becomeFollower(
+      std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
 };
 }  // namespace comp
 }  // namespace replicated_log

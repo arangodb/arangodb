@@ -58,16 +58,7 @@ struct FollowerManager {
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-      : options(options),
-        storage(std::make_shared<StorageManager>(std::move(methods))),
-        compaction(std::make_shared<CompactionManager>(*storage, options)),
-        snapshot(std::make_shared<SnapshotManager>(*storage)),
-        stateHandle(
-            std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
-        commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
-        appendEntriesManager(std::make_shared<AppendEntriesManager>(
-            termInfo, *storage, *snapshot, *compaction, *commit)) {}
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options);
 
   auto getStatus() const -> LogStatus {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

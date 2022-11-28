@@ -33,6 +33,8 @@ struct StateHandleManager : IStateHandleManager {
 
   auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> override;
   void updateCommitIndex(LogIndex index) noexcept override;
+  void becomeFollower(
+      std::unique_ptr<IReplicatedLogFollowerMethods> ptr) override;
 
  private:
   struct GuardedData {

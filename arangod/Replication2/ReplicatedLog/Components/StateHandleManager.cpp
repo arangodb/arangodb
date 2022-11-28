@@ -52,3 +52,9 @@ void StateHandleManager::updateCommitIndex(LogIndex index) noexcept {
 StateHandleManager::StateHandleManager(
     std::unique_ptr<IReplicatedStateHandle> stateHandle)
     : guardedData(std::move(stateHandle)) {}
+
+void StateHandleManager::becomeFollower(
+    std::unique_ptr<IReplicatedLogFollowerMethods> ptr) {
+  auto guard = guardedData.getLockedGuard();
+  guard->stateHandle->becomeFollower(std::move(ptr));
+}

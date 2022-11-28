@@ -25,11 +25,33 @@
 #include "Replication2/ReplicatedLog/Components/LogFollower2.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
+
+namespace {
+struct ReplicatedStateHandleMock : IReplicatedStateHandle {
+  MOCK_METHOD(std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>,
+              resignCurrentState, (), (noexcept, override));
+  MOCK_METHOD(void, leadershipEstablished,
+              (std::unique_ptr<IReplicatedLogLeaderMethods>), (override));
+  MOCK_METHOD(void, becomeFollower,
+              (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
+  MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex),
+              (noexcept, override));
+  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(std::optional<replicated_state::StateStatus>, getStatus, (),
+              (const, override));
+  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>,
+              getFollower, (), (const, override));
+  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>,
+              getLeader, (), (const, override));
+  MOCK_METHOD(void, dropEntries, (), (override));
+};
+}  // namespace
 
 struct AppendEntriesFollowerTest : ::testing::Test {
   std::uint64_t const objectId = 1;
@@ -49,6 +71,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       std::make_shared<ReplicatedLogGlobalSettings>();
   std::shared_ptr<FollowerTermInformation> termInfo =
       std::make_shared<FollowerTermInformation>();
+
+  testing::StrictMock<ReplicatedStateHandleMock> stateHandle;
 
   std::shared_ptr<refactor::FollowerManager> follower =
       std::make_shared<refactor::FollowerManager>(methods.getMethods(), nullptr,

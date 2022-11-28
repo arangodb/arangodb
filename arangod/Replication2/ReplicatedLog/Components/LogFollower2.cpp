@@ -27,3 +27,21 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::refactor;
+
+FollowerManager::FollowerManager(
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+    std::shared_ptr<FollowerTermInformation const> termInfo,
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+    : options(options),
+      storage(std::make_shared<StorageManager>(std::move(methods))),
+      compaction(std::make_shared<CompactionManager>(*storage, options)),
+      snapshot(std::make_shared<SnapshotManager>(*storage)),
+      stateHandle(
+          std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
+      commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
+      appendEntriesManager(std::make_shared<AppendEntriesManager>(
+          termInfo, *storage, *snapshot, *compaction, *commit)) {
+  auto provider = std::make_unique<MethodsProvider>(*this);
+  stateHandle->becomeFollower(std::move(provider));
+}
