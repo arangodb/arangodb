@@ -1019,6 +1019,10 @@ target_include_directories(arango_cluster_engine
     PUBLIC ${IRESEARCH_INCLUDE}
 )
 
+target_include_directories(arango_indexes
+    PUBLIC ${IRESEARCH_INCLUDE}
+)
+
 target_link_libraries(arango_cluster_methods arango)
 target_link_libraries(arango_cluster_methods arango_network)
 target_link_libraries(arango_cluster_methods zlib_interface)

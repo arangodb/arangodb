@@ -630,6 +630,103 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
   moveShard.start(aborts);
 }
 
+TEST_F(MoveShardTest, the_job_should_wait_until_the_from_server_is_in_current) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/ToDo") {
+            builder->add(
+                jobId,
+                createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1).slice());
+          }
+          builder->close();
+        } else {
+          // Simulate a new leader which has not yet assumed its leadership:
+          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            {
+              VPackArrayBuilder guard(builder.get());
+              builder->add(VPackValue("follower1"));
+              builder->add(VPackValue("leader"));
+            }
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+  AgentInterface& agent = mockAgent.get();
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createAgencyFromBuilder(*builder);
+
+  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  moveShard.start(aborts);
+}
+
+TEST_F(MoveShardTest, the_job_should_wait_until_the_to_server_is_in_sync) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/ToDo") {
+            builder->add(
+                jobId,
+                createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1).slice());
+          }
+          builder->close();
+        } else {
+          // Simulate a new leader which has not yet assumed its leadership:
+          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            {
+              VPackArrayBuilder guard(builder.get());
+              builder->add(VPackValue("leader"));
+            }
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+  AgentInterface& agent = mockAgent.get();
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createAgencyFromBuilder(*builder);
+
+  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  moveShard.start(aborts);
+}
+
 TEST_F(
     MoveShardTest,
     the_job_should_fail_if_the_shard_distributes_its_shards_like_some_other) {
