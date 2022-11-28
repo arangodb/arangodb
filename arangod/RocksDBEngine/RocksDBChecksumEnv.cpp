@@ -135,6 +135,11 @@ void ChecksumHelper::checkMissingShaFiles() {
               // - hash files:
               // 000050.sha.0d918fe7d474a0a872f1705f0c315e2a8cb8820d2592eafdcc0efbd3feb56a9b.hash
 
+              if (lhs == rhs) {
+                // thank you, some STL implementations!
+                return false;
+              }
+
               // find prefix (which is the number in front of the file)
               size_t lhsDot = lhs.find('.');
               size_t rhsDot = rhs.find('.');

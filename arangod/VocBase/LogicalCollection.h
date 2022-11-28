@@ -55,7 +55,6 @@ class Index;
 class IndexIterator;
 class KeyGenerator;
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class Result;
@@ -390,6 +389,11 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const noexcept;
+
+#ifdef USE_ENTERPRISE
+  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties);
+#endif
 
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);

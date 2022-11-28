@@ -81,6 +81,7 @@ class LogFollower : public ILogFollower,
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
+  [[nodiscard]] auto compact() -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.
   auto waitForLeaderAcked() -> WaitForFuture override;
@@ -102,6 +103,7 @@ class LogFollower : public ILogFollower,
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
+    [[nodiscard]] auto runCompaction(LogIndex compactionStop) -> Result;
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;

@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
 
 #include <cstdint>
 #include <memory>
@@ -66,7 +68,7 @@ namespace utils {
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
-                     std::unordered_set<AttributeNamePath>& attributes);
+                     containers::FlatHashSet<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  root  may be modified by this function if

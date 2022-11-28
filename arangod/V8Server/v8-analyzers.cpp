@@ -244,7 +244,7 @@ void JS_AnalyzerType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    if (analyzer->type().null()) {
+    if (irs::IsNull(analyzer->type())) {
       TRI_V8_RETURN(v8::Null(isolate));
     }
 
@@ -310,7 +310,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,
-          std::string_view(splittedAnalyzerName.second.c_str(),
+          std::string_view(splittedAnalyzerName.second.data(),
                            splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -608,7 +608,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
                            .extendedNamesForAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,
-          std::string_view(splittedAnalyzerName.second.c_str(),
+          std::string_view(splittedAnalyzerName.second.data(),
                            splittedAnalyzerName.second.size()))) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,

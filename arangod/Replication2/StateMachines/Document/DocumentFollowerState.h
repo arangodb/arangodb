@@ -23,21 +23,26 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
-struct IDocumentStateTransactionHandler;
+struct IDocumentStateNetworkHandler;
+enum class OperationType;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
-  ~DocumentFollowerState();
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+  ~DocumentFollowerState() override;
+
+  std::string_view const shardId;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
@@ -48,6 +53,12 @@ struct DocumentFollowerState
       -> futures::Future<Result> override;
 
  private:
+  auto forceLocalTransaction(OperationType opType,
+                             velocypack::SharedSlice slice) -> Result;
+  auto truncateLocalShard() -> Result;
+  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+
+ private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core)
         : core(std::move(core)){};
@@ -56,8 +67,10 @@ struct DocumentFollowerState
     std::unique_ptr<DocumentCore> core;
   };
 
+  std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -41,15 +41,18 @@ namespace iresearch {
 class PrimaryKeyFilter final : public irs::filter,
                                public irs::filter::prepared {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
+  struct ExistsTag {};
+  static irs::type_info type(ExistsTag);
   static irs::type_info type(StorageEngine& engine);
 
-  PrimaryKeyFilter(StorageEngine& engine,
-                   arangodb::LocalDocumentId const& value, bool nested) noexcept
-      : irs::filter(PrimaryKeyFilter::type(engine)),
+  template<typename Tag>
+  PrimaryKeyFilter(Tag&& tag, arangodb::LocalDocumentId const& value,
+                   bool nested) noexcept
+      : irs::filter(type(std::forward<Tag>(tag))),
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false),
         _nested(nested) {}
@@ -132,7 +135,7 @@ class PrimaryKeyFilter final : public irs::filter,
 ///////////////////////////////////////////////////////////////////////////////
 class PrimaryKeyFilterContainer final : public irs::filter {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilterContainer";
   }
 

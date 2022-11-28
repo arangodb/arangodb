@@ -124,7 +124,10 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature,
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
       _followingTermId(0),
-      _tailingUpperBoundTick(0) {
+      _tailingUpperBoundTick(0),
+      _initialDocCountOnLeader(0),
+      _initialDocCountOnFollower(0),
+      _docCountAtEnd(0) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -232,7 +235,8 @@ static arangodb::Result addShardFollower(
     network::ConnectionPool* pool, std::string const& endpoint,
     std::string const& database, std::string const& shard, uint64_t lockJobId,
     std::string const& clientId, SyncerId const syncerId,
-    std::string const& clientInfoString, double timeout = 120.0) {
+    std::string const& clientInfoString, double timeout,
+    uint64_t& docCountAtEnd) {
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
@@ -263,6 +267,8 @@ static arangodb::Result addShardFollower(
     if (res.fail()) {
       return res;
     }
+
+    docCountAtEnd = docCount;
 
     VPackBuilder body;
     {
@@ -694,6 +700,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
+  TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
@@ -873,6 +881,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
+    _initialDocCountOnLeader = docCountOnLeader;
+
     uint64_t docCount = 0;
     if (Result res = collectionCount(*collection, docCount); res.fail()) {
       std::stringstream error;
@@ -883,6 +893,8 @@ bool SynchronizeShard::first() {
       result(res.errorNumber(), error.str());
       return false;
     }
+
+    _initialDocCountOnFollower = docCount;
 
     if (_priority != maintenance::SLOW_OP_PRIORITY &&
         docCount != docCountOnLeader &&
@@ -1338,8 +1350,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId,
-                         clientId, syncerId, _clientInfoString, 60.0);
+  res =
+      addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
+                       syncerId, _clientInfoString, 60.0, _docCountAtEnd);
 
   TRI_IF_FAILURE("SynchronizeShard::wrongChecksum") {
     res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
@@ -1473,7 +1486,11 @@ void SynchronizeShard::setState(ActionState state) {
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
           << "SynchronizeShard: synchronization completed for shard "
-          << getDatabase() << "/" << getShard();
+          << getDatabase() << "/" << getShard()
+          << ", initial document count on leader: " << _initialDocCountOnLeader
+          << ", initial document count on follower: "
+          << _initialDocCountOnFollower
+          << ", document count at end: " << _docCountAtEnd;
 
       // because we succeeded now, we can wipe out all past failures
       _feature.removeReplicationError(getDatabase(), getShard());

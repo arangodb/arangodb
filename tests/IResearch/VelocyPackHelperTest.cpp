@@ -38,7 +38,7 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
         arangodb::velocypack::Parser::fromJson("{ \"key\": \"value\" }");
     auto slice = json->slice();
     std::string buf0;
-    irs::string_ref buf1;
+    std::string_view buf1;
     bool seen;
 
     EXPECT_TRUE(
@@ -57,7 +57,7 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto slice = json->slice();
     std::string buf0;
-    irs::string_ref buf1;
+    std::string_view buf1;
     bool seen = true;
 
     EXPECT_TRUE(
@@ -78,7 +78,7 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"key\": 12345 }");
     auto slice = json->slice();
     std::string buf0;
-    irs::string_ref buf1;
+    std::string_view buf1;
     bool seen;
 
     EXPECT_TRUE(

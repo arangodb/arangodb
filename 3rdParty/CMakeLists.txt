@@ -25,33 +25,17 @@ endif ()
 ## gtest
 ################################################################################
 
-set(GOOGLETEST_ROOT 3rdParty/gtest/googletest CACHE STRING "Google Test source root")
-set(GOOGLEMOCK_ROOT 3rdParty/gtest/googlemock CACHE STRING "Google Mock source root")
-
-set(GTEST_SOURCES
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/src/gtest-all.cc
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/src/gmock-all.cc
-        )
-
-foreach(_source ${GTEST_SOURCES})
-  set_source_files_properties(${_source} PROPERTIES GENERATED 1)
-endforeach()
-
-add_library(gtest ${GTEST_SOURCES})
-target_include_directories(gtest
-        PUBLIC
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
-        ${PROJECT_SOURCE_DIR}/${GOOGLETEST_ROOT}
-        ${PROJECT_SOURCE_DIR}/${GOOGLEMOCK_ROOT}
-        )
+UpdateModule(${GIT_EXECUTABLE} "gtest" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+set(INSTALL_GTEST "OFF")
+set(BUILD_GMOCK "ON")
+add_subdirectory(gtest)
 
 ################################################################################
 ## ZLIB
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.12)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.13)
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
 
@@ -169,7 +153,7 @@ add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
-  IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
+  IMPORTED_LOCATION "boost_system;boost_thread"
 )
 
 # explicitly set since suppressing Boost search

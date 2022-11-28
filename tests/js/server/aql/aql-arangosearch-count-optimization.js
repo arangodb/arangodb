@@ -34,69 +34,98 @@ var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function arangoSearchCountOptimization () {
+function viewCountOptimization(isSearchAlias) {
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._dropView("UnitTestView");
       db._dropView("UnitTestViewSorted");
       db._drop("UnitTestsCollection");
-      let c = db._create("UnitTestsCollection", { numberOfShards: 3 });
+      let c = db._create("UnitTestsCollection", {numberOfShards: 3});
 
       let docs = [];
       for (let i = 0; i < 10010; ++i) {
-        docs.push({ value: "test" + (i % 10), count: i });
+        docs.push({value: "test" + (i % 10), count: i});
       }
       c.insert(docs);
-      
-      db._createView("UnitTestView", "arangosearch", {links:{
-                                                       UnitTestsCollection:{
-                                                         includeAllFields:false,
-                                                         fields:{
-                                                           value:{
-                                                             analyzers:["identity"]},
-                                                           count:{
-                                                             analyzers:["identity"]}}}}});
-      db._createView("UnitTestViewSorted", "arangosearch", {primarySort: [{"field": "count", "direction": "asc"}],
-                      links:{
-                        UnitTestsCollection:{
-                          includeAllFields:false,
-                          fields:{
-                            value:{analyzers:["identity"]},
-                            count:{analyzers:["identity"]}}}}});
+      if (isSearchAlias) {
+        let c = db._collection("UnitTestsCollection");
+        let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+        db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
+        let i2 = c.ensureIndex({
+          type: "inverted",
+          fields: ["value", "count"],
+          primarySort: {fields: [{"field": "count", "direction": "asc"}]}
+        });
+        db._createView("UnitTestViewSorted", "search-alias", {
+          indexes: [{
+            collection: "UnitTestsCollection",
+            index: i2.name
+          }]
+        });
+      } else {
+        db._createView("UnitTestView", "arangosearch", {
+          links: {
+            UnitTestsCollection: {
+              includeAllFields: false,
+              fields: {
+                value: {
+                  analyzers: ["identity"]
+                },
+                count: {
+                  analyzers: ["identity"]
+                }
+              }
+            }
+          }
+        });
+        db._createView("UnitTestViewSorted", "arangosearch", {
+          primarySort: [{"field": "count", "direction": "asc"}],
+          links: {
+            UnitTestsCollection: {
+              includeAllFields: false,
+              fields: {
+                value: {analyzers: ["identity"]},
+                count: {analyzers: ["identity"]}
+              }
+            }
+          }
+        });
+      }
       // sync the views
       db._query("FOR d IN UnitTestView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
       db._query("FOR d IN UnitTestViewSorted OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._dropView("UnitTestView");
       db._dropView("UnitTestViewSorted");
       db._drop("UnitTestsCollection");
     },
-    
+
     testNoSortWithoutFiltersExact() {
-      let res = db._query("FOR d IN UnitTestView  COLLECT WITH COUNT INTO c RETURN c").toArray(); 
+      let res = db._query("FOR d IN UnitTestView  COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(10010, res[0]);
     },
     testNoSortWithoutFiltersCost() {
-      let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " + 
-                          "COLLECT WITH COUNT INTO c RETURN c").toArray(); 
+      let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " +
+        "COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(10010, res[0]);
     },
     testNoSortLimitFullCountExact() {
       if (isCluster) {
         return; // TG-1110
       }
-      let res = db._query("FOR d IN UnitTestView LIMIT 10, 100 RETURN d", {}, {fullCount:true}); 
+      let res = db._query("FOR d IN UnitTestView LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(10010, res.getExtra().stats.fullCount);
     },
     testNoSortLimitFullCountCost() {
       if (isCluster) {
         return; // TG-1110
       }
-      let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " + 
-                          "LIMIT 10, 100 RETURN d", {}, {fullCount:true}); 
+      let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " +
+        "LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(10010, res.getExtra().stats.fullCount);
     },
     testNoSortLimitFiltersFullCountExact() {
@@ -104,7 +133,7 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
-                          "d.value == 'test2' LIMIT 10, 100 RETURN d", {}, {fullCount:true}); 
+        "d.value == 'test2' LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
     },
     testNoSortLimitFiltersFullCountCost() {
@@ -112,19 +141,19 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
-                          "d.value == 'test2' OPTIONS{countApproximate:'cost'} LIMIT 10, 100 RETURN d",
-                          {}, {fullCount:true});
+        "d.value == 'test2' OPTIONS{countApproximate:'cost'} LIMIT 10, 100 RETURN d",
+        {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
     },
     testNoSortCountFiltersExact() {
-      let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " + 
-                          " d.value == 'test2'  COLLECT WITH COUNT INTO c RETURN c").toArray();
+      let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
+        " d.value == 'test2'  COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
     },
     testNoSortCountFiltersCost() {
-      let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " + 
-                          " d.value == 'test2' OPTIONS{countApproximate:'cost'} " +
-                          " COLLECT WITH COUNT INTO c RETURN c").toArray();
+      let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
+        " d.value == 'test2' OPTIONS{countApproximate:'cost'} " +
+        " COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
     },
     testSortLimitWithFullCountExact() {
@@ -132,7 +161,7 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestViewSorted SORT d.count ASC LIMIT 10, 100 RETURN d",
-                          {}, {fullCount:true});
+        {}, {fullCount: true});
       assertEqual(10010, res.getExtra().stats.fullCount);
     },
     testSortLimitWithFullCountCost() {
@@ -140,7 +169,7 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestViewSorted OPTIONS{countApproximate:'cost'} " +
-                          "SORT d.count ASC LIMIT 10, 100 RETURN d", {}, {fullCount:true});
+        "SORT d.count ASC LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(10010, res.getExtra().stats.fullCount);
     },
     testSortLimitFiltersFullCountExact() {
@@ -148,9 +177,9 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestViewSorted SEARCH d.value == 'test1' OR " +
-                          "d.value == 'test2' OPTIONS{countApproximate:'exact'} " + 
-                          "SORT d.count ASC LIMIT 10, 100 RETURN d",
-                          {}, {fullCount:true});
+        "d.value == 'test2' OPTIONS{countApproximate:'exact'} " +
+        "SORT d.count ASC LIMIT 10, 100 RETURN d",
+        {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
     },
     testSortLimitFiltersFullCountCost() {
@@ -158,15 +187,36 @@ function arangoSearchCountOptimization () {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestViewSorted SEARCH d.value == 'test1' OR " +
-                          "d.value == 'test2' OPTIONS{countApproximate:'cost'} " + 
-                          "SORT d.count ASC LIMIT 10, 100 RETURN d",
-                          {}, {fullCount:true});
+        "d.value == 'test2' OPTIONS{countApproximate:'cost'} " +
+        "SORT d.count ASC LIMIT 10, 100 RETURN d",
+        {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
     },
   };
 }
 
+function arangoSearchCountOptimization() {
+  let suite = {};
+  deriveTestSuite(
+    viewCountOptimization(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasCountOptimization() {
+  let suite = {};
+  deriveTestSuite(
+    viewCountOptimization(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
 jsunity.run(arangoSearchCountOptimization);
+jsunity.run(searchAliasCountOptimization);
 
 return jsunity.done();
 

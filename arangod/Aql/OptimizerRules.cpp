@@ -62,10 +62,12 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -886,7 +888,8 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
 bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
   auto* options =
       static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
-  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  arangodb::containers::FlatHashSet<arangodb::aql::AttributeNamePath>
+      attributes;
   bool modified = false;
   size_t maxProjections = options->getMaxProjections();
   auto pathOutVariable = traversal->pathOutVariable();
@@ -1004,7 +1007,7 @@ bool optimizeTraversalPathVariable(
 
   // path is used later, but lets check which of its sub-attributes
   // "vertices" or "edges" are in use (or the complete path)
-  std::unordered_set<AttributeNamePath> attributes;
+  containers::FlatHashSet<AttributeNamePath> attributes;
   VarSet vars;
 
   ExecutionNode* current = traversal->getFirstParent();
@@ -4556,19 +4559,23 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           auto p = previous;
           while (p != nullptr) {
             switch (p->getType()) {
-              case ExecutionNode::REMOTE:
+              case ExecutionNode::REMOTE: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_COLLECTION:
               case ExecutionNode::INDEX: {
                 auto col = getCollection(p);
-                if (col->numberOfShards() > 1) {
+                if (col->numberOfShards() > 1 ||
+                    (col->type() == TRI_COL_TYPE_EDGE && col->isSmart())) {
                   hasFoundMultipleShards = true;
                 }
-              } break;
-              case ExecutionNode::TRAVERSAL:
+                break;
+              }
+              case ExecutionNode::TRAVERSAL: {
                 hasFoundMultipleShards = true;
                 break;
+              }
               case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
                 auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(p);
                 auto collections = viewNode.collections();
@@ -4579,7 +4586,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                   hasFoundMultipleShards =
                       collections.front().first.get().numberOfShards() > 1;
                 }
-              } break;
+                break;
+              }
               default:
                 break;
             }
@@ -6331,6 +6339,84 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+/// @brief optimizes away unused K_PATHS things
+void arangodb::aql::optimizePathsRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(nodes, EN::ENUMERATE_PATHS, true);
+
+  if (nodes.empty()) {
+    // no traversals present
+    opt->addPlan(std::move(plan), rule, false);
+    return;
+  }
+
+  bool modified = false;
+
+  // first make a pass over all traversal nodes and remove unused
+  // variables from them
+  for (auto const& n : nodes) {
+    EnumeratePathsNode* ksp = ExecutionNode::castTo<EnumeratePathsNode*>(n);
+    if (!ksp->usesPathOutVariable()) {
+      continue;
+    }
+
+    Variable const* variable = &(ksp->pathOutVariable());
+
+    containers::FlatHashSet<AttributeNamePath> attributes;
+    VarSet vars;
+    bool canOptimize = true;
+
+    ExecutionNode* current = ksp->getFirstParent();
+    while (current != nullptr && canOptimize) {
+      switch (current->getType()) {
+        case EN::CALCULATION: {
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            // path variable used here
+            Expression* exp =
+                ExecutionNode::castTo<CalculationNode*>(current)->expression();
+            AstNode const* node = exp->node();
+            if (!Ast::getReferencedAttributesRecursive(
+                    node, variable, /*expectedAttributes*/ "", attributes)) {
+              // full path variable is used, or accessed in a way that we don't
+              // understand, e.g. "p" or "p[0]" or "p[*]..."
+              canOptimize = false;
+            }
+          }
+          break;
+        }
+        default: {
+          // if the path is used by any other node type, we don't know what to
+          // do and will not optimize parts of it away
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (vars.find(variable) != vars.end()) {
+            canOptimize = false;
+          }
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    }
+
+    if (canOptimize) {
+      bool produceVertices =
+          attributes.contains(StaticStrings::GraphQueryVertices);
+
+      if (!produceVertices) {
+        auto* options = ksp->options();
+        options->setProduceVertices(false);
+        modified = true;
+      }
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
 // remove filter nodes already covered by a traversal
 void arangodb::aql::removeFiltersCoveredByTraversal(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -6385,37 +6471,56 @@ void arangodb::aql::removeFiltersCoveredByTraversal(
         auto traversalCondition = traversalNode->condition();
 
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
-          /*auto const& indexesUsed = traversalNode->get
-          //indexNode->getIndexes();
-
-          if (indexesUsed.size() == 1) {*/
-          // single index. this is something that we can handle
-          Variable const* outVariable = traversalNode->pathOutVariable();
           VarSet varsUsedByCondition;
           Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
-          if (outVariable != nullptr && varsUsedByCondition.find(outVariable) !=
-                                            varsUsedByCondition.end()) {
+
+          auto remover = [&](Variable const* outVariable,
+                             bool isPathCondition) -> bool {
+            if (outVariable == nullptr) {
+              return false;
+            }
+            if (varsUsedByCondition.find(outVariable) ==
+                varsUsedByCondition.end()) {
+              return false;
+            }
+
             auto newNode = condition.removeTraversalCondition(
-                plan.get(), outVariable, traversalCondition->root());
+                plan.get(), outVariable, traversalCondition->root(),
+                isPathCondition);
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
               toUnlink.emplace(node);
               // note: we must leave the calculation node intact, in case it
               // is still used by other nodes in the plan
-              modified = true;
-              handled = true;
+              return true;
             } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
-              CalculationNode* cn = new CalculationNode(
+              auto* cn = plan->createNode<CalculationNode>(
                   plan.get(), plan->nextId(), std::move(expr),
                   calculationNode->outVariable());
-              plan->registerNode(cn);
               plan->replaceNode(setter, cn);
+              return true;
+            }
+
+            return false;
+          };
+
+          std::array<std::pair<Variable const*, bool>, 3> vars = {
+              std::make_pair(traversalNode->pathOutVariable(),
+                             /*isPathCondition*/ true),
+              std::make_pair(traversalNode->vertexOutVariable(),
+                             /*isPathCondition*/ false),
+              std::make_pair(traversalNode->edgeOutVariable(),
+                             /*isPathCondition*/ false)};
+
+          for (auto [v, isPathCondition] : vars) {
+            if (remover(v, isPathCondition)) {
               modified = true;
               handled = true;
+              break;
             }
           }
         }

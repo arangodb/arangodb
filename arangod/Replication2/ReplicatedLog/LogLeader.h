@@ -143,6 +143,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto getParticipantId() const noexcept -> ParticipantId const&;
 
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
+  [[nodiscard]] auto compact() -> Result override;
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
 
@@ -153,6 +154,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   auto waitForLeadership() -> WaitForFuture override;
 
   [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
+  auto ping(std::optional<std::string> message) -> LogIndex override;
 
   // This function returns the current commit index. Do NOT poll this function,
   // use waitFor(idx) instead. This function is used in tests.
@@ -285,6 +287,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     [[nodiscard]] auto collectFollowerStates() const
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
     [[nodiscard]] auto checkCompaction() -> Result;
+    [[nodiscard]] auto runCompaction(LogIndex compactionStop) -> Result;
 
     [[nodiscard]] auto updateCommitIndexLeader(
         LogIndex newIndex, std::shared_ptr<QuorumData> quorum)

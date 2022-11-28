@@ -89,6 +89,7 @@ struct ILogParticipant {
 
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
+  [[nodiscard]] virtual auto compact() -> Result = 0;
 };
 
 /**
@@ -114,6 +115,7 @@ struct ILogLeader : ILogParticipant {
   virtual auto insert(LogPayload payload, bool waitForSync,
                       DoNotTriggerAsyncReplication) -> LogIndex = 0;
   virtual void triggerAsyncReplication() = 0;
+  virtual auto ping(std::optional<std::string> message) -> LogIndex = 0;
 
   [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
       -> bool = 0;

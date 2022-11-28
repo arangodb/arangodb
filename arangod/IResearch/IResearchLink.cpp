@@ -35,6 +35,7 @@
 #include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
@@ -155,13 +156,19 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
+  irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+  setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
+                              _meta);
+#endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
 #ifdef USE_ENTERPRISE
                          _meta._hasNested,
 #else
                          false,
 #endif
-                         _meta._storedValues.columns(), _meta._sortCompression);
+                         _meta._storedValues.columns(), _meta._sortCompression,
+                         readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }
@@ -339,14 +346,6 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   return r;
 }
 
-Result IResearchLink::insert(transaction::Methods& trx,
-                             LocalDocumentId const documentId,
-                             velocypack::Slice const doc) {
-  return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                    IResearchLinkMeta>(trx, documentId, doc,
-                                                       _meta);
-}
-
 bool IResearchLink::isHidden() {
   // hide links unless we are on a DBServer
   return !ServerState::instance()->isDBServer();
@@ -413,7 +412,7 @@ char const* IResearchLink::typeName() {
   return StaticStrings::ViewArangoSearchType.data();
 }
 
-bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+bool IResearchLink::setCollectionName(std::string_view name) noexcept {
   TRI_ASSERT(!name.empty());
   if (_meta._collectionName.empty()) {
     _meta._collectionName = name;
@@ -447,7 +446,7 @@ Result IResearchLink::unload() noexcept {
 AnalyzerPool::ptr IResearchLink::findAnalyzer(
     AnalyzerPool const& analyzer) const {
   auto const it =
-      _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+      _meta._analyzerDefinitions.find(std::string_view(analyzer.name()));
 
   if (it == _meta._analyzerDefinitions.end()) {
     return nullptr;
@@ -493,14 +492,6 @@ std::string const& IResearchLink::getShardName() const noexcept {
     return _collection.name();
   }
   return arangodb::StaticStrings::Empty;
-}
-
-bool IResearchLink::hasNested() const noexcept {
-#ifdef USE_ENTERPRISE
-  return _meta._hasNested;
-#else
-  return false;
-#endif
 }
 
 void IResearchLink::insertMetrics() {

@@ -1119,14 +1119,12 @@ RestoreFeature::RestoreJob::RestoreJob(RestoreFeature& feature,
                                        RestoreProgressTracker& progressTracker,
                                        RestoreFeature::Options const& options,
                                        RestoreFeature::Stats& stats,
-                                       bool useEnvelope,
                                        std::string const& collectionName,
                                        std::shared_ptr<SharedState> sharedState)
     : feature{feature},
       progressTracker{progressTracker},
       options{options},
       stats{stats},
-      useEnvelope{useEnvelope},
       collectionName(collectionName),
       sharedState(std::move(sharedState)) {}
 
@@ -1140,8 +1138,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 
   std::string const url =
       "/_api/replication/restore-data?collection=" + urlEncode(collectionName) +
-      "&force=" + (options.force ? "true" : "false") +
-      "&useEnvelope=" + (useEnvelope ? "true" : "false");
+      "&force=" + (options.force ? "true" : "false");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -1230,11 +1227,12 @@ RestoreFeature::RestoreMainJob::RestoreMainJob(
     RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
     VPackSlice parameters, bool useEnvelope)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
+    : RestoreJob(feature, progressTracker, options, stats,
                  parameters.get({"parameters", "name"}).copyString(),
                  std::make_shared<SharedState>()),
       directory{directory},
-      parameters{parameters} {}
+      parameters{parameters},
+      useEnvelope{useEnvelope} {}
 
 Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -1364,8 +1362,8 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   feature.taskQueue().queueJob(
       std::make_unique<arangodb::RestoreFeature::RestoreSendJob>(
-          feature, progressTracker, options, stats, useEnvelope, collectionName,
-          sharedState, readOffset, std::move(buffer)));
+          feature, progressTracker, options, stats, collectionName, sharedState,
+          readOffset, std::move(buffer)));
 
   // we just scheduled an async job, and no result will be returned from here
   return {};
@@ -1640,11 +1638,10 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(
 RestoreFeature::RestoreSendJob::RestoreSendJob(
     RestoreFeature& feature, RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
-    bool useEnvelope, std::string const& collectionName,
-    std::shared_ptr<SharedState> sharedState, size_t readOffset,
-    std::unique_ptr<basics::StringBuffer> buffer)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
-                 collectionName, std::move(sharedState)),
+    std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
+    size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer)
+    : RestoreJob(feature, progressTracker, options, stats, collectionName,
+                 std::move(sharedState)),
       readOffset(readOffset),
       buffer(std::move(buffer)) {}
 
@@ -1687,23 +1684,25 @@ void RestoreFeature::collectOptions(
 
   options->addOption(
       "--collection",
-      "restrict to collection name (can be specified multiple times)",
+      "Restrict the restore to this collection name (can be specified multiple "
+      "times).",
       new VectorParameter<StringParameter>(&_options.collections));
 
   options->addOption("--view",
-                     "restrict to view name (can be specified multiple times)",
+                     "Restrict the restore to this view name (can be specified "
+                     "multiple times).",
                      new VectorParameter<StringParameter>(&_options.views));
 
   options->addObsoleteOption(
       "--recycle-ids", "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
-                     "maximum size for individual data batches (in bytes)",
+                     "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.chunkSize));
 
   options
       ->addOption("--threads",
-                  "maximum number of collections to process in parallel",
+                  "The maximum number of collections to process in parallel.",
                   new UInt32Parameter(&_options.threadCount),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
@@ -1711,62 +1710,62 @@ void RestoreFeature::collectOptions(
 
   options
       ->addOption("--initial-connect-retries",
-                  "number of connect retries for initial connection",
+                  "The number of connect retries for the initial connection.",
                   new UInt32Parameter(&_options.initialConnectRetries))
       .setIntroducedIn(30713)
       .setIntroducedIn(30801);
 
   options->addOption("--include-system-collections",
-                     "include system collections",
+                     "Include system collections.",
                      new BooleanParameter(&_options.includeSystemCollections));
 
   options->addOption("--create-database",
-                     "create the target database if it does not exist",
+                     "Create the target database if it does not exist.",
                      new BooleanParameter(&_options.createDatabase));
 
   options->addOption(
       "--force-same-database",
-      "force usage of the same database name as in the source dump.json file",
+      "Force the same database name as in the source `dump.json` file.",
       new BooleanParameter(&_options.forceSameDatabase));
 
   options
-      ->addOption("--all-databases", "restore data to all databases",
+      ->addOption("--all-databases", "Restore the data of all databases.",
                   new BooleanParameter(&_options.allDatabases))
       .setIntroducedIn(30500);
 
-  options->addOption("--input-directory", "input directory",
+  options->addOption("--input-directory", "The input directory.",
                      new StringParameter(&_options.inputPath));
 
   options
       ->addOption(
           "--cleanup-duplicate-attributes",
-          "clean up duplicate attributes (use first specified value) in input "
-          "documents instead of making the restore operation fail",
+          "Clean up duplicate attributes (use first specified value) in input "
+          "documents instead of making the restore operation fail.",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
-  options->addOption("--import-data", "import data into collection",
+  options->addOption("--import-data", "Import data into collection.",
                      new BooleanParameter(&_options.importData));
 
-  options->addOption("--create-collection", "create collection structure",
+  options->addOption("--create-collection", "Create collection structure.",
                      new BooleanParameter(&_options.importStructure));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_options.progress));
 
-  options->addOption("--overwrite", "overwrite collections if they exist",
+  options->addOption("--overwrite", "Overwrite collections if they exist.",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--continue", "continue restore operation",
+  options->addOption("--continue", "Continue the restore operation.",
                      new BooleanParameter(&_options.continueRestore));
 
   options
       ->addOption("--envelope",
                   "wrap each document into a {type, data} envelope "
-                  "(this is required from compatibility with v3.7 and before)",
+                  "(this is required for compatibility with v3.7 and before).",
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
 
@@ -1788,8 +1787,9 @@ void RestoreFeature::collectOptions(
   options
       ->addOption(
           "--number-of-shards",
-          "override value for numberOfShards (can be specified multiple times, "
-          "e.g. --number-of-shards 2 --number-of-shards myCollection=3)",
+          "Override the `numberOfShards` value (can be specified multiple "
+          "times, e.g. --number-of-shards 2 --number-of-shards "
+          "myCollection=3).",
           new VectorParameter<StringParameter>(&_options.numberOfShards))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
@@ -1797,36 +1797,39 @@ void RestoreFeature::collectOptions(
   options
       ->addOption(
           "--replication-factor",
-          "override value for replicationFactor (can be specified "
+          "Override the `replicationFactor` value (can be specified "
           "multiple times, e.g. --replication-factor 2 "
-          "--replication-factor myCollection=3)",
+          "--replication-factor myCollection=3).",
           new VectorParameter<StringParameter>(&_options.replicationFactor))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
-      "continue restore even if sharding prototype collection is missing",
+      "Continue the restore even if the sharding prototype collection is "
+      "missing.",
       new BooleanParameter(&_options.ignoreDistributeShardsLikeErrors));
 
   options->addOption(
-      "--force", "continue restore even in the face of some server-side errors",
+      "--force",
+      "Continue the restore even in the face of some server-side errors.",
       new BooleanParameter(&_options.force));
 
   // deprecated options
   options
-      ->addOption("--default-number-of-shards",
-                  "default value for numberOfShards if not specified in dump",
-                  new UInt64Parameter(&_options.defaultNumberOfShards),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--default-number-of-shards",
+          "The default `numberOfShards` value if not specified in the dump.",
+          new UInt64Parameter(&_options.defaultNumberOfShards),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
   options
       ->addOption(
           "--default-replication-factor",
-          "default value for replicationFactor if not specified in dump",
+          "The default `replicationFactor` value if not specified in the dump.",
           new UInt64Parameter(&_options.defaultReplicationFactor),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))

@@ -85,6 +85,7 @@
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
 #include "V8Server/v8-prototype-state.h"
+#include "V8Server/v8-pregel.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -894,14 +895,22 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
     TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
+  TRI_GET_GLOBALS();
+  auto v8Context = transaction::V8Context::Create(vocbase, true);
+  if (v8g->_transactionContext != nullptr) {
+    if (v8g->_transactionContext->isTransactionJS()) {
+      v8Context->setJStransaction();
+    }
+    if (v8g->_transactionContext->isReadOnlyTransaction()) {
+      v8Context->setReadOnly();
+    }
+  }
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(std::move(queryString)), std::move(bindVars),
-      aql::QueryOptions(options.slice()));
+      std::move(v8Context), aql::QueryString(std::move(queryString)),
+      std::move(bindVars), aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 
@@ -2232,6 +2241,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Pregel(isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
   TRI_InitV8PrototypeStates(v8g, isolate);

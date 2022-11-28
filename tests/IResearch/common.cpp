@@ -67,7 +67,7 @@
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -87,8 +87,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
   os << "Range(" << range.field();
-  std::string termValueMin(ref_cast<char>(range.options().range.min));
-  std::string termValueMax(ref_cast<char>(range.options().range.max));
+  std::string termValueMin(
+      ViewCast<char>(irs::bytes_view{range.options().range.min}));
+  std::string termValueMax(
+      ViewCast<char>(irs::bytes_view{range.options().range.max}));
   if (!termValueMin.empty()) {
     os << " "
        << (range.options().range.min_type == irs::BoundType::INCLUSIVE ? ">="
@@ -109,7 +111,7 @@ std::ostream& operator<<(std::ostream& os, by_range const& range) {
 }
 
 std::ostream& operator<<(std::ostream& os, by_term const& term) {
-  std::string termValue(ref_cast<char>(term.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{term.options().term}));
   return os << "Term(" << term.field() << "=" << termValue << ")";
 }
 
@@ -175,15 +177,17 @@ std::ostream& operator<<(std::ostream& os, empty const&) {
 
 std::ostream& operator<<(std::ostream& os,
                          irs::by_column_existence const& filter) {
-  os << "EXISTS[" << filter.field() << "]";
+  os << "EXISTS[" << filter.field() << ", " << size_t(filter.options().acceptor)
+     << "]";
   return os;
 }
 
 std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
   os << "LEVENSHTEIN_MATCH[";
   os << lev.field() << ", '";
-  std::string termValue(ref_cast<char>(lev.options().term));
-  std::string prefixValue(ref_cast<char>(lev.options().prefix));
+  std::string termValue(ViewCast<char>(irs::bytes_view{lev.options().term}));
+  std::string prefixValue(
+      ViewCast<char>(irs::bytes_view{lev.options().prefix}));
   os << termValue << "', " << static_cast<int>(lev.options().max_distance)
      << ", " << lev.options().with_transpositions << ", "
      << lev.options().max_terms << ", '" << prefixValue << "']";
@@ -193,7 +197,7 @@ std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
 std::ostream& operator<<(std::ostream& os, by_prefix const& filter) {
   os << "STARTS_WITH[";
   os << filter.field() << ", '";
-  std::string termValue(ref_cast<char>(filter.options().term));
+  std::string termValue(ViewCast<char>(irs::bytes_view{filter.options().term}));
   os << termValue << "', " << filter.options().scored_terms_limit << "]";
   return os;
 }
@@ -202,7 +206,7 @@ std::ostream& operator<<(std::ostream& os, by_terms const& filter) {
   os << "TERMS[";
   os << filter.field() << ", {";
   for (auto& [term, boost] : filter.options().terms) {
-    os << "[" << ref_cast<char>(term) << ", " << boost << "],";
+    os << "[" << ViewCast<char>(irs::bytes_view{term}) << ", " << boost << "],";
   }
   os << "}, " << filter.options().min_match << "]";
   return os;
@@ -260,7 +264,7 @@ std::string to_string(irs::filter const& f) {
 namespace {
 
 struct BoostScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "boostscorer";
   }
 
@@ -304,21 +308,21 @@ struct BoostScorer : public irs::sort {
     }
   };  // namespace
 
-  static irs::sort::ptr make(irs::string_ref) {
+  static irs::sort::ptr make(std::string_view) {
     return std::make_unique<BoostScorer>();
   }
 
   BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>();
+    return std::make_unique<Prepared>();
   }
 };  // BoostScorer
 
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "customscorer";
   }
 
@@ -366,14 +370,14 @@ struct CustomScorer : public irs::sort {
     float_t i;
   };
 
-  static irs::sort::ptr make(irs::string_ref args) {
-    if (args.null()) {
+  static irs::sort::ptr make(std::string_view args) {
+    if (irs::IsNull(args)) {
       return std::make_unique<CustomScorer>(0u);
     }
 
     // velocypack::Parser::fromJson(...) will throw exception on parse error
     auto json =
-        arangodb::velocypack::Parser::fromJson(args.c_str(), args.size());
+        arangodb::velocypack::Parser::fromJson(args.data(), args.size());
     auto slice = json ? json->slice() : arangodb::velocypack::Slice();
 
     if (!slice.isArray()) {
@@ -398,7 +402,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+    return std::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
@@ -623,7 +627,7 @@ uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
 }
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature) {
-  irs::utf8_path path;
+  std::filesystem::path path;
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
@@ -672,12 +676,10 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
-#ifdef USE_ENTERPRISE
 std::string mangleNested(std::string name) {
   arangodb::iresearch::kludge::mangleNested(name);
   return name;
 }
-#endif
 
 std::string mangleString(std::string name, std::string_view suffix) {
   arangodb::iresearch::kludge::mangleAnalyzer(name);
@@ -726,7 +728,7 @@ void assertFilterOptimized(
   plan->findNodesOfType(
       nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  EXPECT_EQ(nodes.size(), 1);
+  EXPECT_EQ(nodes.size(), 1U);
 
   auto* viewNode = arangodb::aql::ExecutionNode::castTo<
       arangodb::iresearch::IResearchViewNode*>(nodes.front());

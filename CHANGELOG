@@ -1,6 +1,218 @@
 devel
 -----
 
+* Updated arangosync to v2.13.0.
+
+* Make the deprecated `--server.disable-authentication-unix-sockets` and
+  `--server.disable-authentication` startup options obsolete. They were
+  deprecated in v3.0 and mapped to `--server.authentication` and
+  `--server.authentication-unix-sockets`, which made them do the opposite
+  of what their names suggest.
+
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
+* Log startup warnings for any experimental, deprecated, obsolete or renamed
+  options at startup of arangod or any of the client tools.
+
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution,
+  which is not available on DB-servers in a cluster, and also isn't
+  necessarily available for regular queries on single servers (a V8 context
+  is only available if a query was executed inside Foxx or from inside a JS
+  transaction, but not otherwise).
+
+* Fix setting query memory limit to 0 for certain queries if a global memory
+  limit is set, but overriding the memory limit is allowed.
+
+* BTS-1075: AQL: RETURN DOCUMENT ("") inconsistent - single server vs cluster.
+
+* Updated arangosync to v2.13.0-preview-5.
+
+* Added option to exclude system collection from rebalance shards plan.
+
+* Updated arangosync to v2.13.0-preview-4.
+
+* Delay a MoveShard operation for leader change, until the old leader has
+  actually assumed its leadership and until the new leader is actually in
+  sync. This fixes a bug which could block a shard under certain circumstances.
+  This fixes BTS-1110.
+
+* Fixed issue #17367: FILTER fails when using negation (!) on variable whose
+  name starts with "in". Add trailing context to NOT IN token.
+
+* Do not query vertex data in K_PATHS queries if vertex data is not needed.
+
+* Removed assertions from cluster rebalance js test that obligated the rebalance
+  plan to always have moves, but there were cases in which all there are none.
+
+* Show number of HTTP requests in cluster query profiles.
+
+* Improved the syntax highlighter for AQL queries in the web interface
+  with support for multi-line strings, multi-line identifiers in forward
+  and backticks, colorization of escape sequences, separate tokens for
+  pseudo-keywords and pseudo-variables, an updated regex for numbers, the
+  addition of the AT LEAST and WITH COUNT INTO constructs, and the
+  SHA256() function.
+
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
+* Improve performance and memory usage of IN list lookups for hash, skiplist
+  and persistent indexes.
+
+* Improve memory usage tracking for IN list lookups and other RocksDB-based
+  lookups.
+
+* Remove inactive query plan cache code (was only a stub and never enabled 
+  before).
+
+* Fixed BTS-441: Honor read only mode with disabled authentication
+
+* Obsolete startup option `--database.force-sync-properties`. This option
+  was useful with the MMFiles storage engine, but didn't have any useful
+  effect when used with the RocksDB engine.
+
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
+
+* Updated OpenSSL to 1.1.1s.
+
+* BTS-483: Added restriction for usage of query cache for streaming and JS 
+  transactions when they are not read-only.
+
+* Remove map and map.gz files from repository and add them to gitignore.
+  These files are only used for debugging and therefore should not be
+  included in any release. This also reduces the size of release packages.
+
+* Repair "load indexes into memory" function in the web UI.
+
+* Improved help texts for the collection type and satellite collection
+  options in the web UI.
+
+* APM-517: Add tooltips with values of the displayed properties after
+  clicking a node or an edge in the graph viewer.
+
+* Deprecate the startup option `--agency.pool-size`. This option was never
+  properly supported for any values other than the value of `--agency.size`.
+  Now any value set for `--agency.pool-size` other than the value set for
+  `--agency.size` will now produce a fatal error on startup.
+
+* BTS-1082: Updating properties of a satellite collection breaks
+  replicationFactor.
+
+* FE-159: When creating a database in cluster mode, there are several parameters
+  required. However they are invisible (nothing shown) if I open DB settings
+  after creation. Those settings should be visible in readonly mode (grey out).
+
+* BTS-209: Fixed requests to `_admin/execute` treating every payload as plain 
+  text when they're in JSON or velocypack format, but will only treat the 
+  payload as velocypack if specified in the header's `content-type`.
+
+* Fixed issue #17394: Unnecessary document-lookup instead of Index-Only query.
+  This change improves projection handling so that more projections can be
+  served from indexes.
+
+* Updated arangosync to v2.13.0-preview-2.
+
+* BTS-1070: Fixed query explain not dealing with an aggregate function without
+  arguments and the WINDOW node not being defined as an Ast node type name.
+
+* Solve a case of excessive memory consumption in certain AQL queries with
+  IN filters with very long lists. Free sub-iterators as soon as they are
+  exhausted.
+
+* Improved shard distribution during collection creation.
+
+* Change default output format of arangoexport from `json` to `jsonl`.
+
+* Added startup option `--query.log-failed` to optionally log all failed AQL
+  queries to the server log. The option is turned off by default.
+
+* Added startup option `--query.log-memory-usage-threshold` to optionally log
+  all AQL queries that have a peak memory usage larger than the configured
+  value. The default value is 4GB.
+
+* Added startup option `--query.max-artifact-log-length` to control the
+  maximum length of logged query strings and bind parameter values.
+  This allows truncating overly long query strings and bind parameter values
+  to a reasonable length. Previously the cutoff length was hard-coded.
+
+* Fixed GitHub issue #17291: Fixed a server crash which could occur in case an
+  AQL query using a PRUNE or FILTER statement, combined with UDFs (user defined
+  functions), got executed.
+
+* Improve cardinality estimate for AQL EnumerateCollectionNode in case a
+  `SORT RAND() LIMIT 1` is used. Here, the estimated number of items is at
+  most 1.
+
+* ES-1312: fix handling of reaching the WAL archive capacity limit.
+
+* BTS-941: The HTTP API now delivers the correct list of the collection's
+  shards in case a collection from an EnterpriseGraph, SmartGraph, Disjoint
+  EnterpriseGraph, Disjoint SmartGraph or SatelliteGraph is being used.
+
+* Log the documents counts on leader and follower shards at the end of each
+  successful shard synchronization.
+
+* Changed the encoding of revision ids returned by the following REST APIs:
+  - GET /_api/collection/<collection-name>/revision: the revision id was
+    previously returned as numeric value, and now it will be returned as
+    a string value with either numeric encoding or HLC-encoding inside.
+  - GET /_api/collection/<collection-name>/checksum: the revision id in
+    the "revision" attribute was previously encoded as a numeric value
+    in single server, and as a string in cluster. This is now unified so
+    that the "revision" attribute always contains a string value with
+    either numeric encoding or HLC-encoding inside.
+
+* Fixed handling of empty URL parameters in HTTP request handling.
+
+* Fixed diffing of completely non-overlapping revision trees, which could
+  lead to out-of-bounds reads at the right end of the first (smaller) tree.
+
+* Fixed aborting the server process if an exception was thrown in C++ code
+  that was invoked from the llhttp C code dispatcher. That dispatcher code
+  couldn't handle C++ exceptions properly.
+
+* Fixed BTS-1073: Fix encoding and decoding of revision ids in replication 
+  incremental sync protocol. Previously, the encoding of revision ids could 
+  be ambiguous under some circumstances, which could prevent shards from 
+  getting into sync.
+
+* Log better diagnosis information in case multiple servers in a cluster are
+  configured to use the same endpoint.
+
+* Fixed BTS-852 (user's saved queries used to disappear after updating user profile).
+
+* MDS-1016: When creating a new collection the fields "Number of Shards" and
+  "Replication factor" are greyed out now when the field "Distribute shards
+  like" is not empty.
+
+* MDS-1019: Make user search case-insensitive and allow search by name.
+
+* BTS-465: Added tests for RandomGenerator and warning that other options
+  for creating random values that are not Mersenne are deprecated.
+
+* BTS-1008: Update react-autocomplete-input to fix single letter collection bug
+  when creating a link in the views in the WebUI.
+
+* Improved optimization of functions to be covered by Traversals. Now more functions
+  should be optimized into the traversal, and some that are not valid should not be optimized
+  anymore. Fixes #16589.
+
+* BTS-908: Fixed WebUI GraphViewer not being able to create a new edge relation
+  between two nodes in cases where only one edge definition has been defined
+  inside the graph definition.
+
+* Fixed BTS-850: Fixed the removal of already deleted orphan collections out
+  of a graph definition. The removal of an already deleted orphan collection
+  out of a graph definition failed and has been rejected in case the
+  collection got dropped already.
+
+* BTS-1061: ARM was not recognized on Apple M1.
+
 * BTS-977: Added an error message for when an unauthorized user makes an 
   HTTP GET request to current database from a database name that exists which 
   the user can't access and from a database name that doesn't exist, so both
@@ -15,14 +227,14 @@ devel
 * Adjust permissions for "search-alias" views.
 
   Previously, "search-alias" views were visible to users that didn't have read
-  permissions on the underlying referenced collections. This was inconsistent, 
-  because "arangosearch" views weren't shown to users that didn't have read 
-  permissions on the underlying links. 
-  Now, the behavior for "search-alias" views is the same as for "arangosearch" 
-  views, i.e. "search-alias" views are not shown and are not accessible for 
+  permissions on the underlying referenced collections. This was inconsistent,
+  because "arangosearch" views weren't shown to users that didn't have read
+  permissions on the underlying links.
+  Now, the behavior for "search-alias" views is the same as for "arangosearch"
+  views, i.e. "search-alias" views are not shown and are not accessible for
   users that don't have at least read permissions on the underlying collections.
 
-* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to 
+* BTS-969: Added restriction for HTTP request `/cluster/rebalance`not to
   consider servers that have failed status as a possible target for rebalancing
   shards in its execution plan.
 
@@ -48,7 +260,7 @@ devel
 
 * BTS-477: added integration tests for covering log parameters.
 
-* Moved the handling of escaping control and unicode chars in the log to 
+* Moved the handling of escaping control and unicode chars in the log to
   the Logger instead of LogAppenderFile.
 
 * Updated ArangoDB Starter to 0.15.5.
@@ -72,7 +284,7 @@ devel
   used instead, which should work on all filesystems.
   The startup option is not available on other operating systems than Linux.
 
-* Added authenticate header to the HTTP response when status code is 401 
+* Added authenticate header to the HTTP response when status code is 401
   for HTTP/2.
 
 * Best quality spam pushed down to DEBUG.
@@ -86,7 +298,7 @@ devel
   the sequence number of the snapshot in the batch. This ensures that
   shards can get in sync more reliably and more quickly.
 
-* Fixed log with json format not respecting the value of parameter 
+* Fixed log with json format not respecting the value of parameter
   `--log.shorten-filenames`.
 
 * Updated arangosync to v2.12.0-preview-12.
@@ -97,7 +309,7 @@ devel
 * Updated ArangoDB Starter to 0.15.5-preview-3.
 
 * Fixed a rare occuring issue where paths inside a DisjointSmart traversal
-  containing only satellite relevant nodes were not returned properly 
+  containing only satellite relevant nodes were not returned properly
   (ES-1265).
 
 * Fixed BTS-926: UI showing the "create index" form to non-admin users.
@@ -105,8 +317,8 @@ devel
 * Updated Views UI with all changes necessary for the 3.10.0 launch.
 
 * Added message on the UI view of Logs when the user has restricted access,
-  either because cannot access `_system`, or because is currently in 
-  another database. 
+  either because cannot access `_system`, or because is currently in
+  another database.
 
 * Fix for the Pregel's HITS algorithm using a fixed value instead of the
   passed "threshold" parameter. The same applied to the new HITSKleinberg.
@@ -114,21 +326,21 @@ devel
 * Do not drop follower shard after too many failed shard synchronization
   attempts.
 
-* Added startup option `--arangosearch.skip-recovery` to skip the recovery 
+* Added startup option `--arangosearch.skip-recovery` to skip the recovery
   of arangosearch view links or inverted indexes.
   The startup option can be specified multiple times and is expected to either
-  contain the string `all` (will skip the recovery for all view links and 
-  inverted indexes) or a collection name + link id/name pair (e.g. 
-  `testCollection/123456`, where `123456` is a link/index id or an index name). 
-  This new startup option is an emergency means to speed up lengthy recovery 
-  procedures when there is a large WAL backlog to replay. The normal recovery 
-  will still take place even with the option set, but recovery data for 
-  links/indexes can be skipped. This can improve the recovery speed and reduce 
+  contain the string `all` (will skip the recovery for all view links and
+  inverted indexes) or a collection name + link id/name pair (e.g.
+  `testCollection/123456`, where `123456` is a link/index id or an index name).
+  This new startup option is an emergency means to speed up lengthy recovery
+  procedures when there is a large WAL backlog to replay. The normal recovery
+  will still take place even with the option set, but recovery data for
+  links/indexes can be skipped. This can improve the recovery speed and reduce
   memory usage during the recovery process.
-  All links or inverted indexes that are marked as to-be-skipped via the 
+  All links or inverted indexes that are marked as to-be-skipped via the
   option, but for which there is recovery data, will be marked as "out of sync"
-  at the end of the recovery. 
-  The recovery procedure will also print a list of links/indexes which it has 
+  at the end of the recovery.
+  The recovery procedure will also print a list of links/indexes which it has
   marked as out-of-sync.
   Additionally, if committing data for a link/index fails for whatever reason,
   the link/index is also marked as being out-of-sync.
@@ -140,7 +352,7 @@ devel
   "collection/view is out of sync" (error code 1481).
 
   Links/indexes that are marked out-of-sync will keep the out-of-sync flag
-  until they are dropped. To get rid of an out-of-sync link/index it is 
+  until they are dropped. To get rid of an out-of-sync link/index it is
   recommended to manually drop and recreate it. As recreating a link/index may
   cause high load, this is not done automatically but requires explicit user
   opt-in.
@@ -149,7 +361,7 @@ devel
   `arangodb_search_num_out_of_sync_links`.
 
 * Added startup option `--rocksdb.periodic-compaction-ttl`.
-  This option controls the TTL (in seconds) for periodic compaction of 
+  This option controls the TTL (in seconds) for periodic compaction of
   .sst files in RocksDB, based on the .sst file age. The default value
   from RocksDB is ~30 days. To avoid periodic auto-compaction, the option
   can be set to 0.
@@ -177,7 +389,7 @@ devel
 * Fix comparison of JSON schemas on DB servers after there was a schema change
   via a coordinator: the schema comparison previously did not take into account
   that some ArangoDB versions store an internal `{"type":"json"}` attribute in
-  the schema, and some don't. Thus two identical schemas could compare 
+  the schema, and some don't. Thus two identical schemas could compare
   differently.
   The correct schema version was always applied and used, and validation of
   documents against the schema was also not affected. However, because two
@@ -195,7 +407,7 @@ devel
   week counting from when the year started in ISO calendar and also the year
   it's in.
 
-* Added handling of requests with Transfer-Encodign chunked, which is 
+* Added handling of requests with Transfer-Encodign chunked, which is
   not implemented, so returns code HTTP code 501.
 
 * Add progress reporting to RocksDB WAL recovery, in case there are many WAL
@@ -209,7 +421,7 @@ devel
 
 * Disallowed index creation that covers fields in which the field's name starts
   or ends with `:` for single server or cluster when the instance is a
-  coordinator or single server. This validation only happens for index creation, 
+  coordinator or single server. This validation only happens for index creation,
   so already existing indexes that might use such field names will remain as they are.
 
 * Updated arangosync to v2.12.0-preview-6.
@@ -230,12 +442,12 @@ devel
     collection must have more than one shard and must use a custom shard key.
   - inserting documents into the target collection must have happened via an
     AQL query like `FOR doc IN source INSERT doc INTO target`.
-  In this particular combination, the document keys (`_key` attribute) from 
-  the source collection were used as-is for insertion into the target 
+  In this particular combination, the document keys (`_key` attribute) from
+  the source collection were used as-is for insertion into the target
   collection. However, as the target collection is not sharded by `_key` and
-  uses a custom shard key, it is actually not allowed to specify user-defined 
+  uses a custom shard key, it is actually not allowed to specify user-defined
   values for `_key`. That check was missing since 3.8 in this particular
-  combination and has now been added back. AQL queries attempting to insert 
+  combination and has now been added back. AQL queries attempting to insert
   documents into a collection like this will now fail with the error "must not
   specifiy _key for this collection", as they used to do before 3.8.
 
@@ -248,7 +460,7 @@ devel
   found" in cases when request forwarding was tried to a coordinator that was
   recently restarted.
 
-* Added startup option `--rocksdb.verify-sst` to validate sst files already 
+* Added startup option `--rocksdb.verify-sst` to validate sst files already
   present in the database directory on startup. Default: false.
 
 * BTS-907: Fixed some rare SortNode related optimizer issues, when at least two
@@ -297,12 +509,11 @@ devel
 
 * Added more specific process exit codes for arangod and all client tools,
   and changed the executables' exit code for the following situations:
-  
   - an unknown startup option name is used: previously the exit code was 1.
-    Now the exit code when using an invalid option is 3 (symbolic exit code 
+    Now the exit code when using an invalid option is 3 (symbolic exit code
     name EXIT_INVALID_OPTION_NAME).
-  - an invalid value is used for a startup option (e.g. a number that is 
-    outside the allowed range for the option's underlying value type, or a 
+  - an invalid value is used for a startup option (e.g. a number that is
+    outside the allowed range for the option's underlying value type, or a
     string value is used for a numeric option): previously the exit code was
     1. Now the exit code for these case is 4 (symbolic exit code name
     EXIT_INVALID_OPTION_VALUE).
@@ -322,18 +533,20 @@ devel
 * arangoimport now supports the option --remove-attribute on type JSON as well.
   Before it was restricted to TSV and CSV only.
 
+* Added CSP recommended headers to Aardvaark app for better security.
+
 * Fixed BTS-851: "Could not fetch the applier state of: undefined".
 
 * Removed internal JavaScript dependencies "expect.js", "media-typer" and
   "underscore". We recommend always bundling your own copy of third-party
   modules as all previously included third-party modules are now considered
   deprecated and may be removed in future versions of ArangoD
-  
+
 * APM-84: Added option to spill intermediate AQL query results from RAM to
   disk when their size exceeds certain thresholds. Currently the only AQL
   operation that can make use of this is the SortExecutor (AQL SORT operation
   without using a LIMIT). Further AQL executor types will be supported in
-  future releases. 
+  future releases.
 
   Spilling over query results from RAM to disk is off by default and currently
   in an experimental stage. In order to opt in to the feature, it is required
@@ -346,11 +559,11 @@ devel
   only temporarily, while the instance is running. It does not need to be
   persisted across instance restarts and does not need to be backed up.
 
-  When a directory is specified via the startup option, the following 
+  When a directory is specified via the startup option, the following
   additional configuration options can be used to control the threshold
   values for spilling over data:
 
-  * `--temp.intermediate-results-capacity`: maximum on-disk size (in bytes) 
+  * `--temp.intermediate-results-capacity`: maximum on-disk size (in bytes)
     for intermediate results. If set to 0, it means that the on-disk size
     is not constrained. It can be set to a value other than 0 to restrict the
     size of the temporary directory. Once the cumulated on-disk size of
@@ -376,7 +589,7 @@ devel
   avoid the buildup of the entire query result in RAM, a streaming query
   should be used.
 
-* Enterprise only: Added `MINHASH`, `MINHASH_MATCH`, `MINHASH_ERROR`, 
+* Enterprise only: Added `MINHASH`, `MINHASH_MATCH`, `MINHASH_ERROR`,
   `MINHASH_COUNT` AQL functions.
 
 * Enterprise only: Added `minhash` analyzer.
@@ -395,7 +608,7 @@ devel
   values.
 
 * Added startup option `--rocksdb.compaction-style` to configure the compaction
-  style which is used to pick the next file(s) to be compacted. 
+  style which is used to pick the next file(s) to be compacted.
 
 * BugFix in Pregel's Label Propagation: the union of three undirected cliques
   of size at least three connected by an undirected triangle now returns
@@ -411,10 +624,10 @@ devel
 * Add log.time-format utc-datestring-micros to make debugging of concurrency
   bugs easier.
 
-* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in 
+* Renamed KShortestPathsNode to EnumeratePathsNote; this is visible in
   explain outputs for AQL queries.
 
-* Pregel SSSP now supports `resultField` as well as `_resultField` as 
+* Pregel SSSP now supports `resultField` as well as `_resultField` as
   parameter name to specify the field into which results are stored.
   The name `_resultField` will be deprecated in future.
 
@@ -481,7 +694,7 @@ devel
 
   Error 1521 (query collection lock failed) is nowadays only emitted by
   traversals, when a collection is accessed during the traversal that has
-  not been specified in the WITH statement of the query. 
+  not been specified in the WITH statement of the query.
   Thus returning HTTP 500 is not a good idea, as it is clearly a user error
   that triggered the problem.
 
@@ -501,7 +714,7 @@ devel
   general-graphs. For more details please check documentation.
 
 * APM-135: Added multithreading to assigning non-unique indexes to documents,
-  in foreground or background mode. The number of index creation threads 
+  in foreground or background mode. The number of index creation threads
   is hardcoded to 2 for now. Improvements for higher parallelism are expected
   for future versions.
 
@@ -528,19 +741,19 @@ devel
 
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 
-* Added support for creating autoincrement keys on cluster mode, but only for 
+* Added support for creating autoincrement keys on cluster mode, but only for
   single sharded collections.
 
 * Add support for LZ4 and LZ4HC compression support for RocksDB.
 
-* Allow parallel access to the shards of smart edge collections in AQL via 
+* Allow parallel access to the shards of smart edge collections in AQL via
   parallel GatherNodes.
 
 * Update RocksDB internal table checksum type to xxHash64.
 
 * Updated arangosync to v2.10.0.
 
-* Added several startup option to configure parallelism for individual Pregel 
+* Added several startup option to configure parallelism for individual Pregel
   jobs:
 
   - `--pregel.min-parallelism`: minimum parallelism usable in Pregel jobs.
@@ -555,14 +768,14 @@ devel
   not set its `parallelism` value, it will default to the parallelism value
   configured via `--pregel.parallelism`.
 
-* Added startup options to configure the usage of memory-mapped files for 
+* Added startup options to configure the usage of memory-mapped files for
   Pregel temporary data:
 
-  - `--pregel.memory-mapped-files`: if set to `true`, Pregel jobs will by 
-    default store their temporary data in disk-backed memory-mapped files. 
-    If set to `false`, the temporary data of Pregel jobs will be buffered in 
+  - `--pregel.memory-mapped-files`: if set to `true`, Pregel jobs will by
+    default store their temporary data in disk-backed memory-mapped files.
+    If set to `false`, the temporary data of Pregel jobs will be buffered in
     RAM. The default value is `true`, meaning that memory-mapped files will
-    be used. The option can be overridden for each Pregel job by setting the 
+    be used. The option can be overridden for each Pregel job by setting the
     `useMemoryMaps` option of the job.
 
   - `--pregel.memory-mapped-files-location-type`: location for memory-mapped
@@ -572,7 +785,7 @@ devel
       as configured via `--temp.path`. If `--temp.path` is not set, the
       system's temporary directory will be used.
     - `database-directory`: store memory-mapped files in a separate directory
-      underneath the database directory. 
+      underneath the database directory.
     - `custom`: use a custom directory location for memory-mapped files. The
       exact location must be set via the configuration parameter
       `--pregel.memory-mapped-files-custom-path`.
@@ -584,15 +797,15 @@ devel
     `--pregel.memory-mapped-files-location-type` is set to `custom`.
 
   The default location for Pregel's memory-mapped files is the temporary
-  directory (`temp-directory`), which may not provide enough capacity for 
+  directory (`temp-directory`), which may not provide enough capacity for
   larger Pregel jobs.
   It may be more sensible to configure a custom directory for memory-mapped
-  files and provide the necessary disk space there (`custom`). Such custom 
-  directory can be mounted on ephemeral storage, as the files are only needed 
+  files and provide the necessary disk space there (`custom`). Such custom
+  directory can be mounted on ephemeral storage, as the files are only needed
   temporarily.
-  There is also the option to use a subdirectory of the database directory 
-  as the storage location for the memory-mapped files (`database-directory`). 
-  The database directory often provides a lot of disk space capacity, but 
+  There is also the option to use a subdirectory of the database directory
+  as the storage location for the memory-mapped files (`database-directory`).
+  The database directory often provides a lot of disk space capacity, but
   when it is used for both the regular database data and Pregel's memory-mapped
   files, it has to provide enough capacity to store both.
 
@@ -602,9 +815,9 @@ devel
 
 * Updated arangosync to v2.10.0-preview-1.
 
-* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within 
-  a single traversal or path query we now restrict that you can only switch 
-  between Smart and Satellite sharding once, all queries where more than one 
+* Enterprise only: Restricted behavior of Hybrid Disjoint Smart Graphs. Within
+  a single traversal or path query we now restrict that you can only switch
+  between Smart and Satellite sharding once, all queries where more than one
   switch is (in theory) possible will be rejected. e.g:
   ```
     FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
@@ -621,21 +834,21 @@ devel
 
 * Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
   default value that allows data blocks of at least 128MiB to be stored in each
-  cache shard if the block cache's strict capacity limit is used. The strict 
-  capacity limit for the block cache is enabled by default in 3.10, but can be 
+  cache shard if the block cache's strict capacity limit is used. The strict
+  capacity limit for the block cache is enabled by default in 3.10, but can be
   turned off by setting the option `--rocksdb.enforce-block-cache-size-limit`
-  to `false`. Also log a startup warning if the resulting cache shard size 
+  to `false`. Also log a startup warning if the resulting cache shard size
   would be smaller than is potentially safe when the strict capacity limit is
-  set. 
+  set.
   Enforcing the block cache's capacity limit has the consequence that data
   reads by RocksDB must fit into the block cache or the read operation will
   fail with an "Incomplete" error.
 
-* The API `/_admin/status` now returns a progress attribute that shows the 
-  server's current state (starting, stopping, etc.), with details about which 
-  feature is currently started, stopped etc. During recovery, the current WAL 
-  recovery sequence number is also reported in a sub-attribute of the 
-  `progress` attribute. Clients can query this attribute to track the 
+* The API `/_admin/status` now returns a progress attribute that shows the
+  server's current state (starting, stopping, etc.), with details about which
+  feature is currently started, stopped etc. During recovery, the current WAL
+  recovery sequence number is also reported in a sub-attribute of the
+  `progress` attribute. Clients can query this attribute to track the
   progress of the WAL recovery.
   The additional progress attribute returned by `/_admin/status` is most
   useful when using the `--server.early-connections true` setting. With that
@@ -644,14 +857,14 @@ devel
   interface will be opened relatively late during the startup sequence, so
   that the progress attribute will likely not be very useful anymore.
 
-* Optionally start up HTTP interface of servers earlier, so that ping probes 
+* Optionally start up HTTP interface of servers earlier, so that ping probes
   from tools can already be responded to when the server is not fully started.
   By default, the HTTP interface is opened at the same point during the startup
-  sequence as before, but it can optionally be opened earlier by setting the 
-  new startup option `--server.early-connections` to `true`. This will 
+  sequence as before, but it can optionally be opened earlier by setting the
+  new startup option `--server.early-connections` to `true`. This will
   open the HTTP interface early in the startup, so that the server can respond
-  to a limited set of REST APIs even during recovery. This can be useful 
-  because the recovery procedure can take time proportional to the amount of 
+  to a limited set of REST APIs even during recovery. This can be useful
+  because the recovery procedure can take time proportional to the amount of
   data to recover.
   When the `--server.early-connections` option is set to `true`, the
   server will respond to requests to the following APIs during the startup
@@ -659,7 +872,7 @@ devel
   - `/_api/version`
   - `/_admin/version`
   - `/_admin/status`
-  All other APIs will be responded to with an HTTP response code 503, so that 
+  All other APIs will be responded to with an HTTP response code 503, so that
   callers can see that the server is not fully ready.
   If authentication is used, then only JWT authentication can be used during
   the early startup phase. Incoming requests relying on other authentication
@@ -735,7 +948,7 @@ devel
 
 * Added new optimization rule "arangosearch-constrained-sort" to perform
   sorting & limiting inside ArangoSearch View enumeration node in case of
-  using just scoring for sort. 
+  using just scoring for sort.
 
 * Improve log output for WAL recovery, by providing more information and
   making the wording more clear.
@@ -748,9 +961,9 @@ devel
 * Added startup option `--cluster.shard-synchronization-attempt-timeout` to
   limit the amount of time to spend in shard synchronization attempts. The
   default timeout value is 20 minutes.
-  Running into the timeout will not lead to a synchronization failure, but 
-  will continue the synchronization shortly after. Setting a timeout can 
-  help to split the synchronization of large shards into smaller chunks and 
+  Running into the timeout will not lead to a synchronization failure, but
+  will continue the synchronization shortly after. Setting a timeout can
+  help to split the synchronization of large shards into smaller chunks and
   release snapshots and archived WAL files on the leader earlier.
   This change also introduces a new metric `arangodb_sync_timeouts_total`
   that counts the number of timed-out shard synchronization attempts.
@@ -775,9 +988,9 @@ devel
 
 * Refactor internal code paths responsible for `_key` generation. For
   collections with only a single shard, we can now always let the leader
-  DB server generate the keys locally. For collections with multiple shards, 
+  DB server generate the keys locally. For collections with multiple shards,
   the coordinators are now always responsible for key generation.
-  Previously the responsibility was mixed and depended on the type of 
+  Previously the responsibility was mixed and depended on the type of
   operation executed (document insert API vs. AQL query, single operation
   vs. batch).
 

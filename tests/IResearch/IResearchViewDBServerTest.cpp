@@ -54,7 +54,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "common.h"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "velocypack/Parser.h"
 
 #include "IResearch/MakeViewSnapshot.h"
@@ -144,7 +144,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -186,7 +187,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -196,8 +198,9 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
                               *logicalCollection, *view)));
 
     auto before = PhysicalCollectionMock::before;
-    auto restore = irs::make_finally(
-        [&before]() noexcept { PhysicalCollectionMock::before = before; });
+    irs::Finally restore = [&before]() noexcept {
+      PhysicalCollectionMock::before = before;
+    };
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
     EXPECT_FALSE(impl->drop().ok());
@@ -233,7 +236,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -260,8 +263,9 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
 
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { PhysicalCollectionMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    PhysicalCollectionMock::before = before;
+  };
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -313,7 +317,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -383,7 +387,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     std::string dataPath =
-        (((irs::utf8_path() /= server.testFilesystemPath()) /=
+        (((std::filesystem::path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
             .string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -456,7 +460,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     arangodb::transaction::Methods trx(
@@ -501,7 +506,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     // fill with test data
@@ -1027,7 +1033,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   auto index = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   // add a single document to view (do not sync)
@@ -1465,7 +1471,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto index = logicalCollection->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };
@@ -1619,7 +1626,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     auto index = logicalCollection1->createIndex(linkJson->slice(), created);
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };

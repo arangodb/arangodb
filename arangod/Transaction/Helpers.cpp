@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/BatchOptions.h"
@@ -331,9 +332,8 @@ void transaction::helpers::extractKeyAndRevFromDocument(
   // fall back to regular lookup
   {
     keySlice = slice.get(StaticStrings::KeyString);
-    VPackValueLength l;
-    char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = RevisionId::fromString(p, l, false);
+    revisionId = RevisionId::fromString(
+        slice.get(StaticStrings::RevString).stringView());
   }
 }
 
@@ -435,13 +435,7 @@ std::string transaction::helpers::makeIdFromParts(
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-  if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
-    resolved.erase(0, StaticStrings::FullLocalPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
-    resolved.erase(0, StaticStrings::FullFromPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
-    resolved.erase(0, StaticStrings::FullToPrefix.size());
-  }
+  ClusterMethods::realNameFromSmartName(resolved);
 #endif
   VPackValueLength keyLength;
   char const* p = key.getString(keyLength);
@@ -544,9 +538,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
@@ -737,9 +729,7 @@ Result transaction::helpers::newObjectForInsert(
     s = value.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* str = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(str, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
@@ -841,9 +831,7 @@ Result transaction::helpers::newObjectForReplace(
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }

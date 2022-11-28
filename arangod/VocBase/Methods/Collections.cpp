@@ -26,8 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
-#include "Basics/LocalTaskQueue.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1097,7 +1097,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props,
+                                     velocypack::Slice props,
                                      OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
@@ -1115,10 +1115,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
                                  std::to_string(collection.id().id()));
 
     // replication checks
-    int64_t replFactor = Helper::getNumericValue<int64_t>(
-        props, StaticStrings::ReplicationFactor, 0);
-    if (replFactor > 0) {
-      if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
+    if (auto s = props.get(StaticStrings::ReplicationFactor); s.isNumber()) {
+      int64_t replFactor = Helper::getNumericValue<int64_t>(
+          props, StaticStrings::ReplicationFactor, 0);
+      if (replFactor > 0 &&
+          static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
@@ -1346,34 +1347,14 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return futures::makeFuture(res);
-  }
-
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
-  };
-
-  auto queue =
-      std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
-
+  Result res;
   auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
+    res = idx->scheduleWarmup();
+    if (res.fail()) {
+      break;
+    }
   }
-
-  queue->dispatchAndWait();
-
-  if (queue->status().ok()) {
-    res = trx.commit();
-  } else {
-    return futures::makeFuture(Result(queue->status()));
-  }
-
   return futures::makeFuture(res);
 }
 
@@ -1397,53 +1378,6 @@ futures::Future<OperationResult> Collections::revisionId(
       OperationResult(Result(), builder.steal(), options));
 }
 
-/// @brief Helper implementation similar to ArangoCollection.all() in v8
-/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase,
-                                             std::string const& cname,
-                                             DocCallback const& cb) {
-  // Implement it like this to stay close to the original
-  if (ServerState::instance()->isCoordinator()) {
-    auto empty = std::make_shared<VPackBuilder>();
-    std::string q = "FOR r IN @@coll RETURN r";
-    auto binds = std::make_shared<VPackBuilder>();
-    binds->openObject();
-    binds->add("@coll", VPackValue(cname));
-    binds->close();
-    auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(vocbase), aql::QueryString(q),
-        std::move(binds));
-    aql::QueryResult queryResult = query->executeSync();
-
-    Result res = queryResult.result;
-    if (queryResult.result.ok()) {
-      VPackSlice array = queryResult.data->slice();
-      for (VPackSlice doc : VPackArrayIterator(array)) {
-        cb(doc.resolveExternal());
-      }
-    }
-    return res;
-  } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      return res;
-    }
-
-    // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL,
-                                  ReadOwnWrites::no);
-
-    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
-      cb(doc);
-      return true;
-    });
-
-    return trx.finish(res);
-  }
-}
-
 arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
                                        uint64_t& checksum, RevisionId& revId) {
@@ -1461,6 +1395,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     return res.result;
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
@@ -1475,8 +1411,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
-      trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL,
-                    ReadOwnWrites::no);
+      trx.indexScan(monitor, collection.name(),
+                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId const& /*token*/,
                              VPackSlice slice) {

@@ -849,7 +849,7 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
   auto const& storedValue = storedValues[index];
   TRI_ASSERT(!storedValue.empty());
   auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.c_str()};
+  VPackSlice slice{storedValue.data()};
   size_t size = 0;
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {

@@ -193,7 +193,7 @@ void RocksDBKey::constructVPackIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructUniqueVPackIndexValue(uint64_t indexId,
-                                                VPackSlice const& indexValues) {
+                                                VPackSlice indexValues) {
   TRI_ASSERT(indexId != 0 && !indexValues.isNone());
   _type = RocksDBEntryType::UniqueVPackIndexValue;
   size_t const byteSize = static_cast<size_t>(indexValues.byteSize());

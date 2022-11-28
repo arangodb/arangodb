@@ -41,10 +41,6 @@ namespace arangodb::tests {
 
 namespace {
 
-auto extractCollectionEntry(VPackSlice agencyOperation, std::string const& key)
-    -> VPackSlice {
-  return agencyOperation.get(std::vector<std::string>{key, "new"});
-}
 }  // namespace
 
 class PlanCollectionToAgencyWriterTest : public ::testing::Test {

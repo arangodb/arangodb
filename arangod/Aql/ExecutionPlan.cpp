@@ -21,9 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Graph/TraverserOptions.h>
-#include <velocypack/Iterator.h>
-
 #include "ExecutionPlan.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -63,6 +60,9 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -603,41 +603,29 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(
-    Ast* ast, unsigned flags) const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = false;
-  options.buildUnindexedArrays = true;
-  auto builder = std::make_shared<VPackBuilder>(&options);
-  toVelocyPack(*builder, ast, flags);
-  return builder;
-}
-
-/// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  unsigned flags) const {
   builder.openObject();
   builder.add(VPackValue("nodes"));
-
   _root->allToVelocyPack(builder, flags);
 
-  TRI_ASSERT(builder.isOpenObject());
-
   // set up rules
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
   for (auto const& ruleName :
        OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValuePair(ruleName.data(), ruleName.size(),
-                               VPackValueType::String));
+    builder.add(VPackValue(ruleName));
   }
   builder.close();
 
   // set up collections
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("collections"));
   ast->query().collections().toVelocyPack(builder);
 
   // set up variables
+  TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("variables"));
   ast->variables()->toVelocyPack(builder);
 
@@ -1331,6 +1319,18 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   // Prune Expression
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
+
+  std::string errorReason;
+  if (pruneExpression != nullptr &&
+      !pruneExpression->canBeUsedInPrune(_ast->query().vocbase().isOneShard(),
+                                         errorReason)) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("Invalid PRUNE expression: ", errorReason));
+  }
 
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));

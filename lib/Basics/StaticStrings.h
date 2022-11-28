@@ -218,6 +218,10 @@ class StaticStrings {
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
+  static std::string const ContentSecurityPolicy;
+  static std::string const Pragma;
+  static std::string const Expires;
+  static std::string const HSTS;
 
   // mime types
   static std::string const MimeTypeDump;
@@ -348,7 +352,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
@@ -429,6 +436,7 @@ class StaticStrings {
   static std::string_view const ApiLogInternal;
   static std::string_view const ApiLogExternal;
   static std::string_view const ApiReplicatedStateExternal;
+  static std::string_view const ApiDocumentStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

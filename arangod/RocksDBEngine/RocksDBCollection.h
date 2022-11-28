@@ -40,10 +40,8 @@ class Manager;
 }  // namespace cache
 
 class LogicalCollection;
-class ManagedDocumentResult;
 class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
@@ -57,8 +55,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              velocypack::Slice info);
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
-                                    bool doSync) override;
+  arangodb::Result updateProperties(velocypack::Slice slice) override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
@@ -117,10 +114,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites readOwnWrites) const override;
 
   Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                 velocypack::Slice newDocument,

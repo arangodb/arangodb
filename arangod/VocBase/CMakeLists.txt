@@ -4,12 +4,10 @@ add_library(arango_vocbase STATIC
   LogicalCollection.cpp
   LogicalDataSource.cpp
   LogicalView.cpp
-  ManagedDocumentResult.cpp
   Validators.cpp
   VocbaseInfo.cpp
   ticks.cpp
   vocbase.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/Aql/PlanCache.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/QueryCursor.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/StandaloneCalculation.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Replication/DatabaseReplicationApplier.cpp

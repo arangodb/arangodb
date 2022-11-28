@@ -27,6 +27,8 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace iresearch {
 
 class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
@@ -77,6 +79,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
 
   bool isHidden() const override { return false; }
 
+  bool needsReversal() const override { return true; }
+
   char const* typeName() const override { return oldtypeName(); }
 
   bool canBeDropped() const override { return true; }
@@ -105,13 +109,14 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   bool matchesDefinition(velocypack::Slice const& other) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx) override {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
-        &IResearchDataStore::collection(), trx, node, reference, opts,
+        monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
         mutableConditionIdx);
   }
 
@@ -138,19 +143,36 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     return IResearchInvertedIndex::specializeCondition(trx, node, reference);
   }
 
+  Result insertInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId, VPackSlice doc,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::insert<
+        FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
+        IResearchInvertedIndexMetaIndexingContext>(
+        trx, documentId, doc, *meta()._indexingContext, &tick);
+  }
+
+  Result removeInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      &tick);
+  }
+
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
     return IResearchDataStore::insert<
         FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-        IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc,
-                                                   *meta()._indexingContext);
+        IResearchInvertedIndexMetaIndexingContext>(
+        trx, documentId, doc, *meta()._indexingContext, nullptr);
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
                 LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested());
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      nullptr);
   }
 
  private:

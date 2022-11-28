@@ -1093,8 +1093,7 @@ std::optional<RevisionId> RestGraphHandler::handleRevision() const {
     bool found = false;
     std::string const& revString = _request->value("rev", found);
     if (found) {
-      revision =
-          RevisionId::fromString(revString.data(), revString.size(), false);
+      revision = RevisionId::fromString(revString);
     }
   }
   return revision.isSet() ? std::optional{revision} : std::nullopt;

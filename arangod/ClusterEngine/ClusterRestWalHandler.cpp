@@ -24,6 +24,7 @@
 #include "ClusterRestWalHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -105,42 +106,33 @@ void ClusterRestWalHandler::flush() {
   }
 
   bool waitForSync = false;
-  bool waitForCollector = false;
+  bool flushColumnFamilies = false;
 
   if (slice.isObject()) {
     // got a request body
-    VPackSlice value = slice.get("waitForSync");
+    VPackSlice value = slice.get(StaticStrings::WaitForSyncString);
     if (value.isString()) {
-      waitForSync = (value.copyString() == "true");
+      waitForSync = (value.stringView() == "true");
     } else if (value.isBoolean()) {
       waitForSync = value.getBoolean();
     }
 
     value = slice.get("waitForCollector");
     if (value.isString()) {
-      waitForCollector = (value.copyString() == "true");
+      flushColumnFamilies = (value.stringView() == "true");
     } else if (value.isBoolean()) {
-      waitForCollector = value.getBoolean();
+      flushColumnFamilies = value.getBoolean();
     }
   } else {
     // no request body
-    bool found;
-    {
-      std::string const& v = _request->value("waitForSync", found);
-      if (found) {
-        waitForSync = (v == "1" || v == "true");
-      }
-    }
-    {
-      std::string const& v = _request->value("waitForCollector", found);
-      if (found) {
-        waitForCollector = (v == "1" || v == "true");
-      }
-    }
+    waitForSync =
+        _request->parsedValue(StaticStrings::WaitForSyncString, waitForSync);
+    flushColumnFamilies =
+        _request->parsedValue("waitForCollector", flushColumnFamilies);
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+  auto res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

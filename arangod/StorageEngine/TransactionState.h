@@ -134,7 +134,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] char const* actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
-  TransactionStatistics& statistics() noexcept;
+  TransactionStatistics& statistics() const noexcept;
 
   [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
   void lockTimeout(double value) {
@@ -206,8 +206,16 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
-  virtual arangodb::Result performIntermediateCommitIfRequired(
+  virtual Result triggerIntermediateCommit() = 0;
+
+  virtual futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) = 0;
+
+  /// @returns number of insertions/removals in a transaction, update takes 2
+  /// primitive operations
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  [[nodiscard]] virtual uint64_t numPrimitiveOperations() const noexcept = 0;
 
   /// @brief return number of commits.
   /// for cluster transactions on coordinator, this either returns 0 or 1.
@@ -318,7 +326,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
-  void clearQueryCache();
+  void clearQueryCache() const;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // reset the internal Transaction ID to none.

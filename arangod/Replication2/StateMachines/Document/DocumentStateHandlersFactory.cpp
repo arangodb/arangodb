@@ -23,6 +23,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
@@ -35,9 +36,11 @@ namespace arangodb::replication2::replicated_state::document {
 
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
+    network::ConnectionPool* connectionPool,
     MaintenanceFeature& maintenaceFeature, DatabaseFeature& databaseFeature)
     : _server(server),
       _agencyCache(agencyCache),
+      _connectionPool(connectionPool),
       _maintenanceFeature(maintenaceFeature),
       _databaseFeature(databaseFeature) {}
 
@@ -56,18 +59,23 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
 auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
-  return std::make_unique<DocumentStateTransactionHandler>(
-      std::move(gid),
-      std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
-      shared_from_this());
+  try {
+    return std::make_unique<DocumentStateTransactionHandler>(
+        std::move(gid),
+        std::make_unique<DatabaseGuard>(_databaseFeature, gid.database),
+        shared_from_this());
+  } catch (basics::Exception const& ex) {
+    // TODO this is a temporary fix, see CINFRA-588
+    if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+      return nullptr;
+    }
+    throw;
+  }
 }
 
 auto DocumentStateHandlersFactory::createTransaction(
     DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
     -> std::shared_ptr<IDocumentStateTransaction> {
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
-
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
@@ -92,6 +100,12 @@ auto DocumentStateHandlersFactory::createTransaction(
   }
 
   return std::make_shared<DocumentStateTransaction>(std::move(methods));
+}
+
+auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
+    -> std::shared_ptr<IDocumentStateNetworkHandler> {
+  return std::make_shared<DocumentStateNetworkHandler>(std::move(gid),
+                                                       _connectionPool);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

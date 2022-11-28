@@ -267,7 +267,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
               RevisionId rid = RevisionId::fromSlice(res.slice());
               {
                 VPackObjectBuilder obj(&_builder, true);
-                obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
+                obj->add("revision", VPackValue(rid.toString()));
 
                 // no need to use async variant
                 collectionRepresentation(*_ctxt, /*showProperties*/ true,

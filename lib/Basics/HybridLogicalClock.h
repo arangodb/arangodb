@@ -27,14 +27,15 @@
 #include <atomic>
 #include <chrono>
 #include <string>
+#include <string_view>
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 class HybridLogicalClock {
  public:
@@ -108,13 +109,11 @@ class HybridLogicalClock {
 
   /// encodes the uint64_t timestamp into a new string
   static std::string encodeTimeStamp(uint64_t t) {
-    std::string r(11, '\x00');
-    size_t pos = 11;
-    while (t > 0) {
-      r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
-      t >>= 6;
-    }
-    return r.substr(pos, 11 - pos);
+    // use this temporary buffer for the encoding
+    char buffer[11];
+    auto [pos, length] = encodeTimeStamp(t, &buffer[0]);
+    // return a self-contained std::string with the data
+    return {&buffer[0] + pos, length};
   }
 
   /// encodes the uint64_t timestamp into the provided result buffer
@@ -124,6 +123,7 @@ class HybridLogicalClock {
   static std::pair<size_t, size_t> encodeTimeStamp(uint64_t t, char* r) {
     size_t pos = 11;
     while (t > 0) {
+      TRI_ASSERT(pos > 0);
       r[--pos] = encodeTable[static_cast<uint8_t>(t & 0x3ful)];
       t >>= 6;
     }
@@ -136,11 +136,11 @@ class HybridLogicalClock {
                                  velocypack::ValueType::String);
   }
 
-  static uint64_t decodeTimeStamp(std::string const& s) {
+  static uint64_t decodeTimeStamp(std::string_view s) {
     return decodeTimeStamp(s.data(), s.size());
   }
 
-  static uint64_t decodeTimeStamp(velocypack::Slice const& s) {
+  static uint64_t decodeTimeStamp(velocypack::Slice s) {
     if (!s.isString()) {
       return std::numeric_limits<std::uint64_t>::max();
     }
@@ -191,5 +191,5 @@ class HybridLogicalClock {
 
   static signed char decodeTable[256];
 };
-}  // namespace basics
-}  // namespace arangodb
+
+}  // namespace arangodb::basics

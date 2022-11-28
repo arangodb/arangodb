@@ -16,6 +16,10 @@
 #include <cassert>
 #include <cstddef>
 
+#if (_MSC_VER != 0)
+#pragma warning(disable : 4267)  
+#endif
+
 namespace immer {
 namespace detail {
 namespace hamts {

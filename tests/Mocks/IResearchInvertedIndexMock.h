@@ -46,7 +46,7 @@ class IResearchInvertedIndexMock final : public Index,
   [[nodiscard]] static auto setCallbackForScope(
       std::function<irs::directory_attributes()> callback) {
     InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+    return irs::Finally{[]() noexcept { InitCallback = nullptr; }};
   }
 
   void toVelocyPack(
@@ -85,9 +85,10 @@ class IResearchInvertedIndexMock final : public Index,
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) final;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx) final;
 
   Index::SortCosts supportsSortCondition(
       aql::SortCondition const* sortCondition, aql::Variable const* reference,

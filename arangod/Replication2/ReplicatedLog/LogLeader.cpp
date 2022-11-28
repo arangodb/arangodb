@@ -996,6 +996,31 @@ auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   });
 }
 
+auto replicated_log::LogLeader::compact() -> Result {
+  auto guard = _guardedLeaderData.getLockedGuard();
+  auto compactionStop =
+      std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
+  LOG_CTX("01e09", INFO, _logContext)
+      << "starting explicit compaction up to index " << compactionStop;
+  return guard->runCompaction(compactionStop);
+}
+
+[[nodiscard]] auto replicated_log::LogLeader::GuardedLeaderData::runCompaction(
+    LogIndex compactionStop) -> Result {
+  auto const numberOfCompactedEntries =
+      compactionStop.value - _inMemoryLog.getFirstIndex().value;
+  auto newLog = _inMemoryLog.release(compactionStop);
+  auto res = _self._localFollower->release(compactionStop);
+  if (res.ok()) {
+    _inMemoryLog = std::move(newLog);
+    _self._logMetrics->replicatedLogNumberCompactedEntries->count(
+        numberOfCompactedEntries);
+  }
+  LOG_CTX("f1029", TRACE, _self._logContext)
+      << "compaction result = " << res.errorMessage();
+  return res;
+}
+
 auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
   auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
   LOG_CTX("080d6", TRACE, _self._logContext)
@@ -1010,18 +1035,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCompaction() -> Result {
     return {};
   }
 
-  auto const numberOfCompactedEntries =
-      compactionStop.value - _inMemoryLog.getFirstIndex().value;
-  auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _self._localFollower->release(compactionStop);
-  if (res.ok()) {
-    _inMemoryLog = std::move(newLog);
-    _self._logMetrics->replicatedLogNumberCompactedEntries->count(
-        numberOfCompactedEntries);
-  }
-  LOG_CTX("f1029", TRACE, _self._logContext)
-      << "compaction result = " << res.errorMessage();
-  return res;
+  return runCompaction(compactionStop);
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
@@ -1474,6 +1488,17 @@ auto replicated_log::LogLeader::waitForResign()
   action.fire();
 
   return std::move(future);
+}
+
+auto replicated_log::LogLeader::ping(std::optional<std::string> message)
+    -> LogIndex {
+  auto index = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leader) {
+    auto meta = LogMetaPayload::withPing(message);
+    return leader.insertInternal(std::move(meta), false, std::nullopt);
+  });
+
+  triggerAsyncReplication();
+  return index;
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

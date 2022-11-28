@@ -103,6 +103,7 @@ function optimizerRuleTestSuite () {
         let collectionNode = result.plan.nodes.map(function(node) { return node.type; }).indexOf("EnumerateCollectionNode");
         if (collectionNode !== -1) {
           assertTrue(result.plan.nodes[collectionNode].random); // check for random iteration flag
+          assertTrue(result.plan.nodes[collectionNode].estimatedNrItems <= 1);
         }
       });
     },

@@ -34,7 +34,11 @@ using namespace arangodb::replication2;
 
 auto replicated_log::ILogParticipant::getTerm() const noexcept
     -> std::optional<LogTerm> {
-  return getQuickStatus().getCurrentTerm();
+  try {
+    return getQuickStatus().getCurrentTerm();
+  } catch (...) {
+    return std::nullopt;
+  }
 }
 
 replicated_log::WaitForResult::WaitForResult(

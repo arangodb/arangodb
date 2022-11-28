@@ -66,6 +66,8 @@ class RandomGenerator {
   RandomGenerator& operator=(RandomGenerator const&) = delete;
 
  public:
+  // as not really used, types from 2 to 5 are deprecated and will be further
+  // removed, only Mersenne will stay
   enum class RandomType {
     MERSENNE = 1,
     RANDOM = 2,

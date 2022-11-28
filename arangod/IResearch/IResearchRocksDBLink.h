@@ -55,11 +55,34 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
     return IResearchLink::hasSelectivityEstimate();
   }
 
+  Result insertInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId, VPackSlice doc,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), &tick);
+  }
+
+  Result removeInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId,
+                          rocksdb::SequenceNumber tick) {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      &tick);
+  }
+
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchLink::insert(trx, documentId, doc);
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), nullptr);
+  }
+
+  Result remove(transaction::Methods& trx, RocksDBMethods*,
+                LocalDocumentId const& documentId, VPackSlice) override {
+    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
+                                      nullptr);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }
@@ -77,11 +100,6 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   size_t memory() const override {
     // FIXME return in memory size
     return stats().indexSize;
-  }
-
-  Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice) override {
-    return IResearchLink::remove(trx, documentId, hasNested());
   }
 
   ////////////////////////////////////////////////////////////////////////////////

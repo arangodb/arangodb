@@ -36,6 +36,7 @@ var errors = require("@arangodb").errors;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function makePolyInside(lon, lat) {
   // lon and lat are longitude and latitude ranges
@@ -55,7 +56,7 @@ function makePolyOutside(lon, lat) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoSuite () {
+function geoSuite(isSearchAlias) {
 
   let collWithoutIndex = "UnitTestsGeoWithoutIndex";
   let collWithIndex = "UnitTestsGeoWithIndex";
@@ -176,13 +177,24 @@ function geoSuite () {
 
       noIndex = db._create(collWithoutIndex);
       withIndex = db._create(collWithIndex);
-      withIndex.ensureIndex({type:"geo", geoJson: true, fields: ["geo"]});
+      withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
       let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
-      view = db._createView(viewName, "arangosearch", {
-        links: { UnitTestsGeoWithView: {
-          fields: { geo: {analyzers: ["geo_json"]}}}}});
+      if (isSearchAlias) {
+        let i = db.UnitTestsGeoWithView.ensureIndex({type: "inverted", fields: [{name: "geo", analyzer: "geo_json"}]});
+        view = db._createView(viewName, "search-alias", {
+          indexes: [{collection: "UnitTestsGeoWithView", index: i.name}]
+        });
+      } else {
+        view = db._createView(viewName, "arangosearch", {
+          links: {
+            UnitTestsGeoWithView: {
+              fields: {geo: {analyzers: ["geo_json"]}}
+            }
+          }
+        });
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,7 +1014,8 @@ function geoSuite () {
       multiPoint = {
         type: "MultiPoint",
         "coordinates": [ [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
-                         [ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ] ] };
+          [37.614323, 55.70652], [37.615825, 55.70652]]
+      };
       c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
@@ -1012,6 +1025,28 @@ function geoSuite () {
   };
 }
 
-jsunity.run(geoSuite);
+function arangoSearchGeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function searchAliasGeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(arangoSearchGeoSuite);
+jsunity.run(searchAliasGeoSuite);
+
 
 return jsunity.done();

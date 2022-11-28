@@ -69,7 +69,7 @@ struct IResearchLinkHelper {
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(ArangodServer& server, velocypack::Slice lhs,
-                    velocypack::Slice rhs, irs::string_ref dbname);
+                    velocypack::Slice rhs, std::string_view dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
@@ -96,8 +96,9 @@ struct IResearchLinkHelper {
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
+      bool const* pkCache = nullptr, bool const* sortCache = nullptr,
       velocypack::Slice idSlice = velocypack::Slice(),
-      irs::string_ref collectionName = irs::string_ref::NIL);
+      std::string_view collectionName = std::string_view{});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:

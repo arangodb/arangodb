@@ -119,6 +119,8 @@
 #include <arpa/inet.h>
 #endif
 
+#include <absl/crc/crc32c.h>
+
 using namespace arangodb;
 using namespace basics;
 using namespace aql;
@@ -894,6 +896,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
     if (ignoreError) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ||
           res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD ||
           res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }
@@ -1673,8 +1677,8 @@ AqlValue NgramSimilarityHelper(char const* AFN, ExpressionContext* ctx,
   }
 
   auto utf32Attribute = basics::StringUtils::characterCodes(
-      attributeValue.c_str(), attributeValue.size());
-  auto utf32Target = basics::StringUtils::characterCodes(targetValue.c_str(),
+      attributeValue.data(), attributeValue.size());
+  auto utf32Target = basics::StringUtils::characterCodes(targetValue.data(),
                                                          targetValue.size());
 
   auto const similarity = irs::ngram_similarity<uint32_t, search_semantics>(
@@ -1781,13 +1785,13 @@ AqlValue functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
+    attrNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
+    targetNgrams.emplace_back(token->value.data(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data
@@ -1872,10 +1876,10 @@ AqlValue functions::LevenshteinMatch(ExpressionContext* ctx,
 
   auto const& lhs = aql::extractFunctionParameterValue(args, 0);
   auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
   auto const& rhs = aql::extractFunctionParameterValue(args, 1);
   auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice())
-                                       : irs::bytes_ref::EMPTY;
+                                       : irs::kEmptyStringView<irs::byte_type>;
 
   size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
 
@@ -5439,8 +5443,8 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
-
-  uint32_t crc = TRI_Crc32HashPointer(buffer->data(), buffer->length());
+  auto const crc = static_cast<uint32_t>(
+      absl::ComputeCrc32c(std::string_view{buffer->data(), buffer->length()}));
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
   return AqlValue(&out[0], length);
@@ -5457,7 +5461,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
 
   ::appendAsString(vopts, adapter, value);
 
-  uint64_t hashval = TRI_FnvHashPointer(buffer->data(), buffer->length());
+  uint64_t hashval = FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
@@ -7014,7 +7018,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
       AqlValueMaterializer materializer(vopts);
       VPackSlice idSlice = materializer.slice(id, false);
       builder->openArray();
-      for (auto const& next : VPackArrayIterator(idSlice)) {
+      for (auto next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;

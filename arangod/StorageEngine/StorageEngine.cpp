@@ -56,9 +56,10 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                                const VPackSlice& slice) {
+                                                velocypack::Slice slice) {
   return {};
 }
+
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
 bool StorageEngine::inRecovery() {
   return recoveryState() < RecoveryState::DONE;

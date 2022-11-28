@@ -43,14 +43,14 @@ template<typename Sort>
 VPackComparer<Sort>::VPackComparer() : _sort{nullptr}, _size{0} {}
 
 template<typename Sort>
-bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+bool VPackComparer<Sort>::less(irs::bytes_view lhs, irs::bytes_view rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
 
-  VPackSlice lhsSlice{lhs.c_str()};
-  VPackSlice rhsSlice{rhs.c_str()};
+  VPackSlice lhsSlice{lhs.data()};
+  VPackSlice rhsSlice{rhs.data()};
 
   for (size_t i = 0; i < _size; ++i) {
     TRI_ASSERT(!lhsSlice.isNone());

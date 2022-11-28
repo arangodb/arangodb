@@ -56,7 +56,7 @@
 namespace {
 
 #ifdef USE_ENTERPRISE
-bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
+bool isIgnoredHiddenEnterpriseCollection(std::string_view cName) {
   /*
    * Note: As IResearchView.cpp L204 says:
    * -> "create links on a best-effort basis, link creation failure does not
@@ -70,23 +70,16 @@ bool isIgnoredHiddenEnterpriseCollection(std::string const& cName) {
    * but more code changes will then be necessary.
    */
   if (arangodb::ServerState::instance()->isSingleServer()) {
-    if (cName[0] == '_') {
-      if (strncmp(cName.c_str(),
-                  arangodb::StaticStrings::FullLocalPrefix.c_str(),
-                  arangodb::StaticStrings::FullLocalPrefix.size()) == 0 ||
-          strncmp(cName.c_str(),
-                  arangodb::StaticStrings::FullFromPrefix.c_str(),
-                  arangodb::StaticStrings::FullFromPrefix.size()) == 0 ||
-          strncmp(cName.c_str(), arangodb::StaticStrings::FullToPrefix.c_str(),
-                  arangodb::StaticStrings::FullToPrefix.size()) == 0) {
-        LOG_TOPIC("d921b", DEBUG, arangodb::Logger::VIEWS)
-            << "Ignoring link to '" << cName
-            << "'. Will only be initially created via SmartGraphs of a full "
-               "dump of a cluster."
-               "This link is not supposed to be restored in case you dump from "
-               "a cluster and then restore into a single-server instance.";
-        return true;
-      }
+    if (cName.starts_with(arangodb::StaticStrings::FullLocalPrefix) ||
+        cName.starts_with(arangodb::StaticStrings::FullFromPrefix) ||
+        cName.starts_with(arangodb::StaticStrings::FullToPrefix)) {
+      LOG_TOPIC("d921b", DEBUG, arangodb::Logger::VIEWS)
+          << "Ignoring link to '" << cName
+          << "'. Will only be initially created via SmartGraphs of a full "
+             "dump of a cluster."
+             "This link is not supposed to be restored in case you dump from "
+             "a cluster and then restore into a single-server instance.";
+      return true;
     }
   }
   return false;
@@ -175,7 +168,7 @@ Result createLink(LogicalCollection& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::function<bool(irs::string_ref)> const acceptor =
+  std::function<bool(std::string_view)> const acceptor =
       [](std::string_view key) -> bool {
     return key != arangodb::StaticStrings::IndexType &&
            key != arangodb::iresearch::StaticStrings::ViewIdField;
@@ -264,7 +257,8 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
             "error parsing link parameters from json for arangosearch view '") +
             view.name() + "'"};
   }
-
+  auto const pkCache = view.pkCache();
+  auto const sortCache = view.sortCache();
   std::vector<std::string> collectionsToLock;
   std::vector<std::pair<velocypack::Builder, IResearchLinkMeta>>
       linkDefinitions;
@@ -305,8 +299,8 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     auto res = IResearchLinkHelper::normalize(
         normalized, link, true, view.vocbase(), defaultVersion,
         &view.primarySort(), &view.primarySortCompression(),
-        &view.storedValues(), link.get(arangodb::StaticStrings::IndexId),
-        collectionName);
+        &view.storedValues(), &pkCache, &sortCache,
+        link.get(arangodb::StaticStrings::IndexId), collectionName);
 
     if (!res.ok()) {
       return res;
@@ -319,7 +313,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
         << "link modification request for view '" << view.name()
         << "', normalized definition:" << link.toString();
 
-    std::function<bool(irs::string_ref)> const acceptor =
+    std::function<bool(std::string_view)> const acceptor =
         [](std::string_view key) -> bool {
       return key != arangodb::StaticStrings::IndexType &&
              key != arangodb::iresearch::StaticStrings::ViewIdField;
@@ -620,7 +614,7 @@ namespace iresearch {
 /*static*/ bool IResearchLinkHelper::equal(ArangodServer& server,
                                            velocypack::Slice lhs,
                                            velocypack::Slice rhs,
-                                           irs::string_ref dbname) {
+                                           std::string_view dbname) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
   }
@@ -702,8 +696,9 @@ namespace iresearch {
     IResearchViewSort const* primarySort, /* = nullptr */
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
-    velocypack::Slice idSlice,                     /* = velocypack::Slice()*/
-    irs::string_ref collectionName /*= irs::string_ref::NIL*/) {
+    bool const* pkCache /*= nullptr*/, bool const* sortCache /*= nullptr*/,
+    velocypack::Slice idSlice, /* = velocypack::Slice()*/
+    std::string_view collectionName /*= std::string_view{}*/) {
   if (!normalized.isOpenObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "invalid output buffer provided for arangosearch link normalized "
@@ -735,7 +730,7 @@ namespace iresearch {
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
 
   if (ServerState::instance()->isClusterRole() && isCreation &&
-      !collectionName.empty() && meta._collectionName.empty()) {
+      meta._collectionName.empty()) {
     meta._collectionName = collectionName;
 #ifdef USE_ENTERPRISE
     ClusterMethods::realNameFromSmartName(meta._collectionName);
@@ -778,7 +773,15 @@ namespace iresearch {
     // normalize stored values if specified
     meta._storedValues = *storedValues;
   }
+#ifdef USE_ENTERPRISE
+  if (pkCache) {
+    meta._pkCache = *pkCache;
+  }
 
+  if (sortCache) {
+    meta._sortCache = *sortCache;
+  }
+#endif
   // 'isCreation' is set when forPersistence
   if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -812,14 +815,17 @@ namespace iresearch {
 
 #if USE_ENTERPRISE
     bool isIgnoredCollection =
-        isIgnoredHiddenEnterpriseCollection(collectionName.copyString());
+        isIgnoredHiddenEnterpriseCollection(collectionName.stringView());
 #else
     bool isIgnoredCollection = false;
 #endif
 
-    auto collection = resolver.getCollection(collectionName.copyString());
+    auto collection = resolver.getCollection(collectionName.stringView());
 
-    if (!isIgnoredCollection && !collection) {
+    if (!collection) {
+      if (isIgnoredCollection) {
+        continue;
+      }
       return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
               std::string("while validating arangosearch link definition, "
                           "error: collection '") +

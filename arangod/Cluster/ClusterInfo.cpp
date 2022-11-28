@@ -43,6 +43,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
@@ -705,6 +706,13 @@ void ClusterInfo::logAgencyDump() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ClusterInfo::uniqid(uint64_t count) {
+  TRI_IF_FAILURE("deterministic-cluster-wide-uniqid") {
+    // we want to use value range which HLC encoded starts with a digit.
+    // 54 * 64 ^ 3 HLC encoded is "0---"
+    static std::atomic<uint64_t> idCounter = 54 * 64 * 64 * 64;
+    return idCounter.fetch_add(1);
+  }
+
   MUTEX_LOCKER(mutexLocker, _idLock);
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -4076,8 +4084,13 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   VPackBuilder temp;
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
-  temp.add(StaticStrings::ReplicationFactor,
-           VPackValue(info->replicationFactor()));
+  if (info->isSatellite()) {
+    temp.add(StaticStrings::ReplicationFactor,
+             VPackValue(StaticStrings::Satellite));
+  } else {
+    temp.add(StaticStrings::ReplicationFactor,
+             VPackValue(info->replicationFactor()));
+  }
   temp.add(StaticStrings::MinReplicationFactor,
            VPackValue(info->writeConcern()));  // deprecated in 3.6
   temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
@@ -6092,6 +6105,10 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
         auto& leader = it->second->currentTerm->leader->serverId;
         auto& participants = it->second->participantsConfig.participants;
         result = std::make_shared<std::vector<ServerID>>();
+
+        // TODO Sanity check, can be removed later
+        TRI_ASSERT(participants.size() < 1000000);
+
         result->reserve(participants.size());
         // participants is an unordered map, but the resulting list requires
         // that the leader is the first entry!

@@ -84,6 +84,7 @@ class LogicalDataSource;
 struct IndexIteratorOptions;
 struct OperationOptions;
 struct OperationResult;
+struct ResourceMonitor;
 class Result;
 class RevisionId;
 class TransactionId;
@@ -131,14 +132,19 @@ class Methods {
   typedef Result (*DataSourceRegistrationCallback)(
       LogicalDataSource& dataSource, Methods& trx);
 
+  enum class CallbacksTag {
+    StatusChange = 0,
+    PreCommit = 1,
+  };
+
   /// @brief definition from TransactionState::StatusChangeCallback
   /// @param status the new status of the transaction
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx,
-                             transaction::Status status)>
-      StatusChangeCallback;
+  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
+                                                  transaction::Status status)>;
+  using PreCommitCallback = std::function<void(transaction::Methods& trx)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -147,10 +153,12 @@ class Methods {
       DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
-  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @param callback nullptr and empty functors are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
   bool removeStatusChangeCallback(StatusChangeCallback const* callback);
+
+  bool addPreCommitCallback(PreCommitCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -364,14 +372,16 @@ class Methods {
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   std::unique_ptr<IndexIterator> indexScanForCondition(
-      IndexHandle const&, arangodb::aql::AstNode const*,
-      arangodb::aql::Variable const*, IndexIteratorOptions const&,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, IndexHandle const&,
+      arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
+      IndexIteratorOptions const&, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
+                                           std::string const& collectionName,
                                            CursorType cursorType,
                                            ReadOwnWrites readOwnWrites);
 
@@ -405,11 +415,14 @@ class Methods {
   static ErrorCode validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                               velocypack::Slice value);
 
+  Result triggerIntermediateCommit();
+
  private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
-  Result performIntermediateCommitIfRequired(DataSourceId collectionId);
+  futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId);
 
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
@@ -580,6 +593,9 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
  private:
+  template<CallbacksTag tag, typename Callback>
+  [[nodiscard]] bool addCallbackImpl(Callback const* callback);
+
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 

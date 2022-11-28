@@ -37,6 +37,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
@@ -305,10 +306,10 @@ ConditionPart::ConditionPart(Variable const* variable,
     : variable(variable),
       attributeName(attributeName),
       operatorType(operatorNode->type),
+      isExpanded(false),
       operatorNode(operatorNode),
       valueNode(nullptr),
-      data(data),
-      isExpanded(false) {
+      data(data) {
   if (side == ATTRIBUTE_LEFT) {
     valueNode = operatorNode->getMember(1);
   } else {
@@ -367,9 +368,9 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
       // maximum number of comparisons that we will accept
       // otherwise the optimization will be aborted
-      static size_t const MaxComparisons = 2048;
+      static constexpr size_t maxComparisons = 2048;
 
-      if (n1 * n2 < MaxComparisons) {
+      if (n1 * n2 < maxComparisons) {
         for (size_t i = 0; i < n1; ++i) {
           auto v = valueNode->getMemberUnchecked(i);
           for (size_t j = 0; j < n2; ++j) {
@@ -386,7 +387,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           }
         }
       } else {
-        std::unordered_set<AstNode const*, AstNodeValueHash, AstNodeValueEqual>
+        containers::FlatHashSet<AstNode const*, AstNodeValueHash,
+                                AstNodeValueEqual>
             values(512, AstNodeValueHash(), AstNodeValueEqual());
 
         for (size_t i = 0; i < n2; ++i) {
@@ -395,7 +397,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
         for (size_t i = 0; i < n1; ++i) {
           auto node = valueNode->getMemberUnchecked(i);
-          if (values.find(node) == values.end()) {
+          if (!values.contains(node)) {
             return false;
           }
         }
@@ -933,6 +935,24 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
                                          Index const* index) {
   TRI_ASSERT(index != nullptr);
 
+  return removeCondition(plan, variable, condition, index, false);
+}
+
+/// @brief remove filter conditions already covered by the traversal
+AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
+                                             Variable const* variable,
+                                             AstNode* other,
+                                             bool isPathCondition) {
+  return removeCondition(plan, variable, other, nullptr,
+                         /*isFromTraverser*/ isPathCondition);
+}
+
+AstNode* Condition::removeCondition(ExecutionPlan const* plan,
+                                    Variable const* variable,
+                                    AstNode const* condition,
+                                    Index const* index, bool isFromTraverser) {
+  TRI_ASSERT(!isFromTraverser || index == nullptr);
+
   if (_root == nullptr || condition == nullptr) {
     return _root;
   }
@@ -956,7 +976,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
 
   ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, false);
+                            index, isFromTraverser);
 
   if (toRemove.empty()) {
     return _root;
@@ -965,56 +985,6 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan,
   // build a new AST condition
   AstNode* newNode = nullptr;
 
-  for (size_t i = 0; i < n; ++i) {
-    if (toRemove.find(i) == toRemove.end()) {
-      auto what = andNode->getMemberUnchecked(i);
-
-      if (newNode == nullptr) {
-        // the only node so far
-        newNode = what;
-      } else {
-        // AND-combine with existing node
-        newNode = _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND,
-                                                 newNode, what);
-      }
-    }
-  }
-
-  return newNode;
-}
-
-/// @brief remove filter conditions already covered by the traversal
-AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
-                                             Variable const* variable,
-                                             AstNode* other) {
-  if (_root == nullptr || other == nullptr) {
-    return _root;
-  }
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
-
-  TRI_ASSERT(other != nullptr);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_OR);
-  if (other->numMembers() != 1 && _root->numMembers() != 1) {
-    return _root;
-  }
-
-  auto andNode = _root->getMemberUnchecked(0);
-  TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  auto otherAndNode = other->getMemberUnchecked(0);
-  TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-  size_t const n = andNode->numMembers();
-
-  ::arangodb::containers::HashSet<size_t> toRemove;
-  collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove,
-                            nullptr, true);
-
-  if (toRemove.empty()) {
-    return _root;
-  }
-
-  // build a new AST condition
-  AstNode* newNode = nullptr;
   for (size_t i = 0; i < n; ++i) {
     if (toRemove.find(i) == toRemove.end()) {
       auto what = andNode->getMemberUnchecked(i);

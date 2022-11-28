@@ -27,8 +27,8 @@ extern "C" {
 #include <linenoise.h>
 }
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/operating-system.h"
-#include "Logger/Logger.h"
 #include "Utilities/Completer.h"
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -93,7 +93,9 @@ bool LinenoiseShell::close() {
 }
 
 void LinenoiseShell::addHistory(std::string const& str) {
-  if (str.empty()) {
+  // exclude certain commands from history, as they are not interesting
+  if (str.empty() || str == "exit" || str == "exit;" || str == "quit" ||
+      str == "quit;") {
     return;
   }
 
@@ -113,9 +115,9 @@ std::string LinenoiseShell::getLine(std::string const& prompt, EofType& eof) {
 
   if (line != nullptr) {
     eof = EOF_NONE;
-    std::string stringValue(line);
-    ::free(line);
-    return stringValue;
+    auto guard = scopeGuard([line]() noexcept { free(line); });
+
+    return std::string{line};
   }
 
   // no input from user (e.g. if CTRL-C was pressed)

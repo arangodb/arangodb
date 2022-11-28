@@ -47,7 +47,7 @@ using namespace arangodb::tests;
 namespace {
 
 struct custom_sort : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "custom_sort";
   }
 
@@ -64,7 +64,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref) override {}
+      virtual void collect(irs::bytes_view) override {}
 
       virtual void reset() override {}
 
@@ -86,7 +86,7 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void collect(irs::bytes_ref) override {}
+      virtual void collect(irs::bytes_view) override {}
 
       virtual void reset() override {}
 
@@ -134,8 +134,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_field_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::field_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::field_collector>(sort_);
     }
 
     virtual irs::ScoreFunction prepare_scorer(
@@ -172,8 +171,7 @@ struct custom_sort : public irs::sort {
         return sort_.prepare_term_collector();
       }
 
-      return irs::memory::make_unique<custom_sort::prepared::term_collector>(
-          sort_);
+      return std::make_unique<custom_sort::prepared::term_collector>(sort_);
     }
 
    private:
@@ -390,7 +388,7 @@ TEST(GeoFilterTest, query) {
 
   auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
-  ASSERT_EQ(2, reader->size());
+  ASSERT_EQ(2U, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
   ASSERT_EQ(docs->slice().length(), reader->live_docs_count());
 
@@ -437,10 +435,9 @@ TEST(GeoFilterTest, query) {
         EXPECT_EQ(docId, seek_it->seek(docId));
         EXPECT_EQ(docId, doc->value);
         EXPECT_EQ(docId, values->seek(docId));
-        EXPECT_FALSE(value->value.null());
+        EXPECT_FALSE(irs::IsNull(value->value));
 
-        actualResults.emplace(
-            irs::to_string<std::string>(value->value.c_str()));
+        actualResults.emplace(irs::to_string<std::string>(value->value.data()));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
@@ -463,7 +460,7 @@ TEST(GeoFilterTest, query) {
             if (!irs::doc_limits::eof(column_it->value())) {
               EXPECT_NE(actualResults.end(),
                         actualResults.find(irs::to_string<std::string>(
-                            payload->value.c_str())));
+                            payload->value.data())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));
@@ -785,13 +782,13 @@ TEST(GeoFilterTest, checkScorer) {
         EXPECT_EQ(docId, seek_it->seek(docId));
         EXPECT_EQ(docId, column_it->seek(docId));
         EXPECT_EQ(docId, doc->value);
-        EXPECT_FALSE(payload->value.null());
+        EXPECT_FALSE(irs::IsNull(payload->value));
 
         irs::bstring score_value(ord.score_size(), 0);
         (*score)(reinterpret_cast<irs::score_t*>(score_value.data()));
 
         actualResults.emplace(
-            irs::to_string<std::string>(payload->value.c_str()),
+            irs::to_string<std::string>(payload->value.data()),
             std::move(score_value));
       }
       EXPECT_TRUE(irs::doc_limits::eof(it->value()));
@@ -815,7 +812,7 @@ TEST(GeoFilterTest, checkScorer) {
             if (!irs::doc_limits::eof(column_it->value())) {
               EXPECT_NE(actualResults.end(),
                         actualResults.find(irs::to_string<std::string>(
-                            payload->value.c_str())));
+                            payload->value.data())));
             }
           } while (seek_it->next());
           EXPECT_TRUE(irs::doc_limits::eof(seek_it->value()));

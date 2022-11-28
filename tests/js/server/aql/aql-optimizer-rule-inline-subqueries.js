@@ -32,13 +32,14 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 var ruleName = "inline-subqueries";
 
-function optimizerRuleTestSuite () {
+function optimizerRuleTestSuite() {
   // various choices to control the optimizer: 
-  var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramNone = {optimizer: {rules: ["-all"]}};
+  var paramEnabled = {optimizer: {rules: ["-all", "+" + ruleName]}};
+  var paramDisabled = {optimizer: {rules: ["+all", "-" + ruleName]}};
 
   return {
 
@@ -46,15 +47,15 @@ function optimizerRuleTestSuite () {
     /// @brief test that rule has no effect when explicitly disabled
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleDisabled : function () {
-      var queries = [ 
+    testRuleDisabled: function () {
+      var queries = [
         "FOR i IN (FOR x IN [1,2,3] RETURN x) RETURN i",
         "FOR i IN (FOR x IN (FOR y IN [1,2,3] RETURN y) RETURN x) RETURN i",
         "FOR i IN [1,2,3] LET x = (FOR j IN (FOR k IN [1,2,3] RETURN k) RETURN j) RETURN x"
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { }, paramNone);
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, {}, paramNone);
         assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
@@ -63,8 +64,8 @@ function optimizerRuleTestSuite () {
     /// @brief test that rule has no effect
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleNoEffect : function () {
-      var queries = [ 
+    testRuleNoEffect: function () {
+      var queries = [
         "FOR i IN [1,2,3] RETURN i",
         "LET a = [1,2,3] FOR i IN a RETURN i",
         "FOR i IN [1,2,3] LET x = (FOR j IN [1,2,3] RETURN j) RETURN x",
@@ -80,10 +81,10 @@ function optimizerRuleTestSuite () {
         "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,2,3,3] RETURN DISTINCT j) FOR x IN sub RETURN [i, x]",
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, {}, paramEnabled);
         assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
-        result = AQL_EXPLAIN(query, { }, paramNone);
+        result = AQL_EXPLAIN(query, {}, paramNone);
         assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
@@ -92,8 +93,8 @@ function optimizerRuleTestSuite () {
     /// @brief test that rule has an effect
     ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect : function () {
-      var queries = [ 
+    testRuleHasEffect: function () {
+      var queries = [
         "FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i",
         "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) RETURN i",
         "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) FILTER i > 1 RETURN i",
@@ -104,12 +105,12 @@ function optimizerRuleTestSuite () {
         "LET x = (FOR j IN [1,2,3] SORT j RETURN j) FOR k IN x RETURN k"
       ];
 
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
+      queries.forEach(function (query) {
+        var result = AQL_EXPLAIN(query, {}, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        result = AQL_EXPLAIN(query, { }, paramNone);
-        var resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled).json;
+        result = AQL_EXPLAIN(query, {}, paramNone);
+        var resultDisabled = AQL_EXECUTE(query, {}, paramDisabled).json;
+        var resultEnabled = AQL_EXECUTE(query, {}, paramEnabled).json;
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
       });
@@ -119,8 +120,8 @@ function optimizerRuleTestSuite () {
     /// @brief test generated plans
     ////////////////////////////////////////////////////////////////////////////////
 
-    testPlans : function () {
-      var plans = [ 
+    testPlans: function () {
+      var plans = [
         // Const propagation:
         ["FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode"]],
         ["FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode"]],
@@ -128,10 +129,12 @@ function optimizerRuleTestSuite () {
         ["FOR i IN (FOR j IN (FOR k IN [1,2,3] RETURN k) RETURN j) RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode"]]
       ];
 
-      plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
+      plans.forEach(function (plan) {
+        var result = AQL_EXPLAIN(plan[0], {}, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
-        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
+        assertEqual(plan[1], helper.getCompactPlan(result).map(function (node) {
+          return node.type;
+        }), plan[0]);
       });
     },
 
@@ -139,26 +142,26 @@ function optimizerRuleTestSuite () {
     /// @brief test generated results
     ////////////////////////////////////////////////////////////////////////////////
 
-    testResults : function () {
-      var queries = [ 
-        [ "FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i", [ 1, 2, 3 ] ],
-        [ "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) RETURN i", [ 2, 3 ] ],
-        [ "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) RETURN i", [ 4, 6 ] ],
-        [ "FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) FILTER i >= 6 RETURN i", [ 6 ] ],
-        [ "FOR i IN (FOR j IN (FOR k IN [1,2,3] RETURN k) RETURN j * 2) RETURN i * 2", [ 4, 8, 12 ] ],
-        [ "FOR i IN (FOR j IN (FOR k IN [1,2,3,4] SORT k DESC LIMIT 3 RETURN k) LIMIT 2 RETURN j) RETURN i", [ 4, 3 ] ],
-        [ "LET x = (FOR j IN [1,2,3] LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 1, 2 ] ],
-        [ "LET x = (FOR j IN [1,2,3] LIMIT 1, 2 RETURN j) FOR k IN x RETURN k", [ 2, 3 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] LIMIT 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 2 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] LIMIT 1, 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 3 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [ 2 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC RETURN j) FOR k IN x RETURN k", [ 4, 3, 2, 1 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [ 4, 3 ] ],
-        [ "LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [ 4 ] ],
-        [ "FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3] ] ],
-        [ "FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [ [3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3] ] ],
+    testResults: function () {
+      var queries = [
+        ["FOR i IN (FOR j IN [1,2,3] RETURN j) RETURN i", [1, 2, 3]],
+        ["FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j) RETURN i", [2, 3]],
+        ["FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) RETURN i", [4, 6]],
+        ["FOR i IN (FOR j IN [1,2,3] FILTER j > 1 RETURN j * 2) FILTER i >= 6 RETURN i", [6]],
+        ["FOR i IN (FOR j IN (FOR k IN [1,2,3] RETURN k) RETURN j * 2) RETURN i * 2", [4, 8, 12]],
+        ["FOR i IN (FOR j IN (FOR k IN [1,2,3,4] SORT k DESC LIMIT 3 RETURN k) LIMIT 2 RETURN j) RETURN i", [4, 3]],
+        ["LET x = (FOR j IN [1,2,3] LIMIT 2 RETURN j) FOR k IN x RETURN k", [1, 2]],
+        ["LET x = (FOR j IN [1,2,3] LIMIT 1, 2 RETURN j) FOR k IN x RETURN k", [2, 3]],
+        ["LET x = (FOR j IN [1,2,3,4] LIMIT 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [2]],
+        ["LET x = (FOR j IN [1,2,3,4] LIMIT 1, 2 RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [3]],
+        ["LET x = (FOR j IN [1,2,3,4] RETURN j) FOR k IN x LIMIT 1, 1 RETURN k", [2]],
+        ["LET x = (FOR j IN [1,2,3,4] SORT j DESC RETURN j) FOR k IN x RETURN k", [4, 3, 2, 1]],
+        ["LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [4, 3]],
+        ["LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [4]],
+        ["FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [[1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3]]],
+        ["FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [[3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3]]],
       ];
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 
@@ -170,27 +173,27 @@ function optimizerRuleTestSuite () {
   };
 }
 
-function optimizerRuleCollectionTestSuite () {
+function optimizerRuleCollectionTestSuite() {
   var c = null;
   var cn = "UnitTestsOptimizer";
-  const noMoveFilters = { optimizer: { rules: [ "-move-filters-into-enumerate" ] } };
+  const noMoveFilters = {optimizer: {rules: ["-move-filters-into-enumerate"]}};
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn);
       c = db._create(cn);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
       c = null;
     },
 
-    testSpecificPlan1 : function () {
+    testSpecificPlan1: function () {
       var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR doc2 IN x RETURN doc2";
 
-      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      var result = AQL_EXPLAIN(query, {"@cn": cn});
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       var nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
       assertEqual(3, nodes.length);
@@ -200,10 +203,10 @@ function optimizerRuleCollectionTestSuite () {
       assertEqual(cn, nodes[nodes.length - 2].collection);
     },
 
-    testSpecificPlan2 : function () {
+    testSpecificPlan2: function () {
       var query = "LET x = (FOR doc IN @@cn FILTER doc.foo == 'bar' RETURN doc) FOR doc2 IN x RETURN doc2";
 
-      var result = AQL_EXPLAIN(query, { "@cn" : cn }, noMoveFilters);
+      var result = AQL_EXPLAIN(query, {"@cn": cn}, noMoveFilters);
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       var nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
       assertEqual(5, nodes.length);
@@ -215,55 +218,61 @@ function optimizerRuleCollectionTestSuite () {
       assertEqual(cn, nodes[nodes.length - 4].collection);
     },
 
-    testSpecificPlan3 : function () {
+    testSpecificPlan3: function () {
       var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR doc2 IN x RETURN x";
-      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      var result = AQL_EXPLAIN(query, {"@cn": cn});
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
     },
 
-    testSpecificPlan4 : function () {
+    testSpecificPlan4: function () {
       var query = "LET x = (FOR doc IN @@cn RETURN doc) FOR i IN 1..10 FILTER LENGTH(x) FOR y IN x RETURN y";
-      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      var result = AQL_EXPLAIN(query, {"@cn": cn});
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
     },
 
-    testSpecificPlan5 : function () {
+    testSpecificPlan5: function () {
       var query = "FOR j IN 1..10 LET x = (FOR doc IN @@cn RETURN doc) FOR i IN 1..10 FILTER LENGTH(x) FOR y IN x RETURN y";
-      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      var result = AQL_EXPLAIN(query, {"@cn": cn});
       assertEqual(-1, result.plan.rules.indexOf(ruleName), query); // no optimization
     }
 
   };
 }
 
-function optimizerRuleViewTestSuite () {
+function optimizerRuleViewTestSuite(isSearchAlias) {
   let cn = "UnitTestsOptimizer";
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._dropView(cn + "View");
       db._drop(cn);
       db._create(cn);
-      db._createView(cn + "View", "arangosearch", { links: { "UnitTestsOptimizer" : { includeAllFields: true } } });
+      if (isSearchAlias) {
+        let c = db._collection(cn);
+        let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+        db._createView(cn + "View", "search-alias", {indexes: [{collection: cn, index: i.name}]});
+      } else {
+        db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+      }
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._dropView(cn + "View");
       db._drop(cn);
     },
 
-    testVariableReplacementInSearchCondition : function () {
+    testVariableReplacementInSearchCondition: function () {
       let query = "LET sub = (RETURN 1) FOR outer IN sub FOR v IN " + cn + "View SEARCH v.something == outer RETURN v";
 
       let result = AQL_EXPLAIN(query);
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-      
+
       let nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
 
       assertEqual("ReturnNode", nodes[nodes.length - 1].type);
       assertEqual("EnumerateViewNode", nodes[nodes.length - 2].type);
-      
+
       let viewNode = nodes[nodes.length - 2];
       assertEqual(cn + "View", viewNode.view);
       assertEqual("v", viewNode.outVariable.name);
@@ -271,25 +280,25 @@ function optimizerRuleViewTestSuite () {
       assertEqual("n-ary and", viewNode.condition.subNodes[0].type);
       assertEqual("compare ==", viewNode.condition.subNodes[0].subNodes[0].type);
       assertEqual("attribute access", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].type);
-      assertEqual("something",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
-      assertEqual("reference",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("something", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("reference", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
       assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
       assertEqual("reference", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
       assertEqual("outer", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].name);
       assertEqual([], viewNode.scorers);
     },
-    
-    testNoVariableReplacementInSearchCondition : function () {
+
+    testNoVariableReplacementInSearchCondition: function () {
       let query = "LET sub = (RETURN 1) FOR outer IN sub FOR v IN " + cn + "View SEARCH v.something == 1 RETURN v";
 
       let result = AQL_EXPLAIN(query);
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-      
+
       let nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
 
       assertEqual("ReturnNode", nodes[nodes.length - 1].type);
       assertEqual("EnumerateViewNode", nodes[nodes.length - 2].type);
-      
+
       let viewNode = nodes[nodes.length - 2];
       assertEqual(cn + "View", viewNode.view);
       assertEqual("v", viewNode.outVariable.name);
@@ -297,8 +306,8 @@ function optimizerRuleViewTestSuite () {
       assertEqual("n-ary and", viewNode.condition.subNodes[0].type);
       assertEqual("compare ==", viewNode.condition.subNodes[0].subNodes[0].type);
       assertEqual("attribute access", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].type);
-      assertEqual("something",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
-      assertEqual("reference",        viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
+      assertEqual("something", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].name);
+      assertEqual("reference", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].type);
       assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
       assertEqual("value", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
       assertEqual([], viewNode.scorers);
@@ -307,8 +316,29 @@ function optimizerRuleViewTestSuite () {
   };
 }
 
+function optimizerRuleArangoSearchTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    optimizerRuleViewTestSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function optimizerRuleSearchAliasTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    optimizerRuleViewTestSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
 jsunity.run(optimizerRuleTestSuite);
 jsunity.run(optimizerRuleCollectionTestSuite);
-jsunity.run(optimizerRuleViewTestSuite);
+jsunity.run(optimizerRuleArangoSearchTestSuite);
+jsunity.run(optimizerRuleSearchAliasTestSuite);
 
 return jsunity.done();

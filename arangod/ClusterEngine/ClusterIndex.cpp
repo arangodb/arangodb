@@ -194,7 +194,7 @@ bool ClusterIndex::isSorted() const {
                                  "unsupported cluster storage engine");
 }
 
-void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
+void ClusterIndex::updateProperties(velocypack::Slice slice) {
   VPackBuilder merge;
   merge.openObject();
 

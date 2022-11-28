@@ -110,6 +110,9 @@ struct ReplicatedLogMethods {
   virtual auto tail(LogId, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
 
+  virtual auto ping(LogId, std::optional<std::string> message) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
   virtual auto insert(LogId, LogPayload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> = 0;
@@ -130,6 +133,7 @@ struct ReplicatedLogMethods {
       -> futures::Future<LogIndex> = 0;
 
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
+  virtual auto compact(LogId) const -> futures::Future<Result> = 0;
 
   /*
    * Wait until the supervision reports that the replicated log has converged

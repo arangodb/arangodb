@@ -27,7 +27,7 @@
 #include "store/fs_directory.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <velocypack/Parser.h>
 
@@ -841,7 +841,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -865,7 +865,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -883,7 +883,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
         kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_EQ(
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
         l->format());
@@ -909,7 +909,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -932,7 +932,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -950,7 +950,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
         kEmpty, kEmpty, arangodb::transaction::Options());
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_EQ(
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX),
         l->format());
@@ -977,7 +977,7 @@ TEST_F(IResearchLinkTest, test_write) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1001,7 +1001,7 @@ TEST_F(IResearchLinkTest, test_write) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1018,7 +1018,7 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1036,7 +1036,7 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1051,9 +1051,11 @@ TEST_F(IResearchLinkTest, test_write) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), false).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2),
+                           l->meta().hasNested(), nullptr)
+                     .ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -1071,7 +1073,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1095,15 +1097,15 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1112,7 +1114,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1129,7 +1131,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1147,7 +1149,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1176,7 +1178,7 @@ TEST_F(IResearchLinkTest,
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1201,15 +1203,15 @@ TEST_F(IResearchLinkTest,
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1218,7 +1220,7 @@ TEST_F(IResearchLinkTest,
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1235,7 +1237,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1253,7 +1255,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1286,7 +1288,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1314,15 +1316,15 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1331,7 +1333,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1348,7 +1350,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1366,7 +1368,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1395,7 +1397,7 @@ TEST_F(IResearchLinkTest,
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1425,15 +1427,15 @@ TEST_F(IResearchLinkTest,
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1442,7 +1444,7 @@ TEST_F(IResearchLinkTest,
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1459,7 +1461,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1477,7 +1479,7 @@ TEST_F(IResearchLinkTest,
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1519,7 +1521,7 @@ TEST_F(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-42"))
@@ -1549,15 +1551,15 @@ TEST_F(
   std::set<std::string> compressedValues;
   irs::compression::mock::test_compressor::functions().compress_mock =
       [&compressedValues](irs::byte_type* src, size_t size,
-                          irs::bstring& out) -> irs::bytes_ref {
+                          irs::bstring& out) -> irs::bytes_view {
     out.append(src, size);
     compressedValues.emplace(reinterpret_cast<const char*>(src), size);
     return {reinterpret_cast<const irs::byte_type*>(out.data()), size};
   };
-  auto compressorRemover = irs::make_finally([]() noexcept {
+  irs::Finally compressorRemover = []() noexcept {
     irs::compression::mock::test_compressor::functions().compress_mock =
         nullptr;
-  });
+  };
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE((nullptr != logicalCollection));
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -1566,7 +1568,7 @@ TEST_F(
   view->open();
   ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
 
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -1587,7 +1589,7 @@ TEST_F(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -1605,7 +1607,7 @@ TEST_F(
         arangodb::transaction::StandaloneContext::Create(vocbase), kEmpty,
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
+    auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(2), doc1->slice()).ok()));
@@ -1639,7 +1641,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
   auto& feature = server.getFeature<IResearchFeature>();
 
   auto blockQueue = [&]() {
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1687,7 +1689,7 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
 
   // block queues
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
 
@@ -1730,7 +1732,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -1789,7 +1791,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
     waitForBlocker();
 
@@ -1961,7 +1963,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
   std::atomic<size_t> step{0};
   auto blockQueue = [&]() {
     ++step;
-    { auto lock = irs::make_lock_guard(mtx); }
+    { std::lock_guard lock{mtx}; }
     cv.notify_one();
   };
 
@@ -2020,7 +2022,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
   // block queue
   {
-    auto lock = irs::make_unique_lock(mtx);
+    std::unique_lock lock{mtx};
     ASSERT_TRUE(feature.queue(ThreadGroup::_0, 0ms, blockQueue));
     waitForBlocker();
 
@@ -2161,7 +2163,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
 void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
                         uint64_t& numFiles) {
-  irs::utf8_path utf8Path{path};
+  std::filesystem::path utf8Path{path};
   auto visitor = [&indexSize, &numFiles,
                   &utf8Path](const path_char_t* filename) -> bool {
     auto pathParts = irs::file_utils::path_parts(filename);
@@ -2174,13 +2176,13 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
         return "^_\\d+$";
       }
     }());
-    std::basic_string<path_char_t> name(pathParts.stem.c_str(),
+    std::basic_string<path_char_t> name(pathParts.stem.data(),
                                         pathParts.stem.size());
 
     if (std::regex_match(name, match, regex)) {
       // creating abs path to current file
-      irs::utf8_path absPath = utf8Path;
-      absPath /= pathParts.basename.c_str();
+      std::filesystem::path absPath = utf8Path;
+      absPath /= pathParts.basename.data();
       uint64_t currSize = 0;
       irs::file_utils::byte_size(currSize, absPath.c_str());
       indexSize += currSize;
@@ -2212,7 +2214,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   uint64_t _commitIntervalMs = 0;
   uint64_t _consolidationIntervalMs = 0;
   std::shared_ptr<arangodb::LogicalView> _view;
-  irs::utf8_path _dirPath = testFilesystemPath;
+  std::filesystem::path _dirPath = testFilesystemPath;
   std::shared_ptr<arangodb::Index> _link;
 
   IResearchLinkMetricsTest() {
@@ -2293,8 +2295,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     _view.reset();
   }
 
-  arangodb::iresearch::IResearchLink* getLink() {
-    auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(_link.get());
+  arangodb::iresearch::IResearchLinkMock* getLink() {
+    auto* l =
+        dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(_link.get());
     EXPECT_NE(l, nullptr);
     return l;
   }
@@ -2346,7 +2349,9 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin), false).ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin),
+                            l->meta().hasNested(), nullptr)
+                      .ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
@@ -2363,8 +2368,8 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     auto visitor = [&](const path_char_t* filename) -> bool {
       ++numFiles;
       auto pathParts = irs::file_utils::path_parts(filename);
-      irs::utf8_path absPath = _dirPath;
-      absPath /= pathParts.basename.c_str();
+      std::filesystem::path absPath = _dirPath;
+      absPath /= pathParts.basename.data();
       uint64_t currSize = 0;
       irs::file_utils::byte_size(currSize, absPath.c_str());
       indexSize += currSize;

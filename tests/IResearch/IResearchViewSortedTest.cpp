@@ -27,7 +27,7 @@
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <velocypack/Iterator.h>
 
@@ -141,9 +141,9 @@ class IResearchViewSortedTest
 TEST_P(IResearchViewSortedTest, SingleField) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -234,7 +234,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -447,9 +447,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 TEST_P(IResearchViewSortedTest, MultipleFields) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -540,7 +540,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 

@@ -41,9 +41,6 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
-constexpr char kTypeDelimiter = '\0';
-constexpr char kAnalyzerDelimiter = '\1';
-
 std::string_view constexpr kNullSuffix{"\0_n", 3};
 std::string_view constexpr kBoolSuffix{"\0_b", 3};
 std::string_view constexpr kNumericSuffix{"\0_d", 3};
@@ -100,18 +97,18 @@ void mangleString(std::string& name) {
   name.append(kStringSuffix);
 }
 
-#ifdef USE_ENTERPRISE
 void mangleNested(std::string& name) {
   normalizeExpansion(name);
   name += kNestedDelimiter;
 }
 
-bool isNestedField(irs::string_ref name) noexcept {
+#ifdef USE_ENTERPRISE
+bool isNestedField(std::string_view name) noexcept {
   return !name.empty() && name.back() == kNestedDelimiter;
 }
 #endif
 
-bool needTrackPrevDoc(irs::string_ref name, bool nested) noexcept {
+bool needTrackPrevDoc(std::string_view name, bool nested) noexcept {
 #ifdef USE_ENTERPRISE
   return (isNestedField(name)) || (nested && name == DocumentPrimaryKey::PK());
 #else

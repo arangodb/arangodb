@@ -43,7 +43,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -86,7 +86,7 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
 
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "v8-analyzer-empty";
   }
   EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
@@ -98,11 +98,10 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
     return nullptr;
   }
-  static ptr make(irs::string_ref) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
+  static ptr make(std::string_view) {
+    return std::make_unique<EmptyAnalyzer>();
   }
-  static bool normalize(irs::string_ref args, std::string& out) {
+  static bool normalize(std::string_view args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -124,7 +123,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref data) override { return true; }
+  virtual bool reset(std::string_view data) override { return true; }
 
  private:
   irs::frequency _attr;

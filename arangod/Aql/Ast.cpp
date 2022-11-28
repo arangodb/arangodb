@@ -69,7 +69,7 @@ struct RecursiveAttributeFinderContext {
   bool couldExtractAttributePath;
   std::string_view expectedAttribute;
   containers::SmallVector<AstNode const*, 128> seen;
-  std::unordered_set<arangodb::aql::AttributeNamePath>& attributes;
+  containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes;
 };
 
 struct ValidateAndOptimizeContext {
@@ -2769,7 +2769,7 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
-    std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
+    containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes) {
   RecursiveAttributeFinderContext state{variable,
                                         /*couldExtractAttributePath*/ true,
                                         expectedAttribute,
@@ -3674,8 +3674,7 @@ AstNode* Ast::optimizeAttributeAccess(
 
   if (what->type == NODE_TYPE_OBJECT) {
     // accessing an attribute from an object
-    char const* name = node->getStringValue();
-    size_t const length = node->getStringLength();
+    std::string_view search = node->getStringView();
 
     size_t const n = what->numMembers();
 
@@ -3683,8 +3682,7 @@ AstNode* Ast::optimizeAttributeAccess(
       AstNode const* member = what->getMember(i);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-          member->getStringLength() == length &&
-          memcmp(name, member->getStringValue(), length) == 0) {
+          member->getStringView() == search) {
         // found matching member
         return member->getMember(0);
       }

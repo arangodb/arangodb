@@ -58,7 +58,7 @@ using Disjunction =
 // Return a filter matching all documents with a given geo field
 irs::filter::prepared::ptr match_all(irs::index_reader const& index,
                                      irs::Order const& order,
-                                     irs::string_ref field,
+                                     std::string_view field,
                                      irs::score_t boost) {
   // Return everything we've stored
   irs::by_column_existence filter;
@@ -299,7 +299,7 @@ irs::filter::prepared::ptr make_query(GeoStates&& states, irs::bstring&& stats,
 
 std::pair<GeoStates, irs::bstring> prepareStates(
     irs::index_reader const& index, irs::Order const& order,
-    std::vector<std::string> const& geoTerms, irs::string_ref field) {
+    std::vector<std::string> const& geoTerms, std::string_view field) {
   assert(!geoTerms.empty());
 
   std::vector<std::string_view> sortedTerms(geoTerms.begin(), geoTerms.end());
@@ -330,7 +330,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     termStates.reserve(size);
 
     for (auto& term : sortedTerms) {
-      if (!terms->seek(irs::ref_cast<irs::byte_type>(term))) {
+      if (!terms->seek(irs::ViewCast<irs::byte_type>(term))) {
         continue;
       }
 
@@ -370,7 +370,8 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
 
 irs::filter::prepared::ptr prepareOpenInterval(
     irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
-    irs::string_ref field, GeoDistanceFilterOptions const& opts, bool greater) {
+    std::string_view field, GeoDistanceFilterOptions const& opts,
+    bool greater) {
   auto const& range = opts.range;
   auto const& origin = opts.origin;
 
@@ -474,7 +475,7 @@ irs::filter::prepared::ptr prepareOpenInterval(
 
 irs::filter::prepared::ptr prepareInterval(
     irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
-    irs::string_ref field, GeoDistanceFilterOptions const& opts) {
+    std::string_view field, GeoDistanceFilterOptions const& opts) {
   auto const& range = opts.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);

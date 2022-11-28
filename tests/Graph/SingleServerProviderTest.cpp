@@ -117,7 +117,7 @@ class SingleServerProviderTest : public ::testing::Test {
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-        _edgeProjections);
+        _edgeProjections, /*produceVertices*/ true);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 
@@ -156,7 +156,7 @@ TEST_F(SingleServerProviderTest, it_can_provide_edges) {
   });
 
   // Order is not guaranteed
-  ASSERT_EQ(results.size(), 2);
+  ASSERT_EQ(results.size(), 2U);
   if (results.at(0) == "v/1") {
     ASSERT_EQ(results.at(1), "v/2");
   } else {

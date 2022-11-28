@@ -175,7 +175,7 @@ class Scheduler {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(
         std::forward<F>(fn));
     auto result = queueItem(lane, std::move(item), bounded);
-    TRI_ASSERT(result || bounded);
+    ADB_PROD_ASSERT(result || bounded);
     return result;
   }
 

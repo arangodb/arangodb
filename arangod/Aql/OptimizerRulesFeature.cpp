@@ -65,12 +65,26 @@ void OptimizerRulesFeature::collectOptions(
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setLongDescription(R"(You can use this option to selectively enable or
+disable AQL query optimizer rules by default. You can specify the option
+multiple times.
+
+For example, to turn off the rules `use-indexes-for-sort` and
+`reduce-extraction-to-projection` by default, use the following:
+
+```
+--query.optimizer-rules "-use-indexes-for-sort" --query.optimizer-rules "-reduce-extraction-to-projection"
+```
+
+The purpose of this startup option is to be able to enable potential future
+experimental optimizer rules, which may be shipped in a disabled-by-default
+state.)");
 
   options
       ->addOption(
           "--query.parallelize-gather-writes",
-          "enable write parallelization for gather nodes",
+          "Whether to enable write parallelization for gather nodes.",
           new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
       .setIntroducedIn(30600);
 }
@@ -305,6 +319,11 @@ void OptimizerRulesFeature::addRules() {
   // merge filters into traversals
   registerRule("optimize-traversals", optimizeTraversalsRule,
                OptimizerRule::optimizeTraversalsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+  // optimize K_PATHS
+  registerRule("optimize-paths", optimizePathsRule,
+               OptimizerRule::optimizePathsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // optimize unneccessary filters already applied by the traversal

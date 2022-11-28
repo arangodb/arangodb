@@ -108,8 +108,11 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
     return true;
   });
 
+  // We are capturing a shared pointer to this state so we prevent reclamation
+  // while we are waiting for the commit operations.
   return futures::collectAll(commits).thenValue(
-      [](std::vector<futures::Try<Result>>&& results) -> Result {
+      [self = shared_from_this()](
+          std::vector<futures::Try<Result>>&& results) -> Result {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
@@ -231,6 +234,21 @@ void ReplicatedRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
                                  "invalid call to addIntermediateCommits");
 }
 
+arangodb::Result
+ReplicatedRocksDBTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ReplicatedRocksDBTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ReplicatedRocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  auto* coll =
+      static_cast<ReplicatedRocksDBTransactionCollection*>(findCollection(cid));
+  return coll->performIntermediateCommitIfRequired();
+}
+
 bool ReplicatedRocksDBTransactionState::hasOperations() const noexcept {
   return std::any_of(
       _collections.begin(), _collections.end(), [](auto const& col) {
@@ -247,6 +265,11 @@ uint64_t ReplicatedRocksDBTransactionState::numOperations() const noexcept {
                static_cast<ReplicatedRocksDBTransactionCollection const&>(*col)
                    .numOperations();
       });
+}
+
+uint64_t ReplicatedRocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return 0;
 }
 
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {

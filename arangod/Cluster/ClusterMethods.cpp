@@ -72,6 +72,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -673,26 +674,14 @@ void ClusterMethods::realNameFromSmartName(std::string&) {}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
-/// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<ShardMap> DistributeShardsEvenly(
     ClusterInfo& ci, uint64_t numberOfShards, uint64_t replicationFactor,
-    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+    std::vector<std::string> const& dbServers,
+    bool warnAboutReplicationFactor) {
   auto shards = std::make_shared<ShardMap>();
-
-  if (dbServers.empty()) {
-    ci.loadCurrentDBServers();
-    dbServers = ci.getCurrentDBServers();
-    if (dbServers.empty()) {
-      return shards;
-    }
-
-    std::random_device rd;
-    std::mt19937 g(rd());
-    std::shuffle(dbServers.begin(), dbServers.end(), g);
-  }
+  ADB_PROD_ASSERT(not dbServers.empty());
 
   // mop: distribute SatelliteCollections on all servers
   if (replicationFactor == 0) {
@@ -702,36 +691,38 @@ static std::shared_ptr<ShardMap> DistributeShardsEvenly(
   // fetch a unique id for each shard to create
   uint64_t const id = ci.uniqid(numberOfShards);
 
-  size_t leaderIndex = 0;
-  size_t followerIndex = 0;
+  // Example: Servers: A B C D E F G H I (9)
+  // Replication Factor 3, k = 9 / gcd(3, 9) = 3
+  // A B C
+  // D E F
+  // G H I  <- now we do an additional shift
+  // B C D
+  // E F G
+  // H I A  <- shift
+  // C D E
+  // F G H
+  // I A B
+
+  size_t k = dbServers.size() / std::gcd(replicationFactor, dbServers.size());
+  size_t offset = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
+    if (i % k == 0) {
+      offset += 1;
+    }
     // determine responsible server(s)
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
         break;
       }
-      std::string candidate;
-      // mop: leader
-      if (serverIds.empty()) {
-        candidate = dbServers[leaderIndex++];
-        if (leaderIndex >= dbServers.size()) {
-          leaderIndex = 0;
-        }
-      } else {
-        do {
-          candidate = dbServers[followerIndex++];
-          if (followerIndex >= dbServers.size()) {
-            followerIndex = 0;
-          }
-        } while (candidate == serverIds[0]);  // mop: ignore leader
-      }
+
+      auto const& candidate = dbServers[offset % dbServers.size()];
+      offset += 1;
       serverIds.push_back(candidate);
     }
 
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + i);
-
     shards->try_emplace(shardId, serverIds);
   }
 
@@ -969,15 +960,13 @@ futures::Future<OperationResult> revisionOnCoordinator(
            VPackSlice answer) -> void {
           if (answer.isObject()) {
             VPackSlice r = answer.get("revision");
-            if (r.isString()) {
-              VPackValueLength len;
-              char const* p = r.getString(len);
-              RevisionId cmp = RevisionId::fromString(p, len, false);
+            if (r.isString() || r.isInteger()) {
+              RevisionId cmp = RevisionId::fromSlice(r);
               RevisionId rid = RevisionId::fromSlice(builder.slice());
               if (cmp != RevisionId::max() && cmp > rid) {
                 // get the maximum value
                 builder.clear();
-                builder.add(VPackValue(cmp.id()));
+                builder.add(VPackValue(cmp.toString()));
               }
               return;
             }
@@ -1070,7 +1059,7 @@ futures::Future<OperationResult> checksumOnCoordinator(
       builder.clear();
       VPackObjectBuilder b(&builder);
       builder.add("checksum", VPackValue(checksum));
-      builder.add("revision", VPackValue(rid.id()));
+      builder.add("revision", VPackValue(rid.toString()));
     };
     return handleResponsesFromAllShards(options, results, handler, pre);
   };
@@ -1090,27 +1079,66 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   if (collinfo == nullptr) {
     return futures::makeFuture(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
+  std::vector<std::string> shards;
+
+  auto addShards = [](std::vector<std::string>& result,
+                      std::shared_ptr<LogicalCollection> const& collection) {
+    if (collection == nullptr) {
+      return;
+    }
+    auto shardIds = collection->shardIds();
+    for (auto const& it : *shardIds) {
+      result.emplace_back(it.first);
+    }
+  };
+
+  addShards(shards, collinfo);
+
+#ifdef USE_ENTERPRISE
+  if (collinfo->isSmart() && collinfo->type() == TRI_COL_TYPE_EDGE) {
+    // SmartGraph galore
+    auto theEdge = dynamic_cast<arangodb::VirtualClusterSmartEdgeCollection*>(
+        collinfo.get());
+    if (theEdge != nullptr) {
+      CollectionNameResolver resolver(collinfo->vocbase());
+
+      std::string name =
+          resolver.getCollectionNameCluster(theEdge->getLocalCid());
+      auto c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+
+      name = resolver.getCollectionNameCluster(theEdge->getFromCid());
+      c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+
+      name = resolver.getCollectionNameCluster(theEdge->getToCid());
+      c = ci.getCollectionNT(dbname, name);
+      addShards(shards, c);
+    }
+  }
+#endif
+  // now make shards in vector unique
+  std::sort(shards.begin(), shards.end());
+  shards.erase(std::unique(shards.begin(), shards.end()), shards.end());
 
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
-  std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-
   network::RequestOptions opts;
   opts.database = dbname;
   opts.timeout = network::Timeout(300.0);
 
   std::vector<Future<network::Response>> futures;
-  futures.reserve(shards->size());
+  futures.reserve(shards.size());
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  for (auto const& p : *shards) {
+  for (auto const& p : shards) {
     // handler expects valid velocypack body (empty object minimum)
     VPackBuffer<uint8_t> buffer;
     buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
 
     auto future = network::sendRequestRetry(
-        pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + StringUtils::urlEncode(p.first) +
+        pool, "shard:" + p, fuerte::RestVerb::Put,
+        "/_api/collection/" + StringUtils::urlEncode(p) +
             "/loadIndexesIntoMemory",
         std::move(buffer), opts);
     futures.emplace_back(std::move(future));
@@ -1175,7 +1203,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
              options](std::vector<Try<network::Response>>&& results) mutable
       -> OperationResult {
     auto handler = [details](Result& result, VPackBuilder& builder,
-                             ShardID const&,
+                             ShardID const& /*shardId*/,
                              VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
         VPackSlice figures = answer.get("figures");
@@ -1204,8 +1232,6 @@ futures::Future<OperationResult> figuresOnCoordinator(
 futures::Future<OperationResult> countOnCoordinator(
     transaction::Methods& trx, std::string const& cname,
     OperationOptions const& options, transaction::MethodsApi api) {
-  std::vector<std::pair<std::string, uint64_t>> result;
-
   // Set a few variables needed for our work:
   ClusterFeature& feature = trx.vocbase().server().getFeature<ClusterFeature>();
   ClusterInfo& ci = feature.clusterInfo();
@@ -1220,7 +1246,7 @@ futures::Future<OperationResult> countOnCoordinator(
   }
 
   std::shared_ptr<ShardMap> shardIds = collinfo->shardIds();
-  const bool isManaged =
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(
@@ -2691,7 +2717,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 ::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                                   bool waitForCollector) {
+                                   bool flushColumnFamilies) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2702,7 +2728,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
   reqOpts
       .param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
-      .param("waitForCollector", (waitForCollector ? "true" : "false"));
+      .param("waitForCollector", (flushColumnFamilies ? "true" : "false"));
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());

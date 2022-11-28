@@ -95,7 +95,7 @@ struct GeoFilterOptions {
 //////////////////////////////////////////////////////////////////////////////
 class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
   }
 
@@ -135,7 +135,7 @@ class GeoDistanceFilterOptions {
 class GeoDistanceFilter final
     : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
   }
 

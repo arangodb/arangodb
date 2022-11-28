@@ -51,8 +51,8 @@ class AgencyFeature : public ArangodFeature {
 
  private:
   bool _activated;
-  uint64_t _size;  // agency size (default: 5)
-  uint64_t _poolSize;
+  uint64_t _size;              // agency size (default: 5)
+  uint64_t _poolSize;          // deprecated, do not use!
   double _minElectionTimeout;  // min election timeout
   double _maxElectionTimeout;  // max election timeout
   bool _supervision;

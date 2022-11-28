@@ -39,7 +39,6 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"

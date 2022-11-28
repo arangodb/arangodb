@@ -572,6 +572,26 @@ const unsetLeader = (database, logId) => {
   return result;
 };
 
+/**
+ * Causes underlying replicated logs to trigger leader recovery.
+ */
+const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const shards = col.shards();
+  const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
+
+  const terms = Object.fromEntries(
+    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+  );
+
+  const increaseTerm = ([stateId, term]) => replicatedLogSetPlanTerm(dbn, stateId, term + 1);
+
+  Object.entries(terms).forEach(increaseTerm);
+
+  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term, []);
+
+  Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -616,3 +636,4 @@ exports.shardIdToLogId = shardIdToLogId;
 exports.dumpShardLog = dumpShardLog;
 exports.setLeader = setLeader;
 exports.unsetLeader = unsetLeader;
+exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;

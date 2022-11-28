@@ -103,6 +103,10 @@ void FollowerStateManager<S>::run() noexcept {
         LOG_CTX("2feb8", FATAL, self->loggerContext)
             << "Caught unhandled exception in replicated state machine: "
             << ex.message();
+        if (ex.code() == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+          // TODO this is a temporary fix, see CINFRA-588
+          return;
+        }
         FATAL_ERROR_EXIT();
       } catch (std::exception const& ex) {
         LOG_CTX("8c611", FATAL, self->loggerContext)

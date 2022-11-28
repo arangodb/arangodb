@@ -27,7 +27,7 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -155,21 +155,14 @@ class IResearchLink : public IResearchDataStore {
   /// _collectionName if it is not empty.
   /// @return true if name not existed in link before and was actually set by
   /// this call, false otherwise
-  bool setCollectionName(irs::string_ref name) noexcept;
-
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
-  /// params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
+  bool setCollectionName(std::string_view name) noexcept;
 
   std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
   std::string getCollectionName() const;
   std::string const& getShardName() const noexcept;
 
-  bool hasNested() const noexcept;
+  auto const& meta() const noexcept { return _meta; }
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////

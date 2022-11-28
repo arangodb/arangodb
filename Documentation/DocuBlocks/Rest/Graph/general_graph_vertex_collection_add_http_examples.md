@@ -16,10 +16,10 @@ The name of the graph.
 A JSON object to set options for creating vertex collections.
 
 @RESTSTRUCT{satellites,post_api_vertex_create_opts,array,optional,string}
-An array of collection names that will be used to create SatelliteCollections
-for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
-must be a string and a valid collection name. The collection type cannot be
-modified later.
+An array of collection names that is used to create SatelliteCollections
+for a (Disjoint) SmartGraph using SatelliteCollections (Enterprise Edition only).
+Each array element must be a string and a valid collection name.
+The collection type cannot be modified later.
 
 @RESTRETURNCODES
 

@@ -260,7 +260,7 @@
             } else {
               var wfs = data.waitForSync;
               if (data.replicationFactor && frontendConfig.isCluster) {
-                if (data.replicationFactor === 'satellite') {
+                if (data.replicationFactor === 'satellite' || data.distributeShardsLike !== undefined) {
                   tableContent.push(
                     window.modalView.createReadOnlyEntry(
                       'change-replication-factor',

@@ -229,9 +229,9 @@ inline Result typeMismatch(const char* funcName, size_t i,
               .append("' AQL function: argument at position '")
               .append(std::to_string(i))
               .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(actualType).c_str())
+              .append(ScopedAqlValue::typeString(actualType).data())
               .append("' ('")
-              .append(ScopedAqlValue::typeString(expectedType).c_str())
+              .append(ScopedAqlValue::typeString(expectedType).data())
               .append("' expected)")};
 }
 
@@ -242,7 +242,7 @@ inline Result failedToParse(char const* funcName, size_t i,
               .append("' AQL function: Unable to parse argument at position '")
               .append(std::to_string(i))
               .append("' as ")
-              .append(ScopedAqlValue::typeString(expectedType).c_str())};
+              .append(ScopedAqlValue::typeString(expectedType).data())};
 }
 
 inline Result failedToGenerateName(char const* funcName, size_t i) {
@@ -274,7 +274,7 @@ template<typename T, bool CheckDeterminism = false>
 Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
                    aql::AstNode const& args, size_t i, bool isFilter,
                    QueryContext const& ctx) {
-  static_assert(std::is_same<T, irs::string_ref>::value ||
+  static_assert(std::is_same<T, std::string_view>::value ||
                 std::is_same<T, int64_t>::value ||
                 std::is_same<T, double_t>::value ||
                 std::is_same<T, bool>::value);
@@ -299,7 +299,7 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
     }
 
     ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
+    if constexpr (std::is_same<T, std::string_view>::value) {
       expectedType = SCOPED_VALUE_TYPE_STRING;
     } else if constexpr (std::is_same<T, int64_t>::value ||
                          std::is_same<T, double_t>::value) {
@@ -312,7 +312,7 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
       return error::typeMismatch(funcName, i + 1, expectedType, value.type());
     }
 
-    if constexpr (std::is_same<T, irs::string_ref>::value) {
+    if constexpr (std::is_same<T, std::string_view>::value) {
       if (!value.getString(out)) {
         return error::failedToParse(funcName, i + 1, expectedType);
       }
@@ -331,7 +331,7 @@ Result evaluateArg(T& out, ScopedAqlValue& value, char const* funcName,
 }
 
 inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
-                                const irs::string_ref& analyzerId,
+                                const std::string_view& analyzerId,
                                 char const* funcName, QueryContext const& ctx) {
   TRI_ASSERT(ctx.trx);
   auto& server = ctx.trx->vocbase().server();
@@ -351,7 +351,7 @@ inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
             "'"s.append("' AQL function: Unable to load requested analyzer '")
-                .append(analyzerId.c_str(), analyzerId.size())
+                .append(analyzerId.data(), analyzerId.size())
                 .append("'")};
   }
 
@@ -375,7 +375,7 @@ inline Result extractAnalyzerFromArg(FieldMeta::Analyzer& out,
   }
 
   ScopedAqlValue analyzerValue(*analyzerArg);
-  irs::string_ref analyzerId;
+  std::string_view analyzerId;
 
   auto rv =
       evaluateArg(analyzerId, analyzerValue, funcName, args, i, filter, ctx);

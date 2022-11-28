@@ -298,7 +298,7 @@ function printWarnings(warnings) {
 }
 
 /* print stats */
-function printStats(stats) {
+function printStats(stats, isCoord) {
   'use strict';
   if (!stats) {
     return;
@@ -311,11 +311,12 @@ function printStats(stats) {
   var maxSILen = String('Scan Index').length;
   var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
+  var maxRLen = String('Requests').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -324,6 +325,7 @@ function printStats(stats) {
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
     pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + '   ' : '') +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -632,10 +634,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -2026,7 +2028,12 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
+              if (node.inVariable !== undefined) {
+                aggregateString += variableName(node.inVariable);
+              }
+              aggregateString += ')';
+              return aggregateString;
             }).join(', ');
         }
         return window;
@@ -2200,7 +2207,7 @@ function processQuery(query, explain, planIndex) {
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
   if (profileMode) {
-    printStats(explain.stats);
+    printStats(explain.stats, isCoord);
     printProfile(explain.profile);
   }
   printWarnings(explain.warnings);

@@ -42,7 +42,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <atomic>
+#include <memory>
 #include <optional>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -118,6 +121,15 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
+
+  /// @brief return the total execution time of the query (until
+  /// the start of finalize)
+  double executionTime() const noexcept;
+
+  /// @brief make sure that the query execution time is set.
+  /// only the first call to this function will set the time.
+  /// every following call will be ignored.
+  void ensureExecutionTime() noexcept;
 
   void prepareQuery(SerializationFormat format);
 
@@ -215,6 +227,17 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool allowDirtyReads() const noexcept { return _allowDirtyReads; }
 
+  /// @brief convert query bind parameters to a string representation
+  void stringifyBindParameters(std::string& out, std::string_view prefix,
+                               size_t maxLength) const;
+
+  /// @brief convert query data sources to a string representation
+  void stringifyDataSources(std::string& out, std::string_view prefix) const;
+
+  /// @brief extract query string up to maxLength bytes. if show is false,
+  /// returns "<hidden>" regardless of maxLength
+  std::string extractQueryString(size_t maxLength, bool show) const;
+
  protected:
   /// @brief initializes the query
   void init(bool createProfile);
@@ -230,9 +253,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// to be able to only prepare a query from VelocyPack and then store it in
   /// the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
-
-  /// @brief log a query
-  void log();
 
   /// @brief calculate a hash value for the query string and bind parameters
   uint64_t calculateHash() const;
@@ -256,6 +276,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
   // a vertex collection yet. This can happen e.g. during anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
+
+  // log the start of a query (trace mode only)
+  void logAtStart();
+
+  // log the end of a query (warnings only)
+  void logAtEnd(QueryResult const& queryResult) const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -309,6 +335,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query start time (steady clock value)
   double const _startTime;
 
+  /// @brief query end time (steady clock value), only set once finalize()
+  /// is reached
+  double _endTime;
+
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
 
@@ -328,6 +358,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// > 0 = error, one of TRI_ERROR_...)
   std::optional<ErrorCode> _resultCode;
 
+  /// @brief user that started the query
+  std::string _user;
+
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;
 
@@ -338,16 +371,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// in a v8 context
   bool _registeredInV8Context;
 
-  /// @brief was this query killed
-  std::atomic<bool> _queryKilled;
-
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;
 
-  /// @brief user that started the query
-  std::string _user;
-
-  bool _registeredQueryInTrx{false};
+  bool _registeredQueryInTrx;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Intentionally initialized here to not
@@ -355,16 +382,20 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // Indicator if a query was already killed
   // via a debug failure. This should not
   // retrigger a kill.
-  bool _wasDebugKilled{false};
+  bool _wasDebugKilled = false;
+#endif
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _wasDestroyed = false;
 #endif
 
   bool _allowDirtyReads;  // this is set from the information in the
                           // transaction, it is valid and remains valid
                           // once `preparePlan` has run and can be queried
                           // until the query object is gone!
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _wasDestroyed{false};
-#endif
+
+  /// @brief was this query killed (can only be set once)
+  std::atomic<bool> _queryKilled;
 };
 
 }  // namespace aql

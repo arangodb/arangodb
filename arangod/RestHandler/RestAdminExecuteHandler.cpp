@@ -61,26 +61,49 @@ RestStatus RestAdminExecuteHandler::execute() {
 
   TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
-  std::string_view bodyStr = _request->rawPayload();
-  char const* body = bodyStr.data();
-  size_t bodySize = bodyStr.size();
+  std::string_view payload;
 
-  if (bodySize == 0) {
+  // interpret request body
+  bool handled = false;
+  if (_request->contentType() == rest::ContentType::VPACK ||
+      _request->contentType() == rest::ContentType::JSON) {
+    // if content-type is set to JSON or VPACK, we expect
+    // a proper string value
+    try {
+      payload = _request->payload(false).stringView();
+      handled = true;
+    } catch (...) {
+      if (_request->contentType() == rest::ContentType::VPACK) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "expecting string value with command to execute");
+        return RestStatus::DONE;
+      }
+      // downwards-compatibility hack: we previously always
+      // interpreted the body content as a string, regardless of
+      // which Content-Type was set in the request. In order to
+      // make this still work, fall back to the old-behavior here
+      // if we got a parse error.
+      // note that we never supported receiving VPack before, so
+      // the hack only needs to be here for requests with a JSON
+      // Content-Type
+    }
+  }
+
+  if (!handled) {
+    // if content type is plain text or unset, interpret verbatim
+    TRI_ASSERT(payload.empty());
+    payload = _request->rawPayload();
+  }
+
+  if (payload.empty()) {
     // nothing to execute. return an empty response
-    VPackBuilder result;
-    result.openObject(true);
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code,
-               VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-    result.close();
-
-    generateResult(rest::ResponseCode::OK, result.slice());
+    generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
     return RestStatus::DONE;
   }
 
   try {
     LOG_TOPIC("c838e", DEBUG, Logger::SECURITY)
-        << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
+        << "about to execute: '" << payload << "'";
 
     // get a V8 context
     bool const allowUseDatabase =
@@ -103,7 +126,7 @@ RestStatus RestAdminExecuteHandler::execute() {
           current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
               .FromMaybe(v8::Handle<v8::Value>()));
       v8::Handle<v8::Value> args[1] = {
-          TRI_V8_PAIR_STRING(isolate, body, bodySize)};
+          TRI_V8_PAIR_STRING(isolate, payload.data(), payload.size())};
       v8::Local<v8::Object> function = ctor->NewInstance(context, 1, args)
                                            .FromMaybe(v8::Local<v8::Object>());
       v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);

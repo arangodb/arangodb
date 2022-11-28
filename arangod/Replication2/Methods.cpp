@@ -162,6 +162,16 @@ struct ReplicatedLogMethodsDBServer final
     return log.getInternalIteratorRange(start, start + limit);
   }
 
+  auto ping(LogId id, std::optional<std::string> message) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto log = vocbase.getReplicatedLogLeaderById(id);
+    auto idx = log->ping(std::move(message));
+    return log->waitFor(idx).thenValue([idx](auto&& result) {
+      return std::make_pair(idx, std::forward<decltype(result)>(result));
+    });
+  }
+
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
@@ -199,6 +209,11 @@ struct ReplicatedLogMethodsDBServer final
     auto log = vocbase.getReplicatedLogLeaderById(id);
     auto idx = log->insert(std::move(payload), waitForSync);
     return {idx};
+  }
+
+  auto compact(LogId id) const -> futures::Future<Result> override {
+    auto log = vocbase.getReplicatedLogById(id);
+    return log->getParticipant()->compact();
   }
 
   auto release(LogId id, LogIndex index) const
@@ -594,6 +609,40 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
+  auto ping(LogId id, std::optional<std::string> message) const
+      -> futures::Future<
+          std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto path = basics::StringUtils::joinT("/", "_api/log", id, "ping");
+
+    VPackBufferUInt8 payload;
+    if (message) {
+      VPackBuilder builder(payload);
+      VPackObjectBuilder ob(&builder);
+      builder.add("message", VPackValue(*message));
+    }
+
+    network::RequestOptions opts;
+    opts.database = vocbase.name();
+    return network::sendRequest(pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Post, path,
+                                std::move(payload), opts)
+        .thenValue([](network::Response&& resp) {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+          }
+          auto result = resp.slice().get("result");
+          auto waitResult = result.get("result");
+
+          auto quorum =
+              std::make_shared<replication2::replicated_log::QuorumData const>(
+                  waitResult.get("quorum"));
+          auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
+          auto index = result.get("index").extract<LogIndex>();
+          return std::make_pair(index, replicated_log::WaitForResult(
+                                           commitIndex, std::move(quorum)));
+        });
+  }
+
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
@@ -681,6 +730,46 @@ struct ReplicatedLogMethodsCoordinator final
                                 opts)
         .thenValue(
             [](network::Response&& resp) { return resp.combinedResult(); });
+  }
+
+  auto compact(LogId id) const -> futures::Future<Result> override {
+    auto spec = clusterInfo.getReplicatedLogPlanSpecification(id).get();
+
+    auto const compactParticipant =
+        [&](ParticipantId const& participant) -> futures::Future<Result> {
+      auto path = basics::StringUtils::joinT("/", "_api/log", id, "compact");
+      network::RequestOptions opts;
+      opts.database = vocbase.name();
+      opts.timeout = std::chrono::seconds{5};
+      VPackBufferUInt8 buffer;
+      {
+        VPackBuilder builder(buffer);
+        builder.add(VPackSlice::emptyObjectSlice());
+      }
+      return network::sendRequest(pool, "server:" + participant,
+                                  fuerte::RestVerb::Post, path, buffer, opts)
+          .thenValue([participant](network::Response&& resp) {
+            return resp.combinedResult().withError([&](auto& err) {
+              return err.appendErrorMessage("; compaction for participant " +
+                                            participant);
+            });
+          });
+    };
+
+    std::vector<futures::Future<Result>> futs;
+    for (auto const& [participant, p] : spec->participantsConfig.participants) {
+      futs.emplace_back(compactParticipant(participant));
+    }
+
+    return futures::collectAll(std::move(futs)).thenValue([](auto&& results) {
+      // return first error
+      for (auto const& tryRes : results) {
+        if (auto res = tryRes.get(); res.fail()) {
+          return res;
+        }
+      }
+      return Result{};
+    });
   }
 
   explicit ReplicatedLogMethodsCoordinator(TRI_vocbase_t& vocbase)

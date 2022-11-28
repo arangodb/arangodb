@@ -28,7 +28,7 @@
 #include "analysis/analyzers.hpp"
 #include "search/scorers.hpp"
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "utils/lz4compression.hpp"
 
 #include "velocypack/Iterator.h"
@@ -97,18 +97,14 @@
 namespace {
 
 struct DocIdScorer : public irs::sort {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "test_doc_id";
   }
 
-  static ptr make(irs::string_ref) {
-    PTR_NAMED(DocIdScorer, ptr);
-    return ptr;
-  }
+  static ptr make(std::string_view) { return std::make_unique<DocIdScorer>(); }
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
-  virtual sort::prepared::ptr prepare() const override {
-    PTR_NAMED(Prepared, ptr);
-    return ptr;
+  sort::prepared::ptr prepare() const override {
+    return std::make_unique<Prepared>();
   }
 
   struct Prepared : public irs::PreparedSortBase<void> {
@@ -341,8 +337,9 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
     arangodb::LogicalView::ptr view;
@@ -1821,7 +1818,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
       arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
   ASSERT_NE(nullptr, index.get());
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_TRUE((false == !link));
 
   std::vector<std::string> const EMPTY;
@@ -1850,7 +1847,8 @@ TEST_F(IResearchViewTest, test_cleanup) {
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0), false).ok()));
+    EXPECT_TRUE(
+        (link->remove(trx, arangodb::LocalDocumentId(0), false, nullptr).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -1889,7 +1887,7 @@ TEST_F(IResearchViewTest, test_drop) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
@@ -1928,7 +1926,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                         testDBInfo(server.server()));
   std::string dataPath =
-      ((((irs::utf8_path() /= testFilesystemPath) /=
+      ((((std::filesystem::path() /= testFilesystemPath) /=
          std::string("databases")) /=
         (std::string("database-") + std::to_string(vocbase.id()))) /=
        std::string("arangosearch-123"))
@@ -1966,7 +1964,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   arangodb::Result res = view->properties(links->slice(), true, true);
   EXPECT_TRUE(true == res.ok());
   EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-  dataPath = ((((irs::utf8_path() /= testFilesystemPath) /=
+  dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
               (std::string("arangosearch-") +
@@ -2100,7 +2098,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2134,8 +2133,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
@@ -2178,7 +2178,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2212,8 +2213,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
@@ -2257,7 +2259,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::IndexId{__LINE__}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2291,15 +2294,16 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+      irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
-      });
+      };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
       EXPECT_TRUE(
@@ -2361,7 +2365,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::IndexId{__LINE__}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2394,8 +2399,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // drop cid 42
     {
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = []() -> void { throw std::exception(); };
 
       EXPECT_TRUE((true != view->unlink(logicalCollection->id()).ok()));
@@ -2457,7 +2463,8 @@ TEST_F(IResearchViewTest, test_drop_cid) {
         arangodb::IndexId{__LINE__}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2491,15 +2498,16 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+      irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
-      });
+      };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
       EXPECT_TRUE(
@@ -2541,8 +2549,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // persistence fails during execution of callback
     {
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = []() -> void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
@@ -2558,8 +2567,9 @@ TEST_F(IResearchViewTest, test_drop_database) {
 
   size_t beforeCount = 0;
   auto before = StorageEngineMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { StorageEngineMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    StorageEngineMock::before = before;
+  };
   StorageEngineMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -2650,7 +2660,8 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2684,8 +2695,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
@@ -2729,7 +2741,8 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -2763,8 +2776,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
@@ -2819,7 +2833,8 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // collection in view before
@@ -2846,8 +2861,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     {
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
       auto lock = link->self()->lock();
@@ -2918,8 +2934,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto asyncLinkPtr = std::make_shared<
           arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(
@@ -2992,15 +3009,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+      irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
-      });
+      };
       auto asyncLinkPtr = std::make_shared<
           arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(
           &link);
@@ -3070,8 +3088,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     // emplace cid 42
     {
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = []() -> void { throw std::exception(); };
       Link link(arangodb::IndexId{42}, *logicalCollection);
       auto asyncLinkPtr = std::make_shared<
@@ -3143,15 +3162,16 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
       bool persisted = false;
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+      irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
-      });
+      };
       auto asyncLinkPtr = std::make_shared<
           arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(
           &link);
@@ -3185,8 +3205,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
     // persistence fails during execution of callback
     {
       auto before = StorageEngineMock::before;
-      auto restore = irs::make_finally(
-          [&before]() noexcept { StorageEngineMock::before = before; });
+      irs::Finally restore = [&before]() noexcept {
+        StorageEngineMock::before = before;
+      };
       StorageEngineMock::before = []() -> void { throw std::exception(); };
       auto& feature = server.getFeature<arangodb::DatabaseFeature>();
 
@@ -3229,14 +3250,15 @@ TEST_F(IResearchViewTest, test_insert) {
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
       StorageEngineMock::recoveryTickResult = 0;
-    });
+    };
 
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_NE(nullptr, link);
 
     {
@@ -3252,22 +3274,26 @@ TEST_F(IResearchViewTest, test_insert) {
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -3308,14 +3334,15 @@ TEST_F(IResearchViewTest, test_insert) {
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
       StorageEngineMock::recoveryTickResult = 0;
-    });
+    };
 
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_NE(nullptr, link);
 
     {
@@ -3338,16 +3365,19 @@ TEST_F(IResearchViewTest, test_insert) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3379,7 +3409,8 @@ TEST_F(IResearchViewTest, test_insert) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3436,7 +3467,8 @@ TEST_F(IResearchViewTest, test_insert) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3493,7 +3525,8 @@ TEST_F(IResearchViewTest, test_insert) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3540,7 +3573,8 @@ TEST_F(IResearchViewTest, test_insert) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3595,7 +3629,8 @@ TEST_F(IResearchViewTest, test_insert) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3635,6 +3670,83 @@ TEST_F(IResearchViewTest, test_insert) {
   }
 }
 
+TEST_F(IResearchViewTest, test_remove_within_trx) {
+  using namespace arangodb;
+
+  auto collectionJson =
+      velocypack::Parser::fromJson(R"({ "name": "testCollection" })");
+  auto linkJson = velocypack::Parser::fromJson(
+      R"({ "view": "testView",
+           "includeAllFields": true,
+           "primarySort": [ { "field" : "name", "asc": false } ] })");
+  auto json = velocypack::Parser::fromJson(
+      R"({ "name": "testView", "type":"arangosearch", "cleanupIntervalStep":0, "commitIntervalMsec": 0, "consolidationIntervalMsec" : 0 })");
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                  testDBInfo(server.server()));
+  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_NE(nullptr, logicalCollection);
+  auto logicalView = vocbase.createView(json->slice(), true);
+  ASSERT_NE(nullptr, logicalView);
+  auto* view =
+      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  ASSERT_NE(nullptr, view);
+  auto index = StorageEngineMock::buildLinkMock(IndexId{42}, *logicalCollection,
+                                                linkJson->slice());
+  ASSERT_NE(nullptr, index.get());
+  auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
+  ASSERT_NE(nullptr, link);
+
+  // transaction
+  {
+    std::vector<std::string> const empty;
+
+    auto doc0 = velocypack::Parser::fromJson(R"({ "name": "a" })");
+    auto doc1 = velocypack::Parser::fromJson(R"({ "name": "b" })");
+    auto doc2 = velocypack::Parser::fromJson(R"({ "name": "c" })");
+
+    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
+                             empty, empty, empty, transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0), false, nullptr).ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1), false, nullptr).ok());
+    EXPECT_TRUE(link->insert(trx, LocalDocumentId(2), doc2->slice()).ok());
+    EXPECT_TRUE(trx.commit().ok());
+    EXPECT_TRUE(link->commit().ok());
+  }
+
+  // only doc2 must remain
+  {
+    auto snapshot = link->snapshot();
+    auto reader = snapshot.getDirectoryReader();
+    ASSERT_EQ(1, reader->size());
+    ASSERT_EQ(3, reader->docs_count());
+    ASSERT_EQ(1, reader->live_docs_count());
+
+    auto& segment = reader[0];
+    const auto* column = segment.sort();
+    ASSERT_NE(nullptr, column);
+    ASSERT_TRUE(irs::IsNull(column->name()));
+    ASSERT_EQ(0, column->payload().size());
+    auto values = column->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, values);
+    auto* value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, value);
+
+    auto docs = segment.docs_iterator();
+    ASSERT_NE(nullptr, docs);
+    ASSERT_TRUE(docs->next());
+    ASSERT_EQ(docs->value(), values->seek(docs->value()));
+    VPackSlice const slice{value->value.data()};
+    ASSERT_TRUE(slice.isString());
+    ASSERT_EQ("c", slice.stringView());
+    ASSERT_FALSE(docs->next());
+  }
+}
+
 TEST_F(IResearchViewTest, test_remove) {
   static std::vector<std::string> const EMPTY;
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -3669,14 +3781,15 @@ TEST_F(IResearchViewTest, test_remove) {
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
       StorageEngineMock::recoveryTickResult = 0;
-    });
+    };
 
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_NE(nullptr, link);
 
     {
@@ -3692,27 +3805,35 @@ TEST_F(IResearchViewTest, test_remove) {
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice())
-              .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(3),
+                                         docJson->slice(),
+                                         StorageEngineMock::recoveryTickResult)
+                      .ok());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), false).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), false,
+                               &StorageEngineMock::recoveryTickResult)
+                      .ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
-                               VPackSlice::noneSlice())
+      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
+                                         VPackSlice::noneSlice(),
+                                         StorageEngineMock::recoveryTickResult)
                       .ok());
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), false).ok());
+      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), false,
+                               &StorageEngineMock::recoveryTickResult)
+                      .ok());
 
       EXPECT_TRUE(trx.commit().ok());
       EXPECT_TRUE(link->commit().ok());
@@ -3752,14 +3873,15 @@ TEST_F(IResearchViewTest, test_remove) {
     auto index = StorageEngineMock::buildLinkMock(
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
       StorageEngineMock::recoveryTickResult = 0;
-    });
+    };
 
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_NE(nullptr, link);
 
     {
@@ -3782,16 +3904,19 @@ TEST_F(IResearchViewTest, test_remove) {
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       StorageEngineMock::recoveryTickResult = 42;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
       for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+        link->insertInRecovery(trx, pair.first, pair.second,
+                               StorageEngineMock::recoveryTickResult);
       }
       EXPECT_TRUE((trx.commit().ok()));
       EXPECT_TRUE(link->commit().ok());
@@ -3823,7 +3948,8 @@ TEST_F(IResearchViewTest, test_remove) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3880,7 +4006,8 @@ TEST_F(IResearchViewTest, test_remove) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3937,7 +4064,8 @@ TEST_F(IResearchViewTest, test_remove) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -3984,7 +4112,8 @@ TEST_F(IResearchViewTest, test_remove) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -4039,7 +4168,8 @@ TEST_F(IResearchViewTest, test_remove) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     {
@@ -4085,7 +4215,7 @@ TEST_F(IResearchViewTest, test_open) {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
                     testDBInfo(server.server()));
     std::string dataPath =
-        ((((irs::utf8_path() /= testFilesystemPath) /=
+        ((((std::filesystem::path() /= testFilesystemPath) /=
            std::string("databases")) /=
           (std::string("database-") + std::to_string(vocbase.id()))) /=
          std::string("arangosearch-123"))
@@ -4156,7 +4286,8 @@ TEST_F(IResearchViewTest, test_query) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -4213,7 +4344,8 @@ TEST_F(IResearchViewTest, test_query) {
     auto index = logicalCollection->getIndexes()[0];
     ASSERT_TRUE((false == !index));
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // fill with test data
@@ -4339,8 +4471,9 @@ TEST_F(IResearchViewTest, test_query) {
 TEST_F(IResearchViewTest, test_register_link) {
   bool persisted = false;
   auto before = StorageEngineMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { StorageEngineMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    StorageEngineMock::before = before;
+  };
   StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -4402,9 +4535,9 @@ TEST_F(IResearchViewTest, test_register_link) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     persisted = false;
 
     auto link = StorageEngineMock::buildLinkMock(
@@ -4658,8 +4791,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
   std::vector<std::string> const EMPTY;
   bool persisted = false;
   auto before = StorageEngineMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { StorageEngineMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    StorageEngineMock::before = before;
+  };
   StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -4687,7 +4821,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::IndexId{__LINE__}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // add a document to the view
@@ -4708,7 +4843,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     auto links = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": { \"id\": " +
-        std::to_string(link->id().id()) + " } } }"  // same link ID
+        std::to_string(link->Index::id().id()) + " } } }"  // same link ID
     );
 
     link->unload();  // unload link before creating a new link instance
@@ -4750,9 +4885,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     persisted = false;
     EXPECT_TRUE(
         (true ==
@@ -4807,7 +4942,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
         arangodb::IndexId{__LINE__}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     // add a document to the view
@@ -4828,7 +4964,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     auto links = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {\"id\": " +
-        std::to_string(link->id().id()) + " } } }"  // same link ID
+        std::to_string(link->Index::id().id()) + " } } }"  // same link ID
     );
 
     link->unload();  // unload link before creating a new link instance
@@ -5176,7 +5312,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
         arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
     ASSERT_NE(nullptr, index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_TRUE((false == !link));
 
     static std::vector<std::string> const EMPTY;
@@ -5804,7 +5941,7 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
       arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
   ASSERT_NE(nullptr, index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_TRUE((false == !link));
 
   // add a single document to view (do not sync)
@@ -7093,8 +7230,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                  logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -7797,8 +7935,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
   }");
   bool persisted = false;
   auto before = StorageEngineMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { StorageEngineMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    StorageEngineMock::before = before;
+  };
   StorageEngineMock::before = [&persisted]() -> void { persisted = true; };
 
   // modify meta params
@@ -8351,9 +8490,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto beforeRec = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&beforeRec]() noexcept {
+    irs::Finally restore = [&beforeRec]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRec;
-    });
+    };
     persisted = false;
     EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
     EXPECT_TRUE((true == persisted));
@@ -8737,9 +8876,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto beforeRecovery = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
+      irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
         StorageEngineMock::recoveryStateResult = beforeRecovery;
-      });
+      };
       EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE(
           (true == persisted));  // link addition does not persist view meta
@@ -8774,9 +8913,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto before = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-      auto restore = irs::make_finally([&before]() noexcept {
+      irs::Finally restoreRecovery = [&before]() noexcept {
         StorageEngineMock::recoveryStateResult = before;
-      });
+      };
       persisted = false;
       EXPECT_TRUE((view->properties(updateJson->slice(), true, true).ok()));
       EXPECT_TRUE((false == persisted));
@@ -9851,8 +9990,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                  logicalView->properties(viewUpdateJson->slice(), true, false)
