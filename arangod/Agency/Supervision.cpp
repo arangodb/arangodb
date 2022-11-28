@@ -3263,7 +3263,7 @@ void arangodb::consensus::enforceReplicationFunctional(
                 // plan than requested by the user. This means the AddFollower
                 // job is not subject to the configurable delay and is
                 // considered more urgent. This happens, if the
-                // repliactionFactor is increased by the user.
+                // replicationFactor is increased by the user.
                 std::string notBefore;
                 if (apparentReplicationFactor >= replicationFactor) {
                   auto now = std::chrono::system_clock::now();
