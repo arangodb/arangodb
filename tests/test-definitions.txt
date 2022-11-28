@@ -42,6 +42,12 @@ shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=http -- http true
+shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
+shell_client_traffic priority=250 parallelity=1 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
 shell_client_aql priority=500 single suffix=http
 shell_client_aql priority=500 single suffix=http2 -- --http2 true

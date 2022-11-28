@@ -1233,7 +1233,8 @@ Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression) {
+    irs::type_info::type_id primarySortCompression,
+    irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1317,8 +1318,8 @@ Result IResearchDataStore::initDataStore(
 
   if (pathExists) {
     try {
-      _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory));
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                       nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
@@ -1438,7 +1439,8 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                     nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {

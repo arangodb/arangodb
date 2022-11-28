@@ -545,6 +545,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
+
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
 

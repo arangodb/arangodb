@@ -1248,9 +1248,17 @@ class instanceManager {
   findEndpoint() {
     let endpoint = this.endpoint;
     if (this.options.vst) {
-      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      }
     } else if (this.options.http2) {
-      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      }
     }
     print("using endpoint ", endpoint);
     return endpoint;
