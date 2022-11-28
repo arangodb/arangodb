@@ -224,7 +224,7 @@ priv_rpc_ret_t Agent::requestVote(term_t termOfPeer, std::string const& id,
   return priv_rpc_ret_t(doIVote, this->term());
 }
 
-/// Get copy of momentary configuration
+/// Get reference to momentary configuration
 config_t const& Agent::config() const { return _config; }
 
 /// Adjust timeoutMult:
