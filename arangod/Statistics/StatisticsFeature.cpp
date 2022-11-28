@@ -788,7 +788,7 @@ VPackBuilder StatisticsFeature::fillDistribution(
 void StatisticsFeature::appendHistogram(
     std::string& result, statistics::Distribution const& dist,
     std::string const& label, std::initializer_list<std::string> const& les,
-    bool v2) {
+    bool v2, bool isInteger) {
   using StringUtils::concatT;
 
   VPackBuilder tmp = fillDistribution(dist);
@@ -812,8 +812,13 @@ void StatisticsFeature::appendHistogram(
   }
   result += concatT(name, "_count ", sum, "\n");
   if (v2) {
-    double v = slc.get("sum").getNumber<double>();
-    result += concatT(name, "_sum ", v, "\n");
+    if (isInteger) {
+      uint64_t v = slc.get("sum").getNumber<uint64_t>();
+      result += concatT(name, "_sum ", v, "\n");
+    } else {
+      double v = slc.get("sum").getNumber<double>();
+      result += concatT(name, "_sum ", v, "\n");
+    }
   }
 }
 
@@ -898,27 +903,27 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now,
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
                  "clientHttpConnections", v2);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"}, v2);
+                    {"0.01", "1.0", "60.0", "+Inf"}, v2, false);
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    v2);
+                    v2, false);
     appendHistogram(result, requestStats.requestTime, "requestTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    v2);
+                    v2, false);
     appendHistogram(result, requestStats.queueTime, "queueTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    v2);
+                    v2, false);
     appendHistogram(result, requestStats.ioTime, "ioTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
                      "30.0", "+Inf"},
-                    v2);
+                    v2, false);
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2, true);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2, true);
 
     // _httpStatistics()
     using rest::RequestType;
