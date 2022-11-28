@@ -49,53 +49,25 @@
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
 #include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
-#include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
+#include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
 
 namespace arangodb::replication2::replicated_log::refactor {
-
-struct StateHandleManager : IStateHandleManager {
-  explicit StateHandleManager(
-      std::unique_ptr<IReplicatedStateHandle> stateHandle)
-      : guardedData(std::move(stateHandle)) {}
-
-  auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> override {
-    auto guard = guardedData.getLockedGuard();
-    // TODO assert same methods
-    std::ignore = guard->stateHandle->resignCurrentState();
-    return std::move(guard->stateHandle);
-  }
-
-  void updateCommitIndex(LogIndex index) noexcept override {
-    if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
-      guard->stateHandle->updateCommitIndex(index);
-    } else {
-      // TODO Do some logging here
-    }
-  }
-
- private:
-  struct GuardedData {
-    explicit GuardedData(std::unique_ptr<IReplicatedStateHandle> stateHandle)
-        : stateHandle(std::move(stateHandle)) {}
-    std::unique_ptr<IReplicatedStateHandle> stateHandle;
-  };
-
-  Guarded<GuardedData> guardedData;
-};
 
 struct FollowerManager {
   explicit FollowerManager(
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+      std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-      : storage(std::make_shared<StorageManager>(std::move(methods))),
+      : options(options),
+        storage(std::make_shared<StorageManager>(std::move(methods))),
         compaction(std::make_shared<CompactionManager>(*storage, options)),
         snapshot(std::make_shared<SnapshotManager>(*storage)),
         stateHandle(
             std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
         commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
         appendEntries(std::make_shared<AppendEntriesManager>(
-            *storage, *snapshot, *compaction, *commit)) {}
+            termInfo, *storage, *snapshot, *compaction, *commit)) {}
 
   auto getStatus() const -> LogStatus {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -110,6 +82,8 @@ struct FollowerManager {
                     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
+  std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
@@ -199,7 +173,6 @@ struct LogFollowerImpl : ILogFollower {
   }
 
   ParticipantId const myself;
-
   Guarded<FollowerManager> guarded;
 };
 

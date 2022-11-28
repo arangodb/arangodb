@@ -25,6 +25,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/Components/ExclusiveBool.h"
 #include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
+#include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "IFollowerCommitManager.h"
 
 namespace arangodb::replication2::replicated_log {
@@ -37,7 +38,8 @@ struct ICompactionManager;
 struct AppendEntriesManager
     : IAppendEntriesManager,
       std::enable_shared_from_this<AppendEntriesManager> {
-  AppendEntriesManager(IStorageManager& storage, ISnapshotManager& snapshot,
+  AppendEntriesManager(std::shared_ptr<FollowerTermInformation const> termInfo,
+                       IStorageManager& storage, ISnapshotManager& snapshot,
                        ICompactionManager& compaction,
                        IFollowerCommitManager& commit);
 
@@ -47,9 +49,12 @@ struct AppendEntriesManager
   struct GuardedData {
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
                 ICompactionManager& compaction, IFollowerCommitManager& commit);
-    auto preflightChecks() -> std::optional<AppendEntriesResult>;
+    auto preflightChecks(AppendEntriesRequest const& request,
+                         FollowerTermInformation const&)
+        -> std::optional<AppendEntriesResult>;
 
     ExclusiveBool requestInFlight;
+    MessageId _lastRecvMessageId{0};
 
     IStorageManager& storage;
     ISnapshotManager& snapshot;
@@ -57,6 +62,7 @@ struct AppendEntriesManager
     IFollowerCommitManager& commit;
   };
 
+  std::shared_ptr<FollowerTermInformation const> const termInfo;
   Guarded<GuardedData> guarded;
 };
 }  // namespace comp

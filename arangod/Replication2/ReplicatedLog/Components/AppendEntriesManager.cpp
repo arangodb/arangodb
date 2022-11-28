@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
 #include "Replication2/DeferredExecution.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -50,7 +51,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   // TODO metrics
   // TODO logging
 
-  if (auto error = guard->preflightChecks(); error) {
+  if (auto error = guard->preflightChecks(request, *termInfo); error) {
     co_return {std::move(*error)};
   }
 
@@ -98,11 +99,12 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   co_return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
 }
 
-AppendEntriesManager::AppendEntriesManager(IStorageManager& storage,
-                                           ISnapshotManager& snapshot,
-                                           ICompactionManager& compaction,
-                                           IFollowerCommitManager& commit)
-    : guarded(storage, snapshot, compaction, commit) {}
+AppendEntriesManager::AppendEntriesManager(
+    std::shared_ptr<FollowerTermInformation const> termInfo,
+    IStorageManager& storage, ISnapshotManager& snapshot,
+    ICompactionManager& compaction, IFollowerCommitManager& commit)
+    : termInfo(std::move(termInfo)),
+      guarded(storage, snapshot, compaction, commit) {}
 
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
                                                ISnapshotManager& snapshot,
@@ -113,8 +115,38 @@ AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
       compaction(compaction),
       commit(commit) {}
 
-auto AppendEntriesManager::GuardedData::preflightChecks()
+auto AppendEntriesManager::GuardedData::preflightChecks(
+    AppendEntriesRequest const& request,
+    FollowerTermInformation const& termInfo)
     -> std::optional<AppendEntriesResult> {
-  std::abort();  // TODO
+  if (_lastRecvMessageId >= request.messageId) {
+    return AppendEntriesResult::withRejection(
+        termInfo.term, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
+  }
+
+  if (request.leaderId != termInfo.leader) {
+    return AppendEntriesResult::withRejection(
+        termInfo.term, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false);
+  }
+
+  if (request.leaderTerm != termInfo.term) {
+    return AppendEntriesResult::withRejection(
+        termInfo.term, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
+  }
+
+  // It is always allowed to replace the log entirely
+  if (request.prevLogEntry.index > LogIndex{0}) {
+    auto log = storage.getCommittedLog();
+    if (auto conflict = algorithms::detectConflict(log, request.prevLogEntry);
+        conflict.has_value()) {
+      auto [reason, next] = *conflict;
+      return AppendEntriesResult::withConflict(termInfo.term, request.messageId,
+                                               next, false);
+    }
+  }
+
   return std::nullopt;
 }
