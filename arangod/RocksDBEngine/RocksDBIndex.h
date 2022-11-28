@@ -169,9 +169,11 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  inline bool hasCache() const noexcept {
+  bool hasCache() const noexcept {
     return _cacheEnabled && (_cache != nullptr);
   }
+
+  bool canWarmup() const noexcept override;
 
   virtual std::shared_ptr<cache::Cache> makeCache() const;
 

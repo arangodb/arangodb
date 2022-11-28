@@ -44,6 +44,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -532,9 +533,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
       _isFromIndex(attr == StaticStrings::FromString),
       _forceCacheRefill(collection.vocbase()
                             .server()
-                            .getFeature<EngineSelectorFeature>()
-                            .engine<RocksDBEngine>()
-                            .autoRefillIndexCaches()),
+                            .getFeature<RocksDBIndexCacheRefillFeature>()
+                            .autoRefill()),
       _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString
@@ -791,7 +791,7 @@ Result RocksDBEdgeIndex::scheduleWarmup() {
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
 
-  auto scheduleTask = [this](auto lower, auto upper) {
+  auto scheduleTask = [this](auto const& lower, auto const& upper) {
     auto& df = _collection.vocbase().server().getFeature<DatabaseFeature>();
     auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
         df, _collection.vocbase().name(), _collection.name(), id(), lower,
@@ -902,7 +902,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       previous = v;
       bool shouldTry = true;
       while (shouldTry) {
-        auto finding = cc->find(previous.data(), (uint32_t)previous.size());
+        auto finding =
+            cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
         if (finding.found()) {
           shouldTry = false;
           needsInsert = false;
@@ -930,7 +931,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
       // Need to store
       previous = v;
-      auto finding = cc->find(previous.data(), (uint32_t)previous.size());
+      auto finding =
+          cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
       if (finding.found()) {
         needsInsert = false;
       } else {

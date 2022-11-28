@@ -324,6 +324,8 @@ void RocksDBIndex::compact() {
   }
 }
 
+bool RocksDBIndex::canWarmup() const noexcept { return hasCache(); }
+
 std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
   return _cacheManager->createCache<cache::BinaryKeyHasher>(

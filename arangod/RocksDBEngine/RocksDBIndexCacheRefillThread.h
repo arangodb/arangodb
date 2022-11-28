@@ -43,17 +43,17 @@ namespace arangodb {
 class DatabaseFeature;
 class LogicalCollection;
 
-class RocksDBIndexCacheRefiller final : public ServerThread<ArangodServer> {
+class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
  public:
-  explicit RocksDBIndexCacheRefiller(ArangodServer& server, size_t maxCapacity);
+  explicit RocksDBIndexCacheRefillThread(ArangodServer& server,
+                                         size_t maxCapacity);
 
-  ~RocksDBIndexCacheRefiller();
+  ~RocksDBIndexCacheRefillThread();
 
   void beginShutdown() override;
 
-  void trackIndexCacheRefill(
-      std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-      std::vector<std::string> keys);
+  void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
+                   IndexId iid, std::vector<std::string> keys);
 
  protected:
   void run() override;
@@ -74,8 +74,10 @@ class RocksDBIndexCacheRefiller final : public ServerThread<ArangodServer> {
 
   // protects _operations and _numQueued
   basics::ConditionVariable _condition;
+
+  // queued operations
   DatabaseValues _operations;
-  // current number of items queued
+  // current number of operations queued
   size_t _numQueued;
 
   // total number of items ever queued

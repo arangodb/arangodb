@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBIndexCacheRefiller.h"
+#include "RocksDBIndexCacheRefillThread.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Indexes/Index.h"
@@ -45,8 +45,8 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
 
-RocksDBIndexCacheRefiller::RocksDBIndexCacheRefiller(ArangodServer& server,
-                                                     size_t maxCapacity)
+RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
+    ArangodServer& server, size_t maxCapacity)
     : ServerThread<ArangodServer>(server, "RocksDBCacheRefiller"),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _maxCapacity(maxCapacity),
@@ -56,17 +56,19 @@ RocksDBIndexCacheRefiller::RocksDBIndexCacheRefiller(ArangodServer& server,
       _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_auto_refill_dropped_total{})) {}
 
-RocksDBIndexCacheRefiller::~RocksDBIndexCacheRefiller() { shutdown(); }
+RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 
-void RocksDBIndexCacheRefiller::beginShutdown() {
+void RocksDBIndexCacheRefillThread::beginShutdown() {
   Thread::beginShutdown();
 
-  // wake up the thread that may be waiting in run()
   CONDITION_LOCKER(guard, _condition);
+  // clear all remaining operations, so that we don't try applying them anymore.
+  _operations.clear();
+  // wake up the thread that may be waiting in run()
   guard.broadcast();
 }
 
-void RocksDBIndexCacheRefiller::trackIndexCacheRefill(
+void RocksDBIndexCacheRefillThread::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
     std::vector<std::string> keys) {
   TRI_ASSERT(!keys.empty());
@@ -117,8 +119,9 @@ void RocksDBIndexCacheRefiller::trackIndexCacheRefill(
   _totalNumQueued += n;
 }
 
-void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase, DataSourceId cid,
-                                       IndexValues const& data) {
+void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
+                                           DataSourceId cid,
+                                           IndexValues const& data) {
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, std::to_string(cid.id()),
                                   AccessMode::Type::READ);
@@ -139,8 +142,8 @@ void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase, DataSourceId cid,
   }
 }
 
-void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase,
-                                       CollectionValues const& data) {
+void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
+                                           CollectionValues const& data) {
   // loop over every collection in the given database
   for (auto const& it : data) {
     try {
@@ -151,7 +154,7 @@ void RocksDBIndexCacheRefiller::refill(TRI_vocbase_t& vocbase,
   }
 }
 
-void RocksDBIndexCacheRefiller::refill(DatabaseValues const& data) {
+void RocksDBIndexCacheRefillThread::refill(DatabaseValues const& data) {
   // loop over all databases that we have data for
   for (auto const& it : data) {
     try {
@@ -163,7 +166,7 @@ void RocksDBIndexCacheRefiller::refill(DatabaseValues const& data) {
   }
 }
 
-void RocksDBIndexCacheRefiller::run() {
+void RocksDBIndexCacheRefillThread::run() {
   while (!isStopping()) {
     try {
       DatabaseValues operations;
@@ -193,10 +196,10 @@ void RocksDBIndexCacheRefiller::run() {
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("443da", ERR, Logger::ENGINES)
-          << "caught exception in RocksDBIndexCacheRefiller: " << ex.what();
+          << "caught exception in RocksDBIndexCacheRefillThread: " << ex.what();
     } catch (...) {
       LOG_TOPIC("6627f", ERR, Logger::ENGINES)
-          << "caught unknown exception in RocksDBIndexCacheRefiller";
+          << "caught unknown exception in RocksDBIndexCacheRefillThread";
     }
   }
 }

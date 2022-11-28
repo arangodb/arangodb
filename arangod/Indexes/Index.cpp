@@ -902,6 +902,8 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
+bool Index::canWarmup() const noexcept { return false; }
+
 Result Index::scheduleWarmup() {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
