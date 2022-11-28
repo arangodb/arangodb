@@ -16,6 +16,7 @@ add_subdirectory(Fuerte)
 # Error tests
 # ----------------------------------------
 
+add_subdirectory(Assertions)
 add_subdirectory(CrashHandler)
 add_subdirectory(Errors)
 
