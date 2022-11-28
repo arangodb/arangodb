@@ -221,9 +221,6 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
-  Futures/FutureTest.cpp
-  Futures/PromiseTest.cpp
-  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
@@ -323,6 +320,7 @@ target_link_libraries(arangodbtests
   arango_tests_basics
   arango_tests_replication2
   arango_tests_graph
+  arango_tests_futures
   arango_agency
   arango_cluster_engine
   arango_rocksdb

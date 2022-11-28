@@ -433,14 +433,11 @@ class Future {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
-          std::cout << "bar" << std::endl;
         } catch (ET& e) {
-          std::cout << "foo";
           pr.setTry(detail::makeTryWith([&fn, &e]() mutable {
             return std::invoke(std::forward<DF>(fn), e);
           }));
         } catch (...) {
-          std::cout << "bar";
           pr.setException(std::current_exception());
         }
       } else {

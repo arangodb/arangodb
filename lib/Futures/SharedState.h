@@ -26,6 +26,8 @@
 #include <atomic>
 #include <function2.hpp>
 
+#include "Assertions/Assert.h"
+
 #include "Try.h"
 
 namespace arangodb {
@@ -209,8 +211,7 @@ class SharedState {
         [[fallthrough]];
 
       default:
-        break;
-        // TRI_ASSERT(false);  // unexpected state
+        TRI_ASSERT(false);  // unexpected state
     }
   }
 
@@ -223,7 +224,7 @@ class SharedState {
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachFuture()` is called previously or concurrently).
   void detachPromise() noexcept {
-    // TRI_ASSERT(hasResult());
+    TRI_ASSERT(hasResult());
     detachOne();
   }
 
@@ -244,15 +245,15 @@ class SharedState {
         _attached(1) {}
 
   ~SharedState() {
-    // TRI_ASSERT(_attached == 0);
-    // TRI_ASSERT(hasResult());
+    TRI_ASSERT(_attached == 0);
+    TRI_ASSERT(hasResult());
     _result.~Try<T>();
   }
 
   /// detach promise or future from shared state
   void detachOne() noexcept {
     auto a = _attached.fetch_sub(1, std::memory_order_acq_rel);
-    // TRI_ASSERT(a >= 1);
+    TRI_ASSERT(a >= 1);
     if (a == 1) {
       _callback = nullptr;
       delete this;
@@ -260,8 +261,8 @@ class SharedState {
   }
 
   void doCallback() {
-    // TRI_ASSERT(_state == State::Done);
-    // TRI_ASSERT(_callback);
+    TRI_ASSERT(_state == State::Done);
+    TRI_ASSERT(_callback);
 
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe

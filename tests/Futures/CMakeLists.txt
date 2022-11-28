@@ -1,8 +1,7 @@
 add_library(arango_tests_futures OBJECT
   FutureTest.cpp
   PromiseTest.cpp
-  TryTest.cpp
-  main.cpp)
+  TryTest.cpp)
 
 target_link_libraries(arango_tests_futures
     arango_futures
@@ -14,7 +13,8 @@ add_executable(arangodbtests_futures
   EXCLUDE_FROM_ALL)
 
 target_link_libraries(arangodbtests_futures
-    gtest
+    arango_crashhandler_light
+    gtest_main
     arango_tests_futures)
 
 add_test(NAME futures

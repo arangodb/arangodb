@@ -6,6 +6,8 @@ target_include_directories(arango_futures
   ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2
   .)
 
+target_link_libraries(arango_futures arango_assertions)
+
 if (MSVC)
   target_compile_options(arango_futures PUBLIC "-J")
 endif()
