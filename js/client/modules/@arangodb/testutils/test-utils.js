@@ -870,9 +870,17 @@ function writeTestResult(path, data) {
 function findEndpoint(options, instanceInfo) {
   let endpoint = instanceInfo.endpoint;
   if (options.vst) {
-    endpoint = endpoint.replace(/.*\/\//, 'vst://');
+    if (options.protocol === 'ssl') {
+      endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
+    } else {
+      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+    }
   } else if (options.http2) {
-    endpoint = endpoint.replace(/.*\/\//, 'h2://');
+    if (options.protocol === 'ssl') {
+      endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
+    } else {
+      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+    }
   }
   print("using endpoint ", endpoint);
   return endpoint;
