@@ -85,7 +85,7 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
                    std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o, 
+                   double f, uint64_t c, uint64_t k, double p, double o,
                    uint64_t q, uint64_t r, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),

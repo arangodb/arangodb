@@ -446,8 +446,8 @@ void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
       std::string notBefore;
       if (delayFailedFollower > 0) {
         auto now = std::chrono::system_clock::now();
-        notBefore = timepointToString(
-            now + std::chrono::seconds(delayFailedFollower));
+        notBefore =
+            timepointToString(now + std::chrono::seconds(delayFailedFollower));
       }
       FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
                    serverID, notBefore)
