@@ -157,8 +157,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
       --agency.size $NRAGENTS 
       --agency.supervision true 
       --agency.supervision-frequency $SFRE 
-      --agency.supervision-delay-add-follower 10
-      --agency.supervision-delay-failed-follower 15
       --agency.wait-for-sync false 
       --database.directory cluster/data$PORT 
       --server.endpoint $TRANSPORT://$ENDPOINT:$PORT 
