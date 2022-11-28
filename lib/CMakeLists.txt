@@ -65,6 +65,8 @@ add_library(arango STATIC
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  Assertions/AssertionLogger.cpp
+  Assertions/AssertionConditionalLogger.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
@@ -279,3 +281,4 @@ add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
+add_subdirectory(Assertions)
