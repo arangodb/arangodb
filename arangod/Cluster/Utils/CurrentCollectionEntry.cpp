@@ -31,8 +31,8 @@
 using namespace arangodb;
 
 auto CurrentCollectionEntry::hasError() const noexcept -> bool {
-  return std::ranges::any_of(shards,
-                             [](auto const& s) { return s.second.isError; });
+  return std::any_of(shards.begin(), shards.end(),
+                     [](auto const& s) { return s.second.isError; });
 }
 
 auto CurrentCollectionEntry::createErrorReport() const noexcept -> std::string {
@@ -61,7 +61,7 @@ auto CurrentCollectionEntry::doExpectedServersMatch(
     return false;
   }
 
-  return std::ranges::all_of(shards, [&expected](auto const& s) {
+  return std::all_of(shards.begin(), shards.end(), [&expected](auto const& s) {
     auto const& [shardId, maybeResponse] = s;
     if (!maybeResponse.isError) {
       TRI_ASSERT(maybeResponse.servers.has_value());
