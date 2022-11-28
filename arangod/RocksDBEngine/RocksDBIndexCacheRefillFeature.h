@@ -60,15 +60,28 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
  private:
   void stopThread();
+
+  // build the initial data in _indexFillTasks
   void buildIndexRefillTasks();
+
+  // post as many as possible index fill tasks to the scheduler.
+  // note: this will only post up to at most _maxConcurrentIndexFillTasks
+  // to the scheduler. the method may post index fill tasks to the scheduler
+  // that will at their end call queueIndexRefillTasks() again, i.e.
+  // the method can indirectly schedule itself.
   void queueIndexRefillTasks();
+
+  // actually fill the specified index cache
   void warmupIndex(std::string const& database, std::string const& collection,
                    IndexId iid);
 
+  // index refill thread used for auto-refilling after insert/update/replace
+  // (not used for initial filling at startup)
   std::unique_ptr<RocksDBIndexCacheRefillThread> _refillThread;
 
   // maximum capacity of queue used for automatic refilling of in-memory index
-  // caches
+  // caches after insert/update/replace (not used for initial filling at
+  // startup)
   size_t _maxCapacity;
 
   // maximum concurrent index fill tasks that we are allowed to run to fill
@@ -83,6 +96,7 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // populated on server start
   bool _fillOnStartup;
 
+  // protects _indexFillTasks and _currentlyRunningIndexFillTasks
   std::mutex _indexFillTasksMutex;
 
   struct IndexFillTask {

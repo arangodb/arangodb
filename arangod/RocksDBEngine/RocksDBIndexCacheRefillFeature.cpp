@@ -203,6 +203,9 @@ void RocksDBIndexCacheRefillFeature::queueIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   std::unique_lock lock(_indexFillTasksMutex);
+  // while we still have something to push out, do it.
+  // note: we will only be scheduling at most _maxConcurrentIndexFillTask
+  // index refills concurrently, in order to not overwhelm the instance.
   while (!_indexFillTasks.empty() &&
          _currentlyRunningIndexFillTasks < _maxConcurrentIndexFillTasks) {
     // intentional copy
