@@ -119,7 +119,7 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
     FollowerTermInformation const& termInfo)
     -> std::optional<AppendEntriesResult> {
-  if (_lastRecvMessageId >= request.messageId) {
+  if (not messageIdAcceptor.accept(request.messageId)) {
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
@@ -149,4 +149,12 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
   }
 
   return std::nullopt;
+}
+
+auto AppendEntriesMessageIdAcceptor::accept(MessageId id) noexcept -> bool {
+  if (id > lastId) {
+    lastId = id;
+    return true;
+  }
+  return false;
 }

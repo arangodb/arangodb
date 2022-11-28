@@ -86,7 +86,7 @@ auto asTry(Future<T>&& f) noexcept {
       [](futures::Try<T>&& res) noexcept { return std::move(res); }};
 }
 
-auto asResult(Future<Result>&& f) noexcept {
+static inline auto asResult(Future<Result>&& f) noexcept {
   return FutureTransformAwaitable{
       std::move(f), [](futures::Try<Result>&& res) noexcept -> Result {
         return basics::catchToResult([&] { return res.get(); });

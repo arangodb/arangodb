@@ -35,6 +35,13 @@ struct IStorageManager;
 struct ISnapshotManager;
 struct ICompactionManager;
 
+struct AppendEntriesMessageIdAcceptor {
+  auto accept(MessageId) noexcept -> bool;
+
+ private:
+  MessageId lastId{0};
+};
+
 struct AppendEntriesManager
     : IAppendEntriesManager,
       std::enable_shared_from_this<AppendEntriesManager> {
@@ -54,7 +61,7 @@ struct AppendEntriesManager
         -> std::optional<AppendEntriesResult>;
 
     ExclusiveBool requestInFlight;
-    MessageId _lastRecvMessageId{0};
+    AppendEntriesMessageIdAcceptor messageIdAcceptor;
 
     IStorageManager& storage;
     ISnapshotManager& snapshot;

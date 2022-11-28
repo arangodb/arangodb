@@ -45,8 +45,7 @@ struct StorageManagerTest : ::testing::Test {
       executor,
       {LogIndex{1}, LogIndex{100}},
       replicated_state::PersistedStateInfo{
-          .stateId = LogId{12},
-          .snapshot = {.status = SnapshotStatus::kFailed}}};
+          .stateId = logId, .snapshot = {.status = SnapshotStatus::kFailed}}};
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.getMethods());
 };

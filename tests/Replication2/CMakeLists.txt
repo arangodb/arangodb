@@ -76,6 +76,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         ReplicatedLog/Components/CompactionManagerTest.cpp
         ReplicatedLog/Components/StorageManagerTest.cpp
         ReplicatedLog/Components/FollowerCommitManagerTest.cpp
+        ReplicatedLog/LogFollower/AppendEntriesTest.cpp
 )
 
 add_library(arango_tests_replication2 OBJECT
