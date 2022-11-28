@@ -2335,11 +2335,10 @@ void TRI_vocbase_t::registerReplicatedState(
     // replicated log is gone, delete the replicated state
     TRI_ASSERT(false);  // TODO
   } else {
-    VPackBuilder builder;
-    velocypack::serialize(builder, info);
+    auto serialized = velocypack::serialize(info);
     LOG_CTX("e7f33", FATAL, _logManager->_logContext)
         << "failed to create replicated state from persistence "
-        << builder.toJson() << " error: " << result.errorMessage();
+        << serialized.toJson() << " error: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 }
