@@ -20,7 +20,7 @@ for details.
 A primary sort order can be defined to enable an AQL optimization. If a query
 iterates over all documents of a View, wants to sort them by attribute values
 and the (left-most) fields to sort by as well as their sorting direction match
-with the *primarySort* definition, then the `SORT` operation is optimized away.
+with the `primarySort` definition, then the `SORT` operation is optimized away.
 This option is immutable.
 
 Expects an array of objects, each specifying a field (attribute path) and a
@@ -30,9 +30,33 @@ sort direction (`"asc` for ascending, `"desc"` for descending):
 @RESTBODYPARAM{primarySortCompression,string,optional,string}
 Defines how to compress the primary sort data (introduced in v3.7.1).
 ArangoDB v3.5 and v3.6 always compress the index using LZ4.
+
 This option is immutable.
+
 - `"lz4"` (default): use LZ4 fast compression.
 - `"none"`: disable compression to trade space for speed.
+
+@RESTBODYPARAM{primarySortCache,boolean,optional,}
+If you enable this option, then the primary sort columns are always cached in
+memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
+performance of queries that utilize the primary sort order. Otherwise, these
+values are memory-mapped and it is up to the operating system to load them from
+disk into memory and to evict them from memory.
+
+This option is immutable.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache.
+
+@RESTBODYPARAM{primaryKeyCache,boolean,optional,}
+If you enable this option, then the primary key columns are always cached in
+memory (introduced in v3.9.6, Enterprise Edition only). This can improve the
+performance of queries that return many documents. Otherwise, these values are
+memory-mapped and it is up to the operating system to load them from disk into
+memory and to evict them from memory.
+
+See the `--arangosearch.columns-cache-limit` startup option to control the
+memory consumption of this cache.
 
 @RESTBODYPARAM{storedValues,array,optional,object}
 An array of objects to describe which document attributes to store in the View
@@ -40,18 +64,30 @@ index (introduced in v3.7.1). It can then cover search queries, which means the
 data can be taken from the index directly and accessing the storage engine can
 be avoided.
 
-Each object is expected in the form
-`{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none" }`,
-where the required `fields` attribute is an array of strings with one or more
-document attribute paths. The specified attributes are placed into a single
-column of the index. A column with all fields that are involved in common
-search queries is ideal for performance. The column should not include too many
-unneeded fields however. The optional `compression` attribute defines the
-compression type used for the internal column-store, which can be `"lz4"`
-(LZ4 fast compression, default) or `"none"` (no compression).
+This option is immutable.
 
-This option is immutable. Not to be confused with `storeValues`, which allows
-to store meta data about attribute values in the View index.
+Each object is expected in the following form:
+
+`{ "fields": [ "attr1", "attr2", ... "attrN" ], "compression": "none", "cache": false }`
+
+- The required `fields` attribute is an array of strings with one or more
+  document attribute paths. The specified attributes are placed into a single
+  column of the index. A column with all fields that are involved in common
+  search queries is ideal for performance. The column should not include too
+  many unneeded fields, however.
+
+- The optional `compression` attribute defines the compression type used for
+  the internal column-store, which can be `"lz4"` (LZ4 fast compression, default)
+  or `"none"` (no compression).
+
+- The optional `cache` attribute allows you to always cache stored values in
+  memory (introduced in v3.9.5, Enterprise Edition only). This can improve
+  the query performance if stored values are involved. See the
+  `--arangosearch.columns-cache-limit` startup option
+  to control the memory consumption of this cache.
+
+The `storedValues` option is not to be confused with the `storeValues` option,
+which allows to store meta data about attribute values in the View index.
 
 @RESTBODYPARAM{cleanupIntervalStep,integer,optional,int64}
 Wait at least this many commits between removing unused files in the
