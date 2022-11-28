@@ -37,11 +37,11 @@ struct IRocksDBTransactionCallback {
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBTrxBaseMethods(RocksDBTransactionState const* state,
+  explicit RocksDBTrxBaseMethods(RocksDBTransactionState* state,
                                  IRocksDBTransactionCallback& callback,
                                  rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxBaseMethods();
+  ~RocksDBTrxBaseMethods() override;
 
   virtual bool isIndexingDisabled() const final override {
     return _indexingDisabled;
@@ -113,7 +113,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief create a new rocksdb transaction
   virtual void createTransaction();
 
-  arangodb::Result doCommit();
+  Result doCommit();
+  Result doCommitImpl();
 
   IRocksDBTransactionCallback& _callback;
 
