@@ -34,7 +34,7 @@
 #include <utility>
 
 #include "Basics/system-compiler.h"
-#include "Basics/CrashHandler.h"
+#include "CrashHandler/CrashHandler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
