@@ -83,46 +83,50 @@ ImportFeature::ImportFeature(Server& server, int* result)
 
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--file", "File name (\"-\" for stdin).",
+  options->addOption("--file", "The file to import (\"-\" for stdin).",
                      new StringParameter(&_filename));
 
   options
       ->addOption("--auto-rate-limit",
-                  "adjust the data loading rate automatically, starting at "
-                  "--batch-size bytes per thread per second",
+                  "Adjust the data loading rate automatically, starting at "
+                  "`--batch-size` bytes per thread per second.",
                   new BooleanParameter(&_autoChunkSize))
       .setIntroducedIn(30711);
 
-  options->addOption(
-      "--backslash-escape",
-      "Use backslash as the escape character for quotes, used for CSV.",
-      new BooleanParameter(&_useBackslash));
+  options->addOption("--backslash-escape",
+                     "Use backslash as the escape character for quotes. Used "
+                     "for CSV and TSV imports.",
+                     new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
-                     "size for individual data batches (in bytes)",
+                     "The size for individual data batches (in bytes).",
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption(
-      "--threads", "Number of parallel import threads",
+      "--threads", "Number of parallel import threads.",
       new UInt32Parameter(&_threadCount),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--collection", "collection name",
+  options->addOption("--collection",
+                     "The name of the collection to import into.",
                      new StringParameter(&_collectionName));
 
-  options->addOption("--from-collection-prefix",
-                     "The collection name prefix that will be prepended to all "
-                     "values in `_from`.",
-                     new StringParameter(&_fromCollectionPrefix));
+  options->addOption(
+      "--from-collection-prefix",
+      "The collection name prefix to prepend to all values in the "
+      "`_from` attribute.",
+      new StringParameter(&_fromCollectionPrefix));
 
   options->addOption(
       "--to-collection-prefix",
-      "_to collection name prefix (will be prepended to all values in '_to')",
+      "The collection name prefix to prepend to all values in the "
+      "`_to` attribute.",
       new StringParameter(&_toCollectionPrefix));
 
   options->addOption("--overwrite-collection-prefix",
-                     "only useful with '--from/--to-collection-prefix', if the "
-                     "value is already prefixed, overwrite the prefix.",
+                     "If the collection name is already prefixed, overwrite "
+                     "the prefix. Only useful in combination with "
+                     "`--from-collection-prefix` / `--to-collection-prefix`.",
                      new BooleanParameter(&_overwriteCollectionPrefix));
 
   options->addOption("--create-collection",
@@ -130,19 +134,20 @@ void ImportFeature::collectOptions(
                      new BooleanParameter(&_createCollection));
 
   options->addOption("--create-database",
-                     "create the target database if it does not exist",
+                     "Create the target database if it does not exist.",
                      new BooleanParameter(&_createDatabase));
 
   options
       ->addOption("--headers-file",
-                  "filename to read CSV or TSV headers from. if specified will "
-                  "not try to read headers from regular input file",
+                  "The file to read the CSV or TSV header from. If specified, "
+                  "no header is expected in the regular input file.",
                   new StringParameter(&_headersFile))
       .setIntroducedIn(30800);
 
-  options->addOption("--skip-lines",
-                     "Number of lines to skip for formats (CSV and TSV only).",
-                     new UInt64Parameter(&_rowsToSkip));
+  options->addOption(
+      "--skip-lines",
+      "The number of lines to skip of the input file (CSV and TSV only).",
+      new UInt64Parameter(&_rowsToSkip));
 
   options->addOption(
       "--convert",
@@ -153,14 +158,14 @@ void ImportFeature::collectOptions(
 
   options->addOption("--translate",
                      "Translate an attribute name using the syntax "
-                     "`\"from=to\"`. For CSV and TSV only. ",
+                     "\"from=to\". For CSV and TSV only.",
                      new VectorParameter<StringParameter>(&_translations));
 
   options
       ->addOption(
           "--datatype",
           "Force a specific datatype for an attribute "
-          "(null/boolean/number/string) using the syntax `\"attribute=type\"`. "
+          "(null/boolean/number/string) using the syntax \"attribute=type\". "
           "For CSV and TSV only. Takes precedence over `--convert`.",
           new VectorParameter<StringParameter>(&_datatypes))
       .setIntroducedIn(30900);
@@ -174,39 +179,40 @@ void ImportFeature::collectOptions(
   std::vector<std::string> typesVector(types.begin(), types.end());
   std::string typesJoined = StringUtils::join(typesVector, " or ");
 
-  options->addOption(
-      "--create-collection-type",
-      "type of collection if collection is created (" + typesJoined + ")",
-      new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
-                                                   types));
+  options->addOption("--create-collection-type",
+                     "The type of the collection if it needs to be created (" +
+                         typesJoined + ").",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_createCollectionType, types));
 
   std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
                                              "auto"};
 
   options->addOption(
-      "--type", "type of import file",
+      "--type", "The format of import file.",
       new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
       "--overwrite",
-      "overwrite collection if it exists (WARNING: this will remove any data "
-      "from the collection)",
+      "Overwrite the collection if it exists. WARNING: This removes any data "
+      "from the collection!",
       new BooleanParameter(&_overwrite));
 
-  options->addOption("--quote", "Quote character(s), used for CSV.",
+  options->addOption("--quote", "Quote character(s). Used for CSV and TSV.",
                      new StringParameter(&_quote));
 
   options->addOption(
       "--separator",
-      "field separator, used for csv and tsv. "
-      "Defaults to a comma (csv) or a tabulation character (tsv)",
+      "The field separator. Used for CSV and TSV imports. "
+      "Defaults to a comma (CSV) or a tabulation character (TSV).",
       new StringParameter(&_separator),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_progress));
 
-  options->addOption("--ignore-missing", "Ignore missing columns in CSV input.",
+  options->addOption("--ignore-missing",
+                     "Ignore missing columns in CSV and TSV input.",
                      new BooleanParameter(&_ignoreMissing));
 
   std::unordered_set<std::string> actions = {"error", "update", "replace",
@@ -215,7 +221,7 @@ void ImportFeature::collectOptions(
   std::string actionsJoined = StringUtils::join(actionsVector, ", ");
 
   options->addOption("--on-duplicate",
-                     "action to perform when a unique key constraint "
+                     "The action to perform when a unique key constraint "
                      "violation occurs. Possible values: " +
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(
@@ -223,19 +229,20 @@ void ImportFeature::collectOptions(
 
   options
       ->addOption("--merge-attributes",
-                  "merge attributes into new document attribute (e.g. "
-                  "mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and "
-                  "TSV only)",
+                  "Merge attributes into new document attribute (e.g. "
+                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\") "
+                  "(CSV and TSV only)",
                   new VectorParameter<StringParameter>(&_mergeAttributes))
       .setIntroducedIn(30901);
 
   options->addOption(
-      "--latency", "show 10 second latency statistics (values in microseconds)",
+      "--latency",
+      "Show 10 second latency statistics (values in microseconds).",
       new BooleanParameter(&_latencyStats));
 
   options
       ->addOption("--skip-validation",
-                  "skips document validation during import",
+                  "Skip document schema validation during import.",
                   new BooleanParameter(&_skipValidation))
       .setIntroducedIn(30700);
 }

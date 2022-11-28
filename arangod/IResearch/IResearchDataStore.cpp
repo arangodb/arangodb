@@ -51,6 +51,7 @@
 #endif
 
 #include <index/column_info.hpp>
+#include <store/caching_directory.hpp>
 #include <store/mmap_directory.hpp>
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
@@ -1235,7 +1236,8 @@ Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
     std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression) {
+    irs::type_info::type_id primarySortCompression,
+    irs::index_reader_options const& readerOptions) {
   std::atomic_store(&_flushSubscription, {});
   // reset together with '_asyncSelf'
   _asyncSelf->reset();
@@ -1285,13 +1287,10 @@ Result IResearchDataStore::initDataStore(
                          "' while initializing ArangoSearch index '", _id.id(),
                          "'")};
   }
-  if (initCallback) {
-    _dataStore._directory = std::make_unique<irs::mmap_directory>(
-        _dataStore._path.u8string(), initCallback());
-  } else {
-    _dataStore._directory =
-        std::make_unique<irs::mmap_directory>(_dataStore._path.u8string());
-  }
+
+  _dataStore._directory = std::make_unique<irs::mmap_directory>(
+      _dataStore._path.u8string(),
+      initCallback ? initCallback() : irs::directory_attributes{});
 
   if (!_dataStore._directory) {
     return {TRI_ERROR_INTERNAL,
@@ -1319,8 +1318,8 @@ Result IResearchDataStore::initDataStore(
 
   if (pathExists) {
     try {
-      _dataStore._reader =
-          irs::directory_reader::open(*(_dataStore._directory));
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                       nullptr, readerOptions);
 
       if (!readTick(_dataStore._reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
@@ -1440,7 +1439,8 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                     nullptr, readerOptions);
   }
 
   if (!_dataStore._reader) {
@@ -1873,12 +1873,12 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   auto linkLock = _asyncSelf->lock();
 
   bool ok{false};
-  auto computeMetrics = irs::make_finally([&]() noexcept {
+  irs::Finally computeMetrics = [&]() noexcept {
     // We don't measure time because we believe that it should tend to zero
     if (!ok && _numFailedCommits != nullptr) {
       _numFailedCommits->fetch_add(1, std::memory_order_relaxed);
     }
-  });
+  };
 
   TRI_IF_FAILURE("ArangoSearchTruncateFailure") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
