@@ -42,6 +42,8 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   guard->commitIndex = std::max(guard->commitIndex, index);
   guard->resolveIndex = std::min(guard->commitIndex, ctx->log.getLastIndex());
 
+  guard->stateHandle.updateCommitIndex(guard->resolveIndex);
+
   ctx->result = WaitForResult(guard->commitIndex, nullptr);
 
   auto const end = guard->waitQueue.upper_bound(guard->resolveIndex);
@@ -63,8 +65,9 @@ auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {
   return guardedData.getLockedGuard()->commitIndex;
 }
 
-FollowerCommitManager::FollowerCommitManager(IStorageManager& storage)
-    : guardedData(storage) {}
+FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
+                                             IStateHandleManager& stateHandle)
+    : guardedData(storage, stateHandle) {}
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {
@@ -95,5 +98,6 @@ auto FollowerCommitManager::waitForBoth(LogIndex index) noexcept
   return guard->waitQueue.emplace(index, ResolvePromise{})->second.getFuture();
 }
 
-FollowerCommitManager::GuardedData::GuardedData(IStorageManager& storage)
-    : storage(storage) {}
+FollowerCommitManager::GuardedData::GuardedData(
+    IStorageManager& storage, IStateHandleManager& stateHandle)
+    : storage(storage), stateHandle(stateHandle) {}

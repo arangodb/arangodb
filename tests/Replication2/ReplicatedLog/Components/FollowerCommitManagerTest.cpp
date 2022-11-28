@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Basics/Result.h"
 
 using namespace arangodb;
@@ -47,6 +48,11 @@ struct StorageManagerMock : IStorageManager {
               (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
+struct StateHandleManagerMock : IStateHandleManager {
+  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept));
+  MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (), (noexcept));
+};
+
 auto makeRange(LogRange range) -> InMemoryLog {
   InMemoryLog::log_type log;
   auto transient = log.transient();
@@ -61,12 +67,14 @@ auto makeRange(LogRange range) -> InMemoryLog {
 
 struct FollowerCommitManagerTest : ::testing::Test {
   testing::StrictMock<StorageManagerMock> storage;
+  testing::StrictMock<StateHandleManagerMock> stateHandle;
 
   std::shared_ptr<FollowerCommitManager> commit =
-      std::make_shared<FollowerCommitManager>(storage);
+      std::make_shared<FollowerCommitManager>(storage, stateHandle);
 };
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{12})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -81,6 +89,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{25})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -97,6 +106,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{44})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -112,6 +122,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
 
 TEST_F(FollowerCommitManagerTest,
        wait_for_iterator_update_commit_index_missing_log) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{44})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -128,6 +139,7 @@ TEST_F(FollowerCommitManagerTest,
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{30})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(2).WillRepeatedly([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -141,6 +153,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_already_resolved) {
+  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{30})).Times(1);
   EXPECT_CALL(storage, getCommittedLog).Times(2).WillRepeatedly([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });

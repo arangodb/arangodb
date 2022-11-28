@@ -20,10 +20,19 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
+#include <memory>
 
-#include "LogFollower2.h"
-
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::replicated_log::refactor;
+namespace arangodb::replication2 {
+struct LogIndex;
+namespace replicated_log {
+struct IReplicatedStateHandle;
+inline namespace comp {
+struct IStateHandleManager {
+  virtual ~IStateHandleManager() = default;
+  virtual void updateCommitIndex(LogIndex) noexcept = 0;
+  virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
+};
+}  // namespace comp
+}  // namespace replicated_log
+}  // namespace arangodb::replication2

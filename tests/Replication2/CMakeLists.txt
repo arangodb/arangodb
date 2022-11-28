@@ -53,8 +53,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #ReplicatedLog/ReplicatedLogTest.cpp
   #ReplicatedLog/RewriteLogTest.cpp
   #ReplicatedLog/SimpleInsertTests.cpp
-  ReplicatedLog/SupervisionSimulationTest.cpp
-  ReplicatedLog/SupervisionTest.cpp
+        ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
+        ReplicatedLog/Supervision/SupervisionTest.cpp
   ReplicatedLog/StorageEngineMethodsTest.cpp
   #ReplicatedLog/UpdateParticipantsFlags.cpp
   #ReplicatedLog/UpdateReplicatedLogTests.cpp

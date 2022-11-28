@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/Guarded.h"
 
@@ -30,13 +31,8 @@ inline namespace comp {
 
 struct IStorageManager;
 
-struct ICommitUpdateReceiver {
-  virtual ~ICommitUpdateReceiver() = default;
-  virtual void updateCommitIndex(LogIndex) noexcept = 0;
-};
-
 struct FollowerCommitManager : IFollowerCommitManager {
-  explicit FollowerCommitManager(IStorageManager&);
+  explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
@@ -54,12 +50,13 @@ struct FollowerCommitManager : IFollowerCommitManager {
   auto waitForBoth(LogIndex) noexcept -> ResolveFuture;
 
   struct GuardedData {
-    explicit GuardedData(IStorageManager&);
+    explicit GuardedData(IStorageManager&, IStateHandleManager&);
     LogIndex commitIndex{0};
     LogIndex resolveIndex{0};
     WaitForQueue waitQueue;
 
     IStorageManager& storage;
+    IStateHandleManager& stateHandle;
   };
 
   Guarded<GuardedData> guardedData;
