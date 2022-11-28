@@ -66,7 +66,7 @@ struct FollowerManager {
         stateHandle(
             std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
         commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
-        appendEntries(std::make_shared<AppendEntriesManager>(
+        appendEntriesManager(std::make_shared<AppendEntriesManager>(
             termInfo, *storage, *snapshot, *compaction, *commit)) {}
 
   auto getStatus() const -> LogStatus {
@@ -83,6 +83,14 @@ struct FollowerManager {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  auto appendEntries(AppendEntriesRequest request)
+      -> futures::Future<AppendEntriesResult> {
+    return appendEntriesManager->appendEntries(std::move(request));
+  }
+
+ private:
+  friend struct MethodsProvider;
+  friend struct LogFollowerImpl;
   std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 
   std::shared_ptr<StorageManager> const storage;
@@ -90,7 +98,7 @@ struct FollowerManager {
   std::shared_ptr<SnapshotManager> const snapshot;
   std::shared_ptr<StateHandleManager> const stateHandle;
   std::shared_ptr<FollowerCommitManager> const commit;
-  std::shared_ptr<AppendEntriesManager> const appendEntries;
+  std::shared_ptr<AppendEntriesManager> const appendEntriesManager;
 };
 
 struct MethodsProvider : IReplicatedLogFollowerMethods {
@@ -168,7 +176,7 @@ struct LogFollowerImpl : ILogFollower {
 
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override {
-    return guarded.getLockedGuard()->appendEntries->appendEntries(
+    return guarded.getLockedGuard()->appendEntriesManager->appendEntries(
         std::move(request));
   }
 
