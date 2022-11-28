@@ -228,13 +228,13 @@ class Future {
 
   /// True if the result is a value (not an exception)
   bool hasValue() const {
-    //TRI_ASSERT(isReady());
+    TRI_ASSERT(isReady());
     return result().hasValue();
   }
 
   /// True if the result is an exception (not a value) on a future
   bool hasException() const {
-    //TRI_ASSERT(isReady());
+    TRI_ASSERT(isReady());
     return result().hasException();
   }
 

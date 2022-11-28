@@ -130,11 +130,11 @@ class SharedState {
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
   Try<T>& getTry() noexcept {
-    //TRI_ASSERT(hasResult());
+    TRI_ASSERT(hasResult());
     return _result;
   }
   Try<T> const& getTry() const noexcept {
-    //TRI_ASSERT(hasResult());
+    TRI_ASSERT(hasResult());
     return _result;
   }
 
@@ -148,7 +148,7 @@ class SharedState {
   /// executor or if the executor is inline).
   template<typename F>
   void setCallback(F&& func) {
-    //TRI_ASSERT(!hasCallback());
+    TRI_ASSERT(!hasCallback());
 
     // construct _callback first; TODO maybe try to avoid this?
     _callback = std::forward<F>(func);
@@ -160,7 +160,7 @@ class SharedState {
                                            std::memory_order_release)) {
           return;
         }
-        //TRI_ASSERT(state == State::OnlyResult);  // race with setResult
+        TRI_ASSERT(state == State::OnlyResult);  // race with setResult
         [[fallthrough]];
       case State::OnlyResult:
         // acquire is actually correct here
@@ -172,7 +172,7 @@ class SharedState {
         [[fallthrough]];
       default:
         break;
-        //TRI_ASSERT(false);  // unexpected state
+        TRI_ASSERT(false);  // unexpected state
     }
   }
 
@@ -185,7 +185,7 @@ class SharedState {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   void setResult(Try<T>&& t) {
-    //TRI_ASSERT(!hasResult());
+    TRI_ASSERT(!hasResult());
     // call move constructor of content
     ::new (&_result) Try<T>(std::move(t));
 
@@ -197,7 +197,7 @@ class SharedState {
                                            std::memory_order_release)) {
           return;
         }
-        //TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
+        TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
         [[fallthrough]];
       case State::OnlyCallback:
         // acquire is actually correct here
