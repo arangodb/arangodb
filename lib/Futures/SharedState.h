@@ -26,10 +26,7 @@
 #include <atomic>
 #include <function2.hpp>
 
-// #include "Basics/debugging.h"
 #include "Try.h"
-// #include "Logger/LogMacros.h"
-
 
 namespace arangodb {
 namespace futures {

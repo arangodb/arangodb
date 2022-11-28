@@ -4,9 +4,6 @@ add_library(arango_tests_futures OBJECT
   TryTest.cpp
   main.cpp)
 
-target_include_directories(arango_tests_futures PRIVATE
-  ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2)
-
 target_link_libraries(arango_tests_futures
     arango_futures
     gtest

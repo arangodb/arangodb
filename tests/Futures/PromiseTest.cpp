@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Promise.h"
+#include "Promise.h"
 
 #include "gtest/gtest.h"
 

@@ -21,8 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
+#include "Future.h"
+#include "Utilities.h"
 
 #include "gtest/gtest.h"
 
