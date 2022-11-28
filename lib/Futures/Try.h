@@ -29,6 +29,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <Assertions/Assert.h>
 namespace arangodb {
 namespace futures {
 
@@ -307,7 +308,7 @@ class Try {
 template<>
 class Try<void> {
  public:
-  Try() noexcept : _exception() { /* TRI_ASSERT(!hasException()); */ }
+  Try() noexcept : _exception() { TRI_ASSERT(!hasException()); }
   explicit Try(std::exception_ptr e) : _exception(std::move(e)) {}
   Try(Try<void>&& o) : _exception(std::move(o._exception)) {}
 

@@ -37,6 +37,7 @@
 #include "Basics/WriteLocker.h"
 #include "CrashHandler/CrashHandler.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
