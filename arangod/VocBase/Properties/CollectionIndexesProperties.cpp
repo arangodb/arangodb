@@ -27,11 +27,14 @@
 #include <velocypack/Builder.h>
 using namespace arangodb;
 
-CollectionIndexesProperties CollectionIndexesProperties::defaultIndexesForCollectionType(
+CollectionIndexesProperties
+CollectionIndexesProperties::defaultIndexesForCollectionType(
     TRI_col_type_e type) {
-  // TODO: This is temporary and should be replaced by static index Property generators
+  // TODO: This is temporary and should be replaced by static index Property
+  // generators
   CollectionIndexesProperties result;
-  TRI_ASSERT(type == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT || type == TRI_col_type_e::TRI_COL_TYPE_EDGE);
+  TRI_ASSERT(type == TRI_col_type_e::TRI_COL_TYPE_DOCUMENT ||
+             type == TRI_col_type_e::TRI_COL_TYPE_EDGE);
 
   {
     // Primary Index
@@ -59,7 +62,7 @@ CollectionIndexesProperties CollectionIndexesProperties::defaultIndexesForCollec
     }
     result.indexes.emplace_back(std::move(primary));
   }
-  if (type ==  TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+  if (type == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
     VPackBuilder fromIndex;
     {
       VPackObjectBuilder guard(&fromIndex);

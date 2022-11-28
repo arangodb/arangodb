@@ -39,9 +39,7 @@
 
 namespace arangodb::tests {
 
-namespace {
-
-}  // namespace
+namespace {}  // namespace
 
 class PlanCollectionToAgencyWriterTest : public ::testing::Test {
  protected:

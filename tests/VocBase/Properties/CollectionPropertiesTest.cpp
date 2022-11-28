@@ -171,6 +171,4 @@ TEST_F(CollectionPropertiesTest, disallowed_autoincrement_with_many_shards) {
   }
 }
 
-
-
 }  // namespace arangodb::tests

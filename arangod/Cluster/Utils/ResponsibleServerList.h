@@ -33,8 +33,8 @@ struct ResponsibleServerList {
   bool operator==(ResponsibleServerList const& other) const;
 };
 
-template <class Inspector>
+template<class Inspector>
 auto inspect(Inspector& f, ResponsibleServerList& list) {
   return f.apply(list.servers);
 }
-}
+}  // namespace arangodb

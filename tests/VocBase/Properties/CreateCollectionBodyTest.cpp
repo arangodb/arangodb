@@ -411,8 +411,6 @@ TEST_F(CreateCollectionBodyTest, test_smartJoinAttribute_cannot_be_empty) {
 
 // Tests for generic attributes without special needs
 
-
-
 namespace {
 enum AllowedFlags : uint8_t {
   Allways = 0,

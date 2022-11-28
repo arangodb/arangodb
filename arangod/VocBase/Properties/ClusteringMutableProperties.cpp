@@ -73,7 +73,8 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
   }
 }
 
-[[nodiscard]] arangodb::Result ClusteringMutableProperties::validateDatabaseConfiguration(
+[[nodiscard]] arangodb::Result
+ClusteringMutableProperties::validateDatabaseConfiguration(
     DatabaseConfiguration const& config) const {
   TRI_ASSERT(replicationFactor.has_value());
   // Check Replication factor

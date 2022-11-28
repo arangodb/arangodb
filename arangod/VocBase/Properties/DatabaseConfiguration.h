@@ -58,4 +58,4 @@ struct DatabaseConfiguration {
   std::function<ResultT<UserInputCollectionProperties>(std::string const&)>
       getCollectionGroupSharding;
 };
-}
+}  // namespace arangodb

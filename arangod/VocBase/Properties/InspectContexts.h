@@ -24,7 +24,7 @@
 
 namespace arangodb {
 
-struct InspectAgencyContext{};
-struct InspectUserContext{};
+struct InspectAgencyContext {};
+struct InspectUserContext {};
 
-}
+}  // namespace arangodb

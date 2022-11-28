@@ -30,7 +30,6 @@
 
 using namespace arangodb;
 
-
 CreateCollectionBody::CreateCollectionBody() {}
 
 ResultT<CreateCollectionBody> parseAndValidate(

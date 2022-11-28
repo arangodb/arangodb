@@ -20,7 +20,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "gtest/gtest.h"
 
 #include "Cluster/Utils/PlanCollectionEntry.h"
@@ -119,4 +118,4 @@ TEST_F(PlanCollectionEntryTest, default_values) {
   LOG_DEVEL << builder.toJson();
 }
 
-}
+}  // namespace arangodb::tests

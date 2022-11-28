@@ -3059,9 +3059,7 @@ TEST(NonNullOptional, serializes_internal_value) {
 
 TEST(NonNullOptional, missing_value_serializes_to_nullopt) {
   VPackBuilder b;
-  {
-    VPackObjectBuilder body(&b);
-  }
+  { VPackObjectBuilder body(&b); }
   NonNullOptionalValue v;
   auto res = velocypack::deserializeWithStatus(b.slice(), v);
   ASSERT_TRUE(res.ok());

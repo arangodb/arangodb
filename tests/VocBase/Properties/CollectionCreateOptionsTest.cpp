@@ -83,4 +83,4 @@ TEST_F(CollectionCreateOptionsTest, test_minimal_user_input) {
   auto testee = parse(body.slice());
   ASSERT_TRUE(testee.ok());
 }
-}
+}  // namespace arangodb::tests

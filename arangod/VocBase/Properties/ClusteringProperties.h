@@ -44,4 +44,4 @@ auto inspect(Inspector& f, ClusteringProperties& props) {
       f.template embedFields<ClusteringMutableProperties>(props),
       f.template embedFields<ClusteringConstantProperties>(props));
 }
-}
+}  // namespace arangodb

@@ -75,10 +75,9 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
       std::move(distShardsLikeField),
       f.field("shardingStrategy", props.shardingStrategy)
           .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
-      f.field("shardKeys", props.shardKeys)
-          .fallback(f.keep())
+      f.field("shardKeys", props.shardKeys).fallback(f.keep())
 
   );
 }
 
-}
+}  // namespace arangodb

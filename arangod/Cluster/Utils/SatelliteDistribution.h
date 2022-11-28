@@ -33,4 +33,4 @@ struct SatelliteDistribution : public IShardDistributionFactory {
       std::unordered_set<ServerID>& serversPlanned) override;
 };
 
-}
+}  // namespace arangodb

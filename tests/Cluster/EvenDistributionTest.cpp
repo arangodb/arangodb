@@ -36,21 +36,28 @@ class EvenDistributionTest : public ::testing::Test {
     return result;
   }
 
-  void assertOnlyAllowedServersUsed(std::unordered_set<ServerID> const& planned, std::vector<ServerID> const& allowed) {
+  void assertOnlyAllowedServersUsed(std::unordered_set<ServerID> const& planned,
+                                    std::vector<ServerID> const& allowed) {
     for (auto const& server : planned) {
       auto it = std::find(allowed.begin(), allowed.end(), server);
-      EXPECT_TRUE(it != allowed.end()) << "Planned server " << server << " that is not allowed";
+      EXPECT_TRUE(it != allowed.end())
+          << "Planned server " << server << " that is not allowed";
     }
   }
 
-  void assertAllGetExactFollowers(EvenDistribution const& testee, uint64_t nrShards, uint64_t replicationFactor) {
+  void assertAllGetExactFollowers(EvenDistribution const& testee,
+                                  uint64_t nrShards,
+                                  uint64_t replicationFactor) {
     for (uint64_t s = 0; s < nrShards; ++s) {
       auto list = testee.getServersForShardIndex(s);
-      EXPECT_EQ(list.servers.size(), replicationFactor) << "Incorrect number of followers for shardIndex: " << s;
+      EXPECT_EQ(list.servers.size(), replicationFactor)
+          << "Incorrect number of followers for shardIndex: " << s;
     }
   }
 
-  void assertMinAndMaxDifferByOneAtMost(std::unordered_map<ServerID, size_t> const &serverCounter, uint64_t nrServers) {
+  void assertMinAndMaxDifferByOneAtMost(
+      std::unordered_map<ServerID, size_t> const& serverCounter,
+      uint64_t nrServers) {
     size_t maxCounter = 0;
     size_t minCounter = std::numeric_limits<size_t>::max();
     for (auto const& [_, count] : serverCounter) {
@@ -67,11 +74,14 @@ class EvenDistributionTest : public ::testing::Test {
       EXPECT_EQ(maxCounter, 1);
     }
     ASSERT_GT(maxCounter, 0);
-    EXPECT_LE(maxCounter - 1, minCounter) << "The minCounter is more than one point away from maxCounter";
-    EXPECT_GE(minCounter + 1, maxCounter) << "The minCounter is more than one point away from maxCounter";
+    EXPECT_LE(maxCounter - 1, minCounter)
+        << "The minCounter is more than one point away from maxCounter";
+    EXPECT_GE(minCounter + 1, maxCounter)
+        << "The minCounter is more than one point away from maxCounter";
   }
 
-  void assertEveryServerIsUsedEquallyOftenAsLeader(EvenDistribution const& testee, uint64_t nrServers, uint64_t nrShards) {
+  void assertEveryServerIsUsedEquallyOftenAsLeader(
+      EvenDistribution const& testee, uint64_t nrServers, uint64_t nrShards) {
     std::unordered_map<ServerID, size_t> serverCounter;
     for (uint64_t s = 0; s < nrShards; ++s) {
       auto list = testee.getServersForShardIndex(s);
@@ -84,7 +94,9 @@ class EvenDistributionTest : public ::testing::Test {
     assertMinAndMaxDifferByOneAtMost(serverCounter, nrServers);
   }
 
-  void assertEveryServerIsUsedEquallyOften(EvenDistribution const& testee, uint64_t nrServers, uint64_t nrShards) {
+  void assertEveryServerIsUsedEquallyOften(EvenDistribution const& testee,
+                                           uint64_t nrServers,
+                                           uint64_t nrShards) {
     std::unordered_map<ServerID, size_t> serverCounter;
     for (uint64_t s = 0; s < nrShards; ++s) {
       auto list = testee.getServersForShardIndex(s);
@@ -98,9 +110,8 @@ class EvenDistributionTest : public ::testing::Test {
     assertMinAndMaxDifferByOneAtMost(serverCounter, nrServers);
   }
 
-  void assertNoServerIsUsedTwiceForTheSameShard(EvenDistribution const& testee, uint64_t nrShards) {
-
-  }
+  void assertNoServerIsUsedTwiceForTheSameShard(EvenDistribution const& testee,
+                                                uint64_t nrShards) {}
 };
 
 TEST_F(EvenDistributionTest, should_create_one_entry_per_shard) {
@@ -168,11 +179,13 @@ TEST_F(EvenDistributionTest, should_not_use_avoid_servers) {
   // Every Planned server, must be available
   assertOnlyAllowedServersUsed(planned, allowedNames);
   assertAllGetExactFollowers(testee, nrShards, replicationFactor);
-  assertEveryServerIsUsedEquallyOftenAsLeader(testee, allowedNames.size(), nrShards);
+  assertEveryServerIsUsedEquallyOftenAsLeader(testee, allowedNames.size(),
+                                              nrShards);
   assertEveryServerIsUsedEquallyOften(testee, allowedNames.size(), nrShards);
 }
 
-TEST_F(EvenDistributionTest, should_fail_if_replication_is_larger_than_servers) {
+TEST_F(EvenDistributionTest,
+       should_fail_if_replication_is_larger_than_servers) {
   uint64_t nrShards = 9;
   uint64_t replicationFactor = 5;
 
@@ -188,7 +201,8 @@ TEST_F(EvenDistributionTest, should_fail_if_replication_is_larger_than_servers) 
   EXPECT_FALSE(res.ok());
 }
 
-TEST_F(EvenDistributionTest, should_fail_if_replication_is_larger_than_servers_not_ignored) {
+TEST_F(EvenDistributionTest,
+       should_fail_if_replication_is_larger_than_servers_not_ignored) {
   uint64_t nrShards = 9;
   uint64_t replicationFactor = 6;
 
