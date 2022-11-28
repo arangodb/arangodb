@@ -81,6 +81,8 @@ class GeneralServerFeature final : public ArangodFeature {
     _requestBodySizeVst.count(bodySize);
   }
 
+  void countHttp1Connection() { _http1Connections.count(); }
+
   void countHttp2Connection() { _http2Connections.count(); }
 
   void countVstConnection() { _vstConnections.count(); }
@@ -121,6 +123,7 @@ class GeneralServerFeature final : public ArangodFeature {
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;
+  metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
   metrics::Counter& _vstConnections;
 };
