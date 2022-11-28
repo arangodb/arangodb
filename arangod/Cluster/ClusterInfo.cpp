@@ -3200,7 +3200,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
       }
-    } catch (std::exception const& ex) {
+    } catch (std::exception const&) {
     }
   });
 
@@ -3555,7 +3555,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         std::this_thread::sleep_for(waitTime);
       }
 
-    } catch (std::exception const& ex) {
+    } catch (std::exception const&) {
     }
   });
 
