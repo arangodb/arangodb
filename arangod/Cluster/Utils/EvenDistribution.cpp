@@ -73,7 +73,7 @@ Result EvenDistribution::planShardsOnServers(
         << " avoid list size: " << _avoidServers.size();
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
-  
+
   _shardToServerMapping.clear();
 
   // Example: Servers: A B C D E F G H I (9)

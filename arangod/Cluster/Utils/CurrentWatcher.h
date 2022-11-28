@@ -53,7 +53,6 @@ struct CurrentWatcher {
   std::optional<Result> getResultIfAllReported() const;
   void clearCallbacks();
 
-
  private:
   std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
       _callbacks{};

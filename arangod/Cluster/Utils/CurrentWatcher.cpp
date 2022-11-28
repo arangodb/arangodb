@@ -70,26 +70,23 @@ CurrentWatcher::getCallbackInfos() const {
 }
 
 std::optional<Result> CurrentWatcher::getResultIfAllReported() const {
-  return _results.doUnderLock(
-      [expected = _expectedResults](
-          auto const& lists) -> std::optional<Result> {
-        for (auto const& [_, result] : lists) {
-          // Test if there is an error reported
-          if (!result.ok()) {
-            return result;
-          }
-        }
-        // If we get here, all reports are OK.
-        // let's check if we have all reports
-        if (lists.size() == expected) {
-          // We have all, complete the operation, no error
-          return TRI_ERROR_NO_ERROR;
-        }
-        // Not yet complete, cannot report a Result.
-        return std::nullopt;
-      });
+  return _results.doUnderLock([expected = _expectedResults](
+                                  auto const& lists) -> std::optional<Result> {
+    for (auto const& [_, result] : lists) {
+      // Test if there is an error reported
+      if (!result.ok()) {
+        return result;
+      }
+    }
+    // If we get here, all reports are OK.
+    // let's check if we have all reports
+    if (lists.size() == expected) {
+      // We have all, complete the operation, no error
+      return TRI_ERROR_NO_ERROR;
+    }
+    // Not yet complete, cannot report a Result.
+    return std::nullopt;
+  });
 }
 
-void CurrentWatcher::clearCallbacks() {
-  _callbacks.clear();
-}
+void CurrentWatcher::clearCallbacks() { _callbacks.clear(); }

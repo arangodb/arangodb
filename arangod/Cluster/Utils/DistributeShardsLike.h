@@ -42,4 +42,4 @@ struct DistributeShardsLike : public IShardDistributionFactory {
       _originalShardingProducer;
 };
 
-}
+}  // namespace arangodb

@@ -57,4 +57,4 @@ struct IShardDistributionFactory {
  protected:
   std::vector<ResponsibleServerList> _shardToServerMapping{};
 };
-}
+}  // namespace arangodb

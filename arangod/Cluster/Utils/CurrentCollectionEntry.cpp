@@ -38,7 +38,7 @@ auto CurrentCollectionEntry::hasError() const noexcept -> bool {
 auto CurrentCollectionEntry::createErrorReport() const noexcept -> std::string {
   std::string report;
   for (auto const& [shardId, maybeError] : shards) {
-    if (maybeError.isError) {;
+    if (maybeError.isError) {
       report += " shardID:" + shardId + ": " + maybeError.errorMessage +
                 " (errorNum=" + to_string(maybeError.errorNum) + ")";
     }
@@ -46,8 +46,8 @@ auto CurrentCollectionEntry::createErrorReport() const noexcept -> std::string {
   return report;
 }
 
-auto CurrentCollectionEntry::haveAllShardsReported(size_t expectedNumberOfShards) const noexcept
-    -> bool {
+auto CurrentCollectionEntry::haveAllShardsReported(
+    size_t expectedNumberOfShards) const noexcept -> bool {
   // If this assert triggers CURRENT contains more shards for a collection
   // than we asked for.
   TRI_ASSERT(shards.size() <= expectedNumberOfShards);
