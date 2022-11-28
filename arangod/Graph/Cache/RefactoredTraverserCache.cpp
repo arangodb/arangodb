@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
+#include "Aql/Ast.h"
 #include "Aql/TraversalStats.h"
 #include "Basics/StringHeap.h"
 #include "Basics/VelocyPackHelper.h"
@@ -92,6 +93,86 @@ RefactoredTraverserCache::RefactoredTraverserCache(
       _vertexProjections(vertexProjections),
       _edgeProjections(edgeProjections) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // PROTOTYPE CODE STARTS HERE
+  /*
+   * Find index type to use
+   *  - if index "byColorAndKey" has been found, it will be selected with prio.
+   *  - if index "byColor" has been found (and no byColorAndKey exists), use
+   * this.
+   * - otherwise if no index exists, fallback to "default read vertices mode"
+   */
+  auto& collections = _query->collections();
+  // For our specific prototype test case we expect exactly two
+  // collections one vertex, one edge.
+  TRI_ASSERT(collections.collectionNames().size() == 2);
+
+  aql::Collection* aqlVertexCollection;
+  collections.visit(
+      [&aqlVertexCollection](std::string const&, aql::Collection& collection) {
+        if (collection.type() == TRI_COL_TYPE_DOCUMENT) {
+          aqlVertexCollection = &collection;
+        }
+        return true;
+      });
+
+  TRI_ASSERT(aqlVertexCollection != nullptr);
+  auto myIndex = aqlVertexCollection->indexes().back();
+
+  bool byColor = false;
+  bool byColorAndKey = false;
+  for (auto const& index : aqlVertexCollection->indexes()) {
+    if (index->name() == "byColor") {
+      byColor = true;
+    } else if (index->name() == "byColorAndKey") {
+      byColorAndKey = true;
+    }
+  }
+
+  if (byColorAndKey) {
+    _vertexFilterLookupType = IndexLookupType::COLORANDKEY;
+  } else if (byColor) {
+    _vertexFilterLookupType = IndexLookupType::COLOR;
+  } else {
+    _vertexFilterLookupType = IndexLookupType::DEFAULT;
+  }
+
+  auto* ast = _query->ast();
+  _indexCondition =
+      ast->createNodeNaryOperator(aql::NODE_TYPE_OPERATOR_NARY_AND);
+  _tmpVar = ast->variables()->createTemporaryVariable();
+
+  // key attribute access
+  if (_vertexFilterLookupType == IndexLookupType::COLORANDKEY) {
+    static std::vector<basics::AttributeName> const& myKeyAttribute = {
+        {"_key"}};
+    auto nodeKey = ast->createNodeAccess(_tmpVar, myKeyAttribute);
+    static std::string myKey = "undefined";
+    // instead of: createNodeValueString <-> createMutableString !!!
+    _keyCompareNode =
+        ast->createNodeValueMutableString(myKey.c_str(), myKey.length());
+    auto eqNodeKey = ast->createNodeBinaryOperator(
+        aql::NODE_TYPE_OPERATOR_BINARY_EQ, nodeKey, _keyCompareNode);
+    _indexCondition->addMember(eqNodeKey);
+  }
+
+  // color attribute access
+  static std::vector<basics::AttributeName> const& myColorAttribute = {
+      {"color"}};
+  auto nodeColor = ast->createNodeAccess(_tmpVar, myColorAttribute);
+  static std::string myColor = "green";
+  auto compareNode =
+      ast->createNodeValueString(myColor.c_str(), myColor.length());
+  auto eqNodeColor = ast->createNodeBinaryOperator(
+      aql::NODE_TYPE_OPERATOR_BINARY_EQ, nodeColor, compareNode);
+
+  _indexCondition->addMember(eqNodeColor);
+
+  IndexIteratorOptions indexOptions{};  // just use defaults
+  _indexIterator = _trx->indexScanForCondition(
+      _resourceMonitor, myIndex /*indexHandle*/, _indexCondition, _tmpVar,
+      indexOptions, ReadOwnWrites::no, 0);
+  // PROTOTYPE END
 }
 
 RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
@@ -216,6 +297,16 @@ RefactoredTraverserCache::extractCollectionName(
   return std::make_pair(colName, pos);
 }
 
+std::string RefactoredTraverserCache::typeToString(IndexLookupType type) const {
+  if (type == IndexLookupType::COLOR) {
+    return "Fetching vertices by color index";
+  } else if (type == IndexLookupType::COLORANDKEY) {
+    return "Fetching vertices by key and color index";
+  } else {
+    return "Fetching vertices via original read mode";
+  }
+};
+
 template<typename ResultType>
 bool RefactoredTraverserCache::appendVertex(
     aql::TraversalStats& stats, velocypack::HashedStringRef const& id,
@@ -231,49 +322,192 @@ bool RefactoredTraverserCache::appendVertex(
       result.add(VPackSlice::nullSlice());
       return true;
     }
-    try {
-      transaction::AllowImplicitCollectionsSwitcher disallower(
-          _trx->state()->options(), _allowImplicitCollections);
 
-      Result res = _trx->documentFastPathLocal(
-          collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(),
-          [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-            stats.incrScannedIndex(1);
-            // copying...
+    try {
+      if (_vertexFilterLookupType == IndexLookupType::COLORANDKEY ||
+          _vertexFilterLookupType == IndexLookupType::COLOR) {
+        // * We've created an index based on attribute type: color
+        // or _key and color
+
+        TRI_ASSERT(_indexIterator != nullptr);
+        if (_vertexFilterLookupType == IndexLookupType::COLORANDKEY) {
+          std::string_view key(
+              transaction::helpers::extractKeyPart(id.stringView()));
+
+          _keyCompareNode->setStringValue(key.data(), key.length());
+          std::ignore =
+              _indexIterator.get()->rearm(_indexCondition, _tmpVar, {});
+          bool foundVertex = false;
+
+          _indexIterator.get()->allCovering([&](LocalDocumentId const& token,
+                                                IndexIteratorCoveringData&
+                                                    covering) {
+            auto collection = _indexIterator.get()->collection();
+            TRI_ASSERT(!foundVertex);
+            foundVertex = true;
+
+            auto myResult = collection->getPhysical()->read(
+                _trx, token,
+                [&](LocalDocumentId const&, VPackSlice doc) {
+                  TRI_ASSERT(doc.get("_key").stringView() == key);
+                  stats.incrScannedIndex(1);
+                  // copying...
+                  if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                    if (!_vertexProjections.empty()) {
+                      // TODO: This does one unnecessary copy.
+                      // We should be able to move the Projection into the
+                      // AQL value.
+                      transaction::BuilderLeaser builder(_trx);
+                      {
+                        VPackObjectBuilder guard(builder.get());
+                        _vertexProjections.toVelocyPackFromDocument(*builder,
+                                                                    doc, _trx);
+                      }
+                      result = aql::AqlValue(builder->slice());
+                    } else {
+                      result = aql::AqlValue(doc);
+                    }
+                  } else if constexpr (std::is_same_v<ResultType,
+                                                      velocypack::Builder>) {
+                    if (!_vertexProjections.empty()) {
+                      VPackObjectBuilder guard(&result);
+                      _vertexProjections.toVelocyPackFromDocument(result, doc,
+                                                                  _trx);
+                    } else {
+                      result.add(doc);
+                    }
+                  }
+                  return true;
+                },
+                ReadOwnWrites::no);
+
+            return myResult.ok();
+          });
+
+          if (!foundVertex) {
             if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-              if (!_vertexProjections.empty()) {
-                // TODO: This does one unnecessary copy.
-                // We should be able to move the Projection into the
-                // AQL value.
-                transaction::BuilderLeaser builder(_trx);
-                {
-                  VPackObjectBuilder guard(builder.get());
-                  _vertexProjections.toVelocyPackFromDocument(*builder, doc,
-                                                              _trx);
-                }
-                result = aql::AqlValue(builder->slice());
-              } else {
-                result = aql::AqlValue(doc);
-              }
+              result = aql::AqlValue(VPackSlice::nullSlice());
             } else if constexpr (std::is_same_v<ResultType,
                                                 velocypack::Builder>) {
-              if (!_vertexProjections.empty()) {
-                VPackObjectBuilder guard(&result);
-                _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
-              } else {
-                result.add(doc);
-              }
+              result.add(VPackSlice::nullSlice());
             }
-            return true;
-          });
-      if (res.ok()) {
-        return true;
-      }
+          }
 
-      if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // ok we are in a rather bad state. Better throw and abort.
-        THROW_ARANGO_EXCEPTION(res);
+          return true;
+        } else {
+          // ONLY COLOR
+          std::string_view key(
+              transaction::helpers::extractKeyPart(id.stringView()));
+          bool foundVertex = false;
+          std::ignore =
+              _indexIterator.get()->rearm(_indexCondition, _tmpVar, {});
+
+          _indexIterator.get()->allCovering([&](LocalDocumentId const& token,
+                                                IndexIteratorCoveringData&
+                                                    covering) {
+            auto collection = _indexIterator.get()->collection();
+
+            auto myResult = collection->getPhysical()->read(
+                _trx, token,
+                [&](LocalDocumentId const&, VPackSlice doc) {
+                  // We're getting multiple documents here (fine for color only
+                  // index)
+                  if (doc.get("_key").stringView() == key) {
+                    TRI_ASSERT(!foundVertex);
+                    foundVertex = true;
+                    stats.incrScannedIndex(1);
+                    // copying...
+                    if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                      if (!_vertexProjections.empty()) {
+                        // TODO: This does one unnecessary copy.
+                        // We should be able to move the Projection into the
+                        // AQL value.
+                        transaction::BuilderLeaser builder(_trx);
+                        {
+                          VPackObjectBuilder guard(builder.get());
+                          _vertexProjections.toVelocyPackFromDocument(
+                              *builder, doc, _trx);
+                        }
+                        result = aql::AqlValue(builder->slice());
+                      } else {
+                        result = aql::AqlValue(doc);
+                      }
+                    } else if constexpr (std::is_same_v<ResultType,
+                                                        velocypack::Builder>) {
+                      if (!_vertexProjections.empty()) {
+                        VPackObjectBuilder guard(&result);
+                        _vertexProjections.toVelocyPackFromDocument(result, doc,
+                                                                    _trx);
+                      } else {
+                        result.add(doc);
+                      }
+                    }
+                    return true;
+                  }
+                  return false;
+                },
+                ReadOwnWrites::no);
+
+            return myResult.ok();
+          });
+
+          if (!foundVertex) {
+            if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+              result = aql::AqlValue(VPackSlice::nullSlice());
+            } else if constexpr (std::is_same_v<ResultType,
+                                                velocypack::Builder>) {
+              result.add(VPackSlice::nullSlice());
+            }
+          }
+
+          return true;
+        }
+      } else {
+        // ORIGINAL CODE
+        transaction::AllowImplicitCollectionsSwitcher disallower(
+            _trx->state()->options(), _allowImplicitCollections);
+
+        Result res = _trx->documentFastPathLocal(
+            collectionName,
+            id.substr(collectionNameResult.get().second + 1).stringView(),
+            [&](LocalDocumentId const&, VPackSlice doc) -> bool {
+              stats.incrScannedIndex(1);
+              // copying...
+              if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                if (!_vertexProjections.empty()) {
+                  // TODO: This does one unnecessary copy.
+                  // We should be able to move the Projection into the
+                  // AQL value.
+                  transaction::BuilderLeaser builder(_trx);
+                  {
+                    VPackObjectBuilder guard(builder.get());
+                    _vertexProjections.toVelocyPackFromDocument(*builder, doc,
+                                                                _trx);
+                  }
+                  result = aql::AqlValue(builder->slice());
+                } else {
+                  result = aql::AqlValue(doc);
+                }
+              } else if constexpr (std::is_same_v<ResultType,
+                                                  velocypack::Builder>) {
+                if (!_vertexProjections.empty()) {
+                  VPackObjectBuilder guard(&result);
+                  _vertexProjections.toVelocyPackFromDocument(result, doc,
+                                                              _trx);
+                } else {
+                  result.add(doc);
+                }
+              }
+              return true;
+            });
+        if (res.ok()) {
+          return true;
+        }
+
+        if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // ok we are in a rather bad state. Better throw and abort.
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     } catch (basics::Exception const& ex) {
       if (isWithClauseMissing(ex)) {
@@ -293,7 +527,8 @@ bool RefactoredTraverserCache::appendVertex(
   std::string const& collectionName = collectionNameResult.get().first;
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
-    if (findDocumentInShard(collectionName)) {
+    bool found = findDocumentInShard(collectionName);
+    if (found) {
       return true;
     }
   } else {

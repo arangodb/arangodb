@@ -37,6 +37,8 @@
 
 namespace arangodb {
 
+class IndexIterator;
+
 namespace transaction {
 class Methods;
 }
@@ -50,6 +52,8 @@ namespace aql {
 struct AqlValue;
 class QueryContext;
 class TraversalStats;
+struct AstNode;
+struct Variable;
 }  // namespace aql
 
 namespace graph {
@@ -64,6 +68,9 @@ struct EdgeDocumentToken;
 class RefactoredTraverserCache {
  public:
   enum EdgeReadType { ONLYID, DOCUMENT, ID_DOCUMENT };
+  // PROTO START
+  enum IndexLookupType { DEFAULT = 0, COLOR = 1, COLORANDKEY = 2 };
+  // PROTO END
 
   RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
@@ -157,6 +164,10 @@ class RefactoredTraverserCache {
   ResultT<std::pair<std::string, size_t>> extractCollectionName(
       velocypack::HashedStringRef const& idHashed) const;
 
+  // PROTO START
+  std::string typeToString(IndexLookupType type) const;
+  // PROTO END
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
@@ -197,6 +208,14 @@ class RefactoredTraverserCache {
 
   /// @brief Projections on edge data, responsibility is with BaseOptions
   aql::Projections const& _edgeProjections;
+
+  // PROTOTYPE START
+  arangodb::aql::AstNode* _keyCompareNode;
+  IndexLookupType _vertexFilterLookupType;
+  std::unique_ptr<arangodb::IndexIterator> _indexIterator;
+  aql::AstNode* _indexCondition;
+  aql::Variable* _tmpVar;
+  // PROTOTYPE END
 };
 
 }  // namespace graph

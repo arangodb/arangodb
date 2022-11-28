@@ -283,6 +283,7 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
         res.combine(ValidationResult::Type::PRUNE);
       } else {
+        //LOG_DEVEL << "FILTER_AND_PRUNE for: " << step.toString();
         return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
       }
     }

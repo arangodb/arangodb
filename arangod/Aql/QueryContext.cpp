@@ -78,8 +78,8 @@ QueryContext::~QueryContext() {
 }
 
 Collections& QueryContext::collections() {
-  TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION ||
-             ClusterEngine::Mocking);
+  /*TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION ||
+             ClusterEngine::Mocking);*/ // TODO: Remove comment later, do not push.
   return _collections;
 }
 
