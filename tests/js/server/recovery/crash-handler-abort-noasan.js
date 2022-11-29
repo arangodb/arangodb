@@ -95,7 +95,7 @@ function recoverySuite () {
           let arr = line.split(' ');
           let file = arr[all.length - 1];
           print(`deleting coredump: ${file}`);
-          fs.remove(arr[file);
+          fs.remove(file);
         }
       });
       assertTrue(matches > 0, lines);
