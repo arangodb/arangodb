@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/Result.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -51,29 +52,39 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   void start() override;
   void stop() override;
 
+  // track the refill of the specified keys
   void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
                    IndexId iid, std::vector<std::string> keys);
 
+  // schedule the refill of the full index
+  void scheduleFullIndexRefill(std::string const& database,
+                               std::string const& collection, IndexId iid);
+
+  // maximum capacity for tracking per-key refills
   size_t maxCapacity() const noexcept;
+
+  // auto-refill in-memory cache after every insert/update/replace operation
   bool autoRefill() const noexcept;
+
+  // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
 
  private:
   void stopThread();
 
   // build the initial data in _indexFillTasks
-  void buildIndexRefillTasks();
+  void buildStartupIndexRefillTasks();
 
   // post as many as possible index fill tasks to the scheduler.
   // note: this will only post up to at most _maxConcurrentIndexFillTasks
   // to the scheduler. the method may post index fill tasks to the scheduler
-  // that will at their end call queueIndexRefillTasks() again, i.e.
+  // that will at their end call scheduleIndexRefillTasks() again, i.e.
   // the method can indirectly schedule itself.
-  void queueIndexRefillTasks();
+  void scheduleIndexRefillTasks();
 
   // actually fill the specified index cache
-  void warmupIndex(std::string const& database, std::string const& collection,
-                   IndexId iid);
+  Result warmupIndex(std::string const& database, std::string const& collection,
+                     IndexId iid);
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)

@@ -40,26 +40,8 @@ namespace arangodb {
 class DatabaseFeature;
 class RocksDBEdgeIndex;
 
-class RocksDBEdgeIndexWarmupTask {
- public:
-  RocksDBEdgeIndexWarmupTask(DatabaseFeature& databaseFeature,
-                             std::string const& dbName,
-                             std::string const& collectionName, IndexId iid,
-                             rocksdb::Slice lower, rocksdb::Slice upper);
-  Result run();
-
- private:
-  DatabaseFeature& _databaseFeature;
-  std::string const _dbName;
-  std::string const _collectionName;
-  IndexId const _iid;
-  std::string const _lower;
-  std::string const _upper;
-};
-
 class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexLookupIterator;
-  friend class RocksDBEdgeIndexWarmupTask;
 
  public:
   static uint64_t HashForKey(rocksdb::Slice const& key);
@@ -110,8 +92,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
-  // warm up the index caches
-  Result scheduleWarmup() override;
+  // warm up the index cache
+  Result warmup() override;
 
   void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
 

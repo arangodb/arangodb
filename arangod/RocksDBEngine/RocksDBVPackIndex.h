@@ -68,22 +68,7 @@ enum class RocksDBVPackIndexSearchValueFormat : uint8_t {
   kIn,
 };
 
-class RocksDBVPackIndexWarmupTask {
- public:
-  RocksDBVPackIndexWarmupTask(DatabaseFeature& databaseFeature,
-                              std::string const& dbName,
-                              std::string const& collectionName, IndexId iid);
-  Result run();
-
- private:
-  DatabaseFeature& _databaseFeature;
-  std::string const _dbName;
-  std::string const _collectionName;
-  IndexId const _iid;
-};
-
 class RocksDBVPackIndex : public RocksDBIndex {
-  friend class RocksDBVPackIndexWarmupTask;
   template<bool unique, bool reverse, bool mustCheckBounds>
   friend class RocksDBVPackIndexIterator;
   friend class RocksDBVPackIndexInIterator;
@@ -122,8 +107,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not the index has estimates
   bool hasEstimates() const noexcept { return _estimates; }
 
-  // warm up the index caches
-  Result scheduleWarmup() override;
+  // warm up the index cache
+  Result warmup() override;
 
   Index::FilterCosts supportsFilterCondition(
       transaction::Methods& trx,

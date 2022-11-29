@@ -439,7 +439,7 @@ class Index {
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
   virtual bool canWarmup() const noexcept;
-  virtual Result scheduleWarmup();
+  virtual Result warmup();
 
   static size_t sortWeight(aql::AstNode const* node);
 

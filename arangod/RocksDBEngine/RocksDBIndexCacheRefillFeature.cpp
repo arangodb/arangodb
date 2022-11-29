@@ -24,8 +24,10 @@
 #include "RocksDBIndexCacheRefillFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -47,7 +49,7 @@ using namespace arangodb;
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
       _maxCapacity(128 * 1024),
-      _maxConcurrentIndexFillTasks(2),
+      _maxConcurrentIndexFillTasks(3),
       _autoRefill(false),
       _fillOnStartup(false),
       _currentlyRunningIndexFillTasks(0) {
@@ -126,8 +128,8 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 
   if (_fillOnStartup) {
-    buildIndexRefillTasks();
-    queueIndexRefillTasks();
+    buildStartupIndexRefillTasks();
+    scheduleIndexRefillTasks();
   }
 }
 
@@ -153,6 +155,18 @@ void RocksDBIndexCacheRefillFeature::trackRefill(
   }
 }
 
+void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(
+    std::string const& database, std::string const& collection, IndexId iid) {
+  {
+    // create new refill task
+    std::unique_lock lock(_indexFillTasksMutex);
+    _indexFillTasks.emplace_back(IndexFillTask{database, collection, iid});
+  }
+
+  // schedule them
+  scheduleIndexRefillTasks();
+}
+
 void RocksDBIndexCacheRefillFeature::stopThread() {
   if (_refillThread == nullptr) {
     return;
@@ -167,7 +181,7 @@ void RocksDBIndexCacheRefillFeature::stopThread() {
   _refillThread.reset();
 }
 
-void RocksDBIndexCacheRefillFeature::buildIndexRefillTasks() {
+void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   auto& df = server().getFeature<DatabaseFeature>();
@@ -199,7 +213,7 @@ void RocksDBIndexCacheRefillFeature::buildIndexRefillTasks() {
   }
 }
 
-void RocksDBIndexCacheRefillFeature::queueIndexRefillTasks() {
+void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   std::unique_lock lock(_indexFillTasksMutex);
@@ -219,11 +233,21 @@ void RocksDBIndexCacheRefillFeature::queueIndexRefillTasks() {
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW, [this, task = std::move(task)]() {
           if (!server().isStopping()) {
+            Result res;
             try {
-              warmupIndex(task.database, task.collection, task.iid);
-            } catch (...) {
+              res = warmupIndex(task.database, task.collection, task.iid);
+            } catch (basics::Exception const& ex) {
+              res = {ex.code(), ex.what()};
+            } catch (std::exception const& ex) {
               // warmup is best effort, so we do not care much if it fails and
               // why
+              res = {TRI_ERROR_INTERNAL, ex.what()};
+            }
+            if (res.fail()) {
+              LOG_TOPIC("91c13", WARN, Logger::ENGINES)
+                  << "unable to warmup index '" << task.iid.id() << "' in "
+                  << task.database << "/" << task.collection << ": "
+                  << res.errorMessage();
             }
           }
 
@@ -239,7 +263,7 @@ void RocksDBIndexCacheRefillFeature::queueIndexRefillTasks() {
 
           if (hasMore) {
             // queue next index refilling tasks
-            queueIndexRefillTasks();
+            scheduleIndexRefillTasks();
           }
         });
 
@@ -248,9 +272,8 @@ void RocksDBIndexCacheRefillFeature::queueIndexRefillTasks() {
   }
 }
 
-void RocksDBIndexCacheRefillFeature::warmupIndex(std::string const& database,
-                                                 std::string const& collection,
-                                                 IndexId iid) {
+Result RocksDBIndexCacheRefillFeature::warmupIndex(
+    std::string const& database, std::string const& collection, IndexId iid) {
   auto& df = server().getFeature<DatabaseFeature>();
 
   DatabaseGuard guard(df, database);
@@ -258,7 +281,7 @@ void RocksDBIndexCacheRefillFeature::warmupIndex(std::string const& database,
   auto c =
       guard.database().useCollection(collection, /*checkPermissions*/ false);
   if (c == nullptr) {
-    return;
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
 
   auto releaser = scopeGuard(
@@ -267,20 +290,17 @@ void RocksDBIndexCacheRefillFeature::warmupIndex(std::string const& database,
   auto indexes = c->getIndexes();
   for (auto const& index : indexes) {
     if (index->id() == iid) {
+      // found the correct index
+      TRI_ASSERT(index->canWarmup());
+
       LOG_TOPIC("7dc37", INFO, Logger::ENGINES)
           << "warming up index '" << iid.id() << "' in " << database << "/"
           << collection;
 
-      // found the correct index
-      TRI_ASSERT(index->canWarmup());
-      Result res = index->scheduleWarmup();
       // warmup is best effort, so we do not care much if it fails
-      if (res.fail()) {
-        LOG_TOPIC("69f0e", WARN, Logger::ENGINES)
-            << "warming up index '" << iid.id() << "' in " << database << "/"
-            << collection << " failed: " << res.errorMessage();
-      }
-      break;
+      return index->warmup();
     }
   }
+
+  return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
 }

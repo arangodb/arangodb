@@ -32,7 +32,6 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/cpu-relax.h"
 #include "Cache/CachedValue.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
@@ -40,7 +39,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -54,14 +53,10 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionGuard.h"
-#include "Utils/DatabaseGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -1160,39 +1155,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   bool _mustSeek;
 };
 
-RocksDBVPackIndexWarmupTask::RocksDBVPackIndexWarmupTask(
-    DatabaseFeature& databaseFeature, std::string const& dbName,
-    std::string const& collectionName, IndexId iid)
-    : _databaseFeature(databaseFeature),
-      _dbName(dbName),
-      _collectionName(collectionName),
-      _iid(iid) {}
-
-Result RocksDBVPackIndexWarmupTask::run() {
-  DatabaseGuard databaseGuard(_databaseFeature, _dbName);
-  CollectionGuard collectionGuard(&databaseGuard.database(), _collectionName);
-
-  auto ctx = transaction::StandaloneContext::Create(databaseGuard.database());
-  SingleCollectionTransaction trx(ctx, *collectionGuard.collection(),
-                                  AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  auto indexes = collectionGuard.collection()->getIndexes();
-  for (auto const& idx : indexes) {
-    if (idx->id() != _iid) {
-      continue;
-    }
-
-    static_cast<RocksDBVPackIndex*>(idx.get())->warmupInternal(&trx);
-  }
-
-  return trx.commit();
-}
-
 uint64_t RocksDBVPackIndex::HashForKey(rocksdb::Slice const& key) {
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
@@ -1328,30 +1290,27 @@ void RocksDBVPackIndex::toVelocyPack(
   builder.close();
 }
 
-Result RocksDBVPackIndex::scheduleWarmup() {
+Result RocksDBVPackIndex::warmup() {
   if (!hasCache()) {
     return {};
+  }
+
+  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
+  SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    return res;
   }
 
   auto rocksColl = toRocksDBCollection(_collection);
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
-
   _cache->sizeHint(expectedCount);
 
-  auto& df = _collection.vocbase().server().getFeature<DatabaseFeature>();
-  auto task = std::make_shared<RocksDBVPackIndexWarmupTask>(
-      df, _collection.vocbase().name(), _collection.name(), id());
-  SchedulerFeature::SCHEDULER->queue(
-      RequestLane::INTERNAL_LOW, [task = std::move(task)]() {
-        Result res = task->run();
-        if (res.fail()) {
-          LOG_TOPIC("08528", WARN, Logger::ENGINES)
-              << "unable to run index warmup: " << res.errorMessage();
-        };
-      });
+  warmupInternal(&trx);
 
-  return {};
+  return trx.commit();
 }
 
 /// @brief helper function to insert a document into any index type
