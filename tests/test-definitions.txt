@@ -16,7 +16,7 @@ replication_ongoing_frompresent parallelity=3 single -- --extraArgs:log.level re
 replication_ongoing_global priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_static priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-replication_sync priority=8000 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 single 
 http_replication priority=500 parallelity=3 single
 
