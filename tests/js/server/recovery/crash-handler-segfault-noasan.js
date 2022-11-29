@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertMatch */
+/* global assertEqual, assertTrue, assertMatch, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for crash handler
@@ -93,7 +93,7 @@ function recoverySuite () {
         });
         if (line.search('93315') >= 0) {
           let arr = line.split(' ');
-          let file = arr[all.length - 1];
+          let file = arr[arr.length - 1];
           print(`deleting coredump: ${file}`);
           fs.remove(file);
         }
