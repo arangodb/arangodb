@@ -53,7 +53,6 @@ struct Variable;
 }  // namespace aql
 
 class LogicalCollection;
-class DatabaseFeature;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 
