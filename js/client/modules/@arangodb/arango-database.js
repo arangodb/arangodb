@@ -61,7 +61,7 @@ const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoP
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
-
+ 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief key regex
 // //////////////////////////////////////////////////////////////////////////////
@@ -69,32 +69,29 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.\(\)\+,=;\$!\*'%])+$/;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief append the waitForSync parameter to a URL
+// / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendSyncParameter = function (url, waitForSync) {
-  if (waitForSync) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    } else {
+let appendBoolParameter = function (url, name, val, onlyIfSet = false) {
+  if (!onlyIfSet || (val !== undefined && val !== null)) {
+    if (url.includes('?')) {
       url += '&';
+    } else {
+      url += '?';
     }
-    url += 'waitForSync=true';
+    url += name + (val ? '=true' : '=false');
   }
   return url;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief append some boolean parameter to a URL
+// / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendBoolParameter = function (url, name, val) {
-  if (url.indexOf('?') === -1) {
-    url += '?';
-  } else {
-    url += '&';
+let appendSyncParameter = function (url, waitForSync) {
+  if (waitForSync) {
+    url = appendBoolParameter(url, 'waitForSync', waitForSync);
   }
-  url += name + (val ? '=true' : '=false');
   return url;
 };
 
@@ -933,7 +930,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
-  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -1014,7 +1011,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
-  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {
