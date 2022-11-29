@@ -255,9 +255,10 @@ function CommunicationSuite() {
 
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
+      c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
-        docs.push({ value: i });
+        docs.push({ value: i , new_value: [{nested_1: [{nested_2: i.toString()}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -322,15 +323,15 @@ function GenericAqlSetupPathSuite(type) {
   const selectExclusiveQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: ""}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: "a"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: "b"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "d"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "v"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -340,15 +341,15 @@ function GenericAqlSetupPathSuite(type) {
   const selectWriteQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "q"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "s"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "f"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "q"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "m"}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
         default:
         // Illegal Test
         assertEqual(true, false);
@@ -381,7 +382,7 @@ function GenericAqlSetupPathSuite(type) {
       const db = require("@arangodb").db;
       const col = db.${twoShardColName};
       for (let i = 0; i < ${docsPerWrite}; ++i) {
-        col.save({});
+        col.save({b: [{c: [{d: i.toString()}]}]});
       }
     }
   `;
@@ -425,7 +426,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj);
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "aaa"}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -446,7 +447,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: "bbb"}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -486,7 +487,7 @@ function GenericAqlSetupPathSuite(type) {
   const documentWrite = `
     const docs = [];
     for (let i = 0; i < ${docsPerWrite}; ++i) {
-      docs.push({});
+      docs.push({b: [{c: [{d: i.toString()}]}]});
     }
     db["${twoShardColName}"].save(docs);
   `;
@@ -495,7 +496,7 @@ function GenericAqlSetupPathSuite(type) {
     const cmd = `
     (function() {
         ${command}
-        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1 });
+        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1, b: [{c: [{d: "qwerty"}]}] });
     })();
     `;
 
@@ -663,19 +664,30 @@ function GenericAqlSetupPathSuite(type) {
         case "NamedGraph": {
           // We create a graph with a single vertex that has a self reference.
           const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
-          const v = g[vertexName].save({ _key: "a" });
-          g[edgeName].save({ _from: v._id, _to: v._id });
+          const v = g[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'bar'}]}] });
+          g[edgeName].save({ _from: v._id, _to: v._id, "b": [{"c": [{"d": 'foo'}]}] });
           break;
         }
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
-          db._createView(viewName, "arangosearch", { links: { [vertexName]: { includeAllFields: true } } });
-          db[vertexName].save({ _key: "a" });
+          db._createView(viewName, "arangosearch", { links: { [vertexName]: { 
+              includeAllFields: true, 
+              fields: {
+                "b": {
+                  "nested": {
+                    "c": {
+                      "nested": "d"
+                    }
+                  }
+                }
+              } 
+            }}});
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobar'}]}] });
           break;
         }
         case "Satellite": {
           db._create(vertexName, { replicationFactor: "satellite" });
-          db[vertexName].save({ _key: "a" });
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobuz'}]}] });
           break;
         }
       }
