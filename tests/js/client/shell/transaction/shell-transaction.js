@@ -4643,7 +4643,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"));
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(`${cn}/test`, err.original._id);
           assertEqual("test", err.original._key);
           // the conflicting document is not yet committed, so we cannot provide a revision
@@ -4670,7 +4670,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: k2; indexed values: ["test"]`));
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: k2; indexed values: ["test"]`), err.errorMessage);
           assertEqual(`${cn}/k2`, err.original._id);
           assertEqual("k2", err.original._key);
           // the conflicting document is not yet committed, so we cannot provide a revision
@@ -4699,7 +4699,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"));
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(doc._id, err.original._id);
           assertEqual(doc._key, err.original._key);
           assertEqual(doc._rev, err.original._rev);
@@ -4728,7 +4728,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`));
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`), err.errorMessage);
           assertEqual(doc2._key, err.original._key);
           assertEqual(doc2._id, err.original._id);
           assertEqual(doc2._rev, err.original._rev);
@@ -4756,7 +4756,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"));
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(doc._id, err.original._id);
           assertEqual(doc._key, err.original._key);
           assertEqual(doc._rev, err.original._rev);
@@ -4784,7 +4784,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: test2; indexed values: ["der fux"]`));
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: test2; indexed values: ["der fux"]`), err.errorMessage);
           assertEqual(`${cn}/test2`, err.original._id);
           assertEqual("test2", err.original._key);
           assertEqual("", err.original._rev);
@@ -4812,7 +4812,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"));
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(doc._id, err.original._id);
           assertEqual(doc._key, err.original._key);
           assertEqual(doc._rev, err.original._rev);
@@ -4841,7 +4841,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`));
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`), err.errorMessage);
           assertEqual(doc2._id, err.original._id);
           assertEqual(doc2._key, err.original._key);
           assertEqual(doc2._rev, err.original._rev);
@@ -4869,7 +4869,7 @@ function transactionOverlapSuite(dbParams) {
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.includes("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"));
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(doc._id, err.original._id);
           assertEqual(doc._key, err.original._key);
           assertEqual(doc._rev, err.original._rev);
