@@ -3629,9 +3629,8 @@ Result RocksDBEngine::updateReplicatedState(
   auto key = RocksDBKey{};
   key.constructReplicatedState(vocbase.id(), info.stateId);
 
-  VPackBuilder valueBuilder;
-  velocypack::serialize(valueBuilder, info);
-  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
+  auto slice = velocypack::serialize(info);
+  auto value = RocksDBValue::ReplicatedLog(slice.slice());
 
   rocksdb::WriteOptions opts;
   auto s = _db->GetRootDB()->Put(
