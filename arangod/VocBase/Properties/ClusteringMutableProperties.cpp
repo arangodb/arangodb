@@ -97,15 +97,20 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
       }
     }
 
-    if (!isSatellite() && writeConcern.has_value() &&
-        replicationFactor.value() < writeConcern.value()) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "writeConcern must not be higher than replicationFactor"};
-    }
-    if (isSatellite()) {
-      if (writeConcern != 1ull) {
+    if (writeConcern.has_value()) {
+      if (!isSatellite() && replicationFactor.value() < writeConcern.value()) {
         return {TRI_ERROR_BAD_PARAMETER,
-                "For a satellite collection writeConcern must not be set"};
+                "writeConcern must not be higher than replicationFactor"};
+      }
+      if (isSatellite()) {
+        // NOTE: Some APIS set writeConcern 1
+        // Some set writeConcern 0
+        // In order to support backwards compatibility
+        // we allow both here. IMO 1 is correct.
+        if (writeConcern.value() > 1ull) {
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "For a satellite collection writeConcern must not be set"};
+        }
       }
     }
   }
