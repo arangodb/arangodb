@@ -494,7 +494,9 @@ function StatementSuite () {
         query : "FOR i IN 1..2000 RETURN i",
         ttl : 0.00001,
         batchSize : 1000, // default
-        stream : true // server module only uses cursors for streaming queries
+        options: {
+          stream : true, // server module only uses cursors for streaming queries
+        }
       });
       var docs = [ ];
       try {

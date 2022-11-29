@@ -205,6 +205,54 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function with options
+////////////////////////////////////////////////////////////////////////////////
+
+testQueryOptionsTtlError : function () {
+  var result = db._query("FOR i IN 1..2000 RETURN i", { }, {
+    ttl : 0.00001,
+    batchSize : 1000, // default
+  }, {
+    stream : true // server module only uses cursors for streaming queries
+  });
+  var docs = [ ];
+  try {
+    while (result.hasNext()) {
+      docs.push(result.next());
+    }
+    result = true;
+    fail();
+  } catch (e) {
+    assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
+  }
+},
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test _query function with options
+////////////////////////////////////////////////////////////////////////////////
+
+testQueryOptionsObjectTtlError : function () {
+  var result = db._query({
+    query : "FOR i IN 1..2000 RETURN i",
+    ttl : 0.00001,
+    batchSize : 1000, // default
+    options: {
+      stream : true, // server module only uses cursors for streaming queries
+    }
+  });
+  var docs = [ ];
+  try {
+    while (result.hasNext()) {
+      docs.push(result.next());
+    }
+    result = true;
+    fail();
+  } catch (e) {
+    assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
+  }
+},
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test query helper
 ////////////////////////////////////////////////////////////////////////////////
 
