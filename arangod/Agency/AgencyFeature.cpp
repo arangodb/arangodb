@@ -157,24 +157,24 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::OnAgent));
 
   options
-      ->addOption(
-          "--agency.supervision-delay-add-follower",
-          "delay in supervision, before an AddFollower job is executed [s]",
-          new UInt64Parameter(&_supervisionDelayAddFollower),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent))
+      ->addOption("--agency.supervision-delay-add-follower",
+                  "The delay in supervision, before an AddFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayAddFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
       .setIntroducedIn(30906)
       .setIntroducedIn(31002);
 
   options
-      ->addOption(
-          "--agency.supervision-delay-failed-follower",
-          "delay in supervision, before a FailedFollower job is executed [s]",
-          new UInt64Parameter(&_supervisionDelayFailedFollower),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent))
+      ->addOption("--agency.supervision-delay-failed-follower",
+                  "The delay in supervision, before a FailedFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayFailedFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
       .setIntroducedIn(30906)
       .setIntroducedIn(31002);
 
