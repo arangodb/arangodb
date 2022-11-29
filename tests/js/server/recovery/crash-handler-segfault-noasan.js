@@ -30,6 +30,7 @@
 
 var internal = require('internal');
 var jsunity = require('jsunity');
+const fs = require('fs');
 
 function runSetup () {
   'use strict';
@@ -90,6 +91,12 @@ function recoverySuite () {
             ++matches;
           }
         });
+        if (line.search('93315') >= 0) {
+          let arr = line.split(' ');
+          let file = arr[all.length - 1];
+          print(`deleting coredump: ${file}`);
+          fs.remove(arr[file);
+        }
       });
       assertTrue(matches > 0, lines);
     }
