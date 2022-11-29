@@ -59,7 +59,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   #ReplicatedLog/UpdateParticipantsFlags.cpp
   #ReplicatedLog/UpdateReplicatedLogTests.cpp
   #ReplicatedLog/WaitForSyncTest.cpp
-  #ReplicatedState/DocumentStateMachineTest.cpp
+  ReplicatedState/DocumentStateMachineTest.cpp
   #ReplicatedState/FollowerResignTest.cpp
   #ReplicatedState/FollowerSnapshotTest.cpp
   #ReplicatedState/FollowerWaitForTest.cpp
