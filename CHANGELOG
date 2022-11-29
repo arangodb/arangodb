@@ -6,6 +6,8 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.8.
 
+* Deleted customizable Pregel (AIR) and Greenspun library
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 

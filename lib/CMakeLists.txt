@@ -255,28 +255,6 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-################################################################################
-## LIB_ARANGO_AIR_SOURCES
-################################################################################
-
-set(LIB_ARANGO_AIR_SOURCES
-  Greenspun/Interpreter.cpp
-  Greenspun/Primitives.cpp
-  Greenspun/lib/DateTime.cpp
-  Greenspun/lib/Math.cpp
-  Greenspun/lib/Strings.cpp
-  Greenspun/lib/Lists.cpp
-  Greenspun/lib/Lists.h
-  Greenspun/lib/Dicts.cpp
-  Greenspun/lib/Dicts.h)
-
-add_library(arango_greenspun STATIC
-        ${LIB_ARANGO_AIR_SOURCES})
-
-target_link_libraries(arango_greenspun immer)
-target_link_libraries(arango_greenspun arango)
-target_link_libraries(arango_greenspun date_interface)
-
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
