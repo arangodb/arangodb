@@ -65,13 +65,13 @@ function recoverySuite () {
 
       assertTrue(fs.isFile(crashFile), crashFile);
 
-      let platform = internal.platform;
-      if (platform !== 'linux') {
-        // crash handler only available on Linux
-        return;
-      }
-
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
+        if (line.search('93315') >= 0) {
+          let arr = line.split(' ');
+          let file = arr[arr.length - 1];
+          print(`deleting coredump: ${file}`);
+          fs.remove(file);
+        }
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
@@ -91,12 +91,6 @@ function recoverySuite () {
             ++matches;
           }
         });
-        if (line.search('93315') >= 0) {
-          let arr = line.split(' ');
-          let file = arr[arr.length - 1];
-          print(`deleting coredump: ${file}`);
-          fs.remove(file);
-        }
       });
       assertTrue(matches > 0, lines);
     }
