@@ -78,6 +78,10 @@ ArangoStatement.prototype.execute = function () {
       opts.cache = this._cache;
     }
 
+    if (this._batchSize !== undefined) {
+      opts.batchSize = this._batchSize;
+    }
+
     if (this._ttl !== undefined) {
       opts.ttl = this._ttl;
     }

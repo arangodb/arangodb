@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, fail, arango */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -130,6 +130,36 @@ function StatementSuite () {
 
       var result = st.execute().toArray();
       assertEqual(3, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructWithOptions : function () {
+      var query = "for v in @values return v";
+      var bind = { values: [ 1, 2, 3 ] };
+      var st = db._createStatement({
+        query: query,
+        bindVars: bind,
+        count: true,
+        cache: true,
+        stream: true,
+        batchSize: 42,
+        ttl: 4.2,
+        options: {
+          allowDirtyReads: true
+        }
+      });
+
+      assertEqual(bind, st._bindVars);
+      assertTrue(st._doCount);
+      assertTrue(st._cache);
+      assertTrue(st._stream);
+      assertEqual(42, st._batchSize);
+      assertEqual(4.2, st._ttl);
+      assertNotUndefined(st._options);
+      assertTrue(st._options.allowDirtyReads);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -452,6 +482,30 @@ function StatementSuite () {
         fail();
       } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteOptionsTtlError : function () {
+      var st = db._createStatement({
+        query : "FOR i IN 1..2000 RETURN i",
+        ttl : 0.00001,
+        batchSize : 1000, // default
+        stream : true // server module only uses cursors for streaming queries
+      });
+      var docs = [ ];
+      try {
+        var result = st.execute();
+        while (result.hasNext()) {
+          docs.push(result.next());
+        }
+        result = true;
+        fail();
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
       }
     },
 
