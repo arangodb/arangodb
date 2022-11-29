@@ -38,8 +38,9 @@ struct ThreadAsyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
   std::mutex mutex;
   std::condition_variable cv;
   std::vector<Func> queue;
-  std::thread thread;
   bool stopping{false};
+  // initialize thread last, so the thread cannot access uninitialized members
+  std::thread thread;
 };
 
 struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
