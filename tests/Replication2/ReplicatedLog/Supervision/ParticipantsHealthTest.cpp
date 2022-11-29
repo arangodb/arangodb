@@ -23,7 +23,7 @@
 #include <gtest/gtest.h>
 #include <variant>
 
-#include <fmt/core.h>
+#include "fmt/core.h"
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"

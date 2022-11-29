@@ -72,11 +72,16 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   std::shared_ptr<FollowerTermInformation> termInfo =
       std::make_shared<FollowerTermInformation>();
 
-  testing::StrictMock<ReplicatedStateHandleMock> stateHandle;
+  std::unique_ptr<testing::StrictMock<ReplicatedStateHandleMock>> stateHandle =
+      std::make_unique<testing::StrictMock<ReplicatedStateHandleMock>>();
 
-  std::shared_ptr<refactor::FollowerManager> follower =
-      std::make_shared<refactor::FollowerManager>(methods.getMethods(), nullptr,
-                                                  termInfo, options);
+  auto makeFollowerManager() {
+    return std::make_shared<refactor::FollowerManager>(
+        methods.getMethods(), std::move(stateHandle), termInfo, options);
+  }
 };
 
-TEST_F(AppendEntriesFollowerTest, no_test) {}
+TEST_F(AppendEntriesFollowerTest, no_test) {
+  EXPECT_CALL(*stateHandle, becomeFollower).Times(1);
+  auto follower = makeFollowerManager();
+}
