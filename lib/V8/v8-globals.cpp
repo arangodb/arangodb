@@ -86,6 +86,7 @@ TRI_v8_global_t::TRI_v8_global_t(
       ErrorKey(),
       ErrorMessageKey(),
       ErrorNumKey(),
+      OriginalKey(),
       HeadersKey(),
       HttpOnlyKey(),
       IdKey(),
@@ -193,6 +194,7 @@ TRI_v8_global_t::TRI_v8_global_t(
   ErrorKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "error"));
   ErrorMessageKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "errorMessage"));
   ErrorNumKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "errorNum"));
+  OriginalKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "original"));
   HeadersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "headers"));
   HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "httpOnly"));
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "id"));
