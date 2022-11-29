@@ -79,6 +79,7 @@ struct LogIndex {
   friend auto operator<=>(LogIndex const&, LogIndex const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
+  auto operator+=(std::uint64_t delta) -> LogIndex&;
 
   friend auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
