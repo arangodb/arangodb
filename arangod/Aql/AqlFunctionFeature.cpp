@@ -506,12 +506,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"SCHEMA_GET", ".", validationFlags, &functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &functions::SchemaValidate});
 
-  // Call AIR. not usable in analyzers
-  add({"CALL_GREENSPUN", ".|+",
-       Function::makeFlags(FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::CallGreenspun});
-
   // special flags:
   // deterministic, not cacheable. only on coordinator. not in analyzers
   add({"VERSION", "", Function::makeFlags(FF::Deterministic),
