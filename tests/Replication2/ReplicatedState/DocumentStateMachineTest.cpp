@@ -24,20 +24,14 @@
 #include <gmock/gmock.h>
 
 #include "Inspection/VPack.h"
-#include "Mocks/Servers.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-
-#include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
-#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
-
 #include "Transaction/Manager.h"
 #include "velocypack/Value.h"
 
@@ -46,8 +40,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
-
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
 struct MockDatabaseGuard : IDatabaseGuard {
   MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));
@@ -78,40 +70,6 @@ struct MockDocumentStateTransaction : IDocumentStateTransaction {
   MOCK_METHOD(Result, abort, (), (override));
 };
 
-struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
-  explicit MockDocumentStateTransactionHandler(
-      std::shared_ptr<IDocumentStateTransactionHandler> real)
-      : _real(std::move(real)) {
-    ON_CALL(*this, applyEntry(testing::_))
-        .WillByDefault([this](DocumentLogEntry doc) {
-          return _real->applyEntry(std::move(doc));
-        });
-    ON_CALL(*this, ensureTransaction(testing::_))
-        .WillByDefault([this](DocumentLogEntry const& doc)
-                           -> std::shared_ptr<IDocumentStateTransaction> {
-          return _real->ensureTransaction(doc);
-        });
-    ON_CALL(*this, removeTransaction(testing::_))
-        .WillByDefault([this](TransactionId tid) {
-          return _real->removeTransaction(tid);
-        });
-    ON_CALL(*this, getUnfinishedTransactions())
-        .WillByDefault([this]() -> TransactionMap const& {
-          return _real->getUnfinishedTransactions();
-        });
-  }
-
-  MOCK_METHOD(Result, applyEntry, (DocumentLogEntry doc), (override));
-  MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, ensureTransaction,
-              (DocumentLogEntry const& doc), (override));
-  MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
-  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
-              (const, override));
-
- private:
-  std::shared_ptr<IDocumentStateTransactionHandler> _real;
-};
-
 struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
   MOCK_METHOD(std::shared_ptr<velocypack::Builder>, getCollectionPlan,
               (std::string const&), (override));
@@ -139,14 +97,7 @@ struct MockDocumentStateNetworkHandler : IDocumentStateNetworkHandler {
 };
 
 struct DocumentStateMachineTest : testing::Test {
-  DocumentStateMachineTest() {
-    feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              handlersFactoryMock,
-                                              transactionManagerMock);
-  }
-
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
+  DocumentStateMachineTest() {}
 
   std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
       handlersFactoryMock = std::make_shared<
@@ -227,12 +178,6 @@ struct DocumentStateMachineTest : testing::Test {
     Mock::VerifyAndClearExpectations(transactionMock.get());
   }
 
-  tests::mocks::MockRestServer mockApplicationServer =
-      tests::mocks::MockRestServer();
-  std::unique_ptr<SupervisedScheduler> scheduler =
-      std::make_unique<SupervisedScheduler>(
-          DocumentStateMachineTest::mockApplicationServer.server(), 2, 64, 128,
-          1024 * 1024, 4096, 4096, 128, 0.0);
   const std::string collectionId = "testCollectionID";
   static constexpr LogId logId = LogId{1};
   const std::string dbName = "testDB";
@@ -242,50 +187,6 @@ struct DocumentStateMachineTest : testing::Test {
   const document::DocumentCoreParameters coreParams{collectionId, dbName};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
-};
-
-// struct MockReplicatedStateHandle : replicated_log::IReplicatedStateHandle {
-//   MOCK_METHOD(std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>,
-//               resignCurrentState, (), (noexcept));
-//   MOCK_METHOD(void, leadershipEstablished,
-//               (std::unique_ptr<IReplicatedLogLeaderMethods>), ());
-//   MOCK_METHOD(void, becomeFollower,
-//               (std::unique_ptr<IReplicatedLogFollowerMethods>), ());
-//   MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex), ());
-//   MOCK_METHOD(void, updateCommitIndex, (LogIndex), ());
-//   MOCK_METHOD(std::optional<replicated_state::StateStatus>, getStatus, (),
-//               (const));
-//   MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>,
-//               getFollower, (), (const));
-//   MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>,
-//               getLeader, (), (const));
-//   MOCK_METHOD(void, dropEntries, (), ());
-// };
-
-struct MockReplicatedLogLeaderMethods : IReplicatedLogLeaderMethods {
-  // base methods
-  MOCK_METHOD(void, releaseIndex, (LogIndex), ());
-  MOCK_METHOD(InMemoryLog, getLogSnapshot, (), ());
-  MOCK_METHOD(ILogParticipant::WaitForFuture, waitFor, (LogIndex), ());
-  MOCK_METHOD(ILogParticipant::WaitForIteratorFuture, waitForIterator,
-              (LogIndex), ());
-
-  // leader methods
-  MOCK_METHOD(LogIndex, insert, (LogPayload), ());
-  MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
-              (LogPayload), ());
-};
-
-struct MockReplicatedLogFollowerMethods : IReplicatedLogFollowerMethods {
-  // base methods
-  MOCK_METHOD(void, releaseIndex, (LogIndex), ());
-  MOCK_METHOD(InMemoryLog, getLogSnapshot, (), ());
-  MOCK_METHOD(ILogParticipant::WaitForFuture, waitFor, (LogIndex), ());
-  MOCK_METHOD(ILogParticipant::WaitForIteratorFuture, waitForIterator,
-              (LogIndex), ());
-
-  // follower methods
-  MOCK_METHOD(Result, snapshotCompleted, (), ());
 };
 
 struct MockProducerStream : streams::ProducerStream<DocumentLogEntry> {
@@ -452,6 +353,41 @@ TEST_F(DocumentStateMachineTest,
 
 // TODO What does this test test? Rewrite it.
 #if 0
+
+struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
+  explicit MockDocumentStateTransactionHandler(
+      std::shared_ptr<IDocumentStateTransactionHandler> real)
+      : _real(std::move(real)) {
+    ON_CALL(*this, applyEntry(testing::_))
+        .WillByDefault([this](DocumentLogEntry doc) {
+          return _real->applyEntry(std::move(doc));
+        });
+    ON_CALL(*this, ensureTransaction(testing::_))
+        .WillByDefault([this](DocumentLogEntry const& doc)
+                           -> std::shared_ptr<IDocumentStateTransaction> {
+          return _real->ensureTransaction(doc);
+        });
+    ON_CALL(*this, removeTransaction(testing::_))
+        .WillByDefault([this](TransactionId tid) {
+          return _real->removeTransaction(tid);
+        });
+    ON_CALL(*this, getUnfinishedTransactions())
+        .WillByDefault([this]() -> TransactionMap const& {
+          return _real->getUnfinishedTransactions();
+        });
+  }
+
+  MOCK_METHOD(Result, applyEntry, (DocumentLogEntry doc), (override));
+  MOCK_METHOD(std::shared_ptr<IDocumentStateTransaction>, ensureTransaction,
+              (DocumentLogEntry const& doc), (override));
+  MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
+  MOCK_METHOD(TransactionMap const&, getUnfinishedTransactions, (),
+              (const, override));
+
+ private:
+  std::shared_ptr<IDocumentStateTransactionHandler> _real;
+};
+
 TEST_F(DocumentStateMachineTest, leader_follower_integration) {
   using namespace testing;
 
