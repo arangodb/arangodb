@@ -110,7 +110,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
 
   options
       ->addOption(
-          "--rocksdb.auto-refill-index-cache-queue-capacity",
+          "--rocksdb.auto-refill-index-caches-queue-capacity",
           "Maximum capacity for automatic in-memory index cache refill queue.",
           new options::SizeTParameter(&_maxCapacity),
           options::makeFlags(options::Flags::DefaultNoComponents,
