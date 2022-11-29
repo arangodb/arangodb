@@ -53,7 +53,6 @@
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "Geo/Utils.h"
-#include "Greenspun/Interpreter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchPDP.h"
@@ -9159,34 +9158,6 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   builder->close();
   return AqlValue(builder->slice(), builder->size());
-}
-
-AqlValue functions::CallGreenspun(aql::ExpressionContext* expressionContext,
-                                  AstNode const&,
-                                  VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &expressionContext->trx();
-  greenspun::Machine m;
-  greenspun::InitMachine(m);
-
-  transaction::BuilderLeaser programBuilder(trx);
-  {
-    VPackArrayBuilder array(programBuilder.builder());
-    for (size_t p = 0; p < parameters.size(); p++) {
-      programBuilder->add(extractFunctionParameterValue(parameters, p).slice());
-    }
-  }
-
-  transaction::BuilderLeaser resultBuilder(trx);
-  auto result =
-      greenspun::Evaluate(m, programBuilder->slice(), *resultBuilder.builder());
-
-  if (result) {
-    return AqlValue(resultBuilder->slice(), resultBuilder->size());
-  } else {
-    auto msg = result.error().toString();
-    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
-    return AqlValue(AqlValueHintNull());
-  }
 }
 
 static void buildKeyObject(VPackBuilder& builder, std::string_view key,
