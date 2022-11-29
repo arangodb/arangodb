@@ -88,7 +88,7 @@ struct PrototypeLeaderState
                          std::unique_ptr<PrototypeCore> core)
         : self(self), core(std::move(core)), nextWaitForIndex{1} {};
 
-    [[nodiscard]] auto resetAndApplyEntries(std::unique_ptr<EntryIterator> ptr)
+    [[nodiscard]] auto recoverState(std::unique_ptr<EntryIterator> ptr)
         -> DeferredAction;
 
     [[nodiscard]] auto applyEntries(LogIndex upToIndex) -> DeferredAction;

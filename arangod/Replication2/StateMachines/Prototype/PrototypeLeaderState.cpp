@@ -45,6 +45,7 @@ auto PrototypeLeaderState::resign() && noexcept
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
     }
+    data.core->resetOngoingStates();
     return std::move(data.core);
   });
 }
@@ -57,7 +58,7 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         if (data.didResign()) {
           return {Result{TRI_ERROR_CLUSTER_NOT_LEADER}, DeferredAction{}};
         }
-        auto resolvePromises = data.resetAndApplyEntries(std::move(ptr));
+        auto resolvePromises = data.recoverState(std::move(ptr));
         return std::make_pair(Result{TRI_ERROR_NO_ERROR},
                               std::move(resolvePromises));
       });
@@ -286,14 +287,8 @@ void PrototypeLeaderState::handlePollResult(
       });
 }
 
-auto PrototypeLeaderState::GuardedData::resetAndApplyEntries(
+auto PrototypeLeaderState::GuardedData::recoverState(
     std::unique_ptr<EntryIterator> ptr) -> DeferredAction {
-  // Restore the latest valid ongoing state.
-  auto fromIndex = ptr->range().from;
-  core->update(fromIndex);
-  core->resetOngoingStates();
-
-  // Apply the rest of entries to the state machine.
   auto upToIndex = ptr->range().to;
   core->applyEntries(std::move(ptr));
   return applyEntries(upToIndex);
