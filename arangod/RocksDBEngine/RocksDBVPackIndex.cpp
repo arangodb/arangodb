@@ -1704,6 +1704,7 @@ Result RocksDBVPackIndex::insertUnique(
 
   Result res;
 
+  RocksDBKey const* failedKey = nullptr;
   // unique indexes have a different key structure
   for (RocksDBKey const& key : elements) {
     if (!isIndexCreation) {
@@ -1722,6 +1723,7 @@ Result RocksDBVPackIndex::insertUnique(
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       } else if (!s.IsNotFound()) {
+        failedKey = &key;
         res.reset(rocksutils::convertStatus(s));
         break;
       }
@@ -1760,7 +1762,21 @@ Result RocksDBVPackIndex::insertUnique(
         THROW_ARANGO_EXCEPTION(readResult);
       }
     } else {
-      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
+      addErrorMsg(res);
+      res.withError([&doc, failedKey](result::Error& err) {
+        auto documentKey = doc.get(StaticStrings::KeyString).stringView();
+        if (!documentKey.empty()) {
+          err.appendErrorMessage("; document key: ");
+          err.appendErrorMessage(documentKey);
+        }
+        if (failedKey) {
+          auto slice = ::lookupValueFromSlice(failedKey->string());
+          err.appendErrorMessage("; indexed values: ");
+          err.appendErrorMessage(
+              VPackSlice{reinterpret_cast<uint8_t const*>(slice.data())}
+                  .toJson());
+        }
+      });
     }
   }
   return res;

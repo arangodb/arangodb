@@ -77,6 +77,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/ComputedValues.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -687,8 +688,12 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
   // _rev
-  char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
+  if (rid.isSet()) {
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
+  } else {
+    builder.add(StaticStrings::RevString, std::string_view{});
+  }
 
   // _oldRev
   if (oldRid.isSet()) {
@@ -1482,18 +1487,18 @@ Future<OperationResult> transaction::Methods::insertLocal(
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
           replicationType != ReplicationType::FOLLOWER) {
         // if possible we want to provide information about the conflicting
-        // document, so we need another lookup. However, theoretically it is
-        // possible that the document has been deleted by now.
-        auto lookupRes = collection->getPhysical()->lookupKeyForUpdate(
-            this, key, lookupResult);
-        if (lookupRes.ok() && lookupResult.second.isSet()) {
-          buildDocumentIdentity(*collection, resultBuilder, cid, key,
-                                lookupResult.second, RevisionId::none(),
-                                nullptr, nullptr);
-        }
+        // document, so we need another lookup. However, it is possible that the
+        // other transaction has not been committed yet, or that the document
+        // has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key, lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        return collection->getPhysical()->primaryIndex()->addErrorMsg(res, key);
       }
-
-      return collection->getPhysical()->primaryIndex()->addErrorMsg(res, key);
+      return res;
     }
 
     std::ignore =
@@ -1570,6 +1575,14 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
 
     if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
+          replicationType != ReplicationType::FOLLOWER) {
+        // this indicates a write-write conflict while updating some unique
+        // index
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              oldRevisionId, RevisionId::none(), nullptr,
+                              nullptr);
+      }
       // intentionally do not fill replicationData here
       return res;
     }
@@ -1912,6 +1925,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     Result res = collection->getPhysical()->lookupKeyForUpdate(
         this, key.stringView(), lookupResult);
     if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        // if possible we want to provide information about the conflicting
+        // document, so we need another lookup. However, it is possible that the
+        // other transaction has not been committed yet, or that the document
+        // has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key.stringView(), lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key.stringView(),
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        return collection->getPhysical()->primaryIndex()->addErrorMsg(
+            res, key.stringView());
+      }
       return res;
     }
 
@@ -1941,6 +1968,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        // this indicates a write-write conflict while updating some unique
+        // index
         TRI_ASSERT(oldRevisionId.isSet());
         buildDocumentIdentity(
             *collection, resultBuilder, cid, key.stringView(), oldRevisionId,
@@ -2285,6 +2314,20 @@ Future<OperationResult> transaction::Methods::removeLocal(
     Result res =
         collection->getPhysical()->lookupKeyForUpdate(this, key, lookupResult);
     if (res.fail()) {
+      // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
+          replicationType != ReplicationType::FOLLOWER) {
+        // if possible we want to provide information about the conflicting
+        // document, so we need another lookup. However, theoretically it is
+        // possible that the document has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key, lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        return collection->getPhysical()->primaryIndex()->addErrorMsg(res, key);
+      }
       return res;
     }
 
@@ -2310,8 +2353,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
     res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,
                             previousDocumentBuilder->slice(), options);
 
-    if ((res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) ||
-        (res.ok() && !options.silent)) {
+    // we should never get a conflict here since the key is already locked
+    // earlier, and in case of a remove there cannot be any conflicts on unique
+    // index entries.
+    TRI_ASSERT(!res.is(TRI_ERROR_ARANGO_CONFLICT));
+
+    if (res.ok() && !options.silent) {
       TRI_ASSERT(oldRevisionId.isSet());
       buildDocumentIdentity(
           *collection, resultBuilder, cid, key, oldRevisionId,
