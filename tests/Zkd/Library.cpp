@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 #include <functional>
-
+#include <algorithm>
 #include "Zkd/ZkdHelper.h"
 
 #include <rocksdb/comparator.h>

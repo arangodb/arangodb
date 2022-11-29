@@ -97,6 +97,7 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.expectAsserts = false;
   }
 
   destructor(cleanup) {
@@ -276,6 +277,9 @@ class instanceManager {
     }
   }
 
+  nonfatalAssertSearch() {
+    this.expectAsserts = true;
+  }
   launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
@@ -994,7 +998,7 @@ class instanceManager {
       });
     }
     this.arangods.forEach(arangod => {
-      arangod.readAssertLogLines();
+      arangod.readAssertLogLines(this.expectAsserts);
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1267,9 +1271,17 @@ class instanceManager {
   findEndpoint() {
     let endpoint = this.endpoint;
     if (this.options.vst) {
-      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      }
     } else if (this.options.http2) {
-      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      }
     }
     print("using endpoint ", endpoint);
     return endpoint;

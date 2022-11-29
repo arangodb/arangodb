@@ -37,9 +37,9 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include <filesystem>
 
 #include <atomic>
+#include <filesystem>
 
 namespace arangodb {
 
@@ -65,37 +65,22 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   LinkLock _linkLock;  // should be first field to destroy last
   irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
+  bool _wasCommit = false;
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
       : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
-    if (_removals.empty()) {
-      return;  // nothing to do
+    if (!_wasCommit) {
+      _removals.clear();
+      _ctx.reset();
     }
-    try {
-      // hold references even after transaction
-      auto filter =
-          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
-      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
-    } catch (std::exception const& e) {
-      LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals: "
-          << e.what();
-    } catch (...) {
-      LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals";
-    }
+    TRI_ASSERT(_removals.empty());
   }
 
   void remove(StorageEngine& engine, LocalDocumentId const& value,
               bool nested) {
     _ctx.remove(_removals.emplace(engine, value, nested));
-  }
-
-  void reset() noexcept {
-    _removals.clear();
-    _ctx.reset();
   }
 };
 
@@ -388,7 +373,8 @@ class IResearchDataStore {
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -490,9 +476,8 @@ class IResearchDataStore {
   std::mutex _commitMutex;
 
   // for insert(...)/remove(...)
-  std::function<void(transaction::Methods&)> _trxPreCommit;
-  std::function<void(transaction::Methods&, transaction::Status)>
-      _trxStatusChange;
+  TransactionState::BeforeCommitCallback _beforeCommitCallback;
+  TransactionState::AfterCommitCallback _afterCommitCallback;
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
@@ -502,7 +487,7 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
   std::atomic_uint64_t _cleanupTimeNum{0};
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
   std::atomic_uint64_t _consolidationTimeNum{0};
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};

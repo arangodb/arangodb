@@ -40,20 +40,6 @@ add_definitions("-DHAS_REMOTE_API=0")
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
-if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
-  if (DARWIN)
-    set(LIB_ASM_SOURCES Basics/crc1.S)
-  else()
-    set(LIB_ASM_SOURCES Basics/crc5.S)
-  endif()
-
-  add_definitions("-DENABLE_ASM_CRC32=1")
-  message(STATUS "Will compile in hand-optimized assembler code for CRC32.")
-else()
-  add_definitions("-DENABLE_ASM_CRC32=0")
-  message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
-endif()
-
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
@@ -79,12 +65,13 @@ add_library(arango STATIC
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  Assertions/AssertionLogger.cpp
+  Assertions/AssertionConditionalLogger.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
@@ -208,12 +195,14 @@ target_link_libraries(arango PUBLIC
   boost_system
   boost_boost
   arango_static_strings
+  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
+  absl::crc32c
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
@@ -291,3 +280,5 @@ target_link_libraries(arango_greenspun date_interface)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
+add_subdirectory(CrashHandler)
+add_subdirectory(Assertions)
