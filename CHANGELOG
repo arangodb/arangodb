@@ -1,6 +1,12 @@
 devel
 -----
 
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_bytes_received`
+    `arangodb_client_user_connection_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 
