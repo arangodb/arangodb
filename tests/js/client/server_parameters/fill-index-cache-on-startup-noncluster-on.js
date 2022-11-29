@@ -44,6 +44,8 @@ if (runSetup === true) {
   }
   c.insert(docs);
   c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], cacheEnabled: true });
+  // index without a cache
+  c.ensureIndex({ type: "persistent", fields: ["value2"] });
   return true;
 }
 
@@ -111,6 +113,18 @@ function FillIndexCacheOnStartup() {
       // is only best effort.
       let stats = crsr.getExtra().stats;
       assertTrue(stats.cacheHits > 0, stats);
+    },
+    
+    testCacheResultVPackUnindexField: function() {
+      const q = `FOR i IN 0..9999 FOR doc IN ${cn} FILTER doc.value2 == i RETURN doc._key`;
+      let crsr = db._query(q);
+      let res = crsr.toArray();
+      assertEqual(10000, res.length);
+      res.forEach((val, i) => {
+        assertEqual(val, 'test' + i);
+      });
+      let stats = crsr.getExtra().stats;
+      assertEqual(0, stats.cacheHits);
     },
 
   };
