@@ -1,6 +1,8 @@
 devel
 -----
 
+* Deleted customizable Pregel (AIR) and Greenspun library
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 
