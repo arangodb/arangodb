@@ -45,7 +45,7 @@ void serialize(Builder& builder, T& value) {
 template<class T>
 [[nodiscard]] auto serialize(T& value) -> SharedSlice {
   auto builder = Builder();
-  serialize(builder, value);
+  serialize<T>(builder, value);
   return std::move(builder).sharedSlice();
 }
 
