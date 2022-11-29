@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -106,6 +107,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // whether or not in-memory cache values for indexes are automatically
   // populated on server start
   bool _fillOnStartup;
+
+  // total number of full index refills completed
+  metrics::Counter& _totalFullIndexRefills;
 
   // protects _indexFillTasks and _currentlyRunningIndexFillTasks
   std::mutex _indexFillTasksMutex;

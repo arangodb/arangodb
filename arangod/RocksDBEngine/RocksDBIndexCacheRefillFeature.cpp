@@ -25,12 +25,15 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/BootstrapFeature.h"
@@ -46,18 +49,37 @@
 
 using namespace arangodb;
 
+namespace {
+size_t defaultConcurrentIndexFillTasks() {
+  size_t n = NumberOfCores::getValue();
+  if (n >= 16) {
+    return n >> 3U;
+  }
+  return 1;
+}
+
+}  // namespace
+
+DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
+                "Total number of completed full index cache refills");
+
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
       _maxCapacity(128 * 1024),
-      _maxConcurrentIndexFillTasks(3),
+      _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
       _fillOnStartup(false),
+      _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_full_index_refills_total{})),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
   startsAfter<BootstrapFeature>();
   startsAfter<DatabaseFeature>();
   startsAfter<RocksDBEngine>();
+
+  // default value must be at least 1, as the minimum allowed value is also 1.
+  TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
 }
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
@@ -77,7 +99,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
       .setIntroducedIn(30906);
 
   options
-      ->addOption("--rocksdb.auto-refill-index-caches",
+      ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
                   "Automatically (re-)fill in-memory index cache entries upon "
                   "insert/update/replace.",
                   new options::BooleanParameter(&_autoRefill),
@@ -99,7 +121,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
   options
       ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
                   "Maximum number of concurrent index fill tasks at startup.",
-                  new options::SizeTParameter(&_maxConcurrentIndexFillTasks),
+                  new options::SizeTParameter(&_maxConcurrentIndexFillTasks,
+                                              /*minValue*/ 1),
                   options::makeFlags(options::Flags::DefaultNoComponents,
                                      options::Flags::OnDBServer,
                                      options::Flags::OnSingle))
@@ -248,6 +271,8 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
                   << "unable to warmup index '" << task.iid.id() << "' in "
                   << task.database << "/" << task.collection << ": "
                   << res.errorMessage();
+            } else {
+              ++_totalFullIndexRefills;
             }
           }
 
@@ -293,7 +318,7 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
       // found the correct index
       TRI_ASSERT(index->canWarmup());
 
-      LOG_TOPIC("7dc37", INFO, Logger::ENGINES)
+      LOG_TOPIC("7dc37", DEBUG, Logger::ENGINES)
           << "warming up index '" << iid.id() << "' in " << database << "/"
           << collection;
 
