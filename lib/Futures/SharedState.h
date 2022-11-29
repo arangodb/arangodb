@@ -173,8 +173,8 @@ class SharedState {
         }
         [[fallthrough]];
       default:
-        break;
         TRI_ASSERT(false);  // unexpected state
+        break;
     }
   }
 
