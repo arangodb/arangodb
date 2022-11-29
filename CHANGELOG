@@ -1,6 +1,8 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
+
 * Fixed SEARCH-408 Added "cache" columns feature for ArangoSearch.
 
 * Fixed SEARCH-427 Fixed Inverted index usage of field with trackListPositions
