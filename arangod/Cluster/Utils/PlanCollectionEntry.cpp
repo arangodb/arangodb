@@ -67,7 +67,7 @@ VPackBuilder PlanCollectionEntry::toVPackDeprecated() const {
   // NOTE this is just a deprecated Helper that will be replaced by inspect as
   // soon as inspector feature is merged
   VPackBuilder props;
-  velocypack::serialize(props, _properties, InspectAgencyContext{});
+  velocypack::serializeWithContext(props, _properties, InspectAgencyContext{});
   VPackBuilder flags;
   if (_buildingFlags.has_value()) {
     velocypack::serialize(flags, _buildingFlags.value());

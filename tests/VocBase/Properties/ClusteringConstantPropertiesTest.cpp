@@ -79,7 +79,7 @@ class ClusteringConstantPropertiesTest : public ::testing::Test {
 
   static VPackBuilder serialize(ClusteringConstantProperties testee) {
     VPackBuilder result;
-    velocypack::serialize(result, testee, InspectUserContext{});
+    velocypack::serializeWithContext(result, testee, InspectUserContext{});
     return result;
   }
 };
@@ -138,7 +138,7 @@ TEST_F(ClusteringConstantPropertiesTest, test_distributeShardsLikeUserContext) {
   props.distributeShardsLike = "test";
   props.distributeShardsLikeCid = "42";
   VPackBuilder serial;
-  velocypack::serialize(serial, props, InspectUserContext{});
+  velocypack::serializeWithContext(serial, props, InspectUserContext{});
   ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
   ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
   EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),
@@ -151,7 +151,7 @@ TEST_F(ClusteringConstantPropertiesTest,
   props.distributeShardsLike = "test";
   props.distributeShardsLikeCid = "42";
   VPackBuilder serial;
-  velocypack::serialize(serial, props, InspectAgencyContext{});
+  velocypack::serializeWithContext(serial, props, InspectAgencyContext{});
   ASSERT_TRUE(serial.slice().hasKey("distributeShardsLike"));
   ASSERT_TRUE(serial.slice().get("distributeShardsLike").isString());
   EXPECT_EQ(serial.slice().get("distributeShardsLike").copyString(),

@@ -50,7 +50,7 @@ template<class T>
 }
 
 template<class T, class Context>
-void serialize(Builder& builder, T& value, Context const& context) {
+void serializeWithContext(Builder& builder, T& value, Context const& context) {
   inspection::VPackSaveInspector<Context> inspector(builder, context);
   if (auto res = inspector.apply(value); !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -61,9 +61,10 @@ void serialize(Builder& builder, T& value, Context const& context) {
 }
 
 template<class T, class Context>
-[[nodiscard]] auto serialize(T& value, Context const& context) -> SharedSlice {
+[[nodiscard]] auto serializeWithContext(T& value, Context const& context)
+    -> SharedSlice {
   auto builder = Builder();
-  serialize(builder, value, context);
+  serializeWithContext(builder, value, context);
   return std::move(builder).sharedSlice();
 }
 

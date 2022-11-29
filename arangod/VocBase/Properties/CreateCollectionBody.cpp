@@ -116,7 +116,8 @@ CreateCollectionBody::toCreateCollectionProperties(
 arangodb::velocypack::Builder CreateCollectionBody::toCollectionsCreate()
     const {
   arangodb::velocypack::Builder builder;
-  arangodb::velocypack::serialize(builder, *this, InspectUserContext{});
+  arangodb::velocypack::serializeWithContext(builder, *this,
+                                             InspectUserContext{});
   // TODO: This is a hack to erase attributes that are not expected by follow up
   // APIS, it should be obsolete after refactoring is completed
   std::vector<std::string> attributesToErase{};

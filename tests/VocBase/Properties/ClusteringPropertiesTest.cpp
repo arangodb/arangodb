@@ -106,7 +106,7 @@ class ClusteringPropertiesTest : public ::testing::Test {
 
   static VPackBuilder serialize(ClusteringProperties testee) {
     VPackBuilder result;
-    velocypack::serialize(result, testee, InspectUserContext{});
+    velocypack::serializeWithContext(result, testee, InspectUserContext{});
     return result;
   }
 
