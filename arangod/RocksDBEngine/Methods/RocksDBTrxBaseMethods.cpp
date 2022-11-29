@@ -37,7 +37,7 @@
 using namespace arangodb;
 
 RocksDBTrxBaseMethods::RocksDBTrxBaseMethods(
-    RocksDBTransactionState const* state, IRocksDBTransactionCallback& callback,
+    RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
     rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state), _callback(callback), _db(db) {
   TRI_ASSERT(!_state->isReadOnlyTransaction());
@@ -323,7 +323,20 @@ void RocksDBTrxBaseMethods::createTransaction() {
   _rocksTransaction = _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
 }
 
-arangodb::Result RocksDBTrxBaseMethods::doCommit() {
+Result RocksDBTrxBaseMethods::doCommit() {
+  // We need to call callbacks always, even if hasOperations() == false,
+  // because it is like this in recovery
+  TRI_ASSERT(_state != nullptr);
+  _state->applyBeforeCommitCallbacks();
+  auto r = doCommitImpl();
+  if (r.ok()) {
+    TRI_ASSERT(_state != nullptr);
+    _state->applyAfterCommitCallbacks();
+  }
+  return r;
+}
+
+Result RocksDBTrxBaseMethods::doCommitImpl() {
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumPuts() == 0 &&
@@ -340,7 +353,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     // }
     // don't write anything if the transaction is empty
 #endif
-    return Result();
+    return {};
   }
 
   // we may need to block intermediate commits
@@ -457,6 +470,5 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
       return RocksDBSyncThread::sync(engine.db()->GetBaseDB());
     }
   }
-
-  return Result();
+  return {};
 }

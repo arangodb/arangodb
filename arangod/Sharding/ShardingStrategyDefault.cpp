@@ -137,7 +137,7 @@ uint64_t hashByAttributesImpl(VPackSlice slice,
                               std::span<std::string const> attributes,
                               bool docComplete, ErrorCode& error,
                               std::string_view key) {
-  uint64_t hashval = TRI_FnvHashBlockInitial();
+  uint64_t hashval = kFnvHashBlockInitial;
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
 
@@ -301,7 +301,7 @@ ErrorCode ShardingStrategyHashBase::getResponsibleShard(
     static constexpr size_t magicLength = 52;
 
     // To improve our hash function result:
-    hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
+    hashval = FnvHashBlock(hashval, magicPhrase, magicLength);
     shardID = _shards[hashval % _shards.size()];
   }
   return res;

@@ -57,18 +57,25 @@ DatabasePathFeature::DatabasePathFeature(Server& server)
 
 void DatabasePathFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--database.directory", "path to the database directory",
-                     new StringParameter(&_directory));
+  options
+      ->addOption("--database.directory", "The path to the database directory.",
+                  new StringParameter(&_directory))
+      .setLongDescription(R"(This defines the location where all data of a
+server is stored.
+
+Make sure the directory is writable by the arangod process. You should further
+not use a database directory which is provided by a network filesystem such as
+NFS. The reason is that networked filesystems might cause inconsistencies when
+there are multiple parallel readers or writers or they lack features required by
+arangod, e.g. `flock()`.)");
 
   options->addOption(
       "--database.required-directory-state",
-      "required state of database directory at startup "
-      "(non-existing: database directory must not exist, existing: database "
-      "directory must exist, "
-      "empty: database directory must exist but be empty, "
-      "populated: database directory must exist and contain specific files "
-      "already, "
-      "any: any state allowed)",
+      "The required state of the database directory at startup "
+      "(non-existing: the database directory must not exist, existing: the"
+      "database directory must exist, empty: the database directory must exist "
+      "but be empty, populated: the database directory must exist and contain "
+      "specific files already, any: any state is allowed)",
       new DiscreteValuesParameter<StringParameter>(
           &_requiredDirectoryState,
           std::unordered_set<std::string>{"any", "non-existing", "existing",

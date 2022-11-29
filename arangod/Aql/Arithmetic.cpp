@@ -23,9 +23,6 @@
 
 #include "Arithmetic.h"
 
-#include <algorithm>
-#include <limits>
-
 namespace {
 
 /// @brief returns whether or not the string is empty
@@ -45,8 +42,7 @@ bool isEmptyString(char const* p, size_t length) noexcept {
 
 }  // namespace
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 double stringToNumber(std::string const& value, bool& failed) noexcept {
   failed = false;
@@ -70,55 +66,4 @@ double stringToNumber(std::string const& value, bool& failed) noexcept {
   return 0.0;
 }
 
-template<typename T>
-bool isUnsafeAddition(T l, T r) {
-  return ((r > 0 && l > (std::numeric_limits<T>::max)() - r) ||
-          (r < 0 && l < (std::numeric_limits<T>::min)() - r));
-}
-
-template<typename T>
-bool isUnsafeSubtraction(T l, T r) {
-  return ((r > 0 && l < (std::numeric_limits<T>::min)() + r) ||
-          (r < 0 && l > (std::numeric_limits<T>::max)() + r));
-}
-
-template<typename T>
-bool isUnsafeMultiplication(T l, T r) {
-  if (l > 0) {
-    if (r > 0) {
-      if (l > ((std::numeric_limits<T>::max)() / r)) {
-        return true;
-      }
-    } else {
-      if (r < ((std::numeric_limits<T>::min)() / l)) {
-        return true;
-      }
-    }
-  } else {
-    if (r > 0) {
-      if (l < ((std::numeric_limits<T>::min)() / r)) {
-        return true;
-      }
-    } else {
-      if ((l != 0) && (r < ((std::numeric_limits<T>::max)() / l))) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-template<typename T>
-bool isUnsafeDivision(T l, T r) {
-  // note: the caller still has to check whether r is zero (division by zero)
-  return (l == (std::numeric_limits<T>::min)() && r == -1);
-}
-
-template bool isUnsafeAddition<int64_t>(int64_t l, int64_t r);
-template bool isUnsafeSubtraction<int64_t>(int64_t l, int64_t r);
-template bool isUnsafeMultiplication<int64_t>(int64_t l, int64_t r);
-template bool isUnsafeDivision<int64_t>(int64_t l, int64_t r);
-
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
