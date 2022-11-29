@@ -185,20 +185,6 @@ void TelemetricsFeature::start() {
   if (isInsert) {
     _latestUpdate = static_cast<uint64_t>(rightNowAbs);
   }
-  // if (auto timeDiff = std::chrono::duration_cast<std::chrono::hours>(
-  if (auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::duration<double, std::milli>(rightNowAbs -
-                                                    _latestUpdate));
-      timeDiff.count() >= _interval) {
-    _telemetricsEnqueue(false);
-    LOG_DEVEL << "it's passed " << timeDiff.count() << " hours";
-  } else {
-    LOG_DEVEL << "diff is " << timeDiff.count();
-    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW, timeDiff, _telemetricsEnqueue);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = std::move(workItem);
-  }
 
   _telemetricsEnqueue = [this, ctx, isInsert](bool cancelled) {
     if (cancelled) {
@@ -214,6 +200,21 @@ void TelemetricsFeature::start() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
   };
+
+  // if (auto timeDiff = std::chrono::duration_cast<std::chrono::hours>(
+  if (auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::duration<double, std::milli>(rightNowAbs -
+                                                    _latestUpdate));
+      timeDiff.count() >= _interval) {
+    _telemetricsEnqueue(false);
+    LOG_DEVEL << "it's passed " << timeDiff.count() << " hours";
+  } else {
+    LOG_DEVEL << "diff is " << timeDiff.count();
+    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+        arangodb::RequestLane::INTERNAL_LOW, timeDiff, _telemetricsEnqueue);
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem = std::move(workItem);
+  }
 }
 
 }  // namespace arangodb::metrics
