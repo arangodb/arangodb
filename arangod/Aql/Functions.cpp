@@ -119,6 +119,8 @@
 #include <arpa/inet.h>
 #endif
 
+#include <absl/crc/crc32c.h>
+
 using namespace arangodb;
 using namespace basics;
 using namespace aql;
@@ -894,6 +896,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
     if (ignoreError) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ||
           res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD ||
           res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }
@@ -5439,8 +5443,8 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
-
-  uint32_t crc = TRI_Crc32HashPointer(buffer->data(), buffer->length());
+  auto const crc = static_cast<uint32_t>(
+      absl::ComputeCrc32c(std::string_view{buffer->data(), buffer->length()}));
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
   return AqlValue(&out[0], length);
@@ -5457,7 +5461,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
 
   ::appendAsString(vopts, adapter, value);
 
-  uint64_t hashval = TRI_FnvHashPointer(buffer->data(), buffer->length());
+  uint64_t hashval = FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
@@ -7014,7 +7018,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
       AqlValueMaterializer materializer(vopts);
       VPackSlice idSlice = materializer.slice(id, false);
       builder->openArray();
-      for (auto const& next : VPackArrayIterator(idSlice)) {
+      for (auto next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;

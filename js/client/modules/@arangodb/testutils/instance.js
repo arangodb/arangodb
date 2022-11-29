@@ -518,7 +518,7 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
 
-  readAssertLogLines () {
+  readAssertLogLines (expectAsserts) {
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
@@ -544,6 +544,9 @@ class instance {
               print("ERROR: " + line);
             }
             this.assertLines.push(line);
+            if (!expectAsserts) {
+              crashUtils.GDB_OUTPUT += line + '\n';
+            }
           }
         }
       }
@@ -766,6 +769,9 @@ class instance {
   // / @brief periodic checks whether spawned arangod processes are still alive
   // //////////////////////////////////////////////////////////////////////////////
   checkArangoAlive () {
+    if (this.pid === null) {
+      return false;
+    }
     const res = statusExternal(this.pid, false);
     const running = res.status === 'RUNNING';
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
@@ -779,10 +785,10 @@ class instance {
       if (!this.hasOwnProperty('message')) {
         this.message = '';
       }
-      let msg = ' ArangoD of role [' + this.name + '] with PID ' + this.pid + ' is gone';
+      let msg = ` ArangoD of role [${this.name}] with PID ${this.pid} is gone by: ${JSON.stringify(res)}`;
       print(Date() + msg + ':');
       this.message += (this.message.length === 0) ? '\n' : '' + msg + ' ';
-      if (!this.hasOwnProperty('exitStatus')) {
+      if (!this.hasOwnProperty('exitStatus') || (this.exitStatus === null)) {
         this.exitStatus = res;
       }
       print(this.getStructure());
@@ -794,14 +800,15 @@ class instance {
            (platform.substr(0, 3) === 'win')
           )
          ) {
-        this.exitStatus = res;
         msg = 'health Check Signal(' + res.signal + ') ';
         this.analyzeServerCrash(msg);
         this.serverCrashedLocal = true;
         this.message += msg;
         msg = " checkArangoAlive: Marking crashy";
+        pu.serverCrashed = true;
         this.message += msg;
         print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+        this.pid = null;
       }
     }
     return ret;

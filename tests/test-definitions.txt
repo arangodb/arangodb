@@ -1,6 +1,6 @@
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
-# scripts/generateJenkinsScripts.py --help-flags
+# https://github.com/arangodb/oskar#testing
 
 
 # Single Server only Tests
@@ -22,7 +22,7 @@ http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
 active_failover parallelity=3 single
-agency priority=350 parallelity=3 single -- --dumpAgencyOnError true
+agency priority=350 parallelity=4 single -- --dumpAgencyOnError true
 agency-restart priority=250 parallelity=3 single
 arangobench parallelity=2 priority=1000 single
 arangosh single
@@ -42,11 +42,17 @@ shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=http -- http true
+shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
+shell_client_traffic priority=250 parallelity=1 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql priority=500 single suffix=http
-shell_client_aql priority=500 single suffix=http2 -- --http2 true
-shell_client_aql priority=500 single suffix=vst -- --vst true
-shell_client_aql priority=500 single enterprise suffix=encrypt -- --encryptionAtRest true
+shell_client_aql priority=250  single suffix=http
+shell_client_aql priority=500  single suffix=http2 -- --http2 true
+shell_client_aql priority=750  single suffix=vst -- --vst true
+shell_client_aql priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
@@ -116,7 +122,8 @@ audit_server -- --dumpAgencyOnError true
 
 
 # Full Tests Single Server
-shell_fuzzer full priority=500 -- --dumpAgencyOnError true
+shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
+shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
 authentication_server single full priority=1000
 config single full priority=1000

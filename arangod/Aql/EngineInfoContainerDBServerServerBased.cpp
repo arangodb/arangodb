@@ -54,7 +54,7 @@ const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 std::string const finishUrl("/_api/aql/finish/");
 std::string const traverserUrl("/_internal/traverser/");
 
-Result ExtractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
+Result extractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
   TRI_ASSERT(keySlice.isString());  // used as a key in Json
   std::string_view key = keySlice.stringView();
@@ -190,7 +190,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
     network::ConnectionPool* pool,
     network::RequestOptions const& options) const {
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
   buffer.append(infoSlice.begin(), infoSlice.byteSize());
@@ -213,7 +213,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     auto queryId = globalId;
     RebootId rebootId{0};
 
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
 
     std::unique_lock<std::mutex> guard{serverToQueryIdLock};
 
@@ -586,7 +586,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
     std::vector<bool> const& didCreateEngine, QueryId& globalQueryId,
     RebootId& rebootId) const {
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL)
@@ -639,7 +639,7 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     }
     auto remoteId = ExecutionNodeId{0};
     std::string shardId;
-    auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
+    auto res = ::extractRemoteAndShard(resEntry.key, remoteId, shardId);
     if (!res.ok()) {
       return res;
     }
@@ -718,7 +718,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Delete,
         ::finishUrl + std::to_string(queryId),
@@ -732,7 +732,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   for (auto& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      TRI_ASSERT(engine.first.substr(0, 7) != "server:");
+      TRI_ASSERT(!engine.first.starts_with("server:"));
       requests.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
           ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody,

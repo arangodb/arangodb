@@ -31,7 +31,7 @@
 #include <v8.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/EncodingUtils.h"

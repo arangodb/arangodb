@@ -31,7 +31,7 @@
 using namespace arangodb;
 
 RocksDBReadOnlyBaseMethods::RocksDBReadOnlyBaseMethods(
-    RocksDBTransactionState const* state, rocksdb::TransactionDB* db)
+    RocksDBTransactionState* state, rocksdb::TransactionDB* db)
     : RocksDBTransactionMethods(state), _db(db) {
   TRI_ASSERT(_db != nullptr);
   _readOptions.prefix_same_as_start = true;  // should always be true

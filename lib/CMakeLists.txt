@@ -1,5 +1,7 @@
 # -*- mode: CMAKE; -*-
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
@@ -38,20 +40,6 @@ add_definitions("-DHAS_REMOTE_API=0")
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
-if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
-  if (DARWIN)
-    set(LIB_ASM_SOURCES Basics/crc1.S)
-  else()
-    set(LIB_ASM_SOURCES Basics/crc5.S)
-  endif()
-
-  add_definitions("-DENABLE_ASM_CRC32=1")
-  message(STATUS "Will compile in hand-optimized assembler code for CRC32.")
-else()
-  add_definitions("-DENABLE_ASM_CRC32=0")
-  message(STATUS "Will not compile in hand-optimized assembler code for CRC32.")
-endif()
-
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
@@ -71,17 +59,19 @@ add_library(arango STATIC
   ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
+  ApplicationFeatures/OptionsCheckFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  Assertions/AssertionLogger.cpp
+  Assertions/AssertionConditionalLogger.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
@@ -118,7 +108,6 @@ add_library(arango STATIC
   Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/VelocyPackStringLiteral.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
@@ -194,9 +183,8 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/ScriptLoader.cpp
-  Utilities/IsArangoExecutable.cpp
   Utilities/NameValidator.cpp
+  Utilities/ScriptLoader.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
@@ -207,12 +195,14 @@ target_link_libraries(arango PUBLIC
   boost_system
   boost_boost
   arango_static_strings
+  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
+  absl::crc32c
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
@@ -265,7 +255,6 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-
 ################################################################################
 ## LIB_ARANGO_AIR_SOURCES
 ################################################################################
@@ -288,105 +277,8 @@ target_link_libraries(arango_greenspun immer)
 target_link_libraries(arango_greenspun arango)
 target_link_libraries(arango_greenspun date_interface)
 
-################################################################################
-## LIB_ARANGO_GEO
-################################################################################
-
-add_library(arango_geo STATIC
-  Geo/Ellipsoid.cpp
-  Geo/GeoJson.cpp
-  Geo/GeoParams.cpp
-  Geo/ShapeContainer.cpp
-  Geo/Shapes.cpp
-  Geo/Utils.cpp
-  Geo/karney/geodesic.c
-  Geo/S2/S2MultiPointRegion.cpp
-  Geo/S2/S2MultiPolyline.cpp
-)
-
-target_link_libraries(arango_geo
-  arango
-  boost_system
-  boost_boost
-  s2
-)
-
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif()
-
-# Enterprise
-if (USE_ENTERPRISE)
-  target_compile_definitions(arango_geo PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_geo PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
-################################################################################
-## LIB_ARANGO_V8
-################################################################################
-
-add_library(arango_v8 STATIC
-  ApplicationFeatures/V8SecurityFeature.cpp
-  V8/JavaScriptSecurityContext.cpp
-  V8/JSLoader.cpp
-  V8/V8LineEditor.cpp
-  V8/v8-buffer.cpp
-  V8/v8-conv.cpp
-  V8/v8-globals.cpp
-  V8/v8-shell.cpp
-  V8/v8-utils.cpp
-  V8/v8-vpack.cpp
-  V8/v8-environment.cpp
-  )
-add_library(arango_v8_deadline STATIC
-  V8/v8-deadline.cpp
-  )
-
-add_library(arango_v8_no_deadline STATIC
-  V8/v8-no-deadline.cpp
-  )
-
-target_link_libraries(arango_v8
-  boost_system
-  boost_boost
-  velocypack
-  )
-target_link_libraries(arango_v8 arango)
-
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango_v8 SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
-target_include_directories(arango_v8_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_include_directories(arango_v8_no_deadline PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-
-target_link_libraries(arango_v8 v8_interface)
-target_link_libraries(arango_v8_deadline arango v8_interface)
-target_link_libraries(arango_v8_no_deadline v8_interface)
-
-target_link_libraries(arango_v8_deadline velocypack)
-target_link_libraries(arango_v8_no_deadline velocypack)
-
-# Enterprise
-if (USE_ENTERPRISE)
-  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arango_v8 PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-endif()
-
-if (USE_FAIL_ON_WARNINGS)
-  if (MSVC)
-    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
-    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-      # There's a warning about /MP being unused if compiling only a single file
-      target_compile_options(arango_v8 PRIVATE -Wno-unused-command-line-argument)
-      target_compile_options(arango_geo PRIVATE -Wno-unused-command-line-argument)
-      target_compile_options(arango PRIVATE -Wno-unused-command-line-argument)
-    endif()
-  else ()
-    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
-    target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
-    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
-  endif ()
-endif ()
+add_subdirectory(Geo)
+add_subdirectory(V8)
+add_subdirectory(VelocypackUtils)
+add_subdirectory(CrashHandler)
+add_subdirectory(Assertions)

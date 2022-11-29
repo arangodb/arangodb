@@ -363,7 +363,7 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
-      !ServerState::instance()->isDBServer()) {
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -389,6 +389,18 @@ void CommTask::finishExecution(GeneralResponse& res,
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
                             StaticStrings::NoSniff);
+
+    // CSP Headers for security.
+    res.setHeaderNCIfNotSet(StaticStrings::ContentSecurityPolicy,
+                            "frame-ancestors 'self'; form-action 'self';");
+    res.setHeaderNCIfNotSet(
+        StaticStrings::CacheControl,
+        "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+        "max-age=0, s-maxage=0");
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, "no-cache");
+    res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
+                            "max-age=31536000 ; includeSubDomains");
   }
 
   // add "x-arango-queue-time-seconds" header
@@ -533,6 +545,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard guard{_statisticsMutex};
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();

@@ -57,7 +57,7 @@ class QueryLevenhsteinMatch : public QueryTest {
     ASSERT_TRUE(collection);
     // insert some data
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("levenshtein_sequential.json");
 

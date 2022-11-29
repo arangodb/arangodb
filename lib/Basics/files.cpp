@@ -96,6 +96,8 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
+#include <absl/crc/crc32c.h>
+
 using namespace arangodb::basics;
 using namespace arangodb;
 
@@ -2165,7 +2167,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   char buffer[4096];
 
   auto res = TRI_ERROR_NO_ERROR;
-  *crc = TRI_InitialCrc32();
+  *crc = 0;
 
   while (true) {
     size_t sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
@@ -2178,7 +2180,8 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     }
 
     if (sizeRead > 0) {
-      *crc = TRI_BlockCrc32(*crc, &buffer[0], sizeRead);
+      *crc = static_cast<uint32_t>(absl::ExtendCrc32c(
+          absl::ToCrc32c(*crc), std::string_view{&buffer[0], sizeRead}));
     } else /* if (sizeRead <= 0) */ {
       break;
     }
@@ -2188,8 +2191,6 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
     // otherwise keep original error
   }
-
-  *crc = TRI_FinalCrc32(*crc);
 
   return res;
 }
@@ -2626,8 +2627,16 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }
-  totalSpace = static_cast<uint64_t>(stat.f_bsize) *
-               static_cast<uint64_t>(stat.f_blocks);
+
+#ifdef __APPLE__
+  // at least on macOS f_bsize produces incorrect results. it is unclear
+  // yet if we need to use f_frsize on Linux as well.
+  auto const factor = static_cast<uint64_t>(stat.f_frsize);
+#else
+  auto const factor = static_cast<uint64_t>(stat.f_bsize);
+#endif
+
+  totalSpace = factor * static_cast<uint64_t>(stat.f_blocks);
 
   // sbuf.bfree is total free space available to root
   // sbuf.bavail is total free space available to unprivileged user
@@ -2635,12 +2644,10 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
   if (geteuid()) {
     // non-zero user is unprivileged, or -1 if error. take more conservative
     // size
-    freeSpace = static_cast<uint64_t>(stat.f_bsize) *
-                static_cast<uint64_t>(stat.f_bavail);
+    freeSpace = factor * static_cast<uint64_t>(stat.f_bavail);
   } else {
     // root user can access all disk space
-    freeSpace = static_cast<uint64_t>(stat.f_bsize) *
-                static_cast<uint64_t>(stat.f_bfree);
+    freeSpace = factor * static_cast<uint64_t>(stat.f_bfree);
   }
 #endif
   return {};

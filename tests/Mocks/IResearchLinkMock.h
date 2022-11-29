@@ -45,7 +45,7 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   [[nodiscard]] static auto setCallbackForScope(
       std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+    return irs::Finally{[]() noexcept { InitCallback = nullptr; }};
   }
 
   bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
