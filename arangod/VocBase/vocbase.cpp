@@ -2244,8 +2244,16 @@ auto TRI_vocbase_t::getReplicatedLogById(arangodb::replication2::LogId id) const
     if (!ServerState::instance()->isCoordinator() &&
         !ServerState::instance()->isDBServer()) {
       return {[]() { return DataSourceId(TRI_NewTickServer()); },
-              [](std::string const&) -> ResultT<UserInputCollectionProperties> {
-                return {TRI_ERROR_NOT_IMPLEMENTED};
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                return c->getCollectionProperties();
               }};
     } else {
       auto& ci = cl.clusterInfo();

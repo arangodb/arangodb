@@ -731,7 +731,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysTrueDefaultSharding: function() {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: true}, numberOfShards: numShards});
@@ -759,7 +759,7 @@ function AllowUserKeysSuite() {
     testAllowUserKeysFalseDefaultSharding: function() {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator, allowUserKeys: false}, numberOfShards: numShards});
@@ -885,7 +885,7 @@ function PersistedLastValueSuite() {
     testPersistedLastValue: function() {
       generators().forEach((generator) => {
         let numShards = 2;
-        if (generator === "autoincrement" && cluster) {
+        if (generator === "autoincrement") {
           numShards = 1;
         }
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: numShards});
