@@ -264,7 +264,7 @@ void PrototypeLeaderState::handlePollResult(
 
         auto upToIndex = result.get()->range().to;
         auto resolvePromises =
-            self->_guardedData.getLockedGuard()->applyEntries(upToIndex);
+            self->_guardedData.getLockedGuard()->updateState(upToIndex);
         resolvePromises.fire();
 
         self->handlePollResult(self->pollNewEntries());
@@ -291,10 +291,10 @@ auto PrototypeLeaderState::GuardedData::recoverState(
     std::unique_ptr<EntryIterator> ptr) -> DeferredAction {
   auto upToIndex = ptr->range().to;
   core->applyEntries(std::move(ptr));
-  return applyEntries(upToIndex);
+  return updateState(upToIndex);
 }
 
-auto PrototypeLeaderState::GuardedData::applyEntries(LogIndex upToIndex)
+auto PrototypeLeaderState::GuardedData::updateState(LogIndex upToIndex)
     -> DeferredAction {
   if (didResign()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);

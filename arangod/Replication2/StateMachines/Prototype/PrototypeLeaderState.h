@@ -91,7 +91,7 @@ struct PrototypeLeaderState
     [[nodiscard]] auto recoverState(std::unique_ptr<EntryIterator> ptr)
         -> DeferredAction;
 
-    [[nodiscard]] auto applyEntries(LogIndex upToIndex) -> DeferredAction;
+    [[nodiscard]] auto updateState(LogIndex upToIndex) -> DeferredAction;
 
     auto waitForApplied(LogIndex index) -> futures::Future<futures::Unit>;
 
