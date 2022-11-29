@@ -10,8 +10,8 @@ Pregel execution identifier.
 
 @RESTDESCRIPTION
 Cancel an execution which is still running, and discard any intermediate
-results. This will immediately free all memory taken up by the execution, and
-will make you lose all intermediary data.
+results. This immediately frees all memory taken up by the execution, and
+makes you lose all intermediary data.
 
 You might get inconsistent results if you requested to store the results and
 then cancel an execution when it is already in its `"storing"` state (or
@@ -24,7 +24,7 @@ documents have no or stale results from a previous execution.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 will be returned in case the job execution id was valid.
+HTTP 200 is returned if the job execution ID was valid.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
