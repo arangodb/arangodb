@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -139,15 +141,15 @@ struct RequestTimeScale {
 };
 
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
-                  BytesReceivedScale, "Bytes received for a request");
+                  BytesReceivedScale, "Bytes received for requests");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
-                  BytesSentScale, "Bytes sent for a request");
+                  BytesSentScale, "Bytes sent for responses");
 DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_received,
                   BytesReceivedScale,
-                  "Bytes received for a request, only user traffic");
+                  "Bytes received for requests, only user traffic");
 DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
                   BytesSentScale,
-                  "Bytes sent for a request, only user traffic");
+                  "Bytes sent for responses, only user traffic");
 DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
@@ -254,16 +256,16 @@ auto const statStrings = std::map<std::string_view,
                                   std::vector<std::string_view>>{
     {"bytesReceived",
      {"arangodb_client_connection_statistics_bytes_received", "histogram",
-      "Bytes received for a request"}},
+      "Bytes received for requests"}},
     {"bytesSent",
      {"arangodb_client_connection_statistics_bytes_sent", "histogram",
-      "Bytes sent for a request"}},
+      "Bytes sent for responses"}},
     {"bytesReceivedUser",
      {"arangodb_client_user_connection_statistics_bytes_received", "histogram",
-      "Bytes received for a request, only user traffic"}},
+      "Bytes received for requests, only user traffic"}},
     {"bytesSentUser",
      {"arangodb_client_user_connection_statistics_bytes_sent", "histogram",
-      "Bytes sent for a request, only user traffic"}},
+      "Bytes sent for responses, only user traffic"}},
     {"minorPageFaults",
      {"arangodb_process_statistics_minor_page_faults_total", "counter",
       "The number of minor faults the process has made which have not required "

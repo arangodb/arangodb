@@ -1,7 +1,7 @@
 name: arangodb_client_user_connection_statistics_bytes_received
 introducedIn: "3.9.6"
 help: |
-  Bytes received for a request, only user traffic.
+  Bytes received for requests, only user traffic.
 unit: bytes
 type: histogram
 category: Statistics
