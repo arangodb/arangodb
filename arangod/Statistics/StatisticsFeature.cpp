@@ -1,5 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -144,6 +142,12 @@ DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
                   BytesReceivedScale, "Bytes received for a request");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
                   BytesSentScale, "Bytes sent for a request");
+DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_received,
+                  BytesReceivedScale,
+                  "Bytes received for a request, only user traffic");
+DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
+                  BytesSentScale,
+                  "Bytes sent for a request, only user traffic");
 DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
@@ -254,6 +258,12 @@ auto const statStrings = std::map<std::string_view,
     {"bytesSent",
      {"arangodb_client_connection_statistics_bytes_sent", "histogram",
       "Bytes sent for a request"}},
+    {"bytesReceivedUser",
+     {"arangodb_client_user_connection_statistics_bytes_received", "histogram",
+      "Bytes received for a request, only user traffic"}},
+    {"bytesSentUser",
+     {"arangodb_client_user_connection_statistics_bytes_sent", "histogram",
+      "Bytes sent for a request, only user traffic"}},
     {"minorPageFaults",
      {"arangodb_process_statistics_minor_page_faults_total", "counter",
       "The number of minor faults the process has made which have not required "
@@ -438,6 +448,10 @@ auto const statBuilder = makeStatBuilder({
     {"bytesReceived",
      new arangodb_client_connection_statistics_bytes_received()},
     {"bytesSent", new arangodb_client_connection_statistics_bytes_sent()},
+    {"bytesReceivedUser",
+     new arangodb_client_user_connection_statistics_bytes_received()},
+    {"bytesSentUser",
+     new arangodb_client_user_connection_statistics_bytes_sent()},
     {"minorPageFaults",
      new arangodb_process_statistics_minor_page_faults_total()},
     {"majorPageFaults",
@@ -929,6 +943,14 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
                     {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+
+    RequestStatistics::Snapshot requestStatsUser;
+    RequestStatistics::getSnapshot(requestStatsUser,
+                                   stats::RequestStatisticsSource::USER);
+    appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+    appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
                     {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
 
     // _httpStatistics()
