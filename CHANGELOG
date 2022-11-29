@@ -1,8 +1,8 @@
 devel
 -----
 
-* This PR adds a new per-operation option `refillIndexCaches` to document and 
-  edge write operations, namely:
+* Added new per-operation option `refillIndexCaches` to document and edge write
+  operations, namely:
 
   - AQL INSERT/UPDATE/REPLACE modification operations
   - single-document insert, update and replace operations

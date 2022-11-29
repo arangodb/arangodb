@@ -346,7 +346,7 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (let i = 0;  i < collections.length;  ++i) {
-      var collection = new ArangoCollection(this, collections[i]);
+      let collection = new ArangoCollection(this, collections[i]);
       this[collection._name] = collection;
       result.push(collection);
     }
@@ -998,7 +998,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     }
   } else {
     // set default value for keepNull
-    var keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
+    let keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
     params = '?keepNull=' + (keepNullValue ? 'true' : 'false');
 
     if (overwrite) {
@@ -1407,7 +1407,7 @@ ArangoDatabase.prototype._views = function () {
 
     // add all views to object
     for (let i = 0;  i < views.length;  ++i) {
-      var view = new ArangoView(this, views[i]);
+      let view = new ArangoView(this, views[i]);
       this[view._name] = view;
       result.push(view);
     }
