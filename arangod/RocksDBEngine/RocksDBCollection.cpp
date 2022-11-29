@@ -44,6 +44,7 @@
 #include "Indexes/IndexIterator.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
