@@ -61,7 +61,8 @@
 
 namespace {
 std::string const garbageCollectionQuery(
-    "FOR s in @@collection FILTER s.time < @start RETURN s._key");
+    "FOR s in @@collection FILTER s.time < @start && s.lastUpdate == null "
+    "RETURN s._key");
 
 std::string const lastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 "
@@ -133,7 +134,8 @@ void StatisticsWorker::collectGarbage() {
   try {
     if (_gcTask == GC_STATS) {
       collectGarbage(StaticStrings::StatisticsCollection,
-                     time - 3600.0);  // 1 hour
+                     //       time - 3600.0);  // 1 hour
+                     time - 36.0);  // 1 hour
       _gcTask = GC_STATS_RAW;
     } else if (_gcTask == GC_STATS_RAW) {
       collectGarbage(StaticStrings::StatisticsRawCollection,
@@ -155,6 +157,9 @@ void StatisticsWorker::collectGarbage() {
 
 void StatisticsWorker::collectGarbage(std::string const& name,
                                       double start) const {
+  if (name == StaticStrings::StatisticsCollection) {
+    LOG_DEVEL << "is statistics collection";
+  }
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -177,6 +182,8 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   }
 
   VPackSlice keysToRemove = queryResult.data->slice();
+  LOG_DEVEL << queryResult.data->slice().toJson();
+
   OperationOptions opOptions;
 
   opOptions.ignoreRevs = true;

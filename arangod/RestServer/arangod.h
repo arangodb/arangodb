@@ -48,6 +48,7 @@ class ApplicationServerT;
 namespace metrics {
 
 class MetricsFeature;
+class TelemetricsFeature;
 class ClusterMetricsFeature;
 
 }  // namespace metrics
@@ -198,6 +199,7 @@ using ArangodFeatures = TypeList<
     // Adding the features
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
+    metrics::TelemetricsFeature,
     VersionFeature,
     ActionFeature,
     AgencyFeature,

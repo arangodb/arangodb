@@ -4,6 +4,7 @@ add_library(arango_metrics STATIC
   Metric.cpp
   MetricsFeature.cpp
   ClusterMetricsFeature.cpp
+  TelemetricsFeature.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestMetricsHandler.cpp)
 
 target_link_libraries(arango_metrics
