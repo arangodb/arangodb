@@ -125,32 +125,28 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   } else {
     expected = runQuery("FOR d IN " + cn + " RETURN d").length;
   }
-  print("Collection: " + expected + " materialize: " + isMaterialize);
   let vn;
-  const checkView = (isMaterialize, check) => {
+  const checkView = (isMaterialize) => {
     let result;
     if (isMaterialize) {
-      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d").length;
+      result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d._key").length;
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    print(vn + ": " + result);
-    if (check) {
-      assertEqual(expected, result);
-    }
+    assertEqual(expected, result);
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize, true);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize, true);
+  checkView(isMaterialize);
 
   vn = viewName(cn + "_view_ps_sv", isSearchAlias);
-  checkView(isMaterialize, false);
+  checkView(isMaterialize);
 };
 
 const clearAllFailurePoints = () => {
@@ -276,8 +272,8 @@ function BaseChaosSuite(testOpts) {
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
       // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
-      testOpts.checkView = !testOpts.withIntermediateCommits;
-      if (testOpts.checkView) {
+      testOpts.withViews = true;
+      if (testOpts.withViews) {
         createViews(false);
         createViews(true);
       }
@@ -322,7 +318,7 @@ function BaseChaosSuite(testOpts) {
 
     tearDown: function () {
       clearAllFailurePoints();
-      if (testOpts.checkView) {
+      if (testOpts.withViews) {
         removeViews(false);
         removeViews(true);
       }
@@ -358,11 +354,14 @@ function BaseChaosSuite(testOpts) {
         };
 
         let c = db._collection(testOpts.collection);
-        const opts = () => {
+        const opts = (length) => {
           let result = {};
           if (testOpts.withIntermediateCommits) {
             if (Math.random() <= 0.5) {
               result.intermediateCommitCount = 7 + Math.floor(Math.random() * 10);
+              if (2 <= length && length <= result.intermediateCommitCount) {
+                result.intermediateCommitCount = length / 2;
+              }
             }
           }
           
@@ -408,18 +407,18 @@ function BaseChaosSuite(testOpts) {
               log("RUNNING TRUNCATE");
               c.truncate();
             } else if (d >= 0.9) {
-              let o = opts();
               let d = docs();
+              let o = opts(d.length);
               log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
             } else if (d >= 0.8) {
-              let o = opts();
               const limit = Math.floor(Math.random() * 200);
+              let o = opts(limit);
               log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
             } else if (d >= 0.7) {
-              let o = opts();
               const limit = Math.floor(Math.random() * 2000);
+              let o = opts(limit);
               log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: 555 } IN " + c.name(), {limit}, o);
             } else if (d >= 0.68) {
@@ -442,7 +441,7 @@ function BaseChaosSuite(testOpts) {
                   query("LET keys = (FOR doc IN " + viewName(cn + "_view_ps_sv", isSearchAlias) + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
                 }
               };
-              if (testOpts.checkView) {
+              if (testOpts.withViews) {
                 if (Math.random() < 0.5) {
                   lookupViews(false);
                 } else {
@@ -450,13 +449,13 @@ function BaseChaosSuite(testOpts) {
                 }
               }
             } else if (d >= 0.65) {
-              let o = opts();
               const limit = Math.floor(Math.random() * 10) + 1;
+              let o = opts(limit);
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
               query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
             } else if (d >= 0.25) {
-              let o = opts();
               let d = docs();
+              let o = opts(d.length);
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               d = d.length === 1 ? d[0] : d;
               c.insert(d, o);
@@ -495,7 +494,7 @@ function BaseChaosSuite(testOpts) {
       clearAllFailurePoints();
       waitForShardsInSync(cn);
       checkCollectionConsistency(cn);
-      if (testOpts.checkView) {
+      if (testOpts.withViews) {
         checkViewConsistency(cn, false, false);
         checkViewConsistency(cn, true, false);
         checkViewConsistency(cn, false, true);

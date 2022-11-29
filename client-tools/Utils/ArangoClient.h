@@ -38,8 +38,8 @@ class GreetingsFeaturePhase;
 class ClientFeature;
 class ConfigFeature;
 class FileSystemFeature;
-class ShellConsoleFeature;
 class LoggerFeature;
+class OptionsCheckFeature;
 class RandomFeature;
 class ShellColorsFeature;
 class ShutdownFeature;
@@ -57,6 +57,7 @@ using ArangoClientFeatures = TypeList<
     // Features
     VersionFeature,  // VersionFeature must go first
     HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
-    RandomFeature, ShellColorsFeature, ShutdownFeature, SslFeature, T...>;
+    OptionsCheckFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
+    SslFeature, T...>;
 
 }  // namespace arangodb

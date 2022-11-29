@@ -97,6 +97,7 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
+    this.expectAsserts = false;
   }
 
   destructor(cleanup) {
@@ -276,6 +277,9 @@ class instanceManager {
     }
   }
 
+  nonfatalAssertSearch() {
+    this.expectAsserts = true;
+  }
   launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
@@ -366,7 +370,7 @@ class instanceManager {
   }
   launchTcpDump(name) {
     if (this.options.sniff === undefined || this.options.sniff === false) {
-      return;
+      return true;
     }
     this.options.cleanup = false;
     let device = 'lo';
@@ -407,7 +411,20 @@ class instanceManager {
       prog = 'sudo';
     }
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
-    this.tcpdump = executeExternal(prog, args);
+    try {
+      this.tcpdump = executeExternal(prog, args);
+      sleep(5);
+      let exitStatus = statusExternal(this.tcpdump.pid, false);
+      if (exitStatus.status !== "RUNNING") {
+        crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${JSON.stringify(exitStatus)} '${prog}' ${JSON.stringify(args)}`;
+        this.tcpdump = null;
+        return false;
+      }
+    } catch (x) {
+      crashUtils.GDB_OUTPUT += `Failed to launch tcpdump: ${x.message} ${prog} ${JSON.stringify(args)}`;
+      return false;
+    }
+    return true;
   }
   stopTcpDump() {
     if (this.tcpdump !== null) {
@@ -981,7 +998,7 @@ class instanceManager {
       });
     }
     this.arangods.forEach(arangod => {
-      arangod.readAssertLogLines();
+      arangod.readAssertLogLines(this.expectAsserts);
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1254,9 +1271,17 @@ class instanceManager {
   findEndpoint() {
     let endpoint = this.endpoint;
     if (this.options.vst) {
-      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'vst://');
+      }
     } else if (this.options.http2) {
-      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      if (this.options.protocol === 'ssl') {
+        endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
+      } else {
+        endpoint = endpoint.replace(/.*\/\//, 'h2://');
+      }
     }
     print("using endpoint ", endpoint);
     return endpoint;

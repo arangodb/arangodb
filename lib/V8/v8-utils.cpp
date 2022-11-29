@@ -657,51 +657,35 @@ auto getEndpoint(v8::Isolate* isolate,
   // returns endpoint, relative, error
   std::string relative;
   std::string endpoint;
-  if (url.substr(0, 7) == "http://") {
-    endpoint = GetEndpointFromUrl(url).substr(7);
-    relative = url.substr(7 + endpoint.length());
+
+  auto checkProto = [&relative, &endpoint](
+                        std::string const& url, std::string_view prefix,
+                        std::string_view proto, int port) -> bool {
+    if (!url.starts_with(prefix)) {
+      return false;
+    }
+    endpoint = GetEndpointFromUrl(url).substr(prefix.size());
+    relative = url.substr(prefix.size() + endpoint.size());
 
     if (relative.empty() || relative[0] != '/') {
       relative = "/" + relative;
     }
     if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":80");
+      endpoint.push_back(':');
+      endpoint.append(std::to_string(port));
     }
-    endpoint = "tcp://" + endpoint;
-  } else if (url.substr(0, 8) == "https://") {
-    endpoint = GetEndpointFromUrl(url).substr(8);
-    relative = url.substr(8 + endpoint.length());
+    endpoint = std::string{proto} + endpoint;
+    return true;
+  };
 
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":443");
-    }
-    endpoint = "ssl://" + endpoint;
-  } else if (url.substr(0, 5) == "h2://") {
-    endpoint = GetEndpointFromUrl(url).substr(5);
-    relative = url.substr(5 + endpoint.length());
+  if (checkProto(url, "http://", "tcp://", 80) ||
+      checkProto(url, "https://", "ssl://", 443) ||
+      checkProto(url, "h2://", "tcp://", 80) ||
+      checkProto(url, "h2s://", "ssl://", 443)) {
+    TRI_ASSERT(!endpoint.empty());
+    TRI_ASSERT(!relative.empty());
 
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":80");
-    }
-    endpoint = "tcp://" + endpoint;
-  } else if (url.substr(0, 6) == "h2s://") {
-    endpoint = GetEndpointFromUrl(url).substr(6);
-    relative = url.substr(6 + endpoint.length());
-
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":443");
-    }
-    endpoint = "ssl://" + endpoint;
-  } else if (url.substr(0, 6) == "srv://") {
+  } else if (url.starts_with("srv://")) {
     size_t found = url.find('/', 6);
 
     relative = "/";
@@ -712,7 +696,7 @@ auto getEndpoint(v8::Isolate* isolate,
       endpoint = url.substr(6);
     }
     endpoint = "srv://" + endpoint;
-  } else if (url.substr(0, 7) == "unix://") {
+  } else if (url.starts_with("unix://")) {
     // Can only have arrived here if endpoints is non empty
     if (endpoints.empty()) {
       return {"", "", std::move("unsupported URL specified")};
@@ -725,14 +709,14 @@ auto getEndpoint(v8::Isolate* isolate,
     relative = url;
     url = lastEndpoint + url;
     endpoint = lastEndpoint;
-    if (endpoint.substr(0, 5) == "http:") {
+    if (endpoint.starts_with("http:")) {
       endpoint = endpoint.substr(5);
       found = endpoint.find(":");
       if (found == std::string::npos) {
         endpoint = endpoint + ":80";
       }
       endpoint = "tcp:" + endpoint;
-    } else if (endpoint.substr(0, 6) == "https:") {
+    } else if (endpoint.starts_with("https:")) {
       endpoint = endpoint.substr(6);
       found = endpoint.find(":");
       if (found == std::string::npos) {
@@ -772,7 +756,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool isLocalUrl = false;
 
-  if (!url.empty() && url[0] == '/') {
+  if (url.starts_with('/')) {
     // check if we are a server
     isLocalUrl = true;
     endpoints = v8g->_endpoints.httpEndpoints();
@@ -1085,10 +1069,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         numRedirects++;
 
         isLocalUrl = false;
-        if (!url.empty() && url[0] == '/') {
+        if (url.starts_with('/')) {
           isLocalUrl = true;
         }
-        if (url.substr(0, 5) == "http:" || url.substr(0, 6) == "https:") {
+        if (url.starts_with("http:") || url.starts_with("https:")) {
           lastEndpoint = GetEndpointFromUrl(url);
         }
         continue;
@@ -2968,11 +2952,10 @@ static void ProcessStatisticsToV8(
   }
 
   auto context = TRI_IGETC;
-  auto scClkTck = (double)info._scClkTck;
   auto userTime = (double)info._userTime;
   auto systemTime = (double)info._systemTime;
 
-  if (scClkTck != 0.0) {
+  if (info._scClkTck != 0) {
     userTime = userTime / (double)info._scClkTck;
     systemTime = systemTime / (double)info._scClkTck;
   }

@@ -385,13 +385,13 @@ void Projections::handleSharedPrefixes() {
   while (current != _projections.end()) {
     auto next = current + 1;
 
-    (*current).startsAtLevel = levelsOpen;
+    (*current).startsAtLevel = static_cast<uint16_t>(levelsOpen);
     size_t const currentLength = (*current).path.size();
     TRI_ASSERT(currentLength >= 1);
 
     if (next == _projections.end()) {
       // done
-      (*current).levelsToClose = currentLength - 1;
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
       break;
     }
 
@@ -415,10 +415,11 @@ void Projections::handleSharedPrefixes() {
       }
 
       TRI_ASSERT(currentLength - commonPrefixLength >= 1);
-      (*current).levelsToClose = currentLength - commonPrefixLength - 1;
+      (*current).levelsToClose =
+          static_cast<uint16_t>(currentLength - commonPrefixLength - 1);
       levelsOpen = commonPrefixLength;
     } else {
-      (*current).levelsToClose = currentLength - 1;
+      (*current).levelsToClose = static_cast<uint16_t>(currentLength - 1);
       levelsOpen = 0;
     }
     ++current;
