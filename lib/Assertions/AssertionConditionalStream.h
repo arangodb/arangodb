@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,15 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <Greenspun/Interpreter.h>
+#include <sstream>
 
-namespace arangodb::greenspun {
-void RegisterAllMathFunctions(Machine& ctx);
-}  // namespace arangodb::greenspun
+namespace arangodb::debug {
+struct AssertionConditionalStream {
+  bool condition{false};
+  std::ostringstream stream;
+  template<typename T>
+  auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
+    stream << v;
+    return *this;
+  }
+  auto withCondition(bool c) -> AssertionConditionalStream& {
+    condition = c;
+    return *this;
+  }
+};
+
+}  // namespace arangodb::debug

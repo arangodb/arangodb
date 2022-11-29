@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-#include <Greenspun/Interpreter.h>
+#include <gtest/gtest.h>
 
-namespace arangodb::greenspun {
-void RegisterAllListFunctions(Machine& ctx);
-}  // namespace arangodb::greenspun
+#include <Assertions/Assert.h>
+#include <Assertions/ProdAssert.h>
+
+using namespace arangodb;
+
+TEST(Assertions, tri_assert) {
+  EXPECT_EXIT((TRI_ASSERT(false) << "BOOM"), testing::KilledBySignal(SIGABRT),
+              "BOOM");
+}
+
+TEST(Assertions, adb_prod_assert) {
+  EXPECT_EXIT((ADB_PROD_ASSERT(false) << "BOOM"),
+              testing::KilledBySignal(SIGABRT), "BOOM");
+}

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,31 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "AssertionLogger.h"
 
-#include "AIR.h"
-
-namespace arangodb {
-namespace pregel {
-namespace algos {
-namespace accumulators {
-
-using message_format = MessageFormat<MessageData>;
-
-struct MessageFormat : public message_format {
-  MessageFormat();
-
-  void unwrapValue(VPackSlice s, MessageData& message) const override;
-  void addValue(VPackBuilder& arrayBuilder,
-                MessageData const& message) const override;
-};
-
-}  // namespace accumulators
-}  // namespace algos
-}  // namespace pregel
-}  // namespace arangodb
+namespace arangodb::debug {
+thread_local std::ostringstream
+    arangodb::debug::AssertionLogger::assertionStringStream;
+}

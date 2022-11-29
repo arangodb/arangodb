@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,24 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Interpreter.h"
+#include <sstream>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include "CrashHandler/CrashHandler.h"
 
-namespace arangodb {
-namespace greenspun {
+namespace arangodb::debug {
+struct AssertionLogger {
+  [[noreturn]] void operator&(std::ostringstream const& stream) const {
+    std::string message = stream.str();
+    arangodb::CrashHandler::assertionFailure(
+        file, line, function, expr,
+        message.empty() ? nullptr : message.c_str());
+  }
+  // can be removed in C++20 because of LWG 1203
+  [[noreturn]] void operator&(std::ostream const& stream) const {
+    operator&(static_cast<std::ostringstream const&>(stream));
+  }
 
-void RegisterFunction(Machine& ctx, std::string_view name,
-                      Machine::function_type&& f);
-void RegisterAllPrimitives(Machine& ctx);
+  const char* file;
+  int line;
+  const char* function;
+  const char* expr;
 
-}  // namespace greenspun
-}  // namespace arangodb
+  static thread_local std::ostringstream assertionStringStream;
+};
+}  // namespace arangodb::debug

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,19 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EdgeData.h"
-#include <Basics/StaticStrings.h>
+#pragma once
 
-using namespace arangodb::pregel::algos::accumulators;
+#include "AssertionNoOpStream.h"
 
-void EdgeData::reset(VPackSlice const& doc) {
-  _document.clear();
-  _document.add(doc);
-
-  _toId = doc.get(StaticStrings::ToString).copyString();
-}
+namespace arangodb::debug {
+struct AssertionNoOpLogger {
+  void operator&(NoOpStream const& stream) const {}
+};
+}  // namespace arangodb::debug
