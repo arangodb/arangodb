@@ -2,7 +2,8 @@ devel
 -----
 
 * BTS-128: Fixed http request not working when content-type is velocypack 
-  and the request body is empty.
+
+* Deleted customizable Pregel (AIR) and Greenspun library
 
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
