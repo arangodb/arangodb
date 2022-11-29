@@ -96,7 +96,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
           arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
                                        options::Flags::OnDBServer,
                                        options::Flags::OnSingle))
-      .setIntroducedIn(30906);
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31020);
 
   options
       ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
@@ -106,7 +107,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle))
-      .setIntroducedIn(30906);
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31020);
 
   options
       ->addOption(
@@ -116,7 +118,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
                              options::Flags::OnSingle))
-      .setIntroducedIn(30906);
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31020);
 
   options
       ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
@@ -126,7 +129,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                   options::makeFlags(options::Flags::DefaultNoComponents,
                                      options::Flags::OnDBServer,
                                      options::Flags::OnSingle))
-      .setIntroducedIn(30906);
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31020);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
