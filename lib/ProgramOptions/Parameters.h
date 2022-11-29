@@ -23,10 +23,12 @@
 
 #pragma once
 
+#include "Basics/Arithmetic.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/fpconv.h"
+#include "ProgramOptions/UnitsHelper.h"
 
 #include <velocypack/Builder.h>
 
@@ -37,98 +39,32 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
-#include <stdexcept>
 
 namespace arangodb {
 namespace options {
 
 // helper function to strip-non-numeric data from a string
-std::string removeCommentsFromNumber(std::string const& value);
+std::string removeWhitespaceAndComments(std::string const& value);
 
-// convert a string into a number, base version for signed or unsigned integer
+// convert a string into a number, base version for signed and unsigned integer
 // types
 template<typename T>
 inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
-  value = removeCommentsFromNumber(value);
+  value = removeWhitespaceAndComments(value);
 
-  auto n = value.size();
-  int64_t m = 1;
-  int64_t d = 1;
-  bool seen = false;
-  if (n > 3) {
-    std::string suffix = value.substr(n - 3);
-
-    if (suffix == "kib" || suffix == "KiB" || suffix == "KIB") {
-      m = 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "mib" || suffix == "MiB" || suffix == "MIB") {
-      m = 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "gib" || suffix == "GiB" || suffix == "GIB") {
-      m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    }
+  if constexpr (std::is_signed_v<T>) {
+    return UnitsHelper::parseNumberWithUnit<T, int64_t>(value, base);
+  } else {
+    return UnitsHelper::parseNumberWithUnit<T, uint64_t>(value, base);
   }
-  if (!seen && n > 2) {
-    std::string suffix = value.substr(n - 2);
-
-    if (suffix == "kb" || suffix == "KB") {
-      m = 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    }
-  }
-  if (!seen && n > 1) {
-    std::string suffix = value.substr(n - 1);
-
-    if (suffix == "k" || suffix == "K") {
-      m = 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "m" || suffix == "M") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "g" || suffix == "G") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "%") {
-      m = static_cast<int64_t>(base);
-      d = 100;
-      value = value.substr(0, n - 1);
-    }
-  }
-
-  char const* p = value.data();
-  char const* e = p + value.size();
-  // skip leading whitespace
-  while (p < e && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
-    ++p;
-  }
-
-  bool valid = true;
-  auto v = arangodb::NumberUtils::atoi<T>(p, e, valid);
-  if (!valid) {
-    throw std::out_of_range(value);
-  }
-  return static_cast<T>(v * m / d);
 }
 
 // convert a string into a number, version for double values
 template<>
 inline double toNumber<double>(std::string value, double /*base*/) {
   // replace leading spaces, replace trailing spaces & comments
-  return std::stod(removeCommentsFromNumber(value));
+  return std::stod(removeWhitespaceAndComments(value));
 }
 
 // convert a string into another type, specialized version for numbers
