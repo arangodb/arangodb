@@ -71,6 +71,12 @@ function recoverySuite () {
           let file = arr[arr.length - 1];
           print(`deleting coredump: ${file}`);
           fs.remove(file);
+          if (process.env.hasOwnProperty('COREDIR')) {
+            let old_pid = line.split('Z [')[1].split('] S')[0];
+            let corename = fs.join(process.env['COREDIR'], `arangod.exe.${old_pid}.dmp`);
+            print(`deleting coredump: ${corename}`);
+            fs.remove(corename);
+          }
         }
         return line.match(/\{crash\}/);
       });

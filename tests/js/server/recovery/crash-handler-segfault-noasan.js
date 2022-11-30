@@ -71,6 +71,12 @@ function recoverySuite () {
           let file = arr[arr.length - 1];
           print(`deleting coredump: ${file}`);
           fs.remove(file);
+          if (process.env.hasOwnProperty('COREDIR')) {
+            let old_pid = line.split('Z [')[1].split('] S')[0];
+            let corename = fs.join(process.env['COREDIR'], `arangod.exe.${old_pid}.dmp`);
+            print(`deleting coredump: ${corename}`);
+            fs.remove(corename);
+          }
         }
         return line.match(/\{crash\}/);
       });
@@ -78,8 +84,11 @@ function recoverySuite () {
 
       // check message
       let line = lines.shift();
-      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
-      
+      if (require('internal').platform.substr(0, 3) === 'win') {
+        assertMatch(/INFO.*Unhandled exception: .* at address .* in thread .*/ , line);
+      } else {
+        assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
+      }
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
