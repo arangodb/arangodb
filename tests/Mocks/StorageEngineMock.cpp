@@ -1267,6 +1267,12 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
 }
 
+arangodb::Result PhysicalCollectionMock::lookupKeyForUpdate(
+    arangodb::transaction::Methods* methods, std::string_view key,
+    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result) const {
+  return lookupKey(methods, key, result, arangodb::ReadOwnWrites::yes);
+}
+
 uint64_t PhysicalCollectionMock::numberDocuments(
     arangodb::transaction::Methods*) const {
   before();
