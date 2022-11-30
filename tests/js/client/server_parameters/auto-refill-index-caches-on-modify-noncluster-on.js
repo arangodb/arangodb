@@ -34,19 +34,27 @@ if (getOptions === true) {
   };
 }
 
-const cn = 'UnitTestsCollection';
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const time = require('internal').time;
 
+const cn = 'UnitTestsCollection';
+const n = 5000;
+
+// wait for metrics to settle. 5 seconds is arbitrary, and may not even
+// be enough on a busy CI server
+const waitForMetrics = () => {
+  require('internal').sleep(5);
+};
+
 function AutoRefillIndexCachesEdge() {
   'use strict';
 
   let runCheck = () => {
-    let crsr = db._query(`FOR i IN 0..9999 FOR doc IN ${cn} FILTER doc._from == CONCAT('v/test', i) RETURN doc._from`);
+    let crsr = db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc._from == CONCAT('v/test', i) RETURN doc._from`);
     let res = crsr.toArray();
-    assertEqual(10000, res.length);
+    assertEqual(n, res.length);
     res.forEach((val, i) => {
       assertEqual(val, 'v/test' + i);
     });
@@ -55,9 +63,9 @@ function AutoRefillIndexCachesEdge() {
 
     crsr = db._query(`FOR i IN 0..24 FOR doc IN ${cn} FILTER doc._to == CONCAT('v/test', i) RETURN doc._to`);
     res = crsr.toArray();
-    assertEqual(10000, res.length);
+    assertEqual(n, res.length);
     res.forEach((val, i) => {
-      assertEqual(val, 'v/test' + Math.floor(i / 400));
+      assertEqual(val, 'v/test' + Math.floor(i / (n / 25)));
     });
     stats = crsr.getExtra().stats;
     assertTrue(stats.cacheHits > 0, stats);
@@ -74,36 +82,33 @@ function AutoRefillIndexCachesEdge() {
     
     testInsert: function() {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      waitForMetrics();
       runCheck();
     },
     
-    testUpdate: function() {
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+    testUpdateEdge: function() {
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      waitForMetrics();
       runCheck();
     },
     
-    testReplace: function() {
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+    testReplaceEdge: function() {
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      waitForMetrics();
       runCheck();
     },
     
