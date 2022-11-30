@@ -30,7 +30,6 @@
 
 var internal = require('internal');
 var jsunity = require('jsunity');
-const fs = require('fs');
 
 function runSetup () {
   'use strict';
@@ -66,18 +65,6 @@ function recoverySuite () {
       assertTrue(fs.isFile(crashFile), crashFile);
 
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
-        if (line.search('93315') >= 0) {
-          let arr = line.split(' ');
-          let file = arr[arr.length - 1];
-          print(`deleting coredump: ${file}`);
-          fs.remove(file);
-          if (process.env.hasOwnProperty('COREDIR')) {
-            let old_pid = line.split('Z [')[1].split('] S')[0];
-            let corename = fs.join(process.env['COREDIR'], `arangod.exe.${old_pid}.dmp`);
-            print(`deleting coredump: ${corename}`);
-            fs.remove(corename);
-          }
-        }
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
