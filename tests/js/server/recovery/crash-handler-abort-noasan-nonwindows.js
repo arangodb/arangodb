@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertMatch, print */
+/* global assertEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for crash handler
