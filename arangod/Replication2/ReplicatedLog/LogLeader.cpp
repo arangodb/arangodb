@@ -1113,7 +1113,8 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
     _inMemoryLog = std::move(newLog);
     _self._logMetrics->replicatedLogNumberCompactedEntries->count(
         numberOfCompactedEntries);
-    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries};
+    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries,
+                            .stopReason = {}};
   }
   LOG_CTX("f1029", TRACE, _self._logContext)
       << "compaction result = " << res.errorMessage();

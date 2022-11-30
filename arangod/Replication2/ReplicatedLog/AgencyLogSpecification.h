@@ -71,6 +71,8 @@ struct ParticipantsConfig {
       -> std::ostream&;
 };
 
+auto operator<<(std::ostream& os, ParticipantsConfig const&) -> std::ostream&;
+
 template<class Inspector>
 auto inspect(Inspector& f, ParticipantsConfig& x) {
   return f.object(x).fields(f.field("generation", x.generation),
@@ -141,6 +143,9 @@ struct LogPlanTermSpecification {
       -> std::ostream&;
 };
 
+auto operator<<(std::ostream& os, LogPlanTermSpecification const&)
+    -> std::ostream&;
+
 struct LogPlanSpecification {
   LogId id;
   std::optional<LogPlanTermSpecification> currentTerm;
@@ -162,6 +167,8 @@ struct LogPlanSpecification {
   friend auto operator<<(std::ostream& os, LogPlanSpecification const&)
       -> std::ostream&;
 };
+
+auto operator<<(std::ostream& os, LogPlanSpecification const&) -> std::ostream&;
 
 struct LogCurrentLocalState {
   LogTerm term{};
