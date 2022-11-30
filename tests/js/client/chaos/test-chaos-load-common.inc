@@ -228,6 +228,7 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
+      testOpts.withIntermediateCommits = false
       testOpts.withViews = !testOpts.withIntermediateCommits;
       if (testOpts.withViews) {
         createViews();
@@ -287,7 +288,12 @@ function BaseChaosSuite(testOpts) {
     },
     
     testWorkInParallel: function () {
-      for (let iter = 0; iter < 100; ++iter) {
+      print(testOpts);
+      let iterCount = 1;
+      if (testOpts.withViews) {
+        iterCount = 100;
+      }
+      for (let iter = 0; iter < iterCount; ++iter) {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
         // The idea here is to use the birthday paradox and have a certain amount of collisions.
@@ -446,8 +452,8 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, false);
         checkViewConsistency(cn, true);
       }
-    }
-    print("Done:" + iter);
+      print("Done:" + iter);
+      }
     }
   };
 }
