@@ -22,20 +22,18 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "Basics/application-exit.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-#include "Replication2/Mocks/FakeFollower.h"
-#include "Replication2/Mocks/LogEventRecorder.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -95,7 +93,7 @@ struct ParticipantsConfigBuilder {
 };
 }  // namespace arangodb::replication2::test
 
-namespace arangodb::replication2::replicated_log {
+namespace {
 struct ParticipantsFactoryMock : IParticipantsFactory {
   MOCK_METHOD(std::shared_ptr<ILogFollower>, constructFollower,
               (std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
@@ -146,7 +144,25 @@ struct LogFollowerMock : replicated_log::ILogFollower {
               (AppendEntriesRequest), (override));
 };
 
-}  // namespace arangodb::replication2::replicated_log
+struct ReplicatedStateHandleMock : IReplicatedStateHandle {
+  MOCK_METHOD(std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>,
+              resignCurrentState, (), (noexcept, override));
+  MOCK_METHOD(void, leadershipEstablished,
+              (std::unique_ptr<IReplicatedLogLeaderMethods>), (override));
+  MOCK_METHOD(void, becomeFollower,
+              (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
+  MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex),
+              (noexcept, override));
+  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(std::optional<replicated_state::StateStatus>, getStatus, (),
+              (const, override));
+  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>,
+              getFollower, (), (const, override));
+  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>,
+              getLeader, (), (const, override));
+  MOCK_METHOD(void, dropEntries, (), (override));
+};
+}  // namespace
 
 struct ReplicatedLogConnectTest : ::testing::Test {
   std::shared_ptr<test::FakeStorageEngineMethodsContext> storageContext =
@@ -166,8 +182,7 @@ struct ReplicatedLogConnectTest : ::testing::Test {
       std::make_shared<ParticipantsFactoryMock>();
   std::shared_ptr<LogLeaderMock> leaderMock;
   std::shared_ptr<LogFollowerMock> followerMock;
-
-  test::LogEventRecorder recorder;
+  ReplicatedStateHandleMock* stateHandlePtr = new ReplicatedStateHandleMock();
 };
 
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
@@ -196,7 +211,8 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
       });
 
   log->updateConfig(term.get(), config.get());
-  auto connection = log->connect(recorder.createHandle());
+  auto connection =
+      log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
   EXPECT_CALL(std::move(*leaderMock), resign).Times(1);
   connection.disconnect();
@@ -216,7 +232,8 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
       .setParticipant("A", {.allowedInQuorum = true})
       .setParticipant("B", {.allowedInQuorum = true});
 
-  auto connection = log->connect(recorder.createHandle());
+  auto connection =
+      log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
       .WillOnce([&](std::unique_ptr<LogCore> logCore,
@@ -260,7 +277,8 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
         return leaderMock = std::make_shared<LogLeaderMock>();
       });
   // create initial state and connection
-  auto connection = log->connect(recorder.createHandle());
+  auto connection =
+      log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
   log->updateConfig(term.get(), config.get());
 
   // update term and make A leader
@@ -312,7 +330,8 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
         return followerMock = std::make_shared<LogFollowerMock>();
       });
   // create initial state and connection
-  auto connection = log->connect(recorder.createHandle());
+  auto connection =
+      log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
   log->updateConfig(term.get(), config.get());
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
@@ -358,7 +377,8 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
         return leaderMock =
                    std::make_shared<testing::StrictMock<LogLeaderMock>>();
       });
-  auto connection = log->connect(recorder.createHandle());
+  auto connection =
+      log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
   log->updateConfig(term.get(), config.get());
 
   EXPECT_CALL(*leaderMock, updateParticipantsConfig)
@@ -370,6 +390,7 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   EXPECT_CALL(*leaderMock, waitFor(LogIndex{1}))
       .WillOnce(testing::Return(WaitForResult{}));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // This is just to make an assertion in the ReplicatedLog happy
   EXPECT_CALL(*leaderMock, getQuickStatus)
       .WillOnce([&, oldConfig = config.get()]() {
         return QuickLogStatus{
