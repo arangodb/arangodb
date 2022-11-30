@@ -577,7 +577,10 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload(true);
-      std::string jsonString = slice.toJson();
+      std::string jsonString;
+      if (!slice.isNone()) {
+        jsonString = slice.toJson();
+      }
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
           << "json handed into v8 request:\n"

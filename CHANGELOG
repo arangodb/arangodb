@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-128: Fixed http request not working when content-type is velocypack.
+
 * Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
   could erroneously reduce the number of results of the containing (sub)query.
 
