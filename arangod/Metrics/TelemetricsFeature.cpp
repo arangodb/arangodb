@@ -26,8 +26,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Agency/AsyncAgencyComm.h"
 #include <Basics/application-exit.h>
-#include "Basics/NumberOfCores.h"
-#include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -35,22 +33,16 @@
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Logger/LoggerFeature.h"
-#include "Logger/LogTimeFormat.h"
-#include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/Version.h"
 #include "RestServer/EnvironmentFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "Statistics/StatisticsFeature.h"
-#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/ClusterUtils.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -64,7 +56,7 @@ namespace arangodb::metrics {
 TelemetricsFeature::TelemetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _enable{false},
-      _interval{24},
+      _interval{86400},
       _infoHandler(server) {
   setOptional();
   startsAfter<LoggerFeature>();
@@ -235,37 +227,52 @@ void TelemetricsFeature::start() {
   if (isInsert) {
     _latestUpdate = static_cast<uint64_t>(rightNowAbs);
   }
-  auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::duration<double, std::milli>(rightNowAbs - _latestUpdate));
-  if (timeDiff.count() >= _interval) {
-    _telemetricsEnqueue(false);
-    LOG_DEVEL << "it's passed " << timeDiff.count() << " secs";
-  } else {
-    LOG_DEVEL << "diff is " << timeDiff.count();
-    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW, timeDiff, _telemetricsEnqueue);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = std::move(workItem);
-  }
 
-  _telemetricsEnqueue = [this, ctx, isInsert, timeDiff](bool cancelled) {
+  std::chrono::system_clock::time_point lastUpdateTimePoint{
+      std::chrono::duration_cast<
+          std::chrono::system_clock::time_point::duration>(
+          std::chrono::seconds(_latestUpdate))};
+
+  auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
+      rightNowSecs - lastUpdateTimePoint);
+
+  auto intervalSecs = std::chrono::seconds(_interval);
+  auto intervalDuration =
+      std::chrono::duration_cast<std::chrono::seconds>(intervalSecs);
+  auto newInterval = intervalDuration - timeDiff;
+
+  _telemetricsEnqueue = [this, ctx, isInsert, newInterval](bool cancelled) {
     if (cancelled) {
       return;
     }
     LOG_DEVEL << "telemetrics enqueue";
     Scheduler::WorkHandle workItem;
     if (storeLastUpdate(isInsert)) {
+      LOG_DEVEL << "no conflict";
       sendTelemetrics();
       workItem = SchedulerFeature::SCHEDULER->queueDelayed(
           arangodb::RequestLane::INTERNAL_LOW,
           std::chrono::seconds(this->_interval), _telemetricsEnqueue);
     } else {
+      LOG_DEVEL << "rev conflict";
       workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-          arangodb::RequestLane::INTERNAL_LOW, timeDiff, _telemetricsEnqueue);
+          arangodb::RequestLane::INTERNAL_LOW, newInterval,
+          _telemetricsEnqueue);
     }
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
   };
+
+  if (timeDiff.count() >= intervalDuration.count()) {
+    _telemetricsEnqueue(false);
+    LOG_DEVEL << "it's passed " << timeDiff.count() << " secs";
+  } else {
+    LOG_DEVEL << "diff is " << timeDiff.count();
+    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+        arangodb::RequestLane::INTERNAL_LOW, newInterval, _telemetricsEnqueue);
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem = std::move(workItem);
+  }
 }
 
 }  // namespace arangodb::metrics
