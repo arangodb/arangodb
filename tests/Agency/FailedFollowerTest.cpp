@@ -70,7 +70,7 @@ const char* agency =
 #include "FailedFollowerTest.json"
     ;
 
-VPackBuilder createJob() {
+VPackBuilder createJob(uint64_t delay = 0) {
   VPackBuilder builder;
   {
     VPackObjectBuilder a(&builder);
@@ -84,6 +84,9 @@ VPackBuilder createJob() {
     builder.add(
         "timeCreated",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
+    builder.add("notBefore",
+                VPackValue(timepointToString(std::chrono::system_clock::now() +
+                                             std::chrono::seconds(delay))));
   }
   return builder;
 }
@@ -547,7 +550,7 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   ASSERT_FALSE(failedFollower.start(aborts));
 }
 
-TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
+TEST_F(FailedFollowerTest, successfully_started_job_should_finish_immediately) {
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s,
                                               std::string const& path) {
@@ -638,6 +641,53 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
                                        JOB_STATUS::TODO, jobId);
   failedFollower.start(aborts);
   Verify(Method(mockAgent, transact));
+}
+
+TEST_F(FailedFollowerTest, delayed_job_should_wait) {
+  std::string jobId = "1";
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder(new Builder());
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add("1", createJob(60).slice());
+      }
+    } else {
+      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
+                      "/" + SHARD + "/servers") {
+        VPackArrayBuilder a(builder.get());
+        builder->add(VPackValue(SHARD_LEADER));
+        builder->add(VPackValue(SHARD_FOLLOWER2));
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+  auto failedFollower = FailedFollower(agency.getOrCreate(PREFIX), &agent,
+                                       JOB_STATUS::TODO, jobId);
+  aborts = false;
+  bool res = failedFollower.start(aborts);
+  EXPECT_FALSE(res);
+  EXPECT_FALSE(aborts);
 }
 
 TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
