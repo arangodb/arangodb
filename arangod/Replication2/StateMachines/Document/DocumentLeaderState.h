@@ -81,6 +81,10 @@ struct DocumentLeaderState
     std::unique_ptr<DocumentCore> core;
   };
 
+  template<class ResultType, class GetFunc, class ProcessFunc>
+  auto executeSnapshotOperation(GetFunc getSnapshot,
+                                ProcessFunc processSnapshot) -> ResultType;
+
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;

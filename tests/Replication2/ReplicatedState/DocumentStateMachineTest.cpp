@@ -223,12 +223,13 @@ TEST_F(DocumentStateMachineTest, snapshot_has_valid_ongoing_state) {
   Mock::VerifyAndClearExpectations(collectionReaderMock.get());
 
   auto status = snapshot.status();
-  ASSERT_TRUE(std::holds_alternative<state::Ongoing>(status.state));
-  EXPECT_EQ(status.shardId, shardId);
-  EXPECT_EQ(status.totalDocs, collectionReaderMock->getDocCount());
-  EXPECT_EQ(status.docsSent, 0);
-  EXPECT_EQ(status.batchesSent, 0);
-  EXPECT_EQ(status.bytesSent, 0);
+  ASSERT_EQ(status.state,
+            replication2::replicated_state::document::kStringOngoing);
+  EXPECT_EQ(status.statistics.shardId, shardId);
+  EXPECT_EQ(status.statistics.totalDocs, collectionReaderMock->getDocCount());
+  EXPECT_EQ(status.statistics.docsSent, 0);
+  EXPECT_EQ(status.statistics.batchesSent, 0);
+  EXPECT_EQ(status.statistics.bytesSent, 0);
 }
 
 TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
@@ -254,12 +255,13 @@ TEST_F(DocumentStateMachineTest, snapshot_fetch_from_ongoing_state) {
     EXPECT_TRUE(batch.payload.isArray());
 
     auto status = snapshot.status();
-    ASSERT_TRUE(std::holds_alternative<state::Ongoing>(status.state));
-    EXPECT_EQ(status.docsSent, idx + 1);
-    EXPECT_EQ(status.batchesSent, idx + 1);
+    ASSERT_EQ(status.state,
+              replication2::replicated_state::document::kStringOngoing);
+    EXPECT_EQ(status.statistics.docsSent, idx + 1);
+    EXPECT_EQ(status.statistics.batchesSent, idx + 1);
 
     bytesSent += batch.payload.byteSize();
-    EXPECT_EQ(status.bytesSent, bytesSent);
+    EXPECT_EQ(status.statistics.bytesSent, bytesSent);
   }
 }
 
@@ -275,7 +277,8 @@ TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_finish) {
   ASSERT_TRUE(res.ok()) << res;
 
   auto status = snapshot.status();
-  ASSERT_TRUE(std::holds_alternative<state::Finished>(status.state));
+  ASSERT_EQ(status.state,
+            replication2::replicated_state::document::kStringFinished);
 
   EXPECT_CALL(*collectionReaderMock, read(_, _)).Times(0);
   EXPECT_CALL(*collectionReaderMock, hasMore()).Times(0);
@@ -296,7 +299,8 @@ TEST_F(DocumentStateMachineTest, snapshot_try_fetch_after_abort) {
   ASSERT_TRUE(res.ok()) << res;
 
   auto status = snapshot.status();
-  ASSERT_TRUE(std::holds_alternative<state::Aborted>(status.state));
+  ASSERT_EQ(status.state,
+            replication2::replicated_state::document::kStringAborted);
 
   EXPECT_CALL(*collectionReaderMock, read(_, _)).Times(0);
   EXPECT_CALL(*collectionReaderMock, hasMore()).Times(0);
@@ -385,7 +389,8 @@ TEST_F(DocumentStateMachineTest,
 
   auto snapshot = res.get().lock();
   auto status = snapshot->status();
-  EXPECT_TRUE(std::holds_alternative<state::Ongoing>(status.state));
+  ASSERT_EQ(status.state,
+            replication2::replicated_state::document::kStringOngoing);
 
   auto allStatuses = snapshotHandler.status();
   ASSERT_EQ(allStatuses.snapshots.size(), 1);
@@ -1090,7 +1095,7 @@ TEST(SnapshotIdTest, parse_snapshot_id_error_overflow) {
 
 TEST(SnapshotStatusTest, serialize_snapshot_status) {
   auto state = state::Ongoing{};
-  document::SnapshotStatus status{state};
+  document::SnapshotStatus status(state, document::SnapshotStatistics{});
   ASSERT_EQ(velocypack::serialize(status).get("state").stringView(), "ongoing");
 }
 
