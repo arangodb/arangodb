@@ -196,6 +196,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return _hints.has(hint);
   }
 
+  using CommitCallback = std::function<void(TransactionState&)>;
+  using BeforeCommitCallback = CommitCallback;
+  using AfterCommitCallback = CommitCallback;
+
+  void addBeforeCommitCallback(BeforeCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _beforeCommitCallbacks.push_back(callback);
+  }
+  void addAfterCommitCallback(AfterCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _afterCommitCallbacks.push_back(callback);
+  }
+  void applyBeforeCommitCallbacks() noexcept {
+    return applyCallbackImpl(_beforeCommitCallbacks);
+  }
+  void applyAfterCommitCallbacks() noexcept {
+    return applyCallbackImpl(_afterCommitCallbacks);
+  }
+
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
@@ -264,6 +285,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// called from other, public methods in this class.
  private:
   void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
 
  public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
@@ -348,6 +380,9 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
+
+  std::vector<BeforeCommitCallback const*> _beforeCommitCallbacks;
+  std::vector<AfterCommitCallback const*> _afterCommitCallbacks;
 
  private:
   TransactionId _id;  /// @brief local trx id
