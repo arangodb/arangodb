@@ -76,6 +76,15 @@ v3.9.6 (XXXX-XX-XX)
     In cluster deployments the counter will be increased once per eligible 
     index per shard. It will always report a value of zero on coordinators.
 
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This is
+  desirable in case a DBServer fails and comes back quickly, because it gives
+  the cluster a chance to get in sync and fully resilient without deploying
+  additional shard replicas and thus without causing any data imbalance.
+
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
 * Delay a MoveShard operation for leader change, until the old leader has

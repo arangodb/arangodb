@@ -66,7 +66,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
                              query_t const&, int64_t timeoutMult);
 
   /// @brief Provide configuration
-  config_t const config() const;
+  config_t const& config() const override;
 
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
