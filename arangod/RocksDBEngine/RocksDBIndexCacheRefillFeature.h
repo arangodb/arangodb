@@ -28,6 +28,7 @@
 #include "RestServer/MetricsFeature.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string_view>
@@ -93,11 +94,11 @@ class RocksDBIndexCacheRefillFeature final
   // maximum capacity of queue used for automatic refilling of in-memory index
   // caches after insert/update/replace (not used for initial filling at
   // startup)
-  size_t _maxCapacity;
+  uint64_t _maxCapacity;
 
   // maximum concurrent index fill tasks that we are allowed to run to fill
   // indexes during startup
-  size_t _maxConcurrentIndexFillTasks;
+  uint64_t _maxConcurrentIndexFillTasks;
 
   // whether or not in-memory cache values for indexes are automatically
   // refilled upon insert/update/replace

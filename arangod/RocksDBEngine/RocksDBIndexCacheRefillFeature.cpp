@@ -48,7 +48,7 @@
 using namespace arangodb;
 
 namespace {
-size_t defaultConcurrentIndexFillTasks() {
+uint64_t defaultConcurrentIndexFillTasks() {
   size_t n = NumberOfCores::getValue();
   if (n >= 16) {
     return n >> 3U;
@@ -258,7 +258,8 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   // note: we will only be scheduling at most _maxConcurrentIndexFillTask
   // index refills concurrently, in order to not overwhelm the instance.
   while (!_indexFillTasks.empty() &&
-         _currentlyRunningIndexFillTasks < _maxConcurrentIndexFillTasks) {
+         _currentlyRunningIndexFillTasks <
+             static_cast<size_t>(_maxConcurrentIndexFillTasks)) {
     // intentional copy
     auto task = _indexFillTasks.back();
     _indexFillTasks.pop_back();
