@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
 * Added agency options
     --agency.supervision-delay-add-follower
   and
