@@ -34,19 +34,27 @@ if (getOptions === true) {
   };
 }
 
-const cn = 'UnitTestsCollection';
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
 const time = require('internal').time;
 
+const cn = 'UnitTestsCollection';
+const n = 5000;
+
+// wait for metrics to settle. 5 seconds is arbitrary, and may not even
+// be enough on a busy CI server
+const waitForMetrics = () => {
+  require('internal').sleep(5);
+};
+
 function AutoRefillIndexCachesEdge() {
   'use strict';
 
   let runCheck = () => {
-    let crsr = db._query(`FOR i IN 0..9999 FOR doc IN ${cn} FILTER doc._from == CONCAT('v/test', i) RETURN doc._from`);
+    let crsr = db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc._from == CONCAT('v/test', i) RETURN doc._from`);
     let res = crsr.toArray();
-    assertEqual(10000, res.length);
+    assertEqual(n, res.length);
     res.forEach((val, i) => {
       assertEqual(val, 'v/test' + i);
     });
@@ -55,9 +63,9 @@ function AutoRefillIndexCachesEdge() {
 
     crsr = db._query(`FOR i IN 0..24 FOR doc IN ${cn} FILTER doc._to == CONCAT('v/test', i) RETURN doc._to`);
     res = crsr.toArray();
-    assertEqual(10000, res.length);
+    assertEqual(n, res.length);
     res.forEach((val, i) => {
-      assertEqual(val, 'v/test' + Math.floor(i / 400));
+      assertEqual(val, 'v/test' + Math.floor(i / (n / 25)));
     });
     stats = crsr.getExtra().stats;
     assertEqual(0, stats.cacheHits, stats);
@@ -74,7 +82,7 @@ function AutoRefillIndexCachesEdge() {
     
     testInsertEdge: function() {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
@@ -84,7 +92,7 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testUpdateEdge: function() {
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
@@ -96,7 +104,7 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testReplaceEdge: function() {
-      db._query(`FOR i IN 0..9999 INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
@@ -113,20 +121,25 @@ function AutoRefillIndexCachesEdge() {
 function AutoRefillIndexCachesVPack() {
   'use strict';
 
-  let runCheck = (offset) => {
-    let crsr = db._query(`FOR i IN ${0 + offset}..${9999 + offset} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value`);
+  let runCheck = (offset, expectHits) => {
+    let crsr = db._query(`FOR i IN ${0 + offset}..${n - 1 + offset} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value`);
     let res = crsr.toArray();
-    assertEqual(10000, res.length);
+    assertEqual(n, res.length);
     res.forEach((val, i) => {
       assertEqual(val, i + offset);
     });
     let stats = crsr.getExtra().stats;
-    return stats;
+    if (expectHits) {
+      assertTrue(stats.cacheHits > 0, stats);
+    } else {
+      assertEqual(0, stats.cacheHits, stats);
+    }
   };
 
   return {
     setUp: function() {
       db._create(cn);
+      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
     },
 
     tearDown: function() {
@@ -134,36 +147,28 @@ function AutoRefillIndexCachesVPack() {
     },
     
     testInsertVPackDisabled: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn}`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
       assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
-
-      let stats = runCheck(0);
-      assertEqual(0, stats.cacheHits, stats);
+      runCheck(0, false);
     },
     
     testInsertVPackEnabled: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
-      
-      let stats = runCheck(0);
-      assertTrue(stats.cacheHits > 0, stats);
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+      waitForMetrics();
+      runCheck(0, true);
     },
     
     testUpdateVPackDisabled: function() {
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn}`);
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
@@ -171,29 +176,23 @@ function AutoRefillIndexCachesVPack() {
       // 10 here because there may be background operations running that
       // could affect the metrics
       assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
-
-      let stats = runCheck(1);
-      assertEqual(0, stats.cacheHits, stats);
+      waitForMetrics();
+      runCheck(1, false);
     },
     
     testUpdateVPackEnabled: function() {
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn}`);
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
-      
-      let stats = runCheck(1);
-      assertTrue(stats.cacheHits > 0, stats);
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+      waitForMetrics();
+      runCheck(1, true);
     },
     
     testReplaceVPackDisabled: function() {
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn}`);
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
@@ -201,24 +200,18 @@ function AutoRefillIndexCachesVPack() {
       // 10 here because there may be background operations running that
       // could affect the metrics
       assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
-
-      let stats = runCheck(1);
-      assertEqual(0, stats.cacheHits, stats);
+      runCheck(1, false);
     },
     
     testReplaceVPackEnabled: function() {
-      db._query(`FOR i IN 0..9999 INSERT {value: i} INTO ${cn}`);
-      db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 10000, { oldValue, newValue });
-
-      require('internal').sleep(3);
-      
-      let stats = runCheck(1);
-      assertTrue(stats.cacheHits > 0, stats);
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+      waitForMetrics();
+      runCheck(1, true);
     },
 
   };
