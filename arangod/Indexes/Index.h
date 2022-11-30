@@ -445,7 +445,8 @@ class Index {
   void expandInSearchValues(arangodb::velocypack::Slice const,
                             arangodb::velocypack::Builder&) const;
 
-  virtual Result scheduleWarmup();
+  virtual bool canWarmup() const noexcept;
+  virtual Result warmup();
 
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 

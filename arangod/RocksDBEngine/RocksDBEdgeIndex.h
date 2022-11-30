@@ -41,26 +41,8 @@ namespace arangodb {
 class DatabaseFeature;
 class RocksDBEdgeIndex;
 
-class RocksDBEdgeIndexWarmupTask {
- public:
-  RocksDBEdgeIndexWarmupTask(DatabaseFeature& databaseFeature,
-                             std::string const& dbName,
-                             std::string const& collectionName, IndexId iid,
-                             rocksdb::Slice lower, rocksdb::Slice upper);
-  Result run();
-
- private:
-  DatabaseFeature& _databaseFeature;
-  std::string const _dbName;
-  std::string const _collectionName;
-  IndexId const _iid;
-  std::string const _lower;
-  std::string const _upper;
-};
-
 class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexLookupIterator;
-  friend class RocksDBEdgeIndexWarmupTask;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);
@@ -114,20 +96,23 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference) const override;
 
-  /// @brief Warmup the index caches.
-  Result scheduleWarmup() override;
+  // warm up the index cache
+  Result warmup() override;
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/,
+                OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
                 velocypack::Slice doc) override;
+
+  void refillCache(transaction::Methods& trx,
+                   std::vector<std::string> const& keys) override;
 
  private:
   /// @brief create the iterator
@@ -160,6 +145,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
  private:
   std::string const _directionAttr;
   bool const _isFromIndex;
+  // if true, force a refill of the in-memory cache after each
+  // insert/update/replace operation
+  bool const _forceCacheRefill;
 
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,

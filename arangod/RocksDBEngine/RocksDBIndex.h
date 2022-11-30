@@ -131,6 +131,9 @@ class RocksDBIndex : public Index {
                         velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
+  virtual void refillCache(transaction::Methods& trx,
+                           std::vector<std::string> const& keys);
+
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
   rocksdb::Comparator const* comparator() const;
@@ -161,7 +164,9 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
-  inline bool useCache() const { return (_cacheEnabled && _cache); }
+  bool useCache() const { return (_cacheEnabled && _cache); }
+
+  bool canWarmup() const noexcept override;
 
   void invalidateCacheEntry(char const* data, std::size_t len);
 

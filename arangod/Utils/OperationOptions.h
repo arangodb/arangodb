@@ -26,6 +26,10 @@
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <iosfwd>
+#endif
+
 #include <string>
 
 namespace arangodb {
@@ -59,20 +63,20 @@ enum class ReadOwnWrites : bool {
   yes,
 };
 
-/// @brief: mode to signal how operation should behave
+// mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
-// a struct for keeping document modification operations in transactions
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
+// a struct for keeping document modification operations in transactions
 struct OperationOptions {
   /// @brief behavior when inserting a document by _key using INSERT with
   /// overwrite when the target document already exists
-  enum class OverwriteMode {
+  enum class OverwriteMode : uint8_t {
     Unknown,   // undefined/not set
     Conflict,  // fail with unique constraint violation
     Replace,   // replace the target document
@@ -83,28 +87,31 @@ struct OperationOptions {
   OperationOptions();
   explicit OperationOptions(ExecContext const&);
 
-// The following code does not work with VisualStudi 2019's `cl`
+// The following code does not work with VisualStudio 2019's `cl`
 // Lets keep it for debugging on linux.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #ifndef _WIN32
   friend std::ostream& operator<<(std::ostream& os,
                                   OperationOptions const& ops);
 #endif
+#endif
 
-  bool isOverwriteModeSet() const {
+  bool isOverwriteModeSet() const noexcept {
     return (overwriteMode != OverwriteMode::Unknown);
   }
 
-  bool isOverwriteModeUpdateReplace() const {
+  bool isOverwriteModeUpdateReplace() const noexcept {
     return (overwriteMode == OverwriteMode::Update ||
             overwriteMode == OverwriteMode::Replace);
   }
 
   /// @brief stringifies the overwrite mode
   static char const* stringifyOverwriteMode(
-      OperationOptions::OverwriteMode mode);
+      OperationOptions::OverwriteMode mode) noexcept;
 
   /// @brief determine the overwrite mode from the string value
-  static OverwriteMode determineOverwriteMode(velocypack::StringRef value);
+  static OverwriteMode determineOverwriteMode(
+      velocypack::StringRef value) noexcept;
 
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
@@ -171,6 +178,10 @@ struct OperationOptions {
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
   // index.
   bool canDisableIndexing = true;
+
+  // automatically refill in-memory cache entries after inserts/updates/replaces
+  // for all indexes that have an in-memory cache attached
+  bool refillIndexCaches = false;
 
   // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
   // set temporarily.

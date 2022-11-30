@@ -58,9 +58,18 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   return {};
 }
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
+
 bool StorageEngine::inRecovery() {
   return recoveryState() < RecoveryState::DONE;
 }
+
+void StorageEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // should not be called on the base engine
+  TRI_ASSERT(false);
+}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted

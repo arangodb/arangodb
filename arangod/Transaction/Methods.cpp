@@ -2685,6 +2685,8 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
+  reqOpts.param(StaticStrings::RefillIndexCachesString,
+                options.refillIndexCaches ? "true" : "false");
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {

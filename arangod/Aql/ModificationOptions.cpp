@@ -48,6 +48,8 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
       obj, StaticStrings::IgnoreRevsString, true);
   isRestore = basics::VelocyPackHelper::getBooleanValue(
       obj, StaticStrings::IsRestoreString, false);
+  refillIndexCaches = basics::VelocyPackHelper::getBooleanValue(
+      obj, StaticStrings::RefillIndexCachesString, false);
   overwriteMode = OperationOptions::determineOverwriteMode(
       VPackStringRef(basics::VelocyPackHelper::getStringValue(
           obj, StaticStrings::OverwriteMode, "")));
@@ -71,6 +73,8 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add(StaticStrings::KeepNullString, VPackValue(keepNull));
   builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
+  builder.add(StaticStrings::RefillIndexCachesString,
+              VPackValue(refillIndexCaches));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
 
   if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
