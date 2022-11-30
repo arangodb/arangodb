@@ -86,6 +86,8 @@ function recoverySuite () {
       let line = lines.shift();
       if (require('internal').platform.substr(0, 3) === 'win') {
         assertMatch(/INFO.*Unhandled exception: .* at address .* in thread .*/ , line);
+        line = lines.shift();
+        assertMatch(/INFO.*Wrote minidump.*/ , line);
       } else {
         assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
         // check debug symbols
