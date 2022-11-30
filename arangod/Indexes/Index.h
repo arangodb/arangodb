@@ -439,7 +439,8 @@ class Index {
   void expandInSearchValues(velocypack::Slice const,
                             velocypack::Builder&) const;
 
-  virtual Result scheduleWarmup();
+  virtual bool canWarmup() const noexcept;
+  virtual Result warmup();
 
   static size_t sortWeight(aql::AstNode const* node);
 

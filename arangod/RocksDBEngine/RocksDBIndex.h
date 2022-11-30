@@ -134,6 +134,9 @@ class RocksDBIndex : public Index {
                         velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
 
+  virtual void refillCache(transaction::Methods& trx,
+                           std::vector<std::string> const& keys);
+
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
   rocksdb::Comparator const* comparator() const;
@@ -166,9 +169,11 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  inline bool hasCache() const noexcept {
+  bool hasCache() const noexcept {
     return _cacheEnabled && (_cache != nullptr);
   }
+
+  bool canWarmup() const noexcept override;
 
   virtual std::shared_ptr<cache::Cache> makeCache() const;
 
