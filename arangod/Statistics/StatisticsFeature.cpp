@@ -823,9 +823,9 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
     RequestStatistics::getSnapshot(requestStatsUser,
                                    stats::RequestStatisticsSource::USER);
     appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2, true);
     appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2, true);
 
     // _httpStatistics()
     using rest::RequestType;
