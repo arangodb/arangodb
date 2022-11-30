@@ -1,3 +1,5 @@
+add_compile_warnings_flags()
+
 # ----------------------------------------
 # Greenspun tests
 # ----------------------------------------
@@ -14,6 +16,8 @@ add_subdirectory(Fuerte)
 # Error tests
 # ----------------------------------------
 
+add_subdirectory(Assertions)
+add_subdirectory(CrashHandler)
 add_subdirectory(Errors)
 
 add_subdirectory(Zkd)

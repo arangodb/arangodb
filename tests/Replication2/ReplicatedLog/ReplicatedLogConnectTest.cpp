@@ -369,6 +369,14 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
           });
   EXPECT_CALL(*leaderMock, waitFor(LogIndex{1}))
       .WillOnce(testing::Return(WaitForResult{}));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  EXPECT_CALL(*leaderMock, getQuickStatus)
+      .WillOnce([&, oldConfig = config.get()]() {
+        return QuickLogStatus{
+            .activeParticipantsConfig =
+                std::make_shared<agency::ParticipantsConfig>(oldConfig)};
+      });
+#endif
 
   // should update leader, but not rebuild
   config.setParticipant("C", {}).incGeneration();

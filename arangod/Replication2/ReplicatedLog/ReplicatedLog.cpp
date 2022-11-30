@@ -173,6 +173,8 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     LOG_CTX("2c74c", DEBUG, _logContext)
         << "replicated log participants reconfigured with generation "
         << configShared->generation;
+    TRI_ASSERT(leader->getQuickStatus().activeParticipantsConfig->generation <
+               configShared->generation);
     auto idx = leader->updateParticipantsConfig(configShared);
     return leader->waitFor(idx).thenValue([](auto&&) {});
   }

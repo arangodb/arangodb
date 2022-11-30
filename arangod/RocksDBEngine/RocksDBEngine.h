@@ -466,7 +466,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
-  void verifySstFiles(rocksdb::Options const& options) const;
+  [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);

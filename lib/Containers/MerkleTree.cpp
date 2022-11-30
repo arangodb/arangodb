@@ -77,7 +77,7 @@ namespace arangodb {
 namespace containers {
 
 std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
-  return TRI_FnvHashPod(input);
+  return FnvHashPod(input);
 }
 
 static_assert(std::is_trivial_v<MerkleTreeBase::Meta> &&

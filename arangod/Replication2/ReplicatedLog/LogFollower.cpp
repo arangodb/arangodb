@@ -813,7 +813,7 @@ Result LogFollower::onSnapshotCompleted() {
 auto LogFollower::compact() -> ResultT<CompactionResult> {
   auto guard = _guardedFollowerData.getLockedGuard();
   auto const& [stopIndex, reason] = guard->calcCompactionStop();
-  LOG_CTX("aed29", DEBUG, _loggerContext)
+  LOG_CTX("aed29", INFO, _loggerContext)
       << "starting explicit compaction up to index " << stopIndex << "; "
       << reason;
   return guard->runCompaction(true);

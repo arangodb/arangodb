@@ -118,28 +118,28 @@ void NetworkFeature::collectOptions(
   options->addSection("network", "cluster-internal networking");
 
   options
-      ->addOption(
-          "--network.io-threads",
-          "number of network IO threads for cluster-internal communication",
-          new UInt32Parameter(&_numIOThreads))
+      ->addOption("--network.io-threads",
+                  "The number of network I/O threads for cluster-internal "
+                  "communication.",
+                  new UInt32Parameter(&_numIOThreads))
       .setIntroducedIn(30600);
   options
       ->addOption("--network.max-open-connections",
-                  "max open TCP connections for cluster-internal communication "
-                  "per endpoint",
+                  "The maximum number of open TCP connections for "
+                  "cluster-internal communication per endpoint",
                   new UInt64Parameter(&_maxOpenConnections))
       .setIntroducedIn(30600);
   options
       ->addOption("--network.idle-connection-ttl",
-                  "default time-to-live of idle connections for "
-                  "cluster-internal communication (in milliseconds)",
+                  "The default time-to-live of idle connections for "
+                  "cluster-internal communication (in milliseconds).",
                   new UInt64Parameter(&_idleTtlMilli))
       .setIntroducedIn(30600);
   options
-      ->addOption(
-          "--network.verify-hosts",
-          "verify hosts when using TLS in cluster-internal communication",
-          new BooleanParameter(&_verifyHosts))
+      ->addOption("--network.verify-hosts",
+                  "Verify peer certificates when using TLS in cluster-internal "
+                  "communication.",
+                  new BooleanParameter(&_verifyHosts))
       .setIntroducedIn(30600);
 
   std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
@@ -149,7 +149,7 @@ void NetworkFeature::collectOptions(
   options
       ->addOption(
           "--network.protocol",
-          "network protocol to use for cluster-internal communication",
+          "The network protocol to use for cluster-internal communication.",
           new DiscreteValuesParameter<StringParameter>(&_protocol, protos),
           options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30700)
@@ -157,8 +157,8 @@ void NetworkFeature::collectOptions(
 
   options
       ->addOption("--network.max-requests-in-flight",
-                  "controls the number of internal requests that can be in "
-                  "flight at a given point in time",
+                  "The number of internal requests that can be in "
+                  "flight at a given point in time.",
                   new options::UInt64Parameter(&_maxInFlight),
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30800);

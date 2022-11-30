@@ -24,53 +24,29 @@
 #pragma once
 
 #include <cstdint>
-#include <cstdlib>
+#include <cstddef>
 #include <type_traits>
 
-#include "Basics/Common.h"
+namespace arangodb {
 
 /// @brief computes a FNV hash for blocks
-uint64_t TRI_FnvHashBlock(uint64_t, void const*, size_t);
+uint64_t FnvHashBlock(uint64_t hash, void const* buffer,
+                      size_t length) noexcept;
 
 /// @brief computes a FNV hash for memory blobs
-uint64_t TRI_FnvHashPointer(void const*, size_t);
+uint64_t FnvHashPointer(void const* buffer, size_t length) noexcept;
 
 /// @brief computes a FNV hash for strings
-uint64_t TRI_FnvHashString(char const*);
+uint64_t FnvHashString(char const* buffer) noexcept;
 
 /// @brief computes a FNV hash for POD types
-template<
-    typename T,
-    std::enable_if_t<std::has_unique_object_representations_v<T>, bool> = true>
-uint64_t TRI_FnvHashPod(T input) {
-  return TRI_FnvHashBlock(0xcbf29ce484222325ULL, &input, sizeof(T));
+template<typename T>
+std::enable_if_t<std::has_unique_object_representations_v<T>, uint64_t>
+FnvHashPod(T input) noexcept {
+  return FnvHashBlock(0xcbf29ce484222325ULL, &input, sizeof(T));
 }
 
 /// @brief computes a initial FNV for blocks
-static constexpr uint64_t TRI_FnvHashBlockInitial() {
-  return 0xcbf29ce484222325ULL;
-}
+inline constexpr uint64_t kFnvHashBlockInitial = 0xcbf29ce484222325ULL;
 
-/// @brief initial CRC32 value
-static constexpr uint32_t TRI_InitialCrc32() { return (0xffffffff); }
-
-/// @brief final CRC32 value
-static constexpr uint32_t TRI_FinalCrc32(uint32_t value) {
-  return (value ^ 0xffffffff);
-}
-
-/// @brief CRC32 value of data block
-extern "C" {
-
-#if ENABLE_ASM_CRC32 == 1
-uint32_t TRI_BlockCrc32_SSE42(uint32_t, char const* data, size_t length);
-#endif
-
-uint32_t TRI_BlockCrc32_C(uint32_t hash, char const* data, size_t length);
-extern uint32_t (*TRI_BlockCrc32)(uint32_t hash, char const* data,
-                                  size_t length);
-}
-
-/// @brief computes a CRC32 for memory blobs
-/// the polynomial used is 0x1EDC6F41.
-uint32_t TRI_Crc32HashPointer(void const*, size_t);
+}  // namespace arangodb
