@@ -34,12 +34,10 @@ CreateCollectionBody::CreateCollectionBody() {}
 
 ResultT<CreateCollectionBody> parseAndValidate(
     DatabaseConfiguration const& config, VPackSlice input,
-    std::string const& defaultName,
-    std::function<void(CreateCollectionBody&)> applyOnSuccess) {
+    std::function<void(CreateCollectionBody&)> applyDefaults) {
   try {
     CreateCollectionBody res;
-    // Inject the given defaultName. Json input will overwrite the name
-    res.name = defaultName;
+    applyDefaults(res);
     auto status =
         velocypack::deserializeWithStatus(input, res, {}, InspectUserContext{});
     if (status.ok()) {
@@ -48,7 +46,6 @@ ResultT<CreateCollectionBody> parseAndValidate(
       if (result.fail()) {
         return result;
       }
-      applyOnSuccess(res);
       return res;
     }
     if (status.path() == "name") {
@@ -77,8 +74,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIBody(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, input, StaticStrings::Empty,
-                            [](CreateCollectionBody& col) {});
+  return ::parseAndValidate(config, input, [](CreateCollectionBody& col) {});
 }
 
 ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
@@ -89,12 +85,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromCreateAPIV8(
     // on "name"
     return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
   }
-  return ::parseAndValidate(config, properties, name,
+  return ::parseAndValidate(config, properties,
                             [&name, &type](CreateCollectionBody& col) {
-                              // If we have given a type, it always wins.
-                              // As we hand in an enum the type has to be valid.
-                              // TODO: Should we silently do this?
-                              // or should we throw an illegal use error?
+                              // Inject the default values given by V8 in a
+                              // separate parameter
                               col.type = type;
                               col.name = name;
                             });
