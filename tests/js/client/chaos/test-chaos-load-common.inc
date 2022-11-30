@@ -287,6 +287,7 @@ function BaseChaosSuite(testOpts) {
     },
     
     testWorkInParallel: function () {
+      for (let iter = 0; iter < 100; ++iter) {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
         // The idea here is to use the birthday paradox and have a certain amount of collisions.
@@ -445,6 +446,8 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, false);
         checkViewConsistency(cn, true);
       }
+    }
+    print("Done:" + iter);
     }
   };
 }
