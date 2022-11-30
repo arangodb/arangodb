@@ -7,6 +7,15 @@ v3.10.2 (XXXX-XX-XX)
   These numbers were so far only published via the statistics API.
   This is needed for Oasis traffic accounting.
 
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This is
+  desirable in case a DBServer fails and comes back quickly, because it gives
+  the cluster a chance to get in sync and fully resilient without deploying
+  additional shard replicas and thus without causing any data imbalance.
+
 * Enable "collect-in-cluster" optimizer rule for SmartGraph edge collections.
 
 * Fixed SEARCH-408 Added "cache" columns feature for ArangoSearch.

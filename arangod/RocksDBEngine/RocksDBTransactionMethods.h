@@ -47,7 +47,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
  public:
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
       : _state(state) {}
-  virtual ~RocksDBTransactionMethods() = default;
+  ~RocksDBTransactionMethods() override = default;
 
   virtual Result beginTransaction() = 0;
 
