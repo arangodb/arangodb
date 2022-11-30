@@ -79,7 +79,8 @@ void RocksDBIndexCacheRefillThread::trackRefill(
 
     if (_numQueued + n >= _maxCapacity) {
       // we have reached the maximum queueing capacity, so give up on whatever
-      // keys we received just now
+      // keys we received just now.
+      // increase metric and return
       _totalNumDropped += n;
       return;
     }
@@ -112,10 +113,11 @@ void RocksDBIndexCacheRefillThread::trackRefill(
       }
     }
     _numQueued += n;
-
-    guard.signal();
   }
 
+  // wake up background thread
+  _condition.signal();
+  // increase metric
   _totalNumQueued += n;
 }
 
@@ -180,6 +182,9 @@ void RocksDBIndexCacheRefillThread::run() {
       }
 
       if (!operations.empty()) {
+        LOG_TOPIC("1dd43", TRACE, Logger::ENGINES)
+            << "(re-)inserting " << numQueued << " entries into index caches";
+
         // note: if refill somehow throws, it is not the end of the world.
         // we will then not have repopulated some cache entries, but it
         // should not matter too much, as repopulating the cache entries
@@ -191,7 +196,7 @@ void RocksDBIndexCacheRefillThread::run() {
       }
 
       CONDITION_LOCKER(guard, _condition);
-      if (!isStopping()) {
+      if (!isStopping() && operations.empty()) {
         guard.wait(std::chrono::microseconds(10'000'000));
       }
     } catch (std::exception const& ex) {

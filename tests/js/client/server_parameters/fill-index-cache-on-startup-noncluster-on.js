@@ -115,7 +115,7 @@ function FillIndexCacheOnStartup() {
       assertTrue(stats.cacheHits > 0, stats);
     },
     
-    testCacheResultVPackUnindexField: function() {
+    testCacheResultVPackUnindexedField: function() {
       const q = `FOR i IN 0..9999 FOR doc IN ${cn} FILTER doc.value2 == i RETURN doc._key`;
       let crsr = db._query(q);
       let res = crsr.toArray();
