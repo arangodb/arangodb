@@ -103,7 +103,6 @@ function recoverySuite () {
         assertTrue(matches > 0, lines);
       }
     }
-
   };
 }
 
