@@ -7,6 +7,8 @@ devel
   These numbers were so far only published via the statistics API.
   This is needed for Oasis traffic accounting.
 
+* Deleted customizable Pregel (AIR) and Greenspun library
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 

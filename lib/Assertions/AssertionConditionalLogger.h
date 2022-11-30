@@ -18,14 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
-/// @author Markus Pfeiffer
+/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <Greenspun/Interpreter.h>
 
-namespace arangodb::greenspun {
-void RegisterAllStringFunctions(Machine& ctx);
-}  // namespace arangodb::greenspun
+#include "AssertionConditionalStream.h"
+
+namespace arangodb::debug {
+struct AssertionConditionalLogger {
+  void operator&(AssertionConditionalStream& stream) const {
+    if (!stream.condition) {
+      std::string message = stream.stream.str();
+      arangodb::CrashHandler::assertionFailure(
+          file, line, function, expr,
+          message.empty() ? nullptr : message.c_str());
+    } else {
+      // need to clear the stream to avoid cumulation of assertion output!
+      stream.stream.str({});
+      stream.stream.clear();
+    }
+  }
+
+  const char* file;
+  int line;
+  const char* function;
+  const char* expr;
+
+  static thread_local AssertionConditionalStream assertionStringStream;
+};
+}  // namespace arangodb::debug

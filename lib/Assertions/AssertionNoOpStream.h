@@ -18,22 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
-/// @author Markus Pfeiffer
+/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <Greenspun/Interpreter.h>
+namespace arangodb::debug {
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+struct NoOpStream {
+  template<typename T>
+  auto operator<<(T const&) noexcept -> NoOpStream& {
+    return *this;
+  }
+};
 
-namespace arangodb {
-namespace greenspun {
-
-void RegisterAllDateTimeFunctions(Machine& ctx);
-
-}  // namespace greenspun
-}  // namespace arangodb
+}  // namespace arangodb::debug

@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -18,25 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
-/// @author Lars Maier
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MessageFormat.h"
+#include "CrashHandler/CrashHandler.h"
+#include "AssertionConditionalLogger.h"
 
-namespace arangodb::pregel::algos::accumulators {
-
-// MessageFormat
-MessageFormat::MessageFormat() = default;
-
-void MessageFormat::unwrapValue(VPackSlice s, message_type& message) const {
-  message.fromVelocyPack(s);
-}
-
-void MessageFormat::addValue(VPackBuilder& arrayBuilder,
-                             message_type const& message) const {
-  message.toVelocyPack(arrayBuilder);
-}
-
-}  // namespace arangodb::pregel::algos::accumulators
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+thread_local arangodb::debug::AssertionConditionalStream
+    arangodb::debug::AssertionConditionalLogger::assertionStringStream;
+#endif
