@@ -1,0 +1,16 @@
+name: arangodb_client_user_connection_statistics_bytes_received
+introducedIn: "3.9.6"
+help: |
+  Bytes received for requests, only user traffic.
+unit: bytes
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the received request sizes in bytes, only considering user
+  traffic, i.e. traffic authenticated with a real user (or role).
