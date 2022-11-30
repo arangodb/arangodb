@@ -1,6 +1,49 @@
 devel
 -----
 
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This is
+  desirable in case a DBServer fails and comes back quickly, because it gives
+  the cluster a chance to get in sync and fully resilient without deploying
+  additional shard replicas and thus without causing any data imbalance.
+
+* Deleted customizable Pregel (AIR) and Greenspun library.
+
+* Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
+  options.
+
+* Fix HTTP/VST traffic accounting in internal statistics / metrics.
+
+* Updated arangosync to v2.13.0.
+
+* Make the deprecated `--server.disable-authentication-unix-sockets` and
+  `--server.disable-authentication` startup options obsolete. They were
+  deprecated in v3.0 and mapped to `--server.authentication` and
+  `--server.authentication-unix-sockets`, which made them do the opposite
+  of what their names suggest.
+
+* Removed more assertions from cluster rebalance js test that obligated the 
+  rebalance plan to always have moves, but there were cases in which all 
+  there are none.
+
+* Log startup warnings for any experimental, deprecated, obsolete or renamed
+  options at startup of arangod or any of the client tools.
+
+* Fixed issue #17291: Server crash on error in the PRUNE expression.
+  Traversal PRUNE expressions containing JavaScript user-defined functions
+  (UDFs) are now properly rejected in single server and cluster mode.
+  PRUNE expressions that use UDFs require a V8 context for execution,
+  which is not available on DB-servers in a cluster, and also isn't
+  necessarily available for regular queries on single servers (a V8 context
+  is only available if a query was executed inside Foxx or from inside a JS
+  transaction, but not otherwise).
+
 * Fix setting query memory limit to 0 for certain queries if a global memory
   limit is set, but overriding the memory limit is allowed.
 
@@ -50,6 +93,9 @@ devel
 * Obsolete startup option `--database.force-sync-properties`. This option
   was useful with the MMFiles storage engine, but didn't have any useful
   effect when used with the RocksDB engine.
+
+* Added detailed explanations for some startup options.
+  They are only exposed via `--dump-options` under the `longDescription` key.
 
 * Updated OpenSSL to 1.1.1s.
 

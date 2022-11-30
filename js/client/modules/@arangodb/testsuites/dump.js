@@ -369,6 +369,10 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let retryCount = 0;
     do {
       this.results.restore = this.arangorestore();
+      if (!this.instanceManager.checkInstanceAlive()) {
+        this.results.failed = true;
+        return false;
+      }
       if (this.results.restore.exitCode === 38) {
         retryCount += 1;
         if (retryCount === 21) {

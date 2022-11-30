@@ -24,7 +24,6 @@
 #include "Basics/operating-system.h"
 
 #include "Basics/PhysicalMemory.h"
-#include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "ProgramOptions/Parameters.h"
 

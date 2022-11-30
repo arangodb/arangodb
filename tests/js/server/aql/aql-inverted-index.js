@@ -55,7 +55,8 @@ function optimizerRuleInvertedIndexTestSuite() {
                        name: 'InvertedIndexSorted',
                        fields: ['data_field',
                                 {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'}],
+                                {name:'custom_field', analyzer:'text_en'},
+                                {name:'trackListField', trackListPositions:true}],
                         primarySort:{fields:[{field: "count", direction:"desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
@@ -63,6 +64,7 @@ function optimizerRuleInvertedIndexTestSuite() {
           data.push({count:i,
                      norm_field: 'fOx',
                      searchField:i,
+                     trackListField:i,
                      data_field:'value' + i % 100,
                      custom_field:"quick brown",
                      geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
@@ -507,6 +509,16 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs, executeRes.length);
+    },
+    testIndexHintedTrackListPositionsFieldIgnored: function () {
+      const query = aql`
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.trackListField == 1
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
     },
   };
 }

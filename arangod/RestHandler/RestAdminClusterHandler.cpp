@@ -713,7 +713,7 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
                          auth::Level::RW;
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "insufficent permissions on database to move shard");
+                    "insufficient permissions on database to move shard");
       return RestStatus::DONE;
     }
 
@@ -2348,7 +2348,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficent permissions");
+                  "insufficient permissions");
     return RestStatus::DONE;
   }
 

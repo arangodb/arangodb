@@ -74,6 +74,8 @@ std::string_view trimProcName(std::string_view content) {
 using namespace arangodb::basics;
 
 namespace arangodb {
+class OptionsCheckFeature;
+class SharedPRNGFeature;
 
 EnvironmentFeature::EnvironmentFeature(Server& server)
     : ArangodFeature{server, *this} {
@@ -82,6 +84,7 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
 
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
+  startsAfter<OptionsCheckFeature>();
   startsAfter<SharedPRNGFeature>();
 }
 
@@ -136,6 +139,7 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
+#ifdef __linux__
 #if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
@@ -232,6 +236,7 @@ void EnvironmentFeature::prepare() {
           << "unable to detect CPU type '" << filename << "'";
     }
   }
+#endif
 #endif
 
 #ifdef __linux__

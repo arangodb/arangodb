@@ -15,6 +15,8 @@ if (USE_FAIL_ON_WARNINGS)
   endif ()
 endif ()
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## arangod executable
 ################################################################################
@@ -36,7 +38,7 @@ add_executable(${BIN_ARANGOD}
   ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
-
+  
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
