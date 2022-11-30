@@ -140,6 +140,46 @@ stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
 will fail before it returns results in case of a conflict.
 
+@RESTSTRUCT{spillOverThresholdMemoryUsage,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the amount of memory used (in bytes) exceeds the specified value.
+This is used for decreasing the memory usage during the query execution.
+
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: 128MB.
+
+Note:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
+
+@RESTSTRUCT{spillOverThresholdNumRows,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the number of rows produced by the query exceeds the specified value.
+This is used for decreasing the memory usage during the query execution. In a
+query that iterates over a collection that contains documents, each row is a
+document, and in a query that iterates over temporary values 
+(i.e. `FOR i IN 1..100`), each row is one of such temporary values.
+
+**Note**:
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: `5000000` rows.
+
+**Note**:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
+
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
 
