@@ -1,0 +1,16 @@
+name: arangodb_http1_connections_total
+introducedIn: "3.9.6"
+help: |
+  Total number of HTTP/1.1 connections accepted.
+unit: number
+type: counter
+category: Connectivity
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of connections accepted for HTTP/1.1. Note that this can 
+  include connections that are negotiated to be upgraded to HTTP/2.
