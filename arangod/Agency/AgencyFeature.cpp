@@ -67,6 +67,8 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
       _supervisionOkThreshold(5.0),
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0),
       _cmdLineTimings(false) {
   setOptional(true);
   startsAfter<FoxxFeaturePhase>();
@@ -153,6 +155,28 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnAgent));
+
+  options
+      ->addOption("--agency.supervision-delay-add-follower",
+                  "The delay in supervision, before an AddFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayAddFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
+
+  options
+      ->addOption("--agency.supervision-delay-failed-follower",
+                  "The delay in supervision, before a FailedFollower job is "
+                  "executed (in seconds).",
+                  new UInt64Parameter(&_supervisionDelayFailedFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
 
   options->addOption(
       "--agency.compaction-step-size",
@@ -368,7 +392,8 @@ void AgencyFeature::prepare() {
           _maxElectionTimeout, endpoint, _agencyEndpoints, _supervision,
           _supervisionTouched, _waitForSync, _supervisionFrequency,
           _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-          _supervisionOkThreshold, _cmdLineTimings, _maxAppendSize)));
+          _supervisionOkThreshold, _supervisionDelayAddFollower,
+          _supervisionDelayFailedFollower, _cmdLineTimings, _maxAppendSize)));
 }
 
 void AgencyFeature::start() {

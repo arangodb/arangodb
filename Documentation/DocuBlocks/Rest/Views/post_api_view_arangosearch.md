@@ -55,6 +55,8 @@ performance of queries that return many documents. Otherwise, these values are
 memory-mapped and it is up to the operating system to load them from disk into
 memory and to evict them from memory.
 
+This option is immutable.
+
 See the `--arangosearch.columns-cache-limit` startup option to control the
 memory consumption of this cache.
 

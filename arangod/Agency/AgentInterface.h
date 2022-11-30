@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgentConfiguration.h"
 
 namespace arangodb {
 namespace consensus {
@@ -64,6 +65,9 @@ class AgentInterface {
 
   /// @brief Wait for slaves to confirm appended entries
   virtual bool isCommitted(index_t last_entry) = 0;
+
+  /// @brief Provide configuration
+  virtual config_t const& config() const = 0;
 
   // Suffice warnings
   virtual ~AgentInterface() = default;
