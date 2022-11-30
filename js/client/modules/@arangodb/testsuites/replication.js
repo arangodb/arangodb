@@ -209,6 +209,7 @@ function replicationStatic (options) {
 
 function replicationSync (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   return new replicationRunner(options, 'replication_sync').run(testCases);
 }
