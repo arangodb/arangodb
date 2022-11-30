@@ -228,7 +228,7 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
       db._create(cn, { numberOfShards: rf * 2, replicationFactor: rf });
-      testOpts.withIntermediateCommits = false
+      testOpts.withIntermediateCommits = false;
       testOpts.withViews = !testOpts.withIntermediateCommits;
       if (testOpts.withViews) {
         createViews();
