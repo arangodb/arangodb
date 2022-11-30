@@ -354,9 +354,10 @@ struct arangodb::VocBaseLogManager {
             .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
                          .timestamp = {},
                          .error = {}},
+            .generation = {},
             .specification = {.type = std::string(type),
                               .parameters = std::move(parametersCopy)},
-            .generation = {}};
+        };
         auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
 
         if (maybeStorage.fail()) {
