@@ -52,7 +52,7 @@ struct ResignLeadership : public Job {
   bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
 
   std::string _server;
-  bool _reclaimShards{false};
+  bool _undoMoves{true};
 };
 }  // namespace consensus
 }  // namespace arangodb

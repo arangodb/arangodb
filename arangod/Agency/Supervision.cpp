@@ -1786,8 +1786,8 @@ void Supervision::handleJobs() {
   checkBrokenAnalyzers();
 
   LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
-      << "Begin checkReclaimShardActions";
-  checkReclaimShardActions();
+      << "Begin checkUndoLeaderChangeActions";
+  checkUndoLeaderChangeActions();
 
   LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedStates";
@@ -3476,7 +3476,7 @@ void Supervision::removeTransactionBuilder(
   }
 }
 
-void Supervision::checkReclaimShardActions() {
+void Supervision::checkUndoLeaderChangeActions() {
   auto const getShardLeader =
       [&](std::string_view database, std::string_view collection,
           std::string_view shard) -> std::optional<std::string> {
@@ -3522,12 +3522,12 @@ void Supervision::checkReclaimShardActions() {
         }
       };
 
-  auto claims = snapshot().hasAsChildren("Target/ReclaimShards");
-  if (not claims) {
+  auto undos = snapshot().hasAsChildren("Target/ReturnLeadership");
+  if (not undos) {
     return;
   }
 
-  for (auto const& [dbserver, instances] : claims->get()) {
+  for (auto const& [dbserver, instances] : undos->get()) {
     // get server health
     if (serverHealth(dbserver) != HEALTH_STATUS_GOOD) {
       continue;

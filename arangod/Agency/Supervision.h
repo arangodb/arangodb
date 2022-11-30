@@ -192,8 +192,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
-  /// @brief Check reclaim-shard-actions
-  void checkReclaimShardActions();
+  /// @brief Check undo-leader-change-actions
+  void checkUndoLeaderChangeActions();
 
   /// @brief Check for orphaned index creations, which have been successfully
   /// built
