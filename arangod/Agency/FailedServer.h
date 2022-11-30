@@ -33,7 +33,8 @@ struct FailedServer : public Job {
   FailedServer(Node const& snapshot, AgentInterface* agent,
                std::string const& jobId,
                std::string const& creator = std::string(),
-               std::string const& failed = std::string());
+               std::string const& failed = std::string(),
+               std::string const& notBefore = std::string());
 
   FailedServer(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
                std::string const& jobId);
@@ -47,6 +48,7 @@ struct FailedServer : public Job {
   virtual Result abort(std::string const& reason) override final;
 
   std::string _server;
+  std::string _notBefore;  // for handing on to the FailedFollower jobs
 };
 }  // namespace consensus
 }  // namespace arangodb
