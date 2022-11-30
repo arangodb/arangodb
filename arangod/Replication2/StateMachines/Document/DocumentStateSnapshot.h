@@ -158,26 +158,10 @@ struct Finished {};
 using SnapshotState =
     std::variant<state::Ongoing, state::Aborted, state::Finished>;
 
-struct SnapshotStateTransformer {
-  using SerializedType = std::string;
-  auto toSerialized(SnapshotState const& source, SerializedType& target) const
-      -> inspection::Status {
-    target = std::string{
-        std::visit(overload{
-                       [](state::Ongoing const&) { return kStringOngoing; },
-                       [](state::Finished const&) { return kStringFinished; },
-                       [](state::Aborted const&) { return kStringAborted; },
-                   },
-                   source)};
-    return {};
-  }
-};
-
 /*
- * Used to retrieve information about the current state of a snapshot.
+ * Used to retrieve debug information about a snapshot.
  */
-struct SnapshotStatus {
-  SnapshotState const& state;
+struct SnapshotStatistics {
   ShardID shardId{};
   std::optional<uint64_t> totalDocs{std::nullopt};
   uint64_t docsSent{0};
@@ -190,10 +174,8 @@ struct SnapshotStatus {
       std::nullopt};
 
   template<class Inspector>
-  inline friend auto inspect(Inspector& f, SnapshotStatus& s) {
+  inline friend auto inspect(Inspector& f, SnapshotStatistics& s) {
     return f.object(s).fields(
-        f.field(kStringState, s.state)
-            .transformWith(SnapshotStateTransformer{}),
         f.field(kStringShardId, s.shardId),
         f.field(kStringTotalDocsToBeSent, s.totalDocs),
         f.field(kStringDocsSent, s.docsSent),
@@ -205,6 +187,28 @@ struct SnapshotStatus {
             .transformWith(inspection::TimeStampTransformer{}),
         f.field(kStringLastBatchSent, s.lastBatchSent)
             .transformWith(inspection::TimeStampTransformer{}));
+  }
+};
+
+struct SnapshotStatus {
+  SnapshotStatus(SnapshotState const& state, SnapshotStatistics statistics)
+      : statistics(std::move(statistics)) {
+    this->state =
+        std::visit(overload{
+                       [](state::Ongoing const&) { return kStringOngoing; },
+                       [](state::Finished const&) { return kStringFinished; },
+                       [](state::Aborted const&) { return kStringAborted; },
+                   },
+                   state);
+  }
+
+  std::string state;
+  SnapshotStatistics statistics;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, SnapshotStatus& s) {
+    return f.object(s).fields(f.field(kStringState, s.state),
+                              f.embedFields(s.statistics));
   }
 };
 
@@ -246,6 +250,6 @@ class Snapshot {
   SnapshotId _id;
   std::unique_ptr<ICollectionReader> _reader;
   SnapshotState _state;
-  SnapshotStatus _status;
+  SnapshotStatistics _statistics;
 };
 }  // namespace arangodb::replication2::replicated_state::document

@@ -59,7 +59,7 @@ CollectionReader::CollectionReader(
   } else {
     // Will not fail because this is used just as an insight into the
     // collection
-    LOG_TOPIC("49e64", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("49e64", WARN, Logger::REPLICATION2)
         << "Failed to get total number of documents in collection "
         << _logicalCollection->name() << ": " << countResult.errorMessage();
   }
@@ -86,6 +86,8 @@ CollectionReader::CollectionReader(
 
 void CollectionReader::read(VPackBuilder& builder,
                             std::size_t const softLimit) {
+  TRI_ASSERT(builder.isEmpty()) << builder.toJson();
+
   VPackArrayBuilder ab(&builder);
   if (!_it->hasMore()) {
     return;

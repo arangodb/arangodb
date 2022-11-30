@@ -51,23 +51,23 @@ Snapshot::Snapshot(SnapshotId id, ShardID shardId,
     : _id(id),
       _reader{std::move(reader)},
       _state{state::Ongoing{}},
-      _status{_state, std::move(shardId), _reader->getDocCount()} {}
+      _statistics{std::move(shardId), _reader->getDocCount()} {}
 
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return std::visit(
       overload{
           [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
+            ongoing.builder.clear();
             _reader->read(ongoing.builder, kBatchSizeLimit);
             auto batch =
                 SnapshotBatch{.snapshotId = _id,
-                              .shardId = _status.shardId,
+                              .shardId = _statistics.shardId,
                               .hasMore = _reader->hasMore(),
                               .payload = ongoing.builder.sharedSlice()};
-            ongoing.builder.clear();
-            ++_status.batchesSent;
-            _status.bytesSent += batch.payload.byteSize();
-            _status.docsSent += batch.payload.length();
-            _status.lastBatchSent = _status.lastUpdated =
+            ++_statistics.batchesSent;
+            _statistics.bytesSent += batch.payload.byteSize();
+            _statistics.docsSent += batch.payload.length();
+            _statistics.lastBatchSent = _statistics.lastUpdated =
                 std::chrono::system_clock::now();
             return ResultT<SnapshotBatch>::success(std::move(batch));
           },
@@ -90,7 +90,7 @@ auto Snapshot::finish() -> Result {
       overload{
           [&](state::Ongoing& ongoing) -> Result {
             if (_reader->hasMore()) {
-              LOG_TOPIC("23913", DEBUG, Logger::REPLICATION2)
+              LOG_TOPIC("23913", WARN, Logger::REPLICATION2)
                   << "Snapshot " << _id
                   << " is being finished, but still has more data!";
             }
@@ -115,7 +115,7 @@ auto Snapshot::abort() -> Result {
       overload{
           [&](state::Ongoing& ongoing) -> Result {
             if (_reader->hasMore()) {
-              LOG_TOPIC("5ce86", DEBUG, Logger::REPLICATION2)
+              LOG_TOPIC("5ce86", WARN, Logger::REPLICATION2)
                   << "Snapshot " << _id
                   << " is being aborted, but still has more data!";
             }
@@ -136,6 +136,6 @@ auto Snapshot::abort() -> Result {
 }
 
 [[nodiscard]] auto Snapshot::status() const -> SnapshotStatus {
-  return _status;
+  return SnapshotStatus(_state, _statistics);
 }
 }  // namespace arangodb::replication2::replicated_state::document
