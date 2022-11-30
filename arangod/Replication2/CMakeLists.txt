@@ -1,13 +1,28 @@
 add_library(arango_replication2 STATIC
-  AgencyCollectionSpecification.cpp
-  AgencyMethods.cpp
-  Methods.cpp
-  MetricsHelper.cpp
-  Version.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp ReplicatedLog/Components/LogFollower2.cpp ReplicatedLog/Components/LogFollower2.h ReplicatedLog/Components/StorageManager.cpp ReplicatedLog/Components/StorageManager.h ReplicatedLog/Components/CompactionManager.cpp ReplicatedLog/Components/CompactionManager.h ReplicatedLog/Components/SnapshotManager.cpp ReplicatedLog/Components/SnapshotManager.h ReplicatedLog/Components/AppendEntriesManager.cpp ReplicatedLog/Components/AppendEntriesManager.h ReplicatedLog/Components/ExclusiveBool.h ReplicatedLog/Components/FollowerCommitManager.cpp ReplicatedLog/Components/FollowerCommitManager.h ReplicatedLog/Components/StateHandleManager.cpp ReplicatedLog/Components/StateHandleManager.h)
+        AgencyCollectionSpecification.cpp
+        AgencyMethods.cpp
+        Methods.cpp
+        MetricsHelper.cpp
+        Version.cpp
+        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogHandler.cpp
+        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestLogInternalHandler.cpp
+        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPrototypeStateHandler.cpp
+        ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestDocumentStateHandler.cpp
+        ReplicatedLog/Components/LogFollower2.cpp
+        ReplicatedLog/Components/LogFollower2.h
+        ReplicatedLog/Components/StorageManager.cpp
+        ReplicatedLog/Components/StorageManager.h
+        ReplicatedLog/Components/CompactionManager.cpp
+        ReplicatedLog/Components/CompactionManager.h
+        ReplicatedLog/Components/SnapshotManager.cpp
+        ReplicatedLog/Components/SnapshotManager.h
+        ReplicatedLog/Components/AppendEntriesManager.cpp
+        ReplicatedLog/Components/AppendEntriesManager.h
+        ReplicatedLog/Components/ExclusiveBool.h
+        ReplicatedLog/Components/FollowerCommitManager.cpp
+        ReplicatedLog/Components/FollowerCommitManager.h
+        ReplicatedLog/Components/StateHandleManager.cpp
+        ReplicatedLog/Components/StateHandleManager.h)
 
 target_link_libraries(arango_replication2
   arango
