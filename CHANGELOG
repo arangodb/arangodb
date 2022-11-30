@@ -1,6 +1,9 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
 * Delay a MoveShard operation for leader change, until the old leader has
