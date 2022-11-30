@@ -196,7 +196,7 @@ void RocksDBIndexCacheRefillThread::run() {
       }
 
       CONDITION_LOCKER(guard, _condition);
-      if (!isStopping() && operations.empty()) {
+      if (!isStopping() && _operations.empty()) {
         guard.wait(std::chrono::microseconds(10'000'000));
       }
     } catch (std::exception const& ex) {
