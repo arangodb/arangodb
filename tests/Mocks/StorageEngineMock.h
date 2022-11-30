@@ -359,6 +359,12 @@ class StorageEngineMock : public arangodb::StorageEngine {
                            arangodb::replication2::LogId id)
       -> arangodb::Result override;
 
+
+  std::shared_ptr<StorageSnapshot> currentSnapshot() override {
+    return nullptr;
+  }
+
+
  private:
   TRI_voc_tick_t _releasedTick;
 };

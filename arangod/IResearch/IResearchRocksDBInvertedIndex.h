@@ -115,6 +115,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
       int mutableConditionIdx) override {
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
+
     return IResearchInvertedIndex::iteratorForCondition(
         monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
         mutableConditionIdx);

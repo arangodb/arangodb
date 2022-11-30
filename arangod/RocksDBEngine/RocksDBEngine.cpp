@@ -3724,4 +3724,8 @@ bool RocksDBEngine::checkExistingDB(
 
   return dbExisted;
 }
+
+std::shared_ptr<StorageEngine::StorageSnapshot> RocksDBEngine::currentSnapshot() {
+  return std::make_shared<RocksDBSnapshot>(_db);
+}
 }  // namespace arangodb

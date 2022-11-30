@@ -87,6 +87,16 @@ struct Options;
 
 class StorageEngine : public ArangodFeature {
  public:
+
+  class StorageSnapshot {
+   public:
+    virtual ~StorageSnapshot() = default;
+
+    virtual TRI_voc_tick_t tick() const noexcept = 0;
+  };
+
+
+
   // create the storage engine
   StorageEngine(Server& server, std::string_view engineName,
                 std::string_view featureName, size_t registration,
@@ -358,6 +368,7 @@ class StorageEngine : public ArangodFeature {
   virtual TRI_voc_tick_t currentTick() const = 0;
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
+  virtual std::shared_ptr<StorageSnapshot> currentSnapshot() = 0;
 
  protected:
   void registerCollection(

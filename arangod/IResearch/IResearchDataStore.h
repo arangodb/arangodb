@@ -32,6 +32,7 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include "store/directory_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -98,32 +99,42 @@ class IResearchDataStore {
   ///        locked to prevent data store deallocation
   //////////////////////////////////////////////////////////////////////////////
   // TODO Refactor irs::directory_reader ctor, now it doesn't have move
+  struct DataSnapshot {
+    DataSnapshot(irs::directory_reader&& index,
+      std::shared_ptr<StorageEngine::StorageSnapshot>&& db)
+        : _reader(std::move(index)), _snapshot(std::move(db)) {}
+    irs::directory_reader _reader;
+    std::shared_ptr<StorageEngine::StorageSnapshot> _snapshot;
+  };
+
+  using DataSnapshotPtr = std::shared_ptr<DataSnapshot>;
+
   class Snapshot {
    public:
     Snapshot(Snapshot const&) = delete;
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(LinkLock&& lock, irs::directory_reader&& reader) noexcept
-        : _lock{std::move(lock)}, _reader{std::move(reader)} {}
+    Snapshot(LinkLock&& lock, DataSnapshotPtr&& snapshot) noexcept
+        : _lock{std::move(lock)}, _snapshot{std::move(snapshot)} {}
     Snapshot(Snapshot&& rhs) noexcept
-        : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {}
+        : _lock{std::move(rhs._lock)}, _snapshot{std::move(rhs._snapshot)} {}
     Snapshot& operator=(Snapshot&& rhs) noexcept {
       if (this != &rhs) {
         _lock = std::move(rhs._lock);
-        _reader = std::move(rhs._reader);
+        _snapshot = std::move(rhs._snapshot);
       }
       return *this;
     }
 
     [[nodiscard]] auto const& getDirectoryReader() const noexcept {
-      return _reader;
+      return _snapshot->_reader;
     }
 
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
-    irs::directory_reader _reader;
+    DataSnapshotPtr _snapshot;
   };
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
@@ -142,7 +153,7 @@ class IResearchDataStore {
   ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-  static irs::directory_reader reader(LinkLock const& linkLock);
+  static DataSnapshotPtr reader(LinkLock const& linkLock);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link/index
@@ -294,7 +305,7 @@ class IResearchDataStore {
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
-    irs::directory_reader _reader;
+    DataSnapshotPtr _snapshot;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
@@ -305,7 +316,7 @@ class IResearchDataStore {
 
     void resetDataStore() noexcept {
       // reset all underlying readers to release file handles
-      _reader.reset();
+      _snapshot.reset();
       _writer.reset();
       _directory.reset();
     }

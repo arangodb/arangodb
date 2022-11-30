@@ -240,6 +240,12 @@ class ClusterEngine final : public StorageEngine {
     // noop
   }
 
+  
+  std::shared_ptr<StorageSnapshot> currentSnapshot() override {
+    return nullptr;
+  }
+
+
  public:
   static std::string const EngineName;
   static std::string const FeatureName;

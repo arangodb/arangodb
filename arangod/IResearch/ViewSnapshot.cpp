@@ -68,7 +68,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
 
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
-  std::vector<irs::directory_reader> _readers;
+  std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
   Segments _segments;
 };
 
@@ -99,12 +99,12 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
       }
     }
     _readers.push_back(IResearchDataStore::reader(link));
-    segments += _readers.back().size();
+    segments += _readers.back()->_reader.size();
   }
   _segments.reserve(segments);
   for (size_t i = 0; i != _links.size(); ++i) {
     auto const cid = _links[i]->collection().id();
-    auto const& reader = _readers[i];
+    auto const& reader = _readers[i]->_reader;
     for (auto const& segment : reader) {
       _segments.emplace_back(cid, &segment);
     }
