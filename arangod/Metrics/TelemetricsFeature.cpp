@@ -24,16 +24,32 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/AsyncAgencyComm.h"
 #include <Basics/application-exit.h>
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
+#include "Basics/process-utils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogTimeFormat.h"
 #include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
+#include "Replication/ReplicationFeature.h"
+#include "Rest/Version.h"
+#include "RestServer/EnvironmentFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "RestServer/CpuUsageFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -41,10 +57,15 @@
 
 #include "Logger/LogMacros.h"
 
+using namespace arangodb;
+
 namespace arangodb::metrics {
 
 TelemetricsFeature::TelemetricsFeature(Server& server)
-    : ArangodFeature{server, *this}, _enable{false}, _interval{24} {
+    : ArangodFeature{server, *this},
+      _enable{false},
+      _interval{24},
+      _infoHandler(server) {
   setOptional();
   startsAfter<LoggerFeature>();
   // startsAfter<InitDatabaseFeature>();
@@ -66,33 +87,53 @@ void TelemetricsFeature::collectOptions(
       .setIntroducedIn(31100);
 
   options
-      ->addOption("--server.telemetrics-interval",
-                  "Interval for telemetrics requests to be sent (unit: hours. "
-                  "Default: 24)",
-                  new options::NumericParameter<long>(&_interval),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--server.telemetrics-interval",
+          "Interval for telemetrics requests to be sent (unit: seconds. "
+          "Default: 24h, 86400s)",
+          new options::NumericParameter<long>(&_interval),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31100);
 }
 
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {}
 
-void TelemetricsFeature::storeLastUpdate(
-    std::shared_ptr<transaction::Context> ctx, bool isInsert) {
-  LOG_DEVEL << "SENDING TELEMETRICS";
-  OperationOptions options;
-  options.ignoreRevs = true;
-  options.overwriteMode = OperationOptions::OverwriteMode::Update;
+void TelemetricsFeature::sendTelemetrics() {
+  LOG_DEVEL << "SEND TELEMETRICS";
+  VPackBuilder result;
+  _infoHandler.buildInfoMessage(result);
+
+  LOG_DEVEL << result.slice().toJson();
+  LOG_TOPIC("affd3", DEBUG, Logger::STATISTICS) << result.slice().toJson();
+}
+
+bool TelemetricsFeature::storeLastUpdate(bool isInsert) {
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  bool isCoordinator = ServerState::instance()->isCoordinator(role);
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
+  TRI_vocbase_t* vocbase =
+      databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+
+  // options.overwriteMode = OperationOptions::OverwriteMode::Conflict;
   auto rightNow = std::chrono::high_resolution_clock::now();
   auto rightNowSecs =
       std::chrono::time_point_cast<std::chrono::seconds>(rightNow);
   auto rightNowAbs = rightNowSecs.time_since_epoch().count();
   SingleCollectionTransaction trx(ctx, kCollName, AccessMode::Type::WRITE);
+  LOG_DEVEL << "created transaction";
   Result res = trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   if (isInsert) {
+    OperationOptions options;
+    options.ignoreRevs = true;
     LOG_DEVEL << "last update is empty";
-    Builder body;
+    velocypack::Builder body;
     {
       ObjectBuilder b(&body);
       body.add("_key", kKeyValue);
@@ -107,24 +148,40 @@ void TelemetricsFeature::storeLastUpdate(
           << "Failed to insert doc: " << e.what() << ". Bailing out.";
       FATAL_ERROR_EXIT();
     }
+    return true;
   } else {
     LOG_DEVEL << "last update is empty";
-    Builder body;
+    velocypack::Builder body;
     {
       ObjectBuilder b(&body);
       body.add("_key", kKeyValue);
       body.add("lastUpdate", Value(rightNowAbs));
     }
     try {
+      OperationOptions options;
+      if (isCoordinator) {
+        options.ignoreRevs = false;
+      }
       OperationResult result = trx.update(kCollName, body.slice(), options);
+      if (isCoordinator && result.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
+        std::ignore = trx.abort();
+        // revs don't match, coordinator must reschedule
+        return false;
+      }
       Result res = trx.finish(result.result);
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
       _latestUpdate = rightNowAbs;
     } catch (std::exception const& e) {
       LOG_TOPIC("affd3", FATAL, Logger::STATISTICS)
           << "Failed to update doc: " << e.what() << ". Bailing out.";
       FATAL_ERROR_EXIT();
     }
+    return true;
   }
+  // never reached
+  return true;
 }
 
 void TelemetricsFeature::beginShutdown() {
@@ -135,19 +192,12 @@ void TelemetricsFeature::start() {
   if (!this->isEnabled()) {
     return;
   }
-
   LOG_DEVEL << "start";
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  if (ServerState::instance()->isSingleServer(role)) {
-    LOG_DEVEL << "is single server";
-    auto& serverFeaturePhase = server().getFeature<ServerFeaturePhase>();
-    TRI_ASSERT(
-        serverFeaturePhase.state() ==
-        arangodb::application_features::ApplicationFeature::State::STARTED);
-    LOG_DEVEL << "will enqueue";
-  }
+  auto& serverFeaturePhase = server().getFeature<ServerFeaturePhase>();
+  TRI_ASSERT(
+      serverFeaturePhase.state() ==
+      arangodb::application_features::ApplicationFeature::State::STARTED);
 
-  LOG_DEVEL << "telemetrics feature is enabled";
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   TRI_vocbase_t* vocbase =
       databaseFeature.useDatabase(StaticStrings::SystemDatabase);
@@ -185,29 +235,11 @@ void TelemetricsFeature::start() {
   if (isInsert) {
     _latestUpdate = static_cast<uint64_t>(rightNowAbs);
   }
-
-  _telemetricsEnqueue = [this, ctx, isInsert](bool cancelled) {
-    if (cancelled) {
-      return;
-    }
-    LOG_DEVEL << "telemetrics enqueue";
-    storeLastUpdate(ctx, isInsert);
-    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW,
-        std::chrono::seconds(this->_interval), _telemetricsEnqueue);
-    //    arangodb::RequestLane::INTERNAL_LOW,
-    //    std::chrono::hours(this->_interval), _telemetricsEnqueue);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = std::move(workItem);
-  };
-
-  // if (auto timeDiff = std::chrono::duration_cast<std::chrono::hours>(
-  if (auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
-          std::chrono::duration<double, std::milli>(rightNowAbs -
-                                                    _latestUpdate));
-      timeDiff.count() >= _interval) {
+  auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
+      std::chrono::duration<double, std::milli>(rightNowAbs - _latestUpdate));
+  if (timeDiff.count() >= _interval) {
     _telemetricsEnqueue(false);
-    LOG_DEVEL << "it's passed " << timeDiff.count() << " hours";
+    LOG_DEVEL << "it's passed " << timeDiff.count() << " secs";
   } else {
     LOG_DEVEL << "diff is " << timeDiff.count();
     auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
@@ -215,6 +247,25 @@ void TelemetricsFeature::start() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
   }
+
+  _telemetricsEnqueue = [this, ctx, isInsert, timeDiff](bool cancelled) {
+    if (cancelled) {
+      return;
+    }
+    LOG_DEVEL << "telemetrics enqueue";
+    Scheduler::WorkHandle workItem;
+    if (storeLastUpdate(isInsert)) {
+      sendTelemetrics();
+      workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+          arangodb::RequestLane::INTERNAL_LOW,
+          std::chrono::seconds(this->_interval), _telemetricsEnqueue);
+    } else {
+      workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+          arangodb::RequestLane::INTERNAL_LOW, timeDiff, _telemetricsEnqueue);
+    }
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem = std::move(workItem);
+  };
 }
 
 }  // namespace arangodb::metrics

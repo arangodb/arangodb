@@ -134,7 +134,6 @@ void StatisticsWorker::collectGarbage() {
   try {
     if (_gcTask == GC_STATS) {
       collectGarbage(StaticStrings::StatisticsCollection,
-                     //       time - 3600.0);  // 1 hour
                      time - 36.0);  // 1 hour
       _gcTask = GC_STATS_RAW;
     } else if (_gcTask == GC_STATS_RAW) {

@@ -30,6 +30,23 @@ namespace velocypack {
 class Builder;
 }
 
+class SupportInfoMessageHandler {
+ public:
+  SupportInfoMessageHandler(GeneralRequest* request, ArangodServer& server)
+      : _isHttp(true), _request(request), _server(server) {}
+  SupportInfoMessageHandler(ArangodServer& server)
+      : _isHttp(false), _request(nullptr), _server(server) {}
+
+  void buildInfoMessage(VPackBuilder& builder);
+
+ private:
+  void buildHostInfo(VPackBuilder& builder);
+
+  bool _isHttp;
+  GeneralRequest* _request;
+  ArangodServer& _server;
+};
+
 class RestSupportInfoHandler : public arangodb::RestBaseHandler {
  public:
   RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);

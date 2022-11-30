@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "RestHandler/RestSupportInfoHandler.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ServerStatistics.h"
@@ -57,12 +58,13 @@ class TelemetricsFeature final : public ArangodFeature {
   bool _enable;
   long _interval;
   uint64_t _latestUpdate;
-  void storeLastUpdate(std::shared_ptr<transaction::Context> ctx,
-                       bool isInsert);
+  void sendTelemetrics();
+  bool storeLastUpdate(bool isInsert);
   //  std::shared_ptr<std::function<void()>> _telemetricsEnqueue;
   std::function<void(bool)> _telemetricsEnqueue;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  SupportInfoMessageHandler _infoHandler;
 };
 
 }  // namespace arangodb::metrics
