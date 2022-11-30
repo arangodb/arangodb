@@ -2321,12 +2321,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
     res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,
                             previousDocumentBuilder->slice(), options);
 
-    // we should never get a conflict here since the key is already locked
-    // earlier, and in case of a remove there cannot be any conflicts on unique
-    // index entries.
-    TRI_ASSERT(!res.is(TRI_ERROR_ARANGO_CONFLICT));
-
-    if (res.ok() && !options.silent) {
+    // we should never get a write-write conflict here since the key is already
+    // locked earlier, and in case of a remove there cannot be any conflicts on
+    // unique index entries. However, we can still have a conflict error due to
+    // a violated precondition when a specific _rev is provided.
+    if ((res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) ||
+        (res.ok() && !options.silent)) {
       TRI_ASSERT(oldRevisionId.isSet());
       buildDocumentIdentity(
           *collection, resultBuilder, cid, key, oldRevisionId,
