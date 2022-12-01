@@ -68,6 +68,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
                                                     // make ASSERTS happy
     }
   }
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] arangodb::Result beginTransaction(
       arangodb::transaction::Hints) override {

@@ -100,11 +100,6 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;
 
-  /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
-  /// already had a snapshot)
-  [[nodiscard]] virtual bool ensureSnapshot() = 0;
-
   [[nodiscard]] static RocksDBTransactionState* toState(
       transaction::Methods* trx);
 

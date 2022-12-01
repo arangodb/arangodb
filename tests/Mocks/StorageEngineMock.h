@@ -207,6 +207,7 @@ class TransactionStateMock : public arangodb::TransactionState {
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
   virtual arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(

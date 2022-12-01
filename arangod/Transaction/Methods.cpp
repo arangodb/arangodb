@@ -1443,8 +1443,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
         }
         // otherwise build a proper error message
         Result result{TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED};
-        return collection->getPhysical()->primaryIndex()->addErrorMsg(result,
-                                                                      key);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(result, key);
+        }
+        return result;
       } else {
         TRI_ASSERT(lookupResult.first.isSet());
         TRI_ASSERT(lookupResult.second.isSet());
@@ -1464,13 +1467,16 @@ Future<OperationResult> transaction::Methods::insertLocal(
         buildDocumentIdentity(*collection, resultBuilder, cid, key,
                               lookupResult.second, RevisionId::none(), nullptr,
                               nullptr);
-        return collection->getPhysical()->primaryIndex()->addErrorMsg(res, key);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key);
+        }
+        return res;
       }
       return res;
     }
 
-    std::ignore =
-        static_cast<RocksDBTransactionState*>(this->state())->ensureSnapshot();
+    std::ignore = this->state()->ensureSnapshot();
 
     // only populated for update/replace
     transaction::BuilderLeaser previousDocumentBuilder(this);
@@ -1904,14 +1910,15 @@ Future<OperationResult> transaction::Methods::modifyLocal(
         buildDocumentIdentity(*collection, resultBuilder, cid, key.stringView(),
                               lookupResult.second, RevisionId::none(), nullptr,
                               nullptr);
-        return collection->getPhysical()->primaryIndex()->addErrorMsg(
-            res, key.stringView());
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key.stringView());
+        }
       }
       return res;
     }
 
-    std::ignore =
-        static_cast<RocksDBTransactionState*>(this->state())->ensureSnapshot();
+    std::ignore = this->state()->ensureSnapshot();
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
@@ -2294,13 +2301,15 @@ Future<OperationResult> transaction::Methods::removeLocal(
         buildDocumentIdentity(*collection, resultBuilder, cid, key,
                               lookupResult.second, RevisionId::none(), nullptr,
                               nullptr);
-        return collection->getPhysical()->primaryIndex()->addErrorMsg(res, key);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key);
+        }
       }
       return res;
     }
 
-    std::ignore =
-        static_cast<RocksDBTransactionState*>(this->state())->ensureSnapshot();
+    std::ignore = this->state()->ensureSnapshot();
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
