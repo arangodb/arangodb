@@ -266,7 +266,7 @@ function MovingShardsSuite({useData, replVersion}) {
       global.ArangoClusterInfo.flush();
       var servers = findCollectionServers(dbn, c[i].name());
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
-        result.push(i);
+        result.push(c[i].name());
       }
     }
     return result;
@@ -276,7 +276,7 @@ function MovingShardsSuite({useData, replVersion}) {
     helper.waitFor(function () {
       const shards = findLeaderShardsForServer(id);
       print("exoected = ", expectedShards, " found = ", shards);
-      if (!_.eq(shards, expectedShards)) {
+      if (!_.isEqual(shards, expectedShards)) {
         return Error(`expected shards to be ${expectedShards}, but found ${shards}`);
       }
       return true;
