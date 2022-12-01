@@ -1,6 +1,12 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_statistics_bytes_received`
+    `arangodb_client_user_connection_statistics_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
 * Added agency options
     --agency.supervision-delay-add-follower
   and
