@@ -7,7 +7,3 @@ target_include_directories(arango_futures
   .)
 
 target_link_libraries(arango_futures arango_assertions)
-
-if (MSVC)
-  target_compile_options(arango_futures PUBLIC "-J")
-endif()
