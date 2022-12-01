@@ -325,7 +325,9 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
+    LOG_DEVEL << "start write-locking collection " << _cid.id();
     res = physical->lockWrite(timeout);
+    LOG_DEVEL << "end write-locking collection " << _cid.id();
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
@@ -406,7 +408,9 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
+    LOG_DEVEL << "start write-unlocking collection " << _cid.id();
     physical->unlockWrite();
+    LOG_DEVEL << "end write-unlocking collection " << _cid.id();
   } else {
     // write locking means we'll be releasing the collection's RW lock in read
     // mode

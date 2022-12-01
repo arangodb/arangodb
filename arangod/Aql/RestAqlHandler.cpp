@@ -747,6 +747,21 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
 // handle query finalization for all engines
 RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
+  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+    LOG_DEVEL << "aborting query because of 'directKillBeforeAQLQueryExecute' "
+              << idString;
+  }
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+    LOG_DEVEL << "aborting query because of 'directKillAfterAQLQueryExecute' "
+              << idString;
+  }
+
+  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+    LOG_DEVEL << "aborting query because of "
+                 "'Query::directKillBeforeQueryWillBeFinalized' "
+              << idString;
+  }
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
@@ -766,10 +781,35 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
     return RestStatus::DONE;
   }
 
+  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+    LOG_DEVEL << "before finalize " << idString;
+  }
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+    LOG_DEVEL << "before finalize " << idString;
+  }
+
+  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+    LOG_DEVEL << "before finalize " << idString;
+  }
+
   auto f = query->finalizeClusterQuery(errorCode);
 
   return waitForFuture(std::move(f).thenValue(
       [me = shared_from_this(), this, q = std::move(query)](Result res) {
+
+        TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+          LOG_DEVEL << "after finalize " << res;
+        }
+
+        TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+          LOG_DEVEL << "after finalize " << res;
+        }
+
+        TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+          LOG_DEVEL << "after finalize " << res;
+        }
+
         VPackBufferUInt8 buffer;
         VPackBuilder answerBuilder(buffer);
         answerBuilder.openObject(/*unindexed*/ true);
