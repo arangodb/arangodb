@@ -275,7 +275,6 @@ function MovingShardsSuite({useData, replVersion}) {
   function waitForShardLeader(id, expectedShards) {
     helper.waitFor(function () {
       const shards = findLeaderShardsForServer(id);
-      print("exoected = ", expectedShards, " found = ", shards);
       if (!_.isEqual(shards, expectedShards)) {
         return Error(`expected shards to be ${expectedShards}, but found ${shards}`);
       }
@@ -972,20 +971,15 @@ function MovingShardsSuite({useData, replVersion}) {
       assertTrue(testServerNoLeader(toResign));
       assertTrue(waitForSupervision());
 
-      print("resign done");
       checkCollectionContents();
       // now suspend that server
-      print("suspend server");
       helper.stopServerWaitFailed(toResign);
 
       // restart the server
-      print("restart server");
       helper.continueServerWaitOk(toResign);
 
       // now wait for the server to become leader again for shards
-      print("waiting for leadership");
       assertTrue(waitForShardLeader(toResign, shards));
-      print("waiting for supervision");
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
