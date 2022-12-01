@@ -26,6 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
+  'shell_v8': 'Aranodb V8 bridges',
+  'shell_server_v8': 'Aranodb V8 bridges run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
   'shell_client': 'shell client tests',
   'shell_server': 'shell server tests',
@@ -45,6 +47,8 @@ const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
+  'shell_v8': [ tu.pathForTesting('common/v8')],
+  'shell_server_v8': [ tu.pathForTesting('common/v8')],
   'shell_api': [ tu.pathForTesting('client/shell/api')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
@@ -77,7 +81,29 @@ function ensureCoordinators(options, numServers) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_client
+// / @brief TEST: shell_v8
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellV8 (options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_v8, options);
+  testCases = tu.splitBuckets(options, testCases);
+  let rc = new tu.runLocalInArangoshRunner(options, 'shell_v8', []).run(testCases);
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_server_v8
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellV8Server (options) {
+  let testCases = tu.scanTestPaths(testPaths.shell_server_v8, options);
+  testCases = tu.splitBuckets(options, testCases);
+  let rc = new tu.runOnArangodRunner(options, 'shell_v8', []).run(testCases);
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_api
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellApiClient (options) {
@@ -278,6 +304,8 @@ function shellClientReplication2Recovery(options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
+  testFns['shell_v8'] = shellV8;
+  testFns['shell_server_v8'] = shellV8Server;
   testFns['shell_api'] = shellApiClient;
   testFns['shell_client'] = shellClient;
   testFns['shell_server'] = shellServer;
@@ -288,6 +316,8 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
 
+  defaultFns.push('shell_v8');
+  defaultFns.push('shell_server_v8');
   defaultFns.push('shell_api');
   defaultFns.push('shell_client');
   defaultFns.push('shell_server');
