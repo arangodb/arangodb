@@ -119,17 +119,20 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string toServer;
     std::string collectionID;
     bool remainsFollower;
+    bool tryUndo;
 
     MoveShardContext(std::string database, std::string collection,
                      std::string shard, std::string from, std::string to,
-                     std::string collectionID, bool remainsFollower)
+                     std::string collectionID, bool remainsFollower,
+                     bool tryUndo = false)
         : database(std::move(database)),
           collection(std::move(collection)),
           shard(std::move(shard)),
           fromServer(std::move(from)),
           toServer(std::move(to)),
           collectionID(std::move(collectionID)),
-          remainsFollower(true) {}
+          remainsFollower(true),
+          tryUndo(false) {}
 
     static std::unique_ptr<MoveShardContext> fromVelocyPack(
         arangodb::velocypack::Slice slice);
@@ -140,7 +143,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job,
                                          std::string const& server,
-                                         bool reclaimShardLeadership = false);
+                                         VPackSlice body);
 
   RestStatus handleFailureOracleStatus();
   RestStatus handleFailureOracleFlush();

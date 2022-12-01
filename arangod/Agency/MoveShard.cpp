@@ -44,7 +44,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
                      std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader, bool remainsFollower)
+                     std::string const& to, bool isLeader, bool remainsFollower,
+                     bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
@@ -54,23 +55,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _isLeader(
           isLeader),  // will be initialized properly when information known
       _remainsFollower(remainsFollower),
-      _toServerIsFollower(false) {}
-
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
-                     std::string const& jobId, std::string const& creator,
-                     std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
-      _database(database),
-      _collection(collection),
-      _shard(shard),
-      _from(id(from)),
-      _to(id(to)),
-      _isLeader(
-          isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader),
-      _toServerIsFollower(false) {}
+      _toServerIsFollower(false),
+      _tryUndo(tryUndo) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -87,6 +73,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
   auto tmp_targetVersion = _snapshot.hasAsUInt(path + EXPECTED_TARGET_VERSION);
+  auto tmp_tryUndo = _snapshot.hasAsBool(path + "tryUndo");
 
   if (tmp_database && tmp_collection && tmp_from && tmp_to && tmp_shard &&
       tmp_creator && tmp_isLeader) {
@@ -107,6 +94,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     if (tmp_targetVersion) {
       _expectedTargetVersion = *tmp_targetVersion;
     }
+    if (tmp_tryUndo) {
+      _tryUndo = tmp_tryUndo.value();
+    }
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
@@ -117,6 +107,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     err << "shard = " << tmp_shard.has_value() << " ";
     err << "creator = " << tmp_creator.has_value() << " ";
     err << "isLeader = " << tmp_isLeader.has_value() << " ";
+    err << "tryUndo = " << tmp_tryUndo.has_value() << " ";
     LOG_TOPIC("cfbc3", ERR, Logger::SUPERVISION) << err.str();
     moveShardFinish(false, false, err.str());
     _status = FAILED;
@@ -177,6 +168,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("tryUndo", VPackValue(_tryUndo));
     if (!_parentJobId.empty()) {
       _jb->add(PARENT_JOB_ID, VPackValue(_parentJobId));
     }

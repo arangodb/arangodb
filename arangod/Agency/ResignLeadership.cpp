@@ -34,7 +34,6 @@
 #include "Random/RandomGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
@@ -376,9 +375,6 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
       _snapshot.hasAsChildren(planColPrefix).value().get();
   size_t sub = 0;
 
-  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
-      curServersKnown, _server, "/", StaticStrings::RebootId));
-
   for (auto const& database : databases) {
     bool const isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
     // Find shardsLike dependencies
@@ -433,18 +429,10 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, true)
+                    toServer, isLeader, true, _undoMoves)
               .withParent(_jobId)
               .create(trx);
 
-          if (_undoMoves and rebootId) {
-            // arango/Target/ReturnLeadership/Server/<rebootId>/<database>/<collection>/<shard>
-            auto path = basics::StringUtils::joinT(
-                "/", "/Target/ReturnLeadership", _server, rebootId.value(),
-                database.first, collptr.first, shard.first);
-            trx->add(path, VPackSlice::emptyObjectSlice());
-            // TODOMAX: add sensible content
-          }
         } else {
           // Intentionally do nothing. RemoveServer will remove the failed
           // follower
