@@ -75,13 +75,40 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   std::unique_ptr<testing::StrictMock<ReplicatedStateHandleMock>> stateHandle =
       std::make_unique<testing::StrictMock<ReplicatedStateHandleMock>>();
 
+  MessageId lastMessageId{1};
+
   auto makeFollowerManager() {
     return std::make_shared<refactor::FollowerManager>(
         methods.getMethods(), std::move(stateHandle), termInfo, options);
   }
 };
 
-TEST_F(AppendEntriesFollowerTest, no_test) {
-  EXPECT_CALL(*stateHandle, becomeFollower).Times(1);
+TEST_F(AppendEntriesFollowerTest, append_entries_with_commit_index) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) {
+        EXPECT_NE(newMethods, nullptr);
+        methods = std::move(newMethods);
+      });
+
   auto follower = makeFollowerManager();
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{50}));
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{0};
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+
+    EXPECT_TRUE(result.isSuccess()) << result.reason.getErrorMessage();
+  }
 }

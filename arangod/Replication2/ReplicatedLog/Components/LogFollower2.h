@@ -60,24 +60,16 @@ struct FollowerManager {
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options);
 
-  auto getStatus() const -> LogStatus {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  auto getStatus() const -> LogStatus;
 
-  auto getQuickStatus() const -> QuickLogStatus {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  auto getQuickStatus() const -> QuickLogStatus;
 
   auto resign()
       -> std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
-                    std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+                    std::unique_ptr<IReplicatedStateHandle>, DeferredAction>;
 
   auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> {
-    return appendEntriesManager->appendEntries(std::move(request));
-  }
+      -> futures::Future<AppendEntriesResult>;
 
  private:
   friend struct MethodsProvider;
@@ -90,33 +82,7 @@ struct FollowerManager {
   std::shared_ptr<StateHandleManager> const stateHandle;
   std::shared_ptr<FollowerCommitManager> const commit;
   std::shared_ptr<AppendEntriesManager> const appendEntriesManager;
-};
-
-struct MethodsProvider : IReplicatedLogFollowerMethods {
-  explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
-  auto releaseIndex(LogIndex index) -> void override {
-    follower.compaction->updateReleaseIndex(index);
-  }
-
-  auto getLogSnapshot() -> InMemoryLog override {
-    return follower.storage->getCommittedLog();
-  }
-
-  auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
-    return follower.commit->waitFor(index);
-  }
-
-  auto waitForIterator(LogIndex index)
-      -> ILogParticipant::WaitForIteratorFuture override {
-    return follower.commit->waitForIterator(index);
-  }
-
-  auto snapshotCompleted() -> Result override {
-    return follower.snapshot->updateSnapshotState(SnapshotState::AVAILABLE);
-  }
-
- private:
-  FollowerManager& follower;
+  std::shared_ptr<FollowerTermInformation const> const termInfo;
 };
 
 struct LogFollowerImpl : ILogFollower {
