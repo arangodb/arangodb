@@ -30,23 +30,6 @@ namespace velocypack {
 class Builder;
 }
 
-class SupportInfoMessageHandler {
- public:
-  SupportInfoMessageHandler(GeneralRequest* request, ArangodServer& server)
-      : _isHttp(true), _request(request), _server(server) {}
-  SupportInfoMessageHandler(ArangodServer& server)
-      : _isHttp(false), _request(nullptr), _server(server) {}
-
-  void buildInfoMessage(VPackBuilder& builder);
-
- private:
-  void buildHostInfo(VPackBuilder& builder);
-
-  bool _isHttp;
-  GeneralRequest* _request;
-  ArangodServer& _server;
-};
-
 class RestSupportInfoHandler : public arangodb::RestBaseHandler {
  public:
   RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
@@ -55,8 +38,5 @@ class RestSupportInfoHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestSupportInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-
- private:
-  void buildHostInfo(arangodb::velocypack::Builder& result);
 };
 }  // namespace arangodb

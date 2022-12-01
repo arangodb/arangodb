@@ -23,157 +23,203 @@
 #include "Metrics/TelemetricsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Agency/AsyncAgencyComm.h"
-#include <Basics/application-exit.h>
-#include "Basics/process-utils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LoggerFeature.h"
-#include "Metrics/MetricsFeature.h"
-#include "Network/NetworkFeature.h"
-#include "Replication/ReplicationFeature.h"
-#include "RestServer/EnvironmentFeature.h"
 #include "RestServer/ServerFeature.h"
-#include "RestServer/CpuUsageFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "VocBase/LogicalCollection.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Utils/SupportInfoBuilder.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/LogMacros.h"
+using namespace std::chrono;
+using namespace std::chrono_literals;
+using namespace arangodb::velocypack;
+
+namespace {
+constexpr std::string_view kCollName = "_statistics";
+constexpr std::string_view kKeyValue = "telemetrics";
+constexpr std::string_view kAttrName = "lastUpdate";
+}  // namespace
 
 using namespace arangodb;
 
 namespace arangodb::metrics {
 
 TelemetricsFeature::TelemetricsFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _enable{false},
-      _interval{86400},
-      _infoHandler(server) {
+    : ArangodFeature{server, *this}, _enable{true}, _interval{86400} {
   setOptional();
-  startsAfter<LoggerFeature>();
-  // startsAfter<InitDatabaseFeature>();
-  startsAfter<DatabaseFeature>();
+  startsAfter<SystemDatabaseFeature>();
   startsAfter<ClusterFeature>();
+  startsAfter<ClusterFeaturePhase>();
   startsAfter<ServerFeaturePhase>();
-  // startsBefore<application_features::GreetingsFeaturePhase>();
 }
 
 void TelemetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  LOG_DEVEL << "collect options";
   options
       ->addOption("--server.send-telemetrics",
-                  "Whether to enable the phone home API.",
+                  "Whether to enable the telemetrics API.",
                   new options::BooleanParameter(&_enable),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31100);
 
   options
-      ->addOption(
-          "--server.telemetrics-interval",
-          "Interval for telemetrics requests to be sent (unit: seconds. "
-          "Default: 24h, 86400s)",
-          new options::NumericParameter<long>(&_interval),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+      ->addOption("--server.telemetrics-interval",
+                  "Interval for telemetrics requests to be sent (in seconds)",
+                  new options::UInt64Parameter(&_interval),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31100);
 }
 
 void TelemetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {}
+    std::shared_ptr<options::ProgramOptions> /*options*/) {
+  // make it not less than an hour
+
+  if (_interval < 3600) {
+    _interval = 3600;
+  }
+}
 
 void TelemetricsFeature::sendTelemetrics() {
-  LOG_DEVEL << "SEND TELEMETRICS";
   VPackBuilder result;
-  _infoHandler.buildInfoMessage(result);
-
-  LOG_DEVEL << result.slice().toJson();
+  SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
+                                       server());
   LOG_TOPIC("affd3", DEBUG, Logger::STATISTICS) << result.slice().toJson();
 }
 
-bool TelemetricsFeature::storeLastUpdate(bool isInsert) {
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  bool isCoordinator = ServerState::instance()->isCoordinator(role);
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase =
-      databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+bool TelemetricsFeature::storeLastUpdate(bool isCoordinator) {
+  auto& sysDbFeature = server().getFeature<SystemDatabaseFeature>();
+
+  auto vocbase = sysDbFeature.use();
+
+  OperationOptions options;
+
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
 
-  // options.overwriteMode = OperationOptions::OverwriteMode::Conflict;
-  auto rightNow = std::chrono::high_resolution_clock::now();
-  auto rightNowSecs =
-      std::chrono::time_point_cast<std::chrono::seconds>(rightNow);
-  auto rightNowAbs = rightNowSecs.time_since_epoch().count();
-  SingleCollectionTransaction trx(ctx, kCollName, AccessMode::Type::WRITE);
-  LOG_DEVEL << "created transaction";
-  Result res = trx.begin();
+  std::unique_ptr<SingleCollectionTransaction> trx;
+
+  try {
+    trx = std::make_unique<SingleCollectionTransaction>(
+        ctx, std::string{::kCollName}, AccessMode::Type::WRITE);
+  } catch (...) {
+    // it throws if can't add the collection, which would mean the collection is
+    // not ready yet but we don't care about it because we will reschedule and
+    // try to create the transaction again, until the collection is ready
+    return false;
+  }
+  TRI_ASSERT(trx);
+  Result res = trx->begin();
+
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    LOG_TOPIC("12c70", WARN, Logger::STATISTICS)
+        << "Failed to begin transaction: " << res.errorMessage();
+    return false;
   }
 
-  if (isInsert) {
-    OperationOptions options;
-    options.ignoreRevs = true;
-    LOG_DEVEL << "last update is empty";
-    velocypack::Builder body;
-    {
-      ObjectBuilder b(&body);
-      body.add("_key", kKeyValue);
-      body.add("lastUpdate", Value(rightNowAbs));
-    }
-    try {
-      OperationResult result = trx.insert(kCollName, body.slice(), options);
-      Result res = trx.finish(result.result);
-      _latestUpdate = rightNowAbs;
-    } catch (std::exception const& e) {
-      LOG_TOPIC("56650", FATAL, Logger::STATISTICS)
-          << "Failed to insert doc: " << e.what() << ". Bailing out.";
-      FATAL_ERROR_EXIT();
-    }
-    return true;
-  } else {
-    LOG_DEVEL << "last update is empty";
-    velocypack::Builder body;
-    {
-      ObjectBuilder b(&body);
-      body.add("_key", kKeyValue);
-      body.add("lastUpdate", Value(rightNowAbs));
-    }
-    try {
+  VPackBuilder docRead;
+  velocypack::Builder docInfo;
+  {
+    ObjectBuilder b(&docInfo);
+    docInfo.add("_key", ::kKeyValue);
+  }
+  VPackSlice docInfoSlice = docInfo.slice();
+
+  res = trx->documentFastPath(std::string{::kCollName}, docInfoSlice, options,
+                              docRead);
+
+  using cast = std::chrono::duration<std::uint64_t>;
+  std::uint64_t rightNowSecs =
+      std::chrono::duration_cast<cast>(steady_clock::now().time_since_epoch())
+          .count();
+
+  if (res.ok()) {
+    VPackSlice docReadSlice = docRead.slice();
+    TRI_ASSERT(!docReadSlice.isNone());
+    uint64_t lastUpdateRead = docReadSlice.get(::kAttrName).getUInt();
+    VPackValueLength length;
+    char const* revValue = docReadSlice.get("_rev").getStringUnchecked(length);
+
+    _lastUpdate = seconds{lastUpdateRead};
+    auto diffInSecs = rightNowSecs - _lastUpdate.count();
+    if (diffInSecs >= _interval) {
+      velocypack::Builder docInfo;
+      {
+        ObjectBuilder b(&docInfo);
+        docInfo.add("_key", ::kKeyValue);
+        docInfo.add("lastUpdate", Value(rightNowSecs));
+        docInfo.add("_rev", Value(revValue));
+      }
+      VPackSlice docInfoSlice = docInfo.slice();
       OperationOptions options;
       if (isCoordinator) {
         options.ignoreRevs = false;
       }
-      OperationResult result = trx.update(kCollName, body.slice(), options);
+      OperationResult result =
+          trx->update(std::string{::kCollName}, docInfoSlice, options);
       if (isCoordinator && result.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
-        std::ignore = trx.abort();
+        std::ignore = trx->abort();
         // revs don't match, coordinator must reschedule
         return false;
+      } else if (!result.ok()) {
+        LOG_TOPIC("8cb6f", WARN, Logger::STATISTICS)
+            << "Failed to update doc: " << res.errorMessage();
+        std::ignore = trx->abort();
+        return false;
       }
-      Result res = trx.finish(result.result);
+      Result res = trx->finish(result.result);
       if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
+        LOG_TOPIC("e9bad", WARN, Logger::STATISTICS)
+            << "Failed to finish transaction: " << res.errorMessage();
+        std::ignore = trx->abort();
+        return false;
       }
-      _latestUpdate = rightNowAbs;
-    } catch (std::exception const& e) {
-      LOG_TOPIC("affd3", FATAL, Logger::STATISTICS)
-          << "Failed to update doc: " << e.what() << ". Bailing out.";
-      FATAL_ERROR_EXIT();
+      return true;
     }
-    return true;
+  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {  // must insert the
+                                                             // doc for updating
+                                                             // afterwards
+    _lastUpdate = seconds{rightNowSecs};
+    velocypack::Builder docInfo;
+    {
+      ObjectBuilder b(&docInfo);
+      docInfo.add("_key", ::kKeyValue);
+      docInfo.add("lastUpdate", Value(rightNowSecs));
+    }
+    VPackSlice docInfoSlice = docInfo.slice();
+    OperationResult result =
+        trx->insert(std::string{::kCollName}, docInfoSlice, options);
+
+    if (!result.ok()) {
+      LOG_TOPIC("56650", WARN, Logger::STATISTICS)
+          << "Failed to insert doc: " << result.errorMessage();
+      std::ignore = trx->abort();
+      return false;
+    }
+    Result res = trx->finish(result.result);
+    if (!res.ok()) {
+      LOG_TOPIC("a7de1", WARN, Logger::STATISTICS)
+          << "Failed to insert doc: " << res.errorMessage();
+    }
+  } else {
+    LOG_TOPIC("26231", WARN, Logger::STATISTICS)
+        << "Failed to read document: " << res.errorMessage();
   }
-  // never reached
-  return true;
+  std::ignore = trx->abort();
+  return false;
+}
+
+void TelemetricsFeature::stop() {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 void TelemetricsFeature::beginShutdown() {
@@ -181,98 +227,29 @@ void TelemetricsFeature::beginShutdown() {
   _workItem.reset();
 }
 void TelemetricsFeature::start() {
-  if (!this->isEnabled()) {
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  bool isCoordinator = ServerState::instance()->isCoordinator(role);
+  if (!this->isEnabled() ||
+      (!ServerState::instance()->isSingleServer() && !isCoordinator)) {
     return;
   }
-  LOG_DEVEL << "start";
-  auto& serverFeaturePhase = server().getFeature<ServerFeaturePhase>();
-  TRI_ASSERT(
-      serverFeaturePhase.state() ==
-      arangodb::application_features::ApplicationFeature::State::STARTED);
 
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase =
-      databaseFeature.useDatabase(StaticStrings::SystemDatabase);
-  OperationOptions options;
-  options.ignoreRevs = true;
-  options.overwriteMode = OperationOptions::OverwriteMode::Ignore;
-  auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
-  SingleCollectionTransaction trx(ctx, kCollName, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
-  VPackBuilder builder(buffer);
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::KeyString, VPackValue(kKeyValue));
-  }
-  VPackBuilder telemetricsDoc;
-  trx.documentFastPath(kCollName, builder.slice(), options, telemetricsDoc);
-  bool isInsert = false;
-  if (!telemetricsDoc.slice().isNone()) {
-    _latestUpdate = telemetricsDoc.slice().get(kAttrName).getUInt();
-
-  } else {
-    isInsert = true;
-  }
-  auto rightNow = std::chrono::high_resolution_clock::now();
-  auto rightNowSecs =
-      std::chrono::time_point_cast<std::chrono::seconds>(rightNow);
-  auto rightNowAbs = rightNowSecs.time_since_epoch().count();
-  if (isInsert) {
-    _latestUpdate = static_cast<uint64_t>(rightNowAbs);
-  }
-
-  std::chrono::system_clock::time_point lastUpdateTimePoint{
-      std::chrono::duration_cast<
-          std::chrono::system_clock::time_point::duration>(
-          std::chrono::seconds(_latestUpdate))};
-
-  auto timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
-      rightNowSecs - lastUpdateTimePoint);
-
-  auto intervalSecs = std::chrono::seconds(_interval);
-  auto intervalDuration =
-      std::chrono::duration_cast<std::chrono::seconds>(intervalSecs);
-  auto newInterval = intervalDuration - timeDiff;
-
-  _telemetricsEnqueue = [this, ctx, isInsert, newInterval](bool cancelled) {
+  _telemetricsEnqueue = [this, isCoordinator](bool cancelled) {
     if (cancelled) {
       return;
     }
-    LOG_DEVEL << "telemetrics enqueue";
     Scheduler::WorkHandle workItem;
-    if (storeLastUpdate(isInsert)) {
-      LOG_DEVEL << "no conflict";
+    if (storeLastUpdate(isCoordinator)) {
+      // has reached the interval to send telemetrics again
       sendTelemetrics();
-      workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-          arangodb::RequestLane::INTERNAL_LOW,
-          std::chrono::seconds(this->_interval), _telemetricsEnqueue);
-    } else {
-      LOG_DEVEL << "rev conflict";
-      workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-          arangodb::RequestLane::INTERNAL_LOW, newInterval,
-          _telemetricsEnqueue);
     }
+    workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+        arangodb::RequestLane::INTERNAL_LOW, 1800s,
+        _telemetricsEnqueue);  // check every 30 min
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
   };
-
-  if (timeDiff.count() >= intervalDuration.count()) {
-    _telemetricsEnqueue(false);
-    LOG_DEVEL << "it's passed " << timeDiff.count() << " secs";
-  } else {
-    LOG_DEVEL << "diff is " << timeDiff.count();
-    auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW, newInterval, _telemetricsEnqueue);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = std::move(workItem);
-  }
+  _telemetricsEnqueue(false);
 }
 
 }  // namespace arangodb::metrics

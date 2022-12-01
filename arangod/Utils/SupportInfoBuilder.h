@@ -20,38 +20,21 @@
 ///
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <chrono>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "velocypack/Builder.h"
 
-namespace arangodb::metrics {
+namespace arangodb {
 
-class TelemetricsFeature final : public ArangodFeature {
+class SupportInfoBuilder {
  public:
-  static constexpr std::string_view name() noexcept { return "Telemetrics"; }
-
-  explicit TelemetricsFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
-  void start() final;
-  void stop() final;
-  void beginShutdown() final;
+  static void buildInfoMessage(VPackBuilder& result, std::string dbName,
+                               ArangodServer& server, bool parsedValue = false);
 
  private:
-  bool _enable;
-  uint64_t _interval;
-  std::chrono::seconds _lastUpdate;
-  void sendTelemetrics();
-  bool storeLastUpdate(bool isCoordinator);
-  std::function<void(bool)> _telemetricsEnqueue;
-  std::mutex _workItemMutex;
-  Scheduler::WorkHandle _workItem;
+  static void buildHostInfo(VPackBuilder& result, ArangodServer& server);
 };
 
-}  // namespace arangodb::metrics
+}  // namespace arangodb
