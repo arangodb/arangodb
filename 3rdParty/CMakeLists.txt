@@ -35,9 +35,23 @@ add_subdirectory(gtest)
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.13)
+set(ZLIB_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.13")
+add_subdirectory(${ZLIB_SOURCE_DIR})
 add_library(zlib_interface INTERFACE)
 target_include_directories(zlib_interface SYSTEM INTERFACE ${ZLIB_INCLUDE_DIR})
+
+set(ZLIB_MINIZIP_DIR "${ZLIB_SOURCE_DIR}/contrib/minizip")
+add_library(zlib_minizip OBJECT
+        ${ZLIB_MINIZIP_DIR}/zip.c
+        ${ZLIB_MINIZIP_DIR}/unzip.c
+        ${ZLIB_MINIZIP_DIR}/ioapi.c)
+target_include_directories(zlib_minizip PUBLIC ${ZLIB_MINIZIP_DIR})
+target_link_libraries(zlib_minizip zlibstatic)
+
+if (MSVC)
+    target_sources(zlib_minizip
+            ${ZLIB_MINIZIP_DIR}/iowin32.c)
+endif()
 
 ################################################################################
 ## SNAPPY

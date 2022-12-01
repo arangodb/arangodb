@@ -13,7 +13,6 @@ if (MSVC)
     Basics/terminal-utils-win32.cpp
     Basics/threads-win32.cpp
     Basics/win-utils.cpp
-    Zip/iowin32.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
@@ -185,9 +184,6 @@ add_library(arango STATIC
   Ssl/ssl-helper.cpp
   Utilities/NameValidator.cpp
   Utilities/ScriptLoader.cpp
-  Zip/ioapi.cpp
-  Zip/unzip.cpp
-  Zip/zip.cpp
 )
 
 target_link_libraries(arango PUBLIC
@@ -203,6 +199,7 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
+  zlib_minizip
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)

@@ -38,12 +38,12 @@
 #include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
-#include "Zip/unzip.h"
-#include "Zip/zip.h"
+#include "contrib/minizip/unzip.h"
+#include "contrib/minizip/zip.h"
 
 #ifdef _WIN32
 #define USEWIN32IOAPI
-#include "Zip/iowin32.h"
+#include "contrib/minizip/iowin32.h"
 #endif
 
 using namespace arangodb;
