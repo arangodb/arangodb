@@ -650,7 +650,7 @@ ArangoCollection.prototype.document = function (id, options) {
     });
   }
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ true);
   let requestResult;
   if (Array.isArray(id)) {
     let url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
