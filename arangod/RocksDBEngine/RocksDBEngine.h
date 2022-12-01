@@ -56,7 +56,6 @@ struct RocksDBLogPersistor;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
-class RocksDBIndexCacheRefiller;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -250,10 +249,6 @@ class RocksDBEngine final : public StorageEngine {
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
-  void trackIndexCacheRefill(
-      std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-      std::vector<std::string> keys);
-
   // wal in recovery
   RecoveryState recoveryState() noexcept override;
 
@@ -370,9 +365,13 @@ class RocksDBEngine final : public StorageEngine {
   bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const override;
-  virtual TRI_voc_tick_t releasedTick() const override;
-  virtual void releaseTick(TRI_voc_tick_t) override;
+  TRI_voc_tick_t currentTick() const override;
+  TRI_voc_tick_t releasedTick() const override;
+  void releaseTick(TRI_voc_tick_t) override;
+
+  void scheduleFullIndexRefill(std::string const& database,
+                               std::string const& collection,
+                               IndexId iid) override;
 
   /// @brief whether or not the database existed at startup. this function
   /// provides a valid answer only after start() has successfully finished,
@@ -385,9 +384,6 @@ class RocksDBEngine final : public StorageEngine {
 
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
-
-  bool autoRefillIndexCaches() const noexcept;
-  size_t refillIndexCachesMaxCapacity() const noexcept;
 
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
@@ -483,7 +479,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
-  void verifySstFiles(rocksdb::Options const& options) const;
+  [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -529,8 +525,6 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<RocksDBSettingsManager> _settingsManager;
   /// @brief Local wal access abstraction
   std::unique_ptr<RocksDBWalAccess> _walAccess;
-
-  std::unique_ptr<RocksDBIndexCacheRefiller> _indexRefiller;
 
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
@@ -594,10 +588,6 @@ class RocksDBEngine final : public StorageEngine {
   /// checks.
   uint64_t _requiredDiskFreeBytes;
 
-  // maximum capacity of queue used for automatic refilling of in-memory index
-  // caches
-  size_t _refillIndexCachesMaxCapacity;
-
   // use write-throttling
   bool _useThrottle;
 
@@ -619,10 +609,6 @@ class RocksDBEngine final : public StorageEngine {
 
   // whether or not to issue range delete markers in the write-ahead log
   bool _useRangeDeleteInWal;
-
-  // whether or not in-memory cache values for indexes are automatically
-  // refilled
-  bool _autoRefillIndexCaches;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive

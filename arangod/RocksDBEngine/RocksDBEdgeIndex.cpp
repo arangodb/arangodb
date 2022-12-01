@@ -32,37 +32,31 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/cpu-relax.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionGuard.h"
-#include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "Logger/LogMacros.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -79,45 +73,8 @@ namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
 
 using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+
 }  // namespace
-
-RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
-    DatabaseFeature& databaseFeature, std::string const& dbName,
-    std::string const& collectionName, IndexId iid, rocksdb::Slice lower,
-    rocksdb::Slice upper)
-    : _databaseFeature(databaseFeature),
-      _dbName(dbName),
-      _collectionName(collectionName),
-      _iid(iid),
-      _lower(lower.data(), lower.size()),
-      _upper(upper.data(), upper.size()) {}
-
-Result RocksDBEdgeIndexWarmupTask::run() {
-  DatabaseGuard databaseGuard(_databaseFeature, _dbName);
-  CollectionGuard collectionGuard(&databaseGuard.database(), _collectionName);
-
-  auto ctx = transaction::StandaloneContext::Create(databaseGuard.database());
-  SingleCollectionTransaction trx(ctx, *collectionGuard.collection(),
-                                  AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return res;
-  }
-
-  auto indexes = collectionGuard.collection()->getIndexes();
-  for (auto const& idx : indexes) {
-    if (idx->id() != _iid) {
-      continue;
-    }
-
-    TRI_ASSERT(idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX);
-    static_cast<RocksDBEdgeIndex*>(idx.get())->warmupInternal(&trx, _lower,
-                                                              _upper);
-  }
-
-  return trx.commit();
-}
 
 namespace arangodb {
 class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
@@ -532,9 +489,8 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
       _isFromIndex(attr == StaticStrings::FromString),
       _forceCacheRefill(collection.vocbase()
                             .server()
-                            .getFeature<EngineSelectorFeature>()
-                            .engine<RocksDBEngine>()
-                            .autoRefillIndexCaches()),
+                            .getFeature<RocksDBIndexCacheRefillFeature>()
+                            .autoRefill()),
       _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
                       {AttributeName((_isFromIndex ? StaticStrings::ToString
@@ -745,33 +701,7 @@ aql::AstNode* RocksDBEdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
-                              std::string const& end) {
-  // now that we do know the actual bounds calculate a
-  // bad approximation for the index median key
-  size_t min = std::min(start.size(), end.size());
-  std::string median = std::string(min, '\0');
-  for (size_t i = 0; i < min; i++) {
-    median[i] = (start.data()[i] + end.data()[i]) / 2;
-  }
-
-  // now search the beginning of a new vertex ID
-  it->Seek(median);
-  if (!it->Valid()) {
-    return end;
-  }
-  do {
-    median = it->key().ToString();
-    it->Next();
-  } while (it->Valid() &&
-           RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
-  if (!it->Valid()) {
-    return end;
-  }
-  return it->key().ToString();  // median is exclusive upper bound
-}
-
-Result RocksDBEdgeIndex::scheduleWarmup() {
+Result RocksDBEdgeIndex::warmup() {
   if (!hasCache()) {
     return {};
   }
@@ -785,81 +715,16 @@ Result RocksDBEdgeIndex::scheduleWarmup() {
   }
 
   auto rocksColl = toRocksDBCollection(_collection);
-  auto* mthds = RocksDBTransactionState::toMethods(&trx, _collection.id());
-  auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
-
+  // Prepare the cache to be resized for this amount of objects to be inserted.
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
-
-  auto scheduleTask = [this](auto lower, auto upper) {
-    auto& df = _collection.vocbase().server().getFeature<DatabaseFeature>();
-    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
-        df, _collection.vocbase().name(), _collection.name(), id(), lower,
-        upper);
-    SchedulerFeature::SCHEDULER->queue(
-        RequestLane::INTERNAL_LOW, [task = std::move(task)]() {
-          Result res = task->run();
-          if (res.fail()) {
-            LOG_TOPIC("0eb7d", WARN, Logger::ENGINES)
-                << "unable to run index warmup: " << res.errorMessage();
-          };
-        });
-  };
-
-  // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
-  if (expectedCount < 100000) {
-    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES)
-        << "Skipping the multithreaded loading";
-    scheduleTask(bounds.start(), bounds.end());
-    return {};
-  }
 
-  // try to find the right bounds
-  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-  ro.prefix_same_as_start =
-      false;  // key-prefix includes edge (i.e. "collection/vertex")
-  ro.total_order_seek = true;  // otherwise full-index-scan does not work
-  ro.verify_checksums = false;
-  ro.fill_cache = EdgeIndexFillBlockCache;
+  auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
 
-  std::unique_ptr<rocksdb::Iterator> it(_engine.db()->NewIterator(ro, _cf));
-  // get the first and last actual key
-  it->Seek(bounds.start());
-  if (!it->Valid()) {
-    LOG_TOPIC("7b7dc", DEBUG, Logger::ENGINES)
-        << "Cannot use multithreaded edge index warmup";
-    scheduleTask(bounds.start(), bounds.end());
-    return {};
-  }
-  std::string firstKey = it->key().ToString();
-  it->SeekForPrev(bounds.end());
-  if (!it->Valid()) {
-    LOG_TOPIC("24334", DEBUG, Logger::ENGINES)
-        << "Cannot use multithreaded edge index warmup";
-    scheduleTask(bounds.start(), bounds.end());
-    return {};
-  }
-  std::string lastKey = it->key().ToString();
+  warmupInternal(&trx, bounds.start(), bounds.end());
 
-  std::string q1 = firstKey, q2, q3, q4, q5 = lastKey;
-  q3 = FindMedian(it.get(), q1, q5);
-  if (q3 == lastKey) {
-    LOG_TOPIC("14caa", DEBUG, Logger::ENGINES)
-        << "Cannot use multithreaded edge index warmup";
-    scheduleTask(bounds.start(), bounds.end());
-    return {};
-  }
-
-  q2 = FindMedian(it.get(), q1, q3);
-  q4 = FindMedian(it.get(), q3, q5);
-
-  scheduleTask(q1, q2);
-  scheduleTask(q2, q3);
-  scheduleTask(q3, q4);
-  scheduleTask(q4, bounds.end());
-
-  return {};
+  return trx.commit();
 }
 
 void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
@@ -902,7 +767,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       previous = v;
       bool shouldTry = true;
       while (shouldTry) {
-        auto finding = cc->find(previous.data(), (uint32_t)previous.size());
+        auto finding =
+            cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
         if (finding.found()) {
           shouldTry = false;
           needsInsert = false;
@@ -930,7 +796,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
       // Need to store
       previous = v;
-      auto finding = cc->find(previous.data(), (uint32_t)previous.size());
+      auto finding =
+          cc->find(previous.data(), static_cast<uint32_t>(previous.size()));
       if (finding.found()) {
         needsInsert = false;
       } else {

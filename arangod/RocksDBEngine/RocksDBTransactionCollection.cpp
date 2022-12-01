@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -302,13 +303,12 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
     return;
   }
 
-  auto& vocbase = _collection->vocbase();
-  auto& engine = vocbase.server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& refiller = _collection->vocbase()
+                       .server()
+                       .getFeature<RocksDBIndexCacheRefillFeature>();
 
   for (auto const& it : _trackedCacheRefills) {
-    engine.trackIndexCacheRefill(_collection, it.first, std::move(it.second));
+    refiller.trackRefill(_collection, it.first, std::move(it.second));
   }
   _trackedCacheRefills.clear();
 }

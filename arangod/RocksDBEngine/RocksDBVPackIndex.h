@@ -51,9 +51,11 @@ namespace aql {
 class SortCondition;
 struct Variable;
 }  // namespace aql
+
 class LogicalCollection;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
+
 namespace transaction {
 class Methods;
 }
@@ -103,6 +105,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief whether or not the index has estimates
   bool hasEstimates() const noexcept { return _estimates; }
+
+  // warm up the index cache
+  Result warmup() override;
 
   Index::FilterCosts supportsFilterCondition(
       transaction::Methods& trx,
@@ -247,6 +252,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         containers::SmallVector<RocksDBKey, 4>& elements,
                         containers::SmallVector<uint64_t, 4>& hashes,
                         containers::SmallVector<VPackSlice, 4>& sliceStack);
+
+  void warmupInternal(transaction::Methods* trx);
 
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;

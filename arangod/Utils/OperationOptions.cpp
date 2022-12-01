@@ -31,6 +31,7 @@
 
 using namespace arangodb;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 namespace {
 std::string_view indexOpModeString(IndexOperationMode mode) noexcept {
   switch (mode) {
@@ -45,6 +46,7 @@ std::string_view indexOpModeString(IndexOperationMode mode) noexcept {
   return "invalid";
 }
 }  // namespace
+#endif
 
 OperationOptions::OperationOptions(ExecContext const& context)
     : OperationOptions() {

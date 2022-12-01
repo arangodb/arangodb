@@ -1,8 +1,4 @@
-# ----------------------------------------
-# Greenspun tests
-# ----------------------------------------
-
-add_subdirectory(Greenspun)
+add_compile_warnings_flags()
 
 # ----------------------------------------
 # Fuerte tests
@@ -14,6 +10,8 @@ add_subdirectory(Fuerte)
 # Error tests
 # ----------------------------------------
 
+add_subdirectory(Assertions)
+add_subdirectory(CrashHandler)
 add_subdirectory(Errors)
 
 add_subdirectory(Zkd)
@@ -224,7 +222,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp

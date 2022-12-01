@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -95,11 +97,6 @@ struct ToType;
 template<>
 struct ToType<Methods::CallbacksTag::StatusChange> {
   using Type = Methods::StatusChangeCallback;
-};
-
-template<>
-struct ToType<Methods::CallbacksTag::PreCommit> {
-  using Type = Methods::PreCommitCallback;
 };
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
@@ -373,28 +370,6 @@ Result applyStatusChangeCallbacks(Methods& trx, Status status) noexcept try {
   return Result(TRI_ERROR_OUT_OF_MEMORY);
 }
 
-void applyPreCommitCallbacks(transaction::Methods& trx) {
-  auto* state = trx.state();
-  if (!state) {
-    return;  // nothing to apply
-  }
-  TRI_ASSERT(trx.isMainTransaction());
-  auto* callbacks = getCallbacks<Methods::CallbacksTag::PreCommit>(*state);
-  if (!callbacks) {
-    return;  // no callbacks to apply
-  }
-  // no need to lock since transactions are single-threaded
-  for (auto& callback : *callbacks) {
-    TRI_ASSERT(callback);  // addStatusChangeCallback(...) ensures valid
-    try {
-      (*callback)(trx);
-    } catch (...) {
-      // we must not propagate exceptions from here
-      // TODO maybe make them noexcept?
-    }
-  }
-}
-
 void throwCollectionNotFound(std::string const& name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -460,11 +435,6 @@ bool transaction::Methods::addCallbackImpl(Callback const* callback) {
 bool transaction::Methods::addStatusChangeCallback(
     StatusChangeCallback const* callback) {
   return addCallbackImpl<CallbacksTag::StatusChange>(callback);
-}
-
-bool transaction::Methods::addPreCommitCallback(
-    PreCommitCallback const* callback) {
-  return addCallbackImpl<CallbacksTag::PreCommit>(callback);
 }
 
 bool transaction::Methods::removeStatusChangeCallback(
@@ -3347,7 +3317,6 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
               << "'";
           return res;
         }
-        applyPreCommitCallbacks(*this);
         return _state->commitTransaction(this);
       })
       .thenValue([this](Result res) -> Result {

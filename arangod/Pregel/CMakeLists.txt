@@ -20,7 +20,6 @@ add_library(arango_pregel STATIC
 target_link_libraries(arango_pregel
 	arango
   arango_agency
-  arango_greenspun
   boost_boost
   boost_system)
 
