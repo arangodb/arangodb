@@ -1,6 +1,16 @@
 devel
 -----
 
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_statistics_bytes_received`
+    `arangodb_client_user_connection_statistics_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
+* Deleted customizable Pregel (AIR) and Greenspun library
+
+* BTS-128: Fixed http request not working when content-type is velocypack.
+
 * Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
   could erroneously reduce the number of results of the containing (sub)query.
 
