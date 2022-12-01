@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -45,6 +45,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const fs = require('fs');
 
 const testPaths = {
   'shell_v8': [ tu.pathForTesting('common/v8')],
@@ -84,10 +85,47 @@ function ensureCoordinators(options, numServers) {
 // / @brief TEST: shell_v8
 // //////////////////////////////////////////////////////////////////////////////
 
+class shellv8Runner extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "shellv8Runner";
+  }
+
+  run(testcases) {
+    let obj = this;
+    let res = {};
+    let filtered = {};
+    let rootDir = fs.join(fs.getTempPath(), 'shellv8Runner');
+    this.instanceManager = {
+      rootDir: rootDir,
+      endpoint: 'tcp://127.0.0.1:8888',
+      findEndpoint: function() {
+        return 'tcp://127.0.0.1:8888';
+      },
+      getStructure: function() {
+        return {
+          endpoint: 'tcp://127.0.0.1:8888',
+          rootDir: rootDir
+        };
+      }
+    };
+
+    fs.makeDirectoryRecursive(rootDir);
+    testcases.forEach(function (file, i) {
+      if (tu.filterTestcaseByOptions(file, obj.options, filtered)) {
+        obj.runOneTest(file);
+      } else if (obj.options.extremeVerbosity) {
+        print('Skipped ' + file + ' because of ' + filtered.filter);
+      }
+    });
+    return res;
+  }
+}
+
 function shellV8 (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_v8, options);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runLocalInArangoshRunner(options, 'shell_v8', []).run(testCases);
+  let rc = new shellv8Runner(options, 'shell_v8', []).run(testCases);
   return rc;
 }
 
