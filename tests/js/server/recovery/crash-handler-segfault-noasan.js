@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertMatch, print */
+/* global assertEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for crash handler
@@ -30,7 +30,6 @@
 
 var internal = require('internal');
 var jsunity = require('jsunity');
-const fs = require('fs');
 
 function runSetup () {
   'use strict';
@@ -66,45 +65,29 @@ function recoverySuite () {
       assertTrue(fs.isFile(crashFile), crashFile);
 
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
-        if (line.search('93315') >= 0) {
-          let arr = line.split(' ');
-          let file = arr[arr.length - 1];
-          print(`deleting coredump: ${file}`);
-          fs.remove(file);
-          if (process.env.hasOwnProperty('COREDIR')) {
-            let old_pid = line.split('Z [')[1].split('] S')[0];
-            let corename = fs.join(process.env['COREDIR'], `arangod.exe.${old_pid}.dmp`);
-            print(`deleting coredump: ${corename}`);
-            fs.remove(corename);
-          }
-        }
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
 
       // check message
       let line = lines.shift();
-      if (require('internal').platform.substr(0, 3) === 'win') {
-        assertMatch(/INFO.*Unhandled exception: .* at address .* in thread .*/ , line);
-        line = lines.shift();
-        assertMatch(/INFO.*Wrote minidump.*/ , line);
-      } else {
-        assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
-        // check debug symbols
-        // it is a bit compiler- and optimization-level-dependent what
-        // symbols we get
-        let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/];
-        let matches = 0;
-        lines.forEach(function(line) {
-          expected.forEach(function(ex) {
-            if (line.match(/ frame /) && line.match(ex)) {
-              ++matches;
-            }
-          });
+      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
+      
+      // check debug symbols
+      // it is a bit compiler- and optimization-level-dependent what
+      // symbols we get
+      let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
+      let matches = 0;
+      lines.forEach(function(line) {
+        expected.forEach(function(ex) {
+          if (line.match(/ frame /) && line.match(ex)) {
+            ++matches;
+          }
         });
-        assertTrue(matches > 0, lines);
-      }
+      });
+      assertTrue(matches > 0, lines);
     }
+
   };
 }
 
