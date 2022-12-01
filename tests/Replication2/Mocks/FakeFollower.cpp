@@ -66,8 +66,9 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
           },
       .leader = leaderId,
       .term = term,
-      .compactionStatus = {},
       .lowestIndexToKeep = LogIndex{0},
+      .compactionStatus = {},
+      .snapshotAvailable = {},
   }};
 }
 
