@@ -1,6 +1,12 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_statistics_bytes_received`
+    `arangodb_client_user_connection_statistics_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
 * Fix HTTP/VST traffic accounting in internal statistics / metrics.
 
 * Delay a MoveShard operation for leader change, until the old leader has
