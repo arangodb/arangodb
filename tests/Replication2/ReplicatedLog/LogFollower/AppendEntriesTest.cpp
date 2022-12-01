@@ -59,7 +59,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   std::shared_ptr<test::SyncExecutor> executor =
       std::make_shared<test::SyncExecutor>();
 
-  test::FakeStorageEngineMethodsContext methods{
+  test::FakeStorageEngineMethodsContext storage{
       objectId,
       logId,
       executor,
@@ -72,14 +72,15 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   std::shared_ptr<FollowerTermInformation> termInfo =
       std::make_shared<FollowerTermInformation>();
 
-  std::unique_ptr<testing::StrictMock<ReplicatedStateHandleMock>> stateHandle =
-      std::make_unique<testing::StrictMock<ReplicatedStateHandleMock>>();
+  ReplicatedStateHandleMock* stateHandle = new ReplicatedStateHandleMock();
 
   MessageId lastMessageId{1};
 
   auto makeFollowerManager() {
     return std::make_shared<refactor::FollowerManager>(
-        methods.getMethods(), std::move(stateHandle), termInfo, options);
+        storage.getMethods(),
+        std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
+        options);
   }
 };
 
@@ -111,4 +112,105 @@ TEST_F(AppendEntriesFollowerTest, append_entries_with_commit_index) {
 
     EXPECT_TRUE(result.isSuccess()) << result.reason.getErrorMessage();
   }
+}
+
+TEST_F(AppendEntriesFollowerTest, append_entries_fail_wrong_term) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  auto follower = makeFollowerManager();
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex).Times(0);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{0};
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{2};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+
+    EXPECT_FALSE(result.isSuccess());
+    EXPECT_EQ(result.reason.error,
+              AppendEntriesErrorReason::ErrorType::kWrongTerm);
+  }
+}
+
+TEST_F(AppendEntriesFollowerTest, append_entries_fail_wrong_leader) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  auto follower = makeFollowerManager();
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex).Times(0);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{0};
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "INVALID";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+
+    EXPECT_FALSE(result.isSuccess());
+    EXPECT_EQ(result.reason.error,
+              AppendEntriesErrorReason::ErrorType::kInvalidLeaderId);
+  }
+}
+
+TEST_F(AppendEntriesFollowerTest, append_entries_no_match) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  auto follower = makeFollowerManager();
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex).Times(0);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{0};
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{2}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+
+    EXPECT_FALSE(result.isSuccess());
+    EXPECT_EQ(result.reason.error,
+              AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch);
+  }
+}
+
+TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  auto follower = makeFollowerManager();
+  methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{50})).Times(1);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{50};  // allow compaction upto 50
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+
+    EXPECT_TRUE(result.isSuccess());
+  }
+
+  // we expect compaction to happen
+  ASSERT_FALSE(storage.log.empty());
+  EXPECT_EQ(storage.log.begin()->first, LogIndex{50});
 }
