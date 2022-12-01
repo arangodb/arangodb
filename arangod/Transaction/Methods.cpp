@@ -172,32 +172,6 @@ getStatusChangeCallbacks(arangodb::TransactionState& state,
   return cookie ? &(cookie->_callbacks) : nullptr;
 }
 
-std::vector<arangodb::transaction::Methods::PreCommitCallback const*>*
-getPreCommitCallbacks(arangodb::TransactionState& state, bool create = false) {
-  struct CookieType : public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::PreCommitCallback const*>
-        _callbacks;
-  };
-
-  static const int key = 1;  // arbitrary location in memory, common for all
-
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
-#else
-  auto* cookie = static_cast<CookieType*>(state.cookie(&key));
-#endif
-
-  if (!cookie && create) {
-    auto ptr = std::make_unique<CookieType>();
-
-    cookie = ptr.get();
-    state.cookie(&key, std::move(ptr));
-  }
-
-  return cookie ? &(cookie->_callbacks) : nullptr;
-}
-
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
@@ -219,33 +193,6 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
   }
 
   return arangodb::Result();
-}
-
-void applyPreCommitCallbacks(arangodb::transaction::Methods& trx) {
-  TRI_ASSERT(trx.isMainTransaction());
-
-  auto* state = trx.state();
-
-  if (!state) {
-    return;  // nothing to apply
-  }
-
-  auto* callbacks = getPreCommitCallbacks(*state);
-
-  if (!callbacks) {
-    return;  // no callbacks to apply
-  }
-
-  // no need to lock since transactions are single-threaded
-  for (auto& callback : *callbacks) {
-    TRI_ASSERT(callback);  // addStatusChangeCallback(...) ensures valid
-
-    try {
-      (*callback)(trx);
-    } catch (...) {
-      // we must not propagate exceptions from here
-    }
-  }
 }
 
 /// @brief notify callbacks of association of 'cid' with this TransactionState
@@ -351,24 +298,6 @@ bool transaction::Methods::addStatusChangeCallback(
 
   // no need to lock since transactions are single-threaded
   statusChangeCallbacks->emplace_back(callback);
-
-  return true;
-}
-
-bool transaction::Methods::addPreCommitCallback(
-    PreCommitCallback const* callback) {
-  if (!callback || !*callback) {
-    return true;  // nothing to call back
-  } else if (!_state) {
-    return false;  // nothing to add to
-  }
-
-  auto* callbacks = getPreCommitCallbacks(*_state, true);
-
-  TRI_ASSERT(nullptr != callbacks);  // 'create' was specified
-
-  // no need to lock since transactions are single-threaded
-  callbacks->emplace_back(callback);
 
   return true;
 }
@@ -3027,7 +2956,6 @@ Future<Result> Methods::commitInternal(MethodsApi api) {
       return res;
     }
 
-    applyPreCommitCallbacks(*this);
     res = _state->commitTransaction(this);
     if (res.ok()) {
       applyStatusChangeCallbacks(*this, Status::COMMITTED);
