@@ -453,8 +453,8 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, true);
       }
       print("Done:" + iter);
-      tearDown();
-      setUp();
+      this.tearDown();
+      this.setUp();
       }
     }
   };
