@@ -1798,7 +1798,7 @@ void Supervision::handleJobs() {
 
   LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
       << "Begin checkUndoLeaderChangeActions";
-  checkUndoLeaderChangeActions();
+  // checkUndoLeaderChangeActions();
 
   LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedStates";
