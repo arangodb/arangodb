@@ -193,6 +193,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_futures
   arango_static_strings
   arango_crashhandler
   velocypack
