@@ -131,8 +131,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
           fromServer(std::move(from)),
           toServer(std::move(to)),
           collectionID(std::move(collectionID)),
-          remainsFollower(true),
-          tryUndo(false) {}
+          remainsFollower(remainsFollower),
+          tryUndo(tryUndo) {}
 
     static std::unique_ptr<MoveShardContext> fromVelocyPack(
         arangodb::velocypack::Slice slice);
