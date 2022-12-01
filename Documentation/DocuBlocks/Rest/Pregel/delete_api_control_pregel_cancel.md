@@ -3,9 +3,9 @@
 
 @RESTHEADER{DELETE /_api/control_pregel/{id}, Cancel Pregel job execution}
 
-@RESTQUERYPARAMETERS
+@RESTURLPARAMETERS
 
-@RESTQUERYPARAM{id,number,required}
+@RESTURLPARAM{id,number,required}
 Pregel execution identifier.
 
 @RESTDESCRIPTION

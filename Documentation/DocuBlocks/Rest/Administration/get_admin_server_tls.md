@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_server_tls
 @brief Return the TLS data of this server (server key, client-auth CA)
 
-@RESTHEADER{GET /_admin/server/tls, Return a summary of the TLS data, handleMode:get}
+@RESTHEADER{GET /_admin/server/tls, Return a summary of the TLS data, handleTLS:get}
 
 @RESTDESCRIPTION
 Return a summary of the TLS data. The JSON response will contain a field
