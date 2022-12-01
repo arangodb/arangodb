@@ -32,18 +32,17 @@
 
 using namespace arangodb::consensus;
 
-FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId,
-                               std::string const& creator,
-                               std::string const& database,
-                               std::string const& collection,
-                               std::string const& shard,
-                               std::string const& from)
+FailedFollower::FailedFollower(
+    Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+    std::string const& creator, std::string const& database,
+    std::string const& collection, std::string const& shard,
+    std::string const& from, std::string const& notBefore)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from) {}
+      _from(from),
+      _notBefore(stringToTimepoint(notBefore)) {}
 
 FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
                                JOB_STATUS status, std::string const& jobId)
@@ -63,6 +62,11 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+
+  if (tmp_notBefore) {
+    _notBefore = stringToTimepoint(tmp_notBefore.value());
+  }
 
   if (tmp_database && tmp_collection && tmp_from && tmp_shard && tmp_creator &&
       tmp_created) {
@@ -113,6 +117,7 @@ bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+    _jb->add("notBefore", VPackValue(timepointToString(_notBefore)));
   }
 
   if (envelope == nullptr) {
@@ -174,6 +179,18 @@ bool FailedFollower::start(bool& aborts) {
 
   // Exclude servers in failoverCandidates for some clone and those in Plan:
   auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
+
+  // Check if configured delay has passed since the creation of the job:
+  auto now = std::chrono::system_clock::now();
+  if (now < _notBefore) {
+    LOG_TOPIC("1de2d", DEBUG, Logger::SUPERVISION)
+        << "shard " << _shard
+        << " needs FailedFollower but configured FailedFollowerDelay has not "
+           "yet passed, delaying job "
+        << _jobId;
+    return false;
+  }
+
   auto failoverCands =
       Job::findAllFailoverCandidates(_snapshot, _database, shardsLikeMe);
   std::vector<std::string> excludes;
