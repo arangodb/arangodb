@@ -1251,16 +1251,15 @@ V8Context* V8DealerFeature::enterContext(
     TRI_ASSERT(context != nullptr);
 
     _idleContexts.pop_back();
+    TRI_ASSERT(context != nullptr);
 
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
 
     context->setDescription(securityContext.typeName(), TRI_microtime());
+    context->lockAndEnter();
+    context->assertLocked();
   }
-
-  TRI_ASSERT(context != nullptr);
-  context->lockAndEnter();
-  context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
   ++_contextsEntered;
