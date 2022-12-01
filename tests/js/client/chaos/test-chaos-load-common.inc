@@ -507,8 +507,8 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, true, true);
       }
       print("Done: " + iter);
-      tearDown();
-      setUp();
+      this.tearDown();
+      this.setUp();
       }
     }
   };
