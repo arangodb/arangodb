@@ -373,6 +373,8 @@ class RocksDBEngine final : public StorageEngine {
                                std::string const& collection,
                                IndexId iid) override;
 
+  void syncIndexCaches() override;
+
   /// @brief whether or not the database existed at startup. this function
   /// provides a valid answer only after start() has successfully finished,
   /// so don't call it from other features during their start() if they are

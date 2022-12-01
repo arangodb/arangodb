@@ -576,7 +576,10 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
 
-    if (_cache != nullptr && (_forceCacheRefill || options.refillIndexCaches)) {
+    if (_cache != nullptr &&
+        ((_forceCacheRefill &&
+          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
       RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
           _collection.id(), id(), fromToRef);
     }
@@ -590,7 +593,8 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice doc) {
+                                velocypack::Slice doc,
+                                OperationOptions const& options) {
   VPackSlice fromTo = doc.get(_directionAttr);
   std::string_view fromToRef = fromTo.stringView();
   TRI_ASSERT(fromTo.isString());
@@ -615,6 +619,13 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(),
                                                              id(), hash);
+    if (_cache != nullptr &&
+        ((_forceCacheRefill &&
+          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+      RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+          _collection.id(), id(), fromToRef);
+    }
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);

@@ -3023,8 +3023,14 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  reqOpts.param(StaticStrings::RefillIndexCachesString,
-                options.refillIndexCaches ? "true" : "false");
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
 
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));

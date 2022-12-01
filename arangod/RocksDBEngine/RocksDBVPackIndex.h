@@ -164,8 +164,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,

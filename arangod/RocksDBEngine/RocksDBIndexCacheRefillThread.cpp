@@ -51,6 +51,7 @@ RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _maxCapacity(maxCapacity),
       _numQueued(0),
+      _proceeding(0),
       _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_auto_refill_loaded_total{})),
       _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
@@ -121,6 +122,25 @@ void RocksDBIndexCacheRefillThread::trackRefill(
   _totalNumQueued += n;
 }
 
+void RocksDBIndexCacheRefillThread::waitForCatchup() {
+  // give up after 10 seconds max
+  auto end = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
+  CONDITION_LOCKER(guard, _condition);
+
+  while (_proceeding > 0 || _numQueued > 0) {
+    guard.unlock();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+    if (std::chrono::steady_clock::now() > end) {
+      break;
+    }
+
+    guard.lock();
+  }
+}
+
 void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
                                            DataSourceId cid,
                                            IndexValues const& data) {
@@ -176,9 +196,11 @@ void RocksDBIndexCacheRefillThread::run() {
 
       {
         CONDITION_LOCKER(guard, _condition);
+
         operations = std::move(_operations);
         numQueued = _numQueued;
         _numQueued = 0;
+        _proceeding = numQueued;
       }
 
       if (!operations.empty()) {
@@ -196,6 +218,8 @@ void RocksDBIndexCacheRefillThread::run() {
       }
 
       CONDITION_LOCKER(guard, _condition);
+      _proceeding = 0;
+
       if (!isStopping() && _operations.empty()) {
         guard.wait(std::chrono::microseconds(10'000'000));
       }

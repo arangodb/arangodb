@@ -103,8 +103,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   void refillCache(transaction::Methods& trx,
                    std::vector<std::string> const& keys) override;

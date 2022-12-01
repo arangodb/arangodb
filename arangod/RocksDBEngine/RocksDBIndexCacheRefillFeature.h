@@ -61,6 +61,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   void scheduleFullIndexRefill(std::string const& database,
                                std::string const& collection, IndexId iid);
 
+  // wait until the background thread has applied all operations
+  void waitForCatchup();
+
   // maximum capacity for tracking per-key refills
   size_t maxCapacity() const noexcept;
 

@@ -364,6 +364,8 @@ class StorageEngine : public ArangodFeature {
                                        std::string const& collection,
                                        IndexId iid);
 
+  virtual void syncIndexCaches();
+
  protected:
   void registerCollection(
       TRI_vocbase_t& vocbase,

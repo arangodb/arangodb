@@ -1747,7 +1747,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         auto slice = ::lookupValueFromSlice(key.string());
         invalidateCacheEntry(slice);
         if (_cache != nullptr &&
-            (_forceCacheRefill || options.refillIndexCaches)) {
+            ((_forceCacheRefill &&
+              options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+             options.refillIndexCaches == RefillIndexCaches::kRefill)) {
           RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
               _collection.id(), id(), {slice.data(), slice.size()});
         }
@@ -1828,7 +1830,9 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         auto slice = ::lookupValueFromSlice(key.string());
         invalidateCacheEntry(slice);
         if (_cache != nullptr &&
-            (_forceCacheRefill || options.refillIndexCaches)) {
+            ((_forceCacheRefill &&
+              options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+             options.refillIndexCaches == RefillIndexCaches::kRefill)) {
           RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
               _collection.id(), id(), {slice.data(), slice.size()});
         }
@@ -1959,7 +1963,10 @@ Result RocksDBVPackIndex::update(
     // banish key in in-memory cache
     auto slice = ::lookupValueFromSlice(key.string());
     invalidateCacheEntry(slice);
-    if (_cache != nullptr && (_forceCacheRefill || options.refillIndexCaches)) {
+    if (_cache != nullptr &&
+        ((_forceCacheRefill &&
+          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
       RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
           _collection.id(), id(), {slice.data(), slice.size()});
     }
@@ -1972,7 +1979,8 @@ Result RocksDBVPackIndex::update(
 Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice doc) {
+                                 velocypack::Slice doc,
+                                 OperationOptions const& options) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal
@@ -1999,19 +2007,25 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
       mthds, !_unique && trx.state()->hasHint(
                              transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
 
-  size_t const count = elements.size();
-
-  for (size_t i = 0; i < count; ++i) {
+  for (auto const& key : elements) {
     if (_unique) {
-      s = mthds->Delete(_cf, elements[i]);
+      s = mthds->Delete(_cf, key);
     } else {
       // non-unique index contains the unique objectID written exactly once
-      s = mthds->SingleDelete(_cf, elements[i]);
+      s = mthds->SingleDelete(_cf, key);
     }
 
     if (s.ok()) {
       // banish key in in-memory cache
-      invalidateCacheEntry(::lookupValueFromSlice(elements[i].string()));
+      auto slice = ::lookupValueFromSlice(key.string());
+      invalidateCacheEntry(slice);
+      if (_cache != nullptr &&
+          ((_forceCacheRefill &&
+            options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+           options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+        RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+            _collection.id(), id(), {slice.data(), slice.size()});
+      }
     } else {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
     }

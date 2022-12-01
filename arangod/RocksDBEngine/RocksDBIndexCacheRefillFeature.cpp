@@ -194,6 +194,13 @@ void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(
   scheduleIndexRefillTasks();
 }
 
+// wait until the background thread has applied all operations
+void RocksDBIndexCacheRefillFeature::waitForCatchup() {
+  if (_refillThread == nullptr) {
+    _refillThread->waitForCatchup();
+  }
+}
+
 void RocksDBIndexCacheRefillFeature::stopThread() {
   if (_refillThread == nullptr) {
     return;
