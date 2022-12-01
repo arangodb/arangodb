@@ -82,6 +82,7 @@ struct MoveShard : public Job {
   void addMoveShardFromServerUnLock(Builder& ops) const;
   void addMoveShardToServerCanUnLock(Builder& ops) const;
   void addMoveShardFromServerCanUnLock(Builder& ops) const;
+  void addUndoMoveShard(Builder& ops, Builder const& job) const;
 
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
   bool checkLeaderFollowerCurrent(

@@ -471,6 +471,29 @@ bool MoveShard::start(bool&) {
     }
   }
 
+  // We do not want to honour `_tryUndo` if this is not a leader swap,
+  // i.e. !_isLeader
+  if (_tryUndo && !_toServerIsFollower) {
+    // Unfortunately, we have to rewrite the `todo` velocypack now,
+    // we keep everything, but we unset _tryUndo:
+    _tryUndo = false;
+    Builder todo2;
+    TRI_ASSERT(todo.slice().isObject());
+    todo2.add(todo.slice());
+    todo.clear();  // Builder does not have a swap!
+    {
+      VPackObjectBuilder guard(&todo);
+      for (auto p : VPackObjectIterator(todo2.slice())) {
+        std::string_view key = p.key.stringView();
+        if (key != "tryUndo") {
+          todo.add(p.key.stringView(), p.value);
+        } else {
+          todo.add("tryUndo", VPackValue(false));
+        }
+      }
+    }
+  }
+
   // Enter pending, remove todo, block toserver
   {
     VPackArrayBuilder listOfTransactions(&pending);
@@ -1079,6 +1102,10 @@ JOB_STATUS MoveShard::pendingLeader() {
         addMoveShardFromServerUnLock(trx);
         addMoveShardToServerCanUnLock(pre);
         addMoveShardFromServerCanUnLock(pre);
+
+        if (_tryUndo) {
+          addUndoMoveShard(trx, job);
+        }
       }
       // Add precondition to transaction:
       trx.add(pre.slice());
@@ -1469,4 +1496,39 @@ bool MoveShard::moveShardFinish(bool unlock, bool success,
   }
 
   return finish("", "", success, msg, std::move(payload));
+}
+
+void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
+  // If we are here, we have `_isLeader` set to `true`. We also know
+  // that this was a leader swap with an in sync follower, so we can
+  // assume that.
+  std::string path = returnLeadershipPrefix + _shard;
+  // Briefly check that the place in Target is still empty:
+  if (_snapshot.has(path)) {
+    // This should not happen, since we have a lock on the `_toServer`.
+    LOG_TOPIC("abbcc", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since the was already one.";
+    return;
+  }
+  std::string now(timepointToString(std::chrono::system_clock::now()));
+  std::string deadline(timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::minutes(20)));
+  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
+      curServersKnown, _to, "/", StaticStrings::RebootId));
+  if (!rebootId) {
+    // This should not happen, since we should have a rebootId for this.
+    LOG_TOPIC("abbcd", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since there was no rebootId for server " << _to;
+    return;
+  }
+  ops.add(VPackValue(path));
+  {
+    VPackObjectBuilder guard(&ops);
+    ops.add("timeStamp", VPackValue(now));
+    ops.add("removeIfNotStartedBy", VPackValue(deadline));
+    ops.add("rebootId", VPackValue(rebootId.value()));
+    ops.add("moveShard", job.slice());
+  }
 }
