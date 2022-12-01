@@ -70,7 +70,7 @@ struct DocumentLeaderState
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  std::string_view const shardId;
+  ShardID const shardId;
 
  private:
   struct GuardedData {

@@ -45,7 +45,7 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  std::string_view const shardId;
+  ShardID const shardId;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
