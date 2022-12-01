@@ -39,6 +39,8 @@ const supervisionState = require("@arangodb/testutils/cluster-test-helper").supe
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
 const {getServersByType, deriveTestSuite, getEndpointById, getUrlById} = require('@arangodb/test-helper-common');
 const request = require('@arangodb/request');
+const helper = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -258,6 +260,30 @@ function MovingShardsSuite({useData, replVersion}) {
     return true;
   }
 
+  function findLeaderShardsForServer(id) {
+    let result = [];
+    for (var i = 0; i <  c.length ; ++i) {
+      global.ArangoClusterInfo.flush();
+      var servers = findCollectionServers(dbn, c[i].name());
+      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+        result.push(i);
+      }
+    }
+    return result;
+  }
+
+  function waitForShardLeader(id, expectedShards) {
+    helper.waitFor(function () {
+      const shards = findLeaderShardsForServer(id);
+      print("exoected = ", expectedShards, " found = ", shards);
+      if (!_.eq(shards, expectedShards)) {
+        return Error(`expected shards to be ${expectedShards}, but found ${shards}`);
+      }
+      return true;
+    });
+    return true;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,13 +414,13 @@ function MovingShardsSuite({useData, replVersion}) {
 /// @brief request a dbserver to resign:
 ////////////////////////////////////////////////////////////////////////////////
 
-  function resignLeadership(id) {
+  function resignLeadership(id, undoMoves = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var body = {"server": id};
+    var body = {"server": id, undoMoves};
     var result;
     try {
       result = request({
@@ -925,9 +951,41 @@ function MovingShardsSuite({useData, replVersion}) {
     testResignLeadership: function () {
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[0].name());
-      var toResign = servers[1];
+      var toResign = servers[0];
       assertTrue(resignLeadership(toResign));
       assertTrue(testServerNoLeader(toResign));
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resign leadership for a dbserver and wait for restore
+////////////////////////////////////////////////////////////////////////////////
+
+    testResignLeadershipWithUndo: function () {
+      assertTrue(waitForSynchronousReplication(dbn));
+      var servers = findCollectionServers(dbn, c[0].name());
+      var toResign = servers[0];
+      const shards = findLeaderShardsForServer(toResign);
+      assertTrue(resignLeadership(toResign, true));
+      assertTrue(testServerNoLeader(toResign));
+      assertTrue(waitForSupervision());
+
+      print("resign done");
+      checkCollectionContents();
+      // now suspend that server
+      print("suspend server");
+      helper.stopServerWaitFailed(toResign);
+
+      // restart the server
+      print("restart server");
+      helper.continueServerWaitOk(toResign);
+
+      // now wait for the server to become leader again for shards
+      print("waiting for leadership");
+      assertTrue(waitForShardLeader(toResign, shards));
+      print("waiting for supervision");
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
