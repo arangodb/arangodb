@@ -36,8 +36,8 @@ function runSetup () {
   // make log level more verbose, as by default we hide most messages from
   // the test output
   require("internal").logLevel("crash=info");
-  // calls std::abort() in the server
-  internal.debugTerminate('CRASH-HANDLER-TEST-ABORT');
+  // produces a segfault in the server
+  internal.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -64,12 +64,6 @@ function recoverySuite () {
 
       assertTrue(fs.isFile(crashFile), crashFile);
 
-      let platform = internal.platform;
-      if (platform !== 'linux') {
-        // crash handler only available on Linux
-        return;
-      }
-
       let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
         return line.match(/\{crash\}/);
       });
@@ -77,12 +71,12 @@ function recoverySuite () {
 
       // check message
       let line = lines.shift();
-      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*signal handler invoked/, line);
-
+      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
+      
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
-      let expected = [ /crashHandlerSignalHandler/, /sigprocmask/, /TerminateDebugging/ ];
+      let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
       lines.forEach(function(line) {
         expected.forEach(function(ex) {
