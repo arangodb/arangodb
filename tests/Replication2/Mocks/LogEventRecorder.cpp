@@ -27,21 +27,29 @@ using namespace arangodb::replication2::test;
 
 auto LogEventRecorderHandle::resignCurrentState() noexcept
     -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> {
-  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kResign});
+  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kResign,
+                                        .iterator = {},
+                                        .leader = {},
+                                        .index = {}});
   return std::move(recorder.methods);
 }
 
 void LogEventRecorderHandle::leadershipEstablished(
     std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> ptr) {
   recorder.events.emplace_back(
-      LogEvent{.type = LogEvent::Type::kLeadershipEstablished});
+      LogEvent{.type = LogEvent::Type::kLeadershipEstablished,
+               .iterator = {},
+               .leader = {},
+               .index = {}});
   recorder.methods = std::move(ptr);
 }
 
 void LogEventRecorderHandle::becomeFollower(
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> ptr) {
-  recorder.events.emplace_back(
-      LogEvent{.type = LogEvent::Type::kBecomeFollower});
+  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kBecomeFollower,
+                                        .iterator = {},
+                                        .leader = {},
+                                        .index = {}});
   recorder.methods = std::move(ptr);
 }
 
@@ -49,16 +57,23 @@ void LogEventRecorderHandle::acquireSnapshot(arangodb::ServerID leader,
                                              LogIndex index) {
   recorder.events.emplace_back(
       LogEvent{.type = LogEvent::Type::kAcquireSnapshot,
+               .iterator = {},
                .leader = leader,
                .index = index});
 }
 
 void LogEventRecorderHandle::updateCommitIndex(LogIndex index) {
-  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kCommitIndex});
+  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kCommitIndex,
+                                        .iterator = {},
+                                        .leader = {},
+                                        .index = {}});
 }
 
 void LogEventRecorderHandle::dropEntries() {
-  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kDropEntries});
+  recorder.events.emplace_back(LogEvent{.type = LogEvent::Type::kDropEntries,
+                                        .iterator = {},
+                                        .leader = {},
+                                        .index = {}});
 }
 LogEventRecorderHandle::LogEventRecorderHandle(LogEventRecorder& recorder)
     : recorder(recorder) {}

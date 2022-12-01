@@ -25,6 +25,7 @@
 #include <Basics/RocksDBUtils.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/debugging.h>
+#include <Basics/application-exit.h>
 #include <Replication2/ReplicatedLog/PersistedLog.h>
 #include <Basics/ResultT.h>
 #include <Inspection/VPack.h>
@@ -408,13 +409,13 @@ RocksDBLogStorageMethods::RocksDBLogStorageMethods(
       ctx(vocbaseId, objectId) {}
 
 auto RocksDBLogStorageMethods::getSyncedSequenceNumber() -> SequenceNumber {
-  TRI_ASSERT(false);
+  FATAL_ERROR_ABORT();
 }
 
 auto RocksDBLogStorageMethods::waitForSync(
     IStorageEngineMethods::SequenceNumber number)
     -> futures::Future<futures::Unit> {
-  TRI_ASSERT(false);
+  FATAL_ERROR_ABORT();
 }
 
 auto RocksDBLogStorageMethods::drop() -> Result {

@@ -191,14 +191,14 @@ struct DocumentStateMachineTest : testing::Test {
 
 struct MockProducerStream : streams::ProducerStream<DocumentLogEntry> {
   // Stream<T>
-  MOCK_METHOD(futures::Future<WaitForResult>, waitFor, (LogIndex), ());
+  MOCK_METHOD(futures::Future<WaitForResult>, waitFor, (LogIndex), (override));
   MOCK_METHOD(futures::Future<std::unique_ptr<Iterator>>, waitForIterator,
-              (LogIndex), ());
-  MOCK_METHOD(void, release, (LogIndex), ());
+              (LogIndex), (override));
+  MOCK_METHOD(void, release, (LogIndex), (override));
   // ProducerStream<T>
-  MOCK_METHOD(LogIndex, insert, (DocumentLogEntry const&), ());
+  MOCK_METHOD(LogIndex, insert, (DocumentLogEntry const&), (override));
   MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
-              (DocumentLogEntry const&), ());
+              (DocumentLogEntry const&), (override));
 
   MockProducerStream() {
     ON_CALL(*this, insert).WillByDefault([this](DocumentLogEntry const& doc) {
@@ -341,8 +341,10 @@ TEST_F(DocumentStateMachineTest,
 
   auto entryIterator = std::make_unique<Iterator>(entries);
 
-  auto entry = DocumentLogEntry{
-      .shardId = "s1", .operation = OperationType::kAbortAllOngoingTrx};
+  auto entry = DocumentLogEntry{.shardId = "s1",
+                                .operation = OperationType::kAbortAllOngoingTrx,
+                                .data = {},
+                                .tid = {}};
   EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
     EXPECT_EQ(entry.shardId, "s1");
     EXPECT_EQ(entry.operation, OperationType::kAbortAllOngoingTrx);

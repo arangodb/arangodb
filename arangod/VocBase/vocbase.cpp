@@ -351,10 +351,13 @@ struct arangodb::VocBaseLogManager {
 
         auto metadata = PersistedStateInfo{
             .stateId = id,
-            .snapshot = {.status =
-                             replicated_state::SnapshotStatus::kCompleted},
+            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
+                         .timestamp = {},
+                         .error = {}},
+            .generation = {},
             .specification = {.type = std::string(type),
-                              .parameters = std::move(parametersCopy)}};
+                              .parameters = std::move(parametersCopy)},
+        };
         auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
 
         if (maybeStorage.fail()) {

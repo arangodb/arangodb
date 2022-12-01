@@ -40,7 +40,7 @@ auto invoke_on_executor(
         p.setValue(std::forward<F>(fn)());
       });
 
-  return std::move(f);
+  return f;
 }
 }  // namespace
 

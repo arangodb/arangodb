@@ -156,7 +156,8 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
       _metrics->replicatedLogLeaderTookOverNumber->count();
     } else {
       // follower
-      FollowerTermInfo info = {.term = term.term, .myself = _myself.serverId};
+      FollowerTermInfo info = {
+          .term = term.term, .myself = _myself.serverId, .leader = {}};
       if (term.leader) {
         info.leader = term.leader->serverId;
       }
