@@ -1,5 +1,5 @@
 name: arangodb_client_user_connection_statistics_bytes_received
-introducedIn: "3.9.6"
+introducedIn: "3.10.2"
 help: |
   Bytes received for requests, only user traffic.
 unit: bytes
