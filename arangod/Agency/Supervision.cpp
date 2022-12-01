@@ -1798,7 +1798,7 @@ void Supervision::handleJobs() {
 
   LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
       << "Begin checkUndoLeaderChangeActions";
-  // checkUndoLeaderChangeActions();
+  checkUndoLeaderChangeActions();
 
   LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
       << "Begin checkReplicatedStates";
@@ -3503,6 +3503,85 @@ void Supervision::removeTransactionBuilder(
 }
 
 void Supervision::checkUndoLeaderChangeActions() {
+  auto const isServerInPlan =
+      [&](std::string_view database, std::string_view collection,
+          std::string_view shard, std::string_view server) -> bool {
+    auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
+                                           collection, "shards", shard);
+    auto servers = snapshot().hasAsArray(path);
+    if (not servers) {
+      return false;
+    }
+    TRI_ASSERT(servers->isArray() && servers->length() > 0);
+    for (size_t i = 0; i < servers->length(); ++i) {
+      if (server == servers->at(i).stringView()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto const isServerInSync =
+      [&](std::string_view database, std::string_view collection,
+          std::string_view shard, std::string_view server) -> bool {
+    auto path = basics::StringUtils::joinT("/", "Current/Collections", database,
+                                           collection, shard, "servers");
+    auto servers = snapshot().hasAsArray(path);
+    if (not servers) {
+      return false;
+    }
+    TRI_ASSERT(servers->isArray() && servers->length() > 0);
+    for (size_t i = 1; i < servers->length(); ++i) {
+      if (server == servers->at(i).stringView()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  auto const checkDeletion = [&](std::string const& shard,
+                                 std::shared_ptr<Node> entry) -> bool {
+    std::string now(timepointToString(std::chrono::system_clock::now()));
+    auto deadline = entry->hasAsString("removeIfNotStartedBy");
+    auto started = entry->hasAsString("started");
+    if (deadline) {
+      if (!started && now > deadline.value()) {
+        return true;
+      }
+    }
+    if (started) {
+      auto jobId = entry->hasAsString("jobId");
+      if (jobId) {
+        auto inTodo = _snapshot->hasAsNode(toDoPrefix + jobId.value());
+        auto inPending = _snapshot->hasAsNode(pendingPrefix + jobId.value());
+        if (!inTodo && !inPending) {
+          return true;
+        }
+      } else {
+        return true;
+        // This should not happen, since if started is there, we have a
+        // jobId.
+      }
+    }
+    auto jobOpt = entry->hasAsNode("moveShard");
+    if (!jobOpt) {
+      return true;
+    }
+    Node const& job(jobOpt.value());
+    auto database = job.hasAsString("database");
+    auto collection = job.hasAsString("collection");
+    auto server = job.hasAsString("fromServer");
+    if (!server) {
+      return true;
+    } else {
+      if (!isServerInPlan(database.value(), collection.value(), shard,
+                          server.value())) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   auto const getShardLeader =
       [&](std::string_view database, std::string_view collection,
           std::string_view shard) -> std::optional<std::string> {
@@ -3520,32 +3599,24 @@ void Supervision::checkUndoLeaderChangeActions() {
     return leader;
   };
 
-  auto const reclaimShards =
-      [&](std::shared_ptr<VPackBuilder> const& trx, std::string_view path,
-          std::string const& server, std::shared_ptr<Node> objects) {
-        for (auto const& [database, collections] : objects->children()) {
-          for (auto const& [collection, shards] : collections->children()) {
-            for (auto const& [shard, emptyObject] : shards->children()) {
-              auto fromServer = getShardLeader(database, collection, shard);
-              if (not fromServer) {
-                continue;
-              }
-              auto const& toServer = server;
-
-              MoveShard(*_snapshot, _agent, std::to_string(_jobId++),
-                        "supervision", database, collection, shard, *fromServer,
-                        toServer, true, true)
-                  .create(trx);
-
-              trx->add(VPackValue(basics::StringUtils::joinT(
-                  "/", path, database, collection, shard)));
-              {
-                VPackObjectBuilder ob(trx.get());
-                trx->add("op", VPackValue("delete"));
-              }
-            }
-          }
+  auto const reclaimShard =
+      [&](std::shared_ptr<VPackBuilder> const& trx, std::string const& database,
+          std::string const& collection, std::string const& shard,
+          std::string const& oldLeader) {
+        auto fromServer = getShardLeader(database, collection, shard);
+        if (not fromServer) {
+          return;
         }
+        uint64_t jobId = _jobId++;
+        MoveShard(*_snapshot, _agent, std::to_string(jobId), "supervision",
+                  database, collection, shard, *fromServer, oldLeader, true,
+                  true, false)
+            .create(trx);
+
+        std::string now(timepointToString(std::chrono::system_clock::now()));
+        std::string path = returnLeadershipPrefix + std::string(shard) + "/";
+        trx->add(path + "started", VPackValue(now));
+        trx->add(path + "jobId", VPackValue(std::to_string(jobId)));
       };
 
   auto undos = snapshot().hasAsChildren("Target/ReturnLeadership");
@@ -3553,47 +3624,83 @@ void Supervision::checkUndoLeaderChangeActions() {
     return;
   }
 
-  for (auto const& [dbserver, instances] : undos->get()) {
-    // get server health
-    if (serverHealth(dbserver) != HEALTH_STATUS_GOOD) {
-      continue;
-    }
+  // Collect a transaction:
+  auto trx = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard(trx.get());
+    VPackObjectBuilder guard2(trx.get());
 
-    // get current reboot id
-    auto rebootId = snapshot().hasAsUInt(basics::StringUtils::concatT(
-        curServersKnown, dbserver, "/", StaticStrings::RebootId));
-    if (not rebootId) {
-      continue;
-    }
-
-    // check if reboot id is bigger than the stored one
-    auto trx = std::make_shared<VPackBuilder>();
-    {
-      VPackArrayBuilder env(trx.get());
-      {
-        VPackObjectBuilder ops(trx.get());
-        for (auto const& [lastRebootIdStr, objects] : instances->children()) {
-          auto lastRebootId = basics::StringUtils::uint64(lastRebootIdStr);
-          if (lastRebootId < *rebootId) {
-            auto path = basics::StringUtils::joinT("/", "/Target/ReclaimShards",
-                                                   dbserver, lastRebootId);
-            // reclaim all shards
-            reclaimShards(trx, path, dbserver, objects);
-          }
+    for (auto const& [shard, entry] : undos->get()) {
+      // First check some conditions under which we simply get rid of the
+      // entry:
+      //  - deadline exceeded (and not yet started)
+      //  - dependent MoveShard gone (and started)
+      //  - fromServer no longer in Plan
+      if (checkDeletion(shard, entry)) {
+        // Let's remove the entry:
+        trx->add(VPackValue(returnLeadershipPrefix + shard));
+        {
+          VPackObjectBuilder guard3(trx.get());
+          trx->add("op", VPackValue("delete"));
         }
+        continue;
       }
-      {
-        VPackObjectBuilder precs(trx.get());
-        // TODO
+
+      // Now the job is still valid, let's see if it fires. Note that we
+      // do not get here, if the job is not found!
+      auto jobOpt = entry->hasAsNode("moveShard");
+      TRI_ASSERT(jobOpt);
+      Node const& job = jobOpt.value();
+
+      // We need to check if:
+      //  - it is not yet started
+      //  - the fromServer is GOOD
+      //  - it is in sync for the shard (and all distributeShardsLike shards)
+      //  - its current rebootId is larger than the stored one
+      auto started = entry->hasAsString("started");
+      if (started) {
+        continue;
+      }
+
+      auto database = job.hasAsString("database");
+      auto collection = job.hasAsString("collection");
+      auto server = job.hasAsString("fromServer");
+      TRI_ASSERT(server && database && collection);
+      auto leader = getShardLeader(database.value(), collection.value(), shard);
+
+      // get server health
+      if (serverHealth(server.value()) != HEALTH_STATUS_GOOD) {
+        continue;
+      }
+
+      if (!isServerInSync(database.value(), collection.value(), shard,
+                          server.value())) {
+        continue;
+      }
+
+      // get current reboot id
+      auto rebootId = snapshot().hasAsUInt(basics::StringUtils::concatT(
+          curServersKnown, server.value(), "/", StaticStrings::RebootId));
+      if (!rebootId) {
+        continue;
+      }
+
+      // check if reboot id is bigger than the stored one
+      auto storedRebootId = entry->hasAsUInt("rebootId");
+      if (!storedRebootId || storedRebootId.value() < rebootId.value()) {
+        reclaimShard(trx, database.value(), collection.value(), shard,
+                     server.value());
       }
     }
-    if (trx->slice()[0].length() > 0) {
-      write_ret_t res = singleWriteTransaction(_agent, *trx, false);
+  }
 
-      if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-        LOG_TOPIC("fad4b", INFO, Logger::SUPERVISION)
-            << "Failed to insert jobs: " << trx->toJson();
-      }
+  // And finally write out the transaction:
+  if (trx->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *trx, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("fad4b", INFO, Logger::SUPERVISION)
+          << "Failed to modify returnLeadership jobs: " << trx->toJson();
     }
   }
 }

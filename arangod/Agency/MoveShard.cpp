@@ -1515,12 +1515,12 @@ void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
   std::string deadline(timepointToString(std::chrono::system_clock::now() +
                                          std::chrono::minutes(20)));
   auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
-      curServersKnown, _to, "/", StaticStrings::RebootId));
+      curServersKnown, _from, "/", StaticStrings::RebootId));
   if (!rebootId) {
     // This should not happen, since we should have a rebootId for this.
     LOG_TOPIC("abbcd", WARN, Logger::SUPERVISION)
         << "failed to schedule undo job for shard " << _shard
-        << " since there was no rebootId for server " << _to;
+        << " since there was no rebootId for server " << _from;
     return;
   }
   ops.add(VPackValue(path));
