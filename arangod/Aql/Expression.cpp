@@ -916,8 +916,8 @@ AqlValue Expression::invokeV8Function(
           .FromMaybe(v8::Local<v8::Value>());
 
   try {
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-  } catch (arangodb::basics::Exception const& ex) {
+    V8Executor::handleV8Error(tryCatch, result);
+  } catch (basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;
     }
