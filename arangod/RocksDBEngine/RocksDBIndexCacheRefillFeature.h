@@ -35,6 +35,7 @@
 #include <vector>
 
 namespace arangodb {
+class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
@@ -89,6 +90,8 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
+
+  DatabaseFeature& _databaseFeature;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)

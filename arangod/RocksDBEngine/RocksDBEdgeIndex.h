@@ -135,6 +135,10 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmupInternal(transaction::Methods* trx, rocksdb::Slice lower,
                       rocksdb::Slice upper);
 
+  void handleCacheInvalidation(transaction::Methods& trx,
+                               OperationOptions const& options,
+                               std::string_view fromToRef);
+
   // name of direction attribute (i.e. "_from" or "_to")
   std::string const _directionAttr;
   // whether or not this is the _from part

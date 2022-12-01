@@ -61,8 +61,10 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
+#include <rocksdb/slice.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -1741,18 +1743,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         break;
       }
       if (!isIndexCreation) {
-        // banish key in in-memory cache.
+        // banish key in in-memory cache and optionally schedule
+        // an index entry reload.
         // not necessary during index creation, because nothing
         // will be in the in-memory cache.
-        auto slice = ::lookupValueFromSlice(key.string());
-        invalidateCacheEntry(slice);
-        if (_cache != nullptr &&
-            ((_forceCacheRefill &&
-              options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-             options.refillIndexCaches == RefillIndexCaches::kRefill)) {
-          RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-              _collection.id(), id(), {slice.data(), slice.size()});
-        }
+        handleCacheInvalidation(trx, options, key.string());
       }
     }
 
@@ -1824,18 +1819,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
       }
 
       if (!isIndexCreation) {
-        // banish key in in-memory cache.
+        // banish key in in-memory cache and optionally schedule
+        // an index entry reload.
         // not necessary during index creation, because nothing
         // will be in the in-memory cache.
-        auto slice = ::lookupValueFromSlice(key.string());
-        invalidateCacheEntry(slice);
-        if (_cache != nullptr &&
-            ((_forceCacheRefill &&
-              options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-             options.refillIndexCaches == RefillIndexCaches::kRefill)) {
-          RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-              _collection.id(), id(), {slice.data(), slice.size()});
-        }
+        handleCacheInvalidation(trx, options, key.string());
       }
     }
 
@@ -1853,6 +1841,20 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
   }
 
   return res;
+}
+
+void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,
+                                                OperationOptions const& options,
+                                                rocksdb::Slice key) {
+  auto slice = ::lookupValueFromSlice(key);
+  invalidateCacheEntry(slice);
+  if (_cache != nullptr &&
+      ((_forceCacheRefill &&
+        options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+       options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+    RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+        _collection.id(), id(), {slice.data(), slice.size()});
+  }
 }
 
 namespace {
@@ -2016,16 +2018,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
     }
 
     if (s.ok()) {
-      // banish key in in-memory cache
-      auto slice = ::lookupValueFromSlice(key.string());
-      invalidateCacheEntry(slice);
-      if (_cache != nullptr &&
-          ((_forceCacheRefill &&
-            options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-           options.refillIndexCaches == RefillIndexCaches::kRefill)) {
-        RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-            _collection.id(), id(), {slice.data(), slice.size()});
-      }
+      // banish key in in-memory cache and optionally schedule
+      // an index entry reload.
+      handleCacheInvalidation(trx, options, key.string());
     } else {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
     }
