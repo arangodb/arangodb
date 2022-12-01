@@ -92,6 +92,62 @@ const ViewSettingsReactView = ({ name }) => {
               </th>
             </tr>
 
+            <tr className="tableRow" id="row_change-view-writebufferIdle">
+              <th className="collectionTh">
+              Writebuffer Idle:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={true}
+                         value={getNumericFieldValue(formState.writebufferIdle)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable).`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
+            <tr className="tableRow" id="row_change-view-writebufferActive">
+              <th className="collectionTh">
+              Writebuffer Active:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={true}
+                         value={getNumericFieldValue(formState.writebufferActive)}
+                         onChange={getNumericFieldSetter('writebufferActive', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable).`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
+            <tr className="tableRow" id="row_change-view-writebufferSizeMax">
+              <th className="collectionTh">
+              Writebuffer Size Max:
+              </th>
+              <th className="collectionTh">
+                <Textbox type={'number'} disabled={true}
+                         value={getNumericFieldValue(formState.writebufferSizeMax)}
+                         onChange={getNumericFieldSetter('writebufferSizeMax', dispatch)}/>
+              </th>
+              <th className="collectionTh">
+                <ToolTip
+                  title={`Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered. 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option). 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable, immutable).`}
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
+            </tr>
+
             <tr className="tableRow" id="row_change-view-cleanupIntervalStep">
               <th className="collectionTh">
                 Cleanup Interval Step:
