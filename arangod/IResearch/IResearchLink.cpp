@@ -678,7 +678,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _createdInRecovery{false},
       _commitStageOne{true} {
   // initialize transaction callback
-  _trxPostCommit = [this](TransactionState& state) {
+  _postCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this, nullptr);  // get existing cookie
     if (!prev) {
       return;
@@ -749,7 +749,7 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
     ctx._wasCommit = true;
   };
 
-  _trxPreCommit = [this](TransactionState& state) {
+  _preCommitCallback = [this](TransactionState& state) {
     auto prev = state.cookie(this);  // get existing cookie
 
     if (!prev) {
@@ -2110,8 +2110,8 @@ Result IResearchLink::insert(transaction::Methods& trx,
                   std::to_string(state.id().id()) + "', revision '" +
                   std::to_string(documentId.id()) + "'"};
     }
-    state.addPreCommitCallback(&_trxPreCommit);
-    state.addPostCommitCallback(&_trxPostCommit);
+    state.addPreCommitCallback(&_preCommitCallback);
+    state.addPostCommitCallback(&_postCommitCallback);
   }
 
   return insertImpl(ctx->_ctx);
@@ -2282,8 +2282,8 @@ Result IResearchLink::remove(transaction::Methods& trx,
                   std::to_string(state.id().id()) + "', revision '" +
                   std::to_string(documentId.id()) + "'"};
     }
-    state.addPreCommitCallback(&_trxPreCommit);
-    state.addPostCommitCallback(&_trxPostCommit);
+    state.addPreCommitCallback(&_preCommitCallback);
+    state.addPostCommitCallback(&_postCommitCallback);
   }
 
   // ...........................................................................
