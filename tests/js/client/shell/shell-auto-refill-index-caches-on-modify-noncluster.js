@@ -34,8 +34,6 @@ const n = 5000; // documents
 const waitForMetrics = () => {
   // wait for metrics to settle, using an informal API
   arango.POST('/_api/index/sync-caches', {});
-  // additional sleep needed, becauses caches can be migrated asynchronously
-  require('internal').sleep(2);
 };
 
 function AutoRefillIndexCachesEdge() {
