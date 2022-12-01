@@ -3,7 +3,19 @@ devel
 
 * BTS-128: Fixed http request not working when content-type is velocypack 
 
-* Deleted customizable Pregel (AIR) and Greenspun library
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This is
+  desirable in case a DBServer fails and comes back quickly, because it gives
+  the cluster a chance to get in sync and fully resilient without deploying
+  additional shard replicas and thus without causing any data imbalance.
+
+* Deleted customizable Pregel (AIR) and Greenspun library.
 
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
