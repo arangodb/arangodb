@@ -106,8 +106,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

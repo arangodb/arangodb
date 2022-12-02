@@ -509,10 +509,6 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   TRI_ASSERT(toFrom.isString());
   RocksDBValue value = RocksDBValue::EdgeIndexValue(VPackStringRef(toFrom));
 
-  // always invalidate cache entry for all edges with same _from / _to
-  invalidateCacheEntry(fromToRef);
-
-  // acquire rocksdb transaction
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {
@@ -521,10 +517,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
     RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
 
-    if (_cache != nullptr && (_forceCacheRefill || options.refillIndexCaches)) {
-      RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-          _collection.id(), id(), fromToRef);
-    }
+    handleCacheInvalidation(trx, options, fromToRef);
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -535,7 +528,8 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice doc) {
+                                velocypack::Slice doc,
+                                OperationOptions const& options) {
   Result res;
 
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
@@ -551,15 +545,13 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue value =
       RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
 
-  // always invalidate cache entry for all edges with same _from / _to
-  invalidateCacheEntry(fromToRef);
-
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
   if (s.ok()) {
     std::hash<arangodb::velocypack::StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
     RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(),
                                                              id(), hash);
+    handleCacheInvalidation(trx, options, fromToRef);
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -585,6 +577,21 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
 
   for (auto const& key : keys) {
     it.lookupInRocksDB(VPackStringRef(key.data(), key.size()));
+  }
+}
+
+void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
+                                               OperationOptions const& options,
+                                               std::string_view fromToRef) {
+  // always invalidate cache entry for all edges with same _from / _to
+  invalidateCacheEntry(fromToRef.data(), fromToRef.size());
+
+  if (_cache != nullptr &&
+      ((_forceCacheRefill &&
+        options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
+       options.refillIndexCaches == RefillIndexCaches::kRefill)) {
+    RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
+        _collection.id(), id(), fromToRef);
   }
 }
 

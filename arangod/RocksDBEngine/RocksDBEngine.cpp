@@ -268,7 +268,12 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
   // to configure this engine
   startsAfter<RocksDBOptionFeature>();
 
-  server.addFeature<RocksDBIndexCacheRefillFeature>();
+  if (server.hasFeature<DatabaseFeature>()) {
+    // when we are in unit tests, we may not even have the
+    // DatabaseFeature. the RocksDBIndexCacheRefillFeature
+    // depends on it, though
+    server.addFeature<RocksDBIndexCacheRefillFeature>();
+  }
   server.addFeature<RocksDBRecoveryManager>();
 }
 
@@ -2930,6 +2935,12 @@ void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
   RocksDBIndexCacheRefillFeature& f =
       server().getFeature<RocksDBIndexCacheRefillFeature>();
   f.scheduleFullIndexRefill(database, collection, iid);
+}
+
+void RocksDBEngine::syncIndexCaches() {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.waitForCatchup();
 }
 
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");

@@ -323,7 +323,7 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
 
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
 
-  Result res = remove(trx, mthd, oldDocumentId, oldDoc);
+  Result res = remove(trx, mthd, oldDocumentId, oldDoc, options);
   if (!res.ok()) {
     return res;
   }

@@ -938,6 +938,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   if (options.silent) {
     url = appendBoolParameter(url, 'silent', options.silent);
   }
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
   let headers = buildTransactionHeaders(options);
   if (rev !== null && !ignoreRevs) {

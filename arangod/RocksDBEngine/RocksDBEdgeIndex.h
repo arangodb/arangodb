@@ -108,8 +108,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   void refillCache(transaction::Methods& trx,
                    std::vector<std::string> const& keys) override;
@@ -142,7 +142,11 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmupInternal(transaction::Methods* trx, rocksdb::Slice lower,
                       rocksdb::Slice upper);
 
- private:
+  void handleCacheInvalidation(transaction::Methods& trx,
+                               OperationOptions const& options,
+                               std::string_view fromToRef);
+
+  // name of direction attribute (i.e. "_from" or "_to")
   std::string const _directionAttr;
   bool const _isFromIndex;
   // if true, force a refill of the in-memory cache after each

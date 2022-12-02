@@ -55,6 +55,8 @@ class RocksDBIndexCacheRefillThread final : public Thread {
   void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
                    IndexId iid, std::vector<std::string> keys);
 
+  void waitForCatchup();
+
  protected:
   void run() override;
 
@@ -79,6 +81,8 @@ class RocksDBIndexCacheRefillThread final : public Thread {
   DatabaseValues _operations;
   // current number of operations queued
   size_t _numQueued;
+  // current number of in-process operations
+  size_t _proceeding;
 
   // total number of items ever queued
   Counter& _totalNumQueued;

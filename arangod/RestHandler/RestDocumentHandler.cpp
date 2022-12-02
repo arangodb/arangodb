@@ -46,6 +46,24 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+RefillIndexCaches readFillIndexCachesValue(GeneralRequest const& request) {
+  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
+
+  bool found = false;
+  // this attribute can have 3 values: default, true and false. only
+  // pick it up when it is set to true or false
+  std::string const& value =
+      request.value(StaticStrings::RefillIndexCachesString, found);
+  if (found) {
+    refillIndexCaches = StringUtils::boolean(value)
+                            ? RefillIndexCaches::kRefill
+                            : RefillIndexCaches::kDontRefill;
+  }
+  return refillIndexCaches;
+}
+}  // namespace
+
 RestDocumentHandler::RestDocumentHandler(
     application_features::ApplicationServer& server, GeneralRequest* request,
     GeneralResponse* response)
@@ -190,8 +208,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew =
       _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches =
-      _request->parsedValue(StaticStrings::RefillIndexCachesString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
@@ -513,8 +530,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches =
-      _request->parsedValue(StaticStrings::RefillIndexCachesString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -684,6 +700,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 

@@ -70,6 +70,8 @@ void StorageEngine::scheduleFullIndexRefill(std::string const& database,
   TRI_ASSERT(false);
 }
 
+void StorageEngine::syncIndexCaches() {}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted

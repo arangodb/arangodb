@@ -48,11 +48,17 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
       obj, StaticStrings::IgnoreRevsString, true);
   isRestore = basics::VelocyPackHelper::getBooleanValue(
       obj, StaticStrings::IsRestoreString, false);
-  refillIndexCaches = basics::VelocyPackHelper::getBooleanValue(
-      obj, StaticStrings::RefillIndexCachesString, false);
   overwriteMode = OperationOptions::determineOverwriteMode(
       VPackStringRef(basics::VelocyPackHelper::getStringValue(
           obj, StaticStrings::OverwriteMode, "")));
+
+  if (VPackSlice s = obj.get(StaticStrings::RefillIndexCachesString);
+      s.isBoolean()) {
+    // this attribute can have 3 values: default, true and false. only
+    // pick it up when it is set to true or false
+    refillIndexCaches = s.isTrue() ? RefillIndexCaches::kRefill
+                                   : RefillIndexCaches::kDontRefill;
+  }
 
   ignoreErrors =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
@@ -73,9 +79,14 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add(StaticStrings::KeepNullString, VPackValue(keepNull));
   builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
-  builder.add(StaticStrings::RefillIndexCachesString,
-              VPackValue(refillIndexCaches));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
+
+  if (refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    builder.add(StaticStrings::RefillIndexCachesString,
+                VPackValue(refillIndexCaches == RefillIndexCaches::kRefill));
+  }
 
   if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
     builder.add(

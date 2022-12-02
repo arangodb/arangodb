@@ -68,6 +68,19 @@ const char* indexOpModeString(IndexOperationMode mode) noexcept {
   TRI_ASSERT(false);
   return "invalid";
 }
+
+std::string_view refillIndexCachesString(RefillIndexCaches value) noexcept {
+  switch (value) {
+    case RefillIndexCaches::kDefault:
+      return "default";
+    case RefillIndexCaches::kRefill:
+      return "refill";
+    case RefillIndexCaches::kDontRefill:
+      return "dont-refill";
+  }
+  TRI_ASSERT(false);
+  return "dont-refill";
+}
 }  // namespace
 #endif
 
@@ -90,6 +103,7 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
      << ", returnNew : "  << ops.returnNew
      << ", isRestore : " << ops.isRestore
      << ", overwriteMode : " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
+     << ", refillIndexCaches: " << ::refillIndexCachesString(ops.refillIndexCaches)
      << ", canDisableIndexing : " << ops.canDisableIndexing
      << " }" << std::endl;
   // clang-format on
