@@ -758,10 +758,13 @@ JOB_STATUS MoveShard::pendingReplication2() {
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       addMoveShardToServerUnLock(trx);
       addMoveShardFromServerUnLock(trx);
-      addPutJobIntoSomewhere(
-          trx, "Finished",
-          _snapshot.hasAsBuilder(pendingPrefix + _jobId).value().slice(), "");
+      Builder job;
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addReleaseShard(trx, _shard);
+      if (_tryUndo) {
+        addUndoMoveShard(trx, job);
+      }
     }
     {
       VPackObjectBuilder b(&trx);
