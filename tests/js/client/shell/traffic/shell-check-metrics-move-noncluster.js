@@ -117,6 +117,7 @@ function checkMetricsMoveSuite() {
         let stats = getStats();
         let count = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
         let metric = getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
+        let metricUser = getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
 
         // Do a few requests:
         for (let i = 0; i < 1000; ++i) {
@@ -127,6 +128,7 @@ function checkMetricsMoveSuite() {
         let stats2 = getStats();
         let count2 = getMetric("arangodb_client_connection_statistics_bytes_sent_count");
         let metric2 = getMetric("arangodb_client_connection_statistics_bytes_sent_sum");
+        let metric2User = getMetric("arangodb_client_user_connection_statistics_bytes_sent_sum");
 
         // Why 3000000? We have read 1000 docs, and the response body
         // contains a string of 3 * 1024 bytes, so 3000000 is a solid lower limit.
@@ -134,6 +136,7 @@ function checkMetricsMoveSuite() {
         assertTrue(stats2.bytesSent - stats.bytesSent > 3000000, { stats, stats2, diff: stats2.bytesSent - stats.bytesSent });
         assertTrue(stats2.bytesSent - stats.bytesSent < 2 * 3000000, { stats, stats2, diff: stats2.bytesSent - stats.bytesSent });
         assertTrue(metric2 - metric > 3000000, { metric, metric2, diff: metric2 - metric });
+        assertTrue(metric2User - metricUser > 3000000, { metricUser, metric2User, diff: metric2User - metricUser });
         assertTrue(count2 - count >= 1000, { count, count2 });
       } finally {
         db._drop(cn);
@@ -156,6 +159,7 @@ function checkMetricsMoveSuite() {
         let stats = getStats();
         let count = getMetric("arangodb_client_connection_statistics_bytes_received_count");
         let metric = getMetric("arangodb_client_connection_statistics_bytes_received_sum");
+        let metricUser = getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
 
         // Do a few requests:
         for (let i = 0; i < 1000; ++i) {
@@ -166,6 +170,7 @@ function checkMetricsMoveSuite() {
         let stats2 = getStats();
         let count2 = getMetric("arangodb_client_connection_statistics_bytes_received_count");
         let metric2 = getMetric("arangodb_client_connection_statistics_bytes_received_sum");
+        let metric2User = getMetric("arangodb_client_user_connection_statistics_bytes_received_sum");
 
         // Why 3000000? We have written 1000 docs, and the request body
         // contains a string of 3 * 1024 bytes, so 3000000 is a solid lower limit.
@@ -173,6 +178,7 @@ function checkMetricsMoveSuite() {
         assertTrue(stats2.bytesReceived - stats.bytesReceived > 3000000, { stats, stats2, diff: stats2.bytesReceived - stats.bytesReceived });
         assertTrue(stats2.bytesReceived - stats.bytesReceived < 2 * 3000000, { stats, stats2, diff: stats2.bytesReceived - stats.bytesReceived });
         assertTrue(metric2 - metric > 3000000, { metric, metric2, diff: metric2 - metric });
+        assertTrue(metric2User - metricUser > 3000000, { metricUser, metric2User, diff: metric2User - metricUser });
         assertTrue(count2 - count >= 1000, { count, count2 });
       } finally {
         db._drop(cn);
