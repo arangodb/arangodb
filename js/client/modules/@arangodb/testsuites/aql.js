@@ -26,8 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'shell_v8': 'Aranodb V8 bridges',
-  'shell_server_v8': 'Aranodb V8 bridges run inside of coordinator / dbserver',
+  'shell_v8': 'Arangodb V8 integration',
+  'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
   'shell_client': 'shell client tests',
   'shell_server': 'shell server tests',
