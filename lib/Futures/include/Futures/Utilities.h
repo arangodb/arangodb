@@ -29,8 +29,8 @@
 #include <mutex>
 #include <vector>
 
-#include "Future.h"
-#include "Unit.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 
 namespace arangodb {
 namespace futures {

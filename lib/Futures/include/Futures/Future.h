@@ -28,10 +28,10 @@
 #include <mutex>
 #include <thread>
 
-#include "Exceptions.h"
-#include "Promise.h"
-#include "SharedState.h"
-#include "Unit.h"
+#include "Futures/Exceptions.h"
+#include "Futures/Promise.h"
+#include "Futures/SharedState.h"
+#include "Futures/Unit.h"
 
 namespace arangodb {
 namespace futures {
