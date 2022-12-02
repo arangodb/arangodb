@@ -39,6 +39,93 @@ const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryA
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const errors = internal.errors;
 const request = require('@arangodb/request');
+const serverHelper = require("@arangodb/test-helper");
+
+const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
+  let count = 0;
+  let result = null;
+  while (count < maxTries) {
+    result = checkFn();
+    if (result === true || result === undefined) {
+      return result;
+    }
+    if (!(result instanceof Error)) {
+      throw Error("expected error");
+    }
+    count += 1;
+    if (count % 10 === 0) {
+      console.log(result);
+    }
+    wait(0.5); // 240 * .5s = 2 minutes
+  }
+  if (onErrorCallback !== undefined) {
+    onErrorCallback(result);
+  } else {
+    throw result;
+  }
+};
+
+const getServerProcessID = function (serverId) {
+  // Now look for instanceManager:
+  let pos = _.findIndex(global.instanceManager.arangods,
+      x => x.id === serverId);
+  return global.instanceManager.arangods[pos].pid;
+};
+
+const stopServerImpl = function (serverId) {
+  console.log(`suspending server ${serverId}`);
+  let result = require('internal').suspendExternal(getServerProcessID(serverId));
+  if (!result) {
+    throw Error("Failed to suspend server");
+  }
+};
+
+const continueServerImpl = function (serverId) {
+  console.log(`continuing server ${serverId}`);
+  let result = require('internal').continueExternal(getServerProcessID(serverId));
+  if (!result) {
+    throw Error("Failed to continue server");
+  }
+};
+
+const readAgencyValueAt = function (key) {
+  const response = serverHelper.agency.get(key);
+  const path = ['arango', ...key.split('/')];
+  let result = response;
+  for (const p of path) {
+    if (result === undefined) {
+      return undefined;
+    }
+    result = result[p];
+  }
+  return result;
+};
+
+const getServerHealth = function (serverId) {
+  return readAgencyValueAt(`Supervision/Health/${serverId}/Status`);
+};
+
+const checkServerHealth = function (serverId, value) {
+  return function () {
+    if (value === getServerHealth(serverId)) {
+      return true;
+    }
+    return Error(`${serverId} is not ${value}`);
+  };
+};
+
+const serverHealthy = (serverId) => checkServerHealth(serverId, "GOOD");
+const serverFailed = (serverId) => checkServerHealth(serverId, "FAILED");
+
+const continueServerWaitOk = function (serverId) {
+  continueServerImpl(serverId);
+  waitFor(serverHealthy(serverId));
+};
+
+const stopServerWaitFailed = function (serverId) {
+  stopServerImpl(serverId);
+  waitFor(serverFailed(serverId));
+};
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -284,6 +371,29 @@ function MovingShardsSuite ({useData}) {
     return true;
   }
 
+  function findLeaderShardsForServer(id) {
+    let result = [];
+    for (var i = 0; i <  c.length ; ++i) {
+      global.ArangoClusterInfo.flush();
+      var servers = findCollectionServers("_system", c[i].name());
+      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+        result.push(c[i].name());
+      }
+    }
+    return result;
+  }
+
+  function waitForShardLeader(id, expectedShards) {
+    waitFor(function () {
+      const shards = findLeaderShardsForServer(id);
+      if (!_.isEqual(shards, expectedShards)) {
+        return Error(`expected shards to be ${expectedShards}, but found ${shards}`);
+      }
+      return true;
+    });
+    return true;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,13 +520,13 @@ function MovingShardsSuite ({useData}) {
 /// @brief request a dbserver to resign:
 ////////////////////////////////////////////////////////////////////////////////
 
-  function resignLeadership(id) {
+  function resignLeadership(id, undoMoves = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var body = {"server": id};
+    var body = {"server": id, undoMoves};
     var result;
     try {
       result = request({ method: "POST",
@@ -908,9 +1018,40 @@ function MovingShardsSuite ({useData}) {
     testResignLeadership : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var servers = findCollectionServers("_system", c[0].name());
-      var toResign = servers[1];
+      var toResign = servers[0];
       assertTrue(resignLeadership(toResign));
       assertTrue(testServerNoLeader(toResign));
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resign leadership for a dbserver and wait for restore
+////////////////////////////////////////////////////////////////////////////////
+
+    testResignLeadershipWithUndo: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[0].name());
+      var toResign = servers[0];
+      const shards = findLeaderShardsForServer(toResign);
+      assertTrue(resignLeadership(toResign, true));
+      assertTrue(testServerNoLeader(toResign));
+      assertTrue(waitForSupervision());
+
+      checkCollectionContents();
+      // now suspend that server
+      stopServerWaitFailed(toResign);
+
+      // Wait until FailedServer job is executed, then the RebootId is
+      // increased, which would also happen in a proper reboot scenario.
+      assertTrue(waitForSupervision());
+
+      // restart the server
+      continueServerWaitOk(toResign);
+
+      // now wait for the server to become leader again for shards
+      assertTrue(waitForShardLeader(toResign, shards));
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
