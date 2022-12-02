@@ -67,9 +67,9 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const getServerProcessID = function (serverId) {
   // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let pos = _.findIndex(global.instanceInfo.arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return global.instanceInfo.arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
@@ -89,7 +89,7 @@ const continueServerImpl = function (serverId) {
 };
 
 const readAgencyValueAt = function (key) {
-  const response = serverHelper.agency.get(key);
+  const response = ArangoAgency.get(key);
   const path = ['arango', ...key.split('/')];
   let result = response;
   for (const p of path) {
