@@ -39,7 +39,6 @@ const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryA
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const errors = internal.errors;
 const request = require('@arangodb/request');
-const serverHelper = require("@arangodb/test-helper");
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   let count = 0;
