@@ -975,6 +975,10 @@ function MovingShardsSuite({useData, replVersion}) {
       // now suspend that server
       helper.stopServerWaitFailed(toResign);
 
+      // Wait until FailedServer job is executed, then the RebootId is
+      // increased, which would also happen in a proper reboot scenario.
+      assertTrue(waitForSupervision());
+
       // restart the server
       helper.continueServerWaitOk(toResign);
 
