@@ -3582,35 +3582,14 @@ void Supervision::checkUndoLeaderChangeActions() {
     return false;
   };
 
-  auto const getShardLeader =
-      [&](std::string_view database, std::string_view collection,
-          std::string_view shard) -> std::optional<std::string> {
-    auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
-                                           collection, "shards", shard);
-    auto servers = snapshot().hasAsArray(path);
-    if (not servers) {
-      return std::nullopt;
-    }
-    TRI_ASSERT(servers->isArray() && servers->length() > 0);
-    auto leader = servers->at(0).copyString();
-    if (leader[0] == '_') {
-      return std::nullopt;
-    }
-    return leader;
-  };
-
   auto const reclaimShard =
       [&](std::shared_ptr<VPackBuilder> const& trx, std::string const& database,
           std::string const& collection, std::string const& shard,
-          std::string const& oldLeader) {
-        auto fromServer = getShardLeader(database, collection, shard);
-        if (not fromServer) {
-          return;
-        }
+          std::string const& newLeader, std::string const& oldLeader) {
         uint64_t jobId = _jobId++;
         MoveShard(*_snapshot, _agent, std::to_string(jobId), "supervision",
-                  database, collection, shard, *fromServer, oldLeader, true,
-                  true, false)
+                  database, collection, shard, newLeader, oldLeader, true, true,
+                  false)
             .create(trx);
 
         std::string now(timepointToString(std::chrono::system_clock::now()));
@@ -3664,23 +3643,23 @@ void Supervision::checkUndoLeaderChangeActions() {
 
       auto database = job.hasAsString("database");
       auto collection = job.hasAsString("collection");
-      auto server = job.hasAsString("fromServer");
-      TRI_ASSERT(server && database && collection);
-      auto leader = getShardLeader(database.value(), collection.value(), shard);
+      auto fromServer = job.hasAsString("fromServer");
+      auto toServer = job.hasAsString("toServer");
+      TRI_ASSERT(fromServer && toServer && database && collection);
 
       // get server health
-      if (serverHealth(server.value()) != HEALTH_STATUS_GOOD) {
+      if (serverHealth(fromServer.value()) != HEALTH_STATUS_GOOD) {
         continue;
       }
 
       if (!isServerInSync(database.value(), collection.value(), shard,
-                          server.value())) {
+                          fromServer.value())) {
         continue;
       }
 
       // get current reboot id
       auto rebootId = snapshot().hasAsUInt(basics::StringUtils::concatT(
-          curServersKnown, server.value(), "/", StaticStrings::RebootId));
+          curServersKnown, fromServer.value(), "/", StaticStrings::RebootId));
       if (!rebootId) {
         continue;
       }
@@ -3689,7 +3668,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       auto storedRebootId = entry->hasAsUInt("rebootId");
       if (!storedRebootId || storedRebootId.value() < rebootId.value()) {
         reclaimShard(trx, database.value(), collection.value(), shard,
-                     server.value());
+                     toServer.value(), fromServer.value());
       }
     }
   }
