@@ -1,13 +1,13 @@
 devel
 -----
 
+* Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
+
 * Add missing metrics for user traffic: Histograms:
     `arangodb_client_user_connection_statistics_bytes_received`
     `arangodb_client_user_connection_statistics_bytes_sent`
   These numbers were so far only published via the statistics API.
   This is needed for Oasis traffic accounting.
-
-* Deleted customizable Pregel (AIR) and Greenspun library
 
 * BTS-128: Fixed http request not working when content-type is velocypack.
 
