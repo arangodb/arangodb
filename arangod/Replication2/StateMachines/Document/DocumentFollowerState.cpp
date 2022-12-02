@@ -28,6 +28,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
@@ -106,7 +107,8 @@ auto DocumentFollowerState::applyEntries(
       auto doc = entry->second;
       auto res = self->_transactionHandler->applyEntry(doc);
       if (res.fail()) {
-        return res;
+        // A transaction has been applied on the leader, but we cannot apply it locally. There is no going back.
+        FATAL_ERROR_EXIT_CODE(res.errorNumber().value());
       }
 
       if (doc.operation == OperationType::kAbortAllOngoingTrx) {
