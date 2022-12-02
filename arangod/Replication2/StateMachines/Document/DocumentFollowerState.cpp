@@ -107,7 +107,8 @@ auto DocumentFollowerState::applyEntries(
       auto doc = entry->second;
       auto res = self->_transactionHandler->applyEntry(doc);
       if (res.fail()) {
-        // A transaction has been applied on the leader, but we cannot apply it locally. There is no going back.
+        // A transaction has been applied on the leader, but we cannot apply it
+        // locally. There is no going back.
         FATAL_ERROR_EXIT_CODE(res.errorNumber().value());
       }
 
