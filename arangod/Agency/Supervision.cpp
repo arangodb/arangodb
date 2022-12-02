@@ -59,6 +59,7 @@
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
 #include "MoveShard.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -3503,6 +3504,18 @@ void Supervision::removeTransactionBuilder(
 }
 
 void Supervision::checkUndoLeaderChangeActions() {
+  auto const databases = snapshot().hasAsChildren(PLAN_DATABASES);
+
+  auto const isReplication2 = [&](std::string const& database) -> bool {
+    if (not databases) {
+      return false;
+    }
+    if (consensus::isReplicationTwoDB(*databases, database)) {
+      return true;
+    }
+    return false;
+  };
+
   auto const isServerInPlan =
       [&](std::string_view database, std::string_view collection,
           std::string_view shard, std::string_view server) -> bool {
@@ -3574,9 +3587,17 @@ void Supervision::checkUndoLeaderChangeActions() {
     if (!server) {
       return true;
     } else {
-      if (!isServerInPlan(database.value(), collection.value(), shard,
-                          server.value())) {
-        return true;
+      if (isReplication2(*database)) {
+        auto stateId = LogicalCollection::shardIdToStateId(shard);
+        auto target = Job::readStateTarget(snapshot(), *database, stateId);
+        if (not target->participants.contains(*server)) {
+          return true;
+        }
+      } else {
+        if (!isServerInPlan(database.value(), collection.value(), shard,
+                            server.value())) {
+          return true;
+        }
       }
     }
     return false;
@@ -3652,9 +3673,11 @@ void Supervision::checkUndoLeaderChangeActions() {
         continue;
       }
 
-      if (!isServerInSync(database.value(), collection.value(), shard,
-                          fromServer.value())) {
-        continue;
+      if (not isReplication2(*database)) {
+        if (!isServerInSync(database.value(), collection.value(), shard,
+                            fromServer.value())) {
+          continue;
+        }
       }
 
       // get current reboot id
