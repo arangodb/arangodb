@@ -1246,9 +1246,9 @@ V8Context* V8DealerFeature::enterContext(
     TRI_ASSERT(!_idleContexts.empty());
 
     context = _idleContexts.back();
+    TRI_ASSERT(context != nullptr);
     LOG_TOPIC("bbe93", TRACE, arangodb::Logger::V8)
         << "found unused V8 context #" << context->id();
-    TRI_ASSERT(context != nullptr);
 
     _idleContexts.pop_back();
 
@@ -1258,9 +1258,7 @@ V8Context* V8DealerFeature::enterContext(
     context->setDescription(securityContext.typeName(), TRI_microtime());
   }
 
-  TRI_ASSERT(context != nullptr);
   context->lockAndEnter();
-  context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
   ++_contextsEntered;
