@@ -1962,16 +1962,7 @@ Result RocksDBVPackIndex::update(
       break;
     }
 
-    // banish key in in-memory cache
-    auto slice = ::lookupValueFromSlice(key.string());
-    invalidateCacheEntry(slice);
-    if (_cache != nullptr &&
-        ((_forceCacheRefill &&
-          options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
-         options.refillIndexCaches == RefillIndexCaches::kRefill)) {
-      RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-          _collection.id(), id(), {slice.data(), slice.size()});
-    }
+    handleCacheInvalidation(trx, options, key.string());
   }
 
   return res;
