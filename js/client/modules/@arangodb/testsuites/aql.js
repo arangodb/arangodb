@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'shell_v8': 'Arangodb V8 integration',
   'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
-  'shell_api_multi': 'shell client tests - only *api* - to be ran in multi protocol environments ',
+  'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be ran with multiple protocol environments',
   'shell_server': 'shell server tests',
