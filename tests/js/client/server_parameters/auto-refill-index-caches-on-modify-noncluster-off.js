@@ -85,8 +85,6 @@ function AutoRefillIndexCachesEdge() {
     let stats = crsr.getExtra().stats;
     if (expectHits) {
       assertTrue(stats.cacheHits > 0, stats);
-    } else {
-      assertEqual(0, stats.cacheHits, stats);
     }
 
     crsr = db._query(`FOR i IN 0..24 FOR doc IN ${cn} FILTER doc._to == CONCAT('v/test', i) RETURN doc._to`);
@@ -95,8 +93,6 @@ function AutoRefillIndexCachesEdge() {
     stats = crsr.getExtra().stats;
     if (expectHits) {
       assertTrue(stats.cacheHits > 0, stats);
-    } else {
-      assertEqual(0, stats.cacheHits, stats);
     }
   };
 
