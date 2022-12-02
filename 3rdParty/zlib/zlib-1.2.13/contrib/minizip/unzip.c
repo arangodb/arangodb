@@ -69,7 +69,7 @@
 #include <string.h>
 
 #ifndef NOUNCRYPT
-        #define NOUNCRYPT
+        // #define NOUNCRYPT  --- enable password support
 #endif
 
 #include "zlib.h"
