@@ -1251,22 +1251,16 @@ V8Context* V8DealerFeature::enterContext(
         << "found unused V8 context #" << context->id();
 
     _idleContexts.pop_back();
-    guard.unlock();
-    context->setDescription(securityContext.typeName(), TRI_microtime());
-    context->lockAndEnter();
-    prepareLockedContext(vocbase, context, securityContext);
-    ++_contextsEntered;
 
-    guard.lock();
-    // _stopping can change while we make new context
-    if (_stopping) {
-      exitContext(context);
-      vocbase->release();
-      return nullptr;
-    }
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
+
+    context->setDescription(securityContext.typeName(), TRI_microtime());
+    context->lockAndEnter();
   }
+
+  prepareLockedContext(vocbase, context, securityContext);
+  ++_contextsEntered;
 
   return context;
 }
