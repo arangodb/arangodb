@@ -83,7 +83,7 @@ that read data which are known to be outside of the hot set. By setting the opti
 to *false*, data read by the query will not make it into the RocksDB block cache if
 not already in there, thus leaving more room for the actual hot set.
 
-@RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
+@RESTSTRUCT{maxNumberOfPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
 @RESTSTRUCT{maxNodesPerCallstack,post_api_cursor_opts,integer,optional,int64}
