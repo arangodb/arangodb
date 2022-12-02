@@ -30,6 +30,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 
+#include <atomic>
+
 namespace arangodb {
 class GlobalContextMethods {
  public:
