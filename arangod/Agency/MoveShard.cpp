@@ -462,7 +462,7 @@ bool MoveShard::start(bool&) {
       VPackArrayBuilder guard0(&todo);
       VPackObjectBuilder guard(&todo);
       for (auto p : VPackObjectIterator(todo2.slice()[0])) {
-        std::string_view key = p.key.stringView();
+        std::string key = p.key.copyString();
         if (key != "tryUndo") {
           todo.add(key, p.value);
         } else {
