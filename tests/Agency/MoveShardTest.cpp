@@ -112,7 +112,7 @@ Node createRootNode() {
 }
 
 VPackBuilder createJob(std::string const& collection, std::string const& from,
-                       std::string const& to) {
+                       std::string const& to, bool tryUndo = false) {
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
@@ -125,6 +125,7 @@ VPackBuilder createJob(std::string const& collection, std::string const& from,
     builder.add("fromServer", VPackValue(from));
     builder.add("toServer", VPackValue(to));
     builder.add("isLeader", VPackValue(from == SHARD_LEADER));
+    builder.add("tryUndo", VPackValue(tryUndo));
   }
   return builder;
 }
@@ -1436,6 +1437,206 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
                              COLLECTION + "/shards/" + SHARD)
                         .get("old")
                         .length() == 3);
+
+        return fakeWriteResult;
+      });
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  moveShard.run(aborts);
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(MoveShardTest,
+       if_the_job_is_done_it_should_properly_finish_itself_leader_change) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob =
+                  createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated",
+                             VPackValue(timepointToString(
+                                 std::chrono::system_clock::now())));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_LEADER));
+            builder->close();
+          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_LEADER));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  Node agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+  When(Method(mockAgent, write))
+      .Do([&](velocypack::Slice q,
+              consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto writes = q[0][0];
+        EXPECT_TRUE(
+            writes.get("/arango/Target/Pending/1").get("op").copyString() ==
+            "delete");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD)
+                        .get("op")
+                        .copyString() == "delete");
+        EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + SHARD_LEADER)
+                        .get("op")
+                        .isEqualString("read-unlock"));
+        EXPECT_TRUE(
+            writes.get("/arango/Supervision/DBServers/" + SHARD_FOLLOWER1)
+                .get("op")
+                .isEqualString("read-unlock"));
+
+        auto preconditions = q[0][1];
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")
+                        .length() == 2);
+
+        return fakeWriteResult;
+      });
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  moveShard.run(aborts);
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(
+    MoveShardTest,
+    if_the_job_is_done_it_should_properly_finish_itself_leader_change_with_undo) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob =
+                  createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1, true);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated",
+                             VPackValue(timepointToString(
+                                 std::chrono::system_clock::now())));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          if (path == "/arango/Current/ServersKnown") {
+            VPackObjectBuilder guard(builder.get(), SHARD_LEADER);
+            builder->add("rebootId", VPackValue(17));
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_LEADER));
+            builder->close();
+          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_LEADER));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  Node agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+  When(Method(mockAgent, write))
+      .Do([&](velocypack::Slice q,
+              consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto writes = q[0][0];
+        EXPECT_TRUE(
+            writes.get("/arango/Target/Pending/1").get("op").copyString() ==
+            "delete");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD)
+                        .get("op")
+                        .copyString() == "delete");
+        EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + SHARD_LEADER)
+                        .get("op")
+                        .isEqualString("read-unlock"));
+        EXPECT_TRUE(
+            writes.get("/arango/Supervision/DBServers/" + SHARD_FOLLOWER1)
+                .get("op")
+                .isEqualString("read-unlock"));
+        VPackSlice undo =
+            writes.get("/arango/Target/ReturnLeadership/" + SHARD);
+        VPackSlice guck = undo.get("rebootId");
+        VPackSlice move = undo.get("moveShard");
+        EXPECT_TRUE(guck.isInteger());
+        EXPECT_TRUE(guck.getNumber<int64_t>() == 17);
+        EXPECT_TRUE(move.get("shard").isEqualString(SHARD));
+
+        auto preconditions = q[0][1];
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")
+                        .length() == 2);
 
         return fakeWriteResult;
       });
