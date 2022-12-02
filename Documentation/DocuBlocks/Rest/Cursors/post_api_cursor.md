@@ -226,6 +226,18 @@ results by changing the access rights of users on collections.
 
 This feature is only available in the Enterprise Edition.
 
+@RESTSTRUCT{allowDirtyReads,post_api_cursor_opts,boolean,optional,}
+If you set this option to `true` and execute the query against a cluster
+deployment, then the Coordinator is allowed to read from any shard replica and
+not only from the leader.
+
+You may observe data inconsistencies (dirty reads) when reading from followers,
+namely obsolete revisions of documents because changes have not yet been
+replicated to the follower, as well as changes to documents before they are
+officially committed on the leader.
+
+This feature is only available in the Enterprise Edition.
+
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
 bind parameters. These values need to be passed in a JSON representation in
