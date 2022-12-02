@@ -1278,7 +1278,7 @@ Result IResearchDataStore::initDataStore(
                          "'")};
   }
 
-  _dataStore._directory = std::make_unique<irs::mmap_directory>(
+  _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path.u8string(),
       initCallback ? initCallback() : irs::directory_attributes{});
 

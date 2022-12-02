@@ -28,7 +28,7 @@
 
 #include "Assertions/Assert.h"
 
-#include "Try.h"
+#include "Futures/Try.h"
 
 namespace arangodb {
 namespace futures {

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Exceptions.h"
-#include "SharedState.h"
-#include "Unit.h"
+#include "Futures/Exceptions.h"
+#include "Futures/SharedState.h"
+#include "Futures/Unit.h"
 
 namespace arangodb {
 namespace futures {
