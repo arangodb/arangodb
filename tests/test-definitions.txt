@@ -33,6 +33,8 @@ permissions priority=500 single
 recovery priority=2000 buckets=4 parallelity=5 single
 version single
 
+shell_v8 priority=500 single -- $EncryptionAtRest
+shell_server_v8 priority=500 single -- $EncryptionAtRest
 shell_api priority=500 single suffix=http -- $EncryptionAtRest
 shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
 # Shell client tests Single Server; distribute evenly
