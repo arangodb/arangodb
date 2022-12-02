@@ -407,7 +407,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   defaultFns.push('shell_v8');
   defaultFns.push('shell_server_v8');
   defaultFns.push('shell_api');
-  defaultFns.push('shell_api');
+  defaultFns.push('shell_api_multi');
   defaultFns.push('shell_client');
   defaultFns.push('shell_client_multi');
   defaultFns.push('shell_server');
