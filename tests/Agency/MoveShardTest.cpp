@@ -893,6 +893,132 @@ TEST_F(MoveShardTest,
   Verify(Method(mockAgent, write));
 }
 
+TEST_F(
+    MoveShardTest,
+    the_job_should_be_moved_to_pending_when_everything_is_ok_undo_set_to_false) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/ToDo") {
+            builder->add(
+                jobId,
+                createJob(COLLECTION, SHARD_LEADER, FREE_SERVER, true).slice());
+          }
+          builder->close();
+        } else {
+          builder->add(s);
+        }
+        return builder;
+      };
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        std::string sourceKey = "/arango/Target/ToDo/1";
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][1].typeName()), "object");
+
+        auto writes = q[0][0];
+        EXPECT_EQ(std::string(writes.get(sourceKey).typeName()), "object");
+        EXPECT_TRUE(std::string(writes.get(sourceKey).get("op").typeName()) ==
+                    "string");
+        EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");
+        EXPECT_TRUE(
+            writes.get("/arango/Supervision/Shards/" + SHARD).copyString() ==
+            "1");
+        EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER)
+                        .get("op")
+                        .isEqualString("read-lock"));
+        EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER)
+                        .get("by")
+                        .isEqualString("1"));
+        EXPECT_TRUE(writes.get("/arango/Plan/Version").get("op").copyString() ==
+                    "increment");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1")
+                                    .get("timeStarted")
+                                    .typeName()) == "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/Pending/1").get("tryUndo").isFalse());
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .length() == 3);  // leader, oldFollower, newLeader
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[0]
+                        .copyString() == SHARD_LEADER);
+
+        // order not really relevant ... assume it might appear anyway
+        auto followers = writes.get("/arango/Plan/Collections/" + DATABASE +
+                                    "/" + COLLECTION + "/shards/" + SHARD);
+        bool found = false;
+        for (auto const& server : VPackArrayIterator(followers)) {
+          if (server.copyString() == FREE_SERVER) {
+            found = true;
+          }
+        }
+        EXPECT_TRUE(found);
+
+        auto preconditions = q[0][1];
+        EXPECT_TRUE(preconditions.get("/arango/Target/CleanedServers")
+                        .get("old")
+                        .toJson() == "[]");
+        EXPECT_TRUE(preconditions.get("/arango/Target/FailedServers")
+                        .get("old")
+                        .toJson() == "{}");
+        EXPECT_TRUE(
+            preconditions
+                .get("/arango/Supervision/Health/" + FREE_SERVER + "/Status")
+                .get("old")
+                .copyString() == "GOOD");
+        EXPECT_TRUE(
+            preconditions.get("/arango/Supervision/DBServers/" + FREE_SERVER)
+                .get("can-read-lock")
+                .isEqualString("1"));
+        EXPECT_TRUE(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                        .get("oldEmpty")
+                        .getBool() == true);
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")
+                        .toJson() ==
+                    "[\"" + SHARD_LEADER + "\",\"" + SHARD_FOLLOWER1 + "\"]");
+
+        return fakeWriteResult;
+      });
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
+
+  AgentInterface& agent = mockAgent.get();
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createAgencyFromBuilder(*builder);
+
+  auto moveShard = MoveShard(agency, &agent, TODO, jobId);
+  moveShard.start(aborts);
+  Verify(Method(mockAgent, write));
+}
+
 TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
   std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
                                               std::string const&)>
@@ -1524,6 +1650,9 @@ TEST_F(MoveShardTest,
             writes.get("/arango/Supervision/DBServers/" + SHARD_FOLLOWER1)
                 .get("op")
                 .isEqualString("read-unlock"));
+        VPackSlice undo =
+            writes.get("/arango/Target/ReturnLeadership/" + SHARD);
+        EXPECT_TRUE(undo.isNone());
 
         auto preconditions = q[0][1];
         EXPECT_TRUE(preconditions

@@ -478,12 +478,13 @@ bool MoveShard::start(bool&) {
     // we keep everything, but we unset _tryUndo:
     _tryUndo = false;
     Builder todo2;
-    TRI_ASSERT(todo.slice().isObject());
+    TRI_ASSERT(todo.slice().isArray() && todo.slice()[0].isObject());
     todo2.add(todo.slice());
     todo.clear();  // Builder does not have a swap!
     {
+      VPackArrayBuilder guard0(&todo);
       VPackObjectBuilder guard(&todo);
-      for (auto p : VPackObjectIterator(todo2.slice())) {
+      for (auto p : VPackObjectIterator(todo2.slice()[0])) {
         std::string_view key = p.key.stringView();
         if (key != "tryUndo") {
           todo.add(p.key.stringView(), p.value);
