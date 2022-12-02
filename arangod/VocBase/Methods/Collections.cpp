@@ -1153,10 +1153,9 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
 
   auto idxs = coll.getIndexes();
   for (auto const& idx : idxs) {
-    if (!idx->canWarmup()) {
-      continue;
+    if (idx->canWarmup()) {
+      engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
     }
-    engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
   }
   return futures::makeFuture(Result());
 }

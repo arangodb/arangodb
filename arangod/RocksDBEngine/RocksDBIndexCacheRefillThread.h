@@ -55,6 +55,8 @@ class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
   void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
                    IndexId iid, std::vector<std::string> keys);
 
+  void waitForCatchup();
+
  protected:
   void run() override;
 
@@ -79,6 +81,8 @@ class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
   DatabaseValues _operations;
   // current number of operations queued
   size_t _numQueued;
+  // current number of in-process operations
+  size_t _proceeding;
 
   // total number of items ever queued
   metrics::Counter& _totalNumQueued;

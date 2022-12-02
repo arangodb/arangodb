@@ -1564,10 +1564,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
       if (res.fail()) {
         if (needReversal && !state->isSingleOperation()) {
-          ::reverseIdxOps(_indexes, it,
-                          [mthds, trx, &documentId, &doc](RocksDBIndex* rIdx) {
-                            return rIdx->remove(*trx, mthds, documentId, doc);
-                          });
+          ::reverseIdxOps(
+              _indexes, it,
+              [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rIdx) {
+                return rIdx->remove(*trx, mthds, documentId, doc, options);
+              });
         }
         break;
       }
@@ -1586,7 +1587,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          RocksDBSavePoint& savepoint,
                                          LocalDocumentId documentId,
                                          VPackSlice doc,
-                                         OperationOptions const& /*options*/,
+                                         OperationOptions const& options,
                                          RevisionId revisionId) const {
   savepoint.prepareOperation(revisionId);
 
@@ -1652,7 +1653,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       }
 
       RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-      res = rIdx->remove(*trx, mthds, documentId, doc);
+      res = rIdx->remove(*trx, mthds, documentId, doc, options);
       needReversal = needReversal || rIdx->needsReversal();
       if (res.fail()) {
         if (needReversal && !trx->isSingleOperationTransaction()) {

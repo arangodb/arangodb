@@ -63,6 +63,15 @@ enum class ReadOwnWrites : bool {
 // mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
+enum class RefillIndexCaches : uint8_t {
+  // use configured default behavior of system
+  kDefault,
+  // refill index caches
+  kRefill,
+  // don't refill index cache
+  kDontRefill
+};
+
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
@@ -121,6 +130,10 @@ struct OperationOptions {
   // - replace an existing document, update an existing document, or do nothing
   OverwriteMode overwriteMode = OverwriteMode::Unknown;
 
+  // automatically refill in-memory cache entries after inserts/updates/replaces
+  // for all indexes that have an in-memory cache attached
+  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
+
   // wait until the operation has been synced
   bool waitForSync = false;
 
@@ -174,10 +187,6 @@ struct OperationOptions {
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
   // index.
   bool canDisableIndexing = true;
-
-  // automatically refill in-memory cache entries after inserts/updates/replaces
-  // for all indexes that have an in-memory cache attached
-  bool refillIndexCaches = false;
 
   // whether or not reading from followers is allowed in a read/only
   // transaction. Note that it is a property of the transaction if reading
