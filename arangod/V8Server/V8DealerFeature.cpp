@@ -1255,12 +1255,18 @@ V8Context* V8DealerFeature::enterContext(
     context->setDescription(securityContext.typeName(), TRI_microtime());
     context->lockAndEnter();
     prepareLockedContext(vocbase, context, securityContext);
+    ++_contextsEntered;
+
     guard.lock();
+    // _stopping can change while we make new context
+    if (_stopping) {
+      exitContext(context);
+      vocbase->release();
+      return nullptr;
+    }
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-
-  ++_contextsEntered;
 
   return context;
 }
