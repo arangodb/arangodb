@@ -1043,6 +1043,10 @@ function MovingShardsSuite ({useData}) {
       // now suspend that server
       stopServerWaitFailed(toResign);
 
+      // Wait until FailedServer job is executed, then the RebootId is
+      // increased, which would also happen in a proper reboot scenario.
+      assertTrue(waitForSupervision());
+
       // restart the server
       continueServerWaitOk(toResign);
 
