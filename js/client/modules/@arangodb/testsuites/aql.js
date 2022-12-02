@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'shell_v8': 'Arangodb V8 integration',
   'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
-  'shell_api': 'shell client tests - only *api* - to be ran in multi protocol environments ',
+  'shell_api_multi': 'shell client tests - only *api* - to be ran in multi protocol environments ',
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be ran with multiple protocol environments',
   'shell_server': 'shell server tests',
@@ -214,7 +214,7 @@ function shellClient (options) {
 // / @brief TEST: shell_client_multi
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellClient (options) {
+function shellClientMulti (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_client_multi, options);
 
   testCases = tu.splitBuckets(options, testCases);
@@ -395,7 +395,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['shell_api'] = shellApiClient;
   testFns['shell_api_multi'] = shellApiMulti;
   testFns['shell_client'] = shellClient;
-  testFns['shell_client_multi'] = shellClient;
+  testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_server'] = shellServer;
   testFns['shell_client_aql'] = shellClientAql;
   testFns['shell_server_aql'] = shellServerAql;
