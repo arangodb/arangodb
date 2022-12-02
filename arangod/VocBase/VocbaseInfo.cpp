@@ -62,8 +62,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(VPackSlice const& options,
-                                VPackSlice const& users) {
+Result CreateDatabaseInfo::load(VPackSlice options, VPackSlice users) {
   Result res = extractOptions(options, true /*getId*/, true /*getUser*/);
   if (!res.ok()) {
     return res;
@@ -81,9 +80,8 @@ Result CreateDatabaseInfo::load(VPackSlice const& options,
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name,
-                                VPackSlice const& options,
-                                VPackSlice const& users) {
+Result CreateDatabaseInfo::load(std::string const& name, VPackSlice options,
+                                VPackSlice users) {
   _name = methods::Databases::normalizeName(name);
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
@@ -104,8 +102,7 @@ Result CreateDatabaseInfo::load(std::string const& name,
 }
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
-                                VPackSlice const& options,
-                                VPackSlice const& users) {
+                                VPackSlice options, VPackSlice users) {
   _name = methods::Databases::normalizeName(name);
   _id = id;
 
@@ -164,7 +161,7 @@ application_features::ApplicationServer& CreateDatabaseInfo::server() const {
   return _server;
 }
 
-Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
+Result CreateDatabaseInfo::extractUsers(VPackSlice users) {
   if (users.isNone() || users.isNull()) {
     return Result();
   } else if (!users.isArray()) {
@@ -173,7 +170,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
-  for (VPackSlice const& user : VPackArrayIterator(users)) {
+  for (VPackSlice user : VPackArrayIterator(users)) {
     if (!user.isObject()) {
       events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
                              _context);
@@ -198,8 +195,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     }
 
     std::string password;
-    if (user.hasKey("passwd")) {
-      VPackSlice passwd = user.get("passwd");
+    if (VPackSlice passwd = user.get("passwd"); !passwd.isNone()) {
       if (!passwd.isString()) {
         events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
                                _context);
@@ -209,14 +205,12 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     }
 
     bool active = true;
-    VPackSlice act = user.get("active");
-    if (act.isBool()) {
+    if (VPackSlice act = user.get("active"); act.isBool()) {
       active = act.getBool();
     }
 
     std::shared_ptr<VPackBuilder> extraBuilder;
-    VPackSlice extra = user.get("extra");
-    if (extra.isObject()) {
+    if (VPackSlice extra = user.get("extra"); extra.isObject()) {
       extraBuilder = std::make_shared<VPackBuilder>();
       extraBuilder->add(extra);
     }
@@ -231,10 +225,10 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   return Result();
 }
 
-Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
-                                          bool extractId, bool extractName) {
+Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
+                                          bool extractName) {
   if (options.isNone() || options.isNull()) {
-    return Result();
+    options = VPackSlice::emptyObjectSlice();
   }
   if (!options.isObject()) {
     events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER),
@@ -313,8 +307,7 @@ VocbaseOptions getVocbaseOptions(
 
   {
     auto shardingSlice = options.get(StaticStrings::Sharding);
-    if (shardingSlice.isString() &&
-        shardingSlice.compareString("single") == 0) {
+    if (shardingSlice.isString() && shardingSlice.stringView() == "single") {
       vocbaseOptions.sharding = shardingSlice.copyString();
     }
   }
@@ -324,7 +317,7 @@ VocbaseOptions getVocbaseOptions(
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite =
         (replicationSlice.isString() &&
-         replicationSlice.compareString(StaticStrings::Satellite) == 0);
+         replicationSlice.stringView() == StaticStrings::Satellite);
     bool isNumber = replicationSlice.isNumber();
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
@@ -341,6 +334,29 @@ VocbaseOptions getVocbaseOptions(
       vocbaseOptions.replicationFactor =
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
+      if (haveCluster) {
+        uint32_t const minReplicationFactor =
+            server.getFeature<ClusterFeature>().minReplicationFactor();
+        uint32_t const maxReplicationFactor =
+            server.getFeature<ClusterFeature>().maxReplicationFactor();
+        // make sure the replicationFactor value is between the configured min
+        // and max values
+        if (vocbaseOptions.replicationFactor > maxReplicationFactor &&
+            maxReplicationFactor > 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be higher than "
+                          "maximum allowed replicationFactor (") +
+                  std::to_string(maxReplicationFactor) + ")");
+        } else if (vocbaseOptions.replicationFactor < minReplicationFactor &&
+                   minReplicationFactor > 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("replicationFactor must not be lower than "
+                          "minimum allowed replicationFactor (") +
+                  std::to_string(minReplicationFactor) + ")");
+        }
+      }
     }
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
