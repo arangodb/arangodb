@@ -31,7 +31,7 @@ const functionsDocumentation = {
   'shell_api': 'shell client tests - only *api*',
   'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
-  'shell_client_multi': 'shell client tests to be ran with multiple protocol environments',
+  'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_server': 'shell server tests',
   'shell_client_aql': 'AQL tests in the client',
   'shell_server_aql': 'AQL tests in the server',
