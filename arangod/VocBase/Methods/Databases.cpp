@@ -454,7 +454,6 @@ arangodb::Result Databases::drop(ExecContext const& exec,
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>()) {
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
-    bool needReload = false;
     try {
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createInternalContext();
@@ -489,7 +488,7 @@ arangodb::Result Databases::drop(ExecContext const& exec,
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        needReload = true;
+        dealer.addGlobalContextMethod("reloadRouting");
       }
     } catch (arangodb::basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
@@ -500,9 +499,6 @@ arangodb::Result Databases::drop(ExecContext const& exec,
     } catch (...) {
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
       return Result(TRI_ERROR_INTERNAL, dropError);
-    }
-    if (needReload) {
-      dealer.addGlobalContextMethod("reloadRouting");
     }
   } else {
     if (ServerState::instance()->isCoordinator()) {

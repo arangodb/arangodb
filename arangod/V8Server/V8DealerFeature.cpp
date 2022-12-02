@@ -861,7 +861,7 @@ void V8DealerFeature::collectGarbage() {
         if (context == nullptr && !_dirtyContexts.empty()) {
           context = _dirtyContexts.back();
           _dirtyContexts.pop_back();
-          if (context->invocationsSinceLastGc() < 50 &&
+          if (context->_invocationsSinceLastGc < 50 &&
               !context->_hasActiveExternals) {
             // don't collect this one yet. it doesn't have externals, so there
             // is no urge for garbage collection
@@ -895,7 +895,7 @@ void V8DealerFeature::collectGarbage() {
             << "collecting V8 garbage in context #" << context->id()
             << ", invocations total: " << context->invocations()
             << ", invocations since last gc: "
-            << context->invocationsSinceLastGc()
+            << context->_invocationsSinceLastGc
             << ", hasActive: " << context->_hasActiveExternals
             << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
@@ -1246,9 +1246,9 @@ V8Context* V8DealerFeature::enterContext(
     TRI_ASSERT(!_idleContexts.empty());
 
     context = _idleContexts.back();
-    TRI_ASSERT(context != nullptr);
     LOG_TOPIC("bbe93", TRACE, arangodb::Logger::V8)
         << "found unused V8 context #" << context->id();
+    TRI_ASSERT(context != nullptr);
 
     _idleContexts.pop_back();
 
@@ -1256,8 +1256,11 @@ V8Context* V8DealerFeature::enterContext(
     _busyContexts.emplace(context);
 
     context->setDescription(securityContext.typeName(), TRI_microtime());
-    context->lockAndEnter();
   }
+
+  TRI_ASSERT(context != nullptr);
+  context->lockAndEnter();
+  context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
   ++_contextsEntered;
@@ -1329,7 +1332,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
     // if the execution was canceled, we need to cleanup
     if (canceled) {
-      context->handleCancelationCleanup();
+      context->handleCancellationCleanup();
     }
 
     // run global context methods
@@ -1381,7 +1384,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
             << "V8 context #" << context->id()
             << " has reached GC timeout threshold and will be scheduled for GC";
       }
-    } else if (context->invocationsSinceLastGc() >= _gcInterval) {
+    } else if (context->_invocationsSinceLastGc >= _gcInterval) {
       LOG_TOPIC("c6441", TRACE, arangodb::Logger::V8)
           << "V8 context #" << context->id()
           << " has reached maximum number of requests and will "
@@ -1536,7 +1539,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_idleContexts[i]->invocationsSinceLastGc() < 50 &&
+    if (_idleContexts[i]->_invocationsSinceLastGc < 50 &&
         !_idleContexts[i]->_hasActiveExternals) {
       continue;
     }

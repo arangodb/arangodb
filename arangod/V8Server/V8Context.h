@@ -90,8 +90,9 @@ class V8Context {
   double age() const;
   void lockAndEnter();
   void unlockAndExit();
-  uint64_t invocations() const { return _invocations; }
-  uint64_t invocationsSinceLastGc() const { return _invocationsSinceLastGc; }
+  uint64_t invocations() const {
+    return _invocations.load(std::memory_order_relaxed);
+  }
   double acquired() const noexcept { return _acquired; }
   char const* description() const noexcept { return _description; }
   bool shouldBeRemoved(double maxAge, uint64_t maxInvocations) const;
@@ -106,20 +107,23 @@ class V8Context {
   }
   void clearDescription() noexcept { _description = "none"; }
 
-  size_t const _id;
+ public:
   v8::Persistent<v8::Context> _context;
-  v8::Isolate* _isolate;
+  v8::Isolate* const _isolate;
+  double _lastGcStamp;
+  uint64_t _invocationsSinceLastGc;
+  bool _hasActiveExternals;
+
+ private:
+  size_t const _id;
+  std::atomic_uint64_t _invocations;
   v8::Locker* _locker;
-  double const _creationStamp;
-  /// @brief timestamp of when the context was last entered
-  double _acquired;
   /// @brief description of what the context is doing. pointer must be valid
   /// through the entire program lifetime
   char const* _description;
-  double _lastGcStamp;
-  uint64_t _invocations;
-  uint64_t _invocationsSinceLastGc;
-  bool _hasActiveExternals;
+  /// @brief timestamp of when the context was last entered
+  double _acquired;
+  double const _creationStamp;
 
   Mutex _globalMethodsLock;
   std::vector<GlobalContextMethods::MethodType> _globalMethods;
@@ -127,7 +131,7 @@ class V8Context {
  public:
   bool addGlobalContextMethod(std::string const&);
   void handleGlobalContextMethods();
-  void handleCancelationCleanup();
+  void handleCancellationCleanup();
 };
 
 class V8ContextEntryGuard {
