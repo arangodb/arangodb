@@ -152,7 +152,7 @@ for the directory to store the temporary data in with the
 
 Default value: 128MB.
 
-Note:
+**Note**:
 Spilling data from RAM onto disk is an experimental feature and is turned off 
 by default. The query results are still built up entirely in RAM on Coordinators
 and single servers for non-streaming queries. To avoid the buildup of
@@ -166,7 +166,6 @@ query that iterates over a collection that contains documents, each row is a
 document, and in a query that iterates over temporary values 
 (i.e. `FOR i IN 1..100`), each row is one of such temporary values.
 
-**Note**:
 This option only has an effect on queries that use the `SORT` operation but
 without a `LIMIT`, and if you enable the spillover feature by setting a path
 for the directory to store the temporary data in with the
