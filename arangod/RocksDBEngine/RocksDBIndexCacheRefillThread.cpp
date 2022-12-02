@@ -131,7 +131,7 @@ void RocksDBIndexCacheRefillThread::waitForCatchup() {
   while (_proceeding > 0 || _numQueued > 0) {
     guard.unlock();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if (std::chrono::steady_clock::now() > end) {
       break;
