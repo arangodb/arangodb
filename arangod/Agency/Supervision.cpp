@@ -3510,10 +3510,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     if (not databases) {
       return false;
     }
-    if (consensus::isReplicationTwoDB(*databases, database)) {
-      return true;
-    }
-    return false;
+    return consensus::isReplicationTwoDB(*databases, database);
   };
 
   auto const isServerInPlan =
@@ -3609,8 +3606,8 @@ void Supervision::checkUndoLeaderChangeActions() {
           std::string const& newLeader, std::string const& oldLeader) {
         uint64_t jobId = _jobId++;
         MoveShard(*_snapshot, _agent, std::to_string(jobId), "supervision",
-                  database, collection, shard, newLeader, oldLeader, true, true,
-                  false)
+                  database, collection, shard, newLeader, oldLeader, /*isLeader*/ true, /*remainsFollower*/ true,
+                  /*tryUndo*/ false)
             .create(trx);
 
         std::string now(timepointToString(std::chrono::system_clock::now()));

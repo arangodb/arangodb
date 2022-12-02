@@ -487,7 +487,7 @@ bool MoveShard::start(bool&) {
       for (auto p : VPackObjectIterator(todo2.slice()[0])) {
         std::string_view key = p.key.stringView();
         if (key != "tryUndo") {
-          todo.add(p.key.stringView(), p.value);
+          todo.add(key, p.value);
         } else {
           todo.add("tryUndo", VPackValue(false));
         }
@@ -1512,7 +1512,7 @@ void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
     // This should not happen, since we have a lock on the `_toServer`.
     LOG_TOPIC("abbcc", WARN, Logger::SUPERVISION)
         << "failed to schedule undo job for shard " << _shard
-        << " since the was already one.";
+        << " since there was already one.";
     return;
   }
   std::string now(timepointToString(std::chrono::system_clock::now()));
