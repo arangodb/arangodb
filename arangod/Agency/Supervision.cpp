@@ -2991,7 +2991,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
                                            collection, "shards", shard);
     auto servers = snapshot().hasAsArray(path);
-    if (not servers) {
+    if (!servers) {
       return false;
     }
     TRI_ASSERT(servers->isArray() && servers->length() > 0);
@@ -3009,7 +3009,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     auto path = basics::StringUtils::joinT("/", "Current/Collections", database,
                                            collection, shard, "servers");
     auto servers = snapshot().hasAsArray(path);
-    if (not servers) {
+    if (!servers) {
       return false;
     }
     TRI_ASSERT(servers->isArray() && servers->length() > 0);
@@ -3082,7 +3082,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       };
 
   auto undos = snapshot().hasAsChildren("Target/ReturnLeadership");
-  if (not undos) {
+  if (!undos) {
     return;
   }
 
