@@ -3606,7 +3606,8 @@ void Supervision::checkUndoLeaderChangeActions() {
           std::string const& newLeader, std::string const& oldLeader) {
         uint64_t jobId = _jobId++;
         MoveShard(*_snapshot, _agent, std::to_string(jobId), "supervision",
-                  database, collection, shard, newLeader, oldLeader, /*isLeader*/ true, /*remainsFollower*/ true,
+                  database, collection, shard, newLeader, oldLeader,
+                  /*isLeader*/ true, /*remainsFollower*/ true,
                   /*tryUndo*/ false)
             .create(trx);
 
