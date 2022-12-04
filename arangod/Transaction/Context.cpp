@@ -188,10 +188,8 @@ CollectionNameResolver const& transaction::Context::resolver() {
 std::shared_ptr<TransactionState> transaction::Context::createState(
     transaction::Options const& options) {
   // now start our own transaction
-  TRI_ASSERT(vocbase().server().hasFeature<EngineSelectorFeature>());
-  StorageEngine& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  return engine.createTransactionState(_vocbase, generateId(), options);
+  return vocbase().engine().createTransactionState(_vocbase, generateId(),
+                                                   options);
 }
 
 /// @brief unregister the transaction

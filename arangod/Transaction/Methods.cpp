@@ -1594,10 +1594,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
   auto intermediateCommit = futures::makeFuture(res);
   if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-    StorageEngine& engine = collection->vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine();
+    StorageEngine& engine = collection->vocbase().engine();
 
     bool isMock = (engine.typeName() == "Mock");
 #else
@@ -1671,10 +1668,7 @@ Result transaction::Methods::insertLocalHelper(
     }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-    StorageEngine& engine = collection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine();
+    StorageEngine& engine = collection.vocbase().engine();
 
     bool isMock = (engine.typeName() == "Mock");
 #else

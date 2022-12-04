@@ -120,7 +120,7 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server)
+V8DealerFeature::V8DealerFeature(Server& server, metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -138,17 +138,17 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
-      _contextsCreationTime(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsCreationTime(metrics.add(
           arangodb_v8_context_creation_time_msec_total{})),
-      _contextsCreated(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsCreated(metrics.add(
           arangodb_v8_context_created_total{})),
-      _contextsDestroyed(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsDestroyed(metrics.add(
           arangodb_v8_context_destroyed_total{})),
-      _contextsEntered(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsEntered(metrics.add(
           arangodb_v8_context_entered_total{})),
-      _contextsExited(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsExited(metrics.add(
           arangodb_v8_context_exited_total{})),
-      _contextsEnterFailures(server.getFeature<metrics::MetricsFeature>().add(
+      _contextsEnterFailures(metrics.add(
           arangodb_v8_context_enter_failures_total{})) {
   static_assert(
       Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());

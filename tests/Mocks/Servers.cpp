@@ -68,6 +68,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
 #include "Network/NetworkFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -179,14 +181,16 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
   server.addFeature<V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(false);
+  server.addFeature<V8DealerFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
 }
 
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<AqlFeaturePhase>(false);
-  server.addFeature<QueryRegistryFeature>(false);
+  server.addFeature<QueryRegistryFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
@@ -445,7 +449,8 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
-  addFeature<QueryRegistryFeature>(false);
+  addFeature<QueryRegistryFeature>(
+      false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(false);
   if (start) {
     MockRestServer::startFeatures();
@@ -501,6 +506,8 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
   addFeature<ServerSecurityFeature>(false);
+  addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
+  addFeature<ReplicatedLogFeature>(false);
 
   network::ConnectionPool::Config config(
       _server.getFeature<metrics::MetricsFeature>());

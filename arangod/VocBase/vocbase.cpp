@@ -115,15 +115,11 @@ struct VocbaseStatePersistor
   void updateStateInformation(
       replication2::replicated_state::PersistedStateInfo const& info) noexcept
       override {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    engine.updateReplicatedState(vocbase, info);
+    vocbase.engine().updateReplicatedState(vocbase, info);
   }
 
   void deleteStateInformation(replication2::LogId stateId) noexcept override {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
-    engine.dropReplicatedState(vocbase, stateId);
+    vocbase.engine().dropReplicatedState(vocbase, stateId);
   }
 
   TRI_vocbase_t& vocbase;
@@ -133,6 +129,10 @@ struct VocbaseStatePersistor
 struct arangodb::VocBaseLogManager {
   explicit VocBaseLogManager(TRI_vocbase_t& vocbase, DatabaseID database)
       : _server(vocbase.server()),
+        _replicatedStateAppFeature(
+            _server.getFeature<
+                replication2::replicated_state::ReplicatedStateAppFeature>()),
+        _replicatedLogFeature(_server.getFeature<ReplicatedLogFeature>()),
         _vocbase(vocbase),
         _logContext(
             LoggerContext{Logger::REPLICATION2}.with<logContextKeyDatabaseName>(
@@ -195,7 +195,7 @@ struct arangodb::VocBaseLogManager {
           std::shared_ptr<replication2::replicated_log::ReplicatedLog>> {
     auto guard = _guardedData.getLockedGuard();
     return createReplicatedLogOnData(vocbase, id, collectionName, guard.get(),
-                                     _logContext, _server);
+                                     _logContext, _replicatedLogFeature);
   }
 
   [[nodiscard]] auto ensureReplicatedLog(
@@ -210,7 +210,7 @@ struct arangodb::VocBaseLogManager {
     }
 
     return createReplicatedLogOnData(vocbase, id, collectionName, guard.get(),
-                                     _logContext, _server);
+                                     _logContext, _replicatedLogFeature);
   }
 
   [[nodiscard]] auto dropReplicatedLog(TRI_vocbase_t& vocbase,
@@ -218,13 +218,10 @@ struct arangodb::VocBaseLogManager {
       -> arangodb::Result {
     LOG_CTX("658c7", DEBUG, _logContext) << "Dropping replicated log " << id;
 
-    StorageEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine();
-
     auto result = _guardedData.doUnderLock([&](GuardedData& data) {
       if (auto iter = data.logs.find(id); iter != data.logs.end()) {
         auto core = iter->second->drop();
-        auto res = engine.dropReplicatedLog(
+        auto res = vocbase.engine().dropReplicatedLog(
             vocbase, std::move(*core).releasePersistedLog());
         if (res.fail()) {
           return res;
@@ -240,9 +237,8 @@ struct arangodb::VocBaseLogManager {
     });
 
     if (result.ok()) {
-      auto& feature = _server.getFeature<ReplicatedLogFeature>();
-      feature.metrics()->replicatedLogNumber->fetch_sub(1);
-      feature.metrics()->replicatedLogDeletionNumber->count();
+      _replicatedLogFeature.metrics()->replicatedLogNumber->fetch_sub(1);
+      _replicatedLogFeature.metrics()->replicatedLogDeletionNumber->count();
     }
     return result;
   }
@@ -250,12 +246,10 @@ struct arangodb::VocBaseLogManager {
   [[nodiscard]] auto dropReplicatedState(arangodb::replication2::LogId id)
       -> arangodb::Result {
     LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
-    StorageEngine& engine =
-        _server.getFeature<EngineSelectorFeature>().engine();
     return _guardedData.doUnderLock([&](GuardedData& data) {
       if (auto iter = data.states.find(id); iter != data.states.end()) {
         std::move(*iter->second).drop();
-        auto res = engine.dropReplicatedState(_vocbase, id);
+        auto res = _vocbase.engine().dropReplicatedState(_vocbase, id);
         if (res.fail()) {
           return res;
         }
@@ -311,14 +305,12 @@ struct arangodb::VocBaseLogManager {
   auto createReplicatedState(replication2::LogId id, std::string_view type)
       -> ResultT<std::shared_ptr<
           replication2::replicated_state::ReplicatedStateBase>> {
-    auto& feature = _server.getFeature<
-        replication2::replicated_state::ReplicatedStateAppFeature>();
     return _guardedData.doUnderLock(
         [&](GuardedData& data)
             -> ResultT<std::shared_ptr<
                 replication2::replicated_state::ReplicatedStateBase>> {
           auto state = data.buildReplicatedState(
-              id, type, feature,
+              id, type, _replicatedStateAppFeature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf8d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type;
@@ -330,8 +322,6 @@ struct arangodb::VocBaseLogManager {
   auto ensureReplicatedState(replication2::LogId id, std::string_view type)
       -> ResultT<std::shared_ptr<
           replication2::replicated_state::ReplicatedStateBase>> {
-    auto& feature = _server.getFeature<
-        replication2::replicated_state::ReplicatedStateAppFeature>();
     return _guardedData.doUnderLock(
         [&](GuardedData& data)
             -> ResultT<std::shared_ptr<
@@ -342,7 +332,7 @@ struct arangodb::VocBaseLogManager {
           }
 
           auto state = data.buildReplicatedState(
-              id, type, feature,
+              id, type, _replicatedStateAppFeature,
               _logContext.withTopic(Logger::REPLICATED_STATE), _statePersistor);
           LOG_CTX("2bf5d", DEBUG, _logContext)
               << "Created replicated state " << id << " impl = " << type;
@@ -352,6 +342,9 @@ struct arangodb::VocBaseLogManager {
   }
 
   ArangodServer& _server;
+  replication2::replicated_state::ReplicatedStateAppFeature&
+      _replicatedStateAppFeature;
+  ReplicatedLogFeature& _replicatedLogFeature;
   TRI_vocbase_t& _vocbase;
   LoggerContext const _logContext;
   std::shared_ptr<VocbaseStatePersistor> const _statePersistor;
@@ -397,13 +390,12 @@ struct arangodb::VocBaseLogManager {
   static auto createReplicatedLogOnData(
       TRI_vocbase_t& vocbase, replication2::LogId id,
       std::optional<std::string> const& collectionName, GuardedData& data,
-      LoggerContext const& outerLogContext, ArangodServer& server)
+      LoggerContext const& outerLogContext,
+      ReplicatedLogFeature& replicatedLogFeature)
       -> arangodb::ResultT<
           std::shared_ptr<replication2::replicated_log::ReplicatedLog>> {
     LOG_CTX("04b14", DEBUG, outerLogContext)
         << "Creating replicated log " << id;
-
-    StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
 
     auto const logContext = std::invoke([&] {
       if (collectionName) {
@@ -419,7 +411,8 @@ struct arangodb::VocBaseLogManager {
             -> arangodb::ResultT<
                 std::shared_ptr<replication2::replicated_log::ReplicatedLog>> {
           if (auto iter = data.logs.find(id); iter == data.logs.end()) {
-            auto&& persistedLog = engine.createReplicatedLog(vocbase, id);
+            auto&& persistedLog =
+                vocbase.engine().createReplicatedLog(vocbase, id);
             if (persistedLog.fail()) {
               return persistedLog.result();
             }
@@ -429,10 +422,8 @@ struct arangodb::VocBaseLogManager {
             auto it = data.logs.try_emplace(
                 id, std::make_shared<
                         arangodb::replication2::replicated_log::ReplicatedLog>(
-                        std::move(logCore),
-                        server.getFeature<ReplicatedLogFeature>().metrics(),
-                        server.getFeature<ReplicatedLogFeature>().options(),
-                        logContext));
+                        std::move(logCore), replicatedLogFeature.metrics(),
+                        replicatedLogFeature.options(), logContext));
 
             return it.first->second;
           } else {
@@ -441,12 +432,8 @@ struct arangodb::VocBaseLogManager {
         });
 
     if (result.ok()) {
-      server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogNumber->fetch_add(1);
-      server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogCreationNumber->count();
+      replicatedLogFeature.metrics()->replicatedLogNumber->fetch_add(1);
+      replicatedLogFeature.metrics()->replicatedLogCreationNumber->count();
     }
     return result;
   }
@@ -833,8 +820,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
   state = DROP_EXIT;
   std::string const colName(collection->name());
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.prepareDropCollection(*this, *collection);
+  _engine.prepareDropCollection(*this, *collection);
 
   double endTime = TRI_microtime() + timeout;
 
@@ -875,7 +861,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
-    engine.prepareDropCollection(*this, *collection);
+    _engine.prepareDropCollection(*this, *collection);
 
     // sleep for a while
     std::this_thread::yield();
@@ -901,7 +887,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
 
       VPackBuilder builder;
 
-      engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
+      _engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
 
       auto res = collection->properties(builder.slice().get("parameters"));
 
@@ -918,7 +904,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
       locker.unlock();
       writeLocker.unlock();
 
-      engine.dropCollection(*this, *collection);
+      _engine.dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }
@@ -1255,11 +1241,9 @@ TRI_vocbase_t::createCollectionObjectForStorage(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // augment collection parameters with storage-engine specific data
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
   VPackBuilder merged;
   merged.openObject();
-  engine.addParametersForNewCollection(merged, parameters);
+  _engine.addParametersForNewCollection(merged, parameters);
   merged.close();
 
   merged =
@@ -1302,9 +1286,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
 
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
-    auto& df = server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("create collection");
+    if (_databaseFeature.versionTracker() != nullptr) {
+      _databaseFeature.versionTracker()->track("create collection");
     }
 
     return collection;
@@ -1392,9 +1375,8 @@ TRI_vocbase_t::createCollections(
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
 
-  auto& df = server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("create collection");
+  if (_databaseFeature.versionTracker() != nullptr) {
+    _databaseFeature.versionTracker()->track("create collection");
   }
 
   return collections;
@@ -1412,9 +1394,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  if (!allowDropSystem && collection->system() && !engine.inRecovery()) {
+  if (!allowDropSystem && collection->system() && !_engine.inRecovery()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -1437,15 +1417,14 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
     }
 
     if (state == DROP_PERFORM) {
-      if (engine.inRecovery()) {
+      if (_engine.inRecovery()) {
         dropCollectionCallback(*collection);
       } else {
         collection->deferDropCollection(dropCollectionCallback);
       }
 
-      auto& df = server().getFeature<DatabaseFeature>();
-      if (df.versionTracker() != nullptr) {
-        df.versionTracker()->track("drop collection");
+      if (_databaseFeature.versionTracker() != nullptr) {
+        _databaseFeature.versionTracker()->track("drop collection");
       }
     }
 
@@ -1476,8 +1455,7 @@ arangodb::Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  bool extendedNames = _databaseFeature.extendedNamesForCollections();
   if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
             "illegal collection name '" + name + "'"};
@@ -1531,7 +1509,6 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
         std::string("failed to find feature 'Database' while renaming view '") +
             view->name() + "' in database '" + dbName + "'");
   }
-  auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
   if (!server().hasFeature<EngineSelectorFeature>() ||
       !server().getFeature<EngineSelectorFeature>().selected()) {
@@ -1540,7 +1517,6 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
         std::string("failed to find StorageEngine while renaming view '") +
             view->name() + "' in database '" + dbName + "'");
   }
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   // lock collection because we are going to copy its current name
   auto newName = view->name();
@@ -1552,7 +1528,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = databaseFeature.extendedNamesForViews();
+  bool extendedNames = _databaseFeature.extendedNamesForViews();
   if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
                                         newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -1578,7 +1554,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
   auto dataSource = it1->second;
   TRI_ASSERT(std::dynamic_pointer_cast<LogicalView>(dataSource));
   // skip persistence while in recovery since definition already from engine
-  if (!engine.inRecovery()) {
+  if (!_engine.inRecovery()) {
     velocypack::Builder build;
     build.openObject();
     auto r = view->properties(
@@ -1586,7 +1562,7 @@ arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,
     if (!r.ok()) {
       return r;
     }
-    r = engine.changeView(*view, build.close().slice());
+    r = _engine.changeView(*view, build.close().slice());
     if (!r.ok()) {
       return r;
     }
@@ -1685,10 +1661,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
     return res;
   }
 
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-
   res =
-      engine.renameCollection(*this, *collection, oldName);  // tell the engine
+      _engine.renameCollection(*this, *collection, oldName);  // tell the engine
 
   if (!res.ok()) {
     // rename failed
@@ -1704,9 +1678,8 @@ arangodb::Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   locker.unlock();
   writeLocker.unlock();
 
-  auto& df = server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("rename collection");
+  if (_databaseFeature.versionTracker() != nullptr) {
+    _databaseFeature.versionTracker()->track("rename collection");
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1767,7 +1740,6 @@ void TRI_vocbase_t::releaseCollection(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     arangodb::velocypack::Slice parameters, bool isUserRequest) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& dbName = _info.getName();
 
   std::string name;
@@ -1776,8 +1748,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
 
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = _databaseFeature.extendedNamesForCollections();
     valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
                                               extendedNames, name);
   }
@@ -1812,7 +1783,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
-    res = engine.createView(view->vocbase(), view->id(), *view);
+    res = _engine.createView(view->vocbase(), view->id(), *view);
 
     if (!res.ok()) {
       unregisterView(*view);
@@ -1826,9 +1797,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   events::CreateView(dbName, view->name(), TRI_ERROR_NO_ERROR);
 
-  auto& df = server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("create view");
+  if (_databaseFeature.versionTracker() != nullptr) {
+    _databaseFeature.versionTracker()->track("create view");
   }
 
   view->open();  // And lets open it.
@@ -1848,9 +1818,7 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  if (!allowDropSystem && view->system() && !engine.inRecovery()) {
+  if (!allowDropSystem && view->system() && !_engine.inRecovery()) {
     events::DropView(dbName, view->name(), TRI_ERROR_FORBIDDEN);
     return TRI_ERROR_FORBIDDEN;  // prevent dropping of system views
   }
@@ -1893,7 +1861,7 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
-  auto res = engine.dropView(*this, *view);
+  auto res = _engine.dropView(*this, *view);
 
   if (!res.ok()) {
     events::DropView(dbName, view->name(), res.errorNumber());
@@ -1910,9 +1878,8 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
 
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
 
-  auto& df = server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("drop view");
+  if (_databaseFeature.versionTracker() != nullptr) {
+    _databaseFeature.versionTracker()->track("drop view");
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1921,6 +1888,8 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
                              arangodb::CreateDatabaseInfo&& info)
     : _server(info.server()),
+      _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
+      _databaseFeature(_server.getFeature<arangodb::DatabaseFeature>()),
       _info(std::move(info)),
       _type(type),
       _refCount(0),
@@ -1969,10 +1938,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
       .clear();  // clear map before deallocating TRI_vocbase_t members
 }
 
-std::string TRI_vocbase_t::path() const {
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  return engine.databasePath(this);
-}
+std::string TRI_vocbase_t::path() const { return _engine.databasePath(this); }
 
 std::string const& TRI_vocbase_t::sharding() const { return _info.sharding(); }
 

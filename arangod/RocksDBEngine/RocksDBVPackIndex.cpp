@@ -1174,10 +1174,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        .getFeature<CacheManagerFeature>()
                        .manager(),
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       _cacheEnabled(basics::VelocyPackHelper::getBooleanValue(
           info, StaticStrings::CacheEnabled, false)),
       _deduplicate(basics::VelocyPackHelper::getBooleanValue(
@@ -2640,10 +2637,8 @@ void RocksDBVPackIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db =
+      _collection.vocbase().engine<RocksDBEngine>().db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = getBounds();

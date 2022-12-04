@@ -103,10 +103,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(

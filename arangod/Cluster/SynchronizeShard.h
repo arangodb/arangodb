@@ -42,6 +42,7 @@ class ConnectionPool;
 
 class DatabaseTailingSyncer;
 class LogicalCollection;
+class NetworkFeature;
 struct SyncerId;
 
 namespace maintenance {
@@ -88,6 +89,8 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
   std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
       TRI_vocbase_t& vocbase, std::string const& endpoint);
+
+  NetworkFeature& _networkFeature;
 
   /// @brief Short, informative description of the replication client, passed to
   /// the server

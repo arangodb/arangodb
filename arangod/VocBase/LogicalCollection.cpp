@@ -165,10 +165,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
-      _physical(vocbase.server()
-                    .getFeature<EngineSelectorFeature>()
-                    .engine()
-                    .createPhysicalCollection(*this, info)) {
+      _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds.store(false);
@@ -599,10 +596,8 @@ Result LogicalCollection::rename(std::string&& newName) {
 
   // Okay we can finally rename safely
   try {
-    StorageEngine& engine =
-        vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this);
+    vocbase().engine().changeCollection(vocbase(), *this);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -861,8 +856,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     return Result(TRI_ERROR_INTERNAL,
                   "failed to find a storage engine while updating collection");
   }
-  auto& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
 
@@ -1040,7 +1033,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this);
+  vocbase().engine().changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
@@ -1111,10 +1104,7 @@ bool LogicalCollection::dropIndex(IndexId iid) {
 void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  StorageEngine& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  engine.createCollection(vocbase(), *this);
+  vocbase().engine().createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {

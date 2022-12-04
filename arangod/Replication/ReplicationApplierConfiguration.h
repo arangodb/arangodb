@@ -38,12 +38,15 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+class StorageEngine;
+
 /// @brief struct containing a replication apply configuration
 class ReplicationApplierConfiguration {
  public:
   enum class RestrictType { None, Include, Exclude };
 
   ArangodServer& _server;
+  ReplicationFeature* _replicationFeature;
 
   std::string _endpoint;
   std::string _database;

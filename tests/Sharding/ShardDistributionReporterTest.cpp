@@ -204,8 +204,10 @@ class ShardDistributionReporterTest
     selector.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t instantiation
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t instantiation
 
     for (auto& f : features) {
       f.first.prepare();

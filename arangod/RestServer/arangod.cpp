@@ -98,10 +98,26 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
         },
+        [](auto& server, TypeTag<QueryRegistryFeature>) {
+          return std::make_unique<QueryRegistryFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<ReplicationMetricsFeature>) {
+          return std::make_unique<ReplicationMetricsFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
               server,
-              server.template getFeature<arangodb::RocksDBOptionFeature>());
+              server.template getFeature<arangodb::RocksDBOptionFeature>(),
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<SchedulerFeature>) {
+          return std::make_unique<SchedulerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [&ret](auto& server, TypeTag<ScriptFeature>) {
           return std::make_unique<ScriptFeature>(server, &ret);
@@ -126,6 +142,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [&ret](auto& server, TypeTag<UpgradeFeature>) {
           return std::make_unique<UpgradeFeature>(server, &ret,
                                                   kNonServerFeatures);
+        },
+        [&](auto& server, TypeTag<V8DealerFeature>) {
+          return std::make_unique<V8DealerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<HttpEndpointProvider>) {
           return std::make_unique<EndpointFeature>(server);

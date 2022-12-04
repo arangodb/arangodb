@@ -96,10 +96,7 @@ void DatabaseReplicationApplier::forget() {
 
   removeState();
 
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-
-  engine.removeReplicationApplierConfiguration(_vocbase);
+  _vocbase.engine().removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
@@ -123,11 +120,9 @@ void DatabaseReplicationApplier::forget() {
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(
     TRI_vocbase_t& vocbase) {
   // TODO: move to ReplicationApplier
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder =
-      engine.getReplicationApplierConfiguration(vocbase, res);
+      vocbase.engine().getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
@@ -156,9 +151,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
       << "storing applier configuration " << builder.slice().toJson() << " for "
       << _databaseName;
 
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  auto res = engine.saveReplicationApplierConfiguration(
+  auto res = _vocbase.engine().saveReplicationApplierConfiguration(
       _vocbase, builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -178,10 +171,7 @@ std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-
-  std::string const path = engine.databasePath(&_vocbase);
+  std::string const path = _vocbase.engine().databasePath(&_vocbase);
   if (path.empty()) {
     return std::string();
   }

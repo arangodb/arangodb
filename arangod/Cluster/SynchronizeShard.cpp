@@ -123,6 +123,7 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
+      _networkFeature(feature.server().getFeature<NetworkFeature>()),
       _followingTermId(0),
       _tailingUpperBoundTick(0),
       _initialDocCountOnLeader(0),
@@ -391,8 +392,7 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
 
 arangodb::Result SynchronizeShard::collectionCountOnLeader(
     std::string const& leaderEndpoint, uint64_t& docCountOnLeader) {
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
+  network::ConnectionPool* pool = _networkFeature.pool();
   network::RequestOptions options;
   options.database = getDatabase();
   options.timeout = network::Timeout(60);
@@ -550,8 +550,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   TRI_ASSERT(timeout > 0);
   // Read lock id
   rlid = 0;
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
+  network::ConnectionPool* pool = _networkFeature.pool();
   arangodb::Result result =
       getReadLockId(pool, endpoint, getDatabase(), clientId, timeout, rlid);
   if (!result.ok()) {
@@ -1188,8 +1187,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       try {
         // Always cancel the read lock.
         // Reported seperately
-        NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-        network::ConnectionPool* pool = nf.pool();
+        network::ConnectionPool* pool = _networkFeature.pool();
         auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,
                                           clientId, 60.0);
         if (!res.ok()) {
@@ -1237,8 +1235,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     }
 
     // Stop the read lock again:
-    NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
+    network::ConnectionPool* pool = _networkFeature.pool();
     res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId, clientId,
                                  60.0);
     // We removed the readlock
@@ -1298,8 +1295,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     try {
       // Always cancel the read lock.
       // Reported seperately
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
+      network::ConnectionPool* pool = _networkFeature.pool();
       auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,
                                         clientId, 60.0);
       if (!res.ok()) {
@@ -1348,8 +1344,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     return {res.errorNumber(), errorMessage};
   }
 
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
+  network::ConnectionPool* pool = _networkFeature.pool();
   res =
       addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                        syncerId, _clientInfoString, 60.0, _docCountAtEnd);

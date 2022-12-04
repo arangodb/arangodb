@@ -192,10 +192,7 @@ Result FollowerInfo::add(ServerID const& sid) {
 
 FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
   {
-    auto& engine = _docColl->vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine();
+    auto& engine = _docColl->vocbase().engine();
     if (engine.inRecovery()) {
       return WriteState::ALLOWED;
     }

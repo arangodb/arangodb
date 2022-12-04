@@ -44,13 +44,13 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-class LogicalCollection;
-}  // namespace arangodb
 
-namespace arangodb {
+class LogicalCollection;
+class StorageEngine;
+
 namespace velocypack {
-class Builder;  // forward declaration
-class Slice;    // forward declaration
+class Builder;
+class Slice;
 }  // namespace velocypack
 }  // namespace arangodb
 
@@ -61,7 +61,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  explicit DatabaseManagerThread(Server&);
+  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+                        StorageEngine& engine, V8DealerFeature& dealer);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -71,6 +72,9 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   static constexpr unsigned long waitTime() {
     return static_cast<unsigned long>(500U * 1000U);
   }
+  DatabaseFeature& _databaseFeature;
+  StorageEngine& _engine;
+  V8DealerFeature& _dealer;
 };
 
 class IOHeartbeatThread final : public ServerThread<ArangodServer> {
@@ -78,7 +82,8 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature);
+  IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature,
+                    DatabasePathFeature& databasePathFeature);
   ~IOHeartbeatThread();
 
   void run() override;
@@ -98,6 +103,7 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   std::mutex _mutex;
   std::condition_variable _cv;  // for waiting with wakeup
 
+  DatabasePathFeature& _databasePathFeature;
   metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
   metrics::Counter& _failures;
   metrics::Counter& _delays;
@@ -277,6 +283,11 @@ class DatabaseFeature : public ArangodFeature {
   // i am here for debugging only.
   static TRI_vocbase_t* CURRENT_VOCBASE;
 #endif
+
+  V8DealerFeature* _dealer = nullptr;
+  DatabasePathFeature* _databasePathFeature = nullptr;
+  StorageEngine* _engine = nullptr;
+  ReplicationFeature* _replicationFeature = nullptr;
 };
 
 }  // namespace arangodb

@@ -527,10 +527,7 @@ RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   coll.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()) {}
+                   coll.vocbase().engine<RocksDBEngine>()) {}
 
 void RocksDBZkdIndexBase::toVelocyPack(
     velocypack::Builder& builder,

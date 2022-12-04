@@ -86,8 +86,11 @@ namespace arangodb {
 
 SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, *this}, _scheduler(nullptr) {
+SchedulerFeature::SchedulerFeature(Server& server,
+                                   metrics::MetricsFeature& metrics)
+    : ArangodFeature{server, *this},
+      _scheduler(nullptr),
+      _metricsFeature(metrics) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   if constexpr (Server::contains<FileDescriptorsFeature>()) {
@@ -328,7 +331,7 @@ void SchedulerFeature::prepare() {
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade);
+      _unavailabilityQueueFillGrade, _metricsFeature);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

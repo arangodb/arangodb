@@ -226,6 +226,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool canUseRangeDeleteInWal() const;
 
  private:
+  RocksDBEngine& _engine;
+
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
 

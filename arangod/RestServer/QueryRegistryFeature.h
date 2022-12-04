@@ -37,7 +37,7 @@ class QueryRegistryFeature final : public ArangodFeature {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(Server& server);
+  QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

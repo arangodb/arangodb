@@ -80,10 +80,13 @@ class FlushFeatureTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
     features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(),
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::V8DealerFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE

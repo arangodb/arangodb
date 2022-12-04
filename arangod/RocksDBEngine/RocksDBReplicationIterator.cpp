@@ -44,9 +44,7 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
           static_cast<RocksDBCollection*>(collection.getPhysical())
               ->objectId())),
       _rangeBound(_bounds.end()) {
-  auto& selector =
-      collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
+  RocksDBEngine& engine = collection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
   rocksdb::ReadOptions ro{};

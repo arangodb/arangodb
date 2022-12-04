@@ -574,9 +574,7 @@ bool UpgradeTasks::addDefaultUserOther(
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  std::string const path = engine.databasePath(&vocbase);
+  std::string const path = vocbase.engine().databasePath(&vocbase);
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
       path, "REPLICATION-APPLIER-STATE");

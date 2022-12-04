@@ -327,7 +327,7 @@ Result properties(LogicalView const& view, bool safe) noexcept {
             view.name() + "' in database '" + vocbase.name() + "'"};
   }
   return safeCall([&]() -> Result {
-    auto& engine = server.getFeature<EngineSelectorFeature>().engine();
+    auto& engine = vocbase.engine();
     if (engine.inRecovery()) {
       return {};
     }

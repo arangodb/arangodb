@@ -199,7 +199,7 @@ SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
     uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
     uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-    double unavailabilityQueueFillGrade)
+    double unavailabilityQueueFillGrade, metrics::MetricsFeature& metrics)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
       _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
@@ -216,50 +216,37 @@ SupervisedScheduler::SupervisedScheduler(
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _metricsQueueLength(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_length{})),
-      _metricsJobsDoneTotal(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_done_total{})),
+      _metricsQueueLength(metrics.add(arangodb_scheduler_queue_length{})),
+      _metricsJobsDoneTotal(metrics.add(arangodb_scheduler_jobs_done_total{})),
       _metricsJobsSubmittedTotal(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_jobs_submitted_total{})),
+          metrics.add(arangodb_scheduler_jobs_submitted_total{})),
       _metricsJobsDequeuedTotal(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_jobs_dequeued_total{})),
-      _metricsNumAwakeThreads(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_num_awake_threads{})),
+          metrics.add(arangodb_scheduler_jobs_dequeued_total{})),
+      _metricsNumAwakeThreads(
+          metrics.add(arangodb_scheduler_num_awake_threads{})),
       _metricsNumWorkingThreads(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_num_working_threads{})),
-      _metricsNumWorkerThreads(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_num_worker_threads{})),
+          metrics.add(arangodb_scheduler_num_working_threads{})),
+      _metricsNumWorkerThreads(
+          metrics.add(arangodb_scheduler_num_worker_threads{})),
       _metricsHandlerTasksCreated(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_handler_tasks_created_total{})),
-      _metricsThreadsStarted(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_threads_started_total{})),
-      _metricsThreadsStopped(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_threads_stopped_total{})),
-      _metricsQueueFull(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_full_failures_total{})),
+          metrics.add(arangodb_scheduler_handler_tasks_created_total{})),
+      _metricsThreadsStarted(
+          metrics.add(arangodb_scheduler_threads_started_total{})),
+      _metricsThreadsStopped(
+          metrics.add(arangodb_scheduler_threads_stopped_total{})),
+      _metricsQueueFull(
+          metrics.add(arangodb_scheduler_queue_full_failures_total{})),
       _metricsQueueTimeViolations(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_queue_time_violations_total{})),
+          metrics.add(arangodb_scheduler_queue_time_violations_total{})),
       _ongoingLowPriorityGauge(
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_ongoing_low_prio{})),
+          metrics.add(arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
+          metrics.add(arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
       _metricsQueueLengths{
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_maintenance_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_high_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_medium_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_low_prio_queue_length{})} {
+          metrics.add(arangodb_scheduler_maintenance_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_high_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_medium_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_low_prio_queue_length{})} {
   _queues[0].queue.reserve(maxQueueSize);
   _queues[1].queue.reserve(fifo1Size);
   _queues[2].queue.reserve(fifo2Size);

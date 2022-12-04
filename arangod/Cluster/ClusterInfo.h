@@ -973,6 +973,7 @@ class ClusterInfo final {
 
   /// underlying application server
   ArangodServer& _server;
+  ClusterFeature& _clusterFeature;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

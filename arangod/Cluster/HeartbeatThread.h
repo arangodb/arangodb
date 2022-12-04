@@ -331,6 +331,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
+  ClusterFeature& _clusterFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
   metrics::Counter& _heartbeat_failure_counter;
 };

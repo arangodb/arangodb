@@ -229,10 +229,7 @@ void ClusterCollection::prepareIndexes(velocypack::Slice indexesSlice) {
   RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = _logicalCollection.vocbase().engine();
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
@@ -286,10 +283,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
     return idx;
   }
 
-  StorageEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = _logicalCollection.vocbase().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it

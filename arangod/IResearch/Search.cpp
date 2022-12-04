@@ -550,8 +550,7 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
 
 void Search::open() {
   // if (ServerState::instance()->isSingleServer()) {
-  //   auto& engine =
-  //       vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  //   auto& engine = vocbase().engine();
   //   _inRecovery.store(engine.inRecovery(), std::memory_order_seq_cst);
   // }
 }

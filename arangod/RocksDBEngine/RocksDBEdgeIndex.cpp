@@ -509,8 +509,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
           !ServerState::instance()->isCoordinator() &&
               collection.vocbase()
-                  .server()
-                  .getFeature<EngineSelectorFeature>()
                   .engine<RocksDBEngine>()
                   .useEdgeCache() /*useCache*/,
           /*cacheManager*/
@@ -519,10 +517,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
               .getFeature<CacheManagerFeature>()
               .manager(),
           /*engine*/
-          collection.vocbase()
-              .server()
-              .getFeature<EngineSelectorFeature>()
-              .engine<RocksDBEngine>()),
+          collection.vocbase().engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr),

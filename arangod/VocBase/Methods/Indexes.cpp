@@ -385,10 +385,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
 
   TRI_ASSERT(collection);
   VPackBuilder normalized;
-  StorageEngine& engine = collection->vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = collection->vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
       input, normalized, create, collection->vocbase());
 

@@ -268,8 +268,10 @@ class IResearchOrderTest
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for IResearchFeature
     features.emplace_back(

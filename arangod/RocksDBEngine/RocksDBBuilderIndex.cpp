@@ -195,11 +195,8 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(
                    wp->objectId(), /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   wp->collection()
-                       .vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()},
+                   static_cast<RocksDBEngine&>(
+                       wp->collection().vocbase().engine())},
       _wrapped{std::move(wp)},
       _docsProcessed{0},
       _numDocsHint{numDocsHint},
@@ -342,9 +339,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
 
   rocksdb::Snapshot const* snap = nullptr;
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
   Result res;
@@ -683,10 +678,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
-  RocksDBEngine& engine = _collection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _collection.vocbase().engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 #ifdef USE_ENTERPRISE
   // acquire ownership because it's only used until this function gets out of

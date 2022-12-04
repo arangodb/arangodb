@@ -322,16 +322,13 @@ class PlanCollectionReader {
  public:
   PlanCollectionReader(PlanCollectionReader const&&) = delete;
   PlanCollectionReader(PlanCollectionReader const&) = delete;
-  explicit PlanCollectionReader(LogicalCollection const& collection) {
+  explicit PlanCollectionReader(LogicalCollection const& collection,
+                                AgencyCache& agencyCache) {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id().id());
     std::vector<std::string> path{AgencyCommHelper::path(
         "Plan/Collections/" + databaseName + "/" + collectionID)};
 
-    auto& agencyCache = collection.vocbase()
-                            .server()
-                            .getFeature<ClusterFeature>()
-                            .agencyCache();
     consensus::index_t idx = 0;
     std::tie(_read, idx) = agencyCache.read(path);
 
@@ -452,6 +449,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
     : _server(server),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
@@ -618,8 +616,7 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
 
   return futures::collectAll(std::move(futureStates))
       .thenValue(
-          [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
-              auto&& raftIndices) {
+          [&clusterInfo = _clusterFeature.clusterInfo()](auto&& raftIndices) {
             consensus::index_t maxIndex = 0;
             for (auto& v : raftIndices) {
               maxIndex = std::max(maxIndex, v.get().get());
@@ -687,7 +684,7 @@ auto ClusterInfo::deleteReplicatedStates(
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] = agencyCache.read(std::vector<std::string>{"/"});
   auto res = acb->slice();
 
@@ -886,7 +883,7 @@ std::vector<DatabaseID> ClusterInfo::databases() {
 void ClusterInfo::loadClusterId() {
   // Contact agency for /<prefix>/Cluster
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.get("Cluster");
 
   // Parse
@@ -986,9 +983,8 @@ void ClusterInfo::loadPlan() {
 
   [[maybe_unused]] auto start = clock::now();
 
-  auto& clusterFeature = _server.getFeature<ClusterFeature>();
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
-  auto& agencyCache = clusterFeature.agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
 
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
@@ -1801,12 +1797,12 @@ void ClusterInfo::loadPlan() {
     _planProt.isValid = true;
   }
 
-  clusterFeature.addDirty(changeSet.dbs);
+  _clusterFeature.addDirty(changeSet.dbs);
 
   {
     std::lock_guard w(_waitPlanLock);
     triggerWaiting(_waitPlan, _planIndex);
-    auto heartbeatThread = clusterFeature.heartbeatThread();
+    auto heartbeatThread = _clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
@@ -1840,8 +1836,7 @@ void ClusterInfo::loadCurrent() {
   // means small bits of the plan are read twice.
   loadServers();
 
-  auto& feature = _server.getFeature<ClusterFeature>();
-  auto& agencyCache = feature.agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
 
   // reread from the agency!
@@ -2054,13 +2049,12 @@ void ClusterInfo::loadCurrent() {
   }
 
   _currentProt.isValid = true;
-  feature.addDirty(changeSet.dbs);
+  _clusterFeature.addDirty(changeSet.dbs);
 
   {
     std::lock_guard w(_waitCurrentLock);
     triggerWaiting(_waitCurrent, _currentIndex);
-    auto heartbeatThread =
-        _server.getFeature<ClusterFeature>().heartbeatThread();
+    auto heartbeatThread = _clusterFeature.heartbeatThread();
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
@@ -2420,7 +2414,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
 Result ClusterInfo::getShardStatisticsForDatabase(
     std::string const& dbName, std::string_view restrictServer,
     VPackBuilder& builder) const {
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Collections/" + dbName)});
 
@@ -2451,7 +2445,7 @@ Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2485,7 +2479,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2517,7 +2511,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
 /// @brief get shard statistics for all databases, split by servers.
 Result ClusterInfo::getShardStatisticsGlobalByServer(
     VPackBuilder& builder) const {
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2843,7 +2837,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(
     }
 
     if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+      auto& agencyCache = _clusterFeature.agencyCache();
       auto [acb, index] = agencyCache.read(std::vector<std::string>{
           AgencyCommHelper::path("Plan/Databases/" + database.getName())});
 
@@ -3920,7 +3914,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   size_t numberOfShards = 0;
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, idx] =
       agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
           "Plan/Collections/" + dbName + "/" + collectionID + "/shards")});
@@ -4068,7 +4062,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   AgencyOperation incrementVersion("Plan/Version",
                                    AgencySimpleOperationType::INCREMENT_OP);
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] =
       agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
           "Plan/Collections/" + databaseName + "/" + collectionID)});
@@ -4192,7 +4186,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
   }
 
-  auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
   if (!cache.has("Plan/Databases/" + databaseName)) {
     events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -4317,7 +4311,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     std::string const& databaseName, std::string const& viewID,
     VPackSlice json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
@@ -4633,7 +4627,7 @@ void ClusterInfo::initMetricsState() {
 }
 
 ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
-  auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& ac = _clusterFeature.agencyCache();
   auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
                                   AgencyCommHelper::path(kMetricsRebootId)});
   auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
@@ -4835,7 +4829,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   const size_t numberOfShards = collection.numberOfShards();
 
   // Get the current entry in Plan for this collection
-  PlanCollectionReader collectionFromPlan(collection);
+  PlanCollectionReader collectionFromPlan(collection,
+                                          _clusterFeature.agencyCache());
   if (!collectionFromPlan.state().ok()) {
     return collectionFromPlan.state();
   }
@@ -5045,7 +5040,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       if (!tmpRes.has_value()) {
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
-        auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
+        auto& cache = _clusterFeature.agencyCache();
         auto [acb, index] = cache.get(planIndexesKey);
         auto indexes = acb->slice();
 
@@ -5280,7 +5275,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
       "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(planCollKey)});
   auto previous = acb->slice();
@@ -5490,7 +5485,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
                                 AgencyCommHelper::path(mapUniqueToShortId),
@@ -5768,7 +5763,7 @@ void ClusterInfo::loadCurrentCoordinators() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path(prefixCurrentCoordinators)});
   auto result = acb->slice();
@@ -5817,7 +5812,7 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixMappings)});
   auto result = acb->slice();
@@ -5881,7 +5876,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixCurrentDBServers),
                                AgencyCommHelper::path(prefixTarget)});
@@ -6610,7 +6605,7 @@ Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
-  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
   auto [acb, index] =
       agencyCache.read({AgencyCommHelper::path("Plan"),
                         AgencyCommHelper::path("Sync/LatestID")});
@@ -6834,7 +6829,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto& agencyCache = _clusterFeature.agencyCache();
     auto [result, index] = agencyCache.get("Supervision/State/Mode");
 
     if (result->slice().isString()) {
@@ -6933,7 +6928,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto& agencyCache = _clusterFeature.agencyCache();
     auto [res, index] = agencyCache.get("Supervision/State/Mode");
 
     if (!res->slice().isString()) {
@@ -7283,13 +7278,10 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
   return cluster::fetchPlanVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybePlanVersion) {
+      [&clusterFeature = _clusterFeature](auto maybePlanVersion) {
         if (maybePlanVersion.ok()) {
           auto planVersion = maybePlanVersion.get();
-
-          auto& clusterInfo =
-              applicationServer.getFeature<ClusterFeature>().clusterInfo();
-
+          auto& clusterInfo = clusterFeature.clusterInfo();
           return clusterInfo.waitForPlanVersion(planVersion);
         } else {
           return futures::Future<Result>{maybePlanVersion.result()};

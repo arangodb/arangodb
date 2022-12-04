@@ -393,10 +393,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
@@ -548,10 +545,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   rocksdb::SequenceNumber globalSeq =
       engine.settingsManager()->earliestSeqNeeded();
 

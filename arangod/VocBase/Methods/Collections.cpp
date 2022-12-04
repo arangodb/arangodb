@@ -239,8 +239,7 @@ VPackBuilder createCollectionProperties(
     TRI_vocbase_t const& vocbase,
     std::vector<CollectionCreationInfo> const& infos,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.engine();
   VPackBuilder builder;
   VPackBuilder helper;
 

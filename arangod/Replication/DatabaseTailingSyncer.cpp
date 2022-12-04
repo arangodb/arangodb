@@ -152,8 +152,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
 
     if (res.ok()) {
       // now do a final sync-to-disk call. note that this can fail
-      auto& engine =
-          vocbase()->server().getFeature<EngineSelectorFeature>().engine();
+      auto& engine = vocbase()->engine();
       res =
           engine.flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ false);
     }

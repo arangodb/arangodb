@@ -237,6 +237,7 @@ HeartbeatThread::HeartbeatThread(Server& server,
       _updateDBServers(false),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(server, this),
+      _clusterFeature(server.getFeature<ClusterFeature>()),
       _heartbeat_send_time_ms(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
@@ -291,10 +292,7 @@ void HeartbeatThread::run() {
         [self = shared_from_this()](VPackSlice const& result) {
           LOG_TOPIC("2e09f", DEBUG, Logger::HEARTBEAT)
               << "Updating cluster's cache of current servers and rebootIds";
-          self->server()
-              .getFeature<ClusterFeature>()
-              .clusterInfo()
-              .loadServers();
+          self->_clusterFeature.clusterInfo().loadServers();
           return true;
         };
     std::vector<std::string> const serverAgencyPaths{
@@ -310,14 +308,8 @@ void HeartbeatThread::run() {
         [self = shared_from_this()](VPackSlice const& result) {
           LOG_TOPIC("2f09e", DEBUG, Logger::HEARTBEAT)
               << "Updating cluster's cache of current coordinators";
-          self->server()
-              .getFeature<ClusterFeature>()
-              .clusterInfo()
-              .loadCurrentCoordinators();
-          self->server()
-              .getFeature<ClusterFeature>()
-              .clusterInfo()
-              .loadCurrentDBServers();
+          self->_clusterFeature.clusterInfo().loadCurrentCoordinators();
+          self->_clusterFeature.clusterInfo().loadCurrentDBServers();
           return true;
         };
     std::string const path = "Current/Coordinators";
@@ -389,7 +381,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   LOG_TOPIC("26372", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
   auto start = std::chrono::steady_clock::now();
 
-  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path("Shutdown"),
       AgencyCommHelper::path("Current/Version"),
@@ -430,7 +422,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
           << "Updating failed servers list.";
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto& ci = _clusterFeature.clusterInfo();
       ci.setFailedServers(std::move(failedServers));
       transaction::cluster::abortTransactionsWithFailedServers(ci);
     } else {
@@ -470,11 +462,10 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   // agency comm connection pool:
   auto updateDBServers = _updateDBServers.exchange(false);
   if (updateDBServers || ++_updateCounter >= 60) {
-    auto& clusterFeature = server().getFeature<ClusterFeature>();
-    auto& ci = clusterFeature.clusterInfo();
+    auto& ci = _clusterFeature.clusterInfo();
     ci.loadCurrentDBServers();
     _updateCounter = 0;
-    clusterFeature.pruneAsyncAgencyConnectionPool();
+    _clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 
@@ -567,12 +558,12 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // ATTENTION: This method will usually be run in a scheduler thread and
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
   // against concurrent accesses.
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
 
   LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
 
   auto start = std::chrono::steady_clock::now();
-  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path("Current/Version"),
       AgencyCommHelper::path("Current/Foxxmaster"),
@@ -735,8 +726,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   if (++_updateCounter >= 60) {
     ci.loadCurrentDBServers();
     _updateCounter = 0;
-    auto& clusterFeature = server().getFeature<ClusterFeature>();
-    clusterFeature.pruneAsyncAgencyConnectionPool();
+    _clusterFeature.pruneAsyncAgencyConnectionPool();
   }
 }
 
@@ -800,7 +790,7 @@ void HeartbeatThread::runSingleServer() {
 
   GlobalReplicationApplier* applier = replication.globalReplicationApplier();
   TRI_ASSERT(applier != nullptr && server().hasFeature<ClusterFeature>());
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ClusterInfo& ci = _clusterFeature.clusterInfo();
 
   TtlFeature& ttlFeature = server().getFeature<TtlFeature>();
 
@@ -859,7 +849,7 @@ void HeartbeatThread::runSingleServer() {
         }
       }
 
-      auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+      auto& cache = _clusterFeature.agencyCache();
       auto [acb, idx] = cache.read(std::vector<std::string>{
           AgencyCommHelper::path("Shutdown"),
           AgencyCommHelper::path("Readonly"),
@@ -1137,8 +1127,7 @@ void HeartbeatThread::runSingleServer() {
     // Periodically prune the connection pool
     if (++_updateCounter >= 60) {
       _updateCounter = 0;
-      auto& clusterFeature = server().getFeature<ClusterFeature>();
-      clusterFeature.pruneAsyncAgencyConnectionPool();
+      _clusterFeature.pruneAsyncAgencyConnectionPool();
     }
   }
 }
@@ -1311,7 +1300,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   LOG_TOPIC("eda7d", TRACE, Logger::HEARTBEAT) << "found a plan update";
-  auto& cache = server().getFeature<ClusterFeature>().agencyCache();
+  auto& cache = _clusterFeature.agencyCache();
   auto [acb, idx] = cache.read(std::vector<std::string>{
       AgencyCommHelper::path(prefixPlanChangeCoordinator)});
   auto result = acb->slice();
@@ -1423,7 +1412,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   }
 
   // invalidate our local cache
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto& ci = _clusterFeature.clusterInfo();
   ci.flush();
 
   return true;

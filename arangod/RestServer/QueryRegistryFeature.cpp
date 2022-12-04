@@ -163,7 +163,8 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
 
-QueryRegistryFeature::QueryRegistryFeature(Server& server)
+QueryRegistryFeature::QueryRegistryFeature(Server& server,
+                                           metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _trackingEnabled(true),
       _trackSlowQueries(true),
@@ -197,26 +198,18 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
-      _queryTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_query_time{})),
-      _slowQueryTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_slow_query_time{})),
-      _totalQueryExecutionTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_total_query_time_msec_total{})),
-      _queriesCounter(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_all_query_total{})),
-      _runningQueries(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_current_query{})),
-      _globalQueryMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_global_memory_usage{})),
-      _globalQueryMemoryLimit(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_global_memory_limit{})),
+      _queryTimes(metrics.add(arangodb_aql_query_time{})),
+      _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
+      _totalQueryExecutionTime(
+          metrics.add(arangodb_aql_total_query_time_msec_total{})),
+      _queriesCounter(metrics.add(arangodb_aql_all_query_total{})),
+      _runningQueries(metrics.add(arangodb_aql_current_query{})),
+      _globalQueryMemoryUsage(metrics.add(arangodb_aql_global_memory_usage{})),
+      _globalQueryMemoryLimit(metrics.add(arangodb_aql_global_memory_limit{})),
       _globalQueryMemoryLimitReached(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_global_query_memory_limit_reached_total{})),
+          metrics.add(arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_local_query_memory_limit_reached_total{})) {
+          metrics.add(arangodb_aql_local_query_memory_limit_reached_total{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 

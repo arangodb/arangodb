@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include <cstddef>
 #include <atomic>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -129,6 +130,8 @@ struct TRI_vocbase_t {
   };
 
   arangodb::ArangodServer& _server;
+  arangodb::StorageEngine& _engine;
+  arangodb::DatabaseFeature& _databaseFeature;
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -166,6 +169,14 @@ struct TRI_vocbase_t {
       _replicationClients;
 
  public:
+  arangodb::StorageEngine& engine() const noexcept { return _engine; }
+
+  template<typename As>
+  As& engine() const noexcept
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    return static_cast<As&>(_engine);
+  }
+
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
   [[nodiscard]] auto getReplicatedLogById(
       arangodb::replication2::LogId id) const

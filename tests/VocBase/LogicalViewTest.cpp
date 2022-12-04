@@ -128,8 +128,10 @@ class LogicalViewTest
                           false);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
 

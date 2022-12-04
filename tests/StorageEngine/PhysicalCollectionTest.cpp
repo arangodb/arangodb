@@ -81,9 +81,10 @@ class PhysicalCollectionTest
     selector.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>());
-    features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>());  // required for
-                                                               // TRI_vocbase_t
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(
+        server.template getFeature<
+            arangodb::metrics::MetricsFeature>()));  // required for
+                                                     // TRI_vocbase_t
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>());

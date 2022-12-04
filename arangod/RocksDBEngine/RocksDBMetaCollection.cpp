@@ -80,12 +80,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
-  collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
+  collection.vocbase().engine<RocksDBEngine>().addCollectionMapping(
+      _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
 }
 
 std::string const& RocksDBMetaCollection::path() const {
@@ -143,10 +139,7 @@ void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
 uint64_t RocksDBMetaCollection::recalculateCounts() {
   std::unique_lock<std::mutex> guard(_recalculationLock);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
@@ -258,9 +251,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
 }
 
 void RocksDBMetaCollection::compact() {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.compactRange(bounds());
 
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
@@ -273,9 +264,7 @@ void RocksDBMetaCollection::compact() {
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -329,10 +318,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
     return nullptr;
   }
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
@@ -483,10 +469,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
           << ": caught exception during revision tree serialization: "
           << ex.what();
 
-      auto& engine = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
+      auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
       auto* db = engine.db();
 
       rocksdb::WriteOptions wo;
@@ -1025,10 +1008,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(
           ->GetComparator();
   rocksdb::Slice const end = documentBounds.end();
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   auto* db = engine.db();
 
   std::vector<std::uint64_t> revisions;
@@ -1147,10 +1127,7 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
 
 uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(
     TransactionId transactionId) {
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
   // make sure that the global revision tree in _revisionTree does not move
@@ -1197,11 +1174,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_logicalCollection.vocbase()
-                   .server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine()
-                   .inRecovery());
+    TRI_ASSERT(_logicalCollection.vocbase().engine().inRecovery());
     return;
   }
 
@@ -1224,11 +1197,7 @@ void RocksDBMetaCollection::bufferUpdates(
       elem = std::move(inserts);
     } else {
       // should only happen in recovery, if at all
-      TRI_ASSERT(_logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine()
-                     .inRecovery());
+      TRI_ASSERT(_logicalCollection.vocbase().engine().inRecovery());
       elem.insert(elem.end(), inserts.begin(), inserts.end());
     }
   }
@@ -1241,11 +1210,7 @@ void RocksDBMetaCollection::bufferUpdates(
       elem = std::move(removals);
     } else {
       // should only happen in recovery, if at all
-      TRI_ASSERT(_logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine()
-                     .inRecovery());
+      TRI_ASSERT(_logicalCollection.vocbase().engine().inRecovery());
       elem.insert(elem.end(), removals.begin(), removals.end());
     }
   }
@@ -1479,10 +1444,7 @@ void RocksDBMetaCollection::applyUpdates(
   // if memory usage changed, track the adjustment
   auto newMemoryUsage = _revisionTree->memoryUsage();
   if (oldMemoryUsage != newMemoryUsage) {
-    auto& engine = _logicalCollection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>();
+    auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
     if (oldMemoryUsage > newMemoryUsage) {
       engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage - newMemoryUsage);
     } else {
@@ -1702,10 +1664,7 @@ RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
 void RocksDBMetaCollection::ensureRevisionTree() {
   // should have _revisionTreeLock held outside
   if (_revisionTree == nullptr) {
-    auto& engine = _logicalCollection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>();
+    auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
 
     auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
     TRI_ASSERT(newTree->depth() == revisionTreeDepth);
@@ -1737,10 +1696,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(
   TRI_ASSERT(_depth == revisionTreeDepth);
   TRI_ASSERT(_tree != nullptr);
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
 }
 
@@ -1748,10 +1704,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::~RevisionTreeAccessor() {
   TRI_ASSERT((_tree == nullptr && !_compressed.empty()) ||
              (_tree != nullptr && _compressed.empty()));
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   if (_tree != nullptr) {
     engine.trackRevisionTreeMemoryDecrease(_tree->memoryUsage());
   } else if (!_compressed.empty()) {
@@ -1836,10 +1789,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count,
   // _remove_ data
   _tree->corrupt(count, hash);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage() - oldMemoryUsage);
 }
 #endif
@@ -1904,10 +1854,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   if (_compressed.size() * 2 < _tree->byteSize()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeHibernation();
     engine.trackRevisionTreeMemoryIncrease(_compressed.size());
     engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage);
@@ -1954,10 +1902,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
                                      "unable to uncompress tree");
     }
 
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeResurrection();
     engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
     engine.trackRevisionTreeMemoryDecrease(_compressed.size());

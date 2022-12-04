@@ -212,7 +212,8 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(Server& server,
-                             RocksDBOptionsProvider const& optionsProvider)
+                             RocksDBOptionsProvider const& optionsProvider,
+                             metrics::MetricsFeature& metrics)
     : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _optionsProvider(optionsProvider),
@@ -248,27 +249,20 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _runningRebuilds(0),
       _runningCompactions(0),
       _metricsWalSequenceLowerBound(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_wal_sequence_lower_bound{})),
-      _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_archived_wal_files{})),
-      _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_prunable_wal_files{})),
-      _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_wal_pruning_active{})),
-      _metricsTreeMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_revision_tree_memory_usage{})),
+          metrics.add(rocksdb_wal_sequence_lower_bound{})),
+      _metricsArchivedWalFiles(metrics.add(rocksdb_archived_wal_files{})),
+      _metricsPrunableWalFiles(metrics.add(rocksdb_prunable_wal_files{})),
+      _metricsWalPruningActive(metrics.add(rocksdb_wal_pruning_active{})),
+      _metricsTreeMemoryUsage(
+          metrics.add(arangodb_revision_tree_memory_usage{})),
       _metricsTreeRebuildsSuccess(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_rebuilds_success_total{})),
+          metrics.add(arangodb_revision_tree_rebuilds_success_total{})),
       _metricsTreeRebuildsFailure(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_rebuilds_failure_total{})),
-      _metricsTreeHibernations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_revision_tree_hibernations_total{})),
+          metrics.add(arangodb_revision_tree_rebuilds_failure_total{})),
+      _metricsTreeHibernations(
+          metrics.add(arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})) {
+          metrics.add(arangodb_revision_tree_resurrections_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine

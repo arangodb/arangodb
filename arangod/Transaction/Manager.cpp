@@ -603,10 +603,8 @@ ResultT<TransactionId> Manager::createManagedTrx(
                           : TransactionId::createCoordinator();
 
   auto maybeState = basics::catchToResultT([&] {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return vocbase.engine().createTransactionState(vocbase, tid, options);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();
@@ -725,10 +723,8 @@ Result Manager::ensureManagedTrx(
   }
 
   auto maybeState = basics::catchToResultT([&] {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options);
+    return vocbase.engine().createTransactionState(vocbase, tid, options);
   });
   if (!maybeState.ok()) {
     return std::move(maybeState).result();

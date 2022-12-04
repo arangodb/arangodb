@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/asio_ns.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "RestServer/arangod.h"
@@ -39,7 +40,7 @@ class SchedulerFeature final : public ArangodFeature {
 
   static SupervisedScheduler* SCHEDULER;
 
-  explicit SchedulerFeature(Server& server);
+  SchedulerFeature(Server& server, metrics::MetricsFeature& metrics);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -69,6 +70,7 @@ class SchedulerFeature final : public ArangodFeature {
   double _unavailabilityQueueFillGrade = 0.75;
 
   std::unique_ptr<Scheduler> _scheduler;
+  metrics::MetricsFeature& _metricsFeature;
 
   std::function<void(asio_ns::error_code const&, int)> _signalHandler;
   std::function<void(asio_ns::error_code const&, int)> _exitHandler;

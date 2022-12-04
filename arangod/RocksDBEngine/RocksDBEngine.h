@@ -132,8 +132,8 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server,
-                         RocksDBOptionsProvider const& optionsProvider);
+  RocksDBEngine(Server& server, RocksDBOptionsProvider const& optionsProvider,
+                metrics::MetricsFeature& metrics);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
