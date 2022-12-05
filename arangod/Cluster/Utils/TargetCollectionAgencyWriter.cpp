@@ -1,0 +1,315 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Michael Hackstein
+////////////////////////////////////////////////////////////////////////////////
+
+#include "TargetCollectionAgencyWriter.h"
+#include "Agency/AgencyComm.h"
+#include "Agency/AgencyPaths.h"
+#include "Agency/TransactionBuilder.h"
+#include "Basics/Guarded.h"
+#include "Cluster/Utils/CurrentWatcher.h"
+#include "Cluster/Utils/CurrentCollectionEntry.h"
+#include "Cluster/Utils/PlanCollectionEntry.h"
+#include "Cluster/Utils/PlanCollectionEntryReplication2.h"
+#include "Cluster/Utils/PlanShardToServerMappping.h"
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "VocBase/LogicalCollection.h"
+
+#include "Logger/LogMacros.h"
+
+using namespace arangodb;
+namespace paths = arangodb::cluster::paths::aliases;
+
+namespace {
+// Copy paste from ClusterInfo
+// TODO: make it dry
+inline arangodb::AgencyOperation IncreaseVersion() {
+  return arangodb::AgencyOperation{
+      paths::plan()->version(), arangodb::AgencySimpleOperationType::INCREMENT_OP};
+}
+
+inline auto pathCollectionInPlan(std::string_view databaseName) {
+  return cluster::paths::root()->arango()->plan()->collections()->database(
+      std::string{databaseName});
+}
+
+inline auto pathReplicatedStateInTarget(std::string_view databaseName) {
+  return paths::target()->replicatedStates()->database(std::string{databaseName});
+}
+
+inline auto pathCollectioInCurrent(std::string_view databaseName) {
+  // Note: I cannot use the Path builder here, as the Callbacks do not start at
+  // ROOT
+  return "Current/Collections/" + std::string{databaseName} + "/";
+}
+
+}  // namespace
+
+TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
+    std::vector<PlanCollectionEntryReplication2> collectionPlanEntries,
+    std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
+        shardDistributionsUsed)
+    : _collectionPlanEntries{std::move(collectionPlanEntries)},
+      _shardDistributionsUsed{std::move(shardDistributionsUsed)} {}
+
+std::shared_ptr<CurrentWatcher>
+TargetCollectionAgencyWriter::prepareCurrentWatcher(
+    std::string_view databaseName, bool waitForSyncReplication) const {
+  auto report = std::make_shared<CurrentWatcher>();
+
+  // One callback per collection
+  report->reserve(_collectionPlanEntries.size());
+  auto const baseCollectionPath = pathCollectioInCurrent(databaseName);
+  for (auto const& entry : _collectionPlanEntries) {
+    if (entry.requiresCurrentWatcher()) {
+      auto const collectionPath = baseCollectionPath + entry.getCID();
+      auto expectedShards = entry.getShardMapping();
+      auto cid = entry.getCID();
+
+      auto callback = [cid, expectedShards, waitForSyncReplication,
+                       report](VPackSlice result) -> bool {
+        if (report->hasReported(cid)) {
+          // This collection has already reported
+          return true;
+        }
+        CurrentCollectionEntry state;
+        auto status = velocypack::deserializeWithStatus(result, state);
+        // We ignore parsing errors here, only react on positive case
+        if (status.ok()) {
+          if (state.haveAllShardsReported(expectedShards.shards.size())) {
+            if (state.hasError()) {
+              // At least on shard has reported an error.
+              report->addReport(
+                  cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                              state.createErrorReport()});
+              return true;
+            } else if (!waitForSyncReplication ||
+                       state.doExpectedServersMatch(expectedShards)) {
+              // All servers reported back without error.
+              // If waitForSyncReplication is requested full server lists match
+              // Let us return done!
+              report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
+              return true;
+            }
+          }
+        }
+        // TODO: Maybe we want to do trace-logging if current cannot be parsed?
+
+        return true;
+      };
+      report->addWatchPath(collectionPath, callback);
+    }
+  }
+
+  return report;
+}
+
+ResultT<VPackBufferUInt8>
+TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
+    std::string_view databaseName, uint64_t planVersion,
+    std::vector<std::string> serversAvailable) const {
+  // Distribute Shards onto servers
+  std::unordered_set<ServerID> serversPlanned;
+  for (auto& [_, dist] : _shardDistributionsUsed) {
+    auto res = dist->planShardsOnServers(serversAvailable, serversPlanned);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
+  auto const baseReplicatedStatesPath = pathReplicatedStateInTarget(databaseName);
+
+  VPackBufferUInt8 data;
+  VPackBuilder builder(data);
+  auto envelope = arangodb::agency::envelope::into_builder(builder);
+  // Envelope is not use able after this point
+  // We started a write transaction, and now need to add all operations
+  auto writes = std::move(envelope).write();
+  // Increase plan version
+  writes = std::move(writes).inc(paths::plan()->version()->str());
+
+  // Write all requested Collection entries
+  for (auto const& entry : _collectionPlanEntries) {
+    writes = std::move(writes).emplace_object(
+        baseCollectionPath->collection(entry.getCID())->str(),
+        [&](VPackBuilder& builder) {
+          // Temporary. It should be replaced by velocypack::serialize(builder,
+          // entry); This is not efficient we copy the builder twice
+          auto b = entry.toVPackDeprecated();
+          builder.add(b.slice());
+        });
+
+    // Create a replicated state for each shard.
+    for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
+      auto spec = entry.getReplicatedStateForTarget(shardId, serverIds, databaseName);
+      writes = std::move(writes).emplace_object(
+          baseReplicatedStatesPath->state(spec.id)->str(),
+          [&](VPackBuilder& builder) {
+            velocypack::serialize(builder, spec);
+          });
+    }
+  }
+
+
+    // Done with adding writes. Now add all preconditions
+  // writes is not usable after this point
+  auto preconditions = std::move(writes).precs();
+  preconditions = std::move(preconditions)
+                      .isEqual(paths::plan()->version()->str(), planVersion);
+  // Server should not be planned to be cleaned
+  preconditions =
+      std::move(preconditions)
+          .isIntersectionEmpty(paths::target()->toBeCleanedServers()->str(),
+                               serversPlanned);
+  // Servers should not be in cleaned state
+  preconditions =
+      std::move(preconditions)
+          .isIntersectionEmpty(paths::target()->cleanedServers()->str(),
+                               serversPlanned);
+
+  // Created preconditions that no one has stolen our id
+  for (auto const& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+    preconditions =
+        std::move(preconditions)
+            .isEmpty(baseCollectionPath->collection(entry.getCID())->str());
+  }
+
+  // We are complete, add our ID and close the transaction;
+  std::move(preconditions).end().done();
+
+  return std::move(data);
+}
+
+[[nodiscard]] AgencyWriteTransaction
+TargetCollectionAgencyWriter::prepareUndoTransaction(
+    std::string_view databaseName) const {
+  std::vector<AgencyOperation> opers{};
+  std::vector<AgencyPrecondition> precs{};
+
+  // One per Collection, and the PlanVersion
+  opers.reserve(_collectionPlanEntries.size() + 1);
+  // One per Collection
+  precs.reserve(_collectionPlanEntries.size());
+
+  opers.push_back(IncreaseVersion());
+
+  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
+  auto const baseReplicatedStatesPath = pathReplicatedStateInTarget(databaseName);
+  for (auto& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+
+    // Add a precondition that we are still building
+    precs.emplace_back(AgencyPrecondition{
+        collectionPath->isBuilding(), AgencyPrecondition::Type::EMPTY, false});
+
+    // Remove the entry
+    opers.emplace_back(
+        AgencyOperation{collectionPath, AgencySimpleOperationType::DELETE_OP});
+
+    // Delete the replicated state for each shard.
+    for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
+
+      auto stateId = LogicalCollection::shardIdToStateId(shardId);
+      // Remove the ReplicatedState
+      opers.emplace_back(
+          AgencyOperation{baseReplicatedStatesPath->state(stateId), AgencySimpleOperationType::DELETE_OP});
+    }
+  }
+
+  // TODO: Check ownership
+  return AgencyWriteTransaction{opers, precs};
+}
+
+[[nodiscard]] AgencyWriteTransaction
+TargetCollectionAgencyWriter::prepareCompletedTransaction(
+    std::string_view databaseName) {
+  std::vector<AgencyOperation> opers{};
+  std::vector<AgencyPrecondition> precs{};
+
+  // One per Collection, and the PlanVersion
+  opers.reserve(_collectionPlanEntries.size() + 1);
+  // One per Collection
+  precs.reserve(_collectionPlanEntries.size());
+
+  opers.push_back(IncreaseVersion());
+
+  auto const baseCollectionPath = pathCollectionInPlan(databaseName);
+  for (auto& entry : _collectionPlanEntries) {
+    auto const collectionPath = baseCollectionPath->collection(entry.getCID());
+    {
+      // TODO: This is temporary
+      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
+      // velocypack::serialize(*builder, _entry);
+      // Add a precondition that no other code has modified our collection.
+      // Especially no failover has happend
+      precs.emplace_back(AgencyPrecondition{
+          collectionPath, AgencyPrecondition::Type::VALUE, std::move(builder)});
+    }
+    // Get out of is Building mode
+    entry.removeBuildingFlags();
+    {
+      // TODO: This is temporary
+      auto builder = std::make_shared<VPackBuilder>(entry.toVPackDeprecated());
+      // velocypack::serialize(*builder, _entry);
+
+      // Create the operation to place our collection here
+      opers.emplace_back(AgencyOperation{
+          collectionPath, AgencyValueOperationType::SET, std::move(builder)});
+    }
+  }
+
+  // TODO: Check ownership
+  return AgencyWriteTransaction{opers, precs};
+}
+
+std::vector<std::string>
+TargetCollectionAgencyWriter::collectionNames() const {
+  std::vector<std::string> names;
+  names.reserve(_collectionPlanEntries.size());
+  for (auto& entry : _collectionPlanEntries) {
+    names.emplace_back(entry.getName());
+  }
+  return names;
+}
+
+/*
+TargetCollectionAgencyWriter::TargetCollectionAgencyWriter(
+    CreateCollectionBody col, ShardDistribution shardDistribution)
+    : _entry(std::move(col), std::move(shardDistribution)) {}
+
+[[nodiscard]] AgencyOperation TargetCollectionAgencyWriter::prepareOperation(
+    std::string const& databaseName) const {
+  auto const collectionPath = cluster::paths::root()
+                                  ->arango()
+                                  ->plan()
+                                  ->collections()
+                                  ->database(databaseName)
+                                  ->collection(_entry.getCID());
+  // TODO: This is temporary
+  auto builder = std::make_shared<VPackBuilder>(_entry.toVPackDeprecated());
+  // velocypack::serialize(*builder, _entry);
+  return AgencyOperation{collectionPath, AgencyValueOperationType::SET,
+                         std::move(builder)};
+}
+*/

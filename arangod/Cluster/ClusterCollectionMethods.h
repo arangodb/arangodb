@@ -36,6 +36,7 @@ class ResultT;
 struct AgencyIsBuildingFlags;
 struct CreateCollectionBody;
 struct PlanCollectionEntry;
+struct PlanCollectionEntryReplication2;
 class LogicalCollection;
 class ClusterInfo;
 struct IShardDistributionFactory;
@@ -66,6 +67,11 @@ struct ClusterCollectionMethods {
       CreateCollectionBody col, std::vector<ShardID> shardNames,
       std::shared_ptr<IShardDistributionFactory> distributeType,
       AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntry;
+
+  [[nodiscard]] static auto toPlanEntryReplication2(
+      CreateCollectionBody col, std::vector<ShardID> shardNames,
+      std::shared_ptr<IShardDistributionFactory> distributeType,
+      AgencyIsBuildingFlags isBuildingFlags) -> PlanCollectionEntryReplication2;
 
   [[nodiscard]] static auto generateShardNames(ClusterInfo& ci,
                                                uint64_t numberOfShards)
