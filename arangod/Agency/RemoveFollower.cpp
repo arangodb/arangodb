@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 

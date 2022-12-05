@@ -37,6 +37,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include "Logger/LogMacros.h"
+
 #include <utility>
 #include <vector>
 
