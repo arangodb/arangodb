@@ -26,9 +26,9 @@
 #include <atomic>
 #include <function2.hpp>
 
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
+
 #include "Futures/Try.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace futures {
@@ -174,6 +174,7 @@ class SharedState {
         [[fallthrough]];
       default:
         TRI_ASSERT(false);  // unexpected state
+        break;
     }
   }
 
