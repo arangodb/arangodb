@@ -37,7 +37,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
                      std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader, bool remainsFollower)
+                     std::string const& to, bool isLeader, bool remainsFollower,
+                     bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
@@ -47,23 +48,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _isLeader(
           isLeader),  // will be initialized properly when information known
       _remainsFollower(remainsFollower),
-      _toServerIsFollower(false) {}
-
-MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
-                     std::string const& jobId, std::string const& creator,
-                     std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
-                     std::string const& to, bool isLeader)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator),
-      _database(database),
-      _collection(collection),
-      _shard(shard),
-      _from(id(from)),
-      _to(id(to)),
-      _isLeader(
-          isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader),
-      _toServerIsFollower(false) {}
+      _toServerIsFollower(false),
+      _tryUndo(tryUndo) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -79,6 +65,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
+  auto tmp_tryUndo = _snapshot.hasAsBool(path + "tryUndo");
 
   if (tmp_database && tmp_collection && tmp_from && tmp_to && tmp_shard &&
       tmp_creator && tmp_isLeader) {
@@ -95,6 +82,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _creator = tmp_creator.value();
     if (tmp_parent) {
       _parentJobId = std::move(*tmp_parent);
+    }
+    if (tmp_tryUndo) {
+      _tryUndo = tmp_tryUndo.value();
     }
   } else {
     std::stringstream err;
@@ -159,6 +149,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("tryUndo", VPackValue(_tryUndo));
     if (!_parentJobId.empty()) {
       _jb->add(PARENT_JOB_ID, VPackValue(_parentJobId));
     }
@@ -453,6 +444,30 @@ bool MoveShard::start(bool&) {
         LOG_TOPIC("34af0", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
+      }
+    }
+  }
+
+  // We do not want to honour `_tryUndo` if this is not a leader swap,
+  // i.e. !_isLeader
+  if (_tryUndo && !_toServerIsFollower) {
+    // Unfortunately, we have to rewrite the `todo` velocypack now,
+    // we keep everything, but we unset _tryUndo:
+    _tryUndo = false;
+    Builder todo2;
+    TRI_ASSERT(todo.slice().isArray() && todo.slice()[0].isObject());
+    todo2.add(todo.slice());
+    todo.clear();  // Builder does not have a swap!
+    {
+      VPackArrayBuilder guard0(&todo);
+      VPackObjectBuilder guard(&todo);
+      for (auto p : VPackObjectIterator(todo2.slice()[0])) {
+        std::string key = p.key.copyString();
+        if (key != "tryUndo") {
+          todo.add(key, p.value);
+        } else {
+          todo.add("tryUndo", VPackValue(false));
+        }
       }
     }
   }
@@ -900,6 +915,10 @@ JOB_STATUS MoveShard::pendingLeader() {
         addMoveShardFromServerUnLock(trx);
         addMoveShardToServerCanUnLock(pre);
         addMoveShardFromServerCanUnLock(pre);
+
+        if (_tryUndo) {
+          addUndoMoveShard(trx, job);
+        }
       }
       // Add precondition to transaction:
       trx.add(pre.slice());
@@ -1290,4 +1309,39 @@ bool MoveShard::moveShardFinish(bool unlock, bool success,
   }
 
   return finish("", "", success, msg, std::move(payload));
+}
+
+void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
+  // If we are here, we have `_isLeader` set to `true`. We also know
+  // that this was a leader swap with an in sync follower, so we can
+  // assume that.
+  std::string path = returnLeadershipPrefix + _shard;
+  // Briefly check that the place in Target is still empty:
+  if (_snapshot.has(path)) {
+    // This should not happen, since we have a lock on the `_toServer`.
+    LOG_TOPIC("abbcc", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since there was already one.";
+    return;
+  }
+  std::string now(timepointToString(std::chrono::system_clock::now()));
+  std::string deadline(timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::minutes(20)));
+  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
+      curServersKnown, _from, "/", StaticStrings::RebootId));
+  if (!rebootId) {
+    // This should not happen, since we should have a rebootId for this.
+    LOG_TOPIC("abbcd", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo job for shard " << _shard
+        << " since there was no rebootId for server " << _from;
+    return;
+  }
+  ops.add(VPackValue(path));
+  {
+    VPackObjectBuilder guard(&ops);
+    ops.add("timeStamp", VPackValue(now));
+    ops.add("removeIfNotStartedBy", VPackValue(deadline));
+    ops.add("rebootId", VPackValue(rebootId.value()));
+    ops.add("moveShard", job.slice());
+  }
 }
