@@ -146,7 +146,7 @@ void RocksDBIndexCacheRefillFeature::validateOptions(
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
   if (_refillThread != nullptr) {
-    _refillThread->shutdown();
+    _refillThread->beginShutdown();
   }
 }
 
