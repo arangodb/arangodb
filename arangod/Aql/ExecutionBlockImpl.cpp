@@ -122,13 +122,13 @@ using namespace arangodb::aql;
  */
 
 #define CREATE_HAS_MEMBER_CHECK(methodName, checkName)               \
-  template <typename T>                                              \
+  template<typename T>                                               \
   class checkName {                                                  \
-    template <typename C>                                            \
+    template<typename C>                                             \
     static std::true_type test(decltype(&C::methodName));            \
-    template <typename C>                                            \
+    template<typename C>                                             \
     static std::true_type test(decltype(&C::template methodName<>)); \
-    template <typename>                                              \
+    template<typename>                                               \
     static std::false_type test(...);                                \
                                                                      \
    public:                                                           \
@@ -1274,25 +1274,28 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
-        constexpr static int depthOffset = ([]() consteval->int {
-          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-            return -1;
-          } else {
-            return 0;
-          }
-        })();
 
-        auto skipped =
-            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
-                depthToSkip);
+        constexpr static int depthOffset =
+            std::is_same_v<Executor, SubqueryStartExecutor> ? -1 : 0;
+
         if (shadowCall.needsFullCount()) {
-          if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+          if constexpr (std::is_same_v<DataRange,
+                                       MultiAqlItemBlockInputRange>) {
+            auto skipped =
+                _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+                    depthToSkip);
+
             _rowFetcher.reportSubqueryFullCounts(depthToSkip, skipped);
             // We need to report exactly one of those values to the _skipped container
             // If we need help from upstream, they report it via `execute` API.
             auto reportedSkip = std::min_element(std::begin(skipped), std::end(skipped));
             _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
           } else {
+            size_t skipped = 0;
+
+            skipped = _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+                depthToSkip);
+
             _skipped.didSkipSubquery(skipped, depthToSkip);
           }
         }

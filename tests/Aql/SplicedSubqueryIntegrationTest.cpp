@@ -37,6 +37,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"
@@ -49,11 +50,6 @@
 #include "Aql/AqlExecutorTestCase.h"
 #include "Aql/TestLambdaExecutor.h"
 #include "Aql/WaitingExecutionBlockMock.h"
-
-// TODO: remove me
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
