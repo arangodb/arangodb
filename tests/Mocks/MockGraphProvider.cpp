@@ -29,6 +29,7 @@
 #include "Futures/Utilities.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>

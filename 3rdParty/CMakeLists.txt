@@ -116,8 +116,13 @@ set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 ## Google Abseil
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "abseil-cpp" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(abseil-cpp)
-set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## Google S2
