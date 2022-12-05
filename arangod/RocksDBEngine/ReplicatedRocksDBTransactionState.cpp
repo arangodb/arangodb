@@ -136,9 +136,10 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
-            // We finished replication, but failed to commit locally. There is
-            // no going back.
-            FATAL_ERROR_EXIT_CODE(result.errorNumber().value());
+            LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
+                << "Failed to commit replicated transaction locally: "
+                << result;
+            FATAL_ERROR_EXIT();
           }
         }
         return {};
