@@ -750,6 +750,22 @@ function MovingShardsSuite({useData, replVersion}) {
     return false;
   }
 
+  function getServerRebootId(server) {
+    return helper.readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
+  }
+
+  function waitForRebootIdChanged(server, oldRebootId) {
+
+    var count = 300;
+    while(--count > 0) {
+      if (getServerRebootId(server) !== oldRebootId) {
+        return;
+      }
+      wait(1.0);
+    }
+    assertTrue(count > 0);
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual tests
 ////////////////////////////////////////////////////////////////////////////////
