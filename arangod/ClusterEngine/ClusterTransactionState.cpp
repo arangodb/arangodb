@@ -130,6 +130,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 Result ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  TRI_ASSERT(_preCommitCallbacks.empty());
+  TRI_ASSERT(_postCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
