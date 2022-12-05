@@ -275,7 +275,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   auto config = vocbase.getDatabaseConfiguration();
   config.enforceReplicationFactor = enforceReplicationFactor;
-  
+
   auto planCollection = CreateCollectionBody::fromCreateAPIV8(
       propSlice, name, collectionType, config);
 
