@@ -27,7 +27,8 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
-#include "Basics/application-exit.h"
+
+#include <Basics/application-exit.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -42,15 +43,18 @@ DocumentCore::DocumentCore(
       _shardHandler(handlersFactory->createShardHandler(_gid)) {
   auto collectionProperties =
       _agencyHandler->getCollectionPlan(_params.collectionId);
+  if (collectionProperties.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionProperties.result());
+  }
 
-  auto shardResult = _shardHandler->createLocalShard(_params.collectionId,
-                                                     collectionProperties);
+  auto shardResult = _shardHandler->createLocalShard(
+      _params.collectionId, collectionProperties.get());
   TRI_ASSERT(shardResult.ok())
       << "Shard creation failed for replicated state " << _gid;
   _shardId = shardResult.get();
 
   auto commResult = _agencyHandler->reportShardInCurrent(
-      _params.collectionId, _shardId, collectionProperties);
+      _params.collectionId, _shardId, collectionProperties.get());
   TRI_ASSERT(shardResult.ok())
       << "Failed to report shard in current for replicated state " << _gid;
 

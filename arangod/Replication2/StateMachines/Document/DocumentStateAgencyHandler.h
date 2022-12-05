@@ -39,7 +39,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateAgencyHandler {
   virtual ~IDocumentStateAgencyHandler() = default;
   virtual auto getCollectionPlan(std::string const& collectionId)
-      -> std::shared_ptr<velocypack::Builder> = 0;
+      -> ResultT<std::shared_ptr<velocypack::Builder>> = 0;
   virtual auto reportShardInCurrent(
       std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties) -> Result = 0;
@@ -51,7 +51,7 @@ class DocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
                                       ArangodServer& server,
                                       AgencyCache& agencyCache);
   auto getCollectionPlan(std::string const& collectionId)
-      -> std::shared_ptr<velocypack::Builder> override;
+      -> ResultT<std::shared_ptr<velocypack::Builder>> override;
   auto reportShardInCurrent(
       std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties)

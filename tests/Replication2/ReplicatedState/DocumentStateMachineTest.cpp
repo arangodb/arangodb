@@ -113,7 +113,7 @@ struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
 };
 
 struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
-  MOCK_METHOD(std::shared_ptr<velocypack::Builder>, getCollectionPlan,
+  MOCK_METHOD(ResultT<std::shared_ptr<velocypack::Builder>>, getCollectionPlan,
               (std::string const&), (override));
   MOCK_METHOD(Result, reportShardInCurrent,
               (std::string const&, std::string const&,

@@ -41,7 +41,7 @@ DocumentStateAgencyHandler::DocumentStateAgencyHandler(GlobalLogIdentifier gid,
     : _gid(std::move(gid)), _server(server), _agencyCache(agencyCache) {}
 
 auto DocumentStateAgencyHandler::getCollectionPlan(
-    std::string const& collectionId) -> std::shared_ptr<VPackBuilder> {
+    std::string const& collectionId) -> ResultT<std::shared_ptr<VPackBuilder>> {
   auto builder = std::make_shared<VPackBuilder>();
   auto path = cluster::paths::aliases::plan()
                   ->collections()
@@ -49,15 +49,16 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
                   ->collection(collectionId);
   _agencyCache.get(*builder, path);
 
-  // TODO
-  // This can happen if the collection was dropped in the meantime, but we
-  // already started creating it.
-  // It would make sense to handle this gracefully, perhaps abort the core
-  // construction.
-  ADB_PROD_ASSERT(!builder->slice().isEmptyObject())
-      << "Could not get collection from plan " << path->str();
+  if (builder->slice().isEmptyObject()) {
+    return ResultT<std::shared_ptr<VPackBuilder>>::error(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        fmt::format(
+            "Could not find collection {} in path {}! This can happen if the "
+            "collection was dropped before we could create the shard.",
+            collectionId, path->str()));
+  }
 
-  return builder;
+  return ResultT<std::shared_ptr<VPackBuilder>>::success(builder);
 }
 
 auto DocumentStateAgencyHandler::reportShardInCurrent(
