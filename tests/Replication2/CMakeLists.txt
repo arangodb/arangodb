@@ -118,3 +118,32 @@ target_link_libraries(arangodbtests_replication2
 
 add_test(NAME replication2
         COMMAND arangodbtests_replication2)
+
+
+add_library(arango_tests_replication2_pure OBJECT
+        ReplicatedLog/Components/CompactionManagerTest.cpp
+        ReplicatedLog/Components/StorageManagerTest.cpp
+        ReplicatedLog/Components/FollowerCommitManagerTest.cpp
+        ReplicatedLog/LogFollower/AppendEntriesTest.cpp
+        )
+
+target_sources(arango_tests_replication2_pure PRIVATE
+        Mocks/FakeStorageEngineMethods.cpp
+        Mocks/FakeAsyncExecutor.cpp
+        Mocks/LogEventRecorder.cpp)
+
+target_link_libraries(arango_tests_replication2_pure
+        arango_replication2_pure
+        gtest
+        gmock
+        immer
+        rocksdb_interface
+        )
+
+target_include_directories(arango_tests_replication2_pure PRIVATE "${PROJECT_SOURCE_DIR}/tests")
+
+add_executable(arangodbtests_replication2_pure
+        EXCLUDE_FROM_ALL main-replication2.cpp)
+
+target_link_libraries(arangodbtests_replication2_pure PRIVATE
+        arango_tests_replication2_pure arango_lightweight)

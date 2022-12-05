@@ -8,19 +8,13 @@ add_compile_warnings_flags()
 
 if (MSVC)
   set(LIB_ARANGO_MSVC
-    Basics/locks-win32.cpp
     Basics/memory-map-win32.cpp
-    Basics/terminal-utils-win32.cpp
-    Basics/threads-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
-    Basics/locks-posix.cpp
     Basics/memory-map-posix.cpp
-    Basics/terminal-utils-posix.cpp
-    Basics/threads-posix.cpp
     Endpoint/EndpointUnixDomain.cpp
     Endpoint/EndpointSrv.cpp
   )
@@ -44,6 +38,104 @@ add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
 
+set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
+
+add_library(arango_lightweight STATIC
+        Basics/Guarded.h
+        Basics/debugging.cpp
+        Containers/ImmerMemoryPolicy.h
+        Futures/Future.cpp
+        Random/RandomGenerator.cpp
+        Logger/Escaper.cpp
+        Logger/LogAppender.cpp
+        Logger/LogAppenderFile.cpp
+        Logger/LogAppenderSyslog.cpp
+        Logger/LogContext.cpp
+        Logger/LogLevel.cpp
+        Logger/LogThread.cpp
+        Logger/LogTopic.cpp
+        Logger/Logger.cpp
+        Logger/LoggerFeature.cpp
+        Logger/LoggerStream.cpp
+        Logger/LogTimeFormat.cpp
+        Basics/Thread.cpp
+        ApplicationFeatures/ApplicationServer.cpp
+        ApplicationFeatures/ApplicationFeature.cpp
+        ApplicationFeatures/ShellColorsFeature.cpp
+        Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
+        Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
+        Basics/Result.cpp
+        Basics/ArangoGlobalContext.cpp
+        Basics/ConditionVariable.cpp
+        Basics/ConditionLocker.cpp
+        Basics/Identifier.cpp
+        Basics/ErrorCode.cpp
+        Basics/Mutex.cpp
+        Basics/application-exit.cpp
+        Basics/UnshackledMutex.cpp
+        Basics/StringUtils.cpp
+        Basics/ReadWriteLock.cpp
+        Basics/files.cpp
+        Basics/process-utils.cpp
+        Basics/FileUtils.cpp
+        ProgramOptions/Option.cpp
+        ProgramOptions/Parameters.cpp
+        ProgramOptions/ProgramOptions.cpp
+        ProgramOptions/Section.cpp
+        ProgramOptions/Translator.cpp
+        ProgramOptions/IniFileParser.cpp
+        Basics/levenshtein.cpp
+        Basics/fpconv.cpp
+        Basics/StringBuffer.cpp
+        Basics/StringHeap.cpp
+        Basics/memory.cpp
+        Basics/tri-strings.cpp
+        Basics/error.cpp
+        Basics/FileResult.cpp
+        Basics/conversions.cpp
+        Basics/system-functions.cpp
+        Basics/CleanupFunctions.cpp
+        Basics/PageSize.cpp
+        Basics/signals.cpp
+        Basics/PhysicalMemory.cpp
+)
+
+if (MSVC)
+  target_sources(arango_lightweight PRIVATE
+          Basics/locks-win32.cpp
+          Basics/terminal-utils-win32.cpp
+          Basics/threads-win32.cpp
+          )
+else ()
+  target_sources(arango_lightweight PRIVATE
+          Basics/locks-posix.cpp
+          Basics/terminal-utils-posix.cpp
+          Basics/threads-posix.cpp
+          )
+endif ()
+
+target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# some auto-generated headers live here, like "Basics/build.h"
+target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango_lightweight PUBLIC
+        ${FROZEN_INCLUDE_DIR}
+        ${FUNCTION2_INCLUDE_DIR}
+        )
+# Rebuild generated error files so they are up-to-date when all
+# dependent stuff is built
+add_dependencies(arango_lightweight errorfiles)
+add_dependencies(arango_lightweight exitcodefiles)
+
+target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt arango_crashhandler
+        arango_assertions arango_static_strings)
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(arango_lightweight PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_lightweight PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 add_library(arango STATIC
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
@@ -51,118 +143,64 @@ add_library(arango STATIC
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
-  ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
-  ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/OptionsCheckFeature.cpp
-  ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
   Assertions/AssertionLogger.cpp
   Assertions/AssertionConditionalLogger.cpp
-  Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
-  Basics/ConditionLocker.cpp
-  Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
   Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
-  Basics/ErrorCode.cpp
   Basics/FeatureFlags.cpp
-  Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
-  Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
-  Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
-  Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/NumberOfCores.cpp
   Basics/NumberUtils.cpp
-  Basics/PageSize.cpp
-  Basics/PhysicalMemory.cpp
-  Basics/ReadWriteLock.cpp
+        Basics/Utf8Helper.cpp
   Basics/ReadWriteSpinLock.cpp
-  Basics/Result.cpp
-  Basics/FileResult.cpp
-  Basics/Identifier.cpp
+        Basics/VelocyPackHelper.cpp
   Basics/IndexIter.h
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SourceLocation.cpp
-  Basics/StringBuffer.cpp
-  Basics/StringHeap.cpp
-  Basics/StringUtils.cpp
-  Basics/Thread.cpp
-  Basics/UnshackledMutex.cpp
-  Basics/Utf8Helper.cpp
-  Basics/VelocyPackHelper.cpp
-  Basics/application-exit.cpp
-  Basics/CleanupFunctions.cpp
-  Basics/conversions.cpp
+        Basics/StringBufferAdvanced.cpp
   Basics/csv.cpp
+        Basics/files-advanced.cpp
   Basics/datetime.cpp
-  Basics/debugging.cpp
-  Basics/error.cpp
   Basics/fasthash.cpp
-  Basics/files.cpp
-  Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/levenshtein.cpp
-  Basics/memory.cpp
-  Basics/process-utils.cpp
-  Basics/signals.cpp
   Basics/socket-utils.cpp
-  Basics/system-functions.cpp
   Basics/terminal-utils.cpp
-  Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Futures/Future.cpp
-  Logger/Escaper.cpp
-  Logger/LogAppender.cpp
-  Logger/LogAppenderFile.cpp
-  Logger/LogAppenderSyslog.cpp
-  Logger/LogContext.cpp
-  Logger/LogLevel.cpp
-  Logger/LogThread.cpp
-  Logger/LogTopic.cpp
-  Logger/Logger.cpp
-  Logger/LoggerFeature.cpp
-  Logger/LoggerStream.cpp
-  Logger/LogTimeFormat.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
-  ProgramOptions/Option.cpp
-  ProgramOptions/Parameters.cpp
-  ProgramOptions/ProgramOptions.cpp
-  ProgramOptions/Section.cpp
-  ProgramOptions/Translator.cpp
-  ProgramOptions/IniFileParser.cpp
   Random/RandomFeature.cpp
-  Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
   Rest/CommonDefines.cpp
   Rest/GeneralRequest.cpp
@@ -195,7 +233,6 @@ target_link_libraries(arango PUBLIC
   boost_system
   boost_boost
   arango_static_strings
-  arango_crashhandler
   velocypack
   linenoise-ng
   date_interface
@@ -203,6 +240,7 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
+        arango_lightweight
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
@@ -223,9 +261,6 @@ target_link_libraries(arango PUBLIC zlib_interface)
 target_link_libraries(arango PUBLIC v8_interface)
 
 add_dependencies(arango v8_build)
-
-set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
-set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 target_include_directories(arango
   PUBLIC

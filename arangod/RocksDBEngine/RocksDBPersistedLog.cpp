@@ -36,6 +36,7 @@
 #include "RocksDBKey.h"
 #include "RocksDBPersistedLog.h"
 #include "RocksDBValue.h"
+#include "RocksDBKeyBounds.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

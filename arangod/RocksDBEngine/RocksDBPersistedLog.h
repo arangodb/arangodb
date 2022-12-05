@@ -27,7 +27,6 @@
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "RocksDBKeyBounds.h"
 
 #include <array>
 #include <variant>
