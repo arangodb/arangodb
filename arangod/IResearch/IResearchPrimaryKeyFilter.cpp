@@ -39,12 +39,6 @@ struct typeDefault {
   }
 };
 
-struct typeRecovery {
-  static constexpr std::string_view type_name() noexcept {
-    return "::typeRecovery";
-  }
-};
-
 struct typeExists {
   static constexpr std::string_view type_name() noexcept {
     return "::typeExists";
@@ -104,15 +98,11 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   // optimization, since during:
   // * regular runtime should have at most 1 identical live primary key in the
   // entire datastore
-  // * recovery should have at most 2 identical live primary keys in the entire
-  // datastore
-  if (irs::filter::type() == irs::type<typeDefault>::id()) {
-    // primary key duplicates should NOT happen in
-    // the same segment in regular runtime
-    TRI_ASSERT(!docs->next());
-    // already matched 1 primary key (should be at most 1 at runtime)
-    _pkSeen = true;
-  }
+  // primary key duplicates should NOT happen in
+  // the same segment in regular runtime
+  TRI_ASSERT(!docs->next());
+  // already matched 1 primary key (should be at most 1 at runtime)
+  _pkSeen = true;
 
   return irs::memory::to_managed<irs::doc_iterator, false>(
       const_cast<PrimaryKeyIterator*>(&_pkIterator));
@@ -133,8 +123,6 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
   // optimization, since during:
   // * regular runtime should have at most 1 identical primary key in the entire
   // datastore
-  // * recovery should have at most 2 identical primary keys in the entire
-  // datastore
   if (_pkSeen) {
     return irs::filter::prepared::empty();  // already processed
   }
@@ -152,8 +140,7 @@ irs::type_info PrimaryKeyFilter::type(ExistsTag) {
 }
 
 irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
-  return engine.inRecovery() ? irs::type<typeRecovery>::get()
-                             : irs::type<typeDefault>::get();
+  return irs::type<typeDefault>::get();
 }
 
 irs::filter::prepared::ptr PrimaryKeyFilterContainer::prepare(
