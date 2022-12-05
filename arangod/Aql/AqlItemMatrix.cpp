@@ -250,11 +250,10 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   size_t skipped = 0;
   while (stoppedOnShadowRow()) {
     auto shadow = popShadowRow();
-    auto rowDepth = shadow.getDepth();
-    if (rowDepth > depth) {
+    if (shadow.getDepth() > depth) {
       return {skipped, shadow};
     }
-    if (rowDepth == depth) {
+    if (shadow.getDepth() == depth) {
       skipped++;
     }
   }
