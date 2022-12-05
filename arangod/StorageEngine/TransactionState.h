@@ -179,6 +179,26 @@ class TransactionState {
   /// @brief whether or not a specific hint is set for the transaction
   bool hasHint(transaction::Hints::Hint hint) const { return _hints.has(hint); }
 
+  using CommitCallback = std::function<void(TransactionState&)>;
+  using PreCommitCallback = CommitCallback;
+  using PostCommitCallback = CommitCallback;
+  void addPreCommitCallback(PreCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _preCommitCallbacks.push_back(callback);
+  }
+  void addPostCommitCallback(PostCommitCallback const* callback) {
+    TRI_ASSERT(callback != nullptr);
+    TRI_ASSERT(*callback != nullptr);
+    _postCommitCallbacks.push_back(callback);
+  }
+  void applyPreCommitCallbacks() noexcept {
+    return applyCallbackImpl(_preCommitCallbacks);
+  }
+  void applyPostCommitCallbacks() noexcept {
+    return applyCallbackImpl(_postCommitCallbacks);
+  }
+
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 
@@ -282,7 +302,21 @@ class TransactionState {
   void resetTransactionId();
 #endif
 
+  std::vector<PreCommitCallback const*> _preCommitCallbacks;
+  std::vector<PostCommitCallback const*> _postCommitCallbacks;
+
  private:
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
+
   /// @brief check if current user can access this collection
   Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
                                    AccessMode::Type);

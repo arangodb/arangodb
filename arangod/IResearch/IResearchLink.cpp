@@ -112,28 +112,17 @@ struct LinkTrxState final : public TransactionState::Cookie {
   LinkLock _linkLock;  // prevent data-store deallocation (lock @ AsyncSelf)
   irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
+  bool _wasCommit{false};
 
   LinkTrxState(LinkLock linkLock, irs::index_writer& writer) noexcept
       : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~LinkTrxState() final {
-    if (_removals.empty()) {
-      return;  // nothing to do
+    if (!_wasCommit) {
+      _removals.clear();
+      _ctx.reset();
     }
-
-    try {
-      // hold references even after transaction
-      auto filter =
-          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
-      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
-    } catch (std::exception const& e) {
-      LOG_TOPIC("eb463", ERR, TOPIC)
-          << "caught exception while applying accumulated removals: "
-          << e.what();
-    } catch (...) {
-      LOG_TOPIC("14917", WARN, TOPIC)
-          << "caught exception while applying accumulated removals";
-    }
+    TRI_ASSERT(_removals.empty());
   }
 
   void remove(StorageEngine& engine, LocalDocumentId const& value) {
@@ -689,161 +678,143 @@ IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
       _createdInRecovery{false},
       _commitStageOne{true} {
   // initialize transaction callback
-  _trxCallback = [this](transaction::Methods& trx, transaction::Status status) {
-    auto* state = trx.state();
-    TRI_ASSERT(state != nullptr);
-
-    // check state of the top-most transaction only
-    if (!state) {
-      return;  // NOOP
+  _postCommitCallback = [this](TransactionState& state) {
+    auto prev = state.cookie(this, nullptr);  // get existing cookie
+    if (!prev) {
+      return;
     }
-
-    auto prev = state->cookie(this, nullptr);  // get existing cookie
-
-    if (prev) {
 // TODO FIXME find a better way to look up a ViewState
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
+    auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
 #else
-      auto& ctx = static_cast<LinkTrxState&>(*prev);
+    auto& ctx = static_cast<LinkTrxState&>(*prev);
 #endif
-
-      if (transaction::Status::COMMITTED != status) {  // rollback
-        ctx.reset();
-      } else {
-        uint64_t const lastOperationTick{state->lastOperationTick()};
+    uint64_t const lastOperationTick{state.lastOperationTick()};
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
-        TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
-          LOG_TOPIC("8ac71", DEBUG, TOPIC)
-              << lastOperationTick << " arrived to post commit in thread "
-              << std::this_thread::get_id();
-          bool inList{false};
-          while (true) {
-            std::unique_lock<std::mutex> sync(_t3Failureync);
-            if (_t3Candidates.size() >= 3) {
-              if (inList) {
-                // decide who we are  - 1/3 or 2?
-                bool lessTick{false}, moreTick{false};
-                for (auto t : _t3Candidates) {
-                  if (t > lastOperationTick) {
-                    moreTick = true;
-                  } else if (t < lastOperationTick) {
-                    lessTick = true;
-                  }
-                }
-                if (lessTick && moreTick) {
-                  sync.unlock();
-                  // we are number 2. We must wait for 1/3 to commit
-                  std::this_thread::sleep_for(10s);
-                  TRI_IF_FAILURE(
-                      "ArangoSearch::ThreeTransactionsMisorder::Number2Crash") {
-                    TRI_TerminateDebugging(
-                        "ArangoSearch::ThreeTransactionsMisorder Number2");
-                  }
-                }
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+      LOG_TOPIC("8ac71", DEBUG, TOPIC)
+          << lastOperationTick << " arrived to post commit in thread "
+          << std::this_thread::get_id();
+      bool inList{false};
+      while (true) {
+        std::unique_lock<std::mutex> sync(_t3Failureync);
+        if (_t3Candidates.size() >= 3) {
+          if (inList) {
+            // decide who we are  - 1/3 or 2?
+            bool lessTick{false}, moreTick{false};
+            for (auto t : _t3Candidates) {
+              if (t > lastOperationTick) {
+                moreTick = true;
+              } else if (t < lastOperationTick) {
+                lessTick = true;
               }
-              LOG_TOPIC("182ec", DEBUG, TOPIC)
-                  << lastOperationTick << " released";
-              break;
             }
-            if (!inList) {
-              LOG_TOPIC("d3db7", DEBUG, TOPIC)
-                  << lastOperationTick << " in wait list";
-              _t3Candidates.push_back(lastOperationTick);
-              inList = true;
-            } else {
-              // just arbitrary wait. We need all 3 candidates to gather
+            if (lessTick && moreTick) {
               sync.unlock();
-              std::this_thread::sleep_for(500ms);
+              // we are number 2. We must wait for 1/3 to commit
+              std::this_thread::sleep_for(10s);
+              TRI_IF_FAILURE(
+                  "ArangoSearch::ThreeTransactionsMisorder::Number2Crash") {
+                TRI_TerminateDebugging(
+                    "ArangoSearch::ThreeTransactionsMisorder Number2");
+              }
             }
           }
+          LOG_TOPIC("182ec", DEBUG, TOPIC) << lastOperationTick << " released";
+          break;
         }
-#endif
-        ctx._ctx.SetLastTick(lastOperationTick);
-
-        if (ADB_LIKELY(!_engine->inRecovery())) {
-          ctx._ctx.SetFirstTick(lastOperationTick -
-                                state->numPrimitiveOperations());
+        if (!inList) {
+          LOG_TOPIC("d3db7", DEBUG, TOPIC)
+              << lastOperationTick << " in wait list";
+          _t3Candidates.push_back(lastOperationTick);
+          inList = true;
+        } else {
+          // just arbitrary wait. We need all 3 candidates to gather
+          sync.unlock();
+          std::this_thread::sleep_for(500ms);
         }
       }
     }
-
-    prev.reset();
+#endif
+    if (!ctx._removals.empty()) {
+      auto filter =
+          std::make_unique<PrimaryKeyFilterContainer>(std::move(ctx._removals));
+      ctx._ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
+    }
+    ctx._ctx.SetLastTick(lastOperationTick);
+    if (ADB_LIKELY(!_engine->inRecovery())) {
+      ctx._ctx.SetFirstTick(lastOperationTick - state.numPrimitiveOperations());
+    }
+    TRI_ASSERT(!ctx._wasCommit);
+    ctx._wasCommit = true;
   };
 
-  _trxPreCommit = [this](transaction::Methods& trx) {
-    auto* state = trx.state();
-    TRI_ASSERT(state != nullptr);
+  _preCommitCallback = [this](TransactionState& state) {
+    auto prev = state.cookie(this);  // get existing cookie
 
-    // check state of the top-most transaction only
-    if (!state) {
-      return;  // NOOP
+    if (!prev) {
+      return;
     }
-
-    auto prev = state->cookie(this);  // get existing cookie
-
-    if (prev) {
 // TODO FIXME find a better way to look up a ViewState
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
+    auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
 #else
-      auto& ctx = static_cast<LinkTrxState&>(*prev);
+    auto& ctx = static_cast<LinkTrxState&>(*prev);
 #endif
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
-      TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
-        size_t myNumber{0};
-        while (true) {
-          std::unique_lock<std::mutex> sync(_t3Failureync);
-          if (_t3PreCommit < 3) {
-            if (!myNumber) {
-              myNumber = ++_t3PreCommit;
-              LOG_TOPIC("76f6a", DEBUG, TOPIC)
-                  << myNumber << " arrived to preCommit";
-            } else {
+    TRI_IF_FAILURE("ArangoSearch::ThreeTransactionsMisorder") {
+      size_t myNumber{0};
+      while (true) {
+        std::unique_lock<std::mutex> sync(_t3Failureync);
+        if (_t3PreCommit < 3) {
+          if (!myNumber) {
+            myNumber = ++_t3PreCommit;
+            LOG_TOPIC("76f6a", DEBUG, TOPIC)
+                << myNumber << " arrived to preCommit";
+          } else {
+            sync.unlock();
+            std::this_thread::sleep_for(100ms);
+          }
+        } else {
+          if (myNumber == 2) {
+            // Numer 2 should go tho another flush context
+            // so wait for commit to start and
+            // then give writer some time to switch flush context
+            if (!_t3CommitSignal) {
               sync.unlock();
               std::this_thread::sleep_for(100ms);
+              continue;
             }
-          } else {
-            if (myNumber == 2) {
-              // Numer 2 should go tho another flush context
-              // so wait for commit to start and
-              // then give writer some time to switch flush context
-              if (!_t3CommitSignal) {
-                sync.unlock();
-                std::this_thread::sleep_for(100ms);
-                continue;
-              }
-              std::this_thread::sleep_for(5s);
-            }
-            ctx._ctx.AddToFlush();
-            LOG_TOPIC("cdc04", DEBUG, TOPIC) << myNumber << " added to flush";
-            ++_t3NumFlushRegistered;
-            break;
+            std::this_thread::sleep_for(5s);
           }
-        }
-        // this transaction is flushed. Need to wait for all to arrive
-        while (true) {
-          std::unique_lock<std::mutex> sync(_t3Failureync);
-          if (_t3NumFlushRegistered == 3) {
-            // all are fluhing. Now release in order 1 2 3
-            sync.unlock();
-            std::this_thread::sleep_for(std::chrono::seconds(myNumber));
-            LOG_TOPIC("0a90a", DEBUG, TOPIC) << myNumber << " released  thread "
-                                             << std::this_thread::get_id();
-            break;
-          } else {
-            sync.unlock();
-            std::this_thread::sleep_for(50ms);
-          }
+          ctx._ctx.AddToFlush();
+          LOG_TOPIC("cdc04", DEBUG, TOPIC) << myNumber << " added to flush";
+          ++_t3NumFlushRegistered;
+          break;
         }
       }
-      else {
-        ctx._ctx.AddToFlush();
+      // this transaction is flushed. Need to wait for all to arrive
+      while (true) {
+        std::unique_lock<std::mutex> sync(_t3Failureync);
+        if (_t3NumFlushRegistered == 3) {
+          // all are fluhing. Now release in order 1 2 3
+          sync.unlock();
+          std::this_thread::sleep_for(std::chrono::seconds(myNumber));
+          LOG_TOPIC("0a90a", DEBUG, TOPIC)
+              << myNumber << " released  thread " << std::this_thread::get_id();
+          break;
+        } else {
+          sync.unlock();
+          std::this_thread::sleep_for(50ms);
+        }
       }
-#else
-      ctx._ctx.AddToFlush();
-#endif
     }
+    else {
+      ctx._ctx.AddToFlush();
+    }
+#else
+    ctx._ctx.AddToFlush();
+#endif
   };
 }
 
@@ -906,10 +877,10 @@ void IResearchLink::afterTruncate(TRI_voc_tick_t tick,
 #endif
 
     if (ctx) {
-      ctx->reset();  // throw away all pending operations as clear will
-                     // overwrite them all
-      state.cookie(key, nullptr);  // force active segment release to allow
-                                   // commit go and avoid deadlock in clear
+      // throw away all pending operations as clear will overwrite them all
+      // force active segment release to allow commit go and avoid deadlock in
+      // clear
+      state.cookie(key, nullptr);
     }
   }
 
@@ -2131,8 +2102,7 @@ Result IResearchLink::insert(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback) ||
-        !trx.addPreCommitCallback(&_trxPreCommit)) {
+    if (!ctx) {
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for insert into "
               "arangosearch link '" +
@@ -2140,6 +2110,8 @@ Result IResearchLink::insert(transaction::Methods& trx,
                   std::to_string(state.id().id()) + "', revision '" +
                   std::to_string(documentId.id()) + "'"};
     }
+    state.addPreCommitCallback(&_preCommitCallback);
+    state.addPostCommitCallback(&_postCommitCallback);
   }
 
   return insertImpl(ctx->_ctx);
@@ -2302,8 +2274,7 @@ Result IResearchLink::remove(transaction::Methods& trx,
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
-    if (!ctx || !trx.addStatusChangeCallback(&_trxCallback) ||
-        !trx.addPreCommitCallback(&_trxPreCommit)) {
+    if (!ctx) {
       return {TRI_ERROR_INTERNAL,
               "failed to store state into a TransactionState for remove from "
               "arangosearch link '" +
@@ -2311,6 +2282,8 @@ Result IResearchLink::remove(transaction::Methods& trx,
                   std::to_string(state.id().id()) + "', revision '" +
                   std::to_string(documentId.id()) + "'"};
     }
+    state.addPreCommitCallback(&_preCommitCallback);
+    state.addPostCommitCallback(&_postCommitCallback);
   }
 
   // ...........................................................................

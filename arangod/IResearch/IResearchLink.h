@@ -37,6 +37,7 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -478,10 +479,9 @@ class IResearchLink {
   IResearchLinkMeta const _meta;  // how this collection should be indexed
                                   // (read-only, set via init())
   std::mutex _commitMutex;        // prevents data store sequential commits
-  std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;  // for insert(...)/remove(...)
-  std::function<void(transaction::Methods& trx)>
-      _trxPreCommit;            // for insert(...)/remove(...)
+  // for insert(...)/remove(...)
+  TransactionState::PreCommitCallback _preCommitCallback;
+  TransactionState::PostCommitCallback _postCommitCallback;
   std::string const _viewGuid;  // the identifier of the desired view
                                 // (read-only, set via init())
   bool _createdInRecovery;      // link was created based on recovery marker

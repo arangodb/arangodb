@@ -103,6 +103,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   virtual void createTransaction();
 
   arangodb::Result doCommit();
+  Result doCommitImpl();
 
   rocksdb::TransactionDB* _db{nullptr};
 
