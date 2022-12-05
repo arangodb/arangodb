@@ -13,3 +13,6 @@
 [submodule "3rdParty/gtest"]
 	path = 3rdParty/gtest
 	url = https://github.com/arangodb/googletest.git
+[submodule "3rdParty/abseil-cpp"]
+	path = 3rdParty/abseil-cpp
+	url = https://github.com/arangodb/abseil-cpp.git

@@ -16,7 +16,7 @@
 ### Abseil - C++ Common Libraries
 
 * Name: abseil-cpp
-* Version: e6f568445f406318b970a56ae377e7ab8885cb50
+* Version: 13708db87b1ab69f4f2b3214f3f51e986546f282
 * Date: 2022-11-22
 * Project Home: https://abseil.io
 * License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE

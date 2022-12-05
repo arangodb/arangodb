@@ -35,6 +35,7 @@
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"

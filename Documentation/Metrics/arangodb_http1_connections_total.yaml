@@ -1,5 +1,5 @@
 name: arangodb_http1_connections_total
-introducedIn: "3.9.6"
+introducedIn: "3.10.2"
 help: |
   Total number of HTTP/1.1 connections accepted.
 unit: number

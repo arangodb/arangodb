@@ -136,7 +136,6 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Futures/Future.cpp
   Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
@@ -194,6 +193,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_futures
   arango_static_strings
   arango_crashhandler
   velocypack
@@ -214,7 +214,6 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
-target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/function2)
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
@@ -255,6 +254,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_subdirectory(Futures)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
