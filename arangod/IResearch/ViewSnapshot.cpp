@@ -54,7 +54,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   [[nodiscard]] irs::sub_reader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return *(_segments[i].second);
+    return *(std::get<1>(_segments[i]));
   }
 
   [[nodiscard]] std::size_t size() const noexcept final {
@@ -63,7 +63,13 @@ class ViewSnapshotCookie final : public ViewSnapshot,
 
   [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
+    return std::get<0>(_segments[i]);
+  }
+
+  [[nodiscard]] StorageEngine::StorageSnapshot const& snapshot(
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return std::get<2>(_segments[i]);
   }
 
   // prevent data-store deallocation (lock @ AsyncSelf)
@@ -105,8 +111,9 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   for (size_t i = 0; i != _links.size(); ++i) {
     auto const cid = _links[i]->collection().id();
     auto const& reader = _readers[i]->_reader;
+    auto const& snapshot = _readers[i]->_snapshot;
     for (auto const& segment : reader) {
-      _segments.emplace_back(cid, &segment);
+      _segments.emplace_back(cid, &segment, *snapshot.get());
     }
     _live_docs_count += reader.live_docs_count();
     _docs_count += reader.docs_count();
@@ -127,7 +134,7 @@ ViewSnapshotView::ViewSnapshotView(
     auto const& segment = rhs[i];
     _docs_count += segment.docs_count();
     _live_docs_count += segment.live_docs_count();
-    _segments.emplace_back(cid, &segment);
+    _segments.emplace_back(cid, &segment, rhs.snapshot(i));
   }
 }
 

@@ -395,7 +395,7 @@ ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
     const IndexReadBufferEntry bufferEntry) const noexcept {
   assertSizeCoherence();
   TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
-  return _keyBuffer[bufferEntry._keyIdx];
+  return _keyBuffer[bufferEntry._keyIdx].first;
 }
 
 template<typename ValueType, bool copyStored>
@@ -407,8 +407,9 @@ ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
 
 template<typename ValueType, bool copySorted>
 template<typename... Args>
-void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
-  _keyBuffer.emplace_back(std::forward<Args>(args)...);
+void IndexReadBuffer<ValueType, copySorted>::pushValue(
+    StorageEngine::StorageSnapshot const& snapshot, Args&&... args) {
+  _keyBuffer.emplace_back(ValueType{std::forward<Args>(args)...}, &snapshot);
 }
 
 template<typename ValueType, bool copySorted>
@@ -424,7 +425,8 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    ValueType&& value, float_t const* scores, size_t count) {
+    StorageEngine::StorageSnapshot const& snapshot, ValueType&& value,
+    float_t const* scores, size_t count) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
                                     _scoreBuffer);
   TRI_ASSERT(_maxSize);
@@ -434,7 +436,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
-    _keyBuffer[_rows.back()] = std::move(value);
+    _keyBuffer[_rows.back()] = BufferValueType{std::move(value), &snapshot};
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
     auto bufferIt = _scoreBuffer.begin() + base;
@@ -449,7 +451,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
   } else {
-    _keyBuffer.emplace_back(std::move(value));
+    _keyBuffer.emplace_back(std::move(value), &snapshot);
     size_t i = 0;
     for (; i < count; ++i) {
       _scoreBuffer.emplace_back(scores[i]);
@@ -884,10 +886,12 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
   }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(
-            !collection.getPhysical()
-                 ->read(&_trx, documentId, ctx.callback, ReadOwnWrites::no)
-                 .ok())) {
+    if (ADB_UNLIKELY(!collection.getPhysical()
+                          ->readFromSnapshot(&_trx, documentId, ctx.callback,
+                                             ReadOwnWrites::no,
+                                             this->_indexReadBuffer.getSnapshot(
+                                                 bufferEntry.getKeyIdx()))
+                          .ok())) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType &
@@ -1215,6 +1219,7 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
     (*scr)(scores.data());
 
     this->_indexReadBuffer.pushSortedValue(
+        this->_reader->snapshot(readerOffset),
         typename decltype(this->_indexReadBuffer)::KeyValueType(doc->value,
                                                                 readerOffset),
         scores.data(), numScores);
@@ -1406,7 +1411,8 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     // The CID must stay the same for all documents in the buffer
     TRI_ASSERT(this->_collection->id() == this->_reader->cid(_readerOffset));
 
-    this->_indexReadBuffer.pushValue(documentId);
+    this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
+                                     documentId);
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
@@ -1844,7 +1850,9 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       continue;
     }
 
-    this->_indexReadBuffer.pushValue(documentId, segment.collection);
+    this->_indexReadBuffer.pushValue(
+        this->_reader->snapshot(segment.segmentIndex), documentId,
+        segment.collection);
 
     // in the ordered case we have to write scores as well as a document
     if constexpr (ExecutionTraits::Ordered) {

@@ -73,6 +73,12 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
                          RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const&) override;
+
+  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
+                                  rocksdb::Slice const&,
+                                  rocksdb::PinnableSlice*, ReadOwnWrites,
+                                  rocksdb::Snapshot const*) override;
+
   void PutLogData(rocksdb::Slice const&) override;
 
   void SetSavePoint() override {}

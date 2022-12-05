@@ -763,7 +763,8 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
   return {std::move(linkLock), std::move(reader)};
 }
 
-IResearchDataStore::DataSnapshotPtr IResearchDataStore::reader(LinkLock const& linkLock) {
+IResearchDataStore::DataSnapshotPtr IResearchDataStore::reader(
+    LinkLock const& linkLock) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
   TRI_ASSERT(linkLock->_dataStore._snapshot);
@@ -959,10 +960,10 @@ Result IResearchDataStore::commitUnsafeImpl(
         }};
     auto engineSnapshot = _engine->currentSnapshot();
     if (ADB_UNLIKELY(!engineSnapshot)) {
-      return {
-          TRI_ERROR_INTERNAL,
-          absl::StrCat("Failed to get engine snapshot while committing ArangoSearch index '",
-                       id().id(), "'")};
+      return {TRI_ERROR_INTERNAL,
+              absl::StrCat("Failed to get engine snapshot while committing "
+                           "ArangoSearch index '",
+                           id().id(), "'")};
     }
     auto const lastTickBeforeCommitOne = engineSnapshot->tick();
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
@@ -989,6 +990,10 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
+      auto reader = _dataStore._snapshot->_reader;
+      std::atomic_store(&_dataStore._snapshot,
+                        std::make_shared<DataSnapshot>(
+                            std::move(reader), std::move(engineSnapshot)));
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1053,12 +1058,11 @@ Result IResearchDataStore::commitUnsafeImpl(
       return {};
     }
 
-
-
     // update reader
     TRI_ASSERT(_dataStore._snapshot->_reader != reader);
     std::atomic_store(&_dataStore._snapshot,
-                    std::make_shared<DataSnapshot>(std::move(reader), std::move(engineSnapshot)));
+                      std::make_shared<DataSnapshot>(
+                          std::move(reader), std::move(engineSnapshot)));
 
     // update stats
     updateStatsUnsafe();
@@ -1335,9 +1339,9 @@ Result IResearchDataStore::initDataStore(
           << _dataStore._snapshot->_reader->docs_count()
           << "', live docs count '"
           << _dataStore._snapshot->_reader->live_docs_count()
-          << "', recovery tick low '"
-          << _dataStore._recoveryTickLow << "' and recovery tick high '"
-          << _dataStore._recoveryTickHigh << "'";
+          << "', recovery tick low '" << _dataStore._recoveryTickLow
+          << "' and recovery tick high '" << _dataStore._recoveryTickHigh
+          << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }
@@ -1441,8 +1445,10 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._snapshot) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._snapshot = std::make_shared<DataSnapshot>( irs::directory_reader::open(*(_dataStore._directory),
-                                                     nullptr, readerOptions), _engine->currentSnapshot());
+    _dataStore._snapshot = std::make_shared<DataSnapshot>(
+        irs::directory_reader::open(*(_dataStore._directory), nullptr,
+                                    readerOptions),
+        _engine->currentSnapshot());
   }
 
   if (!_dataStore._snapshot) {
@@ -1930,9 +1936,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 
     // get new reader
     auto oldSnapshot = _dataStore._snapshot->_snapshot;
-    auto reader =
-        std::make_shared<DataSnapshot>(_dataStore._snapshot->_reader.reopen(),
-                                       std::move(oldSnapshot));
+    auto reader = std::make_shared<DataSnapshot>(
+        _dataStore._snapshot->_reader.reopen(), std::move(oldSnapshot));
 
     if (!reader) {
       // nothing more to do
@@ -1944,7 +1949,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     }
 
     // update reader
-    std::atomic_store(&_dataStore._snapshot,  reader);
+    std::atomic_store(&_dataStore._snapshot, reader);
 
     updateStatsUnsafe();
 

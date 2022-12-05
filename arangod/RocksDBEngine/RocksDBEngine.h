@@ -461,15 +461,17 @@ class RocksDBEngine final : public StorageEngine {
     RocksDBSnapshot(rocksdb::DB* db) : _snapshot(db) {}
 
     TRI_voc_tick_t tick() const noexcept {
-      return static_cast<TRI_voc_tick_t>(_snapshot.snapshot()
-          ->GetSequenceNumber());
+      return static_cast<TRI_voc_tick_t>(
+          _snapshot.snapshot()->GetSequenceNumber());
     }
+
+    auto getSnapshot() const { return _snapshot.snapshot(); }
+
    private:
     mutable rocksdb::ManagedSnapshot _snapshot;
   };
-  
-  std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
+  std::shared_ptr<StorageSnapshot> currentSnapshot() override;
 
  private:
   void shutdownRocksDBInstance() noexcept;

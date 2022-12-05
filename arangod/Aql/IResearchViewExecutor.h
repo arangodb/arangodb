@@ -255,7 +255,13 @@ class IndexReadBuffer {
 
   ValueType& getValue(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
-    return _keyBuffer[idx];
+    return _keyBuffer[idx].first;
+  }
+
+  auto const& getSnapshot(size_t idx) noexcept {
+    TRI_ASSERT(_keyBuffer.size() > idx);
+    TRI_ASSERT(_keyBuffer[idx].second);
+    return *_keyBuffer[idx].second;
   }
 
   iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
@@ -272,13 +278,15 @@ class IndexReadBuffer {
   irs::score_t* pushNoneScores(size_t count);
 
   template<typename... Args>
-  void pushValue(Args&&... args);
+  void pushValue(StorageEngine::StorageSnapshot const& snapshot,
+                 Args&&... args);
 
   void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
-  void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
+  void pushSortedValue(StorageEngine::StorageSnapshot const& snapshot,
+                       ValueType&& value, float_t const* scores, size_t count);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -373,7 +381,9 @@ class IndexReadBuffer {
   //   _keyBuffer[i / getNumScoreRegisters()]
   // .
 
-  std::vector<ValueType> _keyBuffer;
+  using BufferValueType =
+      std::pair<ValueType, StorageEngine::StorageSnapshot const*>;
+  std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
   std::vector<float_t> _scoreBuffer;
