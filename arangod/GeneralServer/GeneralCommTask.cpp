@@ -61,7 +61,11 @@ void GeneralCommTask<T>::stop() {
 template<SocketType T>
 void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
   _stopped.store(true, std::memory_order_release);
-  if (ec && ec != asio_ns::error::misc_errors::eof) {
+  if (ec && (ec != asio_ns::error::misc_errors::eof &&
+             ec != asio_ns::ssl::error::stream_truncated)) {
+    // stream_truncated will occur when a peer closes an SSL/TLS connection
+    // without performing a proper connection shutdown. unfortunately that
+    // can happen at any time, and we have no control over it.
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
         << "asio IO error: '" << ec.message() << "'";
   }
