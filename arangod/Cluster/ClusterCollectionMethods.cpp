@@ -166,7 +166,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           }
 
         } catch (std::exception const& ex) {
-          LOG_TOPIC("57486", ERR, Logger::CLUSTER)
+          // NOTE Increased LOGID by one, duplicate from below
+          LOG_TOPIC("57487", ERR, Logger::CLUSTER)
               << "Failed to delete collection during rollback: " << ex.what();
         } catch (...) {
           // Just we do not crash, no one knowingly throws non exceptions.
@@ -226,7 +227,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                 }
-                LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
+                // NOTE: LOGID was 98bca before, deplicate from below
+                LOG_TOPIC("98bc9", DEBUG, Logger::CLUSTER)
                     << "createCollectionCoordinator, Plan changed, waiting for "
                        "success...";
 
@@ -285,7 +287,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 }
 
                 // Collection Creation worked.
-                LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
+                // NOTE: LOGID was 98bcb before, duplicate from below
+                LOG_TOPIC("98bcd", DEBUG, Logger::CLUSTER)
                     << "createCollectionCoordinator, collections ok, removing "
                        "isBuilding...";
 
@@ -305,7 +308,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 auto removeBuildingResult =
                     ac.sendTransactionWithFailover(removeIsBuilding);
 
-                LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
+                // NOTE: LOGID was 98bcc before, duplicate from below
+                LOG_TOPIC("98bce", DEBUG, Logger::CLUSTER)
                     << "createCollectionCoordinator, isBuilding removed, "
                        "waiting "
                        "for new "
@@ -334,7 +338,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                     if (r.fail()) {
                       return r;
                     }
-                    LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
+                    // NOTE: LogID was 98764 before, duplicate from below
+                    LOG_TOPIC("98766", DEBUG, Logger::CLUSTER)
                         << "Finished createCollectionsCoordinator for "
                         << collectionNames.size() << " collections in database "
                         << databaseName
@@ -346,7 +351,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                   return TRI_ERROR_INTERNAL;
 
                 } else {
-                  LOG_TOPIC("98675", WARN, Logger::CLUSTER)
+                  // NOTE: Increased LOGID by one, deplicate from below
+                  LOG_TOPIC("98676", WARN, Logger::CLUSTER)
                       << "Failed createCollectionsCoordinator for "
                       << collectionNames.size() << " collections in database "
                       << databaseName
