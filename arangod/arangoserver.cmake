@@ -201,6 +201,7 @@ target_link_libraries(arangoserver
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
+  arango_futures
   arango_geo
   arango_graph
   arango_indexes
