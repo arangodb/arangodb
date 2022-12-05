@@ -1601,7 +1601,7 @@ void RocksDBOptionFeature::start() {
       << _prepopulateBlockCache
       << ", reserve_table_builder_memory: " << std::boolalpha
       << _reserveTableBuilderMemory
-      << ", reserve_reader_builder_memory: " << std::boolalpha
+      << ", reserve_table reader_memory: " << std::boolalpha
       << _reserveTableReaderMemory
       << ", enable_pipelined_write: " << std::boolalpha << _enablePipelinedWrite
       << ", optimize_filters_for_hits: " << std::boolalpha
