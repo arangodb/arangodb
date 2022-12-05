@@ -65,6 +65,7 @@ DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
+      _databaseFeature(server.getFeature<DatabaseFeature>()),
       _maxCapacity(128 * 1024),
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
@@ -194,28 +195,22 @@ void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(
   scheduleIndexRefillTasks();
 }
 
-void RocksDBIndexCacheRefillFeature::stopThread() {
-  if (_refillThread == nullptr) {
-    return;
+// wait until the background thread has applied all operations
+void RocksDBIndexCacheRefillFeature::waitForCatchup() {
+  if (_refillThread != nullptr) {
+    _refillThread->waitForCatchup();
   }
-
-  _refillThread->beginShutdown();
-
-  // wait until background thread stops
-  while (_refillThread->isRunning()) {
-    std::this_thread::yield();
-  }
-  _refillThread.reset();
 }
+
+void RocksDBIndexCacheRefillFeature::stopThread() { _refillThread.reset(); }
 
 void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
-  auto& df = server().getFeature<DatabaseFeature>();
   // get names of all databases
   for (auto const& database : methods::Databases::list(server(), "")) {
     try {
-      DatabaseGuard guard(df, database);
+      DatabaseGuard guard(_databaseFeature, database);
 
       methods::Collections::enumerate(
           &guard.database(),
@@ -249,8 +244,7 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   // index refills concurrently, in order to not overwhelm the instance.
   while (!_indexFillTasks.empty() &&
          _currentlyRunningIndexFillTasks < _maxConcurrentIndexFillTasks) {
-    // intentional copy
-    auto task = _indexFillTasks.back();
+    auto task = std::move(_indexFillTasks.back());
     _indexFillTasks.pop_back();
 
     ++_currentlyRunningIndexFillTasks;

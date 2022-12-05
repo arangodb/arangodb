@@ -2947,6 +2947,12 @@ void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
   f.scheduleFullIndexRefill(database, collection, iid);
 }
 
+void RocksDBEngine::syncIndexCaches() {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.waitForCatchup();
+}
+
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");

@@ -25,8 +25,6 @@
 
 #pragma once
 
-#include <rocksdb/comparator.h>
-#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
@@ -45,6 +43,10 @@
 #include "VocBase/vocbase.h"
 
 #include <span>
+
+namespace rocksdb {
+class Slice;
+}
 
 namespace arangodb {
 namespace aql {
@@ -164,8 +166,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
@@ -254,6 +256,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         containers::SmallVector<VPackSlice, 4>& sliceStack);
 
   void warmupInternal(transaction::Methods* trx);
+
+  void handleCacheInvalidation(transaction::Methods& trx,
+                               OperationOptions const& options,
+                               rocksdb::Slice key);
 
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;

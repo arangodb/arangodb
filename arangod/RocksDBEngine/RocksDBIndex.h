@@ -125,7 +125,8 @@ class RocksDBIndex : public Index {
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice doc) = 0;
+                        arangodb::velocypack::Slice doc,
+                        OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,

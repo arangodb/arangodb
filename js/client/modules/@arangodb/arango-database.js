@@ -859,6 +859,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   url = appendSyncParameter(url, waitForSync);
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {

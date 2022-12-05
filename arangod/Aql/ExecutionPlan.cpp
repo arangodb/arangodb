@@ -979,7 +979,9 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
         } else if (name == StaticStrings::KeepNullString) {
           options.keepNull = value->isTrue();
         } else if (name == StaticStrings::RefillIndexCachesString) {
-          options.refillIndexCaches = value->isTrue();
+          options.refillIndexCaches = value->isTrue()
+                                          ? RefillIndexCaches::kRefill
+                                          : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
         } else if (name == StaticStrings::Overwrite) {

@@ -35,6 +35,7 @@
 #include <vector>
 
 namespace arangodb {
+class DatabaseFeature;
 class LogicalCollection;
 class RocksDBIndexCacheRefillThread;
 
@@ -61,6 +62,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   void scheduleFullIndexRefill(std::string const& database,
                                std::string const& collection, IndexId iid);
 
+  // wait until the background thread has applied all operations
+  void waitForCatchup();
+
   // maximum capacity for tracking per-key refills
   size_t maxCapacity() const noexcept;
 
@@ -86,6 +90,8 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // actually fill the specified index cache
   Result warmupIndex(std::string const& database, std::string const& collection,
                      IndexId iid);
+
+  DatabaseFeature& _databaseFeature;
 
   // index refill thread used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)

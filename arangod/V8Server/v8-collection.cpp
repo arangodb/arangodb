@@ -187,10 +187,15 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
                                          .FromMaybe(v8::Local<v8::Value>()));
   }
   TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+  // this attribute can have 3 values: default, true and false. only
+  // pick it up when it is set to true or false
   if (TRI_HasProperty(context, isolate, optionsObject, RefillIndexCachesKey)) {
-    options.refillIndexCaches = TRI_ObjectToBoolean(
-        isolate, optionsObject->Get(context, RefillIndexCachesKey)
-                     .FromMaybe(v8::Local<v8::Value>()));
+    options.refillIndexCaches =
+        (TRI_ObjectToBoolean(isolate,
+                             optionsObject->Get(context, RefillIndexCachesKey)
+                                 .FromMaybe(v8::Local<v8::Value>())))
+            ? RefillIndexCaches::kRefill
+            : RefillIndexCaches::kDontRefill;
   }
   TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
   if (TRI_HasProperty(context, isolate, optionsObject,
@@ -1875,11 +1880,16 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           options.isOverwriteModeUpdateReplace();
     }
     TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+    // this attribute can have 3 values: default, true and false. only
+    // pick it up when it is set to true or false
     if (TRI_HasProperty(context, isolate, optionsObject,
                         RefillIndexCachesKey)) {
-      options.refillIndexCaches = TRI_ObjectToBoolean(
-          isolate, optionsObject->Get(context, RefillIndexCachesKey)
-                       .FromMaybe(v8::Local<v8::Value>()));
+      options.refillIndexCaches =
+          (TRI_ObjectToBoolean(isolate,
+                               optionsObject->Get(context, RefillIndexCachesKey)
+                                   .FromMaybe(v8::Local<v8::Value>())))
+              ? RefillIndexCaches::kRefill
+              : RefillIndexCaches::kDontRefill;
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (TRI_HasProperty(context, isolate, optionsObject, IsRestoreKey)) {

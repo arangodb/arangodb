@@ -45,6 +45,19 @@ std::string_view indexOpModeString(IndexOperationMode mode) noexcept {
   TRI_ASSERT(false);
   return "invalid";
 }
+
+std::string_view refillIndexCachesString(RefillIndexCaches value) noexcept {
+  switch (value) {
+    case RefillIndexCaches::kDefault:
+      return "default";
+    case RefillIndexCaches::kRefill:
+      return "refill";
+    case RefillIndexCaches::kDontRefill:
+      return "dont-refill";
+  }
+  TRI_ASSERT(false);
+  return "dont-refill";
+}
 }  // namespace
 #endif
 
@@ -74,7 +87,7 @@ std::ostream& arangodb::operator<<(std::ostream& os,
      << ", truncateCompact: " << ops.truncateCompact
      << ", documentCallFromAql: " << ops.documentCallFromAql
      << ", canDisableIndexing: " << ops.canDisableIndexing
-     << ", refillIndexCaches: " << ops.refillIndexCaches
+     << ", refillIndexCaches: " << ::refillIndexCachesString(ops.refillIndexCaches)
      << ", allowDirtyReads: " << ops.allowDirtyReads
      << " }" << std::endl;
   // clang-format on
