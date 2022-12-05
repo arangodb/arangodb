@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 
 #include <condition_variable>
+#include <exception>
 #include <mutex>
 
 using namespace arangodb::futures;

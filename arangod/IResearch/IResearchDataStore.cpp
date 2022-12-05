@@ -32,6 +32,7 @@
 #include "Basics/DownCast.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Guard.h"
