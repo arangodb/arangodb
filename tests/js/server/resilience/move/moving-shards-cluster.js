@@ -183,7 +183,7 @@ function delaySupervisionFailoverActions(value) {
     arangod => arangod.role === "agent").map(
     arangod => arangod.url);
   for (let a of agents) {
-    res = request({url: a + "/_api/agency/config",
+    const res = request({url: a + "/_api/agency/config",
                    method: "PUT",
                    body: JSON.stringify(
                      {delayAddFollower: value, delayFailedFollower: value})});
