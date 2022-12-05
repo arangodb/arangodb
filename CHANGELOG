@@ -78,6 +78,12 @@ devel
     In cluster deployments the counter will be increased once per eligible 
     index per shard. It will always report a value of zero on coordinators.
 
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_statistics_bytes_received`
+    `arangodb_client_user_connection_statistics_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
 * BTS-128: Fixed http request not working when content-type is velocypack.
 
 * Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery

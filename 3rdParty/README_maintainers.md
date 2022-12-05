@@ -6,44 +6,17 @@
 **Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
 
 ---
-## abseil
+## abseil-cpp
 
-Just update code and directory name (commit hash) and apply patch
+13708db87b1ab69f4f2b3214f3f51e986546f282
+abseil-cpp is pulled in as a submodule - the exact commit can be found there.
 
-```
-diff --git a/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h b/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-index f2fa08977fd..8e97fdb0ca4 100644
---- a/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-+++ b/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-@@ -153,7 +153,7 @@ class CommandLineFlag {
-   bool ParseFrom(absl::string_view value, std::string* error);
- 
-  protected:
--  ~CommandLineFlag() = default;
-+  virtual ~CommandLineFlag() = default;
- 
-  private:
-   friend class flags_internal::PrivateHandleAccessor;
-diff --git a/3rdParty/abseil-cpp/master/absl/strings/numbers.h b/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-index 86c84ed39b7..131d5f1b03b 100644
---- a/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-+++ b/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-@@ -23,12 +23,10 @@
- #ifndef ABSL_STRINGS_NUMBERS_H_
- #define ABSL_STRINGS_NUMBERS_H_
- 
--#ifdef __SSSE3__
--#include <tmmintrin.h>
--#endif
--
- #ifdef _MSC_VER
- #include <intrin.h>
-+#elif defined(__SSSE3__)
-+#include <tmmintrin.h>
- #endif
- 
- #include <cstddef>
-```
+The submodule repository is located at https://github.com/arangodb/abseil-cpp
+
+We have some changes for usage in arangodb and iresearch, so we maintain our own branch with
+these changes called "master".
+To update to a new version pull from upstream (https://github.com/google/abseil-cpp)
+and rebase onto the new version the our "master" branch.
 
 ## boost
 
