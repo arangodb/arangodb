@@ -1082,7 +1082,8 @@ Result RocksDBVPackIndex::update(
 Result RocksDBVPackIndex::remove(transaction::Methods& trx,
                                  RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice doc) {
+                                 velocypack::Slice doc,
+                                 OperationOptions const& /*options*/) {
   TRI_IF_FAILURE("BreakHashIndexRemove") {
     if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       // intentionally  break index removal

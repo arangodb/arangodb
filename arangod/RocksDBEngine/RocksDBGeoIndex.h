@@ -83,8 +83,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
  private:
   std::string const _typeName;

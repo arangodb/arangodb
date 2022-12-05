@@ -60,8 +60,8 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   // special override method that extracts a timestamp value from the index
   // attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
  private:
   /// @brief extract a timestamp value from the index attribute value

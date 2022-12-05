@@ -721,14 +721,17 @@ struct TRI_v8_global_t {
   /// @brief "protocol" key name
   v8::Persistent<v8::String> ProtocolKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "rawSuffix" key name
   v8::Persistent<v8::String> RawSuffixKey;
 
+  /// @brief "refillIndexCaches" key name
+  v8::Persistent<v8::String> RefillIndexCachesKey;
+
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
-
-  /// @brief "rawRequestBody" key name
-  v8::Persistent<v8::String> RawRequestBodyKey;
 
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
