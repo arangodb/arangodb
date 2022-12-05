@@ -44,6 +44,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
+#include "velocypack/Builder.h"
+
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
@@ -61,9 +65,8 @@ network::Headers buildHeaders() {
 }  // namespace
 
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
-                                          std::string dbName,
-                                          ArangodServer& server,
-                                          bool parsedValue) {
+                                          std::string const& dbName,
+                                          ArangodServer& server, bool isLocal) {
   // used for all types of responses
   VPackBuilder hostInfo;
   buildHostInfo(hostInfo, server);
@@ -76,7 +79,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
   bool fanout =
       (ServerState::instance()->isCoordinator() || isActiveFailover) &&
-      !parsedValue;
+      !isLocal;
 
   result.openObject();
 
@@ -141,7 +144,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
         auto f = network::sendRequestRetry(
             pool, "server:" + server.first, fuerte::RestVerb::Get,
-            "/_api/support-info", VPackBuffer<uint8_t>{}, options,
+            "/_admin/support-info", VPackBuffer<uint8_t>{}, options,
             ::buildHeaders());
         futures.emplace_back(std::move(f));
       }
@@ -180,9 +183,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         result.add(VPackValue("shards"));
         ci.getShardStatisticsGlobal(/*restrictServer*/ "", result);
       }
-
       result.close();  // deployment
-
       result.add("date", VPackValue(timeString));
     } else {
       // DB server or other coordinator

@@ -24,17 +24,22 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-#include "velocypack/Builder.h"
 
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+}
+
 class SupportInfoBuilder {
  public:
-  static void buildInfoMessage(VPackBuilder& result, std::string dbName,
-                               ArangodServer& server, bool parsedValue = false);
+  SupportInfoBuilder() = delete;
+  static void buildInfoMessage(velocypack::Builder& result,
+                               std::string const& dbName, ArangodServer& server,
+                               bool isLocal);
 
  private:
-  static void buildHostInfo(VPackBuilder& result, ArangodServer& server);
+  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);
 };
 
 }  // namespace arangodb

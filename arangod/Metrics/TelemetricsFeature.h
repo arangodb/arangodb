@@ -28,30 +28,52 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::metrics {
+
+struct ITelemetricsSender {
+ public:
+  virtual ~ITelemetricsSender() = default;
+  virtual void send(arangodb::velocypack::Builder&) = 0;
+};
+
+class TelemetricsSender : public ITelemetricsSender {
+  void send(arangodb::velocypack::Builder& result) override {
+    LOG_TOPIC("affd3", WARN, Logger::STATISTICS) << result.slice().toJson();
+  }
+};
 
 class TelemetricsFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Telemetrics"; }
 
-  explicit TelemetricsFeature(Server& server);
+  explicit TelemetricsFeature(
+      Server& server, std::unique_ptr<ITelemetricsSender> telemetricsSender);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
   void start() final;
   void stop() final;
   void beginShutdown() final;
+  void setRescheduleInterval(uint64_t newInerval) {
+    _rescheduleInterval = newInerval;
+  }
+  void setInterval(uint64_t newInterval) { _interval = newInterval; }
 
  private:
   bool _enable;
   uint64_t _interval;
-  std::chrono::seconds _lastUpdate;
+  uint64_t _rescheduleInterval;
+  uint64_t _prepareDeadline;
   void sendTelemetrics();
-  bool storeLastUpdate(bool isCoordinator);
+  bool handleLastUpdateInDoc(bool isCoordinator, std::string& oldRev,
+                             uint64_t& lastUpdate);
+  void doLastUpdate(std::string_view oldRev, uint64_t lastUpadte);
   std::function<void(bool)> _telemetricsEnqueue;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  std::unique_ptr<ITelemetricsSender> _sender;
 };
 
 }  // namespace arangodb::metrics

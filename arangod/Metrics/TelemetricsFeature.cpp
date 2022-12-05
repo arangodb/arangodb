@@ -38,6 +38,8 @@
 #include "Utils/SupportInfoBuilder.h"
 #include "VocBase/vocbase.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace arangodb::velocypack;
@@ -52,8 +54,13 @@ using namespace arangodb;
 
 namespace arangodb::metrics {
 
-TelemetricsFeature::TelemetricsFeature(Server& server)
-    : ArangodFeature{server, *this}, _enable{true}, _interval{86400} {
+TelemetricsFeature::TelemetricsFeature(
+    Server& server, std::unique_ptr<ITelemetricsSender> telemetricsSender)
+    : ArangodFeature{server, *this},
+      _enable{true},
+      _interval{86400},           // 24h
+      _rescheduleInterval(1800),  // 30 min
+      _prepareDeadline(30) {
   setOptional();
   startsAfter<SystemDatabaseFeature>();
   startsAfter<ClusterFeature>();
@@ -82,8 +89,6 @@ void TelemetricsFeature::collectOptions(
 
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
-  // make it not less than an hour
-
   if (_interval < 3600) {
     _interval = 3600;
   }
@@ -91,12 +96,55 @@ void TelemetricsFeature::validateOptions(
 
 void TelemetricsFeature::sendTelemetrics() {
   VPackBuilder result;
-  SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
-                                       server());
-  LOG_TOPIC("affd3", DEBUG, Logger::STATISTICS) << result.slice().toJson();
+
+  ArangodServer& s = server();
+  SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase, s,
+                                       false);
+  _sender->send(result);
 }
 
-bool TelemetricsFeature::storeLastUpdate(bool isCoordinator) {
+void TelemetricsFeature::doLastUpdate(std::string_view oldRev,
+                                      uint64_t lastUpdate) {
+  auto& sysDbFeature = server().getFeature<SystemDatabaseFeature>();
+
+  auto vocbase = sysDbFeature.use();
+  OperationOptions options;
+
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
+
+  SingleCollectionTransaction trx(ctx, std::string{::kCollName},
+                                  AccessMode::Type::WRITE);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    LOG_TOPIC("7b1a7", WARN, Logger::STATISTICS)
+        << "Failed to begin transaction: " << res.errorMessage();
+  }
+
+  velocypack::Builder docInfo;
+  {
+    ObjectBuilder b(&docInfo);
+    docInfo.add(StaticStrings::KeyString, ::kKeyValue);
+    docInfo.add("lastUpdate", Value(lastUpdate));
+    docInfo.add("prepareTimestamp", VPackValueType::Null);
+    docInfo.add("serverId", VPackValueType::Null);
+    docInfo.add(StaticStrings::RevString, Value(oldRev));
+  }
+  VPackSlice docInfoSlice = docInfo.slice();
+  options.ignoreRevs = false;
+
+  OperationResult result =
+      trx.update(std::string{::kCollName}, docInfoSlice, options);
+  if (result.fail()) {
+    LOG_TOPIC("0d011", WARN, Logger::STATISTICS)
+        << "Failed to update doc: " << result.errorMessage();
+  }
+}
+
+bool TelemetricsFeature::handleLastUpdateInDoc(bool isCoordinator,
+                                               std::string& oldRev,
+                                               uint64_t& lastUpdate) {
   auto& sysDbFeature = server().getFeature<SystemDatabaseFeature>();
 
   auto vocbase = sysDbFeature.use();
@@ -105,19 +153,10 @@ bool TelemetricsFeature::storeLastUpdate(bool isCoordinator) {
 
   auto ctx = transaction::StandaloneContext::Create(*vocbase);
 
-  std::unique_ptr<SingleCollectionTransaction> trx;
+  SingleCollectionTransaction trx(ctx, std::string{::kCollName},
+                                  AccessMode::Type::WRITE);
 
-  try {
-    trx = std::make_unique<SingleCollectionTransaction>(
-        ctx, std::string{::kCollName}, AccessMode::Type::WRITE);
-  } catch (...) {
-    // it throws if can't add the collection, which would mean the collection is
-    // not ready yet but we don't care about it because we will reschedule and
-    // try to create the transaction again, until the collection is ready
-    return false;
-  }
-  TRI_ASSERT(trx);
-  Result res = trx->begin();
+  Result res = trx.begin();
 
   if (!res.ok()) {
     LOG_TOPIC("12c70", WARN, Logger::STATISTICS)
@@ -128,92 +167,121 @@ bool TelemetricsFeature::storeLastUpdate(bool isCoordinator) {
   VPackBuilder docRead;
   velocypack::Builder docInfo;
   {
-    ObjectBuilder b(&docInfo);
-    docInfo.add("_key", ::kKeyValue);
+    VPackObjectBuilder b(&docInfo);
+    docInfo.add(StaticStrings::KeyString, ::kKeyValue);
   }
   VPackSlice docInfoSlice = docInfo.slice();
 
-  res = trx->documentFastPath(std::string{::kCollName}, docInfoSlice, options,
-                              docRead);
+  res = trx.documentFastPath(std::string{::kCollName}, docInfoSlice, options,
+                             docRead);
 
   using cast = std::chrono::duration<std::uint64_t>;
   std::uint64_t rightNowSecs =
       std::chrono::duration_cast<cast>(steady_clock::now().time_since_epoch())
           .count();
 
-  if (res.ok()) {
+  if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    LOG_TOPIC("26231", WARN, Logger::STATISTICS)
+        << "Failed to read document: " << res.errorMessage();
+  } else if (res.ok()) {  // we found the document
+
     VPackSlice docReadSlice = docRead.slice();
     TRI_ASSERT(!docReadSlice.isNone());
     uint64_t lastUpdateRead = docReadSlice.get(::kAttrName).getUInt();
-    VPackValueLength length;
-    char const* revValue = docReadSlice.get("_rev").getStringUnchecked(length);
 
-    _lastUpdate = seconds{lastUpdateRead};
-    auto diffInSecs = rightNowSecs - _lastUpdate.count();
+    // this must be there
+    std::string_view revValue =
+        docReadSlice.get(StaticStrings::RevString).stringView();
+
+    if (isCoordinator) {
+      auto serverIdSlice = docReadSlice.get("serverId");
+      auto timestampSlice = docReadSlice.get("prepareTimestamp");
+      std::string_view serverId;
+      uint64_t prepareTimestamp = 0;
+      if (serverIdSlice.isString()) {
+        serverId = docReadSlice.get("serverId").stringView();
+      }
+      if (timestampSlice.isUInt()) {
+        prepareTimestamp = timestampSlice.getUInt();
+      }
+
+      if (!serverId.empty() &&
+          prepareTimestamp != 0) {  // must send as the former server might have
+                                    // gone down before sending telemetrics
+        bool isSameCoordinator =
+            serverId.compare(ServerState::instance()->getId()) == 0 ? true
+                                                                    : false;
+        if (isSameCoordinator ||
+            rightNowSecs - prepareTimestamp >= _prepareDeadline) {
+          sendTelemetrics();
+          doLastUpdate(revValue, rightNowSecs);
+        }
+        return false;
+      }
+    }
+
+    auto diffInSecs = rightNowSecs - seconds{lastUpdateRead}.count();
     if (diffInSecs >= _interval) {
       velocypack::Builder docInfo;
       {
-        ObjectBuilder b(&docInfo);
-        docInfo.add("_key", ::kKeyValue);
+        VPackObjectBuilder b(&docInfo);
+        docInfo.add(StaticStrings::KeyString, ::kKeyValue);
         docInfo.add("lastUpdate", Value(rightNowSecs));
-        docInfo.add("_rev", Value(revValue));
+        docInfo.add("prepareTimestamp", Value(rightNowSecs));
+        docInfo.add("serverId",
+                    velocypack::Value(ServerState::instance()->getId()));
+        docInfo.add(StaticStrings::RevString, Value(revValue));
       }
       VPackSlice docInfoSlice = docInfo.slice();
       OperationOptions options;
-      if (isCoordinator) {
-        options.ignoreRevs = false;
-      }
+      options.ignoreRevs = false;
+      options.returnNew = true;
+
       OperationResult result =
-          trx->update(std::string{::kCollName}, docInfoSlice, options);
-      if (isCoordinator && result.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
-        std::ignore = trx->abort();
+          trx.update(std::string{::kCollName}, docInfoSlice, options);
+      if (result.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
         // revs don't match, coordinator must reschedule
         return false;
       } else if (!result.ok()) {
         LOG_TOPIC("8cb6f", WARN, Logger::STATISTICS)
-            << "Failed to update doc: " << res.errorMessage();
-        std::ignore = trx->abort();
+            << "Failed to update doc: " << result.errorMessage();
         return false;
       }
-      Result res = trx->finish(result.result);
+      Result res = trx.finish(result.result);
       if (!res.ok()) {
         LOG_TOPIC("e9bad", WARN, Logger::STATISTICS)
             << "Failed to finish transaction: " << res.errorMessage();
-        std::ignore = trx->abort();
         return false;
       }
+      oldRev = result.slice().get(StaticStrings::RevString).stringView();
+      lastUpdate = rightNowSecs;
       return true;
     }
-  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {  // must insert the
-                                                             // doc for updating
-                                                             // afterwards
-    _lastUpdate = seconds{rightNowSecs};
+    return false;
+  } else {  // must insert the doc for updating afterwards
     velocypack::Builder docInfo;
     {
-      ObjectBuilder b(&docInfo);
+      VPackObjectBuilder b(&docInfo);
       docInfo.add("_key", ::kKeyValue);
-      docInfo.add("lastUpdate", Value(rightNowSecs));
+      docInfo.add(kAttrName, Value(rightNowSecs));
     }
     VPackSlice docInfoSlice = docInfo.slice();
     OperationResult result =
-        trx->insert(std::string{::kCollName}, docInfoSlice, options);
+        trx.insert(std::string{::kCollName}, docInfoSlice, options);
 
     if (!result.ok()) {
       LOG_TOPIC("56650", WARN, Logger::STATISTICS)
           << "Failed to insert doc: " << result.errorMessage();
-      std::ignore = trx->abort();
       return false;
     }
-    Result res = trx->finish(result.result);
+
+    Result res = trx.finish(result.result);
+
     if (!res.ok()) {
       LOG_TOPIC("a7de1", WARN, Logger::STATISTICS)
           << "Failed to insert doc: " << res.errorMessage();
     }
-  } else {
-    LOG_TOPIC("26231", WARN, Logger::STATISTICS)
-        << "Failed to read document: " << res.errorMessage();
   }
-  std::ignore = trx->abort();
   return false;
 }
 
@@ -233,19 +301,34 @@ void TelemetricsFeature::start() {
       (!ServerState::instance()->isSingleServer() && !isCoordinator)) {
     return;
   }
-
+  // server id prepare with timestamp, then remove it
+  // last update after sending telemetrics
   _telemetricsEnqueue = [this, isCoordinator](bool cancelled) {
     if (cancelled) {
       return;
     }
     Scheduler::WorkHandle workItem;
-    if (storeLastUpdate(isCoordinator)) {
-      // has reached the interval to send telemetrics again
-      sendTelemetrics();
+    std::string oldRev;
+    std::uint64_t lastUpdate = 0;
+    try {
+      if (handleLastUpdateInDoc(isCoordinator, oldRev, lastUpdate)) {
+        // has reached the interval to send telemetrics again
+        sendTelemetrics();
+        if (isCoordinator) {
+          doLastUpdate(oldRev, lastUpdate);
+        }
+      }
+    } catch (...) {
+      // it throws if can't add the collection, which would mean
+      // the collection is
+      // not ready yet but we don't care about it because we will reschedule
+      // and try to create the transaction again, until the collection is
+      // ready
     }
+
     workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW, 1800s,
-        _telemetricsEnqueue);  // check every 30 min
+        arangodb::RequestLane::INTERNAL_LOW,
+        std::chrono::seconds(_rescheduleInterval), _telemetricsEnqueue);
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
   };
