@@ -179,6 +179,19 @@ function debugClearFailAt(endpoint) {
   }
 }
 
+function delaySupervisionFailoverActions(value) {
+  let agents = global.instanceManager.arangods.filter(
+    arangod => arangod.role === "agent").map(
+    arangod => arangod.url);
+  for (let a of agents) {
+    const res = request({url: a + "/_api/agency/config",
+                   method: "PUT",
+                   body: JSON.stringify(
+                     {delayAddFollower: value, delayFailedFollower: value})});
+    assertEqual(200, res.statusCode);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -813,6 +826,22 @@ function MovingShardsSuite ({useData}) {
     return false;
   }
 
+  function getServerRebootId(server) {
+    return readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
+  }
+
+  function waitForRebootIdChanged(server, oldRebootId) {
+
+    var count = 300;
+    while(--count > 0) {
+      if (getServerRebootId(server) !== oldRebootId) {
+        return;
+      }
+      wait(1.0);
+    }
+    assertTrue(count > 0);
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -1032,28 +1061,37 @@ function MovingShardsSuite ({useData}) {
 
     testResignLeadershipWithUndo: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[0].name());
-      var toResign = servers[0];
-      const shards = findLeaderShardsForServer(toResign);
-      assertTrue(resignLeadership(toResign, true));
-      assertTrue(testServerNoLeader(toResign));
-      assertTrue(waitForSupervision());
+      try {
+        delaySupervisionFailoverActions(120);
 
-      checkCollectionContents();
-      // now suspend that server
-      stopServerWaitFailed(toResign);
+        var servers = findCollectionServers("_system", c[0].name());
+        var toResign = servers[0];
+        const shards = findLeaderShardsForServer(toResign);
+        assertTrue(resignLeadership(toResign, true));
+        assertTrue(testServerNoLeader(toResign));
+        assertTrue(waitForSupervision());
 
-      // Wait until FailedServer job is executed, then the RebootId is
-      // increased, which would also happen in a proper reboot scenario.
-      assertTrue(waitForSupervision());
+        checkCollectionContents();
 
-      // restart the server
-      continueServerWaitOk(toResign);
+        // get server reboot id
+        const rebootId = getServerRebootId(toResign);
 
-      // now wait for the server to become leader again for shards
-      assertTrue(waitForShardLeader(toResign, shards));
-      assertTrue(waitForSupervision());
-      checkCollectionContents();
+        // now suspend that server
+        stopServerWaitFailed(toResign);
+
+        // Wait for the reboot id to be changed.
+        waitForRebootIdChanged(toResign, rebootId);
+
+        // restart the server
+        continueServerWaitOk(toResign);
+
+        // now wait for the server to become leader again for shards
+        assertTrue(waitForShardLeader(toResign, shards));
+        assertTrue(waitForSupervision());
+        checkCollectionContents();
+      } finally {
+        delaySupervisionFailoverActions(0);
+      }
     },
 
 
