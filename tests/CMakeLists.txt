@@ -271,6 +271,7 @@ set(ARANGODB_TESTS_SOURCES
   SimpleHttpClient/HttpResponseCheckerTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
+  Telemetrics/TelemetricsFeatureTest.cpp
   Transaction/ContextTest.cpp
   Transaction/CountCacheTest.cpp
   Transaction/ManagerTest.cpp
