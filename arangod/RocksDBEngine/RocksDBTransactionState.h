@@ -130,6 +130,9 @@ class RocksDBTransactionState : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
+  void trackIndexCacheRefill(DataSourceId cid, IndexId idxObjectId,
+                             std::string_view key);
+
   /// @brief whether or not a transaction only has exclusive or read accesses
   bool isOnlyExclusiveTransaction() const noexcept;
 

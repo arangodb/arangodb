@@ -16,8 +16,8 @@
 ### Abseil - C++ Common Libraries
 
 * Name: abseil-cpp
-* Version: 7f850b3167fb38e6b4a9ce1824e6fabd733b5d62
-* Date: 2022-02-18
+* Version: 13708db87b1ab69f4f2b3214f3f51e986546f282
+* Date: 2022-11-22
 * Project Home: https://abseil.io
 * License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE
 * License Name: Apache License 2.0
@@ -464,8 +464,8 @@ _Enterprise Edition only_
 ### S2 Geometry Library
 
 * Name: s2geometry
-* Version: dfefe0c
-* Date: 2018-11-29 15:49:17Z
+* Version: 254c13666f65f35f5343d34dfbc749e1fb7772ca
+* Date: 2022-11-18
 * Project Home: https://s2geometry.io/
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/s2geometry/dfefe0c/LICENSE
 * License Name: Apache License 2.0

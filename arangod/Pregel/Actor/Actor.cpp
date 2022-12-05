@@ -23,6 +23,4 @@
 
 #include "Actor.h"
 
-namespace arangodb::pregel::actor {
-
-}
+namespace arangodb::pregel::actor {}

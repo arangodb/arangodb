@@ -24,6 +24,7 @@
 #include "RocksDBTrxMethods.h"
 
 #include "Aql/QueryCache.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -36,7 +37,7 @@
 
 using namespace arangodb;
 
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState const* state,
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
                                      IRocksDBTransactionCallback& callback,
                                      rocksdb::TransactionDB* db)
     : RocksDBTrxBaseMethods(state, callback, db) {

@@ -4411,8 +4411,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_TRUE((
         TRI_ERROR_FORBIDDEN ==
@@ -5970,8 +5971,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6329,8 +6331,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -7224,8 +7227,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, true)

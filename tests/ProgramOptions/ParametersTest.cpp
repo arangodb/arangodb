@@ -225,6 +225,32 @@ TEST(ParametersTest, toNumberUnits) {
             arangodb::options::toNumber<int64_t>("512GiB"));
   ASSERT_EQ(int64_t(549755813888),
             arangodb::options::toNumber<int64_t>("512GIB"));
+
+  ASSERT_EQ(int64_t(10000000000000),
+            arangodb::options::toNumber<int64_t>("10t"));
+  ASSERT_EQ(int64_t(10000000000000),
+            arangodb::options::toNumber<int64_t>("10tb"));
+  ASSERT_EQ(int64_t(10000000000000),
+            arangodb::options::toNumber<int64_t>("10TB"));
+  ASSERT_EQ(int64_t(10995116277760),
+            arangodb::options::toNumber<int64_t>("10tib"));
+  ASSERT_EQ(int64_t(10995116277760),
+            arangodb::options::toNumber<int64_t>("10TiB"));
+  ASSERT_EQ(int64_t(10995116277760),
+            arangodb::options::toNumber<int64_t>("10TIB"));
+
+  ASSERT_EQ(int64_t(512000000000000),
+            arangodb::options::toNumber<int64_t>("512t"));
+  ASSERT_EQ(int64_t(512000000000000),
+            arangodb::options::toNumber<int64_t>("512tb"));
+  ASSERT_EQ(int64_t(512000000000000),
+            arangodb::options::toNumber<int64_t>("512TB"));
+  ASSERT_EQ(int64_t(562949953421312),
+            arangodb::options::toNumber<int64_t>("512tib"));
+  ASSERT_EQ(int64_t(562949953421312),
+            arangodb::options::toNumber<int64_t>("512TiB"));
+  ASSERT_EQ(int64_t(562949953421312),
+            arangodb::options::toNumber<int64_t>("512TIB"));
 }
 
 TEST(ParametersTest, toNumberInvalidUnits) {
@@ -242,6 +268,166 @@ TEST(ParametersTest, toNumberInvalidUnits) {
 
     try {
       arangodb::options::toNumber<int64_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeInt8) {
+  char const* valid[] = {"-128", "-127", "-100", "-1", "0", "1", "10", "127"};
+  for (auto v : valid) {
+    EXPECT_EQ(std::stoll(v), arangodb::options::toNumber<int8_t>(v));
+  }
+
+  char const* invalid[] = {"129",  "130",    "255", "256", "1024", "-129",
+                           "-255", "-10000", "1k",  "10k", "10m"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<int8_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeUInt8) {
+  char const* valid[] = {"0", "1", "254", "255"};
+  for (auto v : valid) {
+    EXPECT_EQ(std::stoll(v), arangodb::options::toNumber<uint8_t>(v));
+  }
+
+  char const* invalid[] = {"256", "257", "512",  "1024", "100000",
+                           "-1",  "-",   "-129", "-255", "-10000",
+                           "1k",  "10k", "10m"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<uint8_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeInt16) {
+  char const* valid[] = {"-32768", "-32767", "-1000", "-1",   "0",  "1",
+                         "1000",   "32767",  "-32k",  "-10k", "31k"};
+  for (auto v : valid) {
+    std::string temp(v);
+    int16_t f = 1;
+    if (temp.ends_with('k')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000;
+    }
+    EXPECT_EQ(std::stoll(temp) * f, arangodb::options::toNumber<int16_t>(v));
+  }
+
+  char const* invalid[] = {"-32769", "32768", "-33k", "33k", "65k"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<int16_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeUInt16) {
+  char const* valid[] = {"0",   "1",     "254",   "255",
+                         "512", "32768", "65535", "65k"};
+  for (auto v : valid) {
+    std::string temp(v);
+    uint16_t f = 1;
+    if (temp.ends_with('k')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000;
+    }
+    EXPECT_EQ(std::stoull(temp) * f, arangodb::options::toNumber<uint16_t>(v));
+  }
+
+  char const* invalid[] = {"65536", "100000", "-1",    "-66666", "-129",
+                           "-255",  "-10000", "65kib", "100k"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<uint16_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeUInt32) {
+  char const* valid[] = {"0",     "1",     "254",   "255",        "512",
+                         "32768", "65535", "65k",   "100000000",  "1m",
+                         "10m",   "100m",  "4000m", "4294967295", "1g",
+                         "2g",    "3g",    "4g"};
+  for (auto v : valid) {
+    std::string temp(v);
+    uint32_t f = 1;
+    if (temp.ends_with('k')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000;
+    } else if (temp.ends_with('m')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000 * 1000;
+    } else if (temp.ends_with('g')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000 * 1000 * 1000;
+    }
+    EXPECT_EQ(std::stoull(temp) * f, arangodb::options::toNumber<uint32_t>(v));
+  }
+
+  char const* invalid[] = {"-1",    "-66666",     "-129", "-255", "-10000",
+                           "4500m", "4294967296", "4GiB", "5g"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<uint32_t>(v);
+      ASSERT_FALSE(true);
+    } catch (std::out_of_range const&) {
+    }
+  }
+}
+
+TEST(ParametersTest, toNumberOutOfRangeUInt64) {
+  char const* valid[] = {"0",     "1",     "254",   "255",        "512",
+                         "32768", "65535", "65k",   "100000000",  "1m",
+                         "10m",   "100m",  "4000m", "4294967295", "494967296",
+                         "100g",  "1000g", "100t",  "1024t"};
+  for (auto v : valid) {
+    std::string temp(v);
+    uint64_t f = 1;
+    if (temp.ends_with('k')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000ULL;
+    } else if (temp.ends_with('m')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000ULL * 1000ULL;
+    } else if (temp.ends_with('g')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000ULL * 1000ULL * 1000ULL;
+    } else if (temp.ends_with('t')) {
+      temp = temp.substr(0, temp.size() - 1);
+      f = 1000ULL * 1000ULL * 1000ULL * 1000ULL;
+    }
+    EXPECT_EQ(std::stoull(temp) * f, arangodb::options::toNumber<uint64_t>(v));
+  }
+
+  char const* invalid[] = {"-1",
+                           "-66666",
+                           "-129",
+                           "-255",
+                           "-10000",
+                           "18446744073709551616",
+                           "10000000000TiB"};
+
+  for (auto v : invalid) {
+    try {
+      arangodb::options::toNumber<uint64_t>(v);
       ASSERT_FALSE(true);
     } catch (std::out_of_range const&) {
     }

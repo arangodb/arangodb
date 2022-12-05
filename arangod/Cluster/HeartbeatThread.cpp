@@ -45,6 +45,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"

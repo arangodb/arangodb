@@ -96,6 +96,8 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
+#include <absl/crc/crc32c.h>
+
 using namespace arangodb::basics;
 using namespace arangodb;
 
@@ -2165,7 +2167,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   char buffer[4096];
 
   auto res = TRI_ERROR_NO_ERROR;
-  *crc = TRI_InitialCrc32();
+  *crc = 0;
 
   while (true) {
     size_t sizeRead = fread(&buffer[0], 1, sizeof(buffer), fin);
@@ -2178,7 +2180,8 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     }
 
     if (sizeRead > 0) {
-      *crc = TRI_BlockCrc32(*crc, &buffer[0], sizeRead);
+      *crc = static_cast<uint32_t>(absl::ExtendCrc32c(
+          absl::crc32c_t{*crc}, std::string_view{&buffer[0], sizeRead}));
     } else /* if (sizeRead <= 0) */ {
       break;
     }
@@ -2188,8 +2191,6 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
     // otherwise keep original error
   }
-
-  *crc = TRI_FinalCrc32(*crc);
 
   return res;
 }

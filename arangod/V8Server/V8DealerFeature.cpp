@@ -164,19 +164,24 @@ V8DealerFeature::V8DealerFeature(Server& server)
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
 
-  options->addOption(
-      "--javascript.gc-frequency",
-      "JavaScript time-based garbage collection frequency (each x seconds)",
-      new DoubleParameter(&_gcFrequency),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--javascript.gc-frequency",
+          "Time-based garbage collection frequency for JavaScript objects "
+          "(each x seconds).",
+          new DoubleParameter(&_gcFrequency),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(This option is useful to have the garbage
+collection still work in periods with no or little numbers of requests.)");
 
   options->addOption(
       "--javascript.gc-interval",
-      "JavaScript request-based garbage collection interval (each x requests)",
+      "Request-based garbage collection interval for JavaScript objects "
+      "(each x requests).",
       new UInt64Parameter(&_gcInterval),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -184,7 +189,8 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::OnSingle,
           arangodb::options::Flags::Uncommon));
 
-  options->addOption("--javascript.app-path", "directory for Foxx applications",
+  options->addOption("--javascript.app-path",
+                     "The directory for Foxx applications.",
                      new StringParameter(&_appPath),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -193,7 +199,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.startup-directory",
-      "path to the directory containing JavaScript startup scripts",
+      "A path to the directory containing the JavaScript startup scripts.",
       new StringParameter(&_startupDirectory),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -201,7 +207,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::OnSingle));
 
   options->addOption("--javascript.module-directory",
-                     "additional paths containing JavaScript modules",
+                     "Additional paths containing JavaScript modules.",
                      new VectorParameter<StringParameter>(&_moduleDirectories),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -209,36 +215,65 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          arangodb::options::Flags::OnSingle,
                          arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--javascript.copy-installation",
-      "copy contents of 'javascript.startup-directory' on first start",
-      new BooleanParameter(&_copyInstallation),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle));
+  options
+      ->addOption(
+          "--javascript.copy-installation",
+          "Copy the contents of `javascript.startup-directory` on first start.",
+          new BooleanParameter(&_copyInstallation),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(This option is intended to be useful for rolling
+upgrades. If you set it to `true`, you can upgrade the underlying ArangoDB
+packages without influencing the running _arangod_ instance.
 
-  options->addOption("--javascript.v8-contexts",
-                     "maximum number of V8 contexts that are created for "
-                     "executing JavaScript actions",
-                     new UInt64Parameter(&_nrMaxContexts),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+Setting this value does only make sense if you use ArangoDB outside of a
+container solution, like Docker or Kubernetes.)");
 
-  options->addOption("--javascript.v8-contexts-minimum",
-                     "minimum number of V8 contexts that keep available for "
-                     "executing JavaScript actions",
-                     new UInt64Parameter(&_nrMinContexts),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options
+      ->addOption("--javascript.v8-contexts",
+                  "The maximum number of V8 contexts that are created for "
+                  "executing JavaScript actions.",
+                  new UInt64Parameter(&_nrMaxContexts),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(More contexts allow executing more JavaScript
+actions in parallel, provided that there are also enough threads available.
+Note that each V8 context uses a substantial amount of memory and requires
+periodic CPU processing time for garbage collection.
+
+This option configures the maximum number of V8 contexts that can be used in
+parallel. On server start, only as many V8 contexts are created as are
+configured by the `--javascript.v8-contexts-minimum` option. The actual number
+of available V8 contexts may vary between `--javascript.v8-contexts-minimum`
+and `--javascript.v8-contexts` at runtime. When there are unused V8 contexts
+that linger around, the server's garbage collector thread automatically deletes
+them.)");
+
+  options
+      ->addOption("--javascript.v8-contexts-minimum",
+                  "The minimum number of V8 contexts to keep available for "
+                  "executing JavaScript actions.",
+                  new UInt64Parameter(&_nrMinContexts),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(The actual number of V8 contexts never drops below
+this value, but it may go up as high as specified by the
+`--javascript.v8-contexts` option.
+
+When there are unused V8 contexts that linger around and the number of V8
+contexts is greater than `--javascript.v8-contexts-minimum`, the server's
+garbage collector thread automatically deletes them.)");
 
   options->addOption(
       "--javascript.v8-contexts-max-invocations",
-      "maximum number of invocations for each V8 context before it is disposed",
+      "The maximum number of invocations for each V8 context before it is "
+      "disposed (0 = unlimited).",
       new UInt64Parameter(&_maxContextInvocations),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -246,28 +281,44 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           arangodb::options::Flags::OnSingle,
           arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--javascript.v8-contexts-max-age",
-      "maximum age for each V8 context (in seconds) before it is disposed",
-      new DoubleParameter(&_maxContextAge),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
-
-  options->addOption(
-      "--javascript.allow-admin-execute",
-      "for testing purposes allow '_admin/execute', NEVER enable on production",
-      new BooleanParameter(&_allowAdminExecute),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnCoordinator,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--javascript.v8-contexts-max-age",
+                  "The maximum age for each V8 context (in seconds) before it "
+                  "is disposed.",
+                  new DoubleParameter(&_maxContextAge),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(If both `--javascript.v8-contexts-max-invocations`
+and `--javascript.v8-contexts-max-age` are set, then the context is destroyed
+when either of the specified threshold values is reached.)");
 
   options
-      ->addOption("--javascript.transactions", "enable JavaScript transactions",
+      ->addOption("--javascript.allow-admin-execute",
+                  "For testing purposes, allow `/_admin/execute`. Never enable "
+                  "this option "
+                  "in production!",
+                  new BooleanParameter(&_allowAdminExecute),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(You can use this option to control whether
+user-defined JavaScript code is allowed to be executed on the server by sending
+HTTP requests to the `/_admin/execute` API endpoint with an authenticated user
+account.
+
+The default value is `false`, which disables the execution of user-defined
+code. This is also the recommended setting for production. In test environments,
+it may be convenient to turn the option on in order to send arbitrary setup
+or teardown commands for execution on the server.)");
+
+  options
+      ->addOption("--javascript.transactions",
+                  "Enable JavaScript transactions.",
                   new BooleanParameter(&_allowJavaScriptTransactions),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -276,7 +327,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--javascript.tasks", "enable JavaScript tasks",
+      ->addOption("--javascript.tasks", "Enable JavaScript tasks.",
                   new BooleanParameter(&_allowJavaScriptTasks),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -284,13 +335,24 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
-  options->addOption("--javascript.enabled", "enable the V8 JavaScript engine",
-                     new BooleanParameter(&_enableJS),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--javascript.enabled", "Enable the V8 JavaScript engine.",
+                  new BooleanParameter(&_enableJS),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(For certain types of ArangoDB instances, you can
+completely disable the V8 JavaScript engine. Be aware that this is an
+**highly experimental** feature and it is to be expected that certain
+functionality (e.g. API endpoints, the web interface, AQL functions, etc.) may
+be unavailable or dysfunctional. Nevertheless, you may wish to reduce the
+footprint of ArangoDB by disabling V8.
+
+This option is expected to **only** work reliably on single servers, DB-Servers,
+and Agents. Do not try to use this feature on Coordinators or in Active Failover
+setups.)");
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -799,7 +861,7 @@ void V8DealerFeature::collectGarbage() {
         if (context == nullptr && !_dirtyContexts.empty()) {
           context = _dirtyContexts.back();
           _dirtyContexts.pop_back();
-          if (context->invocationsSinceLastGc() < 50 &&
+          if (context->_invocationsSinceLastGc < 50 &&
               !context->_hasActiveExternals) {
             // don't collect this one yet. it doesn't have externals, so there
             // is no urge for garbage collection
@@ -833,7 +895,7 @@ void V8DealerFeature::collectGarbage() {
             << "collecting V8 garbage in context #" << context->id()
             << ", invocations total: " << context->invocations()
             << ", invocations since last gc: "
-            << context->invocationsSinceLastGc()
+            << context->_invocationsSinceLastGc
             << ", hasActive: " << context->_hasActiveExternals
             << ", wasDirty: " << wasDirty;
         bool hasActiveExternals = false;
@@ -1184,9 +1246,9 @@ V8Context* V8DealerFeature::enterContext(
     TRI_ASSERT(!_idleContexts.empty());
 
     context = _idleContexts.back();
+    TRI_ASSERT(context != nullptr);
     LOG_TOPIC("bbe93", TRACE, arangodb::Logger::V8)
         << "found unused V8 context #" << context->id();
-    TRI_ASSERT(context != nullptr);
 
     _idleContexts.pop_back();
 
@@ -1196,9 +1258,7 @@ V8Context* V8DealerFeature::enterContext(
     context->setDescription(securityContext.typeName(), TRI_microtime());
   }
 
-  TRI_ASSERT(context != nullptr);
   context->lockAndEnter();
-  context->assertLocked();
 
   prepareLockedContext(vocbase, context, securityContext);
   ++_contextsEntered;
@@ -1270,7 +1330,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
     // if the execution was canceled, we need to cleanup
     if (canceled) {
-      context->handleCancelationCleanup();
+      context->handleCancellationCleanup();
     }
 
     // run global context methods
@@ -1322,7 +1382,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
             << "V8 context #" << context->id()
             << " has reached GC timeout threshold and will be scheduled for GC";
       }
-    } else if (context->invocationsSinceLastGc() >= _gcInterval) {
+    } else if (context->_invocationsSinceLastGc >= _gcInterval) {
       LOG_TOPIC("c6441", TRACE, arangodb::Logger::V8)
           << "V8 context #" << context->id()
           << " has reached maximum number of requests and will "
@@ -1477,7 +1537,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_idleContexts[i]->invocationsSinceLastGc() < 50 &&
+    if (_idleContexts[i]->_invocationsSinceLastGc < 50 &&
         !_idleContexts[i]->_hasActiveExternals) {
       continue;
     }

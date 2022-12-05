@@ -186,6 +186,17 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
         TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SilentKey)
                                          .FromMaybe(v8::Local<v8::Value>()));
   }
+  TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+  // this attribute can have 3 values: default, true and false. only
+  // pick it up when it is set to true or false
+  if (TRI_HasProperty(context, isolate, optionsObject, RefillIndexCachesKey)) {
+    options.refillIndexCaches =
+        (TRI_ObjectToBoolean(isolate,
+                             optionsObject->Get(context, RefillIndexCachesKey)
+                                 .FromMaybe(v8::Local<v8::Value>())))
+            ? RefillIndexCaches::kRefill
+            : RefillIndexCaches::kDontRefill;
+  }
   TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
   if (TRI_HasProperty(context, isolate, optionsObject,
                       IsSynchronousReplicationKey)) {
@@ -1705,223 +1716,6 @@ static void JS_UpdateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Pregel Stuff
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  ServerState* ss = ServerState::instance();
-  if (ss->isRunningInCluster() && !ss->isCoordinator()) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "Only call on coordinator or in single server mode");
-  }
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  if (argLength < 3 || !args[0]->IsString()) {
-    // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "_pregelStart(<algorithm>, <vertexCollections>,"
-        "<edgeCollections>[, {maxGSS:100, ...}]");
-  }
-  auto parse = [](v8::Isolate* isolate, v8::Local<v8::Value> const& value,
-                  std::vector<std::string>& out) {
-    auto context = TRI_IGETC;
-    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(value);
-    uint32_t const n = array->Length();
-    for (uint32_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> obj =
-          array->Get(context, i).FromMaybe(v8::Local<v8::Value>());
-      if (obj->IsString()) {
-        out.push_back(TRI_ObjectToString(isolate, obj));
-      }
-    }
-  };
-
-  std::string algorithm = TRI_ObjectToString(isolate, args[0]);
-  std::vector<std::string> paramVertices, paramEdges;
-  if (args[1]->IsArray()) {
-    parse(isolate, args[1], paramVertices);
-  } else if (args[1]->IsString()) {
-    paramVertices.push_back(TRI_ObjectToString(isolate, args[1]));
-  } else {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "Specify an array of vertex collections (or a string)");
-  }
-  if (paramVertices.size() == 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one vertex collection");
-  }
-  if (args[2]->IsArray()) {
-    parse(isolate, args[2], paramEdges);
-  } else if (args[2]->IsString()) {
-    paramEdges.push_back(TRI_ObjectToString(isolate, args[2]));
-  } else {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "Specify an array of edge collections (or a string)");
-  }
-  if (paramEdges.size() == 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("Specify at least one edge collection");
-  }
-  VPackBuilder paramBuilder;
-  if (argLength >= 4 && args[3]->IsObject()) {
-    TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
-  }
-
-  std::unordered_map<std::string, std::vector<std::string>>
-      paramEdgeCollectionRestrictions;
-  if (paramBuilder.slice().isObject()) {
-    VPackSlice s = paramBuilder.slice().get("edgeCollectionRestrictions");
-    if (s.isObject()) {
-      for (auto const& it : VPackObjectIterator(s)) {
-        if (!it.value.isArray()) {
-          continue;
-        }
-        auto& restrictions =
-            paramEdgeCollectionRestrictions[it.key.copyString()];
-        for (auto const& it2 : VPackArrayIterator(it.value)) {
-          restrictions.emplace_back(it2.copyString());
-        }
-      }
-    }
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
-  }
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-  auto res = pregel.startExecution(vocbase, algorithm, paramVertices,
-                                   paramEdges, paramEdgeCollectionRestrictions,
-                                   paramBuilder.slice());
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res.result());
-  }
-
-  auto result = TRI_V8UInt64String<uint64_t>(isolate, res.get().value);
-  TRI_V8_RETURN(result);
-
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  auto& vocbase = GetContextVocBase(isolate);
-  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
-  }
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-
-  VPackBuilder builder;
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  if (argLength == 0) {
-    pregel.toVelocyPack(vocbase, builder, false, true);
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-    return;
-  }
-
-  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
-    // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
-  }
-
-  auto executionNum = arangodb::pregel::ExecutionNumber(
-      TRI_ObjectToUInt64(isolate, args[0], true));
-  auto c = pregel.conductor(executionNum);
-  if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "Execution number is invalid");
-  }
-
-  c->toVelocyPack(builder);
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
-    // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelCancel(<executionNum>)");
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
-  }
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-
-  auto executionNum = arangodb::pregel::ExecutionNumber(
-      TRI_ObjectToUInt64(isolate, args[0], true));
-  auto c = pregel.conductor(executionNum);
-  if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "Execution number is invalid");
-  }
-  c->cancel();
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_PregelAQLResult(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  // check the arguments
-  uint32_t const argLength = args.Length();
-  if (argLength <= 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
-    // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>[, <withId])");
-  }
-
-  bool withId = false;
-  if (argLength == 2) {
-    withId = TRI_ObjectToBoolean(isolate, args[1]);
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
-  }
-  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-
-  auto executionNum = arangodb::pregel::ExecutionNumber(
-      TRI_ObjectToUInt64(isolate, args[0], true));
-
-  auto pregelResults = pregel.collectPregelResults(executionNum, withId);
-  if (pregelResults.fail()) {
-    TRI_V8_THROW_EXCEPTION_USAGE(pregelResults.errorMessage());
-  }
-
-  VPackBuilder docs;
-  {
-    VPackArrayBuilder ab(&docs);
-    docs.add(VPackArrayIterator(pregelResults.get().results.slice()));
-  }
-  if (docs.isEmpty()) {
-    TRI_V8_RETURN_NULL();
-  }
-  TRI_ASSERT(docs.slice().isArray());
-
-  VPackOptions resultOptions = VPackOptions::Defaults;
-  auto documents = TRI_VPackToV8(isolate, docs.slice(), &resultOptions);
-  TRI_V8_RETURN(documents);
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionRevision
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2084,6 +1878,18 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                               optionsObject->Get(context, ReturnOldKey)
                                   .FromMaybe(v8::Local<v8::Value>())) &&
           options.isOverwriteModeUpdateReplace();
+    }
+    TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+    // this attribute can have 3 values: default, true and false. only
+    // pick it up when it is set to true or false
+    if (TRI_HasProperty(context, isolate, optionsObject,
+                        RefillIndexCachesKey)) {
+      options.refillIndexCaches =
+          (TRI_ObjectToBoolean(isolate,
+                               optionsObject->Get(context, RefillIndexCachesKey)
+                                   .FromMaybe(v8::Local<v8::Value>())))
+              ? RefillIndexCaches::kRefill
+              : RefillIndexCaches::kDontRefill;
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (TRI_HasProperty(context, isolate, optionsObject, IsRestoreKey)) {
@@ -2778,18 +2584,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_update"),
                        JS_UpdateVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING(isolate, "_pregelStart"),
-                       JS_PregelStart);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING(isolate, "_pregelStatus"),
-                       JS_PregelStatus);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING(isolate, "_pregelCancel"),
-                       JS_PregelCancel);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING(isolate, "_pregelAqlResult"),
-                       JS_PregelAQLResult);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
