@@ -91,7 +91,8 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
 /// @brief removes a document from the index
 Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice doc) {
+                               velocypack::Slice doc,
+                               OperationOptions const& options) {
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
     // index attribute not present or invalid. nothing to do
@@ -101,7 +102,8 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
   leased->openObject();
   leased->add(getAttribute(), VPackValue(timestamp));
   leased->close();
-  return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice());
+  return RocksDBVPackIndex::remove(trx, mthds, documentId, leased->slice(),
+                                   options);
 }
 
 double RocksDBTtlIndex::getTimestamp(

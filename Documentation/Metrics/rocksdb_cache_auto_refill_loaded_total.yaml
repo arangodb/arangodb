@@ -1,0 +1,22 @@
+name: rocksdb_cache_auto_refill_loaded_total
+introducedIn: "3.9.6"
+help: |
+  Total number of automatically refilled in-memory index cache entries.
+unit: number
+type: counter
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric shows the total number of automatically refilled in-memory
+  index cache entries. Entries in the in-memory index cache are automatically
+  refilled for appropriate indexes with in-memory caches (e.g. edge index,
+  persistent index) if an insert, update or replace operation requests the
+  cache refilling, or if the startup option `--rocksdb.auto-refill-index-caches`
+  is set.
+  On agents and coordinators, the values reported in this metric will always
+  be zero.

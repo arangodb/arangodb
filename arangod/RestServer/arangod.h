@@ -125,7 +125,6 @@ class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
-class RocksDBEngine;
 class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
@@ -136,6 +135,8 @@ class RCloneFeature;
 class HotBackupFeature;
 class EncryptionFeature;
 class SslServerFeature;
+class RocksDBEngine;
+class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 
@@ -270,6 +271,7 @@ using ArangodFeatures = TypeList<
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
     pregel::PregelFeature,
+    RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
 #ifdef _WIN32
