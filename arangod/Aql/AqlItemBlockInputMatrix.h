@@ -61,7 +61,6 @@ class AqlItemBlockInputMatrix {
   bool upstreamHasMore() const noexcept;
   size_t skipAllRemainingDataRows();
 
-  template<int depthOffset>
   size_t skipAllShadowRowsOfDepth(size_t depth);
 
 

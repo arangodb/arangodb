@@ -117,7 +117,6 @@ class AqlItemMatrix {
    *         secondValue: The first shadowRow of Subquery-depth > depth, or not-initialize if no such row exists.
    * Invariant: secondValue.initialized() <=> this.numberBlocks() > 0
    */
-  template<int depthOffset>
   [[nodiscard]] auto skipAllShadowRowsOfDepth(size_t depth)
       -> std::tuple<size_t, ShadowAqlItemRow>;
 
