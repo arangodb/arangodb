@@ -71,10 +71,11 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
 
   auto appendEntries(InMemoryLog slice) noexcept
       -> futures::Future<Result> override {
-    ADB_PROD_ASSERT(slice.getFirstIndex() ==
-                    guard->spearheadLog.getLastIndex() + 1)
+    ADB_PROD_ASSERT(guard->spearheadLog.empty() ||
+                    slice.getFirstIndex() ==
+                        guard->spearheadLog.getLastIndex() + 1)
         << "tried to append non matching slice - first entry in current log: "
-        << guard->spearheadLog.getLastIndex() << " new piece starts at "
+        << guard->spearheadLog.getIndexRange() << " new piece starts at "
         << slice.getFirstIndex();
     auto iter = slice.getPersistedLogIterator();
     auto newLog = guard->spearheadLog.append(slice);

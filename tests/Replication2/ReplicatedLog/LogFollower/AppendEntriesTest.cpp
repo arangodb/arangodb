@@ -26,6 +26,7 @@
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
+#include <immer/flex_vector_transient.hpp>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -65,7 +66,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       executor,
       {LogIndex{1}, LogIndex{100}},
       replicated_state::PersistedStateInfo{
-          .stateId = logId, .snapshot = {.status = SnapshotStatus::kFailed}}};
+          .stateId = logId,
+          .snapshot = {.status = SnapshotStatus::kCompleted}}};
 
   std::shared_ptr<ReplicatedLogGlobalSettings> options =
       std::make_shared<ReplicatedLogGlobalSettings>();
@@ -213,4 +215,50 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
   // we expect compaction to happen
   ASSERT_FALSE(storage.log.empty());
   EXPECT_EQ(storage.log.begin()->first, LogIndex{50});
+}
+
+namespace {
+auto generateEntries(LogTerm term, LogRange range)
+    -> AppendEntriesRequest::EntryContainer {
+  auto tr = AppendEntriesRequest::EntryContainer::transient_type{};
+  for (auto idx : range) {
+    tr.push_back(InMemoryLogEntry{
+        PersistingLogEntry{term, idx, LogPayload::createFromString("foo")}});
+  }
+  return tr.persistent();
+}
+}  // namespace
+
+TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{1};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  auto follower = makeFollowerManager();
+  methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{240})).Times(1);
+  EXPECT_CALL(*stateHandle, acquireSnapshot("leader", testing::_)).Times(1);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{200};  // allow compaction upto 50
+    request.leaderCommit = LogIndex{240};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{1};
+    request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
+    request.entries =
+        generateEntries(LogTerm{1}, LogRange{LogIndex{200}, LogIndex{250}});
+    auto result = follower->appendEntries(request).get();
+    EXPECT_TRUE(result.isSuccess());
+  }
+
+  // we expect compaction to happen
+  ASSERT_FALSE(storage.log.empty());
+  EXPECT_EQ(storage.log.begin()->first, LogIndex{200});
 }

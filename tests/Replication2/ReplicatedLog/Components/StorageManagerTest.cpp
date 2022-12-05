@@ -153,6 +153,33 @@ TEST_F(StorageManagerTest, transaction_append) {
   EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{120}}));
 }
 
+TEST_F(StorageManagerTest, transaction_remove_back_append) {
+  {
+    auto trx = storageManager->transaction();
+    auto f = trx->removeBack(LogIndex{1});
+
+    EXPECT_FALSE(f.isReady());
+    executor->runOnce();
+    ASSERT_TRUE(f.isReady());
+  }
+
+  auto trx = storageManager->transaction();
+  auto f =
+      trx->appendEntries(makeRange(LogTerm{1}, {LogIndex{100}, LogIndex{120}}));
+
+  EXPECT_FALSE(f.isReady());
+  executor->runOnce();
+  ASSERT_TRUE(f.isReady());
+
+  EXPECT_EQ(methods.log.size(), 20);  // [100, 120)
+  EXPECT_EQ(methods.log.begin()->first, LogIndex{100});
+  EXPECT_EQ(methods.log.rbegin()->first, LogIndex{119});
+
+  auto trx2 = storageManager->transaction();
+  auto logBounds = trx2->getLogBounds();
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{100}, LogIndex{120}}));
+}
+
 TEST_F(StorageManagerTest, read_meta_data) {
   auto trx = storageManager->beginMetaInfoTrx();
   EXPECT_EQ(trx->get().stateId, LogId{12});

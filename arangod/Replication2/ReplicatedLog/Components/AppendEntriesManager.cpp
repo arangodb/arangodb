@@ -62,7 +62,11 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       // LOG_CTX("6262d", INFO, _loggerContext)
       //     << "Log truncated - invalidating snapshot";
       // triggers new snapshot transfer
-      guard->snapshot.invalidateSnapshotState();
+      if (auto result = guard->snapshot.invalidateSnapshotState();
+          result.fail()) {
+        co_return AppendEntriesResult::withPersistenceError(
+            LogTerm{1}, MessageId{0}, result, false);
+      }
     }
   }
 

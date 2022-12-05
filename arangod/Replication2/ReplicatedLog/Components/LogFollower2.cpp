@@ -63,9 +63,10 @@ FollowerManager::FollowerManager(
     : options(options),
       storage(std::make_shared<StorageManager>(std::move(methods))),
       compaction(std::make_shared<CompactionManager>(*storage, options)),
-      snapshot(std::make_shared<SnapshotManager>(*storage)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
+      snapshot(
+          std::make_shared<SnapshotManager>(*storage, *stateHandle, termInfo)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit)),

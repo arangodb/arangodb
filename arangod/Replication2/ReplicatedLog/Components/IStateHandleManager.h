@@ -25,6 +25,7 @@
 
 namespace arangodb::replication2 {
 struct LogIndex;
+using ParticipantId = std::string;
 namespace replicated_log {
 struct IReplicatedStateHandle;
 struct IReplicatedLogFollowerMethods;
@@ -35,6 +36,7 @@ struct IStateHandleManager {
   virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
   virtual void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
+  virtual void acquireSnapshot(ParticipantId const& leader) noexcept = 0;
 };
 }  // namespace comp
 }  // namespace replicated_log

@@ -78,8 +78,8 @@ struct FollowerManager {
 
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
-  std::shared_ptr<SnapshotManager> const snapshot;
   std::shared_ptr<StateHandleManager> const stateHandle;
+  std::shared_ptr<SnapshotManager> const snapshot;
   std::shared_ptr<FollowerCommitManager> const commit;
   std::shared_ptr<AppendEntriesManager> const appendEntriesManager;
   std::shared_ptr<FollowerTermInformation const> const termInfo;

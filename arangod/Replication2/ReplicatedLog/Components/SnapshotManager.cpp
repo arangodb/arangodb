@@ -23,7 +23,9 @@
 
 #include "SnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/Components/TermInformation.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -48,20 +50,22 @@ auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
       return result;
     }
     guard->state = state;
-    triggerSnapshotTransfer();
+    ADB_PROD_ASSERT(termInfo->leader.has_value());
+    guard->stateHandle.acquireSnapshot(*termInfo->leader);
   }
   return {};
 }
 
-void SnapshotManager::triggerSnapshotTransfer() { std::abort(); }
-
-SnapshotManager::GuardedData::GuardedData(IStorageManager& storage)
-    : storage(storage) {
+SnapshotManager::GuardedData::GuardedData(IStorageManager& storage,
+                                          IStateHandleManager& stateHandle)
+    : storage(storage), stateHandle(stateHandle) {
   auto meta = storage.getCommittedMetaInfo();
   state = meta.snapshot.status == replicated_state::SnapshotStatus::kCompleted
               ? SnapshotState::AVAILABLE
               : SnapshotState::MISSING;
 }
 
-SnapshotManager::SnapshotManager(IStorageManager& storage)
-    : guardedData(storage) {}
+SnapshotManager::SnapshotManager(
+    IStorageManager& storage, IStateHandleManager& stateHandle,
+    std::shared_ptr<FollowerTermInformation const> termInfo)
+    : termInfo(std::move(termInfo)), guardedData(storage, stateHandle) {}

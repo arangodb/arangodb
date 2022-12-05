@@ -285,13 +285,14 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
 
 auto replicated_log::InMemoryLog::append(InMemoryLog const& entries) const
     -> InMemoryLog {
-  ADB_PROD_ASSERT(entries.empty() || getNextIndex() == entries.getFirstIndex())
+  ADB_PROD_ASSERT(empty() || entries.empty() ||
+                  getNextIndex() == entries.getFirstIndex())
       << std::boolalpha << "entries.empty() = " << entries.empty()
       << ", front = " << entries.getFirstIndex()
       << ", getNextIndex = " << getNextIndex();
   auto transient = _log.transient();
   transient.append(entries._log.transient());
-  return InMemoryLog{std::move(transient).persistent(), _first};
+  return InMemoryLog{std::move(transient).persistent()};
 }
 
 auto replicated_log::InMemoryLog::append(log_type entries) const
@@ -327,9 +328,8 @@ auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(
 
 auto replicated_log::InMemoryLog::removeBack(LogIndex until) const
     -> InMemoryLog {
-  ADB_PROD_ASSERT(_first <= (until + 1))
-      << "first = " << _first << " until = " << until;
-  return InMemoryLog{_log.take(until.value - _first.value - 1), _first};
+  return InMemoryLog{
+      _log.take(until.saturatedDecrement(_first.value + 1).value), _first};
 }
 
 auto replicated_log::InMemoryLog::removeFront(LogIndex stop) const

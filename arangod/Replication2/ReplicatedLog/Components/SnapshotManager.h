@@ -28,23 +28,29 @@ namespace arangodb {
 class Result;
 }
 namespace arangodb::replication2::replicated_log {
+struct FollowerTermInformation;
 inline namespace comp {
 struct IStorageManager;
+struct IStateHandleManager;
 
 struct SnapshotManager : ISnapshotManager {
-  explicit SnapshotManager(IStorageManager& storage);
+  explicit SnapshotManager(
+      IStorageManager& storage, IStateHandleManager& stateHandle,
+      std::shared_ptr<FollowerTermInformation const> termInfo);
   auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 
   auto updateSnapshotState(SnapshotState state) -> Result;
-  void triggerSnapshotTransfer();
 
   struct GuardedData {
-    explicit GuardedData(IStorageManager& storage);
+    explicit GuardedData(IStorageManager& storage,
+                         IStateHandleManager& stateHandle);
     IStorageManager& storage;
+    IStateHandleManager& stateHandle;
     SnapshotState state;
   };
 
+  std::shared_ptr<FollowerTermInformation const> const termInfo;
   Guarded<GuardedData> guardedData;
 };
 }  // namespace comp

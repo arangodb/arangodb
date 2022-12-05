@@ -53,6 +53,7 @@ struct StateHandleManagerMock : IStateHandleManager {
   MOCK_METHOD(void, becomeFollower,
               (std::unique_ptr<IReplicatedLogFollowerMethods>), (noexcept));
   MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (), (noexcept));
+  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&), (noexcept));
 };
 
 auto makeRange(LogRange range) -> InMemoryLog {
