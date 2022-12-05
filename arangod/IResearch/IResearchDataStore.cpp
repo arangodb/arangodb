@@ -32,6 +32,7 @@
 #include "Basics/DownCast.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Guard.h"
@@ -1290,7 +1291,7 @@ Result IResearchDataStore::initDataStore(
                          "'")};
   }
 
-  _dataStore._directory = std::make_unique<irs::mmap_directory>(
+  _dataStore._directory = std::make_unique<irs::MMapDirectory>(
       _dataStore._path.u8string(),
       initCallback ? initCallback() : irs::directory_attributes{});
 

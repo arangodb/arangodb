@@ -25,6 +25,7 @@
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 
 #include <absl/strings/str_cat.h>
