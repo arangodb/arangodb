@@ -765,7 +765,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
     Result res = rocksutils::convertStatus(s, rocksutils::index);
-    addErrorMsg(res, keySlice.copyString());
+    addErrorMsg(res, keySlice.stringView());
     return res;
   }
   return {};
@@ -794,7 +794,7 @@ Result RocksDBPrimaryIndex::update(
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res, keySlice.copyString());
+    addErrorMsg(res, keySlice.stringView());
   }
   return res;
 }
@@ -819,7 +819,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
   rocksdb::Status s = mthds->Delete(_cf, key.ref());
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res, keySlice.copyString());
+    addErrorMsg(res, keySlice.stringView());
   }
   return res;
 }

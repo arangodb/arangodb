@@ -210,7 +210,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   std::unique_ptr<transaction::Methods> createTransaction(
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
-      transaction::Options trxOpts = transaction::Options()) const;
+      transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(

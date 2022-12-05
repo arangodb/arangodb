@@ -115,10 +115,7 @@ bool RocksDBTrxBaseMethods::ensureSnapshot() {
     _readOptions.snapshot = _rocksTransaction->GetSnapshot();
     TRI_ASSERT(_readOptions.snapshot != nullptr);
     // we at least are at this point
-    TRI_ASSERT(_db || _readOptions.snapshot);
-    _lastWrittenOperationTick = _readOptions.snapshot
-                                    ? _readOptions.snapshot->GetSequenceNumber()
-                                    : _db->GetLatestSequenceNumber();
+    _lastWrittenOperationTick = _readOptions.snapshot->GetSequenceNumber();
     return true;
   }
   return false;
@@ -189,8 +186,7 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
   TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
-  auto res = _rocksTransaction->GetForUpdate(ro, cf, key, val);
-  return res;
+  return _rocksTransaction->GetForUpdate(ro, cf, key, val);
 }
 
 rocksdb::Status RocksDBTrxBaseMethods::Put(rocksdb::ColumnFamilyHandle* cf,

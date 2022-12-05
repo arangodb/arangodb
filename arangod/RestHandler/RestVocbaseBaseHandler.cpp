@@ -553,7 +553,7 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
-    OperationOptions const& opOptions, transaction::Options trxOpts) const {
+    OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
@@ -563,7 +563,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        trxOpts);
+        std::move(trxOpts));
     if (!opOptions.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);

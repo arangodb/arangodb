@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -49,7 +48,7 @@ struct WriteWriteConflict : Workload {
   struct ThreadOptions;
   struct Thread;
 
-  WriteWriteConflict(Options const& options) : _options(options) {}
+  explicit WriteWriteConflict(Options const& options) : _options(options) {}
 
   auto createThreads(Execution& exec, Server& server)
       -> WorkerThreadList override;

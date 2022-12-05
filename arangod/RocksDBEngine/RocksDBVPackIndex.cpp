@@ -1716,9 +1716,7 @@ Result RocksDBVPackIndex::insertUnique(
 
     rocksdb::Status s;
     if (performChecks) {
-      // auto oldLockTimeout = mthds->SetLockTimeout(0);
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      // mthds->SetLockTimeout(oldLockTimeout);
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
@@ -1827,7 +1825,7 @@ Result RocksDBVPackIndex::insertNonUnique(
     s = mthds->PutUntracked(_cf, key, value.string());
     if (!s.ok()) {
       Result res = rocksutils::convertStatus(s, rocksutils::index);
-      return addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
+      return addErrorMsg(res, doc.get(StaticStrings::KeyString).stringView());
     }
   }
 

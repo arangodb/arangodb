@@ -295,8 +295,7 @@ function CollectionDocumentSuite () {
         try {
           collection.save({ _key: key });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
         }
       });
@@ -307,8 +306,7 @@ function CollectionDocumentSuite () {
         try {
           collection.save({ _key: key }, { overwriteMode: "update" });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
         }
       });

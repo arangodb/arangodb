@@ -86,8 +86,7 @@ template<class Inspector>
 inline auto inspect(Inspector& f, WorkloadVariants& o) {
   namespace insp = arangodb::inspection;
   return f.variant(o).unqualified().alternatives(
-      insp::type<workloads::WriteWriteConflict::Options>(
-          "write-write-conflict"),
+      insp::type<workloads::WriteWriteConflict::Options>("writeWriteConflict"),
       insp::type<workloads::GetByPrimaryKey::Options>("getByPrimaryKey"),
       insp::type<workloads::InsertDocuments::Options>("insert"),
       insp::type<workloads::IterateDocuments::Options>("iterate"));

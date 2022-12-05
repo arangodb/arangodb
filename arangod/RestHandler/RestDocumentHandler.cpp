@@ -232,8 +232,8 @@ RestStatus RestDocumentHandler::insertDocument() {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions, trxOpts);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -596,8 +596,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
                                         // single document operations
 
   // find and load collection given by name or identifier
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions, trxOpts);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -761,8 +761,8 @@ RestStatus RestDocumentHandler::removeDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx =
-      createTransaction(cname, AccessMode::Type::WRITE, opOptions, trxOpts);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }

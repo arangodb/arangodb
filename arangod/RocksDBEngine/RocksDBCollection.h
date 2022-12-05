@@ -41,7 +41,6 @@ class Manager;
 }  // namespace cache
 
 class LogicalCollection;
-class ManagedDocumentResult;
 class RocksDBSavePoint;
 class LocalDocumentId;
 
@@ -158,7 +157,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // @brief return the primary index
   // WARNING: Make sure that this instance
   // is somehow protected. If it goes out of all scopes
-  // or it's indexes are freed the pointer returned will get invalidated.
+  // or its indexes are freed the pointer returned will get invalidated.
   arangodb::RocksDBPrimaryIndex* primaryIndex() const override {
     TRI_ASSERT(_primaryIndex != nullptr);
     return _primaryIndex;
