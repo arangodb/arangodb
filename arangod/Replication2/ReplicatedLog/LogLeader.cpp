@@ -51,8 +51,6 @@
 #include <utility>
 
 #include "Basics/ErrorCode.h"
-#include "Cluster/FailureOracle.h"
-#include "Futures/Promise-inl.h"
 #include "Futures/Promise.h"
 #include "Futures/Unit.h"
 #include "Logger/LogContextKeys.h"
@@ -70,7 +68,6 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:
@@ -97,12 +94,14 @@ replicated_log::LogLeader::LogLeader(
     ParticipantId id, LogTerm term, LogIndex firstIndex,
     InMemoryLog inMemoryLog,
     std::shared_ptr<IReplicatedStateHandle> stateHandle,
-    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IScheduler> scheduler)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _stateHandle(std::move(stateHandle)),
       _followerFactory(std::move(followerFactory)),
+      _scheduler(std::move(scheduler)),
       _id(std::move(id)),
       _currentTerm(term),
       _firstIndexOfCurrentTerm(firstIndex),
@@ -151,10 +150,11 @@ auto replicated_log::LogLeader::instantiateFollowers(
 }
 
 namespace {
-auto delayedFuture(std::chrono::steady_clock::duration duration)
+auto delayedFuture(replicated_log::IScheduler* sched,
+                   std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
-  if (SchedulerFeature::SCHEDULER) {
-    return SchedulerFeature::SCHEDULER->delay(duration);
+  if (sched) {
+    return sched->delayedFuture(duration);
   }
 
   // std::this_thread::sleep_for(duration);
@@ -181,10 +181,11 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
 
 void replicated_log::LogLeader::executeAppendEntriesRequests(
     std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-    std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
+    std::shared_ptr<ReplicatedLogMetrics> const& logMetrics,
+    IScheduler* sched) {
   for (auto& it : requests) {
     if (it.has_value()) {
-      delayedFuture(it->_executionDelay)
+      delayedFuture(sched, it->_executionDelay)
           .thenFinal([it = std::move(it), logMetrics](auto&&) mutable {
             auto follower = it->_follower.lock();
             auto logLeader = it->_parentLog.lock();
@@ -280,7 +281,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     handleResolvedPromiseSet(std::move(resolvedPromises),
                                              logMetrics);
                     executeAppendEntriesRequests(std::move(preparedRequests),
-                                                 logMetrics);
+                                                 logMetrics,
+                                                 self->_scheduler.get());
                   } else {
                     if (follower == nullptr) {
                       LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
@@ -304,8 +306,8 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IReplicatedStateHandle> stateHandle,
-    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
-    -> std::shared_ptr<LogLeader> {
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IScheduler> scheduler) -> std::shared_ptr<LogLeader> {
   auto const& config = participantsConfig->config;
   auto const& participants = participantsConfig->participants;
 
@@ -333,11 +335,13 @@ auto replicated_log::LogLeader::construct(
         ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
         InMemoryLog inMemoryLog,
         std::shared_ptr<IReplicatedStateHandle> stateHandle,
-        std::shared_ptr<IAbstractFollowerFactory> followerFactory)
+        std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+        std::shared_ptr<IScheduler> scheduler)
         : LogLeader(std::move(logContext), std::move(logMetrics),
                     std::move(options), std::move(id), term,
                     firstIndexOfCurrentTerm, std::move(inMemoryLog),
-                    std::move(stateHandle), std::move(followerFactory)) {}
+                    std::move(stateHandle), std::move(followerFactory),
+                    std::move(scheduler)) {}
   };
 
   auto log = InMemoryLog::loadFromLogCore(*logCore);
@@ -367,7 +371,8 @@ auto replicated_log::LogLeader::construct(
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
       std::move(logMetrics), std::move(options), std::move(id), term,
-      lastIndex.index + 1u, log, std::move(stateHandle), followerFactory);
+      lastIndex.index + 1u, log, std::move(stateHandle), followerFactory,
+      scheduler);
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -642,7 +647,8 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
     }
     return leaderData.prepareAppendEntries();
   });
-  executeAppendEntriesRequests(std::move(preparedRequests), _logMetrics);
+  executeAppendEntriesRequests(std::move(preparedRequests), _logMetrics,
+                               _scheduler.get());
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
@@ -1268,7 +1274,7 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
     AppendEntriesRequest const request)
     -> futures::Future<AppendEntriesResult> {
   MeasureTimeGuard measureTimeGuard(
-      _leader._logMetrics->replicatedLogFollowerAppendEntriesRtUs);
+      *_leader._logMetrics->replicatedLogFollowerAppendEntriesRtUs);
 
   auto messageLogContext =
       _logContext.with<logContextKeyMessageId>(request.messageId)

@@ -127,6 +127,7 @@ LogTarget::LogTarget(LogId id, ParticipantsFlagsMap participants,
                      LogTargetConfig const& config)
     : id{id}, participants{std::move(participants)}, config(config) {}
 
+/*
 auto agency::operator==(ImplementationSpec const& s,
                         ImplementationSpec const& s2) noexcept -> bool {
   if (s.type != s2.type ||
@@ -137,3 +138,4 @@ auto agency::operator==(ImplementationSpec const& s,
          basics::VelocyPackHelper::equal(s.parameters->slice(),
                                          s2.parameters->slice(), true);
 }
+*/

@@ -25,4 +25,4 @@
 using namespace arangodb;
 
 ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
-    : ReplicatedLogMetrics(nullptr) {}
+    : ReplicatedLogMetricsIndirect(nullptr) {}

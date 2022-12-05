@@ -273,14 +273,16 @@ auto DefaultParticipantsFactory::constructFollower(
 auto DefaultParticipantsFactory::constructLeader(
     std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
     ParticipantContext context) -> std::shared_ptr<ILogLeader> {
-  return LogLeader::construct(std::move(logCore), std::move(info.initialConfig),
-                              std::move(info.myself), info.term,
-                              context.loggerContext, std::move(context.metrics),
-                              std::move(context.options),
-                              std::move(context.stateHandle), followerFactory);
+  return LogLeader::construct(
+      std::move(logCore), std::move(info.initialConfig), std::move(info.myself),
+      info.term, context.loggerContext, std::move(context.metrics),
+      std::move(context.options), std::move(context.stateHandle),
+      followerFactory, scheduler);
 }
 
 DefaultParticipantsFactory::DefaultParticipantsFactory(
-    std::shared_ptr<IAbstractFollowerFactory> followerFactory)
-    : followerFactory(std::move(followerFactory)) {}
+    std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+    std::shared_ptr<IScheduler> scheduler)
+    : followerFactory(std::move(followerFactory)),
+      scheduler(std::move(scheduler)) {}
 }  // namespace arangodb::replication2::replicated_log

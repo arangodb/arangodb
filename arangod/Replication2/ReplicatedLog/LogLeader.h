@@ -100,8 +100,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<IReplicatedStateHandle>,
-      std::shared_ptr<IAbstractFollowerFactory> followerFactory)
-      -> std::shared_ptr<LogLeader>;
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+      std::shared_ptr<IScheduler> scheduler) -> std::shared_ptr<LogLeader>;
 
   auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
@@ -179,7 +179,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
             ParticipantId id, LogTerm term, LogIndex firstIndexOfCurrentTerm,
             InMemoryLog inMemoryLog, std::shared_ptr<IReplicatedStateHandle>,
-            std::shared_ptr<IAbstractFollowerFactory> followerFactory);
+            std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+            std::shared_ptr<IScheduler> scheduler);
 
  private:
   struct GuardedLeaderData;
@@ -349,6 +350,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IReplicatedStateHandle> _stateHandle;
   std::shared_ptr<IAbstractFollowerFactory> const _followerFactory;
+  std::shared_ptr<IScheduler> const _scheduler;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
@@ -375,7 +377,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   static void executeAppendEntriesRequests(
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
-      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
+      std::shared_ptr<ReplicatedLogMetrics> const& logMetrics, IScheduler*);
   static void handleResolvedPromiseSet(
       ResolvedPromiseSet set,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);

@@ -29,8 +29,7 @@ namespace arangodb::replication2 {
 
 struct MeasureTimeGuard {
   explicit MeasureTimeGuard(
-      std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-          histogram) noexcept;
+      metrics::Histogram<metrics::LogScale<std::uint64_t>>& histogram) noexcept;
   MeasureTimeGuard(MeasureTimeGuard const&) = delete;
   MeasureTimeGuard(MeasureTimeGuard&&) = default;
   ~MeasureTimeGuard();
@@ -39,7 +38,12 @@ struct MeasureTimeGuard {
 
  private:
   std::chrono::steady_clock::time_point const _start;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
+
+  std::unique_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>, noop>
       _histogram;
 };
 

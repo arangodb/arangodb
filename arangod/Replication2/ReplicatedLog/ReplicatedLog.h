@@ -251,9 +251,16 @@ struct ReplicatedLogConnection {
   std::unique_ptr<ReplicatedLog, nop> _log = nullptr;
 };
 
+struct IScheduler {
+  virtual ~IScheduler() = default;
+  virtual auto delayedFuture(std::chrono::steady_clock::duration duration)
+      -> futures::Future<futures::Unit> = 0;
+};
+
 struct DefaultParticipantsFactory : IParticipantsFactory {
   explicit DefaultParticipantsFactory(
-      std::shared_ptr<IAbstractFollowerFactory> followerFactory);
+      std::shared_ptr<IAbstractFollowerFactory> followerFactory,
+      std::shared_ptr<IScheduler> scheduler);
   auto constructFollower(std::unique_ptr<LogCore> logCore,
                          FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> override;
@@ -262,6 +269,7 @@ struct DefaultParticipantsFactory : IParticipantsFactory {
       -> std::shared_ptr<ILogLeader> override;
 
   std::shared_ptr<IAbstractFollowerFactory> followerFactory;
+  std::shared_ptr<IScheduler> scheduler;
 };
 
 }  // namespace arangodb::replication2::replicated_log

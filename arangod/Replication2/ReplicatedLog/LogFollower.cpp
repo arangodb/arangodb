@@ -159,7 +159,7 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
 auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     -> arangodb::futures::Future<AppendEntriesResult> {
   MeasureTimeGuard measureTimeGuard{
-      _logMetrics->replicatedLogFollowerAppendEntriesRtUs};
+      *_logMetrics->replicatedLogFollowerAppendEntriesRtUs};
 
   auto dataGuard = _guardedFollowerData.getLockedGuard();
 

@@ -127,8 +127,12 @@ target_include_directories(arango_lightweight PUBLIC
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
-target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt arango_crashhandler
+target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt
         arango_assertions arango_static_strings)
+
+# yes we need absl now everywhere
+target_link_libraries(arango_lightweight PUBLIC
+        absl::flat_hash_set absl::synchronization)
 
 # Enterprise
 if (USE_ENTERPRISE)
