@@ -44,7 +44,8 @@ namespace {
 // TODO: make it dry
 inline arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{
-      paths::plan()->version(), arangodb::AgencySimpleOperationType::INCREMENT_OP};
+      paths::plan()->version(),
+      arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
 inline auto pathCollectionInPlan(std::string_view databaseName) {
@@ -53,7 +54,8 @@ inline auto pathCollectionInPlan(std::string_view databaseName) {
 }
 
 inline auto pathReplicatedStateInTarget(std::string_view databaseName) {
-  return paths::target()->replicatedStates()->database(std::string{databaseName});
+  return paths::target()->replicatedStates()->database(
+      std::string{databaseName});
 }
 
 inline auto pathCollectioInCurrent(std::string_view databaseName) {
@@ -137,7 +139,8 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   }
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedStatesPath = pathReplicatedStateInTarget(databaseName);
+  auto const baseReplicatedStatesPath =
+      pathReplicatedStateInTarget(databaseName);
 
   VPackBufferUInt8 data;
   VPackBuilder builder(data);
@@ -161,17 +164,15 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
 
     // Create a replicated state for each shard.
     for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-      auto spec = entry.getReplicatedStateForTarget(shardId, serverIds, databaseName);
+      auto spec =
+          entry.getReplicatedStateForTarget(shardId, serverIds, databaseName);
       writes = std::move(writes).emplace_object(
           baseReplicatedStatesPath->state(spec.id)->str(),
-          [&](VPackBuilder& builder) {
-            velocypack::serialize(builder, spec);
-          });
+          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
     }
   }
 
-
-    // Done with adding writes. Now add all preconditions
+  // Done with adding writes. Now add all preconditions
   // writes is not usable after this point
   auto preconditions = std::move(writes).precs();
   preconditions = std::move(preconditions)
@@ -215,7 +216,8 @@ TargetCollectionAgencyWriter::prepareUndoTransaction(
   opers.push_back(IncreaseVersion());
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedStatesPath = pathReplicatedStateInTarget(databaseName);
+  auto const baseReplicatedStatesPath =
+      pathReplicatedStateInTarget(databaseName);
   for (auto& entry : _collectionPlanEntries) {
     auto const collectionPath = baseCollectionPath->collection(entry.getCID());
 
@@ -229,11 +231,11 @@ TargetCollectionAgencyWriter::prepareUndoTransaction(
 
     // Delete the replicated state for each shard.
     for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-
       auto stateId = LogicalCollection::shardIdToStateId(shardId);
       // Remove the ReplicatedState
       opers.emplace_back(
-          AgencyOperation{baseReplicatedStatesPath->state(stateId), AgencySimpleOperationType::DELETE_OP});
+          AgencyOperation{baseReplicatedStatesPath->state(stateId),
+                          AgencySimpleOperationType::DELETE_OP});
     }
   }
 
@@ -283,8 +285,7 @@ TargetCollectionAgencyWriter::prepareCompletedTransaction(
   return AgencyWriteTransaction{opers, precs};
 }
 
-std::vector<std::string>
-TargetCollectionAgencyWriter::collectionNames() const {
+std::vector<std::string> TargetCollectionAgencyWriter::collectionNames() const {
   std::vector<std::string> names;
   names.reserve(_collectionPlanEntries.size());
   for (auto& entry : _collectionPlanEntries) {

@@ -172,7 +172,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           // Just we do not crash, no one knowingly throws non exceptions.
         }
       });
-      
+
       auto future =
           aac.sendWriteTransaction(120s, std::move(buildingTransaction.get()))
               .thenValue([&shouldUndo](

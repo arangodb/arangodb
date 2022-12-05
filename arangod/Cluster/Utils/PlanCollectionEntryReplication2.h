@@ -42,8 +42,8 @@ struct Target;
 
 struct PlanCollectionEntryReplication2 {
   PlanCollectionEntryReplication2(UserInputCollectionProperties collection,
-                      ShardDistribution shardDistribution,
-                      AgencyIsBuildingFlags isBuildingFlags);
+                                  ShardDistribution shardDistribution,
+                                  AgencyIsBuildingFlags isBuildingFlags);
 
   [[nodiscard]] std::string getCID() const;
 

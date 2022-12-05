@@ -38,7 +38,7 @@ template<typename T>
 class Buffer;
 
 class Slice;
-}
+}  // namespace velocypack
 
 class Result;
 
@@ -63,7 +63,8 @@ struct TargetCollectionAgencyWriter {
   [[nodiscard]] AgencyWriteTransaction prepareUndoTransaction(
       std::string_view databaseName) const;
 
-  [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>> prepareStartBuildingTransaction(
+  [[nodiscard]] ResultT<velocypack::Buffer<uint8_t>>
+  prepareStartBuildingTransaction(
       std::string_view databaseName, uint64_t planVersion,
       std::vector<std::string> serversAvailable) const;
 

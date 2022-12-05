@@ -41,8 +41,7 @@ PlanCollectionEntryReplication2::PlanCollectionEntryReplication2(
       _indexProperties(
           CollectionIndexesProperties::defaultIndexesForCollectionType(
               col.getType())),
-      _shardDistribution(std::move(shardDistribution)) {
-}
+      _shardDistribution(std::move(shardDistribution)) {}
 
 std::string PlanCollectionEntryReplication2::getCID() const {
   TRI_ASSERT(!_properties.id.empty());
@@ -65,13 +64,13 @@ PlanShardToServerMapping PlanCollectionEntryReplication2::getShardMapping()
   return _shardDistribution.getDistributionForShards();
 }
 
-[[nodiscard]] replication2::replicated_state::agency::Target PlanCollectionEntryReplication2::getReplicatedStateForTarget(ShardID const& shardId,
-                                                                                                                          ResponsibleServerList const& serverIds,
-                                                                                                                          std::string_view databaseName) const {
+[[nodiscard]] replication2::replicated_state::agency::Target
+PlanCollectionEntryReplication2::getReplicatedStateForTarget(
+    ShardID const& shardId, ResponsibleServerList const& serverIds,
+    std::string_view databaseName) const {
   using namespace replication2::replicated_state;
 
   replication2::replicated_state::agency::Target spec;
-
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
@@ -98,7 +97,6 @@ PlanShardToServerMapping PlanCollectionEntryReplication2::getShardMapping()
 
   return spec;
 }
-
 
 // Remove the isBuilding flags, call it if we are completed
 void PlanCollectionEntryReplication2::removeBuildingFlags() {
