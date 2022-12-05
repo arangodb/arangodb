@@ -476,9 +476,9 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 
 Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   const LocalDocumentId& documentId,
+                                   LocalDocumentId const& documentId,
                                    velocypack::Slice doc,
-                                   const OperationOptions& options,
+                                   OperationOptions const& options,
                                    bool performChecks) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
@@ -501,8 +501,9 @@ Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
 
 Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
                                    RocksDBMethods* methods,
-                                   const LocalDocumentId& documentId,
-                                   velocypack::Slice doc) {
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice doc,
+                                   OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
@@ -578,9 +579,9 @@ std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
 
 Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     const LocalDocumentId& documentId,
+                                     LocalDocumentId const& documentId,
                                      velocypack::Slice doc,
-                                     const OperationOptions& options,
+                                     OperationOptions const& options,
                                      bool performChecks) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
@@ -613,8 +614,9 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
 
 Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
                                      RocksDBMethods* methods,
-                                     const LocalDocumentId& documentId,
-                                     velocypack::Slice doc) {
+                                     LocalDocumentId const& documentId,
+                                     velocypack::Slice doc,
+                                     OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 
