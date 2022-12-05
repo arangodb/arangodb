@@ -825,6 +825,22 @@ function MovingShardsSuite ({useData}) {
     return false;
   }
 
+  function getServerRebootId(server) {
+    return readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
+  }
+
+  function waitForRebootIdChanged(server, oldRebootId) {
+
+    var count = 300;
+    while(--count > 0) {
+      if (getServerRebootId(server) !== oldRebootId) {
+        return;
+      }
+      wait(1.0);
+    }
+    assertTrue(count > 0);
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -1055,12 +1071,15 @@ function MovingShardsSuite ({useData}) {
         assertTrue(waitForSupervision());
 
         checkCollectionContents();
+
+        // get server reboot id
+        const rebootId = getServerRebootId(toResign);
+
         // now suspend that server
         stopServerWaitFailed(toResign);
 
-        // Wait until FailedServer job is executed, then the RebootId is
-        // increased, which would also happen in a proper reboot scenario.
-        assertTrue(waitForSupervision());
+        // Wait for the reboot id to be changed.
+        waitForRebootIdChanged(toResign, rebootId);
 
         // restart the server
         continueServerWaitOk(toResign);
