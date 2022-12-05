@@ -258,8 +258,6 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
 
 auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
     -> std::vector<size_t> {
-  LOG_DEVEL << "Here4";
-
   size_t const n = _inputs.size();
   std::vector<size_t> skipped{};
   skipped.reserve(n);

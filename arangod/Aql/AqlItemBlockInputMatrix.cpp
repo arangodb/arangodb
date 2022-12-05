@@ -165,7 +165,6 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
 }
 
 size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
-  LOG_DEVEL << "Here1";
   if (_aqlItemMatrix == nullptr) {
     // Have not been initialized.
     // Needs to be initialized before.
@@ -182,7 +181,7 @@ size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
     // This Row is the first that we are not allowed to skip
     // We have now set this range to produce this row next
     TRI_ASSERT(!_shadowRow.isRelevant());
-    TRI_ASSERT((_shadowRow.getDepth()) > depth);
+    TRI_ASSERT(_shadowRow.getDepth() > depth);
   } else {
     // We have not found a shadowRow that is not to skip.
     // Simply erased the Matrix

@@ -1468,22 +1468,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
             auto reportedSkip =
                 std::min_element(std::begin(skipped), std::end(skipped));
             _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
-            LOG_DEVEL << "xX";
           } else {
             size_t skipped = 0;
 
-            LOG_DEVEL << "o0";
             if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-              LOG_DEVEL << "-1-";
               skipped =
                   _lastRange.template skipAllShadowRowsOfDepth<-1>(depthToSkip);
             } else if constexpr (std::is_same_v<DataRange,
                                                 AqlItemBlockInputRange>) {
-              LOG_DEVEL << "-2-";
               skipped =
                   _lastRange.template skipAllShadowRowsOfDepth<0>(depthToSkip);
             } else {
-              LOG_DEVEL << "-3-";
               skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
             }
 
