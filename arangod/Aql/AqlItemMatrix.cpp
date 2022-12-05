@@ -241,6 +241,7 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   return _stopIndexInLastBlock + 1 < _blocks.back()->numRows();
 }
 
+template<int depthOffset>
 [[nodiscard]] auto AqlItemMatrix::skipAllShadowRowsOfDepth(size_t depth)
     -> std::tuple<size_t, ShadowAqlItemRow> {
   if (_blocks.empty()) {
@@ -250,10 +251,15 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   size_t skipped = 0;
   while (stoppedOnShadowRow()) {
     auto shadow = popShadowRow();
-    if (shadow.getDepth() > depth) {
+    auto rowDepth = shadow.getDepth();
+    // Subtracting depthOffset from rowDepth instead of adding it to depth
+    // here due to avoid underflows.
+    static_assert(depthOffset <= 0);
+    rowDepth -= depthOffset;
+    if (rowDepth > depth) {
       return {skipped, shadow};
     }
-    if (shadow.getDepth() == depth) {
+    if (rowDepth == depth) {
       skipped++;
     }
   }
@@ -262,6 +268,11 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   clear();
   return {skipped, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
 }
+
+template std::tuple<size_t, ShadowAqlItemRow>
+AqlItemMatrix::skipAllShadowRowsOfDepth<-1>(size_t depth);
+template std::tuple<size_t, ShadowAqlItemRow>
+AqlItemMatrix::skipAllShadowRowsOfDepth<0>(size_t depth);
 
 AqlItemMatrix::RowIterator AqlItemMatrix::begin() const {
   if (size() > 0) {

@@ -84,8 +84,7 @@ class AqlItemBlockInputRange {
 
   // depthOffset is added to depth, except it won't underflow.
   template<int depthOffset>
-  requires(depthOffset == 0 || depthOffset == -1) size_t
-      skipAllShadowRowsOfDepth(size_t depth);
+  size_t skipAllShadowRowsOfDepth(size_t depth);
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
