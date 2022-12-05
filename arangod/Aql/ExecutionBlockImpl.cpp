@@ -1274,31 +1274,27 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
+        auto skipped = std::invoke([&]() {
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<-1>(
+                depthToSkip);
+          }
+          if constexpr (std::is_same_v<DataRange, AqlItemBlockInputRange>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<0>(depthToSkip);
+          } else {
+            return _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+          }
+        });
 
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
                                        MultiAqlItemBlockInputRange>) {
-            auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
-
             _rowFetcher.reportSubqueryFullCounts(depthToSkip, skipped);
             // We need to report exactly one of those values to the _skipped container
             // If we need help from upstream, they report it via `execute` API.
             auto reportedSkip = std::min_element(std::begin(skipped), std::end(skipped));
             _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
           } else {
-            size_t skipped = 0;
-
-            if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-              skipped =
-                  _lastRange.template skipAllShadowRowsOfDepth<-1>(depthToSkip);
-            } else if constexpr (std::is_same_v<DataRange,
-                                                AqlItemBlockInputRange>) {
-              skipped =
-                  _lastRange.template skipAllShadowRowsOfDepth<0>(depthToSkip);
-            } else {
-              skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
-            }
-
             _skipped.didSkipSubquery(skipped, depthToSkip);
           }
         }
