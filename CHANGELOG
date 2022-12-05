@@ -34,11 +34,12 @@ v3.10.2 (XXXX-XX-XX)
   subsystem, or when an in-memory cache table is currently in a migration phase
   (grow/shrink operation).
 
-  The experimental startup option `--rocksdb.auto-refill-index-caches-on-modify`
-  for DB-Servers and single servers, which currently defaults to `false`. If 
-  it is set to `true`, the cache refilling will be turned on automatically for
-  all insert/update/replace/remove operations, so that it doesn't need to be 
-  specified on the per-operation/per-query level.
+  There is a new experimental startup option 
+  `--rocksdb.auto-refill-index-caches-on-modify` for DB-Servers and single 
+  servers, which currently defaults to `false`. If it is set to `true`, the 
+  cache refilling will be turned on automatically for all insert/update/
+  replace/remove operations, so that it doesn't need to be specified on the 
+  per-operation/per-query level.
 
   The experimental option `--rocksdb.auto-refill-index-caches-queue-capacity`
   can be used to limit the number of index cache entries that the background 
@@ -49,16 +50,16 @@ v3.10.2 (XXXX-XX-XX)
   There are also new experimental startup options to control whether or not 
   the in-memory caches should automatically be seeded upon server restart.
   The option `--rocksdb.auto-fill-index-caches-on-startup` for DB-Servers and 
-  single servers turns on this functionality. It currently defaults to `false`.
+  single servers enables this functionality. It currently defaults to `false`.
   If it is set to `true`, the in-memory caches of all eligible indexes will be
-  automatically preseeded after the server startup. Note that this may cause 
+  automatically pre-seeded after the server startup. Note that this may cause 
   additional CPU and I/O load.
   The option `--rocksdb.max-concurrent-index-fill-tasks` is available to limit
   the impact of the automatic index filling at startup. It controls how many 
-  concurrent full index filling operations can execute concurrently. The lower 
-  this number is, the lower the impact of cache filling, but the longer it will
-  take. The default value for this option depends on the number of available 
-  cores, and is at least `1`. A value of `0` cannot be used. 
+  full index filling operations can execute concurrently. The lower this number
+  is, the lower the impact of cache filling, but the longer it will take. 
+  The default value for this option depends on the number of available cores, 
+  and is at least `1`. A value of `0` cannot be used. 
   This option is only relevant if `--rocksdb.auto-fill-index-caches-on-startup` 
   is set to `true`.
 
