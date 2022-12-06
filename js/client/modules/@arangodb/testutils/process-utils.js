@@ -460,17 +460,20 @@ function killRemainingProcesses(results) {
   let i = 0;
   for (i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);
     }
     let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
-      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+      print(RED + Date() + "process exited without us joining it (marking crashy): " +
+            JSON.stringify(running[i]) + JSON.stringify(status) + RESET);
     }
     else {
-      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(RED + Date() + "Killing remaining process & marking crashy: " + JSON.stringify(running[i]) + RESET);
       print(killExternal(running[i].pid, abortSignal));
     }
+    print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
     results.crashed = true;
   }
 }
