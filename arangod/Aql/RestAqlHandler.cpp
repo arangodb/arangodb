@@ -136,6 +136,7 @@ ScopeGuard guard([]() noexcept {
     return;
   }
 
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called setup with body: " << querySlice.toJson();
   QueryId clusterQueryId = 0;
   // this is an optional attribute that 3.8 coordinators will send, but
   // older versions won't send.
@@ -356,6 +357,8 @@ ScopeGuard guard([]() noexcept {
         "Query aborted since coordinator rebooted or failed.");
   }
 
+
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "registering query ";
   _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
@@ -756,11 +759,13 @@ LOG_DEVEL_IF(IS_TRX_DEBUG()) << "aborting query " << idString;
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "failed to parse body " << idString;
     return RestStatus::DONE;
   }
 
   auto errorCode = VelocyPackHelper::getNumericValue<ErrorCode>(
       querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "aborting query " << idString << " with code: " << errorCode;
   std::shared_ptr<ClusterQuery> query =
       _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
@@ -768,6 +773,7 @@ LOG_DEVEL_IF(IS_TRX_DEBUG()) << "aborting query " << idString;
     // shutting down the query. it is debatable whether this is an actual error
     // if we only want to abort the query...
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "query not found " << idString;
     return RestStatus::DONE;
   }
 
