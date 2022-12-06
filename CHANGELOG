@@ -1,6 +1,10 @@
 devel
 -----
 
+* Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
+  when a peer closes an SSL/TLS connection without performing a proper
+  connection shutdown.
+
 * Added new per-operation option `refillIndexCaches` to write operations,
   namely:
 
