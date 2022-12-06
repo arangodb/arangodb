@@ -470,7 +470,7 @@ function killRemainingProcesses(results) {
             JSON.stringify(running[i]) + JSON.stringify(status) + RESET);
     }
     else {
-      print(RED + Date() + "Killing remaining process & marking crashy: " + JSON.stringify(running[i]) + RESET);
+      print(RED + Date() + " Killing remaining process & marking crashy: " + JSON.stringify(running[i]) + RESET);
       print(killExternal(running[i].pid, abortSignal));
     }
     print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
