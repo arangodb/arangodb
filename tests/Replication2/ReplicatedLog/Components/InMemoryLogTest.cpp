@@ -236,6 +236,24 @@ TEST_P(InMemoryLogSliceTest, release) {
   }
 }
 
+TEST_P(InMemoryLogSliceTest, remove_front) {
+  auto [range, testRange] = GetParam();
+  auto const log = createLogForRangeSingleTerm(range);
+  testRange.to = range.to;
+  auto const expectedRange = intersect(range, testRange);
+  auto newLog = log.removeFront(testRange.from);
+  EXPECT_EQ(newLog.getIndexRange(), expectedRange);
+}
+
+TEST_P(InMemoryLogSliceTest, remove_back) {
+  auto [range, testRange] = GetParam();
+  auto const log = createLogForRangeSingleTerm(range);
+  testRange.from = range.from;
+  auto const expectedRange = intersect(range, testRange);
+  auto newLog = log.removeBack(testRange.to);
+  EXPECT_EQ(newLog.getIndexRange(), expectedRange);
+}
+
 auto const SliceRanges = ::testing::Values(
     LogRange(LogIndex{4}, LogIndex{6}), LogRange(LogIndex{1}, LogIndex{8}),
     LogRange(LogIndex{100}, LogIndex{120}),

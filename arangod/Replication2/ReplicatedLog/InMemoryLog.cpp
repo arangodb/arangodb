@@ -326,17 +326,14 @@ auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(
   return removeBack(until + 1);
 }
 
-auto replicated_log::InMemoryLog::removeBack(LogIndex until) const
+auto replicated_log::InMemoryLog::removeBack(LogIndex start) const
     -> InMemoryLog {
-  return InMemoryLog{
-      _log.take(until.saturatedDecrement(_first.value + 1).value), _first};
+  return InMemoryLog{_log.take(start.saturatedDecrement(_first.value).value)};
 }
 
 auto replicated_log::InMemoryLog::removeFront(LogIndex stop) const
     -> replicated_log::InMemoryLog {
-  auto [from, to] = getIndexRange();
-  auto newLog = slice(stop, to);
-  return InMemoryLog(newLog);
+  return InMemoryLog{_log.drop(stop.saturatedDecrement(_first.value).value)};
 }
 
 auto replicated_log::InMemoryLog::release(LogIndex stop) const

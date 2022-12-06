@@ -74,7 +74,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     ADB_PROD_ASSERT(guard->spearheadLog.empty() ||
                     slice.getFirstIndex() ==
                         guard->spearheadLog.getLastIndex() + 1)
-        << "tried to append non matching slice - first entry in current log: "
+        << "tried to append non matching slice - log range is: "
         << guard->spearheadLog.getIndexRange() << " new piece starts at "
         << slice.getFirstIndex();
     auto iter = slice.getPersistedLogIterator();

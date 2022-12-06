@@ -180,12 +180,11 @@ struct LogRange {
     LogIndex current;
   };
 
-  friend auto operator==(LogRange, LogRange) noexcept -> bool = default;
-
   [[nodiscard]] auto begin() const noexcept -> Iterator;
   [[nodiscard]] auto end() const noexcept -> Iterator;
 };
 
+auto operator==(LogRange, LogRange) noexcept -> bool;
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
 
 template<class Inspector>

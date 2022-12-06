@@ -258,7 +258,46 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
     EXPECT_TRUE(result.isSuccess());
   }
 
-  // we expect compaction to happen
+  // we expect the snapshot to be invalidated
+  // and the log truncated
   ASSERT_FALSE(storage.log.empty());
   EXPECT_EQ(storage.log.begin()->first, LogIndex{200});
+  ASSERT_TRUE(storage.meta.has_value());
+  EXPECT_EQ(storage.meta->snapshot.status, SnapshotStatus::kInvalidated);
+}
+
+TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{2};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  auto follower = makeFollowerManager();
+  methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{55})).Times(1);
+  EXPECT_CALL(*stateHandle, acquireSnapshot).Times(0);
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{40};  // compaction up to 40
+    request.leaderCommit = LogIndex{55};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{2};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{50}};
+    request.entries =
+        generateEntries(LogTerm{2}, LogRange{LogIndex{51}, LogIndex{60}});
+    auto result = follower->appendEntries(request).get();
+    EXPECT_TRUE(result.isSuccess());
+  }
+
+  // we expect the snapshot to be invalidated
+  // and the log truncated
+  ASSERT_FALSE(storage.log.empty());
+  EXPECT_EQ(storage.log.begin()->first, LogIndex{40});   // compacted
+  EXPECT_EQ(storage.log.rbegin()->first, LogIndex{59});  // [40, 60)
 }

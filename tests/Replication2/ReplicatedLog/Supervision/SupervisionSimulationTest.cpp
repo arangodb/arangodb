@@ -47,7 +47,7 @@ using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
 
-struct DISABLED_ReplicatedLogSupervisionSimulationTest
+struct ReplicatedLogSupervisionSimulationTest
     : ::testing::Test,
       model_checker::testing::TracedSeedGenerator {
   LogTargetConfig const defaultConfig = {2, 2, false};
@@ -63,7 +63,7 @@ struct DISABLED_ReplicatedLogSupervisionSimulationTest
   }
 };
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_created) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -104,7 +104,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_created) {
 
 // Create a log with waitForSync = false in the configuration and
 // check that assumedWaitForSync is never true
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
+TEST_F(ReplicatedLogSupervisionSimulationTest,
        check_log_created_with_correct_assumedwaitforsync) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, false))
@@ -145,8 +145,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
-       check_log_leader_fails) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -187,7 +186,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -227,7 +226,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
+TEST_F(ReplicatedLogSupervisionSimulationTest,
        check_participant_added_created) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
@@ -275,7 +274,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -321,7 +320,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -367,8 +366,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
-       check_log_change_config) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -440,8 +438,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   //  std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
-       check_log_change_wait_for_sync) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -505,8 +502,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   // std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
-       check_log_replace_leader) {
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
@@ -553,7 +549,7 @@ TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(DISABLED_ReplicatedLogSupervisionSimulationTest,
+TEST_F(ReplicatedLogSupervisionSimulationTest,
        check_log_replace_leader_modify_soft_wc) {
   AgencyLogBuilder log;
   log.setTargetConfig(LogTargetConfig(2, 2, true))

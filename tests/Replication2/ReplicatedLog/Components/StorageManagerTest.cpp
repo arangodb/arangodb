@@ -94,7 +94,7 @@ TEST_F(StorageManagerTest, transaction_remove_back) {
 
   auto trx2 = storageManager->transaction();
   auto logBounds = trx2->getLogBounds();
-  EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{49}}));
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{1}, LogIndex{50}}));
 }
 
 TEST_F(StorageManagerTest, concurrent_remove_front_back) {
@@ -120,7 +120,7 @@ TEST_F(StorageManagerTest, concurrent_remove_front_back) {
 
   auto trx2 = storageManager->transaction();
   auto logBounds = trx2->getLogBounds();
-  EXPECT_EQ(logBounds, (LogRange{LogIndex{40}, LogIndex{69}}));
+  EXPECT_EQ(logBounds, (LogRange{LogIndex{40}, LogIndex{70}}));
 }
 
 namespace {
