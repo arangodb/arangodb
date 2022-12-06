@@ -4,6 +4,10 @@ v3.9.6 (XXXX-XX-XX)
 * Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
   could erroneously reduce the number of results of the containing (sub)query.
 
+* Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
+  when a peer closes an SSL/TLS connection without performing a proper
+  connection shutdown.
+
 * Added experimental per-operation option `refillIndexCaches` to write 
   operations, namely:
 
