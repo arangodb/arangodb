@@ -44,6 +44,7 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state)
 AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state,
                                                  AqlItemMatrix* aqlItemMatrix)
     : _finalState{state}, _aqlItemMatrix{aqlItemMatrix} {
+  TRI_ASSERT(_block == nullptr);
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // Fast forward to initialize the _shadowRow
@@ -71,6 +72,8 @@ AqlItemBlockInputRange& AqlItemBlockInputMatrix::getInputRange() {
 std::pair<ExecutorState, AqlItemMatrix const*>
 AqlItemBlockInputMatrix::getMatrix() noexcept {
   TRI_ASSERT(_aqlItemMatrix != nullptr);
+  TRI_ASSERT(_block == nullptr);
+  TRI_ASSERT(!_shadowRow.isInitialized());
 
   // We are always done. This InputMatrix
   // guarantees that we have all data in our hand at once.
