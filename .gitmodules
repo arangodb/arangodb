@@ -18,5 +18,5 @@
 	url = https://github.com/arangodb/abseil-cpp.git
 [submodule "3rdParty/immer"]
 	path = 3rdParty/immer
-	url = https://github.com/arximboldi/immer
+	url = https://github.com/arangodb/immer
 	branch = release-v0.8
