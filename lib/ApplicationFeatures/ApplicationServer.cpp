@@ -21,13 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
 #include <atomic>
 #include <chrono>
-#include <exception>
+#include <cstdlib>
 #include <iostream>
 #include <new>
-#include <unordered_set>
 #include <utility>
 
 #include <boost/range/adaptor/filtered.hpp>

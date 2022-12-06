@@ -24,6 +24,7 @@
 #include "FrontendFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "V8Server/V8DealerFeature.h"

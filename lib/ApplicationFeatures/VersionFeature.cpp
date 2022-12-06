@@ -23,6 +23,8 @@
 
 #include "ApplicationFeatures/VersionFeature.h"
 
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Rest/Version.h"
 

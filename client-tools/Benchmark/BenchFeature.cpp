@@ -50,7 +50,7 @@
 #include "Benchmark/BenchmarkStats.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
