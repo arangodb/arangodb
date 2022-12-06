@@ -298,7 +298,20 @@ void RocksDBTrxBaseMethods::createTransaction() {
   _rocksTransaction = _db->BeginTransaction(wo, trxOpts, _rocksTransaction);
 }
 
-arangodb::Result RocksDBTrxBaseMethods::doCommit() {
+Result RocksDBTrxBaseMethods::doCommit() {
+  // We need to call callbacks always, even if hasOperations() == false,
+  // because it is like this in recovery
+  TRI_ASSERT(_state != nullptr);
+  _state->applyPreCommitCallbacks();
+  auto r = doCommitImpl();
+  if (r.ok()) {
+    TRI_ASSERT(_state != nullptr);
+    _state->applyPostCommitCallbacks();
+  }
+  return r;
+}
+
+arangodb::Result RocksDBTrxBaseMethods::doCommitImpl() {
   if (!hasOperations()) {  // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumKeys() == 0 &&

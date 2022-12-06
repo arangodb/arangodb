@@ -819,7 +819,8 @@ Result RocksDBPrimaryIndex::update(
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   velocypack::Slice slice) {
+                                   velocypack::Slice slice,
+                                   OperationOptions const& /*options*/) {
   Result res;
 
   // TODO: deal with matching revisions?
