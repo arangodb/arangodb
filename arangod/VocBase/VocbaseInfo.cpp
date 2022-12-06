@@ -357,8 +357,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
             server.getFeature<ClusterFeature>().maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
-        if (vocbaseOptions.replicationFactor > maxReplicationFactor &&
-            maxReplicationFactor > 0) {
+        if (0 < maxReplicationFactor && maxReplicationFactor < vocbaseOptions.replicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               std::string("replicationFactor must not be higher than "
