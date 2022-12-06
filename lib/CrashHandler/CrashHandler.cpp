@@ -231,7 +231,8 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
-  appendNullTerminatedString(")", p);
+  appendNullTerminatedString(") from pid ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(info->si_pid), p);
 
 #ifndef _WIN32
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Print the pid of the process which sent the signal.
+
 * Added new per-operation option `refillIndexCaches` to write operations,
   namely:
 
