@@ -121,7 +121,7 @@ LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called ReleaseUsage: " << collectionName() << "
   // questionable, but seems to work
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
       _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "LockNever hint: " << collectionName();
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "LockNever hint: " << collectionName() << " " << (void*)this;
     TRI_ASSERT(!_usageLocked);
     _collection = nullptr;
     return;
@@ -144,6 +144,7 @@ LOG_DEVEL_IF(IS_TRX_DEBUG()) << "AttemptToUnlock: " << collectionName();
       _transaction->vocbase().releaseCollection(_collection.get());
       _usageLocked = false;
     }
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "unused collect: " << collectionName() << " " << (void*)this;
     _collection = nullptr;
   } else {
     TRI_ASSERT(!_usageLocked);
@@ -328,9 +329,9 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
-    LOG_DEVEL << "start write-locking collection " << _cid.id();
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "start write-locking collection " << collectionName() << " is locked: " << isLocked();
     res = physical->lockWrite(timeout);
-    LOG_DEVEL << "end write-locking collection " << _cid.id();
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "end write-locking collection " << collectionName() << " is locked: " << isLocked();
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
@@ -411,9 +412,9 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
-    LOG_DEVEL << "start write-unlocking collection " << collectionName();
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "start write-unlocking collection " << collectionName();
     physical->unlockWrite();
-    LOG_DEVEL << "end write-unlocking collection " << collectionName();
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "end write-unlocking collection " << collectionName();
   } else {
     // write locking means we'll be releasing the collection's RW lock in read
     // mode
@@ -426,6 +427,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 }
 
 Result RocksDBTransactionCollection::ensureCollection() {
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called ensure collection: " << (void*) this;
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -446,6 +448,7 @@ Result RocksDBTransactionCollection::ensureCollection() {
       try {
         _collection =
             _transaction->vocbase().useCollection(_cid, checkPermissions);
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Injected collection: " << (void*) this << "-> " << collectionName();
       } catch (basics::Exception const& ex) {
         return {ex.code(), ex.what()};
       }
@@ -457,8 +460,10 @@ Result RocksDBTransactionCollection::ensureCollection() {
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Exit, collection not found: " << (void*) this << "-> " << _cid.id();
         return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
       }
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Injected collection2: " << (void*) this << "-> " << collectionName();
     }
   }
 
