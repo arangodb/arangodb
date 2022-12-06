@@ -160,6 +160,7 @@ size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
 
 template<int depthOffset>
 size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  static_assert(depthOffset == 0 || depthOffset == -1);
   // Note that depthOffset == -1 iff we're at an SQS node.
   size_t skipped = 0;
   while (hasValidRow()) {
@@ -192,7 +193,9 @@ size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
 template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<-1>(
     size_t depth);
 template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<0>(
-    size_t depth);template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
+    size_t depth);
+
+template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
 ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
   size_t testRowIndex = _rowIndex;
   if constexpr (LookAhead::NEXT == doPeek) {
