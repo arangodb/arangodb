@@ -362,8 +362,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
               TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("replicationFactor must not be higher than "
                           "maximum allowed replicationFactor (", maxReplicationFactor, ")"));
-        } else if (vocbaseOptions.replicationFactor < minReplicationFactor &&
-                   minReplicationFactor > 0) {
+        } else if (0 < minReplicationFactor && vocbaseOptions.replicationFactor < minReplicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("replicationFactor must not be lower than "
