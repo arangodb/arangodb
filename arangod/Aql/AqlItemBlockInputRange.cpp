@@ -171,6 +171,7 @@ size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
 
 template<int depthOffset>
 size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  static_assert(depthOffset == 0 || depthOffset == -1);
   // Note that depthOffset == -1 iff we're at an SQS node.
   size_t skipped = 0;
   while (hasValidRow()) {
