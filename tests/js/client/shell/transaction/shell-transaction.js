@@ -4794,7 +4794,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
 
     setUp: function () {
       db._drop(cn);
-      db._create(cn, { numberOfShards: 4 });
+      db._create(cn, { numberOfShards: 1 });
       db[cn].ensureIndex({ type: "persistent", fields: ["unique"], unique: true, sparse: true, name: "uniqueTestIdx" });
     },
 
