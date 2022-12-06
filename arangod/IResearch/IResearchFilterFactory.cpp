@@ -1401,12 +1401,6 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
 
   auto const& ctx = filterCtx.query;
 
-  std::string fieldName{ctx.namePrefix};
-  if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
-                               filter != nullptr)) {
-    return error::failedToGenerateName("fromArrayComparison", 1);
-  }
-
   if (aql::NODE_TYPE_ARRAY == valueNode->type) {
     if (!attributeNode->isDeterministic()) {
       // not supported by IResearch, but could be handled by ArangoDB
@@ -1504,6 +1498,12 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       !checkAttributeAccess(attributeNode, *ctx.ref, !ctx.isSearchQuery) ||
       findReference(*valueNode, *ctx.ref)) {
     return fromExpression(filter, filterCtx, node);
+  }
+
+  std::string fieldName{ctx.namePrefix};
+  if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
+                               filter != nullptr)) {
+    return error::failedToGenerateName("fromArrayComparison", 1);
   }
 
   if (!filter) {
