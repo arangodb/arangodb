@@ -105,5 +105,3 @@ target_include_directories(arango_iresearch PRIVATE
 
 target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>")
-target_compile_options(arango_iresearch PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
