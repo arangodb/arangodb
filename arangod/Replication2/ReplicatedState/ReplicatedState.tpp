@@ -758,7 +758,6 @@ ReplicatedState<S>::ReplicatedState(
     : factory(std::move(factory)),
       gid(std::move(gid)),
       log(std::move(log)),
-      guardedData(*this),
       loggerContext(std::move(loggerContext)),
       metrics(std::move(metrics)) {
   TRI_ASSERT(this->metrics != nullptr);
@@ -815,33 +814,22 @@ void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
 
-  auto deferred = guardedData.doUnderLock([&](GuardedData& data) {
-    std::unique_ptr<CoreType> core;
-    DeferredAction action;
+  auto stateManager =
+      std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
+  ADB_PROD_ASSERT(stateManager != nullptr);
+  auto core = std::move(*stateManager).resign();
+  ADB_PROD_ASSERT(core != nullptr);
 
-    // TODO remove data.oldCore
-    core = std::move(data.oldCore);
-    ADB_PROD_ASSERT(core == nullptr);
-    auto stateManager =
-        std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
-    ADB_PROD_ASSERT(stateManager != nullptr);
-    core = std::move(*stateManager).resign();
-    ADB_PROD_ASSERT(core != nullptr);
-
-    using CleanupHandler =
-        typename ReplicatedStateTraits<S>::CleanupHandlerType;
-    if constexpr (not std::is_void_v<CleanupHandler>) {
-      static_assert(
-          std::is_invocable_r_v<std::shared_ptr<CleanupHandler>,
-                                decltype(&Factory::constructCleanupHandler),
-                                Factory>);
-      std::shared_ptr<CleanupHandler> cleanupHandler =
-          factory->constructCleanupHandler();
-      cleanupHandler->drop(std::move(core));
-    }
-    return action;
-  });
-  deferred.fire();
+  using CleanupHandler = typename ReplicatedStateTraits<S>::CleanupHandlerType;
+  if constexpr (not std::is_void_v<CleanupHandler>) {
+    static_assert(
+        std::is_invocable_r_v<std::shared_ptr<CleanupHandler>,
+                              decltype(&Factory::constructCleanupHandler),
+                              Factory>);
+    std::shared_ptr<CleanupHandler> cleanupHandler =
+        factory->constructCleanupHandler();
+    cleanupHandler->drop(std::move(core));
+  }
 }
 
 template<typename S>

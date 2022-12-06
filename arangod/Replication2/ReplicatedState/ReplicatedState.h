@@ -411,13 +411,6 @@ struct ReplicatedState final
   GlobalLogIdentifier const gid;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
-  struct GuardedData {
-    explicit GuardedData(ReplicatedState& self) : _self(self) {}
-
-    ReplicatedState& _self;
-    std::unique_ptr<CoreType> oldCore = nullptr;
-  };
-  Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
   DatabaseID const database;
   std::shared_ptr<ReplicatedStateMetrics> const metrics;
