@@ -376,25 +376,12 @@ Result RocksDBCollection::updateProperties(velocypack::Slice slice) {
   return {};
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection& logical) const {
-  return new RocksDBCollection(logical, this);
-}
-
 /// @brief export properties
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add(StaticStrings::ObjectId, VPackValue(std::to_string(objectId())));
   result.add(StaticStrings::CacheEnabled, VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
-}
-
-/// @brief closes an open collection
-ErrorCode RocksDBCollection::close() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// return bounds for all documents

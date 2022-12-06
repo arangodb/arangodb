@@ -167,10 +167,6 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   return {};
 }
 
-PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
-  return new ClusterCollection(logical, this);
-}
-
 /// @brief used for updating properties
 void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
@@ -206,16 +202,6 @@ futures::Future<OperationResult> ClusterCollection::figures(
 void ClusterCollection::figuresSpecific(bool /*details*/,
                                         velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
-}
-
-/// @brief closes an open collection
-ErrorCode ClusterCollection::close() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 RevisionId ClusterCollection::revision(transaction::Methods* trx) const {

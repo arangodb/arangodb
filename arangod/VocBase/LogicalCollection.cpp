@@ -621,7 +621,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return {};
 }
 
-ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
+void LogicalCollection::close() { getPhysical()->close(); }
 
 Result LogicalCollection::drop() {
   // make sure collection has been closed

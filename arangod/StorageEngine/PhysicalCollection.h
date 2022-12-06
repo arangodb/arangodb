@@ -23,26 +23,35 @@
 
 #pragma once
 
-#include <set>
-
-#include <velocypack/Builder.h>
-
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <boost/container/flat_set.hpp>
 
+#include <memory>
+#include <set>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 
 class LocalDocumentId;
 class Index;
@@ -57,22 +66,21 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
-
   // path to logical collection
   virtual std::string const& path() const = 0;
-  // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(velocypack::Slice slice) = 0;
 
-  virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
+  // creation happens atm in engine->createCollection
+  virtual Result updateProperties(velocypack::Slice slice) = 0;
+
+  virtual RevisionId revision(transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual ErrorCode close() = 0;
-
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
+
+  void close();
 
   void drop();
 
@@ -96,9 +104,9 @@ class PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
-  virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
+  virtual void prepareIndexes(velocypack::Slice indexesSlice) = 0;
 
-  bool hasIndexOfType(arangodb::Index::IndexType type) const;
+  bool hasIndexOfType(Index::IndexType type) const;
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
@@ -119,12 +127,12 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indices
+  /// @brief get list of all indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(
       velocypack::Builder&,
-      std::function<bool(arangodb::Index const*,
+      std::function<bool(Index const*,
                          std::underlying_type<Index::Serialize>::type&)> const&
           filter) const;
 
@@ -179,7 +187,6 @@ class PhysicalCollection {
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
@@ -190,11 +197,6 @@ class PhysicalCollection {
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
 
-  /**
-   * @brief Perform document insert, may generate a '_key' value
-   * If (options.returnNew == false && !options.silent) result might
-   * just contain an object with the '_key' field
-   */
   virtual Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                         velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
@@ -236,8 +238,7 @@ class PhysicalCollection {
   PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(bool details,
-                               arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;
 
   LogicalCollection& _logicalCollection;
 

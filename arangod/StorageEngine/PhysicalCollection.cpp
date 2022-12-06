@@ -23,10 +23,10 @@
 
 #include "PhysicalCollection.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -34,7 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
-#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -70,6 +70,13 @@ IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdating,
 void PhysicalCollection::flushClusterIndexEstimates() {
   // default-implementation is a no-op. the operation is only useful for cluster
   // collections
+}
+
+void PhysicalCollection::close() {
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  for (auto it : _indexes) {
+    it->unload();
+  }
 }
 
 void PhysicalCollection::drop() {

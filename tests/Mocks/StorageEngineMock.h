@@ -81,9 +81,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   PhysicalCollectionMock(arangodb::LogicalCollection& collection,
                          arangodb::velocypack::Slice const& info);
-  virtual PhysicalCollection* clone(
-      arangodb::LogicalCollection& collection) const override;
-  virtual ErrorCode close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(
       arangodb::velocypack::Slice info, bool restore, bool& created) override;
   virtual void deferDropCollection(

@@ -67,18 +67,12 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result updateProperties(velocypack::Slice slice) override;
 
-  virtual PhysicalCollection* clone(
-      LogicalCollection& collection) const override;
-
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
   futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options) override;
-
-  /// @brief closes an open collection
-  ErrorCode close() override;
 
   RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;

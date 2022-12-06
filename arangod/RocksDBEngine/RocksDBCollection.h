@@ -57,13 +57,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   arangodb::Result updateProperties(velocypack::Slice slice) override;
 
-  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
-
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-
-  /// @brief closes an open collection
-  ErrorCode close() override;
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;

@@ -307,7 +307,7 @@ class LogicalCollection : public LogicalDataSource {
       bool details, OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  ErrorCode close();
+  void close();
 
   // SECTION: Indexes
 

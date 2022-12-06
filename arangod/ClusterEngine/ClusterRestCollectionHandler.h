@@ -27,7 +27,7 @@
 
 namespace arangodb {
 
-class ClusterRestCollectionHandler : public arangodb::RestCollectionHandler {
+class ClusterRestCollectionHandler : public RestCollectionHandler {
  public:
   ClusterRestCollectionHandler(ArangodServer&, GeneralRequest*,
                                GeneralResponse*);
