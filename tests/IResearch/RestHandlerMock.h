@@ -27,10 +27,13 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
-struct TRI_vocbase_t;  // forward declaration
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext;  // forward declaration
+class VocbaseContext;
 }
 
 struct GeneralRequestMock : public arangodb::GeneralRequest {
