@@ -173,17 +173,22 @@ function BaseChaosSuite(testOpts) {
   };
 
   const removeViews = (isSearchAlias) => {
+    print(Date() + " removeViews: 1 deleting");
     let vn = viewName(cn + "_view", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 2 deleting");
     vn = viewName(cn + "_view_ps", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 3 deleting");
     vn = viewName(cn + "_view_sv", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 4 deleting");
     vn = viewName(cn + "_view_ps_sv", isSearchAlias);
     db._dropView(vn);
+    print(Date() + " removeViews: done");
   };
 
   const createViews = (isSearchAlias) => {
@@ -317,11 +322,13 @@ function BaseChaosSuite(testOpts) {
     },
 
     tearDown: function () {
+      print(Date() + " tearDown: flushing failurepoints");
       clearAllFailurePoints();
       if (testOpts.withViews) {
         removeViews(false);
         removeViews(true);
       }
+      print(Date() + " tearDown: dropping " + cn);
       db._drop(cn);
 
       const shells = db[coordination_cn].all();
@@ -329,7 +336,9 @@ function BaseChaosSuite(testOpts) {
         print("Found remaining docs in coordination collection:");
         print(shells);
       }
+      print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
+      print(Date() + " tearDown: done.");
     },
     
     testWorkInParallel: function () {
