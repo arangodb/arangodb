@@ -37,6 +37,8 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb {
 
 CreateDatabaseInfo::CreateDatabaseInfo(ArangodServer& server,
@@ -357,17 +359,20 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
             server.getFeature<ClusterFeature>().maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
-        if (0 < maxReplicationFactor && maxReplicationFactor < vocbaseOptions.replicationFactor) {
+        if (0 < maxReplicationFactor &&
+            maxReplicationFactor < vocbaseOptions.replicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (", maxReplicationFactor, ")"));
-        } else if (0 < minReplicationFactor && vocbaseOptions.replicationFactor < minReplicationFactor) {
+                           "maximum allowed replicationFactor (",
+                           maxReplicationFactor, ")"));
+        } else if (0 < minReplicationFactor &&
+                   vocbaseOptions.replicationFactor < minReplicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("replicationFactor must not be lower than "
-                          "minimum allowed replicationFactor (",
-                  minReplicationFactor, ")"));
+                           "minimum allowed replicationFactor (",
+                           minReplicationFactor, ")"));
         }
       }
     }
