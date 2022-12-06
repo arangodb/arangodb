@@ -26,6 +26,10 @@
 #include "Basics/debugging.h"
 #include <velocypack/StringRef.h>
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <ostream>
+#endif
+
 using namespace arangodb;
 
 OperationOptions::OperationOptions()
@@ -50,8 +54,9 @@ OperationOptions::OperationOptions(ExecContext const& context)
   _context = &context;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 namespace {
-const char* indexOpModeString(IndexOperationMode mode) {
+const char* indexOpModeString(IndexOperationMode mode) noexcept {
   switch (mode) {
     case IndexOperationMode::normal:
       return "normal";
@@ -63,10 +68,25 @@ const char* indexOpModeString(IndexOperationMode mode) {
   TRI_ASSERT(false);
   return "invalid";
 }
+
+std::string_view refillIndexCachesString(RefillIndexCaches value) noexcept {
+  switch (value) {
+    case RefillIndexCaches::kDefault:
+      return "default";
+    case RefillIndexCaches::kRefill:
+      return "refill";
+    case RefillIndexCaches::kDontRefill:
+      return "dont-refill";
+  }
+  TRI_ASSERT(false);
+  return "dont-refill";
+}
 }  // namespace
+#endif
 
 // The following code does not work with VisualStudio 2019's `cl`
 // Lets keep it for debugging on linux.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #ifndef _WIN32
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
   // clang-format off
@@ -83,11 +103,13 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
      << ", returnNew : "  << ops.returnNew
      << ", isRestore : " << ops.isRestore
      << ", overwriteMode : " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
+     << ", refillIndexCaches: " << ::refillIndexCachesString(ops.refillIndexCaches)
      << ", canDisableIndexing : " << ops.canDisableIndexing
      << " }" << std::endl;
   // clang-format on
   return os;
 }
+#endif
 #endif
 
 // get associate execution context
@@ -100,7 +122,7 @@ ExecContext const& OperationOptions::context() const {
 
 /// @brief stringifies the overwrite mode
 char const* OperationOptions::stringifyOverwriteMode(
-    OperationOptions::OverwriteMode mode) {
+    OperationOptions::OverwriteMode mode) noexcept {
   switch (mode) {
     case OverwriteMode::Unknown:
       return "unknown";
@@ -118,7 +140,7 @@ char const* OperationOptions::stringifyOverwriteMode(
 }
 
 OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(
-    velocypack::StringRef value) {
+    velocypack::StringRef value) noexcept {
   if (value == "conflict") {
     return OverwriteMode::Conflict;
   }
