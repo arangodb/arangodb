@@ -789,10 +789,6 @@ Controlling the place where the test-data is stored:
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
-Run all tests:
-
-    scripts/unittest all
-
 `scripts/unittest` is only a wrapper for the most part, the backend
 functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
 `process-utils.js`, `test-utils.js`). The actual testsuites are located in the
@@ -802,7 +798,6 @@ functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
 
 The first parameter chooses the facility to execute. Available choices include:
 
-- **all**: This target is utilized by most of the Jenkins builds invoking unit tests (calls multiple)
 - **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 - **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 
