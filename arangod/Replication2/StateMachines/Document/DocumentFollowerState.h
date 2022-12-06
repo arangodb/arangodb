@@ -43,6 +43,7 @@ struct DocumentFollowerState
   ~DocumentFollowerState() override;
 
   std::string_view const shardId;
+  LoggerContext const loggerContext;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
