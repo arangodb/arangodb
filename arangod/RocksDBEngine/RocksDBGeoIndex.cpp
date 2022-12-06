@@ -460,14 +460,13 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice doc) {
-  Result res;
-
+                               velocypack::Slice doc,
+                               OperationOptions const& /*options*/) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   S2Point centroid;
 
-  res = geo_index::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {  // might occur if insert is rolled back
     if (res.is(TRI_ERROR_BAD_PARAMETER)) {

@@ -469,7 +469,7 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
 arangodb::Result arangodb::RocksDBZkdIndexBase::remove(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
     const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc) {
+    arangodb::velocypack::Slice doc, OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
@@ -577,7 +577,7 @@ arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
 arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
     const arangodb::LocalDocumentId& documentId,
-    arangodb::velocypack::Slice doc) {
+    arangodb::velocypack::Slice doc, OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
   TRI_ASSERT(_sparse == false);
 

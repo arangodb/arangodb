@@ -47,7 +47,8 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
                 const OperationOptions& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc) override;
+                arangodb::velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   FilterCosts supportsFilterCondition(
       const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
@@ -78,7 +79,8 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
                 const OperationOptions& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc) override;
+                arangodb::velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, const aql::AstNode* node,

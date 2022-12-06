@@ -89,8 +89,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice) override;
+                LocalDocumentId const& documentId, velocypack::Slice slice,
+                OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimatorType* estimator() override {
