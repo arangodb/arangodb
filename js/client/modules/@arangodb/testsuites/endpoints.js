@@ -66,7 +66,8 @@ class endpointRunner extends tu.runInArangoshRunner {
     fs.makeDirectory(this.dummyDir);
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
-                                      {}, {}, 'tcp', this.dummyDir, '',
+                                      {'log.level': 'startup=trace'},
+                                      {}, 'tcp', this.dummyDir, '',
                                       new inst.agencyConfig(this.options, null));
     this.endpoint = this.instance.args['server.endpoint'];
   }
