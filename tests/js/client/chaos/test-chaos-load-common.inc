@@ -490,16 +490,23 @@ function BaseChaosSuite(testOpts) {
       // run the suite for 3 minutes
       runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
-      print("Finished load test - waiting for cluster to get in sync before checking consistency.");
+      print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
+      print(Date() + " Waiting for shards to get in sync");
       waitForShardsInSync(cn);
+      print(Date() + " checking consistency");
       checkCollectionConsistency(cn);
       if (testOpts.withViews) {
+        print(Date() + " checking view 1 consistency");
         checkViewConsistency(cn, false, false);
+        print(Date() + " checking view 2 consistency");
         checkViewConsistency(cn, true, false);
+        print(Date() + " checking view 3 consistency");
         checkViewConsistency(cn, false, true);
+        print(Date() + " checking view 4 consistency");
         checkViewConsistency(cn, true, true);
       }
+      print(Date() + " checking consistency done.");
     }
   };
 }
