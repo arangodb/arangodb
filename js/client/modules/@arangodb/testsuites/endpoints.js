@@ -286,7 +286,7 @@ class endpointRunner extends tu.runInArangoshRunner {
         results[endpointName + '-' + 'all'] = {
           failed: 1,
           status: false,
-          message: 'failed to start server! - Server did not become available in 22s' + ex
+          message: 'failed to start server! - Server did not become available in 22s: ' + ex
         };
         this.options.cleanup = false;
         return results;
