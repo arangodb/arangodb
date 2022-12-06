@@ -248,7 +248,6 @@ function CollectionSuite () {
         // cache was filled with same queries, hit rate must be higher
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            assertTrue(Math.abs(initial[i].cacheSize - idx.figures.cacheSize) < 1024);
             assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, idx, { idx, initial });
           }
         });
