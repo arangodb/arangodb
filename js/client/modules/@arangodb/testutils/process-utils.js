@@ -466,7 +466,7 @@ function killRemainingProcesses(results) {
     }
     let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
-      print(RED + Date() + "process exited without us joining it (marking crashy): " +
+      print(RED + Date() + " process exited without us joining it (marking crashy): " +
             JSON.stringify(running[i]) + JSON.stringify(status) + RESET);
     }
     else {
