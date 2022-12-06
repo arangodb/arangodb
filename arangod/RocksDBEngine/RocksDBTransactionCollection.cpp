@@ -117,9 +117,11 @@ Result RocksDBTransactionCollection::lockUsage() {
 }
 
 void RocksDBTransactionCollection::releaseUsage() {
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called ReleaseUsage: " << collectionName() << " is locked: " << isLocked();
   // questionable, but seems to work
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
       _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "LockNever hint: " << collectionName();
     TRI_ASSERT(!_usageLocked);
     _collection = nullptr;
     return;
@@ -127,6 +129,7 @@ void RocksDBTransactionCollection::releaseUsage() {
 
   if (isLocked()) {
     // unlock our own r/w locks
+LOG_DEVEL_IF(IS_TRX_DEBUG()) << "AttemptToUnlock: " << collectionName();
     doUnlock(_accessType);
     _lockType = AccessMode::Type::NONE;
   }
@@ -408,9 +411,9 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be releasing the collection's RW lock in
     // write mode
-    LOG_DEVEL << "start write-unlocking collection " << _cid.id();
+    LOG_DEVEL << "start write-unlocking collection " << collectionName();
     physical->unlockWrite();
-    LOG_DEVEL << "end write-unlocking collection " << _cid.id();
+    LOG_DEVEL << "end write-unlocking collection " << collectionName();
   } else {
     // write locking means we'll be releasing the collection's RW lock in read
     // mode

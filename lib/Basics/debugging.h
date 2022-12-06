@@ -86,6 +86,13 @@ inline void TRI_RemoveFailurePointDebugging(std::string_view) {}
 
 /// @brief clear all failure points
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
+bool IS_TRX_DEBUG() noexcept;
+#else
+bool IS_TRX_DEBUG() noexcept { return false;}
+#endif
+
+/// @brief clear all failure points
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_ClearFailurePointsDebugging() noexcept;
 #else
 inline void TRI_ClearFailurePointsDebugging() noexcept {}
