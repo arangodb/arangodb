@@ -19,9 +19,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Mocks/PersistedLog.h
         #Mocks/ReplicatedStateMetricsMock.cpp
         #ReplicatedLog/TestHelper.cpp
-        Mocks/FakeStorageEngineMethods.cpp
-        Mocks/FakeAsyncExecutor.cpp
-        Mocks/LogEventRecorder.cpp
         )
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
@@ -87,7 +84,7 @@ target_link_libraries(arango_tests_replication2 PRIVATE
 add_executable(arangodbtests_replication2
         EXCLUDE_FROM_ALL)
 
-target_link_libraries(arangodbtests_replication2
+target_link_libraries(arangodbtests_replication2 PRIVATE
         gtest
         arango_tests_basics
         arango_tests_replication2
@@ -150,4 +147,4 @@ add_executable(arangodbtests_replication2_pure
 target_link_libraries(arangodbtests_replication2_pure PRIVATE
         arango_tests_replication2_pure arango_lightweight)
 
-target_link_libraries(arango_tests_replication2 PUBLIC arango_tests_replication2_pure)
+target_link_libraries(arangodbtests_replication2 PUBLIC arango_tests_replication2_pure)
