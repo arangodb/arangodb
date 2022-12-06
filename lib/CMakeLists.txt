@@ -42,11 +42,46 @@ set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen
 set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
 add_library(arango_lightweight STATIC
+        ApplicationFeatures/ApplicationFeature.cpp
+        ApplicationFeatures/ApplicationServer.cpp
+        ApplicationFeatures/ShellColorsFeature.cpp
+        Basics/ArangoGlobalContext.cpp
+        Basics/CleanupFunctions.cpp
+        Basics/ConditionLocker.cpp
+        Basics/ConditionVariable.cpp
+        Basics/ErrorCode.cpp
+        Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
+        Basics/FileResult.cpp
+        Basics/FileUtils.cpp
         Basics/Guarded.h
+        Basics/Identifier.cpp
+        Basics/Mutex.cpp
+        Basics/NumberOfCores.cpp
+        Basics/PageSize.cpp
+        Basics/PhysicalMemory.cpp
+        Basics/ReadWriteLock.cpp
+        Basics/RebootId.cpp Basics/RebootId.h
+        Basics/Result.cpp
+        Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
+        Basics/StringBuffer.cpp
+        Basics/StringHeap.cpp
+        Basics/StringUtils.cpp
+        Basics/Thread.cpp
+        Basics/UnshackledMutex.cpp
+        Basics/application-exit.cpp
+        Basics/conversions.cpp
         Basics/debugging.cpp
+        Basics/error.cpp
+        Basics/files.cpp
+        Basics/fpconv.cpp
+        Basics/levenshtein.cpp
+        Basics/memory.cpp
+        Basics/process-utils.cpp
+        Basics/signals.cpp
+        Basics/system-functions.cpp
+        Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
         Futures/Future.cpp
-        Random/RandomGenerator.cpp
         Logger/Escaper.cpp
         Logger/LogAppender.cpp
         Logger/LogAppenderFile.cpp
@@ -54,53 +89,19 @@ add_library(arango_lightweight STATIC
         Logger/LogContext.cpp
         Logger/LogLevel.cpp
         Logger/LogThread.cpp
+        Logger/LogTimeFormat.cpp
         Logger/LogTopic.cpp
         Logger/Logger.cpp
         Logger/LoggerFeature.cpp
         Logger/LoggerStream.cpp
-        Logger/LogTimeFormat.cpp
-        Basics/Thread.cpp
-        ApplicationFeatures/ApplicationServer.cpp
-        ApplicationFeatures/ApplicationFeature.cpp
-        ApplicationFeatures/ShellColorsFeature.cpp
-        Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
-        Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
-        Basics/Result.cpp
-        Basics/ArangoGlobalContext.cpp
-        Basics/ConditionVariable.cpp
-        Basics/ConditionLocker.cpp
-        Basics/Identifier.cpp
-        Basics/ErrorCode.cpp
-        Basics/Mutex.cpp
-        Basics/application-exit.cpp
-        Basics/UnshackledMutex.cpp
-        Basics/StringUtils.cpp
-        Basics/ReadWriteLock.cpp
-        Basics/files.cpp
-        Basics/process-utils.cpp
-        Basics/FileUtils.cpp
+        ProgramOptions/IniFileParser.cpp
         ProgramOptions/Option.cpp
         ProgramOptions/Parameters.cpp
         ProgramOptions/ProgramOptions.cpp
         ProgramOptions/Section.cpp
         ProgramOptions/Translator.cpp
-        ProgramOptions/IniFileParser.cpp
-        Basics/levenshtein.cpp
-        Basics/fpconv.cpp
-        Basics/StringBuffer.cpp
-        Basics/StringHeap.cpp
-        Basics/memory.cpp
-        Basics/tri-strings.cpp
-        Basics/error.cpp
-        Basics/FileResult.cpp
-        Basics/conversions.cpp
-        Basics/system-functions.cpp
-        Basics/CleanupFunctions.cpp
-        Basics/PageSize.cpp
-        Basics/signals.cpp
-        Basics/PhysicalMemory.cpp
-        Basics/NumberOfCores.cpp
-        Basics/RebootId.cpp Basics/RebootId.h)
+        Random/RandomGenerator.cpp
+)
 
 if (MSVC)
   target_sources(arango_lightweight PRIVATE
@@ -149,8 +150,8 @@ add_library(arango STATIC
   ${LIB_ARANGO_DATE}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
-  ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
@@ -159,8 +160,8 @@ add_library(arango STATIC
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/V8PlatformFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
-  Assertions/AssertionLogger.cpp
   Assertions/AssertionConditionalLogger.cpp
+  Assertions/AssertionLogger.cpp
   Basics/AttributeNameParser.cpp
   Basics/CpuUsageSnapshot.cpp
   Basics/DataProtector.cpp
@@ -170,23 +171,23 @@ add_library(arango STATIC
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
+  Basics/IndexIter.h
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
   Basics/NumberUtils.cpp
-        Basics/Utf8Helper.cpp
   Basics/ReadWriteSpinLock.cpp
-        Basics/VelocyPackHelper.cpp
-  Basics/IndexIter.h
   Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SourceLocation.cpp
-        Basics/StringBufferAdvanced.cpp
+  Basics/StringBufferAdvanced.cpp
+  Basics/Utf8Helper.cpp
+  Basics/VelocyPackHelper.cpp
   Basics/csv.cpp
-        Basics/files-advanced.cpp
   Basics/datetime.cpp
   Basics/fasthash.cpp
+  Basics/files-advanced.cpp
   Basics/hashes.cpp
   Basics/socket-utils.cpp
   Basics/terminal-utils.cpp
