@@ -66,7 +66,7 @@ function transactionReplication2ReplicateOperationSuite() {
 
     Object.entries(terms).forEach(increaseTerm);
 
-    const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term, []);
+    const leaderReady = ([stateId, term]) => replicatedLogsPredicates.replicatedLogLeaderEstablished(dbn, stateId, term + 1, []);
 
     Object.entries(terms).forEach(x => replicatedLogsHelper.waitFor(leaderReady(x)));
   };

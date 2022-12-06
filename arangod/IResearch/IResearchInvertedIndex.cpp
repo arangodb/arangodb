@@ -38,6 +38,7 @@
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Transaction/Methods.h"
 

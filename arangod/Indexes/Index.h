@@ -438,7 +438,8 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  virtual Result scheduleWarmup();
+  virtual bool canWarmup() const noexcept;
+  virtual Result warmup();
 
   static size_t sortWeight(aql::AstNode const* node);
 

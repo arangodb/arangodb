@@ -37,6 +37,7 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"

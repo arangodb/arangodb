@@ -37,6 +37,7 @@
 #include "VocBase/Methods/Databases.h"
 
 #include <condition_variable>
+#include <mutex>
 
 struct TRI_vocbase_t;
 
@@ -47,12 +48,10 @@ class ApplicationServer;
 class LogicalCollection;
 }  // namespace arangodb
 
-namespace arangodb {
-namespace velocypack {
-class Builder;  // forward declaration
-class Slice;    // forward declaration
-}  // namespace velocypack
-}  // namespace arangodb
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
 
 namespace arangodb {
 
