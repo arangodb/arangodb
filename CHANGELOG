@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
+
 * Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
   when a peer closes an SSL/TLS connection without performing a proper
   connection shutdown.
