@@ -351,9 +351,9 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
       if (haveCluster) {
-        uint32_t const minReplicationFactor =
+        auto const minReplicationFactor =
             server.getFeature<ClusterFeature>().minReplicationFactor();
-        uint32_t const maxReplicationFactor =
+        auto const maxReplicationFactor =
             server.getFeature<ClusterFeature>().maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
