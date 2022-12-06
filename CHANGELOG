@@ -1,4 +1,4 @@
-v3.9.6 (XXXX-XX-XX)
+v3.9.6 (2022-12-06)
 -------------------
 
 * Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
@@ -19,13 +19,18 @@ v3.9.6 (XXXX-XX-XX)
   for velocypack-based indexes (persistent, hash, sklipist index).
 
   Example usages:
-  - `db.<collection>.insert({ _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
-  - `db.<collection>.update(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
-  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
+  - `db.<collection>.insert({ _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
+  - `db.<collection>.update(key, { _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
+  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
   - `db.<collection>.remove(key, { refillIndexCaches: true });`
   - `INSERT { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
-  - `UPDATE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
-  - `REPLACE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `UPDATE { ... } WITH { ... } INTO <collection> 
+  OPTIONS { refillIndexCaches: true }`
+  - `REPLACE { ... } WITH { ... } INTO <collection> 
+  OPTIONS { refillIndexCaches: true }`
   - `REMOVE { ... } IN <collection> OPTIONS { refillIndexCaches: true }`
 
   The refilling of the in-memory caches for indexes is performed by a 
