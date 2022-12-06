@@ -94,8 +94,14 @@ target_link_libraries(arango_tests_replication2
     velocypack
     fmt)
 
-add_executable(arangodbtests_replication2
-  EXCLUDE_FROM_ALL)
+option(USE_SEPARATE_REPLICATION2_TESTS_BINARY
+        "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
+if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
+    add_executable(arangodbtests_replication2)
+else()
+    add_executable(arangodbtests_replication2
+            EXCLUDE_FROM_ALL)
+endif()
 
 target_link_libraries(arangodbtests_replication2
     gtest

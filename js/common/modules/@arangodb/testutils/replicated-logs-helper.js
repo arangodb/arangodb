@@ -622,7 +622,7 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
 
   Object.entries(terms).forEach(increaseTerm);
 
-  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term, []);
+  const leaderReady = ([stateId, term]) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, term + 1, []);
 
   Object.entries(terms).forEach(x => waitFor(leaderReady(x)));
 };
