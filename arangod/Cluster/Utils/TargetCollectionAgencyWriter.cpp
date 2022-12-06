@@ -199,7 +199,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   // We are complete, add our ID and close the transaction;
   std::move(preconditions).end().done();
 
-  return std::move(data);
+  return data;
 }
 
 [[nodiscard]] AgencyWriteTransaction
