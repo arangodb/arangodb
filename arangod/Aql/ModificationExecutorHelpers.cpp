@@ -215,6 +215,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(
   // in.exclusive;
   out.overwriteMode = in.overwriteMode;
   out.ignoreRevs = in.ignoreRevs;
+  out.refillIndexCaches = in.refillIndexCaches;
 
   out.returnNew = (outVariableNew != nullptr);
   out.returnOld = (outVariableOld != nullptr);

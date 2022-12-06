@@ -346,7 +346,7 @@ function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
   return new endpointRunner(options, "endpoints").run();
 }
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['endpoints'] = endpoints;
 
@@ -355,8 +355,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
   opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
-
-  defaultFns.push('endpoints');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
