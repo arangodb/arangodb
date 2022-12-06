@@ -90,21 +90,22 @@ RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
 void RocksDBIndexCacheRefillFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption(
-          "--rocksdb.auto-fill-index-caches-on-startup",
-          "Automatically fill in-memory index cache entries on server startup.",
-          new options::BooleanParameter(&_fillOnStartup),
-          arangodb::options::makeFlags(
-              options::Flags::DefaultNoComponents, options::Flags::OnDBServer,
-              options::Flags::OnSingle, options::Flags::Uncommon,
-              options::Flags::Experimental))
+      ->addOption("--rocksdb.auto-fill-index-caches-on-startup",
+                  "Whether to automatically fill the in-memory edge cache with "
+                  "entries on server startup.",
+                  new options::BooleanParameter(&_fillOnStartup),
+                  arangodb::options::makeFlags(
+                      options::Flags::DefaultNoComponents,
+                      options::Flags::OnDBServer, options::Flags::OnSingle,
+                      options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
       .setIntroducedIn(31020);
 
   options
       ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
-                  "Automatically (re-)fill in-memory index cache entries upon "
-                  "insert/update/replace.",
+                  "Whether to automatically (re-)fill the in-memory edge "
+                  "cache with entries on insert/update/replace/remove "
+                  "operations by default.",
                   new options::BooleanParameter(&_autoRefill),
                   arangodb::options::makeFlags(
                       options::Flags::DefaultNoComponents,
@@ -116,7 +117,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
   options
       ->addOption(
           "--rocksdb.auto-refill-index-caches-queue-capacity",
-          "Maximum capacity for automatic in-memory index cache refill queue.",
+          "How many changes can be queued at most for automatically refilling "
+          "the edge cache.",
           new options::SizeTParameter(&_maxCapacity),
           options::makeFlags(options::Flags::DefaultNoComponents,
                              options::Flags::OnDBServer,
@@ -127,7 +129,8 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
 
   options
       ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
-                  "Maximum number of concurrent index fill tasks at startup.",
+                  "The maximum number of index fill tasks that can run "
+                  "concurrently on server startup.",
                   new options::SizeTParameter(&_maxConcurrentIndexFillTasks,
                                               /*minValue*/ 1),
                   options::makeFlags(
