@@ -4618,7 +4618,6 @@ function transactionOverlapSuite(dbParams) {
     setUp: function () {
       db._drop(cn);
       db._create(cn, { numberOfShards: 4 });
-      db[cn].ensureIndex({ type: "persistent", fields: ["unique"], unique: true, sparse: true, name: "uniqueTestIdx" });
     },
 
     tearDown: function () {
@@ -4642,37 +4641,11 @@ function transactionOverlapSuite(dbParams) {
           tc2.insert({ _key: "test" });
           fail();
         } catch (err) {
+          print(err.original);
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
           assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(`${cn}/test`, err.original._id);
           assertEqual("test", err.original._key);
-          // the conflicting document is not yet committed, so we cannot provide a revision
-          assertEqual("", err.original._rev);
-        } finally { 
-          trx2.abort();
-        }
-      } finally {
-        trx1.abort();
-      }
-    },
-
-    testOverlapInsertUniqueIndex: function () {
-      const trx1 = internal.db._createTransaction(opts);
-      try {
-        const tc1 = trx1.collection(cn);
-        const doc = tc1.insert({ _key: "k1", unique: "test" });
-
-        const trx2 = internal.db._createTransaction(opts);
-        const tc2 = trx2.collection(cn);
-        try { 
-          // should produce a conflict
-          tc2.insert({ _key: "k2", unique: "test" });
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: k2; indexed values: ["test"]`), err.errorMessage);
-          assertEqual(`${cn}/k2`, err.original._id);
-          assertEqual("k2", err.original._key);
           // the conflicting document is not yet committed, so we cannot provide a revision
           assertEqual("", err.original._rev);
         } finally { 
@@ -4711,35 +4684,6 @@ function transactionOverlapSuite(dbParams) {
       }
     },
 
-    testOverlapUpdateUniqueIndex: function () {
-      const doc1 = db[cn].insert({ _key: "k1", unique: "der fux" });
-      const doc2 = db[cn].insert({ _key: "k2", unique: "der hans" });
-
-      const trx1 = internal.db._createTransaction(opts);
-      try {
-        const tc1 = trx1.collection(cn);
-        tc1.update(doc1._key, { unique: "test" });
-
-        const trx2 = internal.db._createTransaction(opts);
-        const tc2 = trx2.collection(cn);
-        try { 
-          // should produce a conflict
-          tc2.update(doc2._key, { unique: "test" });
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`), err.errorMessage);
-          assertEqual(doc2._key, err.original._key);
-          assertEqual(doc2._id, err.original._id);
-          assertEqual(doc2._rev, err.original._rev);
-        } finally { 
-          trx2.abort();
-        }
-      } finally {
-        trx1.abort();
-      }
-    },
-
     testOverlapUpdateWithInsert: function () {
       const doc = db[cn].insert({ _key: "test" });
 
@@ -4768,34 +4712,6 @@ function transactionOverlapSuite(dbParams) {
       }
     },
     
-    testOverlapUpdateWithInsertUniqueIndex: function () {
-      db[cn].insert({ _key: "test" });
-
-      const trx1 = internal.db._createTransaction(opts);
-      try {
-        const tc1 = trx1.collection(cn);
-        tc1.update("test", { unique: "der fux" });
-
-        const trx2 = internal.db._createTransaction(opts);
-        const tc2 = trx2.collection(cn);
-        try { 
-          // should produce a conflict
-          tc2.insert({ _key: "test2", unique: "der fux" });
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: test2; indexed values: ["der fux"]`), err.errorMessage);
-          assertEqual(`${cn}/test2`, err.original._id);
-          assertEqual("test2", err.original._key);
-          assertEqual("", err.original._rev);
-        } finally { 
-          trx2.abort();
-        }
-      } finally {
-        trx1.abort();
-      }
-    },
-
     testOverlapReplace: function () {
       const doc = db[cn].insert({ _key: "test" });
 
@@ -4824,7 +4740,159 @@ function transactionOverlapSuite(dbParams) {
       }
     },
     
-    testOverlapReplaceUniqueIndex: function () {
+    testOverlapRemove: function () {
+      const doc = db[cn].insert({ _key: "test" });
+      
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.remove("test");
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.remove("test");
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
+          assertEqual(doc._id, err.original._id);
+          assertEqual(doc._key, err.original._key);
+          assertEqual(doc._rev, err.original._rev);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+  };
+}
+
+function transactionOverlapUniqueIndexSuite(dbParams) {
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  const cn = 'UnitTestsTransaction';
+
+  const opts = {
+    collections: {
+      write: [cn]
+    }
+  };
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 4 });
+      db[cn].ensureIndex({ type: "persistent", fields: ["unique"], unique: true, sparse: true, name: "uniqueTestIdx" });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: overlapping transactions writing to the same document
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testOverlapInsert: function () {
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        const doc = tc1.insert({ _key: "k1", unique: "test" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.insert({ _key: "k2", unique: "test" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: k2; indexed values: ["test"]`), err.errorMessage);
+          assertEqual(`${cn}/k2`, err.original._id);
+          assertEqual("k2", err.original._key);
+          // the conflicting document is not yet committed, so we cannot provide a revision
+          assertEqual("", err.original._rev);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+
+    testOverlapUpdate: function () {
+      const doc1 = db[cn].insert({ _key: "k1", unique: "der fux" });
+      const doc2 = db[cn].insert({ _key: "k2", unique: "der hans" });
+
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.update(doc1._key, { unique: "test" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.update(doc2._key, { unique: "test" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: ${doc2._key}; indexed values: ["test"]`), err.errorMessage);
+          assertEqual(doc2._key, err.original._key);
+          assertEqual(doc2._id, err.original._id);
+          assertEqual(doc2._rev, err.original._rev);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+
+    
+    testOverlapUpdateWithInsert: function () {
+      db[cn].insert({ _key: "test" });
+
+      const trx1 = internal.db._createTransaction(opts);
+      try {
+        const tc1 = trx1.collection(cn);
+        tc1.update("test", { unique: "der fux" });
+
+        const trx2 = internal.db._createTransaction(opts);
+        const tc2 = trx2.collection(cn);
+        try { 
+          // should produce a conflict
+          tc2.insert({ _key: "test2", unique: "der fux" });
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+          assertTrue(err.errorMessage.endsWith(`Timeout waiting to lock key - in index uniqueTestIdx of type persistent over 'unique'; document key: test2; indexed values: ["der fux"]`), err.errorMessage);
+          assertEqual(`${cn}/test2`, err.original._id);
+          assertEqual("test2", err.original._key);
+          assertEqual("", err.original._rev);
+        } finally { 
+          trx2.abort();
+        }
+      } finally {
+        trx1.abort();
+      }
+    },
+
+    
+    testOverlapReplaceU: function () {
       const doc1 = db[cn].insert({ unique: "der fux" });
       const doc2 = db[cn].insert({ unique: "der hans" });
 
@@ -4854,18 +4922,18 @@ function transactionOverlapSuite(dbParams) {
     },
 
     testOverlapRemove: function () {
-      const doc = db[cn].insert({ _key: "test" });
+      const doc = db[cn].insert({ unique: "test" });
       
       const trx1 = internal.db._createTransaction(opts);
       try {
         const tc1 = trx1.collection(cn);
-        tc1.remove("test");
+        tc1.insert({ unique: "test" });
 
         const trx2 = internal.db._createTransaction(opts);
         const tc2 = trx2.collection(cn);
         try { 
           // should produce a conflict
-          tc2.remove("test");
+          tc2.remove(doc);
           fail();
         } catch (err) {
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
@@ -5057,6 +5125,9 @@ function transactionIteratorSuiteV2() { return makeTestSuites(transactionIterato
 function transactionOverlapSuiteV1() { return makeTestSuites(transactionOverlapSuite)[0]; }
 function transactionOverlapSuiteV2() { return makeTestSuites(transactionOverlapSuite)[1]; }
 
+function transactionOverlapUniqueIndexSuiteV1() { return makeTestSuites(transactionOverlapUniqueIndexSuite)[0]; }
+function transactionOverlapUniqueIndexSuiteV2() { return makeTestSuites(transactionOverlapUniqueIndexSuite)[1]; }
+
 jsunity.run(transactionRevisionsSuiteV1);
 jsunity.run(transactionRollbackSuiteV1);
 jsunity.run(transactionInvocationSuiteV1);
@@ -5070,6 +5141,7 @@ jsunity.run(transactionAQLStreamSuiteV1);
 jsunity.run(transactionTTLStreamSuiteV1);
 jsunity.run(transactionIteratorSuiteV1);
 jsunity.run(transactionOverlapSuiteV1);
+jsunity.run(transactionOverlapUniqueIndexSuiteV1);
 jsunity.run(transactionDatabaseSuite);
 
 if (isReplication2Enabled) {
@@ -5087,6 +5159,7 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
+    transactionOverlapUniqueIndexSuiteV2,
   ];
 
   for (const suite of suites) {
