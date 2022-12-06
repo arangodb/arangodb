@@ -1,7 +1,7 @@
 name: rocksdb_cache_auto_refill_dropped_total
 introducedIn: "3.9.6"
 help: |
-  Total number of dropped entries in automatic in-memory index cache refilling.
+  Total number of dropped entries in automatic in-memory edge cache refilling.
 unit: number
 type: counter
 category: RocksDB
@@ -12,14 +12,14 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric shows the total number of index entries for which no automatic
-  refilling happened in their in-memory caches. 
-  This counter will be increased only for insert, update and replace operations
-  into appropriate indexes with in-memory caches and requested automatic refilling, 
+  This metric shows the total number of entries for which no automatic refilling
+  happened in the in-memory edge cache.
+  This counter increases only for insert, update, replace, and remove operations
+  affecting the edge index and requested automatic refilling,
   if no refill operation could be queued due to capacity constraints.
   A refill operation request can be rejected if the number of currently queued
-  refill operations exceeds the maximum value configured via the startup option
-  `--rocksdb.auto-refill-index-cache-queue-capacity`.
+  refill operations exceeds the maximum value configured via the
+  `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
   Correctness of index lookups is not affected if this metric is non-zero, as
   it only reports the number of failed refilling attempts in the in-memory cache(s)
   of any index. These in-memory caches are optional and their fill grade does not
@@ -29,5 +29,5 @@ troubleshoot: |
   thread can't keep up with the incoming data modification requests. 
   In this case, consider increasing the background thread's queueing capacity via
   the startup option `--rocksdb.auto-refill-index-cache-queue-capacity`.
-  Increasing the capacity will help to handle bursts of request, but will not help
-  if the background thread is overwhelmed by a continuous high load. 
+  Increasing the capacity helps to handle bursts of request, but does not help
+  if the background thread is overwhelmed by a continuous high load.
