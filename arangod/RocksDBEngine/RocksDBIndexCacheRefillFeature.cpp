@@ -123,13 +123,14 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
       .setIntroducedIn(31020);
 
   options
-      ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
-                  "Maximum number of concurrent index fill tasks at startup.",
-                  new options::SizeTParameter(&_maxConcurrentIndexFillTasks,
-                                              /*minValue*/ 1),
-                  options::makeFlags(options::Flags::DefaultNoComponents,
-                                     options::Flags::OnDBServer,
-                                     options::Flags::OnSingle))
+      ->addOption(
+          "--rocksdb.max-concurrent-index-fill-tasks",
+          "Maximum number of concurrent index fill tasks at startup.",
+          new options::SizeTParameter(&_maxConcurrentIndexFillTasks,
+                                      /*minValue*/ 1),
+          options::makeFlags(options::Flags::DefaultNoComponents,
+                             options::Flags::OnDBServer,
+                             options::Flags::OnSingle, options::Flags::Dynamic))
       .setIntroducedIn(30906)
       .setIntroducedIn(31020);
 }

@@ -503,7 +503,7 @@ class testRunner {
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
-            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            print(RED + Date() + ' server pretest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
             moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
@@ -562,7 +562,7 @@ class testRunner {
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
                 moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;
