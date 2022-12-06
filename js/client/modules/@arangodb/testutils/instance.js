@@ -630,7 +630,7 @@ class instance {
       argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      argv = [cmd].concat(args);
+      argv = [cmd].concat(toArgv(args));
       cmd = 'rr';
     } else {
       argv = toArgv(args);

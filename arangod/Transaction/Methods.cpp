@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -3021,10 +3023,19 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
+
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
 
-  char const* opName = "unknown";
+  std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:

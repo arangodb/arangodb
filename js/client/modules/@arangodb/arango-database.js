@@ -61,7 +61,7 @@ const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoP
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
-
+ 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief key regex
 // //////////////////////////////////////////////////////////////////////////////
@@ -69,32 +69,29 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.\(\)\+,=;\$!\*'%])+$/;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief append the waitForSync parameter to a URL
+// / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendSyncParameter = function (url, waitForSync) {
-  if (waitForSync) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    } else {
+let appendBoolParameter = function (url, name, val, onlyIfSet = false) {
+  if (!onlyIfSet || (val !== undefined && val !== null)) {
+    if (url.includes('?')) {
       url += '&';
+    } else {
+      url += '?';
     }
-    url += 'waitForSync=true';
+    url += name + (val ? '=true' : '=false');
   }
   return url;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief append some boolean parameter to a URL
+// / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendBoolParameter = function (url, name, val) {
-  if (url.indexOf('?') === -1) {
-    url += '?';
-  } else {
-    url += '&';
+let appendSyncParameter = function (url, waitForSync) {
+  if (waitForSync) {
+    url = appendBoolParameter(url, 'waitForSync', waitForSync);
   }
-  url += name + (val ? '=true' : '=false');
   return url;
 };
 
@@ -349,7 +346,7 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (let i = 0;  i < collections.length;  ++i) {
-      var collection = new ArangoCollection(this, collections[i]);
+      let collection = new ArangoCollection(this, collections[i]);
       this[collection._name] = collection;
       result.push(collection);
     }
@@ -862,6 +859,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   url = appendSyncParameter(url, waitForSync);
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -933,6 +931,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -1000,7 +999,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     }
   } else {
     // set default value for keepNull
-    var keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
+    let keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
     params = '?keepNull=' + (keepNullValue ? 'true' : 'false');
 
     if (overwrite) {
@@ -1013,6 +1012,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = appendBoolParameter(url, 'ignoreRevs', true);
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -1408,7 +1408,7 @@ ArangoDatabase.prototype._views = function () {
 
     // add all views to object
     for (let i = 0;  i < views.length;  ++i) {
-      var view = new ArangoView(this, views[i]);
+      let view = new ArangoView(this, views[i]);
       this[view._name] = view;
       result.push(view);
     }
