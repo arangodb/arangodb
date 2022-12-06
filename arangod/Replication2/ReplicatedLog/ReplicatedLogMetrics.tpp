@@ -26,7 +26,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
 #include "Metrics/MetricsFeature.h"
 
-using namespace arangodb::replication2::replicated_log;
+namespace arangodb::replication2::replicated_log {
 
 template<bool mock>
 template<typename Builder>
@@ -95,5 +95,4 @@ ReplicatedLogMetricsIndirect<mock>::ReplicatedLogMetricsIndirect(
       metricsFeature);
 }
 
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<true>;
+}  // namespace arangodb::replication2::replicated_log

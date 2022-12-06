@@ -43,7 +43,6 @@
 using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
 
 namespace arangodb::test {

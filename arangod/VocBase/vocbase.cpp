@@ -397,6 +397,15 @@ struct arangodb::VocBaseLogManager {
           ServerState::instance()->getId(),
           ServerState::instance()->getRebootId());
 
+      struct MyScheduler : replicated_log::IScheduler {
+        auto delayedFuture(std::chrono::steady_clock::duration duration)
+            -> futures::Future<futures::Unit> override {
+          return SchedulerFeature::SCHEDULER->delay(duration);
+        }
+      };
+
+      auto sched = std::make_shared<MyScheduler>();
+
       auto& log = stateAndLog.log = std::invoke([&]() {
         auto&& logCore =
             std::make_unique<replication2::replicated_log::LogCore>(
@@ -407,7 +416,7 @@ struct arangodb::VocBaseLogManager {
             server.getFeature<ReplicatedLogFeature>().metrics(),
             server.getFeature<ReplicatedLogFeature>().options(),
             std::make_shared<replicated_log::DefaultParticipantsFactory>(
-                std::make_shared<NetworkFollowerFactory>(vocbase, id)),
+                std::make_shared<NetworkFollowerFactory>(vocbase, id), sched),
             logContext, myself);
       });
 

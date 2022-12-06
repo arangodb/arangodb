@@ -35,7 +35,9 @@
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/SupervisionContext.h"
 
-using namespace arangodb::replication2::agency;
+namespace arangodb::agency {
+struct envelope;
+}
 
 namespace arangodb::replication2::replicated_log {
 

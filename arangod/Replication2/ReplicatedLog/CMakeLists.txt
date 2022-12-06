@@ -6,10 +6,9 @@ target_sources(arango_replication2 PRIVATE
         NetworkAttachedFollower.cpp
         NetworkMessages.cpp
         ReplicatedLog.cpp
+        SupervisionAgencyTrx.cpp
         ReplicatedLogFeature.cpp
-        ReplicatedLogMetrics.cpp
-        Supervision.cpp
-        SupervisionAction.cpp)
+        ReplicatedLogMetrics.tpp)
 
 target_sources(arango_replication2_pure PRIVATE
         LogCommon.cpp
@@ -21,8 +20,10 @@ target_sources(arango_replication2_pure PRIVATE
         LogEntries.cpp
         ReplicatedLog.cpp
         LogFollower.cpp
+        Supervision.cpp
+        SupervisionAction.cpp
 
-        ReplicatedLogMetrics.cpp
+        ReplicatedLogMetrics.tpp
         AgencyLogSpecification.cpp
         Components/LogFollower2.cpp
         Components/LogFollower2.h

@@ -30,10 +30,6 @@
 
 namespace arangodb {
 
-std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
-  return r.print(o);
-}
-
 std::ostream& operator<<(std::ostream& o,
                          arangodb::QueryAnalyzerRevisions const& r) {
   return r.print(o);
@@ -118,11 +114,6 @@ std::ostream& QueryAnalyzerRevisions::print(std::ostream& o) const {
 
 QueryAnalyzerRevisions QueryAnalyzerRevisions::QUERY_LATEST(
     AnalyzersRevision::LATEST, AnalyzersRevision::LATEST);
-
-std::ostream& RebootId::print(std::ostream& o) const {
-  o << _value;
-  return o;
-}
 
 AnalyzersRevision::Ptr AnalyzersRevision::getEmptyRevision() {
   static auto ptr = std::shared_ptr<AnalyzersRevision::Ptr::element_type>(

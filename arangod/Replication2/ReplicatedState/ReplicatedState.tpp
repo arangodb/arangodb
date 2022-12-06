@@ -289,7 +289,7 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
-  MeasureTimeGuard timeGuard(_metrics.replicatedStateRecoverEntriesRtt);
+  MeasureTimeGuard timeGuard(*_metrics.replicatedStateRecoverEntriesRtt);
   auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
                  .then([guard = std::move(timeGuard)](auto&& res) mutable {
                    guard.fire();
@@ -574,7 +574,7 @@ void FollowerStateManager<S>::GuardedData::clearSnapshotErrors() noexcept {
 template<typename S>
 void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
-  MeasureTimeGuard rttGuard(_metrics->replicatedStateAcquireSnapshotRtt);
+  MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
       _metrics->replicatedStateNumberWaitingForSnapshot);
   auto fut = _guardedData.doUnderLock([&](auto& self) {

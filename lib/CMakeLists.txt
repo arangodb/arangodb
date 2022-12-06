@@ -99,7 +99,8 @@ add_library(arango_lightweight STATIC
         Basics/PageSize.cpp
         Basics/signals.cpp
         Basics/PhysicalMemory.cpp
-)
+        Basics/NumberOfCores.cpp
+        Basics/RebootId.cpp Basics/RebootId.h)
 
 if (MSVC)
   target_sources(arango_lightweight PRIVATE
@@ -172,7 +173,6 @@ add_library(arango STATIC
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
-  Basics/NumberOfCores.cpp
   Basics/NumberUtils.cpp
         Basics/Utf8Helper.cpp
   Basics/ReadWriteSpinLock.cpp
@@ -244,7 +244,8 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
-        arango_lightweight
+  arango_lightweight
+  arango_crashhandler
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)

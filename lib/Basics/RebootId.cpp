@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,14 +21,21 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ReplicatedLogMetricsMock.h"
+#include "RebootId.h"
+#include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 
-using namespace arangodb;
+#include <iostream>
 
-ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
-    : ReplicatedLogMetricsIndirect(nullptr) {}
+namespace arangodb {
 
-#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.tpp"
+std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r) {
+  return r.print(o);
+}
 
-template struct arangodb::replication2::replicated_log::
-    ReplicatedLogMetricsIndirect<true>;
+std::ostream& RebootId::print(std::ostream& o) const {
+  o << _value;
+  return o;
+}
+}  // namespace arangodb

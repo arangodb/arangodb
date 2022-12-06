@@ -1,6 +1,4 @@
 set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
-        Helper/ModelChecker/Actors.cpp
-        Helper/ModelChecker/AgencyTransition.cpp
         #Helper/WaitForQueue.cpp
         #Mocks/AsyncFollower.cpp
         #Mocks/AsyncFollower.h
@@ -20,8 +18,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Mocks/PersistedLog.h
         #Mocks/PersistedLog.h
         #Mocks/ReplicatedStateMetricsMock.cpp
-        ModelChecker/ModelChecker.cpp
-        ModelChecker/Tests/ModelCheckerTest.cpp
         #ReplicatedLog/TestHelper.cpp
         Mocks/FakeStorageEngineMethods.cpp
         Mocks/FakeAsyncExecutor.cpp
@@ -30,14 +26,11 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
         #ReplicatedLog/AppendEntriesBatchTest.cpp
-        ReplicatedLog/Algorithms/CalcCommitIndexTest.cpp
         #ReplicatedLog/ChangeStreamTests.cpp
         #ReplicatedLog/ConcurrencyTests.cpp
-        ReplicatedLog/Algorithms/DetectConflictTest.cpp
         #ReplicatedLog/EstablishLeadershipTest.cpp
         #ReplicatedLog/FollowerAppendEntries.cpp
         #ReplicatedLog/FollowerWaitFor.cpp
-        ReplicatedLog/Components/InMemoryLogTest.cpp
         #ReplicatedLog/LeaderAppendEntriesTest.cpp
         #ReplicatedLog/LogFollowerCompactionTest.cpp
         #ReplicatedLog/LogParticipantWaitForResignTests.cpp
@@ -46,18 +39,13 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         #ReplicatedLog/MaintenanceTests.cpp
         #ReplicatedLog/MetricsTest.cpp
         #ReplicatedLog/MultiTermTest.cpp
-        ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
         #ReplicatedLog/ReplicatedLogHandleTest.cpp
         #ReplicatedLog/ReplicatedLogTest.cpp
         #ReplicatedLog/RewriteLogTest.cpp
         #ReplicatedLog/SimpleInsertTests.cpp
-        ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
-        ReplicatedLog/Supervision/SupervisionTest.cpp
-        ReplicatedLog/StorageEngineMethodsTest.cpp
         #ReplicatedLog/UpdateParticipantsFlags.cpp
         #ReplicatedLog/UpdateReplicatedLogTests.cpp
         #ReplicatedLog/WaitForSyncTest.cpp
-        ReplicatedState/DocumentStateMachineTest.cpp
         #ReplicatedState/FollowerResignTest.cpp
         #ReplicatedState/FollowerSnapshotTest.cpp
         #ReplicatedState/FollowerWaitForTest.cpp
@@ -71,11 +59,9 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         #ReplicatedState/StateCleanupTest.cpp
         #ReplicatedState/StateMachines/MyStateMachine.cpp
         ReplicatedLog/MaintenanceTests.cpp
+        ReplicatedState/DocumentStateMachineTest.cpp
+        ReplicatedLog/StorageEngineMethodsTest.cpp
 
-        ReplicatedLog/Components/CompactionManagerTest.cpp
-        ReplicatedLog/Components/StorageManagerTest.cpp
-        ReplicatedLog/Components/FollowerCommitManagerTest.cpp
-        ReplicatedLog/LogFollower/AppendEntriesTest.cpp
         )
 
 add_library(arango_tests_replication2 OBJECT
@@ -90,7 +76,7 @@ target_include_directories(arango_tests_replication2 PUBLIC
         ${PROJECT_SOURCE_DIR}/tests
         ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_replication2
+target_link_libraries(arango_tests_replication2 PRIVATE
         gtest
         gmock
         arango
@@ -121,16 +107,30 @@ add_library(arango_tests_replication2_pure OBJECT
         ReplicatedLog/Components/CompactionManagerTest.cpp
         ReplicatedLog/Components/StorageManagerTest.cpp
         ReplicatedLog/Components/FollowerCommitManagerTest.cpp
+        ReplicatedLog/Components/InMemoryLogTest.cpp
         ReplicatedLog/LogFollower/AppendEntriesTest.cpp
         ReplicatedLog/LogCommonTest.cpp
         ReplicatedLog/ReplicatedLogConnectTest.cpp
+        ReplicatedLog/Algorithms/CalcCommitIndexTest.cpp
+        ReplicatedLog/Algorithms/DetectConflictTest.cpp
+
+
+        ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
+        ReplicatedLog/Supervision/SupervisionTest.cpp
+        ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
         )
 
 target_sources(arango_tests_replication2_pure PRIVATE
         Mocks/ReplicatedLogMetricsMock.cpp
         Mocks/FakeStorageEngineMethods.cpp
         Mocks/FakeAsyncExecutor.cpp
-        Mocks/LogEventRecorder.cpp)
+        Mocks/LogEventRecorder.cpp
+        Helper/ModelChecker/Actors.cpp
+        Helper/ModelChecker/AgencyTransition.cpp
+
+        ModelChecker/ModelChecker.cpp
+        ModelChecker/Tests/ModelCheckerTest.cpp
+        )
 
 target_link_libraries(arango_tests_replication2_pure
         arango_replication2_pure
@@ -149,3 +149,5 @@ add_executable(arangodbtests_replication2_pure
 
 target_link_libraries(arangodbtests_replication2_pure PRIVATE
         arango_tests_replication2_pure arango_lightweight)
+
+target_link_libraries(arango_tests_replication2 PUBLIC arango_tests_replication2_pure)
