@@ -360,9 +360,8 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
         if (0 < maxReplicationFactor && maxReplicationFactor < vocbaseOptions.replicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (") +
-                  std::to_string(maxReplicationFactor) + ")");
+              absl::StrCat("replicationFactor must not be higher than "
+                          "maximum allowed replicationFactor (", maxReplicationFactor, ")"));
         } else if (vocbaseOptions.replicationFactor < minReplicationFactor &&
                    minReplicationFactor > 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
