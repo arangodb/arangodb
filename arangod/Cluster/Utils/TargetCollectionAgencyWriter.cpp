@@ -58,10 +58,13 @@ inline auto pathReplicatedStateInTarget(std::string_view databaseName) {
       std::string{databaseName});
 }
 
-inline auto pathCollectioInCurrent(std::string_view databaseName) {
-  // Note: I cannot use the Path builder here, as the Callbacks do not start at
-  // ROOT
-  return "Current/Collections/" + std::string{databaseName} + "/";
+inline auto pathCollectionInCurrent(std::string_view databaseName) {
+  return paths::current()->collections()->database(std::string{databaseName});
+}
+
+inline auto pathReplicatedStateInCurrent(std::string_view databaseName) {
+  return paths::current()->replicatedStates()->database(
+      std::string{databaseName});
 }
 
 }  // namespace
@@ -80,45 +83,91 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
 
   // One callback per collection
   report->reserve(_collectionPlanEntries.size());
-  auto const baseCollectionPath = pathCollectioInCurrent(databaseName);
+  auto const baseCollectionPath = pathCollectionInCurrent(databaseName);
+  auto const baseStatePath = pathReplicatedStateInCurrent(databaseName);
   for (auto const& entry : _collectionPlanEntries) {
     if (entry.requiresCurrentWatcher()) {
-      auto const collectionPath = baseCollectionPath + entry.getCID();
+      // Add Shards Watcher
       auto expectedShards = entry.getShardMapping();
-      auto cid = entry.getCID();
-
-      auto callback = [cid, expectedShards, waitForSyncReplication,
-                       report](VPackSlice result) -> bool {
-        if (report->hasReported(cid)) {
-          // This collection has already reported
-          return true;
-        }
-        CurrentCollectionEntry state;
-        auto status = velocypack::deserializeWithStatus(result, state);
-        // We ignore parsing errors here, only react on positive case
-        if (status.ok()) {
-          if (state.haveAllShardsReported(expectedShards.shards.size())) {
-            if (state.hasError()) {
-              // At least on shard has reported an error.
-              report->addReport(
-                  cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                              state.createErrorReport()});
-              return true;
-            } else if (!waitForSyncReplication ||
-                       state.doExpectedServersMatch(expectedShards)) {
-              // All servers reported back without error.
-              // If waitForSyncReplication is requested full server lists match
-              // Let us return done!
-              report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
-              return true;
+      {
+        // Add the Watcher for Collection Shards
+        auto cid = entry.getCID();
+        auto const collectionPath = baseCollectionPath->collection(cid);
+        auto callback = [cid, expectedShards, waitForSyncReplication,
+                         report](VPackSlice result) -> bool {
+          if (report->hasReported(cid)) {
+            // This collection has already reported
+            return true;
+          }
+          CurrentCollectionEntry state;
+          auto status = velocypack::deserializeWithStatus(result, state);
+          // We ignore parsing errors here, only react on positive case
+          if (status.ok()) {
+            if (state.haveAllShardsReported(expectedShards.shards.size())) {
+              if (state.hasError()) {
+                // At least on shard has reported an error.
+                report->addReport(
+                    cid, Result{TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                                state.createErrorReport()});
+                return true;
+              } else if (!waitForSyncReplication ||
+                         state.doExpectedServersMatch(expectedShards)) {
+                // All servers reported back without error.
+                // If waitForSyncReplication is requested full server lists
+                // match Let us return done!
+                report->addReport(cid, Result{TRI_ERROR_NO_ERROR});
+                return true;
+              }
             }
           }
-        }
-        // TODO: Maybe we want to do trace-logging if current cannot be parsed?
+          // TODO: Maybe we want to do trace-logging if current cannot be
+          // parsed?
 
-        return true;
-      };
-      report->addWatchPath(collectionPath, callback);
+          return true;
+        };
+        // Note we use SkipComponents here, as callbacks to not have "arangod"
+        // as prefix.
+        report->addWatchPath(
+            collectionPath->str(arangodb::cluster::paths::SkipComponents(1)),
+            callback);
+      }
+
+      for (auto const& [shardId, servers] : expectedShards.shards) {
+        // NOTE: This is a bit too much work here, and could be narrowed down a
+        // bit. But as we are waiting on Agency roundtrips here performance
+        // should not matter too much.
+        auto orderedSpec =
+            entry.getReplicatedStateForTarget(shardId, servers, databaseName);
+        auto const statePath =
+            baseStatePath->state(orderedSpec.id)->supervision();
+        TRI_ASSERT(orderedSpec.version.has_value());
+        auto callback = [report,
+                         id = basics::StringUtils::itoa(orderedSpec.id.id()),
+                         version = orderedSpec.version.value()](
+                            velocypack::Slice slice) -> bool {
+          if (report->hasReported(id)) {
+            // This replicatedLog has already reported
+            return true;
+          }
+          if (slice.isNone()) {
+            return false;
+          }
+
+          auto supervision = velocypack::deserialize<
+              replication2::replicated_state::agency::Current::Supervision>(
+              slice);
+          if (supervision.version.has_value() &&
+              supervision.version >= version) {
+            // Right now there cannot be any error on replicated states.
+            // SO if they show up in correct version we just take them.
+            report->addReport(id, TRI_ERROR_NO_ERROR);
+          }
+          return false;
+        };
+        report->addWatchPath(
+            statePath->str(arangodb::cluster::paths::SkipComponents(1)),
+            callback);
+      }
     }
   }
 
