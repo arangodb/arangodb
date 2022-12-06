@@ -337,11 +337,9 @@ function arangobench (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangobench'] = arangobench;
-
-  defaultFns.push('arangobench');
 
   opts['skipArangoBench'] = false;
   opts['skipArangoBenchNonConnKeepAlive'] = true;
