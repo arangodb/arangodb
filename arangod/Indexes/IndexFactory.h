@@ -110,11 +110,11 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string> supportedIndexes() const;
+  virtual std::vector<std::string_view> supportedIndexes() const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
-  virtual std::unordered_map<std::string, std::string> indexAliases() const;
+  virtual std::vector<std::string, std::string> indexAliases() const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

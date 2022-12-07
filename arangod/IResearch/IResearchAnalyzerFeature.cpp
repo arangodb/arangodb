@@ -444,10 +444,10 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 /// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
 Result visitAnalyzers(TRI_vocbase_t& vocbase,
-                      std::function<Result(VPackSlice const&)> const& visitor) {
-  static const auto resultVisitor =
-      [](std::function<Result(VPackSlice const&)> const& visitor,
-         TRI_vocbase_t const& vocbase, VPackSlice const& slice) -> Result {
+                      std::function<Result(VPackSlice)> const& visitor) {
+  auto const resultVisitor =
+      [](std::function<Result(VPackSlice)> const& visitor,
+         TRI_vocbase_t const& vocbase, VPackSlice slice) -> Result {
     if (!slice.isArray()) {
       return {TRI_ERROR_INTERNAL,
               "failed to parse contents of collection '" +
@@ -639,7 +639,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 /// @param properties slice for properties or null slice if absent
 /// @return parse result
 //////////////////////////////////////////////////////////////////
-Result parseAnalyzerSlice(VPackSlice const& slice, std::string_view& name,
+Result parseAnalyzerSlice(VPackSlice slice, std::string_view& name,
                           std::string_view& type, Features& features,
                           VPackSlice& properties) {
   TRI_ASSERT(slice.isObject());
@@ -744,8 +744,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
   // check analyzer database
 
   if (server.hasFeature<DatabaseFeature>()) {
-    vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(
-        static_cast<std::string>(dbName));  // FIXME: remove cast after C++20
+    vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(dbName);
 
     if (checkDatabase(vocbase)) {
       return true;
@@ -765,12 +764,12 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
 }
 
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
-    ArangodServer& server, std::string_view const& vocbase) {
+    ArangodServer& server, std::string_view vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<ClusterFeature>());
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
-    return std::make_unique<AnalyzerModificationTransaction>(
-        static_cast<std::string>(vocbase), &engine, false);
+    return std::make_unique<AnalyzerModificationTransaction>(vocbase, &engine,
+                                                             false);
   }
   return nullptr;
 }
@@ -1133,10 +1132,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
 
   auto& staticAnalyzers = getStaticAnalyzers();
 
-  if (staticAnalyzers.find(irs::make_hashed_ref(
-          name, std::hash<std::string_view>())) != staticAnalyzers.end()) {
-    return true;  // special case for singleton static analyzers (always
-                  // allowed)
+  if (staticAnalyzers.contains(irs::hashed_string_view{name})) {
+    // special case for singleton static analyzers (always allowed)
+    return true;
   }
 
   auto split = splitAnalyzerName(name);
@@ -1263,12 +1261,11 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
     const_cast<AnalyzerPool::ptr&>(value) =
         pool;  // lazy-instantiate pool to avoid allocation if pool is already
                // present
-    return pool ? irs::hashed_string_view(key.hash(), pool->name())
+    return pool ? irs::hashed_string_view{pool->name(), key.hash()}
                 : key;  // reuse hash but point ref at value in pool
   };
   auto emplaceRes = irs::map_utils::try_emplace_update_key(
-      analyzers, generator,
-      irs::make_hashed_ref(name, std::hash<std::string_view>()));
+      analyzers, generator, irs::hashed_string_view{name});
   auto analyzer = emplaceRes.first->second;
 
   if (!analyzer) {
@@ -1425,13 +1422,11 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
         if (res.fail()) {
           return res;
         }
-        auto cached = _lastLoad.find(static_cast<std::string>(
-            split.first));  // FIXME: remove cast after C++20
+        auto cached = _lastLoad.find(split.first);
         TRI_ASSERT(cached != _lastLoad.end());
         if (ADB_LIKELY(cached != _lastLoad.end())) {
-          cached->second =
-              transaction->buildingRevision();  // as we already "updated cache"
-                                                // to this revision
+          // as we already "updated cache" to this revision
+          cached->second = transaction->buildingRevision();
         }
       }
       erase = false;
@@ -1591,10 +1586,11 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
       return res;
     }
 
-    WRITE_LOCKER(lock, _mutex);
-
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     TRI_ASSERT(!engine.inRecovery());
+
+    WRITE_LOCKER(lock, _mutex);
+
     bool erase = true;
     std::vector<irs::hashed_string_view> inserted;
     irs::Finally cleanup = [&erase, &inserted, this]() noexcept {
@@ -1736,8 +1732,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           {
             READ_LOCKER(lock, _mutex);
 
-            // FIXME: after C++20 remove cast and use heterogeneous lookup
-            auto itr = _lastLoad.find(static_cast<std::string>(name.first));
+            auto itr = _lastLoad.find(name.first);
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break;  // expected or later revision is loaded
             }
@@ -1756,9 +1751,10 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       }
     }
 
+    irs::hashed_string_view const hashedName{normalizedName};
+
     READ_LOCKER(lock, _mutex);
-    auto itr = _analyzers.find(
-        irs::make_hashed_ref(normalizedName, std::hash<std::string_view>()));
+    auto itr = _analyzers.find(hashedName);
 
     if (itr == _analyzers.end()) {
       LOG_TOPIC("4049c", WARN, iresearch::TOPIC)
@@ -1862,10 +1858,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
               "failed to create arangosearch static analyzer");
         }
 
-        analyzers.try_emplace(
-            irs::make_hashed_ref(std::string_view(pool->name()),
-                                 std::hash<std::string_view>()),
-            pool);
+        analyzers.try_emplace(irs::hashed_string_view{pool->name()}, pool);
       }
 
       // register the text analyzers
@@ -1913,10 +1906,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
                 "failed to create arangosearch static analyzer instance");
           }
 
-          analyzers.try_emplace(
-              irs::make_hashed_ref(std::string_view(pool->name()),
-                                   std::hash<std::string_view>()),
-              pool);
+          analyzers.try_emplace(irs::hashed_string_view{pool->name()}, pool);
         }
       }
     }
@@ -1933,8 +1923,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
     Identity() {
       // find the 'identity' analyzer pool in the static analyzers
       auto& staticAnalyzers = getStaticAnalyzers();
-      auto key = irs::make_hashed_ref(IdentityAnalyzer::type_name(),
-                                      std::hash<std::string_view>());
+      auto key = irs::hashed_string_view{IdentityAnalyzer::type_name()};
       auto itr = staticAnalyzers.find(key);
 
       if (itr != staticAnalyzers.end()) {
@@ -1960,9 +1949,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto* vocbase = dbFeature.lookupDatabase(
-        static_cast<std::string>(database));  // FIXME: after C++20 remove cast
-                                              // and use heterogeneous lookup
+    auto* vocbase = dbFeature.lookupDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {};  // database might not have come up yet
@@ -2070,14 +2057,11 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // load all databases
     if (irs::IsNull(database)) {
       Result res;
-      std::unordered_set<irs::hashed_string_view> seen;
+      containers::FlatHashSet<irs::hashed_string_view> seen;
       auto visitor = [this, &res, &seen](TRI_vocbase_t& vocbase) -> void {
-        auto name = irs::make_hashed_ref(std::string_view(vocbase.name()),
-                                         std::hash<std::string_view>());
-        auto result = loadAnalyzers(name);
-        auto itr = _lastLoad.find(
-            static_cast<std::string>(name));  // FIXME: after C++20 remove cast
-                                              // and use heterogeneous lookup
+        auto const name = irs::hashed_string_view{vocbase.name()};
+        auto const result = loadAnalyzers(name);
+        auto const itr = _lastLoad.find(name);
 
         if (itr != _lastLoad.end()) {
           seen.insert(name);
@@ -2094,18 +2078,17 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       dbFeature.enumerateDatabases(visitor);
 
-      std::unordered_set<std::string>
-          unseen;  // make copy since original removed
+      // make copy since original removed
+      containers::FlatHashSet<std::string> unseen;
 
       // remove unseen databases from timestamp list
       for (auto itr = _lastLoad.begin(), end = _lastLoad.end(); itr != end;) {
-        auto name = irs::make_hashed_ref(std::string_view(itr->first),
-                                         std::hash<std::string_view>());
-        auto seenItr = seen.find(name);
+        auto const name = irs::hashed_string_view(itr->first);
 
-        if (seenItr == seen.end()) {
-          unseen.insert(std::move(itr->first));  // reuse key
-          itr = _lastLoad.erase(itr);
+        if (auto const seenItr = seen.find(name); seenItr == seen.end()) {
+          unseen.emplace(std::move(itr->first));  // reuse key
+          auto const erase_me = itr++;
+          _lastLoad.erase(erase_me);
         } else {
           ++itr;
         }
@@ -2116,13 +2099,11 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         auto split = splitAnalyzerName(itr->first);
         // ignore static analyzers
         auto unseenItr =
-            irs::IsNull(split.first)
-                ? unseen.end()
-                : unseen.find(static_cast<std::string>(
-                      split.first));  // FIXME: remove cast at C++20
+            irs::IsNull(split.first) ? unseen.end() : unseen.find(split.first);
 
         if (unseenItr != unseen.end()) {
-          itr = _analyzers.erase(itr);
+          auto const erase_me = itr++;
+          _analyzers.erase(erase_me);
         } else {
           ++itr;
         }
@@ -2135,16 +2116,11 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     // after here load analyzers from a specific database
     // .........................................................................
 
-    auto databaseKey =  // database key used in '_lastLoad'
-        irs::make_hashed_ref(database, std::hash<std::string_view>());
+    // database key used in '_lastLoad'
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto itr = _lastLoad.find(static_cast<std::string>(
-        databaseKey));  // find last update timestamp FIXME: after C++20 remove
-                        // cast and use heterogeneous lookup
+    auto itr = _lastLoad.find(database);
 
-    auto* vocbase = dbFeature.lookupDatabase(
-        static_cast<std::string>(database));  // FIXME: after C++20 remove cast
-                                              // and use heterogeneous lookup
+    auto* vocbase = dbFeature.lookupDatabase(database);
 
     if (!vocbase) {
       if (engine.inRecovery()) {
@@ -2277,9 +2253,8 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         if (itr != _lastLoad.end()) {
           cleanupAnalyzers(database);
         }
-        _lastLoad[static_cast<std::string>(databaseKey)] =
-            loadingRevision;  // FIXME: remove cast at C++20
-        return {};            // no collection means nothing to load
+        _lastLoad[database] = loadingRevision;
+        return {};  // no collection means nothing to load
       }
       return res;
     }
@@ -2329,8 +2304,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
                     ", revision " + std::to_string(entry.second->revision())};
       }
     }
-    _lastLoad[static_cast<std::string>(databaseKey)] =
-        loadingRevision;                // FIXME: remove cast at C++20
+    _lastLoad[database] = loadingRevision;
     _analyzers = std::move(analyzers);  // update mappings
   } catch (basics::Exception const& e) {
     return {e.code(),
@@ -2374,7 +2348,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
 /*static*/ std::pair<std::string_view, std::string_view>
 IResearchAnalyzerFeature::splitAnalyzerName(
-    std::string_view const& analyzer) noexcept {
+    std::string_view analyzer) noexcept {
   // search for vocbase prefix ending with '::'
   for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
     if (analyzer[i] == ANALYZER_PREFIX_DELIM  // current is delim
@@ -2405,10 +2379,9 @@ IResearchAnalyzerFeature::splitAnalyzerName(
     bool expandVocbasePrefix /*= true*/) {
   auto& staticAnalyzers = getStaticAnalyzers();
 
-  if (staticAnalyzers.find(irs::make_hashed_ref(
-          name, std::hash<std::string_view>())) != staticAnalyzers.end()) {
-    return static_cast<std::string>(
-        name);  // special case for singleton static analyzers
+  if (staticAnalyzers.contains(irs::hashed_string_view(name))) {
+    // special case for singleton static analyzers
+    return static_cast<std::string>(name);
   }
 
   auto split = splitAnalyzerName(name);
@@ -2556,7 +2529,7 @@ Result IResearchAnalyzerFeature::finalizeRemove(std::string_view name,
   return {};
 }
 
-Result IResearchAnalyzerFeature::remove(std::string_view const& name,
+Result IResearchAnalyzerFeature::remove(std::string_view name,
                                         bool force /*= false*/) {
   try {
     auto split = splitAnalyzerName(name);
@@ -2580,10 +2553,11 @@ Result IResearchAnalyzerFeature::remove(std::string_view const& name,
     //  }
     //}
 
+    irs::hashed_string_view const hashedName{name};
+
     WRITE_LOCKER(lock, _mutex);
 
-    auto itr = _analyzers.find(
-        irs::make_hashed_ref(name, std::hash<std::string_view>()));
+    auto itr = _analyzers.find(hashedName);
 
     if (itr == _analyzers.end()) {
       return {
@@ -2718,8 +2692,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view const& name,
 
       // this is ok. As if we got  there removal is committed into agency
       _analyzers.erase(itr);
-      auto cached = _lastLoad.find(static_cast<std::string>(
-          split.first));  // FIXME: remove cast after C++20
+      auto cached = _lastLoad.find(split.first);
       TRI_ASSERT(cached != _lastLoad.end());
       if (ADB_LIKELY(cached != _lastLoad.end())) {
         // we are hodling writelock so nobody should be able reload analyzers
@@ -2833,10 +2806,11 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
                   "' configuration while storage engine in recovery"};
     }
 
-    auto split = splitAnalyzerName(pool.name());
-    auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
-        split.first));  // FIXME: after C++20 remove cast and use heterogeneous
-                        // lookup
+    auto const split = splitAnalyzerName(pool.name());
+    // FIXME: after C++20 remove cast and use heterogeneous
+    // lookup
+    auto* vocbase =
+        dbFeature.useDatabase(static_cast<std::string>(split.first));
 
     if (!vocbase) {
       return {
@@ -2988,9 +2962,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
     return;
   }
   for (auto itr = _analyzers.begin(), end = _analyzers.end(); itr != end;) {
-    auto split = splitAnalyzerName(itr->first);
+    auto const split = splitAnalyzerName(itr->first);
     if (split.first == database) {
-      itr = _analyzers.erase(itr);
+      auto const erase_me = itr++;
+      _analyzers.erase(erase_me);
     } else {
       ++itr;
     }
@@ -2998,13 +2973,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
 }
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
+  std::string_view const database{vocbase.name()};
+
   WRITE_LOCKER(lock, _mutex);
-  auto database = std::string_view(vocbase.name());
-  // FIXME: after C++20 remove cast and use
-  // heterogeneous lookup
-  auto itr = _lastLoad.find(static_cast<std::string>(
-      irs::make_hashed_ref(database, std::hash<std::string_view>())));
-  if (itr != _lastLoad.end()) {
+  if (auto itr = _lastLoad.find(database); itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
   }

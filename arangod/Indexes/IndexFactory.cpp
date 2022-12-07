@@ -334,13 +334,12 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 }
 
 /// same for both storage engines
-std::vector<std::string> IndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{
-      "primary", "edge",
-      "hash",    "skiplist",
-      "ttl",     "persistent",
-      "geo",     "fulltext",
-      "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data()};
+std::vector<std::string_view> IndexFactory::supportedIndexes() const {
+  return {"primary", "edge",
+          "hash",    "skiplist",
+          "ttl",     "persistent",
+          "geo",     "fulltext",
+          "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
 
 std::unordered_map<std::string, std::string> IndexFactory::indexAliases()

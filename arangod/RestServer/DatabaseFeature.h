@@ -169,7 +169,7 @@ class DatabaseFeature : public ArangodFeature {
   TRI_vocbase_t* useDatabase(std::string const& name) const;
   TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name) const;
+  TRI_vocbase_t* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
       std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
