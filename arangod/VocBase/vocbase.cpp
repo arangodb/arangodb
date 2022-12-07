@@ -959,7 +959,6 @@ void TRI_vocbase_t::stop() {
 
 /// @brief closes a database and all collections
 void TRI_vocbase_t::shutdown() {
-  LOG_DEVEL << "shutting down database '" << name() << "'";
   this->stop();
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
