@@ -1,7 +1,8 @@
 devel
 -----
 
-* Print the pid of the process which sent the signal.
+* Print the pid of the process which sent a SIGABRT or other fatal 
+  signal that shuts down ArangoDB ungracefully.
 
 * Added new per-operation option `refillIndexCaches` to write operations,
   namely:
