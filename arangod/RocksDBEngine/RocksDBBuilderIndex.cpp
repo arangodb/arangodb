@@ -259,7 +259,8 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice slice) {
+                                   velocypack::Slice slice,
+                                   OperationOptions const& /*options*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -417,7 +418,8 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentRemove:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.remove(_trx, _methods, pair.first, pair.second);
+          tmpRes =
+              _index.remove(_trx, _methods, pair.first, pair.second, _options);
           numRemoved++;
         }
         break;
@@ -535,7 +537,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   Result tmpRes;
 
  private:
-  const uint64_t _objectId;  /// collection objectID
+  uint64_t const _objectId;  /// collection objectID
   RocksDBIndex& _index;      /// the index to use
   transaction::Methods& _trx;
   RocksDBMethods* _methods;  /// methods to fill

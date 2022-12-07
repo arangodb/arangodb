@@ -59,7 +59,7 @@ yet.
     [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
   - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
     sorting by setup time etc.
-- [what to test where and how](tests/README.md)
+- [What to test where and how](tests/README.md)
 
 ## Source Code
 
@@ -125,6 +125,58 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding startup options
+
+Startup option example with explanations:
+
+```cpp
+options->
+    addOption("--section.option-name",
+              "A brief description of the startup option, maybe over multiple "
+              "lines, with an upper-case first letter and ending with a .",
+              // for numeric options, you may need to indicate the unit like "timeout (in seconds)"
+                new XyzParameter(&_xyzVariable),
+                arangodb::options::makeFlags(
+                    arangodb::options::Flags::DefaultNoComponents,
+                    arangodb::options::Flags::OnCoordinator, // in a cluster, it only has an effect on Coordinators
+                    arangodb::options::Flags::OnSingle,      // supported in single server mode, too
+                    arangodb::options::Flags::Enterprise,    // only available in the Enterprise Edition
+                    arangodb::options::Flags::Uncommon))     // don't show with --help but only --help-all or --help-<section>
+    .setIntroducedIn(30906) // format XYYZZ, X = major, YY = minor, ZZ = bugfix version
+    .setIntroducedIn(31002) // list all versions the feature is added in but exclude versions that are implied, e.g. 31100
+    .setLongDescription(R"(You can optionally add details here. They are only
+shown in the online documentation (and --dump-options). 
+
+The _text_ is interpreted as **Markdown**, allowing formatting like
+`inline code`, fenced code blocks, and even tables.)");
+```
+
+
+
+See [`lib/ProgramOptions/Option.h`](lib/ProgramOptions/Option.h) for details.
+
+For a feature that is added to v3.9.6, v3.10.2, and devel, you only need to set
+`.setIntroducedIn()` for 3.9 and 3.10 but not 3.11 (in devel) because all later
+versions (after v3.10.2) can reasonably be expected to include the feature, too.
+Leaving v3.10.2 out would be unclear, however, because users may assume to find
+the feature in v3.10.0 and v3.10.1 if it was added to v3.9.6.
+
+In the 3.9 branch, you should only set the versions up to 3.9 but not 3.10,
+pretending no later version exists to avoid additional maintenance burdens.
+
+In 3.9:
+
+```cpp
+    .setIntroducedIn(30906)
+```
+
+In 3.10 and later:
+
+```cpp
+    .setIntroducedIn(30906)
+    .setIntroducedIn(31002)
+```
+
 ### Adding metrics
 
 As of 3.8 we have enforced documentation for metrics. This works as
@@ -148,14 +200,17 @@ Then there is a helper script `utils/generateAllMetricsDocumentation.py`
 which needs `python3` with the `yaml` module. It will check and do the
 following things:
 
-- every declared metric in some `.cpp` file in the source has a
+- Every declared metric in some `.cpp` file in the source has a
   corresponding documentation snippet in `Documentation/Metrics`
   under the name of the metric with `.yaml` appended
-- each such file is a YAML file of a certain format (see template
+- Each such file is a YAML file of a certain format (see template
   under `Documentation/Metrics/template.yaml`)
-- many of the componentes are required, so please provide adequate
+- Many of the components are required, so please provide adequate
   information about your metric
-- the script can also assemble all these YAML documentation snippets
+- Make sure to set `introducedIn` to the version the metric is added to the
+  current branch's version (e.g. `"3.9.6"` in the 3.9 branch, `"3.10.2"` in
+  the 3.10 and devel branches)
+- The script can also assemble all these YAML documentation snippets
   into a single file under `Documentation/Metrics/allMetrics.yaml`,
   the format is again a structured YAML file which can easily be
   processed by the documentation tools, this is only needed when
@@ -789,10 +844,6 @@ Controlling the place where the test-data is stored:
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
-Run all tests:
-
-    scripts/unittest all
-
 `scripts/unittest` is only a wrapper for the most part, the backend
 functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
 `process-utils.js`, `test-utils.js`). The actual testsuites are located in the
@@ -802,7 +853,6 @@ functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
 
 The first parameter chooses the facility to execute. Available choices include:
 
-- **all**: This target is utilized by most of the Jenkins builds invoking unit tests (calls multiple)
 - **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 - **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 

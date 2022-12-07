@@ -520,6 +520,42 @@ function optimizerRuleInvertedIndexTestSuite() {
       const appliedRules = res.plan.rules;
       assertFalse(appliedRules.includes(useIndexes));
     },
+    testNonDeterministicInFieldIgnored: function () {
+      const query = aql`
+        LET foo = NOOPT([1,2,3])
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.invalid_field IN foo
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER d.invalid_field IN foo 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    },
+    testNonDeterministicInArrayComparisonFieldIgnored: function () {
+      const query = aql`
+        LET foo = [1,NOOPT(2),3]
+        FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexSorted"}
+          FILTER foo ANY IN d.invalid_field 
+          SORT d.count DESC
+          RETURN d`;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = res.plan.rules;
+      assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
+    }
   };
 }
 
