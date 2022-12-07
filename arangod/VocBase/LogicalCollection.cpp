@@ -753,7 +753,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // TODO is this still releveant or redundant in keyGenerator?
   build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
 
-  // keyoptions
+  // keyOptions
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   keyGenerator().toVelocyPack(build);
   build.close();

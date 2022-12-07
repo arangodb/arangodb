@@ -383,21 +383,31 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
     std::shared_ptr<arangodb::Index> toRemove;
     {
       RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
+      // create a copy of _indexes, in case we need to roll back changes.
+      auto copy = _indexes;
+
       for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
         if (iid != (*it)->id()) {
           continue;
         }
 
+        toRemove = *it;
+        // we have to remove from _indexes already here, because the
+        // duringDropIndex may serialize the collection's indexes
+        // and look at the _indexes member... and there we need the
+        // index to be deleted already.
+        _indexes.erase(it);
+
         if (!inRecovery) {
           Result res = duringDropIndex(*it);
           if (res.fail()) {
-            // callback failed
+            // callback failed - revert back to copy
+            _indexes = std::move(copy);
             return res;
           }
         }
 
-        toRemove = *it;
-        _indexes.erase(it);
         break;
       }
 
