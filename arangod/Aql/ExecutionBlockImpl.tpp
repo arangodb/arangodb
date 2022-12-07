@@ -354,7 +354,7 @@ template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
 LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Entering executionNode: " << _exeNode->getTypeString() << " with id " << _exeNode->id();
-ScopeGuard develLogGuard([&node]() noexcept {
+ScopeGuard develLogGuard([&]() noexcept {
 LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Leaving executionNode: " << _exeNode->getTypeString() << " with id " << _exeNode->id();
 });
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
