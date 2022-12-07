@@ -125,7 +125,7 @@ is returned if the collection or the document was not found.
 
 @RESTRETURNCODE{409}
 there are two possible reasons for this error:
-1) if the replace causes a unique constraint violation in  a secondary
+1) if the replace causes a unique constraint violation in a secondary
 index. The response body contains an error document in
 this case with the errorNum set to 1210 (`ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED`).
 2) if we fail to lock the document key or some unique index entry
