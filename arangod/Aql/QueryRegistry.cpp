@@ -285,10 +285,8 @@ std::shared_ptr<ClusterQuery> QueryRegistry::destroyQuery(
 
       // query in use by another thread/request
       if (errorCode == TRI_ERROR_QUERY_KILLED) {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Send kill to query";
         q->second->_query->kill();
       }
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Found query to be in use.";
       q->second->_expires = 0.0;
       return nullptr;
     }

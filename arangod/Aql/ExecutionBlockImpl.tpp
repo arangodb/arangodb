@@ -353,10 +353,6 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
 template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Entering executionNode: " << node->getTypeString() << " with id " << node->id();
-ScopeGuard develLogGuard([&node]() noexcept {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Leaving executionNode: " << node->getTypeString() << " with id " << node->id();
-});
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));

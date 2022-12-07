@@ -121,7 +121,6 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _registeredQueryInTrx(false),
       _allowDirtyReads(false),
       _queryKilled(false) {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Triggering constructor of query: " << (void*)this; 
   if (!_transactionContext) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "failed to create query transaction context");
@@ -183,7 +182,6 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
             std::make_shared<SharedQueryState>(ctx->vocbase().server())) {}
 
 Query::~Query() {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Triggering destructor of query: " << (void*)this; 
   if (_planSliceCopy != nullptr) {
     _resourceMonitor.decreaseMemoryUsage(_planSliceCopy->size());
   }
@@ -284,7 +282,6 @@ void Query::setLockTimeout(double timeout) noexcept {
 }
 
 bool Query::killed() const {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Checked that i was killed";
   return (std::numeric_limits<double>::epsilon() < _queryOptions.maxRuntime &&
           _queryOptions.maxRuntime < elapsedSince(_startTime)) ||
          _queryKilled.load(std::memory_order_acquire);
