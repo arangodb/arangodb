@@ -64,11 +64,8 @@ struct FollowerManager {
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options);
-
   auto getStatus() const -> LogStatus;
-
   auto getQuickStatus() const -> QuickLogStatus;
-
   auto resign()
       -> std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
                     std::unique_ptr<IReplicatedStateHandle>, DeferredAction>;
@@ -92,12 +89,23 @@ struct FollowerManager {
 };
 
 struct LogFollowerImpl : ILogFollower {
+  explicit LogFollowerImpl(
+      ParticipantId myself,
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+      std::shared_ptr<FollowerTermInformation const> termInfo,
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options);
+
   auto getStatus() const -> LogStatus override;
 
   auto getQuickStatus() const -> QuickLogStatus override;
 
   auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
+
+  [[nodiscard]] auto resign2() && -> std::tuple<
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;

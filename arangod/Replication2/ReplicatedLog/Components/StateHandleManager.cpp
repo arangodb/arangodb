@@ -30,8 +30,10 @@ using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;
 
 StateHandleManager::GuardedData::GuardedData(
-    std::unique_ptr<IReplicatedStateHandle> stateHandle)
-    : stateHandle(std::move(stateHandle)) {}
+    std::unique_ptr<IReplicatedStateHandle> stateHandlePtr)
+    : stateHandle(std::move(stateHandlePtr)) {
+  ADB_PROD_ASSERT(stateHandle != nullptr);
+}
 
 auto StateHandleManager::resign() noexcept
     -> std::unique_ptr<IReplicatedStateHandle> {

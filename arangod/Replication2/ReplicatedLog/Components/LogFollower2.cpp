@@ -151,6 +151,12 @@ auto LogFollowerImpl::resign() && -> std::tuple<std::unique_ptr<LogCore>,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+auto LogFollowerImpl::resign2() && -> std::tuple<
+    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
+  return guarded.getLockedGuard()->resign();
+}
+
 auto LogFollowerImpl::waitFor(LogIndex index)
     -> ILogParticipant::WaitForFuture {
   return guarded.getLockedGuard()->commit->waitFor(index);
@@ -191,3 +197,13 @@ auto LogFollowerImpl::appendEntries(AppendEntriesRequest request)
   return guarded.getLockedGuard()->appendEntriesManager->appendEntries(
       std::move(request));
 }
+
+LogFollowerImpl::LogFollowerImpl(
+    ParticipantId myself,
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+    std::shared_ptr<const FollowerTermInformation> termInfo,
+    std::shared_ptr<const ReplicatedLogGlobalSettings> options)
+    : myself(std::move(myself)),
+      guarded(std::move(methods), std::move(stateHandlePtr),
+              std::move(termInfo), std::move(options)) {}

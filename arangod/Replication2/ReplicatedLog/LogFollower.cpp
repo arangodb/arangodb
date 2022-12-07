@@ -818,6 +818,11 @@ auto LogFollower::compact() -> ResultT<CompactionResult> {
       << reason;
   return guard->runCompaction(true);
 }
+auto LogFollower::resign2() && -> std::tuple<
+    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
 
 auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStopIndex()
     const noexcept -> LogIndex {

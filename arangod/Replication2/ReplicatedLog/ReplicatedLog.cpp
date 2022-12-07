@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/Components/LogFollower2.h"
 #include "Metrics/Counter.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -46,18 +47,17 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 replicated_log::ReplicatedLog::ReplicatedLog(
-    std::unique_ptr<LogCore> core,
+    std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    : _id(core->logId()),
-      _logContext(logContext.with<logContextKeyLogId>(core->logId())),
+    : _logContext(logContext),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),
       _myself(std::move(myself)),
-      _guarded(std::move(core)) {}
+      _guarded(std::move(storage)) {}
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
   ADB_PROD_ASSERT(_guarded.getLockedGuard()->stateHandle == nullptr)
@@ -78,7 +78,7 @@ auto replicated_log::ReplicatedLog::connect(
 }
 
 auto replicated_log::ReplicatedLog::disconnect(ReplicatedLogConnection conn)
-    -> std::shared_ptr<IReplicatedStateHandle> {
+    -> std::unique_ptr<IReplicatedStateHandle> {
   LOG_CTX("66ada", DEBUG, _logContext) << "disconnecting replicated log";
   ADB_PROD_ASSERT(conn._log.get() == this);
   auto guard = _guarded.getLockedGuard();
@@ -136,13 +136,13 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
       std::make_shared<agency::ParticipantsConfig>(data.latest->config);
 
   ParticipantContext context = {.loggerContext = _logContext,
-                                .stateHandle = data.stateHandle,
+                                .stateHandle = std::move(data.stateHandle),
                                 .metrics = _metrics,
                                 .options = _options};
 
   if (not data.participant) {
     // rebuild participant
-    ADB_PROD_ASSERT(data.core != nullptr);
+    ADB_PROD_ASSERT(data.methods != nullptr);
     auto const& term = data.latest->term;
     if (term.leader == _myself) {
       LeaderTermInfo info = {.term = term.term,
@@ -152,7 +152,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
       LOG_CTX("79015", DEBUG, _logContext)
           << "replicated log configured as leader in term " << term.term;
       data.participant = _participantsFactory->constructLeader(
-          std::move(data.core), info, context);
+          std::move(data.methods), info, std::move(context));
       _metrics->replicatedLogLeaderTookOverNumber->count();
     } else {
       // follower
@@ -165,7 +165,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
       LOG_CTX("7aed7", DEBUG, _logContext)
           << "replicated log configured as follower in term " << term.term;
       data.participant = _participantsFactory->constructFollower(
-          std::move(data.core), info, context);
+          std::move(data.methods), info, std::move(context));
       _metrics->replicatedLogStartedFollowingNumber->operator++();
     }
   } else if (auto leader =
@@ -180,18 +180,21 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     return leader->waitFor(idx).thenValue([](auto&&) {});
   }
 
-  ADB_PROD_ASSERT(data.participant != nullptr && data.core == nullptr);
+  ADB_PROD_ASSERT(data.participant != nullptr && data.methods == nullptr);
   return {futures::Unit{}};
 }
 
 void ReplicatedLog::resetParticipant(GuardedData& data) {
-  ADB_PROD_ASSERT(data.participant != nullptr || data.core != nullptr);
+  ADB_PROD_ASSERT(data.participant != nullptr || data.methods != nullptr);
   if (data.participant) {
     LOG_CTX("9a54b", DEBUG, _logContext)
         << "reset participant of replicated log";
-    auto [core, action] = std::move(*data.participant).resign();
-    data.core = std::move(core);
-    // TODO wait for all sync operations to be completed
+    DeferredAction action;
+    std::tie(data.methods, data.stateHandle, action) =
+        std::move(*data.participant).resign2();
+    ADB_PROD_ASSERT(data.methods != nullptr);
+    ADB_PROD_ASSERT(data.stateHandle != nullptr);
+    data.methods->waitForCompletion();
     data.participant.reset();
   }
 }
@@ -204,17 +207,17 @@ auto ReplicatedLog::getParticipant() const -> std::shared_ptr<ILogParticipant> {
   return guard->participant;
 }
 
-auto ReplicatedLog::resign() && -> std::unique_ptr<LogCore> {
+auto ReplicatedLog::resign() && -> std::unique_ptr<
+    replicated_state::IStorageEngineMethods> {
   auto guard = _guarded.getLockedGuard();
   LOG_CTX("79025", DEBUG, _logContext) << "replicated log resigned";
   ADB_PROD_ASSERT(not guard->resigned);
   resetParticipant(guard.get());
   guard->resigned = true;
-  ADB_PROD_ASSERT(guard->core != nullptr);
-  return std::move(guard->core);
+  ADB_PROD_ASSERT(guard->methods != nullptr);
+  return std::move(guard->methods);
 }
 
-auto ReplicatedLog::getId() const noexcept -> LogId { return _id; }
 auto ReplicatedLog::getQuickStatus() const -> QuickLogStatus {
   if (auto guard = _guarded.getLockedGuard(); guard->participant) {
     return guard->participant->getQuickStatus();
@@ -257,24 +260,29 @@ ReplicatedLogConnection::ReplicatedLogConnection(ReplicatedLog* log)
     : _log(log) {}
 
 auto DefaultParticipantsFactory::constructFollower(
-    std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
-    ParticipantContext context) -> std::shared_ptr<ILogFollower> {
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    FollowerTermInfo info, ParticipantContext context)
+    -> std::shared_ptr<ILogFollower> {
   std::shared_ptr<ILeaderCommunicator> leaderComm;
   if (info.leader) {
     leaderComm = followerFactory->constructLeaderCommunicator(*info.leader);
   }
-  return LogFollower::construct(
-      context.loggerContext, std::move(context.metrics),
-      std::move(context.options), std::move(info.myself), std::move(logCore),
-      info.term, std::move(info.leader), std::move(context.stateHandle),
-      leaderComm);
+
+  // TODO remove wrapper
+  auto info2 = std::make_shared<FollowerTermInformation>(
+      FollowerTermInformation{{info.term}, info.leader});
+
+  return std::make_shared<refactor::LogFollowerImpl>(
+      info.myself, std::move(methods), std::move(context.stateHandle), info2,
+      std::move(context.options));
 }
 
 auto DefaultParticipantsFactory::constructLeader(
-    std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
-    ParticipantContext context) -> std::shared_ptr<ILogLeader> {
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+    LeaderTermInfo info, ParticipantContext context)
+    -> std::shared_ptr<ILogLeader> {
   return LogLeader::construct(
-      std::move(logCore), std::move(info.initialConfig), std::move(info.myself),
+      std::move(methods), std::move(info.initialConfig), std::move(info.myself),
       info.term, context.loggerContext, std::move(context.metrics),
       std::move(context.options), std::move(context.stateHandle),
       followerFactory, scheduler);

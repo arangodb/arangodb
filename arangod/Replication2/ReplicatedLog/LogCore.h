@@ -72,6 +72,7 @@ struct alignas(64) LogCore {
 
   auto updateSnapshotState(replicated_state::SnapshotStatus) -> Result;
   auto getSnapshotState() -> ResultT<replicated_state::SnapshotStatus>;
+  void waitForCompletion() noexcept;
 
  private:
   replicated_state::IStorageEngineMethods& _storage;

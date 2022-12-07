@@ -41,8 +41,13 @@ class Result;
 struct LoggerContext;
 }  // namespace arangodb
 
+namespace arangodb::replication2::replicated_state {
+struct IStorageEngineMethods;
+}
+
 namespace arangodb::replication2::replicated_log {
 
+struct IReplicatedStateHandle;
 struct LogCore;
 struct LogStatus;
 struct QuickLogStatus;
@@ -74,6 +79,9 @@ struct ILogParticipant {
   virtual ~ILogParticipant() = default;
   [[nodiscard]] virtual auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto resign2() && -> std::tuple<
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;

@@ -182,19 +182,18 @@ struct arangodb::VocBaseLogManager {
           iter != data.statesAndLogs.end()) {
         auto& state = iter->second.state;
         auto& log = iter->second.log;
-        auto& storage = iter->second.storage;
-
-        auto metadata = storage->readMetadata();
-        if (metadata.fail()) {
-          return std::move(metadata).result();  // state untouched after this
-        }
 
         // Get the state handle so we can drop the state later
         auto stateHandle = log->disconnect(std::move(iter->second.connection));
 
         // resign the log now, before we update the metadata to avoid races
         // on the storage.
-        auto core = std::move(*log).resign();
+        auto storage = std::move(*log).resign();
+
+        auto metadata = storage->readMetadata();
+        if (metadata.fail()) {
+          return std::move(metadata).result();  // state untouched after this
+        }
 
         // Invalidate the snapshot in persistent storage.
         metadata->snapshot.updateStatus(
@@ -302,9 +301,6 @@ struct arangodb::VocBaseLogManager {
       std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>
           state;
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>
-          storage;
       arangodb::replication2::replicated_log::ReplicatedLogConnection
           connection;
     };
@@ -343,7 +339,7 @@ struct arangodb::VocBaseLogManager {
 
       // prepare map
       auto stateAndLog = StateAndLog{};
-
+      std::unique_ptr<replicated_state::IStorageEngineMethods> storage;
       {
         VPackBufferUInt8 buffer;
         buffer.append(parameters.start(), parameters.byteSize());
@@ -363,7 +359,7 @@ struct arangodb::VocBaseLogManager {
         if (maybeStorage.fail()) {
           return std::move(maybeStorage).result();
         }
-        stateAndLog.storage = std::move(*maybeStorage);
+        storage = std::move(*maybeStorage);
       }
 
       struct NetworkFollowerFactory
@@ -405,14 +401,15 @@ struct arangodb::VocBaseLogManager {
       };
 
       auto sched = std::make_shared<MyScheduler>();
+      auto maybeMetadata = storage->readMetadata();
+      if (!maybeMetadata) {
+        throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
+      }
 
       auto& log = stateAndLog.log = std::invoke([&]() {
-        auto&& logCore =
-            std::make_unique<replication2::replicated_log::LogCore>(
-                *stateAndLog.storage);
         return std::make_shared<
             arangodb::replication2::replicated_log::ReplicatedLog>(
-            std::move(logCore),
+            std::move(storage),
             server.getFeature<ReplicatedLogFeature>().metrics(),
             server.getFeature<ReplicatedLogFeature>().options(),
             std::make_shared<replicated_log::DefaultParticipantsFactory>(
@@ -423,10 +420,6 @@ struct arangodb::VocBaseLogManager {
       auto& state = stateAndLog.state = feature.createReplicatedState(
           type, vocbase.name(), id, log, logContext);
 
-      auto maybeMetadata = stateAndLog.storage->readMetadata();
-      if (!maybeMetadata) {
-        throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
-      }
       auto const& stateParams = maybeMetadata->specification.parameters;
       auto&& stateHandle = state->createStateHandle(stateParams);
 

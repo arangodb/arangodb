@@ -126,6 +126,7 @@ auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
 StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> methods_ptr)
     : methods(std::move(methods_ptr)) {
+  ADB_PROD_ASSERT(methods != nullptr);
   spearheadLog = onDiskLog = InMemoryLog::loadFromMethods(*methods);
   info = methods->readMetadata().get();
 }

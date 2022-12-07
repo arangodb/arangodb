@@ -40,7 +40,8 @@ struct StateHandleManager : IStateHandleManager {
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<IReplicatedStateHandle> stateHandle);
+    explicit GuardedData(
+        std::unique_ptr<IReplicatedStateHandle> stateHandlePtr);
     std::unique_ptr<IReplicatedStateHandle> stateHandle;
   };
 

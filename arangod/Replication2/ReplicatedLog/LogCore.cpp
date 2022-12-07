@@ -98,3 +98,5 @@ auto LogCore::getSnapshotState() -> ResultT<replicated_state::SnapshotStatus> {
   }
   return metaResult->snapshot.status;
 }
+
+void LogCore::waitForCompletion() noexcept { _storage.waitForCompletion(); }

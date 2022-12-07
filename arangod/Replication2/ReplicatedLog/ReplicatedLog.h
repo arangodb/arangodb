@@ -38,6 +38,7 @@
 #include <mutex>
 #include <utility>
 #include <vector>
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 namespace arangodb::cluster {
 struct IFailureOracle;
@@ -115,19 +116,20 @@ struct FollowerTermInfo {
 
 struct ParticipantContext {
   LoggerContext loggerContext;
-  std::shared_ptr<IReplicatedStateHandle> stateHandle;
+  std::unique_ptr<IReplicatedStateHandle> stateHandle;
   std::shared_ptr<ReplicatedLogMetrics> metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 };
 
 struct IParticipantsFactory {
   virtual ~IParticipantsFactory() = default;
-  virtual auto constructFollower(std::unique_ptr<LogCore> logCore,
-                                 FollowerTermInfo info,
-                                 ParticipantContext context)
+  virtual auto constructFollower(
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> = 0;
-  virtual auto constructLeader(std::unique_ptr<LogCore> logCore,
-                               LeaderTermInfo info, ParticipantContext context)
+  virtual auto constructLeader(
+      std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+      LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> = 0;
 };
 
@@ -157,7 +159,7 @@ struct ReplicatedLogConnection;
  */
 struct alignas(64) ReplicatedLog {
   explicit ReplicatedLog(
-      std::unique_ptr<LogCore> core,
+      std::unique_ptr<replicated_state::IStorageEngineMethods> storage,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<IParticipantsFactory> participantsFactory,
@@ -173,7 +175,7 @@ struct alignas(64) ReplicatedLog {
   [[nodiscard]] auto connect(std::unique_ptr<IReplicatedStateHandle>)
       -> ReplicatedLogConnection;
   auto disconnect(ReplicatedLogConnection)
-      -> std::shared_ptr<IReplicatedStateHandle>;
+      -> std::unique_ptr<IReplicatedStateHandle>;
 
   auto updateConfig(agency::LogPlanTermSpecification term,
                     agency::ParticipantsConfig config)
@@ -192,12 +194,14 @@ struct alignas(64) ReplicatedLog {
   [[nodiscard]] auto getFollowerState() const
       -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>;
 
-  [[nodiscard]] auto resign() && -> std::unique_ptr<LogCore>;
+  [[nodiscard]] auto
+  resign() && -> std::unique_ptr<replicated_state::IStorageEngineMethods>;
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<LogCore> core)
-        : core(std::move(core)) {}
+    explicit GuardedData(
+        std::unique_ptr<replicated_state::IStorageEngineMethods> methods)
+        : methods(std::move(methods)) {}
 
     struct LatestConfig {
       explicit LatestConfig(agency::LogPlanTermSpecification term,
@@ -208,17 +212,16 @@ struct alignas(64) ReplicatedLog {
     };
 
     bool resigned{false};
-    std::unique_ptr<LogCore> core = nullptr;
+    std::unique_ptr<replicated_state::IStorageEngineMethods> methods;
     std::shared_ptr<ILogParticipant> participant = nullptr;
     std::optional<LatestConfig> latest;
-    std::shared_ptr<IReplicatedStateHandle> stateHandle;
+    std::unique_ptr<IReplicatedStateHandle> stateHandle;
   };
 
   auto tryBuildParticipant(GuardedData& data) -> futures::Future<futures::Unit>;
   void resetParticipant(GuardedData& data);
 
-  LogId const _id;
-  LoggerContext const _logContext = LoggerContext(Logger::REPLICATION2);
+  LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IParticipantsFactory> const _participantsFactory;
@@ -261,11 +264,12 @@ struct DefaultParticipantsFactory : IParticipantsFactory {
   explicit DefaultParticipantsFactory(
       std::shared_ptr<IAbstractFollowerFactory> followerFactory,
       std::shared_ptr<IScheduler> scheduler);
-  auto constructFollower(std::unique_ptr<LogCore> logCore,
-                         FollowerTermInfo info, ParticipantContext context)
+  auto constructFollower(
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      FollowerTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogFollower> override;
-  auto constructLeader(std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
-                       ParticipantContext context)
+  auto constructLeader(std::unique_ptr<replicated_state::IStorageEngineMethods>,
+                       LeaderTermInfo info, ParticipantContext context)
       -> std::shared_ptr<ILogLeader> override;
 
   std::shared_ptr<IAbstractFollowerFactory> followerFactory;
