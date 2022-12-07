@@ -61,7 +61,8 @@ FollowerManager::FollowerManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options)
     : options(options),
-      storage(std::make_shared<StorageManager>(std::move(methods))),
+      storage(std::make_shared<StorageManager>(
+          std::move(methods), LoggerContext{Logger::REPLICATION2})),
       compaction(std::make_shared<CompactionManager>(*storage, options)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),

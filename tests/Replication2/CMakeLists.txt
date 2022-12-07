@@ -22,39 +22,6 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         )
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
-        #ReplicatedLog/AppendEntriesBatchTest.cpp
-        #ReplicatedLog/ChangeStreamTests.cpp
-        #ReplicatedLog/ConcurrencyTests.cpp
-        #ReplicatedLog/EstablishLeadershipTest.cpp
-        #ReplicatedLog/FollowerAppendEntries.cpp
-        #ReplicatedLog/FollowerWaitFor.cpp
-        #ReplicatedLog/LeaderAppendEntriesTest.cpp
-        #ReplicatedLog/LogFollowerCompactionTest.cpp
-        #ReplicatedLog/LogParticipantWaitForResignTests.cpp
-        #ReplicatedLog/LogReclaimTest.cpp
-        #ReplicatedLog/LogStatusTest.cpp
-        #ReplicatedLog/MaintenanceTests.cpp
-        #ReplicatedLog/MetricsTest.cpp
-        #ReplicatedLog/MultiTermTest.cpp
-        #ReplicatedLog/ReplicatedLogHandleTest.cpp
-        #ReplicatedLog/ReplicatedLogTest.cpp
-        #ReplicatedLog/RewriteLogTest.cpp
-        #ReplicatedLog/SimpleInsertTests.cpp
-        #ReplicatedLog/UpdateParticipantsFlags.cpp
-        #ReplicatedLog/UpdateReplicatedLogTests.cpp
-        #ReplicatedLog/WaitForSyncTest.cpp
-        #ReplicatedState/FollowerResignTest.cpp
-        #ReplicatedState/FollowerSnapshotTest.cpp
-        #ReplicatedState/FollowerWaitForTest.cpp
-        #ReplicatedState/LeaderRecoveryTest.cpp
-        #ReplicatedState/LeaderResignTest.cpp
-        #ReplicatedState/PrototypeConcurrencyTest.cpp
-        #ReplicatedState/PrototypeStateMachineTest.cpp
-        #ReplicatedState/ReplicatedStateFeatureTest.cpp
-        #ReplicatedState/ReplicatedStateMetricsTest.cpp
-        #ReplicatedState/ReplicatedStateTest.cpp
-        #ReplicatedState/StateCleanupTest.cpp
-        #ReplicatedState/StateMachines/MyStateMachine.cpp
         ReplicatedLog/Integration/MaintenanceTests.cpp
         ReplicatedState/DocumentStateMachineTest.cpp
         ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
@@ -121,6 +88,19 @@ add_library(arango_tests_replication2_pure OBJECT
         ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
         ReplicatedLog/Supervision/SupervisionTest.cpp
         ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
+
+        #ReplicatedState/FollowerResignTest.cpp
+        #ReplicatedState/FollowerSnapshotTest.cpp
+        #ReplicatedState/FollowerWaitForTest.cpp
+        #ReplicatedState/LeaderRecoveryTest.cpp
+        #ReplicatedState/LeaderResignTest.cpp
+        #ReplicatedState/PrototypeConcurrencyTest.cpp
+        #ReplicatedState/PrototypeStateMachineTest.cpp
+        #ReplicatedState/ReplicatedStateFeatureTest.cpp
+        #ReplicatedState/ReplicatedStateMetricsTest.cpp
+        #ReplicatedState/ReplicatedStateTest.cpp
+        #ReplicatedState/StateCleanupTest.cpp
+        #ReplicatedState/StateMachines/MyStateMachine.cpp
         )
 
 target_sources(arango_tests_replication2_pure PRIVATE

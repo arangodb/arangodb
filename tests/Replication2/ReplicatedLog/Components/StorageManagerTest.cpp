@@ -47,7 +47,8 @@ struct StorageManagerTest : ::testing::Test {
       replicated_state::PersistedStateInfo{
           .stateId = logId, .snapshot = {.status = SnapshotStatus::kFailed}}};
   std::shared_ptr<StorageManager> storageManager =
-      std::make_shared<StorageManager>(methods.getMethods());
+      std::make_shared<StorageManager>(methods.getMethods(),
+                                       LoggerContext{Logger::FIXME});
 };
 
 TEST_F(StorageManagerTest, transaction_resign) {
@@ -267,7 +268,8 @@ struct StorageManagerGMockTest : ::testing::Test {
   StorageEngineMethodsMockFactory methods;
 
   std::shared_ptr<StorageManager> storageManager =
-      std::make_shared<StorageManager>(methods.create());
+      std::make_shared<StorageManager>(methods.create(),
+                                       LoggerContext{Logger::FIXME});
 
   using StorageEngineFuture =
       futures::Promise<ResultT<IStorageEngineMethods::SequenceNumber>>;
