@@ -876,7 +876,7 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef,
 }
 
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  auto cb = [&](VPackSlice const& slice) {
+  auto cb = [&](velocypack::Slice slice) {
     std::string id;
 
     if (slice.hasKey("data")) {
@@ -906,13 +906,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     try {
       CollectionGuard guard(vocbase, col->id());
-      bool result = guard.collection()->dropIndex(iid);
-
-      if (!result) {
-        return Result();  // TODO: why do we ignore failures here?
-      }
-
-      return Result();
+      return guard.collection()->dropIndex(iid);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -928,7 +922,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
                    r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
     // if dropping an index for a non-existing database or collection fails,
     // this is not a real problem
-    return Result();
+    r.reset();
   }
 
   return r;

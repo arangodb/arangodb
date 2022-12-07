@@ -323,7 +323,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
-  bool dropIndex(IndexId iid);
+  Result dropIndex(IndexId iid);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options,

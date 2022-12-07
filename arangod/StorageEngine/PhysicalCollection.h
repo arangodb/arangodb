@@ -34,8 +34,7 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-#include <boost/container/flat_set.hpp>
-
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -104,9 +103,7 @@ class PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
-  virtual void prepareIndexes(velocypack::Slice indexesSlice) = 0;
-
-  bool hasIndexOfType(Index::IndexType type) const;
+  virtual void prepareIndexes(velocypack::Slice indexesSlice);
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
@@ -145,7 +142,7 @@ class PhysicalCollection {
   virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
                                              bool restore, bool& created) = 0;
 
-  virtual bool dropIndex(IndexId iid) = 0;
+  virtual Result dropIndex(IndexId iid);
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const = 0;
@@ -235,7 +232,14 @@ class PhysicalCollection {
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
  protected:
-  PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
+  explicit PhysicalCollection(LogicalCollection& collection);
+
+  // callback that is called directly before the index is dropped.
+  // the write-lock on all indexes is still held
+  virtual Result duringDropIndex(std::shared_ptr<Index> idx);
+  // callback that is called directly after the index has been dropped.
+  // no locks are held anymore.
+  virtual Result afterDropIndex(std::shared_ptr<Index> idx);
 
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;

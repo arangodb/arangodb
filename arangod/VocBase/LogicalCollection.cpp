@@ -1088,21 +1088,21 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(IndexId iid) {
+Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
-  bool result = _physical->dropIndex(iid);
+  Result res = _physical->dropIndex(iid);
 
-  if (result) {
+  if (res.ok()) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("drop index");
     }
   }
 
-  return result;
+  return res;
 }
 
 /// @brief Persist the connected physical collection.

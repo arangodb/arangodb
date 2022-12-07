@@ -79,14 +79,13 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   static std::function<void()> before;
   std::string physicalPath;
 
-  PhysicalCollectionMock(arangodb::LogicalCollection& collection,
-                         arangodb::velocypack::Slice const& info);
+  PhysicalCollectionMock(arangodb::LogicalCollection& collection);
   virtual std::shared_ptr<arangodb::Index> createIndex(
       arangodb::velocypack::Slice info, bool restore, bool& created) override;
   virtual void deferDropCollection(
       std::function<bool(arangodb::LogicalCollection&)> const& callback)
       override;
-  virtual bool dropIndex(arangodb::IndexId iid) override;
+  virtual arangodb::Result dropIndex(arangodb::IndexId iid) override;
   virtual void figuresSpecific(bool details,
                                arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
@@ -257,7 +256,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                              VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection>
   createPhysicalCollection(arangodb::LogicalCollection& collection,
-                           arangodb::velocypack::Slice const& info) override;
+                           arangodb::velocypack::Slice /*info*/) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::transaction::Manager>
   createTransactionManager(arangodb::transaction::ManagerFeature&) override;

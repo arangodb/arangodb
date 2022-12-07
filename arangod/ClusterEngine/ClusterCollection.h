@@ -49,8 +49,6 @@ class ClusterCollection final : public PhysicalCollection {
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
                              velocypack::Slice info);
-  ClusterCollection(LogicalCollection& collection,
-                    PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
 
@@ -81,13 +79,9 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(velocypack::Slice indexesSlice) override;
-
   std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
                                      bool& created) override;
 
-  /// @brief Drop an index with the given iid.
-  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
@@ -149,8 +143,6 @@ class ClusterCollection final : public PhysicalCollection {
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
  private:
-  void addIndex(std::shared_ptr<Index> idx);
-
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
