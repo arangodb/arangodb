@@ -47,6 +47,16 @@ CollectionConstantProperties::Invariants::isSmartConfiguration(
   return inspection::Status::Success{};
 }
 
+[[nodiscard]] auto CollectionConstantProperties::Invariants::isValidKeyOptions(
+    arangodb::velocypack::Builder const& keyOptions) -> inspection::Status {
+  // This is rudimentary. The KeyOptions should get their own Inspect.
+  auto slice = keyOptions.slice();
+  if (!slice.isObject()) {
+    return {"has to be an object"};
+  }
+  return inspection::Status::Success{};
+}
+
 bool CollectionConstantProperties::operator==(
     CollectionConstantProperties const& other) const {
   if (type != other.type) {

@@ -461,11 +461,12 @@ function AutoIncrementSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateNullKeyGen: function() {
-      let c = db._create(cn, {keyOptions: null});
-
-      let options = c.properties().keyOptions;
-      assertEqual("traditional", options.type);
-      assertEqual(true, options.allowUserKeys);
+      try {
+        db._create(cn, {keyOptions: null});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

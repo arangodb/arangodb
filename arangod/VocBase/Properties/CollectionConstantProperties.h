@@ -44,6 +44,9 @@ struct CollectionConstantProperties {
   struct Invariants {
     [[nodiscard]] static auto isSmartConfiguration(
         CollectionConstantProperties const& props) -> inspection::Status;
+
+    [[nodiscard]] static auto isValidKeyOptions(
+        arangodb::velocypack::Builder const& keyOptions) -> inspection::Status;
   };
 
   std::underlying_type_t<TRI_col_type_e> type =
@@ -103,7 +106,10 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           f.field("type", props.type)
               .fallback(f.keep())
               .invariant(UtilityInvariants::isValidCollectionType),
-          f.field("keyOptions", props.keyOptions).fallback(f.keep()),
+          f.field("keyOptions", props.keyOptions)
+              .fallback(f.keep())
+              .invariant(
+                  CollectionConstantProperties::Invariants::isValidKeyOptions),
           /* Backwards compatibility, fields are allowed (MMFILES) but have no
              relevance anymore */
           f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
