@@ -154,12 +154,13 @@ add_library(arango STATIC
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
+  ProgramOptions/IniFileParser.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/Parameters.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
-  ProgramOptions/IniFileParser.cpp
+  ProgramOptions/UnitsHelper.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
