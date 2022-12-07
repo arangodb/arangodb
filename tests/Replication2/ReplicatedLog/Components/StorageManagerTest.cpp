@@ -237,6 +237,7 @@ struct StorageEngineMethodsGMock : IStorageEngineMethods {
   MOCK_METHOD(SequenceNumber, getSyncedSequenceNumber, (), (override));
   MOCK_METHOD(futures::Future<futures::Unit>, waitForSync, (SequenceNumber),
               (override));
+  MOCK_METHOD(void, waitForCompletion, (), (noexcept, override));
 };
 
 struct StorageEngineMethodsMockFactory {
@@ -301,4 +302,10 @@ TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
   // others are aborted due to conflict
   ASSERT_TRUE(f2.isReady());
   EXPECT_EQ(f2.get().errorNumber(), TRI_ERROR_ARANGO_CONFLICT);
+}
+
+TEST_F(StorageManagerGMockTest, resign_calls_barrier) {
+  std::optional<StorageEngineFuture> p1;
+  EXPECT_CALL(*methods, waitForCompletion).Times(1);
+  std::ignore = storageManager->resign();
 }

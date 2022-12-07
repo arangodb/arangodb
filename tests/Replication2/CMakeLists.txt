@@ -129,7 +129,7 @@ target_sources(arango_tests_replication2_pure PRIVATE
         ModelChecker/Tests/ModelCheckerTest.cpp
         )
 
-target_link_libraries(arango_tests_replication2_pure
+target_link_libraries(arango_tests_replication2_pure PUBLIC
         arango_replication2_pure
         arango_lightweight
         arango_crashhandler_light

@@ -73,6 +73,7 @@ struct FakeStorageEngineMethods : replicated_state::IStorageEngineMethods {
   auto getSyncedSequenceNumber() -> SequenceNumber override;
   auto waitForSync(SequenceNumber number)
       -> futures::Future<futures::Unit> override;
+  void waitForCompletion() override;
 
   FakeStorageEngineMethods(FakeStorageEngineMethodsContext& self);
 

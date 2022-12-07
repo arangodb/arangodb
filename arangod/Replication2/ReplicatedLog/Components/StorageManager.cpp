@@ -101,9 +101,10 @@ StorageManager::StorageManager(std::unique_ptr<IStorageEngineMethods> core)
 
 auto StorageManager::resign() -> std::unique_ptr<IStorageEngineMethods> {
   auto guard = guardedData.getLockedGuard();
-  // TODO wait for queue to be empty
-  ADB_PROD_ASSERT(guard->queue.empty());
-  return std::move(guard->core);
+  auto methods = std::move(guard->core);  // queue will be resolved
+  guard.unlock();
+  methods->waitForCompletion();
+  return methods;
 }
 
 StorageManager::GuardedData::GuardedData(

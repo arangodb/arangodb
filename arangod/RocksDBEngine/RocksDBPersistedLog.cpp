@@ -451,3 +451,5 @@ auto RocksDBLogStorageMethods::compact() -> Result {
       logCf, &start, &end);
   return rocksutils::convertStatus(res);
 }
+
+void RocksDBLogStorageMethods::waitForCompletion() { ctx.waitForCompletion(); }
