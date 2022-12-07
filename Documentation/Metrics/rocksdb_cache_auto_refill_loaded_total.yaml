@@ -15,6 +15,6 @@ description: |
   This metric shows the total number of automatically refilled in-memory
   edge cache entries. Entries in the in-memory edge cache are automatically
   refilled for edge indexes if an insert, update, replace, or remove operation
-  requests the cache refilling, or if the startup option
-  `--rocksdb.auto-refill-index-caches` is set.
+  requests the cache refilling, or if the `--rocksdb.auto-refill-index-caches`
+  startup option is enabled.
   On Agents and Coordinators, the values reported by this metric is always zero.

@@ -21,13 +21,13 @@ description: |
   refill operations exceeds the maximum value configured via the
   `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
   Correctness of index lookups is not affected if this metric is non-zero, as
-  it only reports the number of failed refilling attempts in the in-memory cache(s)
-  of any index. These in-memory caches are optional and their fill grade does not
+  it only reports the number of failed refilling attempts in the in-memory cache
+  of any edge index. This in-memory cache is optional and its fill grade does not
   affect correctness.
 troubleshoot: |
   If this metric keeps increasing, it indicates that the index refill background 
   thread can't keep up with the incoming data modification requests. 
   In this case, consider increasing the background thread's queueing capacity via
-  the startup option `--rocksdb.auto-refill-index-cache-queue-capacity`.
+  the `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
   Increasing the capacity helps to handle bursts of request, but does not help
   if the background thread is overwhelmed by a continuous high load.
