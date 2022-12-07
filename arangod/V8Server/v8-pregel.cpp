@@ -123,10 +123,10 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto pregelOptions = pregel::PregelOptions{
       .algorithm = algorithm,
       .userParameters = paramBuilder,
-      .graphDataSource = {
-          {pregel::GraphCollectionNames{.vertexCollections = paramVertices,
-                                        .edgeCollections = paramEdges}},
-          {paramEdgeCollectionRestrictions}}};
+      .graphSource = {{pregel::collections::graph::GraphCollectionNames{
+                          .vertexCollections = paramVertices,
+                          .edgeCollections = paramEdges}},
+                      {paramEdgeCollectionRestrictions}}};
 
   auto& vocbase = GetContextVocBase(isolate);
   if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {

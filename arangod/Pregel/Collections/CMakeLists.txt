@@ -3,3 +3,5 @@ target_sources(arango_pregel PRIVATE
   ClusterCollection.cpp
   CollectionFactory.cpp
   Collections.cpp)
+
+add_subdirectory(Graph)

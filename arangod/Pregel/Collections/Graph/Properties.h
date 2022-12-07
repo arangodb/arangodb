@@ -23,15 +23,34 @@
 #pragma once
 
 #include <string>
-#include "Pregel/Collections/Graph/Source.h"
-#include "velocypack/Builder.h"
+#include <unordered_map>
+#include <variant>
+#include <vector>
+#include "Cluster/ClusterTypes.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::collections::graph {
 
-struct PregelOptions {
-  std::string algorithm;
-  VPackBuilder userParameters;
-  collections::graph::GraphSource graphSource;
+using VertexCollectionID = CollectionID;
+using EdgeCollectionID = CollectionID;
+using VertexShardID = ShardID;
+using EdgeShardID = ShardID;
+
+struct GraphCollectionNames {
+  std::vector<std::string> vertexCollections;
+  std::vector<std::string> edgeCollections;
 };
 
-}  // namespace arangodb::pregel
+struct GraphName {
+  std::string graph;
+};
+
+struct EdgeCollectionRestrictions {
+  // maps from vertex collection name to a list of edge collections that this
+  // vertex collection is restricted to. only use for a collection if there is
+  // at least one entry for the collection!
+  std::unordered_map<VertexCollectionID, std::vector<EdgeCollectionID>> items;
+  auto add(EdgeCollectionRestrictions others) const
+      -> EdgeCollectionRestrictions;
+};
+
+}  // namespace arangodb::pregel::collections::graph

@@ -134,9 +134,9 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(PregelOptions options,
           : "vertex";
 
   auto graphSourceSettings =
-      conductor::GraphSourceSettings{.graphDataSource = options.graphDataSource,
-                                     .shardKeyAttribute = shardKeyAttribute,
-                                     .storeResults = storeResults};
+      conductor::GraphSettings{.graphDataSource = options.graphSource,
+                               .shardKeyAttribute = shardKeyAttribute,
+                               .storeResults = storeResults};
   auto pregelSource = graphSourceSettings.getSource(vocbase);
   if (pregelSource.fail()) {
     return pregelSource.result();

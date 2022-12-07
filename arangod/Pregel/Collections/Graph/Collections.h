@@ -22,16 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
-#include "Pregel/Collections/Graph/Source.h"
-#include "velocypack/Builder.h"
+#include "Pregel/Collections/Collections.h"
+#include "VocBase/vocbase.h"
+#include "Properties.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::collections::graph {
 
-struct PregelOptions {
-  std::string algorithm;
-  VPackBuilder userParameters;
-  collections::graph::GraphSource graphSource;
+struct GraphCollections {
+  Collections vertexCollections;
+  Collections edgeCollections;
+  static auto from(GraphCollectionNames const& names, TRI_vocbase_t& vocbase)
+      -> ResultT<GraphCollections>;
+  auto convertToShards(EdgeCollectionRestrictions const& restrictions) const
+      -> std::unordered_map<VertexShardID, std::vector<EdgeShardID>>;
+  auto all() const -> Collections;
 };
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::collections::graph

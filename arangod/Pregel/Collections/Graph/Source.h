@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
@@ -22,16 +21,28 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <string>
-#include "Pregel/Collections/Graph/Source.h"
+#include <variant>
+#include "Basics/ResultT.h"
+#include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
+#include "Properties.h"
 
-namespace arangodb::pregel {
+namespace arangodb::pregel::collections::graph {
 
-struct PregelOptions {
-  std::string algorithm;
-  VPackBuilder userParameters;
-  collections::graph::GraphSource graphSource;
+struct GraphSource {
+  GraphSource(std::variant<GraphCollectionNames, GraphName> graphOrCollections,
+              EdgeCollectionRestrictions restrictions)
+      : graphOrCollections{std::move(graphOrCollections)},
+        edgeCollectionRestrictions{std::move(restrictions)} {}
+  auto collectionNames(TRI_vocbase_t& vocbase) -> ResultT<GraphCollectionNames>;
+  auto restrictions(TRI_vocbase_t& vocbase)
+      -> ResultT<EdgeCollectionRestrictions>;
+
+ private:
+  std::variant<GraphCollectionNames, GraphName> graphOrCollections;
+  EdgeCollectionRestrictions edgeCollectionRestrictions;
+  auto graphRestrictions(TRI_vocbase_t& vocbase)
+      -> ResultT<EdgeCollectionRestrictions>;
 };
 
-}  // namespace arangodb::pregel
+}  // namespace arangodb::pregel::collections::graph

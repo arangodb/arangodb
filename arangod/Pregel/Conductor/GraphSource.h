@@ -23,39 +23,30 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
-#include "Pregel/Collections/Collections.h"
-#include "Pregel/PregelOptions.h"
+#include "Pregel/Collections/Graph/Source.h"
+#include "Pregel/Collections/Collection.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb::pregel::conductor {
 
-using VertexShardID = ShardID;
-using EdgeShardID = ShardID;
-
-struct GraphCollections {
-  collections::Collections vertexCollections;
-  collections::Collections edgeCollections;
-  static auto from(GraphCollectionNames const& names, TRI_vocbase_t& vocbase)
-      -> ResultT<GraphCollections>;
-  auto convertToShards(EdgeCollectionRestrictions const& restrictions) const
-      -> std::unordered_map<VertexShardID, std::vector<EdgeShardID>>;
-  auto all() const -> collections::Collections;
-};
-
 struct PregelGraphSource {
-  std::unordered_map<VertexShardID, std::vector<EdgeShardID>>
+  std::unordered_map<collections::graph::VertexShardID,
+                     std::vector<collections::graph::EdgeShardID>>
       edgeCollectionRestrictions;
-  std::unordered_map<ServerID,
-                     std::map<CollectionID, std::vector<VertexShardID>>>
+  std::unordered_map<
+      ServerID,
+      std::map<CollectionID, std::vector<collections::graph::VertexShardID>>>
       vertexShards;
-  std::unordered_map<ServerID, std::map<CollectionID, std::vector<EdgeShardID>>>
+  std::unordered_map<
+      ServerID,
+      std::map<CollectionID, std::vector<collections::graph::EdgeShardID>>>
       edgeShards;
   std::vector<ShardID> allShards;
   std::unordered_map<CollectionID, std::string> planIds;
 };
 
-struct GraphSourceSettings {
-  GraphDataSource graphDataSource;
+struct GraphSettings {
+  collections::graph::GraphSource graphDataSource;
   std::string shardKeyAttribute;
   bool storeResults;
 

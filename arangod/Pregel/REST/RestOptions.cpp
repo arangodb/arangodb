@@ -1,5 +1,7 @@
 #include "RestOptions.h"
 
+#include "Pregel/Collections/Graph/Properties.h"
+
 namespace {
 template<class... Ts>
 struct overloaded : Ts... {
@@ -17,16 +19,16 @@ auto RestOptions::options() -> PregelOptions {
                    return PregelOptions{
                        .algorithm = x.options.algorithm,
                        .userParameters = x.options.userParameters,
-                       .graphDataSource = {
-                           {GraphName{.graph = x.graph}},
+                       .graphSource = {
+                           {collections::graph::GraphName{.graph = x.graph}},
                            {x.options.edgeCollectionRestrictions}}};
                  },
                  [&](pregel::RestCollectionSettings const& x) -> PregelOptions {
                    return PregelOptions{
                        .algorithm = x.options.algorithm,
                        .userParameters = x.options.userParameters,
-                       .graphDataSource = {
-                           {GraphCollectionNames{
+                       .graphSource = {
+                           {collections::graph::GraphCollectionNames{
                                .vertexCollections = x.vertexCollections,
                                .edgeCollections = x.edgeCollections}},
                            {x.options.edgeCollectionRestrictions}}};
