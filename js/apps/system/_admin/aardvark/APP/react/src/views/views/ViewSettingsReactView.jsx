@@ -11,13 +11,15 @@ import {
 import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useNavbar, useView } from './helpers';
-import 'semantic-ui-css/semantic.min.css';
-import { Container, Header, List } from "semantic-ui-react";
-import AccordionExclusive from './Components/AccordionExclusive';
+import AccordionView from './Components/Accordion/Accordion';
+//import 'semantic-ui-css/semantic.min.css';
+//import { Container, Header, List } from "semantic-ui-react";
+//import AccordionExclusive from './Components/AccordionExclusive';
 
 const ViewSettingsReactView = ({ name }) => {
 
-  const generalContent = `<table>
+  const GeneralContent = () => {
+  return( <table>
   <tbody>
   <tr className="tableRow" id="row_change-view-name">
     <th className="collectionTh">
@@ -29,7 +31,7 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
     <th className="collectionTh">
       <ToolTip
-        title={\`The View name (string${nameEditDisabled ? ', immutable' : ''}).\`}
+        title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
         setArrow={true}
       >
         <span className="arangoicon icon_arangodb_info"></span>
@@ -47,7 +49,7 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
     <th className="collectionTh">
       <ToolTip
-        title={\`Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable).\`}
+        title={`Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable).`}
         setArrow={true}
       >
         <span className="arangoicon icon_arangodb_info"></span>
@@ -66,7 +68,7 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
     <th className="collectionTh">
       <ToolTip
-        title={\`Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable).\`}
+        title={`Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable).`}
         setArrow={true}
       >
         <span className="arangoicon icon_arangodb_info"></span>
@@ -85,7 +87,7 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
     <th className="collectionTh">
       <ToolTip
-        title={\`Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered. 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option). 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable, immutable).\`}
+        title={`Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered. 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option). 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable, immutable).`}
         setArrow={true}
       >
         <span className="arangoicon icon_arangodb_info"></span>
@@ -104,7 +106,7 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
     <th className="collectionTh">
       <ToolTip
-        title={\`ArangoSearch waits at least this many commits between removing unused files in its data directory.\`}
+        title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
         setArrow={true}
       >
         <span className="arangoicon icon_arangodb_info"></span>
@@ -150,12 +152,12 @@ const ViewSettingsReactView = ({ name }) => {
     </th>
   </tr>
   </tbody>
-</table>`;
+</table>)};
 
   const panels = times(3, (i) => ({
     key: `panel-${i}`,
     title: `General`,
-    content: generalContent
+    content: GeneralContent
   }));
   console.log("name in ViewSettingsReactView: ", name);
   const initialState = useRef({
@@ -202,6 +204,8 @@ const ViewSettingsReactView = ({ name }) => {
   const formState = state.formState;
   const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
+  //<AccordionExclusive panels={panels} />
+
   return <>
     <div style={{
       color: '#717d90',
@@ -211,7 +215,51 @@ const ViewSettingsReactView = ({ name }) => {
     }}>
       {name}
     </div>
-    <AccordionExclusive panels={panels} />
+    <AccordionView
+        allowMultipleOpen
+        accordionConfig={[
+          {
+            index: 0,
+            content: (
+              <div>
+                <GeneralContent />
+              </div>
+            ),
+            label: "General",
+            testID: "accordionItem1"
+          },
+          {
+            index: 1,
+            content: (
+              <div>
+                <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                    disabled={!isAdminUser}/>
+              </div>
+            ),
+            label: "Consolidation Policy",
+            testID: "accordionItem2"
+          },
+          {
+            index: 2,
+            content: <div>Accordion Item 3</div>,
+            label: "Primary Sort",
+            testID: "accordionItem3"
+          },
+          {
+            index: 3,
+            content: <div>Accordion Item 4</div>,
+            label: "Stored Values",
+            testID: "accordionItem4"
+          },
+          {
+            index: 4,
+            content: <div>Accordion Item 5</div>,
+            label: "Links",
+            testID: "accordionItem5",
+            defaultActive: true
+          }
+        ]}
+      />
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
                 aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
       width: 1024,
