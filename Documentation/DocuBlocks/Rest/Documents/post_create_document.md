@@ -79,6 +79,10 @@ patch document overwrites the existing document's value. If set to `true`,
 objects are merged. The default is `true`.
 This option controls the update-insert behavior only.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to add new entries to in-memory index caches if document insertions
+affect the edge index or cache-enabled persistent indexes.
+
 @RESTDESCRIPTION
 Creates a new document from the document given in the body, unless there
 is already a document with the `_key` given. If no `_key` is given, a new
