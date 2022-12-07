@@ -345,16 +345,18 @@ VocbaseOptions getVocbaseOptions(
             maxReplicationFactor > 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (") +
-                  std::to_string(maxReplicationFactor) + ")");
+              basics::StringUtils::concatT(
+                  "replicationFactor must not be higher than "
+                  "maximum allowed replicationFactor (",
+                  maxReplicationFactor, ")"));
         } else if (vocbaseOptions.replicationFactor < minReplicationFactor &&
                    minReplicationFactor > 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be lower than "
-                          "minimum allowed replicationFactor (") +
-                  std::to_string(minReplicationFactor) + ")");
+              basics::StringUtils::concatT(
+                  "replicationFactor must not be lower than "
+                  "minimum allowed replicationFactor (",
+                  minReplicationFactor, ")"));
         }
       }
     }
