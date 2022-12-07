@@ -54,7 +54,8 @@ namespace {
 
 template<class WriterType>
 Result impl(ClusterInfo& ci, ArangodServer& server,
-            std::string_view databaseName, WriterType& writer) {
+            std::string_view databaseName, WriterType& writer,
+            bool waitForSyncReplication) {
   AgencyComm ac(server);
   double pollInterval = ci.getPollInterval();
   AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
@@ -76,7 +77,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     if (buildingTransaction.fail()) {
       return buildingTransaction.result();
     }
-    auto callbackInfos = writer.prepareCurrentWatcher(databaseName, false);
+    auto callbackInfos =
+        writer.prepareCurrentWatcher(databaseName, waitForSyncReplication);
 
     std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
         callbackList;
@@ -628,8 +630,9 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
   WriterType writer{std::move(collectionPlanEntries),
                     std::move(shardDistributionList)};
-  auto res = ::impl(feature.clusterInfo(), vocbase.server(),
-                    std::string_view{vocbase.name()}, writer);
+  auto res =
+      ::impl(feature.clusterInfo(), vocbase.server(),
+             std::string_view{vocbase.name()}, writer, waitForSyncReplication);
   if (res.fail()) {
     // Something went wrong, let's report
     return res;
