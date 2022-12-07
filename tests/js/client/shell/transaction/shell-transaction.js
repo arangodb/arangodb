@@ -4664,7 +4664,7 @@ function transactionOverlapSuite(dbParams) {
         const start = Date.now();
         try {
           // should produce a conflict
-          db[cn].insert({ _key: "test" })
+          db[cn].insert({ _key: "test" });
           fail();
         } catch (err) {
           const finish = Date.now();
@@ -5485,7 +5485,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         } catch(e) {}
       }
     },
-  }
+  };
 }
 
 function transactionDatabaseSuite() {
