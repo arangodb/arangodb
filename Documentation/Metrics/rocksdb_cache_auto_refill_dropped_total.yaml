@@ -1,5 +1,5 @@
 name: rocksdb_cache_auto_refill_dropped_total
-introducedIn: "3.9.6"
+introducedIn: "3.10.2"
 help: |
   Total number of dropped entries in automatic in-memory edge cache refilling.
 unit: number
@@ -15,14 +15,14 @@ description: |
   This metric shows the total number of entries for which no automatic refilling
   happened in the in-memory edge cache.
   This counter increases only for insert, update, replace, and remove operations
-  affecting the edge index and requested automatic refilling,
+  affecting edge indexes and with requested automatic refilling,
   if no refill operation could be queued due to capacity constraints.
   A refill operation request can be rejected if the number of currently queued
   refill operations exceeds the maximum value configured via the
   `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
   Correctness of index lookups is not affected if this metric is non-zero, as
-  it only reports the number of failed refilling attempts in the in-memory cache(s)
-  of any index. These in-memory caches are optional and their fill grade does not
+  it only reports the number of failed refilling attempts in the in-memory cache
+  of any edge index. This in-memory cache is optional and its fill grade does not
   affect correctness.
 troubleshoot: |
   If this metric keeps increasing, it indicates that the index refill background 

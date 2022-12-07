@@ -99,7 +99,11 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020);
+      .setIntroducedIn(31020)
+      .setLongDescription(R"(Enabling this option may cause additional CPU and
+I/O load. You can limit how many index filling operations can execute
+concurrently with the `--rocksdb.max-concurrent-index-fill-tasks` startup
+option.)");
 
   options
       ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
@@ -112,7 +116,23 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020);
+      .setIntroducedIn(31020)
+      .setLongDescription(R"(When documents are added, modified, or removed,
+these changes are tracked and a background thread tries to update the edge
+cache accordingly if the feature is enabled, by adding new, updating existing,
+or deleting and refilling cache entries.
+
+You can enable the feature for individual `INSERT`, `UPDATE`, `REPLACE`,  and
+`REMOVE` operations in AQL queries, for individual document API requests that
+insert, update, replace, or remove single or multiple edge documents, as well
+as enable it by default using this startup option.
+
+The background refilling is done on a best-effort basis and not guaranteed to
+succeed, for example, if there is no memory available for the cache subsystem,
+or during cache grow/shrink operations. A background thread is used so that
+foreground write operations are not slowed down by a lot. It may still cause
+additional I/O activity to look up data from the storage engine to repopulate
+the cache.)");
 
   options
       ->addOption(
@@ -125,7 +145,11 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                              options::Flags::OnSingle, options::Flags::Uncommon,
                              options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020);
+      .setIntroducedIn(31020)
+      .setLongDescription(R"(This option restricts how many cache entries
+the background thread for (re-)filling the in-memory edge cache can queue at
+most. This limits the memory usage for the case of the background thread being
+slower than other operations that invalidate cache entries of edge indexes.)");
 
   options
       ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
@@ -138,7 +162,9 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020);
+      .setIntroducedIn(31020)
+      .setLongDescription(R"(The lower this number, the lower the impact of the
+edge cache filling, but the longer it takes to complete.)");
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
