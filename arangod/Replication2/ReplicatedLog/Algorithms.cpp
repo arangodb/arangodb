@@ -109,8 +109,7 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
 auto algorithms::operator<<(std::ostream& os,
                             ParticipantState const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
-  os << "failed = " << std::boolalpha << p.failed;
+  os << '{' << p.id << ':' << p.lastAckedEntry;
   os << ", snapshot = " << std::boolalpha << p.snapshotAvailable;
   os << ", flags = " << p.flags;
   os << '}';
@@ -125,7 +124,6 @@ auto ParticipantState::isForced() const noexcept -> bool {
   return flags.forced;
 };
 
-auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
 auto ParticipantState::isSnapshotAvailable() const noexcept -> bool {
   return snapshotAvailable;
 }
@@ -254,7 +252,6 @@ auto algorithms::calculateCommitIndex(
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
-                  .isFailed = participant.isFailed(),
                   .isAllowedInQuorum = participant.isAllowedInQuorum(),
                   .snapshotAvailable = participant.isSnapshotAvailable(),
                   .lastAcknowledged = participant.lastAckedEntry,

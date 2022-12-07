@@ -2518,11 +2518,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    leaderState->replicateOperation(
-        body.sharedSlice(),
-        replication2::replicated_state::document::OperationType::kTruncate,
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
+    try {
+      leaderState->replicateOperation(
+          body.sharedSlice(),
+          replication2::replicated_state::document::OperationType::kTruncate,
+          state()->id(),
+          replication2::replicated_state::document::ReplicationOptions{});
+    } catch (basics::Exception const& e) {
+      return OperationResult(Result{e.code(), e.what()}, options);
+    } catch (std::exception const& e) {
+      return OperationResult(Result{TRI_ERROR_INTERNAL, e.what()}, options);
+    }
     return OperationResult{Result{}, options};
   }
 
@@ -3007,12 +3013,18 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    leaderState->replicateOperation(
-        replicationData.sharedSlice(),
-        replication2::replicated_state::document::fromDocumentOperation(
-            operation),
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
+    try {
+      leaderState->replicateOperation(
+          replicationData.sharedSlice(),
+          replication2::replicated_state::document::fromDocumentOperation(
+              operation),
+          state()->id(),
+          replication2::replicated_state::document::ReplicationOptions{});
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.what()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
     return performIntermediateCommitIfRequired(collection->id());
   }
 

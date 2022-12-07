@@ -150,11 +150,13 @@ auto FakeStorageEngineMethods::getLogId() -> LogId { return _self.logId; }
 auto FakeStorageEngineMethods::getSyncedSequenceNumber()
     -> replicated_state::IStorageEngineMethods::SequenceNumber {
   TRI_ASSERT(false) << "not implemented";
+  std::abort();
 }
 auto FakeStorageEngineMethods::waitForSync(
     replicated_state::IStorageEngineMethods::SequenceNumber number)
     -> arangodb::futures::Future<arangodb::futures::Unit> {
   TRI_ASSERT(false) << "not implemented";
+  std::abort();
 }
 
 FakeStorageEngineMethods::FakeStorageEngineMethods(

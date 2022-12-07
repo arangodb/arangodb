@@ -1028,7 +1028,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
     participantStates.emplace_back(algorithms::ParticipantState{
         .lastAckedEntry = follower->lastAckedIndex,
         .id = pid,
-        .failed = false,
         .snapshotAvailable = follower->snapshotAvailable,
         .flags = flags->second});
 
