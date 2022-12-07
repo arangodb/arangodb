@@ -24,7 +24,6 @@
 #include <gmock/gmock.h>
 
 #include "Inspection/VPack.h"
-#include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -39,7 +38,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
-using namespace arangodb::replication2::test;
 
 struct MockDatabaseGuard : IDatabaseGuard {
   MOCK_METHOD(TRI_vocbase_t&, database, (), (const, noexcept, override));

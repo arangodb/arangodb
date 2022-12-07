@@ -22,15 +22,14 @@
 #include <gtest/gtest.h>
 #include <rocksdb/db.h>
 
-#include <Basics/Exceptions.h>
-#include <Basics/RocksDBUtils.h>
-#include <Basics/files.h>
-#include <RocksDBEngine/RocksDBFormat.h>
-#include <RocksDBEngine/RocksDBPersistedLog.h>
+#include "Basics/Exceptions.h"
+#include "Basics/RocksDBUtils.h"
+#include "Basics/files.h"
+#include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBPersistedLog.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
-#include "TestHelper.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 
 using namespace arangodb;
@@ -58,6 +57,27 @@ struct RocksDBInstance {
   rocksdb::DB* _db = nullptr;
   std::string _path;
 };
+
+template<typename I>
+struct SimpleIterator : PersistedLogIterator {
+  SimpleIterator(I begin, I end) : current(begin), end(end) {}
+  ~SimpleIterator() override = default;
+
+  auto next() -> std::optional<PersistingLogEntry> override {
+    if (current == end) {
+      return std::nullopt;
+    }
+
+    return *(current++);
+  }
+
+  I current, end;
+};
+
+template<typename C, typename Iter = typename C::const_iterator>
+auto make_iterator(C const& c) -> std::unique_ptr<SimpleIterator<Iter>> {
+  return std::make_unique<SimpleIterator<Iter>>(c.begin(), c.end());
+}
 }  // namespace arangodb::replication2::test
 
 template<typename Factory>

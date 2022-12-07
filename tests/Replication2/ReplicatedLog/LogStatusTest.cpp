@@ -20,7 +20,7 @@
 /// @author Alex Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"

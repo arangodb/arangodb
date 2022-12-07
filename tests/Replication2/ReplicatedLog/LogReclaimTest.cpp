@@ -22,7 +22,7 @@
 
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 #include <Basics/Exceptions.h>
 

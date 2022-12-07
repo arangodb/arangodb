@@ -22,7 +22,7 @@
 
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

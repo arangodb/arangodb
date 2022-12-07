@@ -55,9 +55,9 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
         #ReplicatedState/ReplicatedStateTest.cpp
         #ReplicatedState/StateCleanupTest.cpp
         #ReplicatedState/StateMachines/MyStateMachine.cpp
-        ReplicatedLog/MaintenanceTests.cpp
+        ReplicatedLog/Integration/MaintenanceTests.cpp
         ReplicatedState/DocumentStateMachineTest.cpp
-        ReplicatedLog/StorageEngineMethodsTest.cpp
+        ReplicatedLog/Integration/StorageEngineMethodsTest.cpp
 
         )
 
@@ -112,7 +112,7 @@ add_library(arango_tests_replication2_pure OBJECT
         ReplicatedLog/Components/FollowerCommitManagerTest.cpp
         ReplicatedLog/Components/InMemoryLogTest.cpp
         ReplicatedLog/LogFollower/AppendEntriesTest.cpp
-        ReplicatedLog/LogCommonTest.cpp
+        ReplicatedLog/Algorithms/LogCommonTest.cpp
         ReplicatedLog/ReplicatedLogConnectTest.cpp
         ReplicatedLog/Algorithms/CalcCommitIndexTest.cpp
         ReplicatedLog/Algorithms/DetectConflictTest.cpp
