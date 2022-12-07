@@ -23,13 +23,12 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "ProgramOptions/Option.h"
 
 #include <map>
+#include <string>
 
-namespace arangodb {
-namespace options {
+namespace arangodb::options {
 
 // a single program options section
 struct Section {
@@ -37,17 +36,17 @@ struct Section {
 
   Section(std::string const& name, std::string const& description,
           std::string const& link, std::string const& alias, bool hidden,
-          bool obsolete)
-      : name(name),
-        description(description),
-        link(link),
-        alias(alias),
-        hidden(hidden),
-        obsolete(obsolete),
-        enterpriseOnly(false) {}
+          bool obsolete);
+
+  Section(Section const&) = delete;
+  Section& operator=(Section const&) = delete;
+  Section(Section&&) = default;
+  Section& operator=(Section&&) = default;
+
+  ~Section();
 
   // get display name for the section
-  std::string displayName() const { return alias.empty() ? name : alias; }
+  std::string displayName() const;
 
   // whether or not the section has (displayable) options
   bool hasOptions() const;
@@ -87,5 +86,4 @@ struct EnterpriseSection : public Section {
   }
 };
 
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options

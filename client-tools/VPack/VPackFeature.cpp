@@ -27,7 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Dumper.h>
