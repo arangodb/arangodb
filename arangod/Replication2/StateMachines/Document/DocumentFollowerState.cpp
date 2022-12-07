@@ -147,7 +147,7 @@ auto DocumentFollowerState::applyEntries(
       stream->release(result->value());
     });
     if (releaseRes.fail()) {
-      LOG_CTX("7341f", WARN, loggerContext)
+      LOG_CTX("10f07", WARN, loggerContext)
           << "Failed to get stream! " << releaseRes;
     }
   }
