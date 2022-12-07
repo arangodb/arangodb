@@ -104,10 +104,6 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called setup query";
-ScopeGuard guard([]() noexcept {
-  LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Completed setup query";
-});
   TRI_IF_FAILURE("Query::setupTimeout") {
     // intentionally delay the request
     std::this_thread::sleep_for(
