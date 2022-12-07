@@ -122,7 +122,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 
   milliseconds delta = duration_cast<milliseconds>(timepointWhen - now);
   return std::min(delta, timeout);
- }
+}
 
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   MUTEX_LOCKER(mutex, singletonDeadlineMutex);
