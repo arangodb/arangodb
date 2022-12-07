@@ -13,7 +13,8 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric shows the total number of refill operations for in-memory
-  index caches for a full index. On DB-Servers, a full index reload can
-  increase this metric by more than one, as counting will be done per shard.
-  On coordinators and agents, this metric will always contain a value of zero.
+  This metric shows the total number of refill operations to in-memory
+  index caches for entire edge indexes and cache-enabled persistent indexes.
+  On DB-Servers, a full index reload can increase this metric by more than one,
+  as counting is done per shard.
+  On Coordinators and Agents, this metric always contains a value of zero.
