@@ -37,6 +37,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"

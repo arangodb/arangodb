@@ -45,14 +45,6 @@
 
 namespace arangodb {
 class RequestContext;
-namespace velocypack {
-class Builder;
-struct Options;
-}  // namespace velocypack
-
-namespace basics {
-class StringBuffer;
-}
 
 using rest::ContentType;
 using rest::EncodingType;
@@ -70,9 +62,6 @@ class GeneralRequest {
 
   // translate "HTTP method string" into RequestType enum value
   static RequestType translateMethod(std::string_view method);
-
-  // append RequestType as string value to given String buffer
-  static void appendMethod(RequestType, arangodb::basics::StringBuffer*);
 
  protected:
   static RequestType findRequestType(char const*, size_t const);
