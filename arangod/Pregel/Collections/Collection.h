@@ -29,6 +29,9 @@
 
 namespace arangodb::pregel::collections {
 
+/**
+   Interface for a collection in the database
+ **/
 struct Collection {
   virtual ~Collection() = default;
   virtual auto name() const -> std::string_view = 0;

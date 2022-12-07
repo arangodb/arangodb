@@ -29,6 +29,9 @@
 
 namespace arangodb::pregel::collections {
 
+/**
+   Wrapper class for a list of collections
+ **/
 struct Collections {
   std::unordered_map<CollectionID, std::shared_ptr<Collection>> collections;
   Collections(

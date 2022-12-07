@@ -30,6 +30,12 @@
 
 namespace arangodb::pregel::collections {
 
+/**
+   Collection on a cluster
+In case of a smart collection, this can consist out of several collections
+(which differ by their shardings). In that case, name is the name of the virtual
+collection, all other functions check all underlying collections
+ **/
 struct ClusterCollection : Collection {
  public:
   ClusterCollection(std::string name,

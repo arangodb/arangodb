@@ -28,6 +28,13 @@
 
 namespace arangodb::pregel::collections {
 
+/**
+   Creates a Collection based on the server state
+In the single server server state it creates a SingleServerCollection, otherwise
+a ClusterCollection (in case of a smart collection, the ClusterCollection will
+include all underlying collections and be named by the name of the virtual
+collection).
+ **/
 struct CollectionFactory {
   TRI_vocbase_t& vocbase;
   CollectionFactory(TRI_vocbase_t& vocbase) : vocbase{vocbase} {}

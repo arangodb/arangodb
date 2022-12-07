@@ -30,6 +30,9 @@
 
 namespace arangodb::pregel::collections {
 
+/**
+   Collection on a Single Server
+ **/
 struct SingleServerCollection : Collection {
  public:
   SingleServerCollection(std::shared_ptr<LogicalCollection> collection)

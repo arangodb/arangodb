@@ -28,6 +28,9 @@
 
 namespace arangodb::pregel::collections::graph {
 
+/**
+   Aggreate of all vertex and edge collections that belong to a graph
+ **/
 struct GraphCollections {
   Collections vertexCollections;
   Collections edgeCollections;

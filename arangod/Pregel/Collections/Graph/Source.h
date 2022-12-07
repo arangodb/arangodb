@@ -29,6 +29,13 @@
 
 namespace arangodb::pregel::collections::graph {
 
+/**
+   The source of a graph includes the name of its collections and the
+restrictions on edge collections.
+It can be created either via a graph name or the vertex and edge collection
+names. If a graph is given, the graph edges are automatically added
+to the edge collection restrictions.
+ **/
 struct GraphSource {
   GraphSource(std::variant<GraphCollectionNames, GraphName> graphOrCollections,
               EdgeCollectionRestrictions restrictions)

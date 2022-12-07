@@ -44,10 +44,13 @@ struct GraphName {
   std::string graph;
 };
 
+/**
+Maps from vertex collection name to a list of edge collections that this
+vertex collection is restricted to.
+It is only used for a collection if there is at least one entry for the
+collection!
+ **/
 struct EdgeCollectionRestrictions {
-  // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is
-  // at least one entry for the collection!
   std::unordered_map<VertexCollectionID, std::vector<EdgeCollectionID>> items;
   auto add(EdgeCollectionRestrictions others) const
       -> EdgeCollectionRestrictions;
