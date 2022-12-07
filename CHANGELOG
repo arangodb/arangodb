@@ -9,8 +9,35 @@ devel
   one second. This lock timeout value is currently hardcoded but will be made
   configurable in the future. If the lock cannot be acquired within this time,
   the operation fails with a write-write conflict error as before.
+
+  Performing changes to a unique index entry also requires us to lock that
+  index entry to ensure uniqueness. This lock acquisition is subject to the
+  same lock timeout as locking the document key.
+
   We are planning to generalize this for multi-document operations as well as
   AQL and streaming transactions in the future.
+
+  In case we cannot acquire the lock on the key of the document we want to
+  insert/modify, the error message will be
+  `Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: <key>`
+  where `<key>` corresponds to the key of the document we tried to modify.
+  In addition, the error object will contain `_key`, `_id` and `_rev` fields.
+  The `_key` and `_id` correspond to the document we tried to insert/modify,
+  and `_rev` will correspond to the current revision of the document from the
+  DB if available, and otherwise empty.
+
+  In case we cannot acquire the lock on a unique index entry, the error
+  message will be
+  `Timeout waiting to lock key - in index <indexName> of type persistent over '<fields>'; document key: <key>; indexed values: [<values>]`
+  where `<indexName>` is the name of the index in which we tried to lock the
+  entry, `<fields>` is the list of fields included in that index, `<key>`
+  corresponds to the key of the document we tried to insert/modify, and
+  `<values>` corresponds to the indexed values from our document.
+  In addition, the error object will contain `_key`, `_id` and `_rev` fields.
+  The `_key` and `_id` correspond to the document we tried to insert/modify,
+  and `_rev` will correspond to the current revision of the document from the
+  DB if available, and otherwise empty.
+
   This addresses Github issue #9702 and APM-522
 
 * Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
