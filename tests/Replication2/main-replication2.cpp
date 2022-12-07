@@ -29,9 +29,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -39,40 +36,6 @@
 #include "RestServer/arangod.h"
 #include "Rest/Version.h"
 #include "Basics/VelocyPackHelper.h"
-
-template<class Function>
-class TestThread : public arangodb::Thread {
- public:
-  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
-      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
-    run();
-    CONDITION_LOCKER(guard, _wait);
-    while (true) {
-      if (_done) {
-        break;
-      }
-      _wait.wait(uint64_t(1000000));
-    }
-  }
-  ~TestThread() { shutdown(); }
-
-  void run() override {
-    CONDITION_LOCKER(guard, _wait);
-    _result = _f(_i, _c);
-    _done = true;
-    _wait.broadcast();
-  }
-
-  int result() { return _result; }
-
- private:
-  Function _f;
-  int _i;
-  char** _c;
-  std::atomic<bool> _done;
-  std::atomic<int> _result;
-  arangodb::basics::ConditionVariable _wait;
-};
 
 char const* ARGV0 = "";
 
@@ -125,9 +88,9 @@ int main(int argc, char* argv[]) {
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
-  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
-  result = t.result();
+  std::thread{[&](int argc, char* argv[]) { result = RUN_ALL_TESTS(); },
+              subargc, subargv}
+      .join();
 
   arangodb::Logger::shutdown();
   // global clean-up...

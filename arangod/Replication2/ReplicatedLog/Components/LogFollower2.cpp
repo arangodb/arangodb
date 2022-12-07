@@ -86,7 +86,13 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
 auto FollowerManager::resign()
     -> std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
                   std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // 1. resign the state and receive its handle
+  auto handle = stateHandle->resign();
+  // 2. resign the storage manager to receive the storage engine methods
+  auto methods = storage->resign();
+  // TODO resign CommitManager
+  return std::make_tuple(std::move(methods), std::move(handle),
+                         DeferredAction{});
 }
 
 auto FollowerManager::appendEntries(AppendEntriesRequest request)

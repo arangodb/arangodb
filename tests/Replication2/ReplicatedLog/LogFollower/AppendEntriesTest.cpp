@@ -301,3 +301,74 @@ TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
   EXPECT_EQ(storage.log.begin()->first, LogIndex{40});   // compacted
   EXPECT_EQ(storage.log.rbegin()->first, LogIndex{59});  // [40, 60)
 }
+
+TEST_F(AppendEntriesFollowerTest, outdated_message_id) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{2};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  auto follower = makeFollowerManager();
+  methods->releaseIndex(LogIndex{50});  // allow compaction upto 50
+
+  EXPECT_CALL(*stateHandle, updateCommitIndex(LogIndex{55})).Times(1);
+  EXPECT_CALL(*stateHandle, acquireSnapshot).Times(0);
+
+  auto oldMessageId = ++lastMessageId;
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{40};  // compaction up to 40
+    request.leaderCommit = LogIndex{55};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{2};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+    EXPECT_TRUE(result.isSuccess());
+  }
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = oldMessageId;
+    request.lowestIndexToKeep = LogIndex{40};  // compaction up to 40
+    request.leaderCommit = LogIndex{50};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{2};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    auto result = follower->appendEntries(request).get();
+    EXPECT_FALSE(result.isSuccess());
+    EXPECT_EQ(result.reason.error,
+              AppendEntriesErrorReason::ErrorType::kMessageOutdated);
+  }
+}
+
+TEST_F(AppendEntriesFollowerTest, resigned_follower) {
+  termInfo->leader = "leader";
+  termInfo->term = LogTerm{2};
+  options->_thresholdLogCompaction = 0;
+
+  auto methods = std::unique_ptr<IReplicatedLogFollowerMethods>{};
+  EXPECT_CALL(*stateHandle, becomeFollower)
+      .Times(1)
+      .WillOnce([&](auto&& newMethods) { methods = std::move(newMethods); });
+  EXPECT_CALL(*stateHandle, resignCurrentState).Times(1).WillOnce([&]() {
+    return std::move(methods);
+  });
+  auto follower = makeFollowerManager();
+  auto resigned = follower->resign();
+
+  {
+    AppendEntriesRequest request;
+    request.messageId = ++lastMessageId;
+    request.lowestIndexToKeep = LogIndex{40};  // compaction up to 40
+    request.leaderCommit = LogIndex{55};
+    request.leaderId = "leader";
+    request.leaderTerm = LogTerm{2};
+    request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
+    EXPECT_ANY_THROW({ std::ignore = follower->appendEntries(request).get(); });
+  }
+}
