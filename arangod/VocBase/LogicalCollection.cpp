@@ -326,7 +326,10 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.numberOfShards = numberOfShards();
   props.writeConcern = writeConcern();
   props.replicationFactor = replicationFactor();
-  props.distributeShardsLike = distributeShardsLike();
+  auto distLike = distributeShardsLike();
+  if (!distLike.empty()) {
+    props.distributeShardsLikeCid = std::move(distLike);
+  }
   props.shardKeys = shardKeys();
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();

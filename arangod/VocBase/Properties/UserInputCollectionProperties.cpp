@@ -75,6 +75,30 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     if (!groupInfo.ok()) {
       return groupInfo.result();
     }
+    if (groupInfo->distributeShardsLike.has_value() ||
+        groupInfo->distributeShardsLikeCid.has_value()) {
+      // We are creating a chain of distributeShardsLike, this is not allowed.
+      // TODO: For Collection groups, we may want to allow this, as the target
+      // distributeShardsLike will be the Collection group, and we have to read
+      // this. This version is for original distributeShardsLike behaviour.
+
+      // At the time this was implemented the internal structure was always
+      // using CID.
+      TRI_ASSERT(groupInfo->distributeShardsLikeCid.has_value());
+      // This is a bit of an overkill just for the message, but we have the
+      // operations in our hands right now. LongTermPlan: At this point in time
+      // we should see a collection by name, not by cid, and not have two
+      // values, this way we can save the lookup here.
+      auto leadersLeader = config.getCollectionGroupSharding(
+          groupInfo->distributeShardsLikeCid.value());
+      // We cannot see a follower to a non-existent leader.
+      TRI_ASSERT(leadersLeader.ok());
+
+      return {TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,
+              "Cannot distribute shards like '" + distributeShardsLike.value() +
+                  "' it is already distributed like '" + leadersLeader->name +
+                  "'."};
+    }
     // Copy the relevant attributes
 
     // We cannot have a cid set yet, this can only be set if we read from
