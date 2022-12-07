@@ -1,6 +1,18 @@
 devel
 -----
 
+* Avoid write-write conflicts for single document operations performed via the
+  document REST API (i.e., no AQL, but also no streaming transactions). This is
+  achieved by locking the key of each document before performing the actual
+  modification. This lock acquisition effectively serializes all operations on
+  the same document. To avoid starvation, the lock acquisition is limited to
+  one second. This lock timeout value is currently hardcoded but will be made
+  configurable in the future. If the lock cannot be acquired within this time,
+  the operation fails with a write-write conflict error as before.
+  We are planning to generalize this for multi-document operations as well as
+  AQL and streaming transactions in the future.
+  This addresses Github issue #9702 and APM-522
+
 * Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
 
 * Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
