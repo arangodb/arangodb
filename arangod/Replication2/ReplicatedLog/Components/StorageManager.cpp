@@ -83,7 +83,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   auto appendEntries(InMemoryLog slice) noexcept
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
-        << "scheduling remove back, range = " << slice.getIndexRange();
+        << "scheduling append, range = " << slice.getIndexRange();
     ADB_PROD_ASSERT(guard->spearheadLog.empty() ||
                     slice.getFirstIndex() ==
                         guard->spearheadLog.getLastIndex() + 1)

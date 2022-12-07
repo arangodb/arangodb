@@ -126,7 +126,7 @@ auto replicated_log::ReplicatedLog::updateConfig(
 
 auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     -> futures::Future<futures::Unit> {
-  if (not data.latest or not data.stateHandle) {
+  if (not data.latest or not(data.stateHandle || data.participant)) {
     LOG_CTX("79005", DEBUG, _logContext)
         << "replicated log not ready, config missing";
     return {futures::Unit{}};  // config or state not yet available

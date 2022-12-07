@@ -102,8 +102,9 @@ RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
   }
   auto report =
       velocypack::deserialize<replicated_log::SnapshotAvailableReport>(body);
-  auto res = _vocbase.getReplicatedLogLeaderById(logId)->setSnapshotAvailable(
-      participant, report);
+  auto res = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+                 _vocbase.getReplicatedLogLeaderById(logId))
+                 ->setSnapshotAvailable(participant, report);
   if (res.fail()) {
     generateError(res);
   } else {

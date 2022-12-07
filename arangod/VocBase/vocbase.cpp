@@ -2245,9 +2245,9 @@ auto TRI_vocbase_t::updateReplicatedState(
 }
 
 auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
-    -> std::shared_ptr<replicated_log::LogLeader> {
+    -> std::shared_ptr<replicated_log::ILogLeader> {
   auto log = getReplicatedLogById(id);
-  auto participant = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+  auto participant = std::dynamic_pointer_cast<replicated_log::ILogLeader>(
       log->getParticipant());
   if (participant == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER);
@@ -2256,9 +2256,9 @@ auto TRI_vocbase_t::getReplicatedLogLeaderById(LogId id)
 }
 
 auto TRI_vocbase_t::getReplicatedLogFollowerById(LogId id)
-    -> std::shared_ptr<replicated_log::LogFollower> {
+    -> std::shared_ptr<replicated_log::ILogFollower> {
   auto log = getReplicatedLogById(id);
-  auto participant = std::dynamic_pointer_cast<replicated_log::LogFollower>(
+  auto participant = std::dynamic_pointer_cast<replicated_log::ILogFollower>(
       log->getParticipant());
   if (participant == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER);

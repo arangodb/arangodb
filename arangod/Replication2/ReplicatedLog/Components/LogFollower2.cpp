@@ -92,7 +92,7 @@ FollowerManager::FollowerManager(
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
                                                      loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
-          termInfo, *storage, *snapshot, *compaction, *commit)),
+          termInfo, *storage, *snapshot, *compaction, *commit, loggerContext)),
       termInfo(termInfo) {
   auto provider = std::make_unique<MethodsProvider>(*this);
   stateHandle->becomeFollower(std::move(provider));

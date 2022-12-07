@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "IFollowerCommitManager.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
@@ -48,7 +49,8 @@ struct AppendEntriesManager
   AppendEntriesManager(std::shared_ptr<FollowerTermInformation const> termInfo,
                        IStorageManager& storage, ISnapshotManager& snapshot,
                        ICompactionManager& compaction,
-                       IFollowerCommitManager& commit);
+                       IFollowerCommitManager& commit,
+                       LoggerContext const& loggerContext);
 
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override;
@@ -57,7 +59,8 @@ struct AppendEntriesManager
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
                 ICompactionManager& compaction, IFollowerCommitManager& commit);
     auto preflightChecks(AppendEntriesRequest const& request,
-                         FollowerTermInformation const&)
+                         FollowerTermInformation const&,
+                         LoggerContext const& lctx)
         -> std::optional<AppendEntriesResult>;
 
     ExclusiveBool requestInFlight;
@@ -69,6 +72,7 @@ struct AppendEntriesManager
     IFollowerCommitManager& commit;
   };
 
+  LoggerContext const loggerContext;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
   Guarded<GuardedData> guarded;
 };

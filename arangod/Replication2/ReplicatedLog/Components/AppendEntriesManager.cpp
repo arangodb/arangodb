@@ -30,20 +30,28 @@
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
+  LoggerContext lctx =
+      loggerContext.with<logContextKeyMessageId>(request.messageId)
+          .with<logContextKeyPrevLogIdx>(request.prevLogEntry);
+  LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
+
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
+    LOG_CTX("58043", INFO, lctx)
+        << "rejecting append entries - request in flight";
     co_return AppendEntriesResult::withRejection(
-        LogTerm{1}, MessageId{0},
+        termInfo->term, request.messageId,
         AppendEntriesErrorReason{
             AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
-        false);
+        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
   }
 
   // TODO handle message ids properly
@@ -51,7 +59,11 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   // TODO metrics
   // TODO logging
 
-  if (auto error = guard->preflightChecks(request, *termInfo); error) {
+  if (auto error = guard->preflightChecks(request, *termInfo, lctx); error) {
+    error->messageId = request.messageId;
+    error->logTerm = termInfo->term;
+    error->snapshotAvailable =
+        guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
     co_return {std::move(*error)};
   }
 
@@ -59,13 +71,14 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     // Invalidate snapshot status if necessary.
     if (request.prevLogEntry == TermIndexPair{} &&
         request.entries.front().entry().logIndex() > LogIndex{1}) {
-      // LOG_CTX("6262d", INFO, _loggerContext)
-      //     << "Log truncated - invalidating snapshot";
+      LOG_CTX("76553", INFO, lctx) << "log truncated - invalidating snapshot";
       // triggers new snapshot transfer
       if (auto result = guard->snapshot.invalidateSnapshotState();
           result.fail()) {
+        LOG_CTX("c0981", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
-            LogTerm{1}, MessageId{0}, result, false);
+            termInfo->term, request.messageId, result,
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
     }
   }
@@ -73,24 +86,36 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   {
     auto store = guard->storage.transaction();
     if (store->getInMemoryLog().getLastIndex() != request.prevLogEntry.index) {
-      auto f = store->removeBack(request.prevLogEntry.index + 1);
+      auto startRemoveIndex = request.prevLogEntry.index + 1;
+      LOG_CTX("9272b", DEBUG, lctx)
+          << "log does not append cleanly, removing starting at "
+          << startRemoveIndex;
+      auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
       auto result = co_await asResult(std::move(f));
       if (result.fail()) {
+        LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
-            LogTerm{1}, MessageId{0}, result, false);
+            termInfo->term, request.messageId, result,
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
       guard = self->guarded.getLockedGuard();
       store = guard->storage.transaction();
     }
 
     if (not request.entries.empty()) {
+      LOG_CTX("fe3e1", TRACE, lctx)
+          << "inserting new log entries count = " << request.entries.size()
+          << ", range = [" << request.entries.front().entry().logIndex() << ", "
+          << request.entries.back().entry().logIndex() + 1 << ")";
       auto f = store->appendEntries(InMemoryLog{request.entries});
       guard.unlock();
       auto result = co_await asResult(std::move(f));
       if (result.fail()) {
+        LOG_CTX("7cb3d", ERR, lctx) << "failed to persist:" << result;
         co_return AppendEntriesResult::withPersistenceError(
-            LogTerm{1}, MessageId{0}, result, false);
+            termInfo->term, request.messageId, result,
+            guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
       guard = self->guarded.getLockedGuard();
     }
@@ -98,16 +123,23 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
   guard->compaction.updateLargestIndexToKeep(request.lowestIndexToKeep);
   auto action = guard->commit.updateCommitIndex(request.leaderCommit);
+  auto hasSnapshot =
+      guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   guard.unlock();
   action.fire();
-  co_return AppendEntriesResult::withOk(LogTerm{1}, MessageId{0}, false);
+  LOG_CTX("f5ecd", TRACE, lctx) << "append entries successful";
+  co_return AppendEntriesResult::withOk(termInfo->term, request.messageId,
+                                        hasSnapshot);
 }
 
 AppendEntriesManager::AppendEntriesManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     IStorageManager& storage, ISnapshotManager& snapshot,
-    ICompactionManager& compaction, IFollowerCommitManager& commit)
-    : termInfo(std::move(termInfo)),
+    ICompactionManager& compaction, IFollowerCommitManager& commit,
+    LoggerContext const& loggerContext)
+    : loggerContext(
+          loggerContext.with<logContextKeyLogComponent>("append-entries-man")),
+      termInfo(std::move(termInfo)),
       guarded(storage, snapshot, compaction, commit) {}
 
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
@@ -121,21 +153,30 @@ AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
 
 auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
-    FollowerTermInformation const& termInfo)
+    FollowerTermInformation const& termInfo, LoggerContext const& lctx)
     -> std::optional<AppendEntriesResult> {
   if (not messageIdAcceptor.accept(request.messageId)) {
+    LOG_CTX("bef55", INFO, lctx)
+        << "rejecting append entries - dropping outdated message "
+        << request.messageId;
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
   }
 
   if (request.leaderId != termInfo.leader) {
+    LOG_CTX("d04a9", DEBUG, lctx)
+        << "rejecting append entries - wrong leader - expected "
+        << termInfo.leader.value_or("<none>") << " found " << request.leaderId;
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId}, false);
   }
 
   if (request.leaderTerm != termInfo.term) {
+    LOG_CTX("8ef92", DEBUG, lctx)
+        << "rejecting append entries - wrong term - expected " << termInfo.term
+        << " found " << request.leaderTerm;
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
@@ -147,6 +188,9 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
     if (auto conflict = algorithms::detectConflict(log, request.prevLogEntry);
         conflict.has_value()) {
       auto [reason, next] = *conflict;
+      LOG_CTX("568c7", TRACE, lctx)
+          << "rejecting append entries - log conflict - reason "
+          << to_string(reason) << " next " << next;
       return AppendEntriesResult::withConflict(termInfo.term, request.messageId,
                                                next, false);
     }
