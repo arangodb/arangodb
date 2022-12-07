@@ -62,17 +62,14 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called TransactionState: " << _id;
 }
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called ~TransactionState: " << _id;
   // process collections in reverse order, free all collections
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Called releaseUsage: " <<  (*it)->collectionName();
     (*it)->releaseUsage();
     delete (*it);
   }

@@ -169,12 +169,6 @@ void TRI_RemoveFailurePointDebugging(std::string_view value) {
   }
 }
 
-bool IS_TRX_DEBUG() noexcept {
-  return TRI_ShouldFailDebugging("ExecutionEngine::directKillBeforeAQLQueryExecute") ||
-  TRI_ShouldFailDebugging("ExecutionEngine::directKillAfterAQLQueryExecute") ||
-  TRI_ShouldFailDebugging("Query::directKillBeforeQueryWillBeFinalized");
-}
-
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() noexcept {
   size_t numExisting = 0;
