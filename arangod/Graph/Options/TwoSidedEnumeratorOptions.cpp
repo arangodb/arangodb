@@ -28,8 +28,16 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
-                                                     size_t maxDepth)
-    : _minDepth(minDepth), _maxDepth(maxDepth) {}
+                                                     size_t maxDepth,
+                                                     PathType::Type pathType)
+    : _minDepth(minDepth), _maxDepth(maxDepth), _pathType(pathType) {
+  if (getPathType() == PathType::Type::AllShortestPaths) {
+    setStopAtFirstDepth(true);
+  } else if (getPathType() == PathType::Type::ShortestPath) {
+    setOnlyProduceOnePath(true);
+    setStopAtFirstDepth(false);
+  }
+}
 
 TwoSidedEnumeratorOptions::~TwoSidedEnumeratorOptions() = default;
 
@@ -41,4 +49,16 @@ bool TwoSidedEnumeratorOptions::getStopAtFirstDepth() const {
 }
 void TwoSidedEnumeratorOptions::setStopAtFirstDepth(bool stopAtFirstDepth) {
   _stopAtFirstDepth = stopAtFirstDepth;
+}
+
+void TwoSidedEnumeratorOptions::setOnlyProduceOnePath(bool onlyProduceOnePath) {
+  _onlyProduceOnePath = onlyProduceOnePath;
+}
+
+bool TwoSidedEnumeratorOptions::onlyProduceOnePath() const {
+  return _onlyProduceOnePath;
+}
+
+PathType::Type TwoSidedEnumeratorOptions::getPathType() const {
+  return _pathType;
 }

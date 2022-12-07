@@ -34,7 +34,6 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
@@ -43,8 +42,8 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
+// [GraphRefactor] TODO: ShortestPathOptions should be removed / clean up later.
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Indexes/Index.h"
 #include "OptimizerUtils.h"
@@ -386,19 +385,65 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
   GraphNode::InputVertex sourceInput = ::prepareVertexInput(this, false);
   GraphNode::InputVertex targetInput = ::prepareVertexInput(this, true);
+  auto checkWeight = [&]<typename ProviderOptionsType>(
+                         ProviderOptionsType& forwardProviderOptions,
+                         ProviderOptionsType& backwardProviderOptions) {
+    if (opts->useWeight()) {
+      double defaultWeight = opts->getDefaultWeight();
+      if (opts->getWeightAttribute().empty()) {
+        forwardProviderOptions.setWeightEdgeCallback(
+            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+              return previousWeight + defaultWeight;
+            });
+        backwardProviderOptions.setWeightEdgeCallback(
+            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+              return previousWeight + defaultWeight;
+            });
+      } else {
+        std::string weightAttribute = opts->getWeightAttribute();
+        forwardProviderOptions.setWeightEdgeCallback(
+            [weightAttribute = weightAttribute, defaultWeight](
+                double previousWeight, VPackSlice edge) -> double {
+              auto const weight =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                      edge, weightAttribute, defaultWeight);
+              if (weight < 0.) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+              }
+
+              return previousWeight + weight;
+            });
+        backwardProviderOptions.setWeightEdgeCallback(
+            [weightAttribute = weightAttribute, defaultWeight](
+                double previousWeight, VPackSlice edge) -> double {
+              auto const weight =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                      edge, weightAttribute, defaultWeight);
+              if (weight < 0.) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+              }
+
+              return previousWeight + weight;
+            });
+      }
+    }
+  };
 
 #ifdef USE_ENTERPRISE
   waitForSatelliteIfRequired(&engine);
 #endif
 
+  // [GraphRefactor] TODO: Plan is to get rid of that pathType section in total.
   const bool isKPaths = pathType() == arangodb::graph::PathType::Type::KPaths;
   const bool isAllShortestPaths =
       pathType() == arangodb::graph::PathType::Type::AllShortestPaths;
 
+  // Can only be specified in ShortestPathNode
+  TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
+
   if (isKPaths or isAllShortestPaths) {
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
-        opts->minDepth, opts->maxDepth};
-    enumeratorOptions.setStopAtFirstDepth(isAllShortestPaths);
+        opts->minDepth, opts->maxDepth, pathType()};
     PathValidatorOptions validatorOptions(opts->tmpVar(),
                                           opts->getExpressionCtx());
 
@@ -494,6 +539,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       }
     }
   } else {
+    // Section for KShortestPaths
+    TRI_ASSERT(pathType() == PathType::Type::KShortestPaths);
     if (ServerState::instance()->isCoordinator()) {
       auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
           opts->query().resourceMonitor());
@@ -516,48 +563,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           &opts->getExpressionCtx(), filterConditionVariablesBackward,
           std::move(availableDepthsSpecificConditionsBackward));
 
-      // TODO [GraphRefactor]: Optimize useWeight section
-      if (opts->useWeight()) {
-        double defaultWeight = opts->getDefaultWeight();
-        if (opts->getWeightAttribute().empty()) {
-          forwardProviderOptions.setWeightEdgeCallback(
-              [defaultWeight](double previousWeight,
-                              VPackSlice edge) -> double {
-                return previousWeight + defaultWeight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [defaultWeight](double previousWeight,
-                              VPackSlice edge) -> double {
-                return previousWeight + defaultWeight;
-              });
-        } else {
-          std::string weightAttribute = opts->getWeightAttribute();
-          forwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
+      checkWeight(forwardProviderOptions, backwardProviderOptions);
 
-                return previousWeight + weight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
-
-                return previousWeight + weight;
-              });
-        }
-      }
       std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
           std::make_unique<graph::KShortestPathsFinder<
               ClusterProvider<ClusterProviderStep>>>(
@@ -595,48 +602,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           opts->getExpressionCtx(), {}, opts->collectionToShard(),
           opts->getVertexProjections(), opts->getEdgeProjections());
 
-      // TODO [GraphRefactor]: Optimize useWeight section
-      if (opts->useWeight()) {
-        double defaultWeight = opts->getDefaultWeight();
-        if (opts->getWeightAttribute().empty()) {
-          forwardProviderOptions.setWeightEdgeCallback(
-              [defaultWeight](double previousWeight,
-                              VPackSlice edge) -> double {
-                return previousWeight + defaultWeight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [defaultWeight](double previousWeight,
-                              VPackSlice edge) -> double {
-                return previousWeight + defaultWeight;
-              });
-        } else {
-          std::string weightAttribute = opts->getWeightAttribute();
-          forwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
-
-                return previousWeight + weight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
-
-                return previousWeight + weight;
-              });
-        }
-      }
+      checkWeight(forwardProviderOptions, backwardProviderOptions);
 
       std::unique_ptr<graph::KShortestPathsFinderInterface> finder =
           std::make_unique<graph::KShortestPathsFinder<

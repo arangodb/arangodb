@@ -32,9 +32,6 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Graph/AttributeWeightShortestPathFinder.h"
-#include "Graph/ConstantWeightShortestPathFinder.h"
-#include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
@@ -73,9 +70,9 @@ static void parseNodeInput(AstNode const* node, std::string& id,
                                          "_id string or an object with _id.");
   }
 }
-static ShortestPathExecutorInfos::InputVertex prepareVertexInput(
-    ShortestPathNode const* node, bool isTarget) {
-  using InputVertex = ShortestPathExecutorInfos::InputVertex;
+static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
+                                                 bool isTarget) {
+  using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
       auto it =
@@ -272,12 +269,44 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
   }
 }
 
-/// @brief creates corresponding ExecutionBlock
-std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  ExecutionNode const* previousNode = getFirstDependency();
-  TRI_ASSERT(previousNode != nullptr);
+template<typename ShortestPathEnumeratorType>
+std::pair<RegIdSet,
+          std::unordered_map<typename ShortestPathExecutorInfos<
+                                 ShortestPathEnumeratorType>::OutputName,
+                             RegisterId,
+                             typename ShortestPathExecutorInfos<
+                                 ShortestPathEnumeratorType>::OutputNameHash>>
+ShortestPathNode::_buildOutputRegisters() const {
+  auto outputRegisters = RegIdSet{};
+  auto& varInfo = getRegisterPlan()->varInfo;
+
+  std::unordered_map<typename ShortestPathExecutorInfos<
+                         ShortestPathEnumeratorType>::OutputName,
+                     RegisterId,
+                     typename ShortestPathExecutorInfos<
+                         ShortestPathEnumeratorType>::OutputNameHash>
+      outputRegisterMapping;
+  if (isVertexOutVariableUsedLater()) {
+    auto it = varInfo.find(vertexOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    outputRegisterMapping.try_emplace(
+        ShortestPathExecutorInfos<
+            ShortestPathEnumeratorType>::OutputName::VERTEX,
+        it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    auto it = varInfo.find(edgeOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    outputRegisterMapping.try_emplace(
+        ShortestPathExecutorInfos<ShortestPathEnumeratorType>::OutputName::EDGE,
+        it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
+  }
+  return std::make_pair(outputRegisters, outputRegisterMapping);
+};
+
+RegIdSet ShortestPathNode::_buildVariableInformation() const {
   auto inputRegisters = RegIdSet();
   auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
@@ -290,53 +319,222 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     inputRegisters.emplace(it->second.registerId);
   }
+  return inputRegisters;
+}
 
-  auto outputRegisters = RegIdSet{};
-  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId,
-                     ShortestPathExecutorInfos::OutputNameHash>
-      outputRegisterMapping;
-  if (isVertexOutVariableUsedLater()) {
-    auto it = varInfo.find(vertexOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.try_emplace(
-        ShortestPathExecutorInfos::OutputName::VERTEX, it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
-  }
-  if (isEdgeOutVariableUsedLater()) {
-    auto it = varInfo.find(edgeOutVariable()->id);
-    TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.try_emplace(
-        ShortestPathExecutorInfos::OutputName::EDGE, it->second.registerId);
-    outputRegisters.emplace(it->second.registerId);
-  }
+// Provider is expected to be:
+// 1. TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>
+// 2. or SingleServerProvider<SingleServerProviderStep>
+// 3. or ClusterProvider<ClusterProviderStep>
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                           std::move(outputRegisters));
+template<typename ShortestPathRefactored, typename Provider,
+         typename ProviderOptions>
+std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
+    ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
+    ProviderOptions backwardProviderOptions,
+    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
+    PathValidatorOptions validatorOptions,
+    std::unordered_map<
+        typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputName,
+        RegisterId,
+        typename ShortestPathExecutorInfos<
+            ShortestPathRefactored>::OutputNameHash>&& outputRegisterMapping,
+    ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
+    RegisterInfos registerInfos) const {
+  auto shortestPathFinder = std::make_unique<ShortestPathRefactored>(
+      Provider{opts->query(), std::move(forwardProviderOptions),
+               opts->query().resourceMonitor()},
+      Provider{opts->query(), std::move(backwardProviderOptions),
+               opts->query().resourceMonitor()},
+      std::move(enumeratorOptions), std::move(validatorOptions),
+      opts->query().resourceMonitor());
+
+  auto executorInfos = ShortestPathExecutorInfos(
+      engine.getQuery(), std::move(shortestPathFinder),
+      std::move(outputRegisterMapping), std::move(sourceInput),
+      std::move(targetInput));
+
+  return std::make_unique<
+      ExecutionBlockImpl<ShortestPathExecutor<ShortestPathRefactored>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+};
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto inputRegisters = _buildVariableInformation();
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
-  ShortestPathExecutorInfos::InputVertex sourceInput =
-      ::prepareVertexInput(this, false);
-  ShortestPathExecutorInfos::InputVertex targetInput =
-      ::prepareVertexInput(this, true);
+  auto sourceInput = ::prepareVertexInput(this, false);
+  auto targetInput = ::prepareVertexInput(this, true);
+  auto checkWeight = [&]<typename ProviderOptionsType>(
+                         ProviderOptionsType& forwardProviderOptions,
+                         ProviderOptionsType& backwardProviderOptions) {
+    if (opts->useWeight()) {
+      double defaultWeight = opts->getDefaultWeight();
+      if (opts->getWeightAttribute().empty()) {
+        forwardProviderOptions.setWeightEdgeCallback(
+            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+              return previousWeight + defaultWeight;
+            });
+        backwardProviderOptions.setWeightEdgeCallback(
+            [defaultWeight](double previousWeight, VPackSlice edge) -> double {
+              return previousWeight + defaultWeight;
+            });
+      } else {
+        std::string weightAttribute = opts->getWeightAttribute();
+        forwardProviderOptions.setWeightEdgeCallback(
+            [weightAttribute = weightAttribute, defaultWeight](
+                double previousWeight, VPackSlice edge) -> double {
+              auto const weight =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                      edge, weightAttribute, defaultWeight);
+              if (weight < 0.) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+              }
 
-  std::unique_ptr<ShortestPathFinder> finder;
-  if (opts->useWeight()) {
-    finder = std::make_unique<graph::AttributeWeightShortestPathFinder>(*opts);
-  } else {
-    finder = std::make_unique<graph::ConstantWeightShortestPathFinder>(*opts);
-  }
+              return previousWeight + weight;
+            });
+        backwardProviderOptions.setWeightEdgeCallback(
+            [weightAttribute = weightAttribute, defaultWeight](
+                double previousWeight, VPackSlice edge) -> double {
+              auto const weight =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                      edge, weightAttribute, defaultWeight);
+              if (weight < 0.) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+              }
+
+              return previousWeight + weight;
+            });
+      }
+    }
+  };
 
 #ifdef USE_ENTERPRISE
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  TRI_ASSERT(finder != nullptr);
-  auto executorInfos = ShortestPathExecutorInfos(
-      std::move(finder), std::move(outputRegisterMapping),
-      std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  // START: New Shortest Path implementation using Graph Refactor
+  arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
+      0, std::numeric_limits<size_t>::max(),
+      arangodb::graph::PathType::Type::ShortestPath};
+  PathValidatorOptions validatorOptions(opts->tmpVar(),
+                                        opts->getExpressionCtx());
+
+  if (!ServerState::instance()->isCoordinator()) {
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        usedIndexes{};
+    usedIndexes.first = buildUsedIndexes();
+
+    std::pair<std::vector<IndexAccessor>,
+              std::unordered_map<uint64_t, std::vector<IndexAccessor>>>
+        reversedUsedIndexes{};
+    reversedUsedIndexes.first = buildReverseUsedIndexes();
+
+    SingleServerBaseProviderOptions forwardProviderOptions(
+        opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
+        opts->collectionToShard(), opts->getVertexProjections(),
+        opts->getEdgeProjections());
+
+    SingleServerBaseProviderOptions backwardProviderOptions(
+        opts->tmpVar(), std::move(reversedUsedIndexes),
+        opts->getExpressionCtx(), {}, opts->collectionToShard(),
+        opts->getVertexProjections(), opts->getEdgeProjections());
+
+    checkWeight(forwardProviderOptions, backwardProviderOptions);
+
+    using Provider = SingleServerProvider<SingleServerProviderStep>;
+    if (opts->query().queryOptions().getTraversalProfileLevel() ==
+        TraversalProfileLevel::None) {
+      // SingleServer Default
+
+      auto [outputRegisters, outputRegisterMapping] =
+          _buildOutputRegisters<ShortestPath>();
+      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                               std::move(outputRegisters));
+      return _makeExecutionBlockImpl<ShortestPathEnumerator<Provider>, Provider,
+                                     SingleServerBaseProviderOptions>(
+          opts, std::move(forwardProviderOptions),
+          std::move(backwardProviderOptions), enumeratorOptions,
+          validatorOptions, std::move(outputRegisterMapping), engine,
+          sourceInput, targetInput, registerInfos);
+    } else {
+      // SingleServer Tracing enabled
+      auto [outputRegisters, outputRegisterMapping] =
+          _buildOutputRegisters<ShortestPathTracer>();
+      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                               std::move(outputRegisters));
+      return _makeExecutionBlockImpl<TracedShortestPathEnumerator<Provider>,
+                                     ProviderTracer<Provider>,
+                                     SingleServerBaseProviderOptions>(
+          opts, std::move(forwardProviderOptions),
+          std::move(backwardProviderOptions), enumeratorOptions,
+          validatorOptions, std::move(outputRegisterMapping), engine,
+          sourceInput, targetInput, registerInfos);
+    }
+  } else {
+    // Cluster
+    using ClusterProvider = ClusterProvider<ClusterProviderStep>;
+    auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+        opts->query().resourceMonitor());
+    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
+                                                      opts->produceVertices());
+    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
+                                                       opts->produceVertices());
+
+    checkWeight(forwardProviderOptions, backwardProviderOptions);
+
+    if (opts->query().queryOptions().getTraversalProfileLevel() ==
+        TraversalProfileLevel::None) {
+      // No tracing
+      auto [outputRegisters, outputRegisterMapping] =
+          _buildOutputRegisters<ShortestPathCluster>();
+      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                               std::move(outputRegisters));
+
+      return _makeExecutionBlockImpl<ShortestPathEnumerator<ClusterProvider>,
+                                     ClusterProvider,
+                                     ClusterBaseProviderOptions>(
+          opts, std::move(forwardProviderOptions),
+          std::move(backwardProviderOptions), enumeratorOptions,
+          validatorOptions, std::move(outputRegisterMapping), engine,
+          sourceInput, targetInput, registerInfos);
+    } else {
+      // Tracing // TODO CHECK TRACING in ClusterProvider Tracer(?enabled?)
+      /*
+      auto [outputRegisters, outputRegisterMapping] =
+          _buildOutputRegisters<ShortestPathClusterTracer>();
+      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                               std::move(outputRegisters));
+
+      return _makeExecutionBlockImpl<
+          TracedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
+          ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
+                                      std::move(backwardProviderOptions),
+                                      enumeratorOptions, validatorOptions,
+                                      std::move(outputRegisterMapping),
+    engine, sourceInput, targetInput, registerInfos);
+    }*/
+    }
+
+    // END: New Shortest Path implementation using Graph Refactor
+
+    // TRI_ASSERT(finder != nullptr);
+    /*auto executorInfos = ShortestPathExecutorInfos<ShortestPath>(  // TODO
+    TRACING std::move(finder), std::move(outputRegisterMapping),
+        std::move(sourceInput), std::move(targetInput));
+    return std::make_unique<
+        ExecutionBlockImpl<ShortestPathExecutor<ShortestPath>>>(  // TODO
+    TRACING &engine, this, std::move(registerInfos),
+    std::move(executorInfos));*/
+  }
+  TRI_ASSERT(false);
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
@@ -432,6 +630,73 @@ void ShortestPathNode::getVariablesUsedHere(VarSet& vars) const {
     // not be able to distribute request to shard.
     vars.emplace(_distributeVariable);
   }
+}
+
+std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildUsedIndexes()
+    const {
+  // TODO [GraphRefactor]: Re-used functionality here. Move this method to a
+  // dedicated place where it can be re-used.
+  return buildIndexes(/*reverse*/ false);
+}
+
+std::vector<arangodb::graph::IndexAccessor>
+ShortestPathNode::buildReverseUsedIndexes() const {
+  // TODO [GraphRefactor]: Re-used functionality here. Move this method to a
+  // dedicated place where it can be re-used.
+  return buildIndexes(/*reverse*/ true);
+}
+
+std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
+    bool reverse) const {
+  // TODO [GraphRefactor]: Re-used functionality here. Move this method to a
+  // dedicated place where it can be re-used.
+  size_t numEdgeColls = _edgeColls.size();
+  constexpr bool onlyEdgeIndexes = true;
+
+  std::vector<IndexAccessor> indexAccessors;
+  indexAccessors.reserve(numEdgeColls);
+
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    TRI_ASSERT(dir == TRI_EDGE_IN || dir == TRI_EDGE_OUT);
+    auto opposite = (dir == TRI_EDGE_IN ? TRI_EDGE_OUT : TRI_EDGE_IN);
+
+    std::shared_ptr<Index> indexToUse;
+    aql::AstNode* condition =
+        ((dir == TRI_EDGE_IN) != reverse) ? _toCondition : _fromCondition;
+    aql::AstNode* clonedCondition = condition->clone(_plan->getAst());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // very expensive, but only used for assertions:
+    // we are stringifying the contents of clonedCondition to figure out
+    // if the call to getBestIndexHandleForFilterCondition modifies it.
+    std::string const conditionString = clonedCondition->toString();
+#endif
+    // arbitrary value for "number of edges in collection" used here. the
+    // actual value does not matter much. 1000 has historically worked fine.
+    constexpr size_t itemsInCollection = 1000;
+    auto& trx = plan()->getAst()->query().trxForOptimization();
+    bool res = aql::utils::getBestIndexHandleForFilterCondition(
+        trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
+        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+    if (!res) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "expected edge index not found");
+    }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // check that getBestIndexHandleForFilterCondition did not modify
+    // clonedCondition in any way.
+    // this assumption must hold true, because we can only use an edge
+    // index in this method (onlyEdgeIndexes == true) and edge conditions
+    // are always simple.
+    TRI_ASSERT(clonedCondition->toString() == conditionString);
+#endif
+
+    indexAccessors.emplace_back(std::move(indexToUse), clonedCondition, 0,
+                                nullptr, std::nullopt, i,
+                                reverse ? opposite : dir);
+  }
+
+  return indexAccessors;
 }
 
 void ShortestPathNode::prepareOptions() {

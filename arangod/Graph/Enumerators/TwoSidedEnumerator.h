@@ -206,6 +206,13 @@ class TwoSidedEnumerator {
   // May be a noop if _result is not empty.
   auto searchMoreResults() -> void;
 
+  // In case we call this method, we know that we've already produced
+  // enough results. This flag will be checked within the "isDone" method
+  // and will provide a quick exit. Currently, this is only being used for
+  // graph searches of type "Shortest Path".
+  auto setAlgorithmFinished() -> void;
+  auto isAlgorithmFinished() const -> bool;
+
  private:
   GraphOptions _options;
   Ball _left;
@@ -214,6 +221,7 @@ class TwoSidedEnumerator {
   ResultList _results{};
   bool _resultsFetched{false};
   size_t _baselineDepth;
+  bool _algorithmFinished{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };

@@ -73,6 +73,15 @@ template<class Provider>
 using TracedAllShortestPathsEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
 
+// SHORTEST_PATH implementation
+template<class Provider>
+using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
+
+// SHORTEST_PATH implementation using Tracing
+template<class Provider>
+using TracedShortestPathEnumerator =
+    TracedTwoSidedEnumeratorWithProvider<Provider>;
+
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
 struct BFSConfiguration {

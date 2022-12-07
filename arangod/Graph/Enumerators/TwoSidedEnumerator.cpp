@@ -344,7 +344,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::isDone() const {
-  return _results.empty() && searchDone();
+  return (_results.empty() && searchDone()) || isAlgorithmFinished();
 }
 
 /**
@@ -407,6 +407,14 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
       _resultPath.toVelocyPack(result);
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }
@@ -442,6 +450,20 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   fetchResults();
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmFinished() {
+  _algorithmFinished = true;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::isAlgorithmFinished() const {
+  return _algorithmFinished;
 }
 
 /**
@@ -485,7 +507,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _baselineDepth;
+         (_left.getDepth() + _right.getDepth() > _baselineDepth) ||
+         isAlgorithmFinished();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
