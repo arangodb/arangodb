@@ -1,5 +1,5 @@
 name: rocksdb_cache_auto_refill_dropped_total
-introducedIn: "3.9.6"
+introducedIn: "3.10.2"
 help: |
   Total number of dropped entries in automatic in-memory index cache refilling.
 unit: number
@@ -29,6 +29,6 @@ troubleshoot: |
   If this metric keeps increasing, it indicates that the index refill background 
   thread can't keep up with the incoming data modification requests. 
   In this case, consider increasing the background thread's queueing capacity via
-  the startup option `--rocksdb.auto-refill-index-cache-queue-capacity`.
+  the `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
   Increasing the capacity helps to handle bursts of request, but does not help
   if the background thread is overwhelmed by a continuous high load.

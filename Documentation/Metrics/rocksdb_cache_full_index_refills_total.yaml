@@ -1,5 +1,5 @@
 name: rocksdb_cache_full_index_refills_total
-introducedIn: "3.9.6"
+introducedIn: "3.10.2"
 help: |
   Total number of in-memory index cache refill operations for a complete
   index.

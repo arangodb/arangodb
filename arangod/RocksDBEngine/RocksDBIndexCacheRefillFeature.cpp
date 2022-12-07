@@ -124,7 +124,7 @@ or deleting and refilling cache entries.
 
 You can enable the feature for individual `INSERT`, `UPDATE`, `REPLACE`,  and
 `REMOVE` operations in AQL queries, for individual document API requests that
-insert, update, replace, or remove single or multiple edge documents, as well
+insert, update, replace, or remove single or multiple documents, as well
 as enable it by default using this startup option.
 
 The background refilling is done on a best-effort basis and not guaranteed to
@@ -145,7 +145,7 @@ the cache.)");
                              options::Flags::OnSingle))
       .setIntroducedIn(30906)
       .setIntroducedIn(31020)
-      .setLongDescription(R"(This option restricts how many edge cache entries
+      .setLongDescription(R"(This option restricts how many cache entries
 the background thread for (re-)filling the in-memory index caches can queue at
 most. This limits the memory usage for the case of the background thread being
 slower than other operations that invalidate cache entries of edge indexes
