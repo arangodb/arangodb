@@ -69,7 +69,12 @@ void ClusteringMutableProperties::applyDatabaseDefaults(
     replicationFactor = config.defaultReplicationFactor;
   }
   if (!writeConcern.has_value()) {
-    writeConcern = config.defaultWriteConcern;
+    if (isSatellite()) {
+      // Satellites can only have writeConcern 1
+      writeConcern = 1;
+    } else {
+      writeConcern = config.defaultWriteConcern;
+    }
   }
 }
 
