@@ -209,7 +209,6 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
        &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId](
           arangodb::futures::Try<arangodb::network::Response> const& response)
       -> Result {
-    LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Got setup response from server " << server << " for query " << globalId;
     auto const& resolvedResponse = response.get();
     auto queryId = globalId;
     RebootId rebootId{0};
@@ -239,7 +238,6 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
 
     return result;
   };
-LOG_DEVEL_IF(IS_TRX_DEBUG()) << "Sending a setup request to server " << server << " for query " << globalId << " with body " << infoSlice.toJson();
 
   return network::sendRequestRetry(
              pool, "server:" + server, fuerte::RestVerb::Post,
