@@ -17,4 +17,4 @@ description: |
   refilled for edge indexes and cache-enabled persistent indexes if an insert,
   update, replace, or remove operation requests the cache refilling, or if the
   `--rocksdb.auto-refill-index-caches` startup option is enabled.
-  On Agents and Coordinators, the values reported by this metric is always zero.
+  On Agents and Coordinators, the values reported by this metric are always zero.
