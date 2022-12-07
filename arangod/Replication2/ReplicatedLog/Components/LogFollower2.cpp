@@ -24,6 +24,13 @@
 #include "LogFollower2.h"
 #include "Logger/LogContextKeys.h"
 
+#include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
+#include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Replication2/ReplicatedLog/Components/CompactionManager.h"
+#include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
+#include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -96,7 +103,22 @@ auto FollowerManager::getStatus() const -> LogStatus {
 }
 
 auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto commitIndex = commit->getCommitIndex();
+  auto log = storage->getCommittedLog();
+  return QuickLogStatus{
+      .role = ParticipantRole::kFollower,
+      .term = termInfo->term,
+      .local =
+          LogStatistics{
+              .spearHead = log.getLastTermIndexPair(),
+              .commitIndex = commitIndex,
+              .firstIndex = log.getFirstIndex(),
+              .releaseIndex = LogIndex{0},  // TODO set release index properly
+          },
+      .leadershipEstablished = commitIndex.value > 0,
+      .snapshotAvailable =
+          snapshot->checkSnapshotState() == SnapshotState::AVAILABLE,
+  };
 }
 
 auto FollowerManager::resign()
@@ -114,4 +136,58 @@ auto FollowerManager::resign()
 auto FollowerManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   return appendEntriesManager->appendEntries(std::move(request));
+}
+
+auto LogFollowerImpl::getQuickStatus() const -> QuickLogStatus {
+  return guarded.getLockedGuard()->getQuickStatus();
+}
+
+auto LogFollowerImpl::getStatus() const -> LogStatus {
+  return guarded.getLockedGuard()->getStatus();
+}
+
+auto LogFollowerImpl::resign() && -> std::tuple<std::unique_ptr<LogCore>,
+                                                DeferredAction> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto LogFollowerImpl::waitFor(LogIndex index)
+    -> ILogParticipant::WaitForFuture {
+  return guarded.getLockedGuard()->commit->waitFor(index);
+}
+
+auto LogFollowerImpl::waitForIterator(LogIndex index)
+    -> ILogParticipant::WaitForIteratorFuture {
+  return guarded.getLockedGuard()->commit->waitForIterator(index);
+}
+
+auto LogFollowerImpl::copyInMemoryLog() const -> InMemoryLog {
+  return guarded.getLockedGuard()->storage->getCommittedLog();
+}
+
+auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
+  guarded.getLockedGuard()->compaction->updateReleaseIndex(doneWithIdx);
+  return {};
+}
+
+auto LogFollowerImpl::compact() -> ResultT<CompactionResult> {
+  // TODO clean up CompacionResult vs ICompactionManager::CompactResult
+  auto result = guarded.getLockedGuard()->compaction->compact().get();
+  if (result.error) {
+    return Result{result.error->errorNumber(), result.error->errorMessage()};
+  }
+  return CompactionResult{.numEntriesCompacted = result.compactedRange.count(),
+                          .range = result.compactedRange,
+                          .stopReason = result.stopReason};
+}
+
+auto LogFollowerImpl::getParticipantId() const noexcept
+    -> ParticipantId const& {
+  return myself;
+}
+
+auto LogFollowerImpl::appendEntries(AppendEntriesRequest request)
+    -> futures::Future<AppendEntriesResult> {
+  return guarded.getLockedGuard()->appendEntriesManager->appendEntries(
+      std::move(request));
 }

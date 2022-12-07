@@ -35,6 +35,7 @@
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "TermInformation.h"
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
@@ -44,12 +45,16 @@
 #include <memory>
 #include <mutex>
 
-#include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
-#include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedLog/Components/CompactionManager.h"
-#include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
-#include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
-#include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
+namespace arangodb::replication2::replicated_log {
+inline namespace comp {
+struct StorageManager;
+struct CompactionManager;
+struct StateHandleManager;
+struct SnapshotManager;
+struct FollowerCommitManager;
+struct AppendEntriesManager;
+}  // namespace comp
+}  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log::refactor {
 
@@ -87,56 +92,26 @@ struct FollowerManager {
 };
 
 struct LogFollowerImpl : ILogFollower {
-  auto getStatus() const -> LogStatus override {
-    return guarded.getLockedGuard()->getStatus();
-  }
+  auto getStatus() const -> LogStatus override;
 
-  auto getQuickStatus() const -> QuickLogStatus override {
-    return guarded.getLockedGuard()->getQuickStatus();
-  }
+  auto getQuickStatus() const -> QuickLogStatus override;
 
   auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
-  auto waitFor(LogIndex index) -> WaitForFuture override {
-    return guarded.getLockedGuard()->commit->waitFor(index);
-  }
-  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
-    return guarded.getLockedGuard()->commit->waitForIterator(index);
-  }
+  auto waitFor(LogIndex index) -> WaitForFuture override;
+  auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  auto copyInMemoryLog() const -> InMemoryLog override {
-    return guarded.getLockedGuard()->storage->getCommittedLog();
-  }
+  auto copyInMemoryLog() const -> InMemoryLog override;
 
-  auto release(LogIndex doneWithIdx) -> Result override {
-    guarded.getLockedGuard()->compaction->updateReleaseIndex(doneWithIdx);
-    return {};
-  }
+  auto release(LogIndex doneWithIdx) -> Result override;
 
-  auto compact() -> ResultT<CompactionResult> override {
-    // TODO clean up CompacionResult vs ICompactionManager::CompactResult
-    auto result = guarded.getLockedGuard()->compaction->compact().get();
-    if (result.error) {
-      return Result{result.error->errorNumber(), result.error->errorMessage()};
-    }
-    return CompactionResult{
-        .numEntriesCompacted = result.compactedRange.count(),
-        .range = result.compactedRange,
-        .stopReason = result.stopReason};
-  }
+  auto compact() -> ResultT<CompactionResult> override;
 
-  auto getParticipantId() const noexcept -> ParticipantId const& override {
-    return myself;
-  }
+  auto getParticipantId() const noexcept -> ParticipantId const& override;
 
   auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
-    return guarded.getLockedGuard()->appendEntriesManager->appendEntries(
-        std::move(request));
-  }
+      -> futures::Future<AppendEntriesResult> override;
 
   ParticipantId const myself;
   Guarded<FollowerManager> guarded;
