@@ -1,8 +1,10 @@
 #include "GraphSource.h"
 
+#include "Cluster/ServerState.h"
 #include "Pregel/Collections/CollectionFactory.h"
 #include "Pregel/PregelOptions.h"
 #include "VocBase/vocbase.h"
+#include "fmt/ranges.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -73,11 +75,12 @@ auto GraphSourceSettings::isShardingCorrect(
     if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
       return Result(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("Edge collection needs to be sharded by "
+          fmt::format("Edge collection '{}' needs to be only sharded by "
                       "shardKeyAttribute parameter ('{}'), or use "
-                      "SmartGraphs. The current shardKey is: {}",
-                      shardKeyAttribute,
-                      eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'"));
+                      "SmartGraphs. The current shardKeys are: {}",
+                      collection->name(), shardKeyAttribute,
+                      eKeys.empty() ? "undefined"
+                                    : "'" + fmt::format("{}", eKeys) + "'"));
     }
   }
   return Result{};
@@ -113,10 +116,12 @@ auto GraphSourceSettings::getSource(TRI_vocbase_t& vocbase)
     }
   }
 
-  for (auto const& [_, collection] :
-       graphCollections->edgeCollections.collections) {
-    if (auto result = isShardingCorrect(collection); result.fail()) {
-      return result;
+  if (!ServerState::instance()->ROLE_SINGLE) {
+    for (auto const& [_, collection] :
+         graphCollections->edgeCollections.collections) {
+      if (auto result = isShardingCorrect(collection); result.fail()) {
+        return result;
+      }
     }
   }
 
