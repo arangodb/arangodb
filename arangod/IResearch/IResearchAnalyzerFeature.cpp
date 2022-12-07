@@ -1730,10 +1730,11 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             break;  // we don`t care about specific revision.
           }
           {
-            READ_LOCKER(lock, _mutex);
+            size_t const nameHash = _lastLoad.hash_ref()(name.first);
 
-            auto itr = _lastLoad.find(name.first);
-            if (itr != _lastLoad.end() && itr->second >= revision) {
+            READ_LOCKER(lock, _mutex);
+            if (auto itr = _lastLoad.find(name.first, nameHash);
+                itr != _lastLoad.end() && itr->second >= revision) {
               break;  // expected or later revision is loaded
             }
           }
@@ -2774,8 +2775,8 @@ void IResearchAnalyzerFeature::stop() {
     // '_analyzers' can be asynchronously read
     WRITE_LOCKER(lock, _mutex);
 
-    _analyzers =
-        getStaticAnalyzers();  // clear cache and reload static analyzers
+    // clear cache and reload static analyzers
+    _analyzers = getStaticAnalyzers();
   }
   {
     // reset again, as there may be a race between beginShutdown and
@@ -2974,9 +2975,11 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   std::string_view const database{vocbase.name()};
+  size_t const databaseHash{_lastLoad.hash_ref()(database)};
 
   WRITE_LOCKER(lock, _mutex);
-  if (auto itr = _lastLoad.find(database); itr != _lastLoad.end()) {
+  if (auto const itr = _lastLoad.find(database, databaseHash);
+      itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
   }
