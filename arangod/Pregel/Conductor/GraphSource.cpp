@@ -95,13 +95,6 @@ auto GraphSourceSettings::getSource(TRI_vocbase_t& vocbase)
     return graphCollections.result();
   }
 
-  auto graphRestrictions = graphDataSource.graphRestrictions(vocbase);
-  if (graphRestrictions.fail()) {
-    return graphRestrictions.result();
-  }
-  auto allRestrictions =
-      edgeCollectionRestrictions.add(std::move(graphRestrictions).get());
-
   auto allCollections = graphCollections.get().all();
   for (auto const& [_, collection] : allCollections.collections) {
     if (collection->isSystem()) {
@@ -127,9 +120,14 @@ auto GraphSourceSettings::getSource(TRI_vocbase_t& vocbase)
     }
   }
 
+  auto edgeCollectionRestrictions = graphDataSource.restrictions(vocbase);
+  if (edgeCollectionRestrictions.fail()) {
+    return edgeCollectionRestrictions.result();
+  }
+
   return {PregelGraphSource{
-      .edgeCollectionRestrictions =
-          graphCollections.get().convertToShards(allRestrictions),
+      .edgeCollectionRestrictions = graphCollections.get().convertToShards(
+          std::move(edgeCollectionRestrictions).get()),
       .vertexShards =
           graphCollections.get().vertexCollections.shardsPerServer(),
       .edgeShards = graphCollections.get().edgeCollections.shardsPerServer(),

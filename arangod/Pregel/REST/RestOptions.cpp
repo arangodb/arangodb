@@ -17,19 +17,19 @@ auto RestOptions::options() -> PregelOptions {
                    return PregelOptions{
                        .algorithm = x.options.algorithm,
                        .userParameters = x.options.userParameters,
-                       .graphDataSource = {GraphName{.graph = x.graph}},
-                       .edgeCollectionRestrictions = {
-                           x.options.edgeCollectionRestrictions}};
+                       .graphDataSource = {
+                           {GraphName{.graph = x.graph}},
+                           {x.options.edgeCollectionRestrictions}}};
                  },
                  [&](pregel::RestCollectionSettings const& x) -> PregelOptions {
                    return PregelOptions{
                        .algorithm = x.options.algorithm,
                        .userParameters = x.options.userParameters,
-                       .graphDataSource = {GraphCollectionNames{
-                           .vertexCollections = x.vertexCollections,
-                           .edgeCollections = x.edgeCollections}},
-                       .edgeCollectionRestrictions = {
-                           x.options.edgeCollectionRestrictions}};
+                       .graphDataSource = {
+                           {GraphCollectionNames{
+                               .vertexCollections = x.vertexCollections,
+                               .edgeCollections = x.edgeCollections}},
+                           {x.options.edgeCollectionRestrictions}}};
                  }},
       *this);
 }

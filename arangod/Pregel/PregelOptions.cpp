@@ -41,7 +41,17 @@ auto GraphDataSource::collectionNames(TRI_vocbase_t& vocbase)
           },
           [&](pregel::GraphCollectionNames const& x)
               -> ResultT<GraphCollectionNames> { return x; }},
-      *this);
+      graphOrCollections);
+}
+
+auto GraphDataSource::restrictions(TRI_vocbase_t& vocbase)
+    -> ResultT<EdgeCollectionRestrictions> {
+  auto graphSpecificRestrictions = graphRestrictions(vocbase);
+  if (graphSpecificRestrictions.fail()) {
+    return graphSpecificRestrictions.result();
+  }
+  auto allRestrictions = edgeCollectionRestrictions;
+  return allRestrictions.add(std::move(graphSpecificRestrictions).get());
 }
 
 auto GraphDataSource::graphRestrictions(TRI_vocbase_t& vocbase)
@@ -73,7 +83,7 @@ auto GraphDataSource::graphRestrictions(TRI_vocbase_t& vocbase)
                      -> ResultT<EdgeCollectionRestrictions> {
                    return EdgeCollectionRestrictions{};
                  }},
-      *this);
+      graphOrCollections);
 }
 
 auto EdgeCollectionRestrictions::add(EdgeCollectionRestrictions others) const

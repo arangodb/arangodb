@@ -56,11 +56,12 @@ struct PregelGraphSource {
 
 struct GraphSourceSettings {
   GraphDataSource graphDataSource;
-  EdgeCollectionRestrictions edgeCollectionRestrictions;
   std::string shardKeyAttribute;
   bool storeResults;
 
   auto getSource(TRI_vocbase_t& vocbase) -> ResultT<PregelGraphSource>;
+
+ private:
   auto isShardingCorrect(
       std::shared_ptr<collections::Collection> const& collection) -> Result;
 };

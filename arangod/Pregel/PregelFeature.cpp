@@ -133,11 +133,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(PregelOptions options,
           ? options.userParameters.slice().get("shardKeyAttribute").copyString()
           : "vertex";
 
-  auto graphSourceSettings = conductor::GraphSourceSettings{
-      .graphDataSource = options.graphDataSource,
-      .edgeCollectionRestrictions = {options.edgeCollectionRestrictions},
-      .shardKeyAttribute = shardKeyAttribute,
-      .storeResults = storeResults};
+  auto graphSourceSettings =
+      conductor::GraphSourceSettings{.graphDataSource = options.graphDataSource,
+                                     .shardKeyAttribute = shardKeyAttribute,
+                                     .storeResults = storeResults};
   auto pregelSource = graphSourceSettings.getSource(vocbase);
   if (pregelSource.fail()) {
     return pregelSource.result();

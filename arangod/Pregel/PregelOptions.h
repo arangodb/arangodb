@@ -54,8 +54,19 @@ struct EdgeCollectionRestrictions {
       -> EdgeCollectionRestrictions;
 };
 
-struct GraphDataSource : std::variant<GraphCollectionNames, GraphName> {
+struct GraphDataSource {
+  GraphDataSource(
+      std::variant<GraphCollectionNames, GraphName> graphOrCollections,
+      EdgeCollectionRestrictions restrictions)
+      : graphOrCollections{std::move(graphOrCollections)},
+        edgeCollectionRestrictions{std::move(restrictions)} {}
   auto collectionNames(TRI_vocbase_t& vocbase) -> ResultT<GraphCollectionNames>;
+  auto restrictions(TRI_vocbase_t& vocbase)
+      -> ResultT<EdgeCollectionRestrictions>;
+
+ private:
+  std::variant<GraphCollectionNames, GraphName> graphOrCollections;
+  EdgeCollectionRestrictions edgeCollectionRestrictions;
   auto graphRestrictions(TRI_vocbase_t& vocbase)
       -> ResultT<EdgeCollectionRestrictions>;
 };
@@ -64,7 +75,6 @@ struct PregelOptions {
   std::string algorithm;
   VPackBuilder userParameters;
   GraphDataSource graphDataSource;
-  EdgeCollectionRestrictions edgeCollectionRestrictions;
 };
 
 }  // namespace arangodb::pregel
