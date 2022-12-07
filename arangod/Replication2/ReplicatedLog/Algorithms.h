@@ -77,13 +77,11 @@ auto updateReplicatedLog(
 struct ParticipantState {
   TermIndexPair lastAckedEntry;
   ParticipantId id;
-  bool failed = false;
   bool snapshotAvailable = false;
   ParticipantFlags flags{};
 
   [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
-  [[nodiscard]] auto isFailed() const noexcept -> bool;
   [[nodiscard]] auto isSnapshotAvailable() const noexcept -> bool;
 
   [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;

@@ -230,9 +230,6 @@ auto replicated_log::operator<<(
     ostream << "isAllowedInQuorum: " << pInfo.isAllowedInQuorum;
   } else {
     ostream << "lastAcknowledgedEntry: " << pInfo.lastAcknowledged;
-    if (pInfo.isFailed) {
-      ostream << ", isFailed: " << pInfo.isFailed;
-    }
   }
   ostream << " }";
   return ostream;

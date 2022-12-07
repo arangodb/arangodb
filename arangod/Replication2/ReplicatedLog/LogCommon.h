@@ -308,7 +308,6 @@ struct CommitFailReason {
   };
   struct QuorumSizeNotReached {
     struct ParticipantInfo {
-      bool isFailed{};
       bool isAllowedInQuorum{};
       bool snapshotAvailable{};
       TermIndexPair lastAcknowledged;
@@ -318,7 +317,6 @@ struct CommitFailReason {
       template<typename Inspector>
       friend auto inspect(Inspector& f, ParticipantInfo& x) {
         return f.object(x).fields(
-            f.field("isFailed", x.isFailed),
             f.field("isAllowedInQuorum", x.isAllowedInQuorum),
             f.field("snapshotAvailable", x.snapshotAvailable),
             f.field("lastAcknowledged", x.lastAcknowledged));
