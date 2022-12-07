@@ -4919,35 +4919,7 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
         trx1.abort();
       }
     },
-
-    testOverlapRemove: function () {
-      const doc = db[cn].insert({ unique: "test" });
-      
-      const trx1 = internal.db._createTransaction(opts);
-      try {
-        const tc1 = trx1.collection(cn);
-        tc1.insert({ unique: "test" });
-
-        const trx2 = internal.db._createTransaction(opts);
-        const tc2 = trx2.collection(cn);
-        try { 
-          // should produce a conflict
-          tc2.remove(doc);
-          fail();
-        } catch (err) {
-          assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-          assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
-          assertEqual(doc._id, err.original._id);
-          assertEqual(doc._key, err.original._key);
-          assertEqual(doc._rev, err.original._rev);
-        } finally { 
-          trx2.abort();
-        }
-      } finally {
-        trx1.abort();
-      }
-    },
-  };
+  }
 }
 
 function transactionDatabaseSuite() {
