@@ -4641,7 +4641,6 @@ function transactionOverlapSuite(dbParams) {
           tc2.insert({ _key: "test" });
           fail();
         } catch (err) {
-          print(err.original);
           assertEqual(internal.errors.ERROR_ARANGO_CONFLICT.code, err.errorNum);
           assertTrue(err.errorMessage.endsWith("Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: test"), err.errorMessage);
           assertEqual(`${cn}/test`, err.original._id);
