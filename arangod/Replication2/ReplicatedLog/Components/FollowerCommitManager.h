@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Basics/Guarded.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
@@ -32,7 +33,8 @@ inline namespace comp {
 struct IStorageManager;
 
 struct FollowerCommitManager : IFollowerCommitManager {
-  explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&);
+  explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&,
+                                 LoggerContext const& loggerContext);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
@@ -60,6 +62,7 @@ struct FollowerCommitManager : IFollowerCommitManager {
   };
 
   Guarded<GuardedData> guardedData;
+  LoggerContext const loggerContext;
 };
 
 }  // namespace comp

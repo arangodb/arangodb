@@ -177,7 +177,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
       guard->queue.pop_front();
       if (not guard->methods) {
         guard.unlock();
-        LOG_CTX("4f5e3", TRACE, self->loggerContext)
+        LOG_CTX("4f5e3", DEBUG, self->loggerContext)
             << "aborting storage operation "
             << " because log core gone";
         req.promise.setValue(
@@ -214,7 +214,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         // resolve everything else
         req.promise.setValue(std::move(result));
         for (auto& r : queue) {
-          LOG_CTX("507fe", TRACE, self->loggerContext)
+          LOG_CTX("507fe", INFO, self->loggerContext)
               << "aborting storage operation because of error in previous "
                  "operation";
           r.promise.setValue(TRI_ERROR_ARANGO_CONFLICT);
@@ -278,11 +278,11 @@ arangodb::Result StorageManager::commitMetaInfoTrx(
   auto& trx = dynamic_cast<StateInfoTransaction&>(*ptr);
   auto guard = std::move(trx.guard);
   if (auto res = guard->methods->updateMetadata(trx.info); res.fail()) {
-    LOG_CTX("0cb60", WARN, loggerContext)
+    LOG_CTX("0cb60", ERR, loggerContext)
         << "failed to commit meta data: " << res;
     THROW_ARANGO_EXCEPTION(res);
   }
-  LOG_CTX("6a7fb", TRACE, loggerContext)
+  LOG_CTX("6a7fb", DEBUG, loggerContext)
       << "commit meta info transaction, new value = "
       << velocypack::serialize(trx.info).toJson();
   guard->info = std::move(trx.info);

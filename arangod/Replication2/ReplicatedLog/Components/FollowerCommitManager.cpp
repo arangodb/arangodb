@@ -24,6 +24,7 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -39,10 +40,20 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   auto guard = guardedData.getLockedGuard();
   ctx->log = guard->storage.getCommittedLog();
 
-  guard->commitIndex = std::max(guard->commitIndex, index);
-  guard->resolveIndex = std::min(guard->commitIndex, ctx->log.getLastIndex());
+  LOG_CTX("d2083", TRACE, loggerContext)
+      << "received update commit index to " << index
+      << " old commit index = " << guard->commitIndex
+      << " old resolve index = " << guard->resolveIndex;
 
-  guard->stateHandle.updateCommitIndex(guard->resolveIndex);
+  guard->commitIndex = std::max(guard->commitIndex, index);
+  auto newResolveIndex = std::min(guard->commitIndex, ctx->log.getLastIndex());
+
+  if (newResolveIndex > guard->resolveIndex) {
+    LOG_CTX("71a8f", DEBUG, loggerContext)
+        << "resolving commit index up to " << newResolveIndex;
+    guard->resolveIndex = newResolveIndex;
+    guard->stateHandle.updateCommitIndex(guard->resolveIndex);
+  }
 
   ctx->result = WaitForResult(guard->commitIndex, nullptr);
 
@@ -66,8 +77,11 @@ auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {
 }
 
 FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
-                                             IStateHandleManager& stateHandle)
-    : guardedData(storage, stateHandle) {}
+                                             IStateHandleManager& stateHandle,
+                                             LoggerContext const& loggerContext)
+    : guardedData(storage, stateHandle),
+      loggerContext(loggerContext.with<logContextKeyLogComponent>(
+          "follower-commit-man")) {}
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {

@@ -74,6 +74,7 @@ struct FollowerManager {
  private:
   friend struct MethodsProvider;
   friend struct LogFollowerImpl;
+  LoggerContext const loggerContext;
   std::shared_ptr<ReplicatedLogGlobalSettings const> options;
 
   std::shared_ptr<StorageManager> const storage;

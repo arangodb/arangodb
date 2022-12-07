@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogFollower2.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -55,20 +56,34 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
   FollowerManager& follower;
 };
 
+namespace {
+
+auto deriveLoggerContext(FollowerTermInformation const& info,
+                         LoggerContext inCtx = LoggerContext{
+                             Logger::REPLICATION2}) -> LoggerContext {
+  return inCtx.with<logContextKeyStateRole>("follower")
+      .with<logContextKeyTerm>(info.term)
+      .with<logContextKeyLeaderId>(info.leader.value_or("<none>"));
+}
+
+}  // namespace
+
 FollowerManager::FollowerManager(
     std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    : options(options),
-      storage(std::make_shared<StorageManager>(
-          std::move(methods), LoggerContext{Logger::REPLICATION2})),
+    : loggerContext(deriveLoggerContext(*termInfo)),
+      options(options),
+      storage(
+          std::make_shared<StorageManager>(std::move(methods), loggerContext)),
       compaction(std::make_shared<CompactionManager>(*storage, options)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
       snapshot(
           std::make_shared<SnapshotManager>(*storage, *stateHandle, termInfo)),
-      commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle)),
+      commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
+                                                     loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit)),
       termInfo(termInfo) {

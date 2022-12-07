@@ -73,7 +73,8 @@ struct FollowerCommitManagerTest : ::testing::Test {
   testing::StrictMock<StateHandleManagerMock> stateHandle;
 
   std::shared_ptr<FollowerCommitManager> commit =
-      std::make_shared<FollowerCommitManager>(storage, stateHandle);
+      std::make_shared<FollowerCommitManager>(storage, stateHandle,
+                                              LoggerContext{Logger::FIXME});
 };
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
