@@ -342,9 +342,9 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
           "zkd",     arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
 }
 
-std::unordered_map<std::string, std::string> IndexFactory::indexAliases()
-    const {
-  return std::unordered_map<std::string, std::string>();
+std::vector<std::pair<std::string_view, std::string_view>>
+IndexFactory::indexAliases() const {
+  return {};
 }
 
 IndexId IndexFactory::validateSlice(velocypack::Slice info, bool generateKey,
