@@ -36,6 +36,8 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb {
 
 CreateDatabaseInfo::CreateDatabaseInfo(ArangodServer& server,
@@ -332,26 +334,26 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options) {
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
       if (haveCluster) {
-        uint32_t const minReplicationFactor =
+        auto const minReplicationFactor =
             server.getFeature<ClusterFeature>().minReplicationFactor();
-        uint32_t const maxReplicationFactor =
+        auto const maxReplicationFactor =
             server.getFeature<ClusterFeature>().maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
-        if (vocbaseOptions.replicationFactor > maxReplicationFactor &&
-            maxReplicationFactor > 0) {
+        if (0 < maxReplicationFactor &&
+            maxReplicationFactor < vocbaseOptions.replicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than "
-                          "maximum allowed replicationFactor (") +
-                  std::to_string(maxReplicationFactor) + ")");
-        } else if (vocbaseOptions.replicationFactor < minReplicationFactor &&
-                   minReplicationFactor > 0) {
+              absl::StrCat("replicationFactor must not be higher than "
+                           "maximum allowed replicationFactor (",
+                           maxReplicationFactor, ")"));
+        } else if (0 < minReplicationFactor &&
+                   vocbaseOptions.replicationFactor < minReplicationFactor) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be lower than "
-                          "minimum allowed replicationFactor (") +
-                  std::to_string(minReplicationFactor) + ")");
+              absl::StrCat("replicationFactor must not be lower than "
+                           "minimum allowed replicationFactor (",
+                           minReplicationFactor, ")"));
         }
       }
     }
