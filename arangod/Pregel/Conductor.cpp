@@ -33,7 +33,6 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
@@ -69,8 +68,8 @@ using namespace arangodb::basics;
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
-    "none",     "loading",  "running",    "storing",    "done",
-    "canceled", "in error", "recovering", "fatal error"};
+    "none", "loading",  "running",  "storing",
+    "done", "canceled", "in error", "fatal error"};
 
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t& vocbase,
@@ -227,7 +226,6 @@ bool Conductor::_startGlobalStep() {
       updateState(ExecutionState::IN_ERROR);
       LOG_PREGEL("04189", ERR)
           << "Seems there is at least one worker out of order";
-      // the recovery mechanisms should take care of this
       return false;
     }
   }
@@ -327,7 +325,6 @@ bool Conductor::_startGlobalStep() {
     updateState(ExecutionState::IN_ERROR);
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
-    // the recovery mechanisms should take care od this
   } else {
     LOG_PREGEL("411a5", DEBUG)
         << "Conductor started new gss " << _globalSuperstep;
@@ -469,64 +466,6 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   return VPackBuilder();
 }
 
-void Conductor::finishedRecoveryStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
-  if (_state != ExecutionState::RECOVERING) {
-    LOG_PREGEL("23d8b", WARN)
-        << "We are not in a state where we expect a recovery response";
-    return;
-  }
-
-  // the recovery mechanism might be gathering state information
-  _aggregators->aggregateValues(data);
-  if (_respondedServers.size() != _dbServers.size()) {
-    return;
-  }
-
-  // only compensations supported
-  bool proceed = false;
-  if (_masterContext) {
-    proceed = proceed || _masterContext->postCompensation();
-  }
-
-  auto res = TRI_ERROR_NO_ERROR;
-  if (proceed) {
-    // reset values which are calculated during the superstep
-    _aggregators->resetValues();
-    if (_masterContext) {
-      _masterContext->preCompensation();
-    }
-
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    _aggregators->serializeValues(b);
-    b.close();
-    // first allow all workers to run worker level operations
-    res = _sendToAllDBServers(Utils::continueRecoveryPath, b);
-
-  } else {
-    LOG_PREGEL("6ecf2", INFO) << "Recovery finished. Proceeding normally";
-
-    // build the message, works for all cases
-    VPackBuilder b;
-    b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-    b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-    b.close();
-    res = _sendToAllDBServers(Utils::finalizeRecoveryPath, b);
-    if (res == TRI_ERROR_NO_ERROR) {
-      updateState(ExecutionState::RUNNING);
-      _startGlobalStep();
-    }
-  }
-  if (res != TRI_ERROR_NO_ERROR) {
-    cancelNoLock();
-    LOG_PREGEL("7f97e", INFO) << "Recovery failed";
-  }
-}
-
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
   cancelNoLock();
@@ -543,77 +482,6 @@ void Conductor::cancelNoLock() {
         << "Failed to cancel worker execution for five minutes, giving up.";
   }
   _workHandle.reset();
-}
-
-void Conductor::startRecovery() {
-  MUTEX_LOCKER(guard, _callbackMutex);
-  if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
-    return;  // maybe we are already in recovery mode
-  } else if (_algorithm->supportsCompensation() == false) {
-    LOG_PREGEL("12e0e", ERR) << "Algorithm does not support recovery";
-    cancelNoLock();
-    return;
-  }
-
-  // we lost a DBServer, we need to reconfigure all remainging servers
-  // so they load the data for the lost machine
-  updateState(ExecutionState::RECOVERING);
-  _statistics.reset();
-
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-
-  // let's wait for a final state in the cluster
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
-      [this, self = shared_from_this()](bool cancelled) {
-        if (cancelled || _state != ExecutionState::RECOVERING) {
-          return;  // seems like we are canceled
-        }
-        std::vector<ServerID> goodServers;
-        auto res = _feature.recoveryManager()->filterGoodServers(_dbServers,
-                                                                 goodServers);
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_PREGEL("3d08b", ERR) << "Recovery proceedings failed";
-          cancelNoLock();
-          return;
-        }
-        _dbServers = goodServers;
-
-        VPackBuilder b;
-        b.openObject();
-        b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
-        b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-        b.close();
-        _sendToAllDBServers(Utils::cancelGSSPath, b);
-        if (_state != ExecutionState::RECOVERING) {
-          return;  // seems like we are canceled
-        }
-
-        // Let's try recovery
-        if (_masterContext) {
-          bool proceed = _masterContext->preCompensation();
-          if (!proceed) {
-            cancelNoLock();
-          }
-        }
-
-        VPackBuilder additionalKeys;
-        additionalKeys.openObject();
-        additionalKeys.add(Utils::recoveryMethodKey,
-                           VPackValue(Utils::compensate));
-        _aggregators->serializeValues(b);
-        additionalKeys.close();
-        _aggregators->resetValues();
-
-        // initialize workers will reconfigure the workers and set the
-        // _dbServers list to the new primary DBServers
-        res = _initializeWorkers(Utils::startRecoveryPath,
-                                 additionalKeys.slice());
-        if (res != TRI_ERROR_NO_ERROR) {
-          cancelNoLock();
-          LOG_PREGEL("fefc6", ERR) << "Compensation failed";
-        }
-      });
 }
 
 // resolves into an ordered list of shards for each collection on each server
@@ -665,8 +533,7 @@ static void resolveInfo(
   }
 }
 
-/// should cause workers to start a new execution or begin with recovery
-/// proceedings
+/// should cause workers to start a new execution
 ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
                                         VPackSlice additional) {
   _callbackMutex.assertLockedByCurrentThread();
@@ -837,12 +704,6 @@ ErrorCode Conductor::_finalizeWorkers() {
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
-  }
-
-  // stop monitoring shards
-  RecoveryManager* mngr = _feature.recoveryManager();
-  if (mngr) {
-    mngr->stopMonitoring(this);
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";

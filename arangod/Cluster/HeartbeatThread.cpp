@@ -47,7 +47,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -708,13 +707,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      if (server().hasFeature<pregel::PregelFeature>()) {
-        auto& pregel = server().getFeature<pregel::PregelFeature>();
-        pregel::RecoveryManager* mngr = pregel.recoveryManager();
-        if (mngr != nullptr) {
-          mngr->updatedFailedServers(failedServers);
-        }
-      }
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
