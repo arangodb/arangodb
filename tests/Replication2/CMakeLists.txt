@@ -5,6 +5,7 @@ add_library(arango_tests_replication2 OBJECT
   Mocks/AsyncFollower.cpp
   Mocks/AsyncFollower.h
   Mocks/AsyncLeader.cpp
+  Mocks/DocumentStateMocks.cpp
   Mocks/FakeAbstractFollower.h
   Mocks/FakeFailureOracle.cpp
   Mocks/FakeFailureOracle.h

@@ -941,6 +941,11 @@ void TRI_vocbase_t::stop() {
       _replicationApplier->stopAndJoin();
     }
 
+    // resign replicated states
+    // this is needed to clear all ongoing snapshots and release collection
+    // locks
+    _logManager->resignStates();
+
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
 
@@ -956,7 +961,6 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
-  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
@@ -1947,6 +1951,8 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
+  shutdown();
+
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design
