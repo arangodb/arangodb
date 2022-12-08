@@ -29,7 +29,6 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 
@@ -92,12 +91,6 @@ struct IReplicatedStateHandle {
       std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
   virtual void acquireSnapshot(ServerID leader, LogIndex) = 0;
   virtual void updateCommitIndex(LogIndex) = 0;
-  [[nodiscard]] virtual auto getStatus() const
-      -> std::optional<replicated_state::StateStatus> = 0;
-  [[nodiscard]] virtual auto getFollower() const
-      -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> = 0;
-  [[nodiscard]] virtual auto getLeader() const
-      -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase> = 0;
   // TODO
   virtual void dropEntries() = 0;  // o.ä. (für waitForSync=false)
 };
@@ -186,13 +179,6 @@ struct alignas(64) ReplicatedLog {
   [[nodiscard]] auto getParticipant() const -> std::shared_ptr<ILogParticipant>;
   [[nodiscard]] auto getQuickStatus() const -> QuickLogStatus;
   [[nodiscard]] auto getStatus() const -> LogStatus;
-  [[nodiscard]] auto getStateStatus() const
-      -> std::optional<replicated_state::StateStatus>;
-
-  [[nodiscard]] auto getLeaderState() const
-      -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>;
-  [[nodiscard]] auto getFollowerState() const
-      -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>;
 
   [[nodiscard]] auto
   resign() && -> std::unique_ptr<replicated_state::IStorageEngineMethods>;

@@ -334,14 +334,14 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
 
   auto resign() && -> std::unique_ptr<CoreType>;
 
-  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus> override;
+  [[nodiscard]] auto getStatus() const -> std::optional<StateStatus>;
   // We could, more specifically, return pointers to FollowerType/LeaderType.
   // But I currently don't see that it's needed, and would have to do one of
   // the stunts for covariance here.
   [[nodiscard]] auto getFollower() const
-      -> std::shared_ptr<IReplicatedFollowerStateBase> override;
+      -> std::shared_ptr<IReplicatedFollowerStateBase>;
   [[nodiscard]] auto getLeader() const
-      -> std::shared_ptr<IReplicatedLeaderStateBase> override;
+      -> std::shared_ptr<IReplicatedLeaderStateBase>;
 
  private:
   LoggerContext const _loggerContext;

@@ -27,7 +27,6 @@
 #include "Basics/voc-errors.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 
@@ -43,12 +42,6 @@ auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
 
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
-}
-
-auto FakeFollower::resign() && -> std::tuple<
-    std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
-  resign();
-  return std::make_tuple(nullptr, DeferredAction{});
 }
 
 FakeFollower::FakeFollower(ParticipantId id,

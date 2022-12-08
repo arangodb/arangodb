@@ -25,8 +25,6 @@
 
 #include "Logger/LogContextKeys.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
@@ -230,23 +228,6 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
     return guard->participant->getStatus();
   }
   return {};
-}
-
-auto ReplicatedLog::getStateStatus() const
-    -> std::optional<replicated_state::StateStatus> {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-auto ReplicatedLog::getLeaderState() const
-    -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase> {
-  auto guard = _guarded.getLockedGuard();
-  return guard->stateHandle->getLeader();  // nullptr
-}
-
-auto ReplicatedLog::getFollowerState() const
-    -> std::shared_ptr<replicated_state::IReplicatedFollowerStateBase> {
-  auto guard = _guarded.getLockedGuard();
-  return guard->stateHandle->getFollower();
 }
 
 void ReplicatedLogConnection::disconnect() {

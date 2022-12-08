@@ -32,8 +32,7 @@ add_library(arango_replication2_pure STATIC
 		ReplicatedState/StateCommon.cpp
 		ReplicatedLog/NetworkMessages.cpp
 		ReplicatedLog/Algorithms.cpp
-		ReplicatedLog/LogCore.cpp
-		ReplicatedLog/ILogInterfaces.cpp
+        ReplicatedLog/ILogInterfaces.cpp
 		)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight

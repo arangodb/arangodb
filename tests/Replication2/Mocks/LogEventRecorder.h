@@ -61,19 +61,6 @@ struct LogEventRecorderHandle : replicated_log::IReplicatedStateHandle {
   void updateCommitIndex(LogIndex index) override;
   void dropEntries() override;
 
-  [[nodiscard]] auto getStatus() const
-      -> std::optional<replicated_state::StateStatus> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  [[nodiscard]] auto getFollower() const -> std::shared_ptr<
-      replicated_state::IReplicatedFollowerStateBase> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-  [[nodiscard]] auto getLeader() const -> std::shared_ptr<
-      replicated_state::IReplicatedLeaderStateBase> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   LogEventRecorder& recorder;
 };
 

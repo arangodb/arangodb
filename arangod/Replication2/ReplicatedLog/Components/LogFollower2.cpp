@@ -163,11 +163,6 @@ auto LogFollowerImpl::getStatus() const -> LogStatus {
   return guarded.getLockedGuard()->getStatus();
 }
 
-auto LogFollowerImpl::resign() && -> std::tuple<std::unique_ptr<LogCore>,
-                                                DeferredAction> {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 auto LogFollowerImpl::resign2() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {

@@ -2,7 +2,6 @@ target_sources(arango_replication2 PRIVATE
         AgencySpecificationInspectors.cpp
         Algorithms.cpp
         ILogInterfaces.cpp
-        LogCore.cpp
         NetworkAttachedFollower.cpp
         NetworkMessages.cpp
         ReplicatedLog.cpp
@@ -19,7 +18,6 @@ target_sources(arango_replication2_pure PRIVATE
         WaitForBag.cpp
         LogEntries.cpp
         ReplicatedLog.cpp
-        LogFollower.cpp
         Supervision.cpp
         SupervisionAction.cpp
 

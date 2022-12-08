@@ -77,8 +77,6 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
   [[nodiscard]] virtual auto resign2() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;

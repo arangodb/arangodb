@@ -23,7 +23,6 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
@@ -109,8 +108,6 @@ struct ParticipantsFactoryMock : IParticipantsFactory {
 struct LogLeaderMock : replicated_log::ILogLeader {
   MOCK_METHOD(LogStatus, getStatus, (), (const, override));
   MOCK_METHOD(QuickLogStatus, getQuickStatus, (), (const, override));
-  MOCK_METHOD((std::tuple<std::unique_ptr<LogCore>, DeferredAction>), resign,
-              (), (override, ref(&&)));
   MOCK_METHOD(
       (std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
                   std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
@@ -132,9 +129,6 @@ struct LogLeaderMock : replicated_log::ILogLeader {
 struct LogFollowerMock : replicated_log::ILogFollower {
   MOCK_METHOD(LogStatus, getStatus, (), (const, override));
   MOCK_METHOD(QuickLogStatus, getQuickStatus, (), (const, override));
-  MOCK_METHOD(
-      (std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction>),
-      resign, (), (override, ref(&&)));
   MOCK_METHOD(
       (std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
                   std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
@@ -162,12 +156,6 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
   MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex),
               (noexcept, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
-  MOCK_METHOD(std::optional<replicated_state::StateStatus>, getStatus, (),
-              (const, override));
-  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedFollowerStateBase>,
-              getFollower, (), (const, override));
-  MOCK_METHOD(std::shared_ptr<replicated_state::IReplicatedLeaderStateBase>,
-              getLeader, (), (const, override));
   MOCK_METHOD(void, dropEntries, (), (override));
 };
 }  // namespace

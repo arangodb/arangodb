@@ -27,7 +27,6 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
@@ -101,9 +100,6 @@ struct LogFollowerImpl : ILogFollower {
   auto getStatus() const -> LogStatus override;
 
   auto getQuickStatus() const -> QuickLogStatus override;
-
-  auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
 
   [[nodiscard]] auto resign2() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,

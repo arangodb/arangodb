@@ -836,6 +836,7 @@ auto ReplicatedState<S>::createStateHandle(
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
   auto core = buildCore(coreParameter);
+  ADB_PROD_ASSERT(not manager.has_value());
   manager.emplace(loggerContext, metrics, std::move(core), factory);
 
   struct Wrapper : replicated_log::IReplicatedStateHandle {
@@ -859,18 +860,6 @@ auto ReplicatedState<S>::createStateHandle(
     }
     void updateCommitIndex(LogIndex index) override {
       return manager.updateCommitIndex(index);
-    }
-    auto getStatus() const
-        -> std::optional<replicated_state::StateStatus> override {
-      return manager.getStatus();
-    }
-    auto getFollower() const -> std::shared_ptr<
-        replicated_state::IReplicatedFollowerStateBase> override {
-      return manager.getFollower();
-    }
-    auto getLeader() const -> std::shared_ptr<
-        replicated_state::IReplicatedLeaderStateBase> override {
-      return manager.getLeader();
     }
     void dropEntries() override { return manager.dropEntries(); }
 

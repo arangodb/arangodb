@@ -24,7 +24,6 @@
 #include "InMemoryLog.h"
 
 #include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
@@ -401,16 +400,6 @@ auto replicated_log::InMemoryLog::getIndexRange() const noexcept -> LogRange {
 
 auto replicated_log::InMemoryLog::getFirstIndex() const noexcept -> LogIndex {
   return _first;
-}
-
-auto replicated_log::InMemoryLog::loadFromLogCore(
-    replicated_log::LogCore const& core) -> replicated_log::InMemoryLog {
-  auto iter = core.read(LogIndex{0});
-  auto log = log_type::transient_type{};
-  while (auto entry = iter->next()) {
-    log.push_back(InMemoryLogEntry(std::move(entry).value()));
-  }
-  return InMemoryLog{log.persistent()};
 }
 
 auto replicated_log::InMemoryLog::loadFromMethods(
