@@ -27,6 +27,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
@@ -98,7 +99,10 @@ auto DocumentFollowerState::applyEntries(
       auto doc = entry->second;
       auto res = self->_transactionHandler->applyEntry(doc);
       if (res.fail()) {
-        return res;
+        LOG_TOPIC("d82d4", FATAL, Logger::REPLICATION2)
+            << "Failed to apply entry " << entry->first << " to local shard "
+            << self->shardId << " with error: " << res;
+        FATAL_ERROR_EXIT();
       }
 
       try {
