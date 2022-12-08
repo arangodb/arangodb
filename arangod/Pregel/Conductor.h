@@ -48,7 +48,6 @@ enum ExecutionState {
   STORING,      // store results
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
-  IN_ERROR,     // after an error which should allow recovery
   FATAL_ERROR,  // execution can not continue because of errors
 };
 extern const char* ExecutionStateNames[9];

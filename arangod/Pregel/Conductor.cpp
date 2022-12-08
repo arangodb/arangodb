@@ -68,8 +68,7 @@ using namespace arangodb::basics;
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
-    "none", "loading",  "running",  "storing",
-    "done", "canceled", "in error", "fatal error"};
+    "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t& vocbase,
@@ -223,7 +222,7 @@ bool Conductor::_startGlobalStep() {
         });
 
     if (res != TRI_ERROR_NO_ERROR) {
-      updateState(ExecutionState::IN_ERROR);
+      updateState(ExecutionState::FATAL_ERROR);
       LOG_PREGEL("04189", ERR)
           << "Seems there is at least one worker out of order";
       return false;
@@ -322,7 +321,7 @@ bool Conductor::_startGlobalStep() {
   // start vertex level operations, does not get a response
   auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
-    updateState(ExecutionState::IN_ERROR);
+    updateState(ExecutionState::FATAL_ERROR);
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
   } else {
@@ -792,7 +791,7 @@ bool Conductor::canBeGarbageCollected() const {
 
   if (guard.isLocked()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-        _state == ExecutionState::IN_ERROR ||
+        _state == ExecutionState::FATAL_ERROR ||
         _state == ExecutionState::FATAL_ERROR) {
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
@@ -1011,7 +1010,6 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
 void Conductor::updateState(ExecutionState state) {
   _state = state;
   if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
-      _state == ExecutionState::IN_ERROR ||
       _state == ExecutionState::FATAL_ERROR) {
     _expires = std::chrono::system_clock::now() + _ttl;
   }
