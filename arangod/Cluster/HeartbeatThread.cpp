@@ -1357,11 +1357,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        std::string dbName = "n/a";
-        auto db = databaseFeature.useDatabase(id);
-        TRI_ASSERT(db);
-        if (db) {
+        std::string dbName;
+        if (auto db = databaseFeature.useDatabase(id); db) {
           dbName = db->name();
+        } else {
+          TRI_ASSERT(false);
+          dbName = "n/a";
         }
         Result res = databaseFeature.dropDatabase(id, true);
         events::DropDatabase(dbName, res, ExecContext::current());
