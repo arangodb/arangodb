@@ -443,6 +443,22 @@ class Index {
 
   static size_t sortWeight(aql::AstNode const* node);
 
+  /// @brief generate error result
+  /// @param code the error key
+  /// @param key the conflicting key
+  Result& addErrorMsg(Result& r, ErrorCode code,
+                      std::string_view key = {}) const {
+    if (code != TRI_ERROR_NO_ERROR) {
+      r.reset(code);
+      return addErrorMsg(r, key);
+    }
+    return r;
+  }
+
+  /// @brief generate error result
+  /// @param key the conflicting key
+  Result& addErrorMsg(Result& r, std::string_view key = {}) const;
+
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
       velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
@@ -456,22 +472,7 @@ class Index {
   /// single attribute
   std::string const& getAttribute() const;
 
-  /// @brief generate error result
-  /// @param code the error key
-  /// @param key the conflicting key
-  Result& addErrorMsg(Result& r, ErrorCode code,
-                      std::string const& key = "") const {
-    if (code != TRI_ERROR_NO_ERROR) {
-      r.reset(code);
-      return addErrorMsg(r, key);
-    }
-    return r;
-  }
-
-  /// @brief generate error result
-  /// @param key the conflicting key
-  Result& addErrorMsg(Result& r, std::string const& key = "") const;
-  void addErrorMsg(result::Error& err, std::string const& key) const;
+  void addErrorMsg(result::Error& err, std::string_view key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified

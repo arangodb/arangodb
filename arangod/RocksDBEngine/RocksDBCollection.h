@@ -25,6 +25,7 @@
 
 #include "Statistics/ServerStatistics.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"
 
@@ -40,7 +41,6 @@ class Manager;
 }  // namespace cache
 
 class LogicalCollection;
-class RocksDBPrimaryIndex;
 class RocksDBSavePoint;
 class LocalDocumentId;
 
@@ -103,6 +103,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                    std::pair<LocalDocumentId, RevisionId>& result,
                    ReadOwnWrites readOwnWrites) const override;
 
+  /// @brief returns the LocalDocumentId and the revision id for the document
+  /// with the specified key.
+  Result lookupKeyForUpdate(
+      transaction::Methods* trx, std::string_view key,
+      std::pair<LocalDocumentId, RevisionId>& result) const override;
+
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
@@ -148,7 +154,20 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         bool fillCache,
                         ReadOwnWrites readOwnWrites) const override;
 
+  // @brief return the primary index
+  // WARNING: Make sure that this instance
+  // is somehow protected. If it goes out of all scopes
+  // or its indexes are freed the pointer returned will get invalidated.
+  arangodb::RocksDBPrimaryIndex* primaryIndex() const override {
+    TRI_ASSERT(_primaryIndex != nullptr);
+    return _primaryIndex;
+  }
+
  private:
+  Result doLookupKey(transaction::Methods* trx, std::string_view key,
+                     std::pair<LocalDocumentId, RevisionId>& result,
+                     ReadOwnWrites readOwnWrites, bool lockForUpdate) const;
+
   // optimized truncate, using DeleteRange operations.
   // this can only be used if the truncate is performed as a standalone
   // operation (i.e. not part of a larger transaction)
@@ -167,21 +186,12 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
-  // @brief return the primary index
-  // WARNING: Make sure that this instance
-  // is somehow protected. If it goes out of all scopes
-  // or it's indexes are freed the pointer returned will get invalidated.
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const {
-    TRI_ASSERT(_primaryIndex != nullptr);
-    return _primaryIndex;
-  }
-
-  arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
-                                  RocksDBSavePoint& savepoint,
-                                  LocalDocumentId documentId,
-                                  arangodb::velocypack::Slice doc,
-                                  OperationOptions const& options,
-                                  RevisionId revisionId) const;
+  arangodb::Result doInsertDocument(arangodb::transaction::Methods* trx,
+                                    RocksDBSavePoint& savepoint,
+                                    LocalDocumentId documentId,
+                                    arangodb::velocypack::Slice doc,
+                                    OperationOptions const& options,
+                                    RevisionId revisionId) const;
 
   arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
                                   RocksDBSavePoint& savepoint,

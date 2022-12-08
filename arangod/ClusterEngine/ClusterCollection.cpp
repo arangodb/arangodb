@@ -352,6 +352,12 @@ Result ClusterCollection::lookupKey(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+Result ClusterCollection::lookupKeyForUpdate(
+    transaction::Methods* /*trx*/, std::string_view /*key*/,
+    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
