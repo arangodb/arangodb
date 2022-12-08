@@ -1509,8 +1509,7 @@ TEST_F(
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
-            0,
-            std::make_unique<iresearch::mock::test_encryption>(kEncBlockSize)};
+            0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
       });
   static std::vector<std::string> const kEmpty;
   auto doc0 = arangodb::velocypack::Parser::fromJson(
@@ -1574,9 +1573,9 @@ TEST_F(
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
   irs::FSDirectory directory(
-      dataPath, irs::directory_attributes(
-                    0, std::make_unique<iresearch::mock::test_encryption>(
-                           kEncBlockSize)));
+      dataPath,
+      irs::directory_attributes(
+          0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)));
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -2189,7 +2188,7 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
     }
     return true;
   };
-  iresearch::file_utils::visit_directory(utf8Path.c_str(), visitor, false);
+  irs::file_utils::visit_directory(utf8Path.c_str(), visitor, false);
 }
 
 using LinkStats = arangodb::iresearch::IResearchDataStore::Stats;
@@ -2374,7 +2373,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       indexSize += currSize;
       return true;
     };
-    iresearch::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
+    irs::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
     return {numFiles, indexSize};
   }
 };

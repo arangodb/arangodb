@@ -2780,8 +2780,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   EXPECT_EQ(expectedLiveDocs + 1,
             store.reader->live_docs_count());  // +1 for keep-alive doc
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-
   // check regular filter case (unique rid)
   {
     size_t actualDocs = 0;

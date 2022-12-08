@@ -2575,7 +2575,7 @@ TEST_F(IResearchViewTest, test_drop_database) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
-  testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
+  testDBInfo.load("testDatabase" IRS_TO_STRING(__LINE__), 3);
   ASSERT_TRUE(
       databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_TRUE((nullptr != vocbase));
@@ -10353,7 +10353,7 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
-  testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
+  testDBInfo.load("testDatabase" IRS_TO_STRING(__LINE__), 3);
   ASSERT_TRUE(
       databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_NE(nullptr, vocbase);
