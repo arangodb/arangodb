@@ -234,14 +234,13 @@ auto ReplicatedLog::getStatus() const -> LogStatus {
 
 auto ReplicatedLog::getStateStatus() const
     -> std::optional<replicated_state::StateStatus> {
-  auto guard = _guarded.getLockedGuard();
-  return guard->stateHandle->getStatus();
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto ReplicatedLog::getLeaderState() const
     -> std::shared_ptr<replicated_state::IReplicatedLeaderStateBase> {
   auto guard = _guarded.getLockedGuard();
-  return guard->stateHandle->getLeader();
+  return guard->stateHandle->getLeader();  // nullptr
 }
 
 auto ReplicatedLog::getFollowerState() const

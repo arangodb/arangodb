@@ -23,6 +23,7 @@
 #pragma once
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Basics/Guarded.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb {
 class Result;
@@ -30,6 +31,7 @@ class Result;
 namespace arangodb::replication2::replicated_log {
 struct FollowerTermInformation;
 struct ILeaderCommunicator;
+struct MessageId;
 inline namespace comp {
 struct IStorageManager;
 struct IStateHandleManager;
@@ -38,11 +40,13 @@ struct SnapshotManager : ISnapshotManager {
   explicit SnapshotManager(
       IStorageManager& storage, IStateHandleManager& stateHandle,
       std::shared_ptr<FollowerTermInformation const> termInfo,
-      std::shared_ptr<ILeaderCommunicator> leaderComm);
+      std::shared_ptr<ILeaderCommunicator> leaderComm,
+      LoggerContext const& loggerContext);
   auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 
   auto updateSnapshotState(SnapshotState state) -> Result;
+  auto setSnapshotStateAvailable(MessageId msgId) -> Result;
 
   struct GuardedData {
     explicit GuardedData(IStorageManager& storage,
@@ -53,6 +57,7 @@ struct SnapshotManager : ISnapshotManager {
   };
   std::shared_ptr<ILeaderCommunicator> const leaderComm;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
+  LoggerContext const loggerContext;
   Guarded<GuardedData> guardedData;
 };
 }  // namespace comp

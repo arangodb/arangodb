@@ -142,6 +142,11 @@ AppendEntriesManager::AppendEntriesManager(
       termInfo(std::move(termInfo)),
       guarded(storage, snapshot, compaction, commit) {}
 
+auto AppendEntriesManager::getLastReceivedMessageId() const noexcept
+    -> MessageId {
+  return guarded.getLockedGuard()->messageIdAcceptor.get();
+}
+
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
                                                ISnapshotManager& snapshot,
                                                ICompactionManager& compaction,

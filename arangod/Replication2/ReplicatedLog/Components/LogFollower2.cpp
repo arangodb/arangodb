@@ -56,7 +56,8 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
   }
 
   auto snapshotCompleted() -> Result override {
-    return follower.snapshot->updateSnapshotState(SnapshotState::AVAILABLE);
+    return follower.snapshot->setSnapshotStateAvailable(
+        follower.appendEntriesManager->getLastReceivedMessageId());
   }
 
  private:
@@ -88,8 +89,8 @@ FollowerManager::FollowerManager(
       compaction(std::make_shared<CompactionManager>(*storage, options)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
-      snapshot(std::make_shared<SnapshotManager>(*storage, *stateHandle,
-                                                 termInfo, leaderComm)),
+      snapshot(std::make_shared<SnapshotManager>(
+          *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
                                                      loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
@@ -100,7 +101,22 @@ FollowerManager::FollowerManager(
 }
 
 auto FollowerManager::getStatus() const -> LogStatus {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto commitIndex = commit->getCommitIndex();
+  auto log = storage->getCommittedLog();
+  return LogStatus{FollowerStatus{
+      .local =
+          LogStatistics{
+              .spearHead = log.getLastTermIndexPair(),
+              .commitIndex = commitIndex,
+              .firstIndex = log.getFirstIndex(),
+              .releaseIndex = LogIndex{0},  // TODO set release index properly
+          },
+      .leader = termInfo->leader,
+      .term = termInfo->term,
+      .compactionStatus = compaction->getCompactionStatus(),
+      .snapshotAvailable =
+          snapshot->checkSnapshotState() == SnapshotState::AVAILABLE,
+  }};
 }
 
 auto FollowerManager::getQuickStatus() const -> QuickLogStatus {

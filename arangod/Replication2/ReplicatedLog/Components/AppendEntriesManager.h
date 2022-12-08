@@ -38,6 +38,7 @@ struct ICompactionManager;
 
 struct AppendEntriesMessageIdAcceptor {
   auto accept(MessageId) noexcept -> bool;
+  auto get() const noexcept -> MessageId { return lastId; }
 
  private:
   MessageId lastId{0};
@@ -54,6 +55,8 @@ struct AppendEntriesManager
 
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override;
+
+  auto getLastReceivedMessageId() const noexcept -> MessageId;
 
   struct GuardedData {
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,

@@ -26,7 +26,11 @@
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
+#include "Replication2/ReplicatedLog/ILogInterfaces.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogContextKeys.h"
 
+using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto SnapshotManager::checkSnapshotState() noexcept -> SnapshotState {
@@ -49,9 +53,14 @@ auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
     if (result.fail()) {
       return result;
     }
+
+    LOG_CTX("b2c65", INFO, loggerContext)
+        << "snapshot status locally updated to " << to_string(state);
     guard->state = state;
     ADB_PROD_ASSERT(termInfo->leader.has_value());
-    guard->stateHandle.acquireSnapshot(*termInfo->leader);
+    if (state == SnapshotState::MISSING) {
+      guard->stateHandle.acquireSnapshot(*termInfo->leader);
+    }
   }
   return {};
 }
@@ -68,7 +77,36 @@ SnapshotManager::GuardedData::GuardedData(IStorageManager& storage,
 SnapshotManager::SnapshotManager(
     IStorageManager& storage, IStateHandleManager& stateHandle,
     std::shared_ptr<FollowerTermInformation const> termInfo,
-    std::shared_ptr<ILeaderCommunicator> leaderComm)
+    std::shared_ptr<ILeaderCommunicator> leaderComm,
+    LoggerContext const& loggerContext)
     : leaderComm(std::move(leaderComm)),
       termInfo(std::move(termInfo)),
+      loggerContext(
+          loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
       guardedData(storage, stateHandle) {}
+
+auto SnapshotManager::setSnapshotStateAvailable(
+    arangodb::replication2::replicated_log::MessageId msgId)
+    -> arangodb::Result {
+  auto result = updateSnapshotState(SnapshotState::AVAILABLE);
+  leaderComm->reportSnapshotAvailable(msgId).thenFinal(
+      [lctx = loggerContext](auto&& tryResult) {
+        auto result = basics::catchToResult([&] { return tryResult.get(); });
+        if (result.fail()) {
+          LOG_CTX("ea624", FATAL, lctx) << "failed to snapshot state on leader";
+          FATAL_ERROR_EXIT();
+        }
+        // TODO add log context
+        LOG_CTX("b2c65", INFO, lctx) << "snapshot status updated on leader";
+      });
+  return result;
+}
+
+auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
+  switch (state) {
+    case SnapshotState::MISSING:
+      return "MISSING";
+    case SnapshotState::AVAILABLE:
+      return "AVAILABLE";
+  }
+}

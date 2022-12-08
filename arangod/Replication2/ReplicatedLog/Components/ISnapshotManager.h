@@ -21,6 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include <string_view>
 
 namespace arangodb {
 class Result;
@@ -28,6 +29,7 @@ class Result;
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 enum class SnapshotState { MISSING, AVAILABLE };
+auto to_string(SnapshotState) noexcept -> std::string_view;
 
 struct ISnapshotManager {
   virtual ~ISnapshotManager() = default;
