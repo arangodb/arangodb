@@ -39,18 +39,22 @@ DocumentLeaderState::DocumentLeaderState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
-    : loggerContext(
+    : gid(core->getGid()),
+      loggerContext(
           core->loggerContext.with<logContextKeyStateComponent>("LeaderState")),
       shardId(core->getShardId()),
-      gid(core->getGid()),
       _handlersFactory(std::move(handlersFactory)),
       _guardedData(std::move(core)),
       _transactionManager(transactionManager),
+      _snapshotHandler(_handlersFactory->createSnapshotHandler(gid)),
       _isResigning(false) {}
 
 auto DocumentLeaderState::resign() && noexcept
     -> std::unique_ptr<DocumentCore> {
   _isResigning.store(true);
+
+  auto snapshotsGuard = _snapshotHandler.getLockedGuard();
+  snapshotsGuard.get()->clear();
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     for (auto const& trx : activeTransactions.getTransactions()) {
@@ -63,9 +67,11 @@ auto DocumentLeaderState::resign() && noexcept
     }
   });
 
-  return _guardedData.doUnderLock([](auto& data) {
+  return _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+      LOG_CTX("f9c79", ERR, loggerContext)
+          << "resigning leader " << gid
+          << " is not possible because it is already resigned";
     }
     return std::move(data.core);
   });
@@ -77,7 +83,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+      return TRI_ERROR_CLUSTER_NOT_LEADER;
     }
 
     auto transactionHandler =
@@ -149,6 +155,8 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
+  // TODO there is a race here, what happens if the leader resigns after this
+  // point? (CINFRA-613)
   auto const& stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),
@@ -172,6 +180,65 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
   }
 
   return LogIndex{idx};
+}
+
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
+    -> ResultT<SnapshotBatch> {
+  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
+      [&](auto& handler) { return handler->create(shardId); },
+      [](auto& snapshot) { return snapshot->fetch(); });
+}
+
+auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
+    -> ResultT<SnapshotBatch> {
+  return executeSnapshotOperation<ResultT<SnapshotBatch>>(
+      [&](auto& handler) { return handler->find(params.id); },
+      [](auto& snapshot) { return snapshot->fetch(); });
+}
+
+auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
+    -> Result {
+  return executeSnapshotOperation<Result>(
+      [&](auto& handler) { return handler->find(params.id); },
+      [](auto& snapshot) { return snapshot->finish(); });
+}
+
+auto DocumentLeaderState::snapshotStatus(SnapshotId id)
+    -> ResultT<SnapshotStatus> {
+  return executeSnapshotOperation<ResultT<SnapshotStatus>>(
+      [&](auto& handler) { return handler->find(id); },
+      [](auto& snapshot) { return snapshot->status(); });
+}
+
+auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
+  return _snapshotHandler.doUnderLock(
+      [&](auto& handler) { return handler->status(); });
+}
+
+template<class ResultType, class GetFunc, class ProcessFunc>
+auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
+                                                   ProcessFunc processSnapshot)
+    -> ResultType {
+  auto snapshotRes = _snapshotHandler.doUnderLock([&](auto& handler) {
+    if (_isResigning.load()) {
+      return ResultT<std::weak_ptr<Snapshot>>::error(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Leader resigned for shard {}", shardId));
+    }
+    return getSnapshot(handler);
+  });
+
+  if (snapshotRes.fail()) {
+    return snapshotRes.result();
+  }
+  if (auto snapshot = snapshotRes.get().lock()) {
+    return processSnapshot(snapshot);
+  }
+  return Result(
+      TRI_ERROR_INTERNAL,
+      fmt::format("Snapshot not available for {}! Most often this happens "
+                  "because the leader resigned in the meantime!",
+                  shardId));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

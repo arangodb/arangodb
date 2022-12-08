@@ -23,10 +23,8 @@
 
 #pragma once
 
-#include "Basics/Arithmetic.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/fpconv.h"
 #include "ProgramOptions/UnitsHelper.h"
 
@@ -39,9 +37,9 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
+#include <vector>
 
-namespace arangodb {
-namespace options {
+namespace arangodb::options {
 
 // helper function to strip-non-numeric data from a string
 std::string removeWhitespaceAndComments(std::string const& value);
@@ -92,7 +90,7 @@ template<>
 inline std::string stringifyValue<double>(double const& value) {
   char buf[32];
   int length = fpconv_dtoa(value, &buf[0]);
-  return std::string(&buf[0], static_cast<size_t>(length));
+  return std::string(&buf[0], static_cast<std::size_t>(length));
 }
 
 // stringify a boolean value, specialized version
@@ -105,6 +103,31 @@ inline std::string stringifyValue<bool>(bool const& value) {
 template<>
 inline std::string stringifyValue<std::string>(std::string const& value) {
   return "\"" + value + "\"";
+}
+
+template<typename T>
+inline std::string stringifyValues(T const& values) {
+  std::string value;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    if (i > 0) {
+      value.append(", ");
+    }
+    value.append(stringifyValue(values.at(i)));
+  }
+  return value;
+}
+
+template<typename T>
+inline std::string joinValues(T const& values) {
+  std::string result;
+  std::size_t i = 0;
+  for (auto const& it : values) {
+    if (i++ > 0) {
+      result.append(", ");
+    }
+    result.append(it);
+  }
+  return result;
 }
 
 // abstract base parameter type struct
@@ -128,10 +151,9 @@ struct Parameter {
 };
 
 // specialized type for boolean values
-struct BooleanParameter : public Parameter {
-  typedef bool ValueType;
-
-  explicit BooleanParameter(ValueType* ptr, bool required = false)
+template<typename ValueType>
+struct BooleanParameterBase : public Parameter {
+  explicit BooleanParameterBase(ValueType* ptr, bool required = false)
       : ptr(ptr), required(required) {}
 
   bool requiresValue() const override { return required; }
@@ -171,49 +193,11 @@ struct BooleanParameter : public Parameter {
   bool required;
 };
 
+// specialized type for normal boolean values
+using BooleanParameter = BooleanParameterBase<bool>;
+
 // specialized type for atomic boolean values
-struct AtomicBooleanParameter : public Parameter {
-  typedef std::atomic<bool> ValueType;
-
-  explicit AtomicBooleanParameter(ValueType* ptr, bool required = false)
-      : ptr(ptr), required(required) {}
-
-  bool requiresValue() const override { return required; }
-  std::string name() const override { return "boolean"; }
-  std::string valueString() const override {
-    return stringifyValue(ptr->load());
-  }
-
-  std::string set(std::string const& value) override {
-    if (!required && value.empty()) {
-      // the empty value "" is considered "true", e.g. "--force" will mean
-      // "--force true"
-      *ptr = true;
-      return "";
-    }
-    if (value == "true" || value == "false" || value == "on" ||
-        value == "off" || value == "1" || value == "0") {
-      ptr->store(value == "true" || value == "on" || value == "1");
-      return "";
-    }
-    return "invalid value for type " + this->name() +
-           ". expecting 'true' or 'false'";
-  }
-
-  std::string typeDescription() const override {
-    return Parameter::typeDescription();
-  }
-
-  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
-    builder.add(VPackValue(ptr->load()));
-    if (detailed) {
-      builder.add("required", VPackValue(required));
-    }
-  }
-
-  ValueType* ptr;
-  bool required;
-};
+using AtomicBooleanParameter = BooleanParameterBase<std::atomic<bool>>;
 
 // specialized type for numeric values
 // this templated type needs a concrete number type
@@ -374,22 +358,12 @@ struct DiscreteValuesParameter : public T {
 
   // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
-    std::string msg("Possible values: ");
     std::vector<std::string> values;
     for (auto const& it : allowed) {
       values.emplace_back(stringifyValue(it));
     }
     std::sort(values.begin(), values.end());
-
-    size_t i = 0;
-    for (auto const& it : values) {
-      if (i > 0) {
-        msg.append(", ");
-      }
-      msg.append(it);
-      ++i;
-    }
-    return msg;
+    return std::string("Possible values: ") + joinValues(values);
   }
 
   std::unordered_set<typename T::ValueType> allowed;
@@ -407,16 +381,7 @@ struct VectorParameter : public Parameter {
     return std::string(param.name()) + "...";
   }
 
-  std::string valueString() const override {
-    std::string value;
-    for (size_t i = 0; i < ptr->size(); ++i) {
-      if (i > 0) {
-        value.append(", ");
-      }
-      value.append(stringifyValue(ptr->at(i)));
-    }
-    return value;
-  }
+  std::string valueString() const override { return stringifyValues(*ptr); }
 
   std::string set(std::string const& value) override {
     typename T::ValueType dummy;
@@ -432,7 +397,7 @@ struct VectorParameter : public Parameter {
 
   void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
     }
     builder.close();
@@ -449,7 +414,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
       std::vector<typename T::ValueType>* ptr,
       std::unordered_set<typename T::ValueType> const& allowed)
       : ptr(ptr), allowed(allowed) {
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       if (allowed.find(ptr->at(i)) == allowed.end()) {
         // default value is not in list of allowed values
         std::string msg(
@@ -472,7 +437,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
 
   std::string valueString() const override {
     std::string value;
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       if (i > 0) {
         value.append(", ");
       }
@@ -504,29 +469,20 @@ struct DiscreteValuesVectorParameter : public Parameter {
 
   void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
     }
     builder.close();
   }
 
   std::string description() const override {
-    std::string msg("Possible values: ");
     std::vector<std::string> values;
+    values.reserve(allowed.size());
     for (auto const& it : allowed) {
       values.emplace_back(stringifyValue(it));
     }
     std::sort(values.begin(), values.end());
-
-    size_t i = 0;
-    for (auto const& it : values) {
-      if (i > 0) {
-        msg.append(", ");
-      }
-      msg.append(it);
-      ++i;
-    }
-    return msg;
+    return std::string("Possible values: ") + joinValues(values);
   }
 
   std::vector<typename T::ValueType>* ptr;
@@ -546,5 +502,4 @@ struct ObsoleteParameter : public Parameter {
 
   bool required;
 };
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options

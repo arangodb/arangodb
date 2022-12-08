@@ -83,6 +83,7 @@ std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
+std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 
 write_ret_t singleWriteTransaction(AgentInterface* _agent,
                                    velocypack::Builder const& transaction,

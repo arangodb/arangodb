@@ -37,7 +37,7 @@ namespace arangodb::replication2::replicated_state::document {
  * increasing order.
  */
 class ActiveTransactionsQueue {
-  enum Status { ACTIVE, INACTIVE };
+  enum Status { kActive, kInactive };
 
  public:
   LogIndex getReleaseIndex(LogIndex current) const;

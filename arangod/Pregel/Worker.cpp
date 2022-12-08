@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Worker.h"
+#include "Basics/voc-errors.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
@@ -716,14 +716,11 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
                          VPackValueType::String));
 
     V const& data = vertexEntry->data();
-    // bool store =
-    if (auto res =
-            _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data);
-        res.fail()) {
-      LOG_PREGEL("37fde", ERR)
-          << "failed to build vertex document: " << res.error().toString();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
-                                     res.error().toString());
+    if (auto res = _graphStore->graphFormat()->buildVertexDocument(b, &data);
+        !res) {
+      LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Failed to build vertex document");
     }
     b.close();
   }
@@ -952,6 +949,3 @@ template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
                                         ColorPropagationMessageValue>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;

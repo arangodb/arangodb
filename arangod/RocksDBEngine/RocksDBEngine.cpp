@@ -76,6 +76,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -1089,7 +1090,7 @@ void RocksDBEngine::start() {
       std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager";
+        << "could not start rocksdb counter manager thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -2867,6 +2868,21 @@ void RocksDBEngine::loadReplicatedStates(
   }
 }
 
+void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // simply forward...
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.scheduleFullIndexRefill(database, collection, iid);
+}
+
+void RocksDBEngine::syncIndexCaches() {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.waitForCatchup();
+}
+
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
@@ -3253,15 +3269,15 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
     vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
-
   builder.close();  // base
 
-  return Result{};
+  return {};
 }
 
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
+
   Result res = rocksutils::convertStatus(s);
   if (res.fail()) {
     return res;
@@ -3290,21 +3306,22 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
     builder.close();
   }
   builder.close();
-  return Result{};
+
+  return {};
 }
 
 Result RocksDBEngine::firstTick(uint64_t& tick) {
-  Result res{};
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
 
+  Result res;
   if (!s.ok()) {
     res = rocksutils::convertStatus(s);
-    return res;
-  }
-  // read minium possible tick
-  if (!walFiles.empty()) {
-    tick = walFiles[0]->StartSequence();
+  } else {
+    // read minium possible tick
+    if (!walFiles.empty()) {
+      tick = walFiles[0]->StartSequence();
+    }
   }
   return res;
 }

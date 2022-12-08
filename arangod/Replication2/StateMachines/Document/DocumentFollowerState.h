@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
@@ -31,8 +32,10 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 enum class OperationType;
+struct SnapshotBatch;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
@@ -42,7 +45,7 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  std::string_view const shardId;
+  ShardID const shardId;
 
   // unprotected for gtests. TODO think about whether there's a better way
   // protected:
@@ -58,6 +61,11 @@ struct DocumentFollowerState
                              velocypack::SharedSlice slice) -> Result;
   auto truncateLocalShard() -> Result;
   auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex,
+      futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
 
  private:
   struct GuardedData {

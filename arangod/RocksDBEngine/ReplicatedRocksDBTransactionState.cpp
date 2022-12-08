@@ -39,6 +39,8 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
+#include <Basics/application-exit.h>
+
 using namespace arangodb;
 
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
@@ -134,7 +136,10 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
         for (auto& res : results) {
           auto result = res.get();
           if (result.fail()) {
-            return result;
+            LOG_TOPIC("8ebc0", FATAL, Logger::REPLICATION2)
+                << "Failed to commit replicated transaction locally: "
+                << result;
+            FATAL_ERROR_EXIT();
           }
         }
         return {};
