@@ -29,13 +29,13 @@ namespace {
 
 template<typename T>
 TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
-  auto* vocbase = feature.useDatabase(id);
+  auto vocbase = feature.useDatabase(id);
 
   if (!vocbase) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  return *vocbase;
+  return *vocbase.release();
 }
 
 }  // namespace

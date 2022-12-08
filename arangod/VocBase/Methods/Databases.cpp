@@ -401,15 +401,13 @@ arangodb::Result Databases::create(ArangodServer& server,
 namespace {
 ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
-  TRI_vocbase_t* vocbase = df.useDatabase(dbName);
+  auto vocbase = df.useDatabase(dbName);
 
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
   TRI_voc_tick_t const id = vocbase->id();
-
-  vocbase->release();
 
   ClusterInfo& ci =
       vocbase->server().getFeature<ClusterFeature>().clusterInfo();
@@ -423,14 +421,13 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = df.useDatabase(id);
+    auto vocbase = df.useDatabase(id);
 
     if (vocbase == nullptr) {
       // object has vanished
       break;
     }
 
-    vocbase->release();
     // sleep
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }

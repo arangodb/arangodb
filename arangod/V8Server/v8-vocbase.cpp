@@ -1655,16 +1655,16 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& databaseFeature = v8g->server().getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-  auto* vocbase = &GetContextVocBase(isolate);
 
-  if (vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
+  if (auto* vocbase = &GetContextVocBase(isolate);
+      vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
     // still allow changing back into the _system database even if
     // the current database has been dropped
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature.useDatabase(name);
+  auto vocbase = databaseFeature.useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1676,10 +1676,9 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   void* orig = v8g->_vocbase;
   TRI_ASSERT(orig != nullptr);
 
-  v8g->_vocbase = vocbase;
-  static_cast<TRI_vocbase_t*>(orig)->release();
+  v8g->_vocbase = vocbase.get();
 
-  TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
+  TRI_V8_RETURN(WrapVocBase(isolate, vocbase.get()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2158,7 +2157,7 @@ static void JS_EncryptionKeyReload(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                         arangodb::aql::QueryRegistry* queryRegistry,
+                         arangodb::aql::QueryRegistry* /*queryRegistry*/,
                          TRI_vocbase_t& vocbase, size_t threadNumber) {
   v8::HandleScope scope(isolate);
 
@@ -2169,9 +2168,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // register the database
   v8g->_vocbase = &vocbase;
 
-  // .............................................................................
+  // ...........................................................................
   // generate the TRI_vocbase_t template
-  // .............................................................................
+  // ...........................................................................
 
   v8::Handle<v8::FunctionTemplate> ft = v8::FunctionTemplate::New(isolate);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"));

@@ -75,14 +75,11 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   auto const& it = _vocbases.find(dbid);
 
   if (it == _vocbases.end()) {
-    TRI_vocbase_t* vocbase =
-        _server.getFeature<DatabaseFeature>().useDatabase(dbid);
+    auto vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
     if (vocbase != nullptr) {
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
       _vocbases.try_emplace(dbid, *vocbase);
     }
-
-    return vocbase;
+    return vocbase.get();
   } else {
     return &(it->second.database());
   }

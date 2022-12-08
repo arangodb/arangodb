@@ -566,7 +566,7 @@ void V8DealerFeature::start() {
 
       // use vocbase here and hand ownership to context
       TRI_vocbase_t* vocbase =
-          databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+          databaseFeature.useDatabase(StaticStrings::SystemDatabase).release();
       TRI_ASSERT(vocbase != nullptr);
 
       V8Context* context;
@@ -759,7 +759,7 @@ V8Context* V8DealerFeature::addContext() {
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // use vocbase here and hand ownership to context
   TRI_vocbase_t* vocbase =
-      databaseFeature.useDatabase(StaticStrings::SystemDatabase);
+      databaseFeature.useDatabase(StaticStrings::SystemDatabase).release();
   TRI_ASSERT(vocbase != nullptr);
 
   try {
