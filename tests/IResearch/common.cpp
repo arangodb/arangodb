@@ -82,7 +82,7 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 // GTEST printers for IResearch filters
-namespace iresearch {
+namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
@@ -259,7 +259,7 @@ std::string to_string(irs::filter const& f) {
   ss << f;
   return ss.str();
 }
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
