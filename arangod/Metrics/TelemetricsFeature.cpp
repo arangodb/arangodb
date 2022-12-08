@@ -98,7 +98,7 @@ void LastUpdateHandler::sendTelemetrics() {
   VPackBuilder result;
 
   SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
-                                       _server, false);
+                                       _server, false, true);
   _sender->send(result.slice());
 }
 

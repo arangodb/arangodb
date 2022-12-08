@@ -36,7 +36,7 @@ class SupportInfoBuilder {
   SupportInfoBuilder() = delete;
   static void buildInfoMessage(velocypack::Builder& result,
                                std::string const& dbName, ArangodServer& server,
-                               bool isLocal);
+                               bool isLocal, bool detailed = false);
 
  private:
   static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);

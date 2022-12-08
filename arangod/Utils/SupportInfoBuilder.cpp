@@ -75,7 +75,8 @@ network::Headers buildHeaders() {
 
 void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                                           std::string const& dbName,
-                                          ArangodServer& server, bool isLocal) {
+                                          ArangodServer& server, bool isLocal,
+                                          bool detailed) {
   bool isSingleServer = ServerState::instance()->isSingleServer();
   // used for all types of responses
   VPackBuilder hostInfo;
@@ -203,169 +204,172 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     }
   }
 
-  DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
-  std::vector<std::string> databases = methods::Databases::list(server, "");
-  result.add("numDatabases", VPackValue(databases.size()));
+  if (detailed) {
+    DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
+    std::vector<std::string> databases = methods::Databases::list(server, "");
+    result.add("numDatabases", VPackValue(databases.size()));
 
-  size_t numSingleShards = 0;
-  try {
-    result.add("databases", VPackValue(VPackValueType::Array));
+    size_t numSingleShards = 0;
+    try {
+      result.add("databases", VPackValue(VPackValueType::Array));
 
-    for (auto const& database : databases) {
-      auto vocbase = dbFeature.lookupDatabase(database);
-      result.openObject();
-      result.add("name", VPackValue(database));
+      for (auto const& database : databases) {
+        auto vocbase = dbFeature.lookupDatabase(database);
+        result.openObject();
+        result.add("name", VPackValue(database));
 
-      bool isSingleShard = true;
-      size_t numColls = 0;
-      size_t numGraphColls = 0;
-      size_t numSmartColls = 0;
-      result.add("collections", VPackValue(VPackValueType::Array));
+        bool isSingleShard = true;
+        size_t numColls = 0;
+        size_t numGraphColls = 0;
+        size_t numSmartColls = 0;
+        result.add("collections", VPackValue(VPackValueType::Array));
 
-      DatabaseGuard guard(dbFeature, database);
-      methods::Collections::enumerate(
-          &guard.database(),
-          [&](std::shared_ptr<LogicalCollection> const& coll) {
-            result.openObject();
-            size_t numShards = coll->numberOfShards();
-            if (!isSingleServer && numShards != 1) {
-              isSingleShard = false;
-            }
-            result.add("numShards", VPackValue(numShards));
-
-            auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
-            auto& collName = coll->name();
-            SingleCollectionTransaction trx(ctx, collName,
-                                            AccessMode::Type::READ);
-
-            Result res = trx.begin();
-
-            if (res.ok()) {
-              OperationOptions options(ExecContext::current());
-              OperationResult opResult =
-                  trx.count(collName, transaction::CountType::Normal, options);
-              std::ignore = trx.finish(opResult.result);
-              if (opResult.fail()) {
-                LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
-                    << "Failed to get number of documents: "
-                    << res.errorMessage();
-              } else {
-                VPackBuilder builder(*(opResult.buffer));
-                result.add("numDocs", VPackValue(builder.slice().getUInt()));
-              }
-            } else {
-              LOG_TOPIC("e7497", WARN, Logger::STATISTICS)
-                  << "Failed to begin transaction for getting number of "
-                     "documents: "
-                  << res.errorMessage();
-            }
-
-            auto collType = coll->type();
-            if (collType == TRI_COL_TYPE_DOCUMENT) {
-              result.add("type", VPackValue("document"));
-            } else if (collType == TRI_COL_TYPE_EDGE) {
-              result.add("type", VPackValue("edge"));
-              numGraphColls++;
-              if (coll->isSmart()) {
-                numSmartColls++;
-                result.add("smartGraph", VPackValue(true));
-              } else {
-                result.add("smartGraph", VPackValue(false));
-              }
-            } else {
-              result.add("type", VPackValue("unknown"));
-            }
-
-            std::unordered_map<std::string, size_t> idxTypesToAmounts;
-
-            auto flags = Index::makeFlags(Index::Serialize::Estimates,
-                                          Index::Serialize::Figures);
-            VPackBuilder output;
-            std::ignore =
-                methods::Indexes::getAll(coll.get(), flags, false, output);
-            velocypack::Slice outSlice = output.slice();
-
-            result.add("idxs", VPackValue(VPackValueType::Array));
-            for (auto const it : velocypack::ArrayIterator(outSlice)) {
+        DatabaseGuard guard(dbFeature, database);
+        methods::Collections::enumerate(
+            &guard.database(),
+            [&](std::shared_ptr<LogicalCollection> const& coll) {
               result.openObject();
-              if (auto figures = it.get("figures"); !figures.isNone()) {
-                result.add("memory",
-                           VPackValue(figures.get("memory").getUInt()));
-                result.add("cacheInUse",
-                           VPackValue(figures.get("cacheInUse").getBoolean()));
-                result.add("cacheSize",
-                           VPackValue(figures.get("cacheSize").getUInt()));
-                result.add("cacheUsage",
-                           VPackValue(figures.get("cacheUsage").getUInt()));
+              size_t numShards = coll->numberOfShards();
+              if (!isSingleServer && numShards != 1) {
+                isSingleShard = false;
               }
-              using std::operator""sv;
-              auto idxType = it.get("type").stringView();
-              result.add("type", VPackValue(idxType));
-              if (idxType.compare("edge"sv) == 0) {
-                idxTypesToAmounts["edge"]++;
-              } else if (idxType.compare("geo"sv) == 0) {
-                idxTypesToAmounts["geo"]++;
-              } else if (idxType.compare("hash"sv) == 0) {
-                idxTypesToAmounts["hash"]++;
-              } else if (idxType.compare("fulltext"sv) == 0) {
-                idxTypesToAmounts["fulltext"]++;
-              } else if (idxType.compare("inverted"sv) == 0) {
-                idxTypesToAmounts["inverted"]++;
-              } else if (idxType.compare("no-access"sv) == 0) {
-                idxTypesToAmounts["no-access"]++;
-              } else if (idxType.compare("persistent"sv) == 0) {
-                idxTypesToAmounts["persistent"]++;
-              } else if (idxType.compare("iresearch"sv) == 0) {
-                idxTypesToAmounts["iresearch"]++;
-              } else if (idxType.compare("skiplist"sv) == 0) {
-                idxTypesToAmounts["skiplist"]++;
-              } else if (idxType.compare("ttl"sv) == 0) {
-                idxTypesToAmounts["ttl"]++;
-              } else if (idxType.compare("zkd"sv) == 0) {
-                idxTypesToAmounts["zkd"]++;
-              } else if (idxType.compare("primary"sv) == 0) {
-                idxTypesToAmounts["primary"]++;
+              result.add("numShards", VPackValue(numShards));
+
+              auto ctx = transaction::StandaloneContext::Create(*vocbase);
+
+              auto& collName = coll->name();
+              SingleCollectionTransaction trx(ctx, collName,
+                                              AccessMode::Type::READ);
+
+              Result res = trx.begin();
+
+              if (res.ok()) {
+                OperationOptions options(ExecContext::current());
+                OperationResult opResult = trx.count(
+                    collName, transaction::CountType::Normal, options);
+                std::ignore = trx.finish(opResult.result);
+                if (opResult.fail()) {
+                  LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
+                      << "Failed to get number of documents: "
+                      << res.errorMessage();
+                } else {
+                  VPackBuilder builder(*(opResult.buffer));
+                  result.add("numDocs", VPackValue(builder.slice().getUInt()));
+                }
               } else {
-                idxTypesToAmounts["unknown"]++;
+                LOG_TOPIC("e7497", WARN, Logger::STATISTICS)
+                    << "Failed to begin transaction for getting number of "
+                       "documents: "
+                    << res.errorMessage();
+              }
+
+              auto collType = coll->type();
+              if (collType == TRI_COL_TYPE_DOCUMENT) {
+                result.add("type", VPackValue("document"));
+              } else if (collType == TRI_COL_TYPE_EDGE) {
+                result.add("type", VPackValue("edge"));
+                numGraphColls++;
+                if (coll->isSmart()) {
+                  numSmartColls++;
+                  result.add("smartGraph", VPackValue(true));
+                } else {
+                  result.add("smartGraph", VPackValue(false));
+                }
+              } else {
+                result.add("type", VPackValue("unknown"));
+              }
+
+              std::unordered_map<std::string, size_t> idxTypesToAmounts;
+
+              auto flags = Index::makeFlags(Index::Serialize::Estimates,
+                                            Index::Serialize::Figures);
+              VPackBuilder output;
+              std::ignore =
+                  methods::Indexes::getAll(coll.get(), flags, false, output);
+              velocypack::Slice outSlice = output.slice();
+
+              result.add("idxs", VPackValue(VPackValueType::Array));
+              for (auto const it : velocypack::ArrayIterator(outSlice)) {
+                result.openObject();
+                if (auto figures = it.get("figures"); !figures.isNone()) {
+                  result.add("memory",
+                             VPackValue(figures.get("memory").getUInt()));
+                  result.add(
+                      "cacheInUse",
+                      VPackValue(figures.get("cacheInUse").getBoolean()));
+                  result.add("cacheSize",
+                             VPackValue(figures.get("cacheSize").getUInt()));
+                  result.add("cacheUsage",
+                             VPackValue(figures.get("cacheUsage").getUInt()));
+                }
+                using std::operator""sv;
+                auto idxType = it.get("type").stringView();
+                result.add("type", VPackValue(idxType));
+                if (idxType.compare("edge"sv) == 0) {
+                  idxTypesToAmounts["edge"]++;
+                } else if (idxType.compare("geo"sv) == 0) {
+                  idxTypesToAmounts["geo"]++;
+                } else if (idxType.compare("hash"sv) == 0) {
+                  idxTypesToAmounts["hash"]++;
+                } else if (idxType.compare("fulltext"sv) == 0) {
+                  idxTypesToAmounts["fulltext"]++;
+                } else if (idxType.compare("inverted"sv) == 0) {
+                  idxTypesToAmounts["inverted"]++;
+                } else if (idxType.compare("no-access"sv) == 0) {
+                  idxTypesToAmounts["no-access"]++;
+                } else if (idxType.compare("persistent"sv) == 0) {
+                  idxTypesToAmounts["persistent"]++;
+                } else if (idxType.compare("iresearch"sv) == 0) {
+                  idxTypesToAmounts["iresearch"]++;
+                } else if (idxType.compare("skiplist"sv) == 0) {
+                  idxTypesToAmounts["skiplist"]++;
+                } else if (idxType.compare("ttl"sv) == 0) {
+                  idxTypesToAmounts["ttl"]++;
+                } else if (idxType.compare("zkd"sv) == 0) {
+                  idxTypesToAmounts["zkd"]++;
+                } else if (idxType.compare("primary"sv) == 0) {
+                  idxTypesToAmounts["primary"]++;
+                } else {
+                  idxTypesToAmounts["unknown"]++;
+                }
+                result.close();
               }
               result.close();
-            }
-            result.close();
 
-            for (auto const& [type, amount] : idxTypesToAmounts) {
-              result.add(std::string("amount" + type), VPackValue(amount));
-            }
+              for (auto const& [type, amount] : idxTypesToAmounts) {
+                result.add(std::string("amount" + type), VPackValue(amount));
+              }
 
-            result.close();
-          });
+              result.close();
+            });
 
-      result.close();
+        result.close();
 
-      if (isSingleShard) {
-        numSingleShards++;
+        if (isSingleShard) {
+          numSingleShards++;
+        }
+        result.add("amountSingleShards", VPackValue(numSingleShards));
+        result.add("numCollections", VPackValue(numColls));
+        result.add("numGraphCollections", VPackValue(numGraphColls));
+        result.add("numSmartCollections", VPackValue(numSmartColls));
+
+        result.close();
       }
-      result.add("amountSingleShards", VPackValue(numSingleShards));
-      result.add("numCollections", VPackValue(numColls));
-      result.add("numGraphCollections", VPackValue(numGraphColls));
-      result.add("numSmartCollections", VPackValue(numSmartColls));
 
       result.close();
+
+    } catch (const std::exception& e) {
+      // must ignore any errors here in case a database or collection
+      // got deleted in the meantime
     }
-
-    result.close();
-
-  } catch (const std::exception& e) {
-    // must ignore any errors here in case a database or collection
-    // got deleted in the meantime
   }
   result.close();
 }
 
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                                        ArangodServer& server) {
-  bool const isActiveFailover = false;
-  //  server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
+  bool const isActiveFailover =
+      server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
 
   result.openObject();
 
