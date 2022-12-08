@@ -34,6 +34,7 @@
 #include "Metrics/LogScale.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
@@ -103,12 +104,6 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   metrics::Counter& _failures;
   metrics::Counter& _delays;
 };
-
-struct VocbaseReleaser {
-  void operator()(TRI_vocbase_t* vocbase) const noexcept;
-};
-
-using VocbasePtr = std::unique_ptr<TRI_vocbase_t, VocbaseReleaser>;
 
 class DatabaseFeature : public ArangodFeature {
   friend class DatabaseManagerThread;

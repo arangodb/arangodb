@@ -1393,8 +1393,10 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        [[maybe_unused]] TRI_vocbase_t* unused{};
-        Result res = databaseFeature.createDatabase(std::move(info), unused);
+        TRI_vocbase_t* new_db{};
+        Result res = databaseFeature.createDatabase(std::move(info), new_db);
+        vocbase.reset(new_db);
+
         events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {

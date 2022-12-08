@@ -1673,12 +1673,10 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase->isDangling());
 
   // switch databases
-  void* orig = v8g->_vocbase;
+  VocbasePtr orig{std::exchange(v8g->_vocbase, vocbase.release())};
   TRI_ASSERT(orig != nullptr);
 
-  v8g->_vocbase = vocbase.get();
-
-  TRI_V8_RETURN(WrapVocBase(isolate, vocbase.get()));
+  TRI_V8_RETURN(WrapVocBase(isolate, v8g->_vocbase));
   TRI_V8_TRY_CATCH_END
 }
 

@@ -36,11 +36,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VocBase/vocbase.h"
 
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"

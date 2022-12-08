@@ -434,12 +434,6 @@ void IOHeartbeatThread::run() {
   LOG_TOPIC("66664", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
 }
 
-void VocbaseReleaser::operator()(TRI_vocbase_t* vocbase) const noexcept {
-  if (vocbase) {
-    vocbase->release();
-  }
-}
-
 DatabaseFeature::DatabaseFeature(Server& server)
     : ArangodFeature{server, *this}, _databasesLists(new DatabasesLists()) {
   setOptional(false);

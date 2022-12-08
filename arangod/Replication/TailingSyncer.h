@@ -28,6 +28,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <velocypack/Builder.h>
 

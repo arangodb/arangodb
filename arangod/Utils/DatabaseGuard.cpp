@@ -24,41 +24,35 @@
 #include "DatabaseGuard.h"
 #include "Basics/Exceptions.h"
 #include "RestServer/DatabaseFeature.h"
-
-namespace {
-
-template<typename T>
-TRI_vocbase_t& vocbase(arangodb::DatabaseFeature& feature, T& id) {
-  auto vocbase = feature.useDatabase(id);
-
-  if (!vocbase) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  return *vocbase.release();
-}
-
-}  // namespace
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
+void VocbaseReleaser::operator()(TRI_vocbase_t* vocbase) const noexcept {
+  if (vocbase) {
+    TRI_ASSERT(!vocbase->isDangling());
+    vocbase->release();
+  }
+}
+
 /// @brief create guard on existing db
-DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {
-  if (!_vocbase.use()) {
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase)
+    : _vocbase{vocbase.use() ? &vocbase : nullptr} {
+  if (!_vocbase) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 }
 
 /// @brief create the guard, using a database id
 DatabaseGuard::DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id)
-    : _vocbase(vocbase(feature, id)) {
-  TRI_ASSERT(!_vocbase.isDangling());
+    : _vocbase{feature.useDatabase(id)} {
+  TRI_ASSERT(!_vocbase->isDangling());
 }
 
 /// @brief create the guard, using a database name
-DatabaseGuard::DatabaseGuard(DatabaseFeature& feature, std::string const& name)
-    : _vocbase(vocbase(feature, name)) {
-  TRI_ASSERT(!_vocbase.isDangling());
+DatabaseGuard::DatabaseGuard(DatabaseFeature& feature, std::string_view name)
+    : _vocbase{feature.useDatabase(name)} {
+  TRI_ASSERT(!_vocbase->isDangling());
 }
 
 }  // namespace arangodb

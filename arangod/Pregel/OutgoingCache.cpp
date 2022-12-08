@@ -34,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
