@@ -2450,15 +2450,15 @@ void IResearchAnalyzerFeature::prepare() {
   if (!isEnabled()) {
     return;
   }
-  ::iresearch::analysis::delimited_token_stream::init();
-  ::iresearch::analysis::collation_token_stream::init();
-  ::iresearch::analysis::ngram_token_stream_base::init();
-  ::iresearch::analysis::normalizing_token_stream::init();
-  ::iresearch::analysis::stemming_token_stream::init();
-  ::iresearch::analysis::text_token_stream::init();
-  ::iresearch::analysis::token_stopwords_stream::init();
-  ::iresearch::analysis::pipeline_token_stream::init();
-  ::iresearch::analysis::segmentation_token_stream::init();
+  ::irs::analysis::delimited_token_stream::init();
+  ::irs::analysis::collation_token_stream::init();
+  ::irs::analysis::ngram_token_stream_base::init();
+  ::irs::analysis::normalizing_token_stream::init();
+  ::irs::analysis::stemming_token_stream::init();
+  ::irs::analysis::text_token_stream::init();
+  ::irs::analysis::token_stopwords_stream::init();
+  ::irs::analysis::pipeline_token_stream::init();
+  ::irs::analysis::segmentation_token_stream::init();
 #ifdef USE_ENTERPRISE
   initAnalyzersEE();
 #endif
