@@ -400,7 +400,7 @@ arangodb::Result Databases::create(ArangodServer& server,
 
 namespace {
 ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
-  auto [ci, id] = [&]() -> std::pair<ClusterInfo*, TRI_voc_tick_t> {
+  auto const [ci, id] = [&]() -> std::pair<ClusterInfo*, TRI_voc_tick_t> {
     // Arguments are already checked, there is exactly one argument
     auto vocbase = df.useDatabase(dbName);
 

@@ -50,10 +50,10 @@ class DatabaseGuard final : public IDatabaseGuard {
   explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
   /// @brief create the guard, using a database id
-  explicit DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
+  DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
 
   /// @brief create the guard, using a database name
-  explicit DatabaseGuard(DatabaseFeature& feature, std::string_view name);
+  DatabaseGuard(DatabaseFeature& feature, std::string_view name);
 
   /// @brief return the database pointer
   TRI_vocbase_t& database() const noexcept final { return *_vocbase; }
@@ -61,6 +61,8 @@ class DatabaseGuard final : public IDatabaseGuard {
   TRI_vocbase_t* operator->() noexcept { return _vocbase.get(); }
 
  private:
+  explicit DatabaseGuard(VocbasePtr vocbase);
+
   VocbasePtr _vocbase;
 };
 

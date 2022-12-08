@@ -35,24 +35,24 @@ void VocbaseReleaser::operator()(TRI_vocbase_t* vocbase) const noexcept {
   }
 }
 
-/// @brief create guard on existing db
-DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase)
-    : _vocbase{vocbase.use() ? &vocbase : nullptr} {
+DatabaseGuard::DatabaseGuard(VocbasePtr vocbase)
+    : _vocbase{std::move(vocbase)} {
   if (!_vocbase) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  TRI_ASSERT(!_vocbase->isDangling());
 }
+
+/// @brief create guard on existing db
+DatabaseGuard::DatabaseGuard(TRI_vocbase_t& vocbase)
+    : DatabaseGuard{VocbasePtr{vocbase.use() ? &vocbase : nullptr}} {}
 
 /// @brief create the guard, using a database id
 DatabaseGuard::DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id)
-    : _vocbase{feature.useDatabase(id)} {
-  TRI_ASSERT(!_vocbase->isDangling());
-}
+    : DatabaseGuard{feature.useDatabase(id)} {}
 
 /// @brief create the guard, using a database name
 DatabaseGuard::DatabaseGuard(DatabaseFeature& feature, std::string_view name)
-    : _vocbase{feature.useDatabase(name)} {
-  TRI_ASSERT(!_vocbase->isDangling());
-}
+    : DatabaseGuard{feature.useDatabase(name)} {}
 
 }  // namespace arangodb

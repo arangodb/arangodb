@@ -571,7 +571,7 @@ void V8DealerFeature::start() {
       V8Context* context = buildContext(vocbase.get(), nextId());
       TRI_ASSERT(context != nullptr);
 
-      vocbase->release();
+      vocbase.release();
 
       guard.lock();
       // push_back will not fail as we reserved enough memory before
