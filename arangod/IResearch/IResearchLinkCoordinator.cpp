@@ -38,6 +38,7 @@
 #include "IResearch/IResearchMetricStats.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"

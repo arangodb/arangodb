@@ -902,7 +902,12 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
-Result Index::scheduleWarmup() {
+bool Index::canWarmup() const noexcept { return false; }
+
+Result Index::warmup() {
+  // we should never be called in the base class.
+  TRI_ASSERT(!canWarmup());
+  TRI_ASSERT(false);
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
   return {};

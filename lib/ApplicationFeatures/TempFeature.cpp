@@ -30,6 +30,7 @@
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 

@@ -36,8 +36,6 @@ using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
 namespace {
-static std::string const stateAggregator = "stateAggregator";
-
 /**
  * Add new colors to currentColors and return new colors (those colors from
  * messages that were not in currentColors). Consider only messages from

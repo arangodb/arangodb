@@ -92,6 +92,7 @@ target_link_libraries(arango_tests_replication2
     gtest
     gmock
     arango
+    arango_futures
     arango_replication2
     velocypack
     fmt)

@@ -1,12 +1,6 @@
 add_compile_warnings_flags()
 
 # ----------------------------------------
-# Greenspun tests
-# ----------------------------------------
-
-add_subdirectory(Greenspun)
-
-# ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
 
@@ -23,6 +17,7 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Futures)
 
 # ----------------------------------------
 # Link directories
@@ -220,15 +215,11 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
-  Futures/FutureTest.cpp
-  Futures/PromiseTest.cpp
-  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
@@ -322,6 +313,7 @@ target_link_libraries(arangodbtests
   arango_tests_basics
   arango_tests_replication2
   arango_tests_graph
+  arango_tests_futures
   arango_agency
   arango_cluster_engine
   arango_rocksdb
