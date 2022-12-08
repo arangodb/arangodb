@@ -30,6 +30,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Logger/LogMacros.h"
 
+#include "velocypack/Slice.h"
+
 namespace arangodb::metrics {
 
 /*
@@ -45,8 +47,8 @@ struct ITelemetricsSender {
   virtual void send(arangodb::velocypack::Slice result) const = 0;
 };
 
-struct TelemetricsSender final : public ITelemetricsSender {
-  void send(arangodb::velocypack::Slice result) const override {
+struct TelemetricsSender : public ITelemetricsSender {
+  void send(velocypack::Slice result) const override {
     LOG_TOPIC("affd3", WARN, Logger::STATISTICS) << result.toJson();
   }
 };
