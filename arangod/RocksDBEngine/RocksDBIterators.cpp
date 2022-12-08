@@ -353,6 +353,7 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,
                                                rocksdb::ReadOptions& options,
                                                RocksDBKeyBounds const& bounds)
     : _bounds(bounds),
+      _db(db),
       _options(options),
       _iterator(db->NewIterator(_options, _bounds.columnFamily())),
       _cmp(_bounds.columnFamily()->GetComparator()) {
@@ -409,7 +410,10 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
 
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
+  auto& selector = col->vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
+  options.snapshot = engine.db()->GetSnapshot();
   TRI_ASSERT(options.snapshot != nullptr);  // trx must contain a valid snapshot
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false;
@@ -420,8 +424,6 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
-  auto& selector = col->vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
   auto iterator = RocksDBGenericIterator(engine.db(), options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
