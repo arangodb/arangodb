@@ -72,16 +72,16 @@ bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
 /// @brief try to get collection, may return null
 TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   TRI_ASSERT(dbid != 0);
-  auto const& it = _vocbases.find(dbid);
 
-  if (it == _vocbases.end()) {
-    auto vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
-    if (vocbase != nullptr) {
-      _vocbases.try_emplace(dbid, *vocbase);
+  if (auto const& it = _vocbases.find(dbid); it == _vocbases.end()) {
+    if (auto vocbase = _server.getFeature<DatabaseFeature>().useDatabase(dbid);
+        vocbase != nullptr) {
+      auto& [_, db] = *_vocbases.try_emplace(dbid, std::move(vocbase)).first;
+      return db.get();
     }
-    return vocbase.get();
+    return nullptr;
   } else {
-    return &(it->second.database());
+    return it->second.get();
   }
 }
 
