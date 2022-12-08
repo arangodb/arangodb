@@ -27,6 +27,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::options;

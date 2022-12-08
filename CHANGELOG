@@ -1,6 +1,30 @@
 devel
 -----
 
+* Added a feature to the ResignLeadership job. By default, it will now
+  undo the leader changes automatically after the server is restarted,
+  unless the option `undoMoves` is set to `false`. This will help to
+  make rolling upgrades and restarts less troublesome, since the shard
+  leaderships will not get unbalanced.
+
+* Disallow creating new databases with a `replicationFactor` value set to
+  a value lower than `--cluster.min-replication-factor` or higher than
+  `--cluster.max-replication-factor`. Previously the `replicationFactor`
+  settings for new databases were not bounds-checked, only for new
+  collections.
+
+* BTS-1141: Changed the default value of startup option 
+  `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`. 
+  This change prevents RocksDB from going into read-only mode when an internal
+  operation tries to insert some value into the block cache, but can't do so
+  because the block cache's capacity limit is reached.
+
+* Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
+
+* Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
+  when a peer closes an SSL/TLS connection without performing a proper
+  connection shutdown.
+
 * Added new per-operation option `refillIndexCaches` to write operations,
   namely:
 
