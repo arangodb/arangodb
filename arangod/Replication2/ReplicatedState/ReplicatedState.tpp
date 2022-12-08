@@ -766,19 +766,20 @@ ReplicatedState<S>::ReplicatedState(
 
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
-  auto followerState = log->getFollowerState();
-  return std::dynamic_pointer_cast<FollowerType>(followerState);
+  ADB_PROD_ASSERT(manager.has_value());
+  return std::dynamic_pointer_cast<FollowerType>(manager->getFollower());
 }
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
-  auto leaderState = log->getLeaderState();
-  return std::dynamic_pointer_cast<LeaderType>(leaderState);
+  ADB_PROD_ASSERT(manager.has_value());
+  return std::dynamic_pointer_cast<LeaderType>(manager->getLeader());
 }
 
 template<typename S>
 auto ReplicatedState<S>::getStatus() -> std::optional<StateStatus> {
-  return log->getStateStatus();
+  ADB_PROD_ASSERT(manager.has_value());
+  return manager->getStatus();
 }
 
 template<typename S>
@@ -813,11 +814,8 @@ template<typename S>
 void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
-
-  auto stateManager =
-      std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
-  ADB_PROD_ASSERT(stateManager != nullptr);
-  auto core = std::move(*stateManager).resign();
+  ADB_PROD_ASSERT(manager.has_value());
+  auto core = std::move(*manager).resign();
   ADB_PROD_ASSERT(core != nullptr);
 
   using CleanupHandler = typename ReplicatedStateTraits<S>::CleanupHandlerType;
@@ -838,10 +836,48 @@ auto ReplicatedState<S>::createStateHandle(
     -> std::unique_ptr<replicated_log::IReplicatedStateHandle> {
   // TODO Should we make sure not to build the core twice?
   auto core = buildCore(coreParameter);
-  auto handle = std::make_unique<ReplicatedStateManager<S>>(
-      loggerContext, metrics, std::move(core), factory);
+  manager.emplace(loggerContext, metrics, std::move(core), factory);
 
-  return handle;
+  struct Wrapper : replicated_log::IReplicatedStateHandle {
+    explicit Wrapper(ReplicatedStateManager<S>& manager) : manager(manager) {}
+    auto resignCurrentState() noexcept
+        -> std::unique_ptr<replicated_log::IReplicatedLogMethodsBase> override {
+      return manager.resignCurrentState();
+    }
+    void leadershipEstablished(
+        std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> ptr)
+        override {
+      return manager.leadershipEstablished(std::move(ptr));
+    }
+    void becomeFollower(
+        std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods> ptr)
+        override {
+      return manager.becomeFollower(std::move(ptr));
+    }
+    void acquireSnapshot(ServerID leader, LogIndex index) override {
+      return manager.acquireSnapshot(std::move(leader), index);
+    }
+    void updateCommitIndex(LogIndex index) override {
+      return manager.updateCommitIndex(index);
+    }
+    auto getStatus() const
+        -> std::optional<replicated_state::StateStatus> override {
+      return manager.getStatus();
+    }
+    auto getFollower() const -> std::shared_ptr<
+        replicated_state::IReplicatedFollowerStateBase> override {
+      return manager.getFollower();
+    }
+    auto getLeader() const -> std::shared_ptr<
+        replicated_state::IReplicatedLeaderStateBase> override {
+      return manager.getLeader();
+    }
+    void dropEntries() override { return manager.dropEntries(); }
+
+    ReplicatedStateManager<S>& manager;
+  };
+
+  return std::make_unique<Wrapper>(*manager);
 }
 
 }  // namespace arangodb::replication2::replicated_state

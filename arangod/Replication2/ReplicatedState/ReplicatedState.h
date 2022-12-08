@@ -407,6 +407,8 @@ struct ReplicatedState final
     return getFollower();
   }
 
+  std::optional<ReplicatedStateManager<S>> manager;
+
   std::shared_ptr<Factory> const factory;
   GlobalLogIdentifier const gid;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
