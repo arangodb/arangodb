@@ -227,14 +227,19 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
   appendNullTerminatedString("]", p);
 #endif
 
+  bool printed = false;
   appendNullTerminatedString(" caught unexpected signal ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
+#ifndef _WIN32
   if (info != nullptr) {
     appendNullTerminatedString(") from pid ", p);
     p += arangodb::basics::StringUtils::itoa(uint64_t(info->si_pid), p);
-  } else {
+    printed = true;
+  }
+#endif
+  if (!printed) {
     appendNullTerminatedString(")", p);
   }
 
