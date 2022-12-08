@@ -100,7 +100,8 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
     }
 
     if (idx) {
-      _indexes.emplace(std::move(idx));
+      _indexes.emplace(idx);
+      duringAddIndex(idx);
     }
   }
 
@@ -440,5 +441,8 @@ Result PhysicalCollection::duringDropIndex(std::shared_ptr<Index> /*idx*/) {
 Result PhysicalCollection::afterDropIndex(std::shared_ptr<Index> /*idx*/) {
   return {};
 }
+
+// callback that is called while adding a new index
+void PhysicalCollection::duringAddIndex(std::shared_ptr<Index> /*idx*/) {}
 
 }  // namespace arangodb

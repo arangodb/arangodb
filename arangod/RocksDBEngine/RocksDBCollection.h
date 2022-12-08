@@ -212,9 +212,14 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // callback that is called directly before the index is dropped.
   // the write-lock on all indexes is still held
   Result duringDropIndex(std::shared_ptr<Index> idx) override;
+
   // callback that is called directly after the index has been dropped.
   // no locks are held anymore.
   Result afterDropIndex(std::shared_ptr<Index> idx) override;
+
+  // callback that is called while adding a new index. called under
+  // indexes write-lock
+  void duringAddIndex(std::shared_ptr<Index> idx) override;
 
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;

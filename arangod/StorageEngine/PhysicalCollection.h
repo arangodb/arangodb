@@ -235,11 +235,17 @@ class PhysicalCollection {
   explicit PhysicalCollection(LogicalCollection& collection);
 
   // callback that is called directly before the index is dropped.
-  // the write-lock on all indexes is still held
+  // the write-lock on all indexes is still held. not called during
+  // reocvery!
   virtual Result duringDropIndex(std::shared_ptr<Index> idx);
+
   // callback that is called directly after the index has been dropped.
   // no locks are held anymore.
   virtual Result afterDropIndex(std::shared_ptr<Index> idx);
+
+  // callback that is called while adding a new index. called under
+  // indexes write-lock
+  virtual void duringAddIndex(std::shared_ptr<Index> idx);
 
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;

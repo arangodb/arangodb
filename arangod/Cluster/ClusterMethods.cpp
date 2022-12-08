@@ -796,7 +796,8 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 namespace arangodb {
 
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
-                             VPackSlice value, VPackBuilder& builder) {
+                             velocypack::Slice value,
+                             velocypack::Builder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -2778,8 +2779,8 @@ Result flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
 
 // recalculate counts on all DB servers
 Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
-                                       std::string const& dbname,
-                                       std::string const& collname) {
+                                       std::string_view dbname,
+                                       std::string_view collname) {
   // Set a few variables needed for our work:
   NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();

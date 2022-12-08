@@ -367,17 +367,15 @@ RocksDBKeyBounds RocksDBCollection::bounds() const {
   return RocksDBKeyBounds::CollectionDocuments(objectId());
 }
 
-void RocksDBCollection::prepareIndexes(velocypack::Slice indexesSlice) {
-  PhysicalCollection::prepareIndexes(indexesSlice);
-
+// callback that is called while adding a new index. called under
+// indexes write-lock
+void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
   // update tick value and _primaryIndex member
-  for (auto& idx : getIndexes()) {
-    TRI_ASSERT(idx != nullptr);
-    TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id().id()));
-    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      TRI_ASSERT(idx->id().isPrimary());
-      _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
-    }
+  TRI_ASSERT(idx != nullptr);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(idx->id().id()));
+  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    TRI_ASSERT(idx->id().isPrimary());
+    _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
   }
 }
 
@@ -596,7 +594,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
 }
 
 // callback that is called directly before the index is dropped.
-// the write-lock on all indexes is still held
+// the write-lock on all indexes is still held. this is not called
+// during recoverx.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
