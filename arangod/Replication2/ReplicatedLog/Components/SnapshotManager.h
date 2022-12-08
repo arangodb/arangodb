@@ -29,6 +29,7 @@ class Result;
 }
 namespace arangodb::replication2::replicated_log {
 struct FollowerTermInformation;
+struct ILeaderCommunicator;
 inline namespace comp {
 struct IStorageManager;
 struct IStateHandleManager;
@@ -36,7 +37,8 @@ struct IStateHandleManager;
 struct SnapshotManager : ISnapshotManager {
   explicit SnapshotManager(
       IStorageManager& storage, IStateHandleManager& stateHandle,
-      std::shared_ptr<FollowerTermInformation const> termInfo);
+      std::shared_ptr<FollowerTermInformation const> termInfo,
+      std::shared_ptr<ILeaderCommunicator> leaderComm);
   auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 
@@ -49,7 +51,7 @@ struct SnapshotManager : ISnapshotManager {
     IStateHandleManager& stateHandle;
     SnapshotState state;
   };
-
+  std::shared_ptr<ILeaderCommunicator> const leaderComm;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
   Guarded<GuardedData> guardedData;
 };

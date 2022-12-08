@@ -67,5 +67,8 @@ SnapshotManager::GuardedData::GuardedData(IStorageManager& storage,
 
 SnapshotManager::SnapshotManager(
     IStorageManager& storage, IStateHandleManager& stateHandle,
-    std::shared_ptr<FollowerTermInformation const> termInfo)
-    : termInfo(std::move(termInfo)), guardedData(storage, stateHandle) {}
+    std::shared_ptr<FollowerTermInformation const> termInfo,
+    std::shared_ptr<ILeaderCommunicator> leaderComm)
+    : leaderComm(std::move(leaderComm)),
+      termInfo(std::move(termInfo)),
+      guardedData(storage, stateHandle) {}

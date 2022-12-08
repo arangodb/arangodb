@@ -42,6 +42,10 @@ struct FakeFollower final : replicated_log::ILogFollower,
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
   auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
                                  DeferredAction> override;
+  auto resign2() && -> std::tuple<
+      std::unique_ptr<replicated_state::IStorageEngineMethods>,
+      std::unique_ptr<replicated_log::IReplicatedStateHandle>,
+      DeferredAction> override;
   void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;

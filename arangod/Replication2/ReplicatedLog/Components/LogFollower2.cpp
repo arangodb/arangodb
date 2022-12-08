@@ -79,7 +79,8 @@ FollowerManager::FollowerManager(
     std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<FollowerTermInformation const> termInfo,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    std::shared_ptr<ILeaderCommunicator> leaderComm)
     : loggerContext(deriveLoggerContext(*termInfo)),
       options(options),
       storage(
@@ -87,8 +88,8 @@ FollowerManager::FollowerManager(
       compaction(std::make_shared<CompactionManager>(*storage, options)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
-      snapshot(
-          std::make_shared<SnapshotManager>(*storage, *stateHandle, termInfo)),
+      snapshot(std::make_shared<SnapshotManager>(*storage, *stateHandle,
+                                                 termInfo, leaderComm)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
                                                      loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
@@ -203,7 +204,8 @@ LogFollowerImpl::LogFollowerImpl(
     std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<const FollowerTermInformation> termInfo,
-    std::shared_ptr<const ReplicatedLogGlobalSettings> options)
+    std::shared_ptr<const ReplicatedLogGlobalSettings> options,
+    std::shared_ptr<ILeaderCommunicator> leaderComm)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
-              std::move(termInfo), std::move(options)) {}
+              std::move(termInfo), std::move(options), std::move(leaderComm)) {}

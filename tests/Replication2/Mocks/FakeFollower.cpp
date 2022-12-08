@@ -138,3 +138,9 @@ void FakeFollower::resign() & {
 replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
+
+auto FakeFollower::resign2() && -> std::tuple<
+    std::unique_ptr<replicated_state::IStorageEngineMethods>,
+    std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}

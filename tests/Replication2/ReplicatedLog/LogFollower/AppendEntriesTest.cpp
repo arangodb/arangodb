@@ -82,7 +82,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
     return std::make_shared<refactor::FollowerManager>(
         storage.getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
-        options);
+        options, nullptr);
   }
 };
 

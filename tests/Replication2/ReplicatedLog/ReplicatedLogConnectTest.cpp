@@ -96,13 +96,13 @@ struct ParticipantsConfigBuilder {
 namespace {
 struct ParticipantsFactoryMock : IParticipantsFactory {
   MOCK_METHOD(std::shared_ptr<ILogFollower>, constructFollower,
-              (std::unique_ptr<LogCore> logCore, FollowerTermInfo info,
-               ParticipantContext context),
+              (std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+               FollowerTermInfo info, ParticipantContext context),
               (override));
 
   MOCK_METHOD(std::shared_ptr<ILogLeader>, constructLeader,
-              (std::unique_ptr<LogCore> logCore, LeaderTermInfo info,
-               ParticipantContext context),
+              (std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+               LeaderTermInfo info, ParticipantContext context),
               (override));
 };
 
@@ -111,6 +111,10 @@ struct LogLeaderMock : replicated_log::ILogLeader {
   MOCK_METHOD(QuickLogStatus, getQuickStatus, (), (const, override));
   MOCK_METHOD((std::tuple<std::unique_ptr<LogCore>, DeferredAction>), resign,
               (), (override, ref(&&)));
+  MOCK_METHOD(
+      (std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
+                  std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
+      resign2, (), (override, ref(&&)));
 
   MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
@@ -131,6 +135,10 @@ struct LogFollowerMock : replicated_log::ILogFollower {
   MOCK_METHOD(
       (std::tuple<std::unique_ptr<replicated_log::LogCore>, DeferredAction>),
       resign, (), (override, ref(&&)));
+  MOCK_METHOD(
+      (std::tuple<std::unique_ptr<replicated_state::IStorageEngineMethods>,
+                  std::unique_ptr<IReplicatedStateHandle>, DeferredAction>),
+      resign2, (), (override, ref(&&)));
 
   MOCK_METHOD(WaitForFuture, waitFor, (LogIndex), (override));
   MOCK_METHOD(WaitForIteratorFuture, waitForIterator, (LogIndex), (override));
@@ -168,9 +176,8 @@ struct ReplicatedLogConnectTest : ::testing::Test {
   std::shared_ptr<test::FakeStorageEngineMethodsContext> storageContext =
       std::make_shared<test::FakeStorageEngineMethodsContext>(
           12, LogId{12}, std::make_shared<test::ThreadAsyncExecutor>());
-  std::unique_ptr<replicated_state::IStorageEngineMethods> methods =
-      storageContext->getMethods();
-  replicated_log::LogCore* core = new replicated_log::LogCore(*methods);
+  replicated_state::IStorageEngineMethods* methodsPtr =
+      storageContext->getMethods().release();
   std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock =
       std::make_shared<ReplicatedLogMetricsMock>();
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
@@ -187,8 +194,9 @@ struct ReplicatedLogConnectTest : ::testing::Test {
 
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::unique_ptr<replicated_log::LogCore>{core}, logMetricsMock,
-      optionsMock, participantsFactoryMock, loggerContext, myself);
+      std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
+      myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -200,28 +208,29 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    LeaderTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_EQ(logCore.release(), core);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.term, LogTerm{1});
-        EXPECT_EQ(*info.initialConfig, config.get());
-        return leaderMock = std::make_shared<LogLeaderMock>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              LeaderTermInfo info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(info.term, LogTerm{1});
+            EXPECT_EQ(*info.initialConfig, config.get());
+            return leaderMock = std::make_shared<LogLeaderMock>();
+          });
 
   log->updateConfig(term.get(), config.get());
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
-  EXPECT_CALL(std::move(*leaderMock), resign).Times(1);
+  EXPECT_CALL(std::move(*leaderMock), resign2).Times(1);
   connection.disconnect();
 }
 
 TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::unique_ptr<replicated_log::LogCore>{core}, logMetricsMock,
-      optionsMock, participantsFactoryMock, loggerContext, myself);
+      std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
+      myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -236,26 +245,28 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    LeaderTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_EQ(logCore.release(), core);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.term, LogTerm{1});
-        EXPECT_EQ(*info.initialConfig, config.get());
-        return leaderMock = std::make_shared<LogLeaderMock>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              LeaderTermInfo info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(info.term, LogTerm{1});
+            EXPECT_EQ(*info.initialConfig, config.get());
+            return leaderMock = std::make_shared<LogLeaderMock>();
+          });
 
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign).Times(1);
+  EXPECT_CALL(std::move(*leaderMock), resign2).Times(1);
   connection.disconnect();
 }
 
 TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::unique_ptr<replicated_log::LogCore>{core}, logMetricsMock,
-      optionsMock, participantsFactoryMock, loggerContext, myself);
+      std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
+      myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -267,15 +278,16 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    LeaderTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_EQ(logCore.release(), core);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.term, LogTerm{1});
-        EXPECT_EQ(*info.initialConfig, config.get());
-        return leaderMock = std::make_shared<LogLeaderMock>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              LeaderTermInfo info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(info.term, LogTerm{1});
+            EXPECT_EQ(*info.initialConfig, config.get());
+            return leaderMock = std::make_shared<LogLeaderMock>();
+          });
   // create initial state and connection
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
@@ -285,30 +297,35 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   term.setTerm(LogTerm{2}).setLeader("A");
 
   EXPECT_CALL(*participantsFactoryMock, constructFollower)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    FollowerTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_NE(logCore, nullptr);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.leader, "A");
-        EXPECT_EQ(info.term, LogTerm{2});
-        return followerMock = std::make_shared<LogFollowerMock>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              FollowerTermInfo const& info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
+            EXPECT_EQ(info.leader, "A");
+            EXPECT_EQ(info.term, LogTerm{2});
+            return followerMock = std::make_shared<LogFollowerMock>();
+          });
 
-  EXPECT_CALL(std::move(*leaderMock), resign).WillOnce([&] {
-    return std::make_tuple(std::unique_ptr<replicated_log::LogCore>(core),
-                           DeferredAction{});
+  EXPECT_CALL(std::move(*leaderMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
   });
   log->updateConfig(term.get(), config.get());
+  testing::Mock::VerifyAndClearExpectations(participantsFactoryMock.get());
 
-  EXPECT_CALL(std::move(*followerMock), resign);
+  EXPECT_CALL(std::move(*followerMock), resign2);
   connection.disconnect();
 }
 
 TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::unique_ptr<replicated_log::LogCore>{core}, logMetricsMock,
-      optionsMock, participantsFactoryMock, loggerContext, myself);
+      std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
+      myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader("B");
@@ -320,46 +337,50 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   EXPECT_CALL(*participantsFactoryMock, constructFollower)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    FollowerTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_NE(logCore, nullptr);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.leader, "B");
-        EXPECT_EQ(info.term, LogTerm{1});
-        return followerMock = std::make_shared<LogFollowerMock>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              FollowerTermInfo const& info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(info.leader, "B");
+            EXPECT_EQ(info.term, LogTerm{1});
+            return followerMock = std::make_shared<LogFollowerMock>();
+          });
   // create initial state and connection
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
   log->updateConfig(term.get(), config.get());
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    LeaderTermInfo const& info,
-                    ParticipantContext const& context) {
-        EXPECT_EQ(logCore.release(), core);
-        EXPECT_EQ(info.myself, myself.serverId);
-        EXPECT_EQ(info.term, LogTerm{2});
-        EXPECT_EQ(*info.initialConfig, config.get());
-        return leaderMock = std::make_shared<LogLeaderMock>();
-      });
-  EXPECT_CALL(std::move(*followerMock), resign).WillOnce([&] {
-    return std::make_tuple(std::unique_ptr<replicated_log::LogCore>(core),
-                           DeferredAction{});
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              LeaderTermInfo info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(info.myself, myself.serverId);
+            EXPECT_EQ(info.term, LogTerm{2});
+            EXPECT_EQ(*info.initialConfig, config.get());
+            return leaderMock = std::make_shared<LogLeaderMock>();
+          });
+  EXPECT_CALL(std::move(*followerMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
   });
   // update term and make myself leader
   term.setTerm(LogTerm{2}).setLeader(myself);
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign);
+  EXPECT_CALL(std::move(*leaderMock), resign2);
   connection.disconnect();
 }
 
 TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   auto log = std::make_shared<replicated_log::ReplicatedLog>(
-      std::unique_ptr<replicated_log::LogCore>{core}, logMetricsMock,
-      optionsMock, participantsFactoryMock, loggerContext, myself);
+      std::unique_ptr<replicated_state::IStorageEngineMethods>{methodsPtr},
+      logMetricsMock, optionsMock, participantsFactoryMock, loggerContext,
+      myself);
 
   test::TermBuilder term;
   term.setTerm(LogTerm{1}).setLeader(myself);
@@ -371,12 +392,12 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
       .setParticipant("B", {.allowedInQuorum = true});
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
-      .WillOnce([&](std::unique_ptr<LogCore> logCore,
-                    LeaderTermInfo const& info,
-                    ParticipantContext const& context) {
-        return leaderMock =
-                   std::make_shared<testing::StrictMock<LogLeaderMock>>();
-      });
+      .WillOnce(
+          [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
+              LeaderTermInfo info, ParticipantContext context) {
+            return leaderMock =
+                       std::make_shared<testing::StrictMock<LogLeaderMock>>();
+          });
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
   log->updateConfig(term.get(), config.get());
@@ -403,6 +424,6 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   config.setParticipant("C", {}).incGeneration();
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign);
+  EXPECT_CALL(std::move(*leaderMock), resign2);
   connection.disconnect();
 }
