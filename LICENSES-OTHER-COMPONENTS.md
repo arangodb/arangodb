@@ -359,10 +359,10 @@ _Enterprise Edition only_
 ### immer
 
 * Name: immer
-* Version: 0.7.0
-* Date: 2021-11-08 17:27:00 UTC
+* Version: 0.8.0
+* Date: 2022-12-06 11:30 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.8.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc

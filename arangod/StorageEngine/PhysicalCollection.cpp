@@ -200,6 +200,17 @@ std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   return {_indexes.begin(), _indexes.end()};
 }
 
+Index* PhysicalCollection::primaryIndex() const {
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  for (auto& idx : _indexes) {
+    if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      TRI_ASSERT(idx->id().isPrimary());
+      return idx.get();
+    }
+  }
+  return nullptr;
+}
+
 void PhysicalCollection::getIndexesVPack(
     VPackBuilder& result,
     std::function<bool(Index const*,

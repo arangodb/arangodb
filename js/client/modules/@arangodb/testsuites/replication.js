@@ -214,7 +214,7 @@ function replicationSync (options) {
   return new replicationRunner(options, 'replication_sync').run(testCases);
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_replication'] = shellReplication;
   testFns['replication_aql'] = replicationAql;
