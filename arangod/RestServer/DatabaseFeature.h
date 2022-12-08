@@ -264,12 +264,14 @@ class DatabaseFeature : public ArangodFeature {
       return lists;
     }
 
-    [[nodiscard]] auto clone() const {
-      auto lists = load();
+    [[nodiscard]] static auto make(
+        std::shared_ptr<DatabasesLists const> const& lists) {
       return std::make_shared<DatabasesLists>(*lists);
     }
 
-    void store(std::shared_ptr<DatabasesLists>&& lists) noexcept {
+    [[nodiscard]] auto clone() const { return make(load()); }
+
+    void store(std::shared_ptr<DatabasesLists const>&& lists) noexcept {
       TRI_ASSERT(lists != nullptr);
       std::atomic_store(&_impl, std::move(lists));
     }
@@ -277,7 +279,7 @@ class DatabaseFeature : public ArangodFeature {
    private:
     // TODO(MBkkt) replace via std::atomic<std::shared_ptr>
     //  when libc++ support it or we drop it support
-    std::shared_ptr<DatabasesLists> _impl = create();
+    std::shared_ptr<DatabasesLists const> _impl = create();
   } _databasesLists;
 
   mutable arangodb::Mutex _databasesMutex;

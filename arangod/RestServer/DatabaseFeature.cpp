@@ -74,7 +74,7 @@ using namespace arangodb::options;
 namespace {
 
 template<typename T>
-void waitUnique(const std::shared_ptr<T>& ptr) {
+void waitUnique(std::shared_ptr<T> const& ptr) {
   // It's safe because we guarantee we have not weak_ptr
   while (ptr.use_count() != 1) {
     std::this_thread::sleep_for(std::chrono::microseconds(250));
@@ -126,23 +126,16 @@ void DatabaseManagerThread::run() {
   int cleanupCycles = 0;
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& lists = databaseFeature._databasesLists;
 
   while (true) {
     try {
       // check if we have to drop some database
       TRI_vocbase_t* database = nullptr;
-
-      {
-        auto theLists = databaseFeature._databasesLists.load();
-
-        for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
-          if (!vocbase->isDangling()) {
-            continue;
-          }
-
-          // found a database to delete
+      for (auto l = lists.load(); auto* vocbase : l->_droppedDatabases) {
+        if (vocbase->isDangling()) {
           database = vocbase;
-          break;
+          break;  // found a database to delete
         }
       }
 
@@ -151,22 +144,21 @@ void DatabaseManagerThread::run() {
         {
           MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
 
-          // Build the new value:
-          auto newLists = databaseFeature._databasesLists.create();
-          auto oldLists = databaseFeature._databasesLists.load();
+          auto oldLists = lists.load();
+          auto it = oldLists->_droppedDatabases.find(database);
+          if (it == oldLists->_droppedDatabases.end()) {
+            continue;  // try other value
+          }
+
           try {
-            newLists->_databases = oldLists->_databases;
-            for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
-              if (vocbase != database) {
-                newLists->_droppedDatabases.insert(vocbase);
-              }
-            }
+            // Build the new value:
+            auto newLists = lists.make(oldLists);
+            newLists->_droppedDatabases.erase(database);
+            // Replace the old by the new:
+            lists.store(std::move(newLists));
           } catch (...) {
             continue;  // try again later
           }
-
-          // Replace the old by the new:
-          databaseFeature._databasesLists.store(std::move(newLists));
 
           waitUnique(oldLists);
           // From now on no other thread can possibly see the old TRI_vocbase_t*
@@ -1334,11 +1326,10 @@ void DatabaseFeature::stopAppliers() {
   ReplicationFeature& replicationFeature =
       server().getFeature<ReplicationFeature>();
 
-  MUTEX_LOCKER(mutexLocker,
-               _databasesMutex);  // Only one should do this at a time
-  // No need for the thread protector here, because we have the mutex
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
+  auto theLists = _databasesLists.load();
 
-  for (auto& p : _databasesLists.load()->_databases) {
+  for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
@@ -1349,12 +1340,7 @@ void DatabaseFeature::stopAppliers() {
 
 /// @brief close all opened databases
 void DatabaseFeature::closeOpenDatabases() {
-  MUTEX_LOCKER(mutexLocker,
-               _databasesMutex);  // Only one should do this at a time
-  // No need for the thread protector here, because we have the mutex
-  // Note however, that somebody could still read the lists concurrently,
-  // therefore we first install a new value, call scan() on the protector
-  // and only then really destroy the vocbases:
+  MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
   // Build the new value:
   auto oldList = _databasesLists.load();
@@ -1562,11 +1548,6 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 /// @brief close all dropped databases
 void DatabaseFeature::closeDroppedDatabases() {
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
-
-  // No need for the thread protector here, because we have the mutex
-  // Note however, that somebody could still read the lists concurrently,
-  // therefore we first install a new value, call scan() on the protector
-  // and only then really destroy the vocbases:
 
   // Build the new value:
   auto oldList = _databasesLists.load();
