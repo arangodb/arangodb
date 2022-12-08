@@ -212,6 +212,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     result.add("databases", VPackValue(VPackValueType::Array));
 
     for (auto const& database : databases) {
+      auto vocbase = dbFeature.lookupDatabase(database);
       result.openObject();
       result.add("name", VPackValue(database));
 
@@ -231,6 +232,34 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
               isSingleShard = false;
             }
             result.add("numShards", VPackValue(numShards));
+
+            auto ctx = transaction::StandaloneContext::Create(*vocbase);
+
+            auto& collName = coll->name();
+            SingleCollectionTransaction trx(ctx, collName,
+                                            AccessMode::Type::READ);
+
+            Result res = trx.begin();
+
+            if (res.ok()) {
+              OperationOptions options(ExecContext::current());
+              OperationResult opResult =
+                  trx.count(collName, transaction::CountType::Normal, options);
+              std::ignore = trx.finish(opResult.result);
+              if (opResult.fail()) {
+                LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
+                    << "Failed to get number of documents: "
+                    << res.errorMessage();
+              } else {
+                VPackBuilder builder(*(opResult.buffer));
+                result.add("numDocs", VPackValue(builder.slice().getUInt()));
+              }
+            } else {
+              LOG_TOPIC("e7497", WARN, Logger::STATISTICS)
+                  << "Failed to begin transaction for getting number of "
+                     "documents: "
+                  << res.errorMessage();
+            }
 
             auto collType = coll->type();
             if (collType == TRI_COL_TYPE_DOCUMENT) {

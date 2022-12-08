@@ -57,8 +57,8 @@ namespace arangodb::metrics {
 TelemetricsFeature::TelemetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _enable{true},
-      _interval{9},            // 24h 86400
-      _rescheduleInterval(3),  // 30 min 1800
+      _interval{86400},           // 24h
+      _rescheduleInterval(1800),  // 30 min
       _updateHandler(std::make_unique<LastUpdateHandler>(server)) {
   setOptional();
   startsAfter<SystemDatabaseFeature>();
@@ -88,11 +88,10 @@ void TelemetricsFeature::collectOptions(
 
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
-  /*
+  // make it no les than an hour for sending telemetrics
   if (_interval < 3600) {
     _interval = 3600;
   }
-   */
 }
 
 void LastUpdateHandler::sendTelemetrics() {
