@@ -24,7 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Metrics/Counter.h"
@@ -109,7 +108,6 @@ class DatabaseFeature : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(Server& server);
-  ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -254,10 +252,34 @@ class DatabaseFeature : public ArangodFeature {
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
-  std::atomic<DatabasesLists*> _databasesLists;
-  // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // arangodb::basics::DataProtector<64>
-  mutable arangodb::basics::DataProtector _databasesProtector;
+  class DatabasesListsGuard {
+   public:
+    [[nodiscard]] static std::shared_ptr<DatabasesLists> create() {
+      return std::make_shared<DatabasesLists>();
+    }
+
+    [[nodiscard]] auto load() const noexcept {
+      auto lists = std::atomic_load(&_impl);
+      TRI_ASSERT(lists != nullptr);
+      return lists;
+    }
+
+    [[nodiscard]] auto clone() const {
+      auto lists = load();
+      return std::make_shared<DatabasesLists>(*lists);
+    }
+
+    void store(std::shared_ptr<DatabasesLists>&& lists) noexcept {
+      TRI_ASSERT(lists != nullptr);
+      std::atomic_store(&_impl, std::move(lists));
+    }
+
+   private:
+    // TODO(MBkkt) replace via std::atomic<std::shared_ptr>
+    //  when libc++ support it or we drop it support
+    std::shared_ptr<DatabasesLists> _impl = create();
+  } _databasesLists;
+
   mutable arangodb::Mutex _databasesMutex;
 
   std::atomic<bool> _started;

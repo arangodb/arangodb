@@ -72,6 +72,16 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace {
+
+template<typename T>
+void waitUnique(const std::shared_ptr<T>& ptr) {
+  // It's safe because we guarantee we have not weak_ptr
+  while (ptr.use_count() != 1) {
+    std::this_thread::sleep_for(std::chrono::microseconds(250));
+  }
+  std::atomic_thread_fence(std::memory_order_acquire);
+}
+
 arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
     arangodb::ArangodServer& server) {
   arangodb::CreateDatabaseInfo info(server, arangodb::ExecContext::current());
@@ -123,7 +133,6 @@ void DatabaseManagerThread::run() {
       TRI_vocbase_t* database = nullptr;
 
       {
-        auto unuser(databaseFeature._databasesProtector.use());
         auto theLists = databaseFeature._databasesLists.load();
 
         for (TRI_vocbase_t* vocbase : theLists->_droppedDatabases) {
@@ -143,10 +152,9 @@ void DatabaseManagerThread::run() {
           MUTEX_LOCKER(mutexLocker, databaseFeature._databasesMutex);
 
           // Build the new value:
+          auto newLists = databaseFeature._databasesLists.create();
           auto oldLists = databaseFeature._databasesLists.load();
-          decltype(oldLists) newLists = nullptr;
           try {
-            newLists = new DatabaseFeature::DatabasesLists();
             newLists->_databases = oldLists->_databases;
             for (TRI_vocbase_t* vocbase : oldLists->_droppedDatabases) {
               if (vocbase != database) {
@@ -154,17 +162,14 @@ void DatabaseManagerThread::run() {
               }
             }
           } catch (...) {
-            delete newLists;
             continue;  // try again later
           }
 
           // Replace the old by the new:
-          databaseFeature._databasesLists = newLists;
-          databaseFeature._databasesProtector.scan();
-          delete oldLists;
+          databaseFeature._databasesLists.store(std::move(newLists));
 
-          // From now on no other thread can possibly see the old
-          // TRI_vocbase_t*,
+          waitUnique(oldLists);
+          // From now on no other thread can possibly see the old TRI_vocbase_t*
           // note that there is only one DatabaseManager thread, so it is
           // not possible that another thread has seen this very database
           // and tries to free it at the same time!
@@ -263,7 +268,6 @@ void DatabaseManagerThread::run() {
         if (++cleanupCycles >= 10) {
           cleanupCycles = 0;
 
-          auto unuser(databaseFeature._databasesProtector.use());
           auto theLists = databaseFeature._databasesLists.load();
 
           bool force = isStopping();
@@ -294,7 +298,7 @@ void DatabaseManagerThread::run() {
 
 struct HeartbeatTimescale {
   static arangodb::metrics::LogScale<double> scale() {
-    return {10.f, 0.f, 1000000.f, 8};
+    return {10.0, 0.0, 1000000.0, 8};
   }
 };
 
@@ -449,7 +453,6 @@ DatabaseFeature::DatabaseFeature(Server& server)
       _defaultReplicationVersion(replication::Version::ONE),
       _extendedNamesForDatabases(false),
       _performIOHeartbeat(true),
-      _databasesLists(new DatabasesLists()),
       _started(false) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
@@ -459,12 +462,6 @@ DatabaseFeature::DatabaseFeature(Server& server)
   startsAfter<EngineSelectorFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<StorageEngineFeature>();
-}
-
-DatabaseFeature::~DatabaseFeature() {
-  // clean up
-  auto p = _databasesLists.load();
-  delete p;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -645,7 +642,6 @@ void DatabaseFeature::beginShutdown() {
     _ioHeartbeatThread->wakeup();         // will shorten the wait
   }
 
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
@@ -681,7 +677,6 @@ void DatabaseFeature::stop() {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   engine.cleanupReplicationContexts();
 
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -818,7 +813,6 @@ void DatabaseFeature::recoveryDone() {
 
   _pendingRecoveryCallbacks.clear();
 
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
@@ -857,7 +851,6 @@ bool DatabaseFeature::started() const noexcept {
 
 void DatabaseFeature::enumerate(
     std::function<void(TRI_vocbase_t*)> const& callback) {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
@@ -893,7 +886,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   MUTEX_LOCKER(mutexLocker, _databaseCreateLock);
   {
     {
-      auto unuser(_databasesProtector.use());
       auto theLists = _databasesLists.load();
 
       auto it = theLists->_databases.find(name);
@@ -958,20 +950,14 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
     {
       MUTEX_LOCKER(mutexLocker, _databasesMutex);
-      auto oldLists = _databasesLists.load();
-      decltype(oldLists) newLists = nullptr;
       try {
-        newLists = new DatabasesLists(*oldLists);
+        auto newLists = _databasesLists.clone();
         newLists->_databases.insert(std::make_pair(name, vocbase.get()));
+        _databasesLists.store(std::move(newLists));
       } catch (...) {
         LOG_TOPIC("34825", ERR, arangodb::Logger::FIXME)
             << "Out of memory for putting new database into list!";
         // This is bad, but at least we do not crash!
-      }
-      if (newLists != nullptr) {
-        _databasesLists = newLists;
-        _databasesProtector.scan();
-        delete oldLists;
       }
     }
   }  // release _databaseCreateLock
@@ -1006,17 +992,14 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
   {
     MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
-    auto oldLists = _databasesLists.load();
-    decltype(oldLists) newLists = nullptr;
+    decltype(_databasesLists.clone()) newLists;
     TRI_vocbase_t* vocbase = nullptr;
     try {
-      newLists = new DatabasesLists(*oldLists);
+      newLists = _databasesLists.clone();
 
       auto it = newLists->_databases.find(name);
 
       if (it == newLists->_databases.end()) {
-        // not found
-        delete newLists;
         return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
       }
 
@@ -1058,16 +1041,13 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
       newLists->_databases.erase(it);
       newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
-      delete newLists;
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(id != 0);
 
-    _databasesLists = newLists;
-    _databasesProtector.scan();
-    delete oldLists;
+    _databasesLists.store(std::move(newLists));
 
     TRI_ASSERT(!vocbase->isSystem());
     bool result = vocbase->markAsDropped();
@@ -1113,7 +1093,6 @@ ErrorCode DatabaseFeature::dropDatabase(TRI_voc_tick_t id,
 
   // find database by name
   {
-    auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
@@ -1138,7 +1117,6 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
   std::vector<TRI_voc_tick_t> ids;
 
   {
-    auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
@@ -1161,7 +1139,6 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   std::vector<std::string> names;
 
   {
-    auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
@@ -1188,7 +1165,6 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   {
-    auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
@@ -1223,7 +1199,6 @@ void DatabaseFeature::inventory(
     std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   result.openObject();
   {
-    auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
 
     for (auto& p : theLists->_databases) {
@@ -1244,7 +1219,6 @@ void DatabaseFeature::inventory(
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) const {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   auto it = theLists->_databases.find(name);
@@ -1260,7 +1234,6 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) const {
 }
 
 TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
@@ -1283,7 +1256,6 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) const {
     return nullptr;
   }
 
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   // database names with a number in front are invalid names
@@ -1310,7 +1282,6 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) const {
 
 std::string DatabaseFeature::translateCollectionName(
     std::string const& dbName, std::string const& collectionName) {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
   auto itr = theLists->_databases.find(dbName);
 
@@ -1339,7 +1310,6 @@ std::string DatabaseFeature::translateCollectionName(
 
 void DatabaseFeature::enumerateDatabases(
     std::function<void(TRI_vocbase_t& vocbase)> const& func) {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
@@ -1388,20 +1358,14 @@ void DatabaseFeature::closeOpenDatabases() {
 
   // Build the new value:
   auto oldList = _databasesLists.load();
-  decltype(oldList) newList = nullptr;
-  try {
-    newList = new DatabasesLists();
-    newList->_droppedDatabases = _databasesLists.load()->_droppedDatabases;
-  } catch (...) {
-    delete newList;
-    throw;
-  }
+  auto newList = _databasesLists.create();
+  newList->_droppedDatabases = oldList->_droppedDatabases;
 
   // Replace the old by the new:
-  _databasesLists = newList;
-  _databasesProtector.scan();
+  _databasesLists.store(std::move(newList));
 
-  // Now it is safe to destroy the old databases and the old lists struct:
+  waitUnique(oldList);
+  // Now it is safe to destroy the old databases:
   for (auto& p : oldList->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
@@ -1409,9 +1373,6 @@ void DatabaseFeature::closeOpenDatabases() {
 
     delete vocbase;
   }
-
-  delete oldList;  // Note that this does not delete the TRI_vocbase_t
-                   // pointers!
 }
 
 /// @brief create base app directory
@@ -1513,8 +1474,7 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   // open databases in defined order
   MUTEX_LOCKER(mutexLocker, _databasesMutex);
 
-  auto oldLists = _databasesLists.load();
-  auto newLists = new DatabasesLists(*oldLists);
+  auto newLists = _databasesLists.clone();
 
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
@@ -1585,22 +1545,16 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       database.release();
     }
   } catch (std::exception const& ex) {
-    delete newLists;
-
     LOG_TOPIC("c7dc0", FATAL, arangodb::Logger::FIXME)
         << "cannot start database: " << ex.what();
     FATAL_ERROR_EXIT();
   } catch (...) {
-    delete newLists;
-
     LOG_TOPIC("79053", FATAL, arangodb::Logger::FIXME)
         << "cannot start database: unknown exception";
     FATAL_ERROR_EXIT();
   }
 
-  _databasesLists = newLists;
-  _databasesProtector.scan();
-  delete oldLists;
+  _databasesLists.store(std::move(newLists));
 
   return res;
 }
@@ -1616,21 +1570,14 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   // Build the new value:
   auto oldList = _databasesLists.load();
-  decltype(oldList) newList = nullptr;
-  try {
-    newList = new DatabasesLists();
-    newList->_databases = _databasesLists.load()->_databases;
-  } catch (...) {
-    delete newList;
-    throw;
-  }
+  auto newList = _databasesLists.create();
+  newList->_databases = oldList->_databases;
 
   // Replace the old by the new:
-  _databasesLists = newList;
-  _databasesProtector.scan();
+  _databasesLists.store(std::move(newList));
 
-  // Now it is safe to destroy the old dropped databases and the old lists
-  // struct:
+  waitUnique(oldList);
+  // Now it is safe to destroy the old dropped databases:
   for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
     TRI_ASSERT(vocbase != nullptr);
 
@@ -1645,9 +1592,6 @@ void DatabaseFeature::closeDroppedDatabases() {
           << vocbase->name() << " - close doing nothing.";
     }
   }
-
-  delete oldList;  // Note that this does not delete the TRI_vocbase_t
-                   // pointers!
 }
 
 void DatabaseFeature::verifyAppPaths() {
@@ -1689,7 +1633,6 @@ void DatabaseFeature::verifyAppPaths() {
 
 /// @brief activates deadlock detection in all existing databases
 void DatabaseFeature::enableDeadlockDetection() {
-  auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
   for (auto& p : theLists->_databases) {
