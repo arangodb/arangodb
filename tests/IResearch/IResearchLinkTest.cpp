@@ -64,10 +64,9 @@ namespace fs = std::filesystem;
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-REGISTER_COMPRESSION(
-    iresearch::compression::mock::test_compressor,
-    &iresearch::compression::mock::test_compressor::compressor,
-    &iresearch::compression::mock::test_compressor::decompressor);
+REGISTER_COMPRESSION(irs::compression::mock::test_compressor,
+                     &irs::compression::mock::test_compressor::compressor,
+                     &irs::compression::mock::test_compressor::decompressor);
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();

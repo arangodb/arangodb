@@ -4142,7 +4142,9 @@ class mock_term_reader : public irs::term_reader {
     return 0;
   }
 
-  irs::term_meta term_meta(irs::bytes_view) const noexcept { return {}; }
+  irs::term_meta term_meta(irs::bytes_view) const noexcept override {
+    return {};
+  }
 
   size_t read_documents(irs::bytes_view,
                         std::span<irs::doc_id_t>) const override {

@@ -174,7 +174,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(std::string_view data) override { return true; }
+  virtual bool reset(std::string_view) override { return true; }
 
  private:
   irs::frequency _attr;
@@ -262,7 +262,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(std::string_view data) override { return true; }
+  virtual bool reset(std::string_view) override { return true; }
 
  private:
   TestAttribute _attr;
@@ -314,7 +314,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(std::string_view data) override {
+  virtual bool reset(std::string_view) override {
     _resetted = true;
     return true;
   }
@@ -2594,8 +2594,6 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
   EXPECT_EQ(1, reader->size());
   EXPECT_EQ(size, reader->docs_count());
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-
   size_t found = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
@@ -2612,10 +2610,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
-    auto& filter =
-        filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-    ASSERT_EQ(filter.type(engine),
-              arangodb::iresearch::PrimaryKeyFilter::type(engine));
+    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
     EXPECT_FALSE(filters.empty());
 
     // first execution
@@ -2798,10 +2793,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2863,7 +2855,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->documents();
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          engine, arangodb::LocalDocumentId(rid), false));
+          arangodb::LocalDocumentId(rid), false));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -2910,10 +2902,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2975,7 +2964,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     {
       auto ctx = store.writer->documents();
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          engine, arangodb::LocalDocumentId(rid), false));
+          arangodb::LocalDocumentId(rid), false));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
@@ -3022,10 +3011,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
