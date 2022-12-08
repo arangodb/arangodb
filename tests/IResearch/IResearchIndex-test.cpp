@@ -226,10 +226,10 @@ class IResearchIndexTest
 #ifdef USE_ENTERPRISE
     analyzers.emplace(
         result, "testVocbase::geojson", "geojson",
-                      arangodb::velocypack::Parser::fromJson(
-                          " { \"type\": \"shape\", \"options\":{\"maxCells\":20,\
+        arangodb::velocypack::Parser::fromJson(
+            " { \"type\": \"shape\", \"options\":{\"maxCells\":20,\
                               \"minLevel\":4, \"maxLevel\":23}}")
-                          ->slice());
+            ->slice());
 #endif
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -1253,7 +1253,8 @@ TEST_F(IResearchIndexTest, test_geoCached) {
 
   // populate collections
   {
-    auto doc0 = arangodb::velocypack::Parser::fromJson("{\
+    auto doc0 = arangodb::velocypack::Parser::fromJson(
+        "{\
        \"geofield\" : {\
         \"type\" : \"Polygon\",\
         \"coordinates\" : [[\
