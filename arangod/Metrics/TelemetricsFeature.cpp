@@ -54,13 +54,12 @@ using namespace arangodb;
 
 namespace arangodb::metrics {
 
-TelemetricsFeature::TelemetricsFeature(
-    Server& server, std::unique_ptr<ITelemetricsSender> telemetricsSender)
+TelemetricsFeature::TelemetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _enable{true},
-      _interval{86400},           // 24h
-      _rescheduleInterval(1800),  // 30 min
-      _prepareDeadline(30) {
+      _interval{9},            // 24h 86400
+      _rescheduleInterval(3),  // 30 min 1800
+      _updateHandler(std::make_unique<LastUpdateHandler>(server)) {
   setOptional();
   startsAfter<SystemDatabaseFeature>();
   startsAfter<ClusterFeature>();
@@ -89,24 +88,24 @@ void TelemetricsFeature::collectOptions(
 
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
+  /*
   if (_interval < 3600) {
     _interval = 3600;
   }
+   */
 }
 
-void TelemetricsFeature::sendTelemetrics() {
+void LastUpdateHandler::sendTelemetrics() {
   VPackBuilder result;
 
-  ArangodServer& s = server();
-  SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase, s,
-                                       false);
-  _sender->send(result);
+  SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
+                                       _server, false);
+  _sender->send(result.slice());
 }
 
-void TelemetricsFeature::doLastUpdate(std::string_view oldRev,
-                                      uint64_t lastUpdate) {
-  auto& sysDbFeature = server().getFeature<SystemDatabaseFeature>();
-
+void LastUpdateHandler::doLastUpdate(std::string_view oldRev,
+                                     uint64_t lastUpdate) {
+  auto& sysDbFeature = _server.getFeature<SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
   OperationOptions options;
 
@@ -142,11 +141,11 @@ void TelemetricsFeature::doLastUpdate(std::string_view oldRev,
   }
 }
 
-bool TelemetricsFeature::handleLastUpdateInDoc(bool isCoordinator,
-                                               std::string& oldRev,
-                                               uint64_t& lastUpdate) {
-  auto& sysDbFeature = server().getFeature<SystemDatabaseFeature>();
-
+bool LastUpdateHandler::handleLastUpdatePersistance(bool isCoordinator,
+                                                    std::string& oldRev,
+                                                    uint64_t& lastUpdate,
+                                                    uint64_t interval) {
+  auto& sysDbFeature = _server.getFeature<SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
   OperationOptions options;
@@ -184,7 +183,6 @@ bool TelemetricsFeature::handleLastUpdateInDoc(bool isCoordinator,
     LOG_TOPIC("26231", WARN, Logger::STATISTICS)
         << "Failed to read document: " << res.errorMessage();
   } else if (res.ok()) {  // we found the document
-
     VPackSlice docReadSlice = docRead.slice();
     TRI_ASSERT(!docReadSlice.isNone());
     uint64_t lastUpdateRead = docReadSlice.get(::kAttrName).getUInt();
@@ -221,7 +219,7 @@ bool TelemetricsFeature::handleLastUpdateInDoc(bool isCoordinator,
     }
 
     auto diffInSecs = rightNowSecs - seconds{lastUpdateRead}.count();
-    if (diffInSecs >= _interval) {
+    if (diffInSecs >= interval) {
       velocypack::Builder docInfo;
       {
         VPackObjectBuilder b(&docInfo);
@@ -311,11 +309,13 @@ void TelemetricsFeature::start() {
     std::string oldRev;
     std::uint64_t lastUpdate = 0;
     try {
-      if (handleLastUpdateInDoc(isCoordinator, oldRev, lastUpdate)) {
+      if (_updateHandler->handleLastUpdatePersistance(isCoordinator, oldRev,
+                                                      lastUpdate, _interval)) {
+        TRI_ASSERT(_updateHandler != nullptr);
         // has reached the interval to send telemetrics again
-        sendTelemetrics();
+        _updateHandler->sendTelemetrics();
         if (isCoordinator) {
-          doLastUpdate(oldRev, lastUpdate);
+          _updateHandler->doLastUpdate(oldRev, lastUpdate);
         }
       }
     } catch (...) {

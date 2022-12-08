@@ -32,24 +32,54 @@
 
 namespace arangodb::metrics {
 
+/*
 struct ITelemetricsSender {
  public:
   virtual ~ITelemetricsSender() = default;
   virtual void send(arangodb::velocypack::Builder&) = 0;
 };
+*/
 
-class TelemetricsSender : public ITelemetricsSender {
-  void send(arangodb::velocypack::Builder& result) override {
-    LOG_TOPIC("affd3", WARN, Logger::STATISTICS) << result.slice().toJson();
+struct ITelemetricsSender {
+  virtual ~ITelemetricsSender() = default;
+  virtual void send(arangodb::velocypack::Slice result) const = 0;
+};
+
+struct TelemetricsSender final : public ITelemetricsSender {
+  void send(arangodb::velocypack::Slice result) const override {
+    LOG_TOPIC("affd3", WARN, Logger::STATISTICS) << result.toJson();
   }
 };
 
-class TelemetricsFeature final : public ArangodFeature {
+struct LastUpdateHandler {
+ public:
+  LastUpdateHandler(ArangodServer& server, std::uint64_t prepareDeadline = 30)
+      : _sender(std::make_unique<TelemetricsSender>()),
+        _prepareDeadline(prepareDeadline),
+        _server(server) {}
+  virtual ~LastUpdateHandler() = default;
+  virtual bool handleLastUpdatePersistance(bool isCoordinator,
+                                           std::string& oldRev,
+                                           uint64_t& lastUpdate,
+                                           uint64_t interval);
+  virtual void sendTelemetrics();
+  void doLastUpdate(std::string_view oldRev, uint64_t lastUpdate);
+  void setTelemetricsSender(std::unique_ptr<ITelemetricsSender> sender) {
+    _sender = std::move(sender);
+  }
+  ITelemetricsSender* getSender() { return _sender.get(); }
+
+ private:
+  std::unique_ptr<ITelemetricsSender> _sender;
+  std::uint64_t _prepareDeadline;
+  ArangodServer& _server;
+};
+
+class TelemetricsFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Telemetrics"; }
 
-  explicit TelemetricsFeature(
-      Server& server, std::unique_ptr<ITelemetricsSender> telemetricsSender);
+  explicit TelemetricsFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
@@ -60,20 +90,19 @@ class TelemetricsFeature final : public ArangodFeature {
     _rescheduleInterval = newInerval;
   }
   void setInterval(uint64_t newInterval) { _interval = newInterval; }
+  void setUpdateHandler(std::unique_ptr<LastUpdateHandler> updateHandler) {
+    _updateHandler = std::move(updateHandler);
+  }
 
  private:
   bool _enable;
   uint64_t _interval;
   uint64_t _rescheduleInterval;
-  uint64_t _prepareDeadline;
-  void sendTelemetrics();
-  bool handleLastUpdateInDoc(bool isCoordinator, std::string& oldRev,
-                             uint64_t& lastUpdate);
-  void doLastUpdate(std::string_view oldRev, uint64_t lastUpadte);
+
   std::function<void(bool)> _telemetricsEnqueue;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
-  std::unique_ptr<ITelemetricsSender> _sender;
+  std::unique_ptr<LastUpdateHandler> _updateHandler;
 };
 
 }  // namespace arangodb::metrics

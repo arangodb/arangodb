@@ -113,10 +113,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server, std::array{ArangodServer::id<ScriptFeature>()});
         },
-        [](auto& server, TypeTag<metrics::TelemetricsFeature>) {
-          return std::make_unique<metrics::TelemetricsFeature>(
-              server, std::make_unique<metrics::TelemetricsSender>());
-        },
         [&name](auto& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, name);
         },

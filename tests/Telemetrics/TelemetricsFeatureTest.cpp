@@ -22,13 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include <gmock/gmock.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Metrics/TelemetricsFeature.h"
 #include "Mocks/Servers.h"
-#include "Logger/LogMacros.h"
-
-#include <chrono>
-#include <thread>
+#include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
 
@@ -37,26 +36,69 @@ class TelemetricsFeatureTest : public ::testing::Test {
   TelemetricsFeatureTest() {}
 };
 
-struct MockTelemetricsSender : public arangodb::metrics::ITelemetricsSender {
-  void send(velocypack::Builder& builder) override {
-    velocypack::Slice msgSlice = builder.slice();
-    ASSERT_FALSE(msgSlice.get("deployment").isNone());
-    ASSERT_FALSE(msgSlice.get("type").isNone());
-    ASSERT_FALSE(msgSlice.get("host").isNone());
-    // assert for all fields that would be present in the support-info
-  }
+struct MockTelemetricsSender : public metrics::ITelemetricsSender {
+  MOCK_METHOD(void, send, (arangodb::velocypack::Slice), (const, override));
+};
+
+struct MockLastUpdateHandler : public metrics::LastUpdateHandler {
+  MockLastUpdateHandler(ArangodServer& server, uint64_t prepareDeadline)
+      : metrics::LastUpdateHandler(server, prepareDeadline) {}
+  MOCK_METHOD(bool, handleLastUpdatePersistance,
+              (bool, std::string&, uint64_t&, uint64_t), (override));
+  MOCK_METHOD(void, sendTelemetrics, (), (override));
 };
 
 TEST_F(TelemetricsFeatureTest, test_log_telemetrics) {
+  auto sender = std::make_unique<MockTelemetricsSender>();
+
+  ON_CALL(*sender, send).WillByDefault([&](velocypack::Slice result) {
+    ASSERT_FALSE(result.get("OK").isNone());
+    ASSERT_EQ(result.get("OK").getBoolean(), true);
+  });
+  EXPECT_CALL(*sender, send).Times(2);
+
   arangodb::tests::mocks::MockRestServer server(false);
-  server.addFeature<metrics::TelemetricsFeature>(
-      false, std::make_unique<MockTelemetricsSender>());
-  //  auto feature = server.getFeature<metrics::TelemetricsFeature>();
-  // TODO: make a copy constructor
-  server.getFeature<metrics::TelemetricsFeature>().setInterval(
-      10);  // 30 seconsd
-  server.getFeature<metrics::TelemetricsFeature>().setRescheduleInterval(
-      5);  // 10 seconds
-  server.startFeatures();
-  std::this_thread::sleep_for(std::chrono::seconds(15));
+
+  auto updateHandler =
+      std::make_unique<MockLastUpdateHandler>(server.server(), 30);
+
+  ON_CALL(*updateHandler, handleLastUpdatePersistance)
+      .WillByDefault([&](bool isCoordinator, std::string& oldRev,
+                         uint64_t& lastUpdate, uint64_t interval) {
+        using cast = std::chrono::duration<std::uint64_t>;
+        std::uint64_t rightNowSecs =
+            std::chrono::duration_cast<cast>(
+                std::chrono::steady_clock::now().time_since_epoch())
+                .count();
+        if (rightNowSecs - lastUpdate >= interval) {
+          lastUpdate = rightNowSecs;
+          updateHandler->sendTelemetrics();
+          return true;
+        } else {
+          return false;
+        }
+      });
+
+  ON_CALL(*updateHandler, sendTelemetrics).WillByDefault([&]() {
+    VPackBuilder result;
+    result.openObject();
+    result.add("OK", VPackValue(true));
+    result.close();
+    updateHandler->getSender()->send(result.slice());
+  });
+
+  EXPECT_CALL(*updateHandler, sendTelemetrics).Times(2);
+
+  updateHandler->setTelemetricsSender(std::move(sender));
+
+  uint64_t lastUpdate = 0;
+  std::string mockOldRev = "abc";
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 5));
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                          lastUpdate, 5));
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                          lastUpdate, 5));
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 0));
 }
