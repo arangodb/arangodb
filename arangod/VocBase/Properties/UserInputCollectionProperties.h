@@ -65,6 +65,12 @@ struct UserInputCollectionProperties : public CollectionConstantProperties,
   [[nodiscard]] arangodb::Result validateOrSetShardingStrategyEE(
       UserInputCollectionProperties const& leadingCollection);
 #endif
+
+  [[nodiscard]] arangodb::Result validateSmartJoin();
+
+#ifdef USE_ENTERPRISE
+  [[nodiscard]] arangodb::Result validateSmartJoinEE();
+#endif
 };
 
 template<class Inspector>

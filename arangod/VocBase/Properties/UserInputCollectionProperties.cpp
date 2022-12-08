@@ -170,6 +170,11 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     return res;
   }
 
+  res = validateSmartJoin();
+  if (res.fail()) {
+    return res;
+  }
+
   res = ClusteringProperties::applyDefaultsAndValidateDatabaseConfiguration(
       config);
   if (res.fail()) {
@@ -291,6 +296,18 @@ Result UserInputCollectionProperties::validateOrSetShardingStrategy(
     }
   } else {
     shardingStrategy = leadingCollection.shardingStrategy;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result UserInputCollectionProperties::validateSmartJoin() {
+  if (smartJoinAttribute.has_value()) {
+#ifdef USE_ENTERPRISE
+    return validateSmartJoinEE();
+#else
+    return {TRI_ERROR_ONLY_ENTERPRISE,
+            "SmartJoin collections are only available in Enterprise version."};
+#endif
   }
   return TRI_ERROR_NO_ERROR;
 }
