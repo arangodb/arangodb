@@ -568,14 +568,12 @@ void V8DealerFeature::start() {
       auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
       TRI_ASSERT(vocbase != nullptr);
 
-      V8Context* context = buildContext(vocbase.get(), nextId());
+      auto context = buildContext(std::move(vocbase), nextId());
       TRI_ASSERT(context != nullptr);
-
-      vocbase.release();
 
       guard.lock();
       // push_back will not fail as we reserved enough memory before
-      _contexts.push_back(context);
+      _contexts.push_back(context.release());
       ++_contextsCreated;
     }
 
@@ -747,45 +745,33 @@ void V8DealerFeature::copyInstallationFiles() {
       basics::FileUtils::buildFilename(copyJSPath, "node", "node_modules");
 }
 
-V8Context* V8DealerFeature::addContext() {
+std::unique_ptr<V8Context> V8DealerFeature::addContext() {
   if (server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // use vocbase here and hand ownership to context
-  TRI_vocbase_t* vocbase =
-      databaseFeature.useDatabase(StaticStrings::SystemDatabase).release();
+  auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(vocbase != nullptr);
 
-  try {
-    // vocbase will be released when the context is garbage collected
-    V8Context* context = buildContext(vocbase, nextId());
-    TRI_ASSERT(context != nullptr);
+  // vocbase will be released when the context is garbage collected
+  auto context = buildContext(std::move(vocbase), nextId());
+  TRI_ASSERT(context != nullptr);
 
-    try {
-      auto& sysDbFeature =
-          server().getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature.use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
-      TRI_ASSERT(database != nullptr);
+  TRI_ASSERT(database != nullptr);
 
-      // no other thread can use the context when we are here, as the
-      // context has not been added to the global list of contexts yet
-      loadJavaScriptFileInContext(database.get(), "server/initialize.js",
-                                  context, nullptr);
+  // no other thread can use the context when we are here, as the
+  // context has not been added to the global list of contexts yet
+  loadJavaScriptFileInContext(database.get(), "server/initialize.js",
+                              context.get(), nullptr);
 
-      ++_contextsCreated;
+  ++_contextsCreated;
 
-      return context;
-    } catch (...) {
-      delete context;
-      throw;
-    }
-  } catch (...) {
-    vocbase->release();
-    throw;
-  }
+  return context;
 }
 
 void V8DealerFeature::unprepare() {
@@ -1152,7 +1138,7 @@ V8Context* V8DealerFeature::enterContext(
         try {
           LOG_TOPIC("973d7", DEBUG, Logger::V8)
               << "creating additional V8 context";
-          context = addContext();
+          context = addContext().release();
         } catch (...) {
           guard.lock();
 
@@ -1576,7 +1562,8 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   return context;
 }
 
-V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
+std::unique_ptr<V8Context> V8DealerFeature::buildContext(VocbasePtr vocbase,
+                                                         size_t id) {
   double const start = TRI_microtime();
 
   V8PlatformFeature& v8platform = server().getFeature<V8PlatformFeature>();
@@ -1699,14 +1686,13 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
       v8g->_securityContext =
           JavaScriptSecurityContext::createInternalContext();
 
-      {
-        TRI_InitV8VocBridge(isolate, localContext, queryRegistry, *vocbase, id);
-        TRI_InitV8Queries(isolate, localContext);
-        TRI_InitV8Cluster(isolate, localContext);
-        TRI_InitV8Agency(isolate, localContext);
-        TRI_InitV8Dispatcher(isolate, localContext);
-        TRI_InitV8Actions(isolate);
-      }
+      TRI_InitV8VocBridge(isolate, localContext, queryRegistry,
+                          std::move(vocbase), id);
+      TRI_InitV8Queries(isolate, localContext);
+      TRI_InitV8Cluster(isolate, localContext);
+      TRI_InitV8Agency(isolate, localContext);
+      TRI_InitV8Dispatcher(isolate, localContext);
+      TRI_InitV8Actions(isolate);
 
       // restore old security settings
       v8g->_securityContext = old;
@@ -1739,7 +1725,7 @@ V8Context* V8DealerFeature::buildContext(TRI_vocbase_t* vocbase, size_t id) {
   // add context creation time to global metrics
   _contextsCreationTime += static_cast<uint64_t>(1000 * (now - start));
 
-  return context.release();
+  return context;
 }
 
 V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {

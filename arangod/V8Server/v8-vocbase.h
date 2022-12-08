@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Utils/DatabaseGuard.h"
 #include "V8/v8-globals.h"
 
 struct TRI_vocbase_t;
@@ -46,4 +47,4 @@ class JSLoader;
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* queryRegistry,
-                         TRI_vocbase_t& vocbase, size_t threadNumber);
+                         arangodb::VocbasePtr vocbase, size_t threadNumber);

@@ -29,6 +29,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
+#include "Utils/DatabaseGuard.h"
 #include "V8/JSLoader.h"
 
 #include <velocypack/Builder.h>
@@ -141,8 +142,8 @@ class V8DealerFeature final : public ArangodFeature {
   uint64_t nextId() { return _nextId++; }
   void copyInstallationFiles();
   void startGarbageCollection();
-  V8Context* addContext();
-  V8Context* buildContext(TRI_vocbase_t* vocbase, size_t id);
+  std::unique_ptr<V8Context> addContext();
+  std::unique_ptr<V8Context> buildContext(VocbasePtr vocbase, size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
   void unblockDynamicContextCreation();
