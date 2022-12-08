@@ -3888,10 +3888,10 @@ class mock_term_reader : public irs::term_reader {
   irs::field_meta const* field_meta_;
 };
 
-void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
-                           IResearchLinkMeta const& meta,
-                           std::set<irs::field_id> expected,
-                           std::unordered_set<std::string>* expectedGeoColumns = nullptr) {
+void makeCachedColumnsTest(
+    std::vector<irs::field_meta> const& mockedFields,
+    IResearchLinkMeta const& meta, std::set<irs::field_id> expected,
+    std::unordered_set<std::string>* expectedGeoColumns = nullptr) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
