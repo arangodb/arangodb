@@ -3916,7 +3916,8 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
         &mockFieldIterator.get());
   });
   std::set<irs::field_id> actual;
-  collectCachedNormColumns(actual, mockFieldsReader.get(), meta);
+  std::unordered_set<std::string> geoColumns;
+  collectCachedColumns(actual, geoColumns, mockFieldsReader.get(), meta);
   ASSERT_EQ(actual, expected);
 }
 
