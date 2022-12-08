@@ -1387,12 +1387,13 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       }
 
       auto dbName = info.getName();
-      TRI_vocbase_t* vocbase = databaseFeature.useDatabase(dbName);
+      auto vocbase = databaseFeature.useDatabase(dbName);
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        Result res = databaseFeature.createDatabase(std::move(info), vocbase);
+        [[maybe_unused]] TRI_vocbase_t* unused{};
+        Result res = databaseFeature.createDatabase(std::move(info), unused);
         events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
@@ -1409,7 +1410,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           TRI_ASSERT(vocbase->id() == 1);
           HasRunOnce.store(true, std::memory_order_release);
         }
-        vocbase->release();
       }
     }
 

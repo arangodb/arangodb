@@ -3746,7 +3746,7 @@ class IResearchViewVolatitlityTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
-  TRI_vocbase_t* vocbase{nullptr};
+  VocbasePtr vocbase;
 
   IResearchViewVolatitlityTest() : server(false) {
     arangodb::tests::init(true);

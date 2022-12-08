@@ -565,17 +565,13 @@ void V8DealerFeature::start() {
       guard.unlock();  // avoid lock order inversion in buildContext
 
       // use vocbase here and hand ownership to context
-      TRI_vocbase_t* vocbase =
-          databaseFeature.useDatabase(StaticStrings::SystemDatabase).release();
+      auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
       TRI_ASSERT(vocbase != nullptr);
 
-      V8Context* context;
-      try {
-        context = buildContext(vocbase, nextId());
-        TRI_ASSERT(context != nullptr);
-      } catch (...) {
-        vocbase->release();
-      }
+      V8Context* context = buildContext(vocbase.get(), nextId());
+      TRI_ASSERT(context != nullptr);
+
+      vocbase->release();
 
       guard.lock();
       // push_back will not fail as we reserved enough memory before
