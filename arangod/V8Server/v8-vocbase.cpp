@@ -1675,6 +1675,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // switch databases
   VocbasePtr orig{std::exchange(v8g->_vocbase, vocbase.release())};
   TRI_ASSERT(orig != nullptr);
+  orig.reset();
 
   TRI_V8_RETURN(WrapVocBase(isolate, v8g->_vocbase));
   TRI_V8_TRY_CATCH_END
@@ -2156,10 +2157,7 @@ static void JS_EncryptionKeyReload(
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                          arangodb::aql::QueryRegistry* /*queryRegistry*/,
-                         VocbasePtr vocbasePtr, size_t threadNumber) {
-  TRI_ASSERT(vocbasePtr);
-
-  auto& vocbase = *vocbasePtr;
+                         TRI_vocbase_t& vocbase, size_t threadNumber) {
   auto& server = vocbase.server();
 
   v8::HandleScope scope(isolate);
@@ -2169,7 +2167,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_ASSERT(v8g->_transactionContext == nullptr);
   // register the database
-  v8g->_vocbase = vocbasePtr.release();
+  v8g->_vocbase = &vocbase;
 
   // ...........................................................................
   // generate the TRI_vocbase_t template

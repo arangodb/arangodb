@@ -568,8 +568,9 @@ void V8DealerFeature::start() {
       auto vocbase = databaseFeature.useDatabase(StaticStrings::SystemDatabase);
       TRI_ASSERT(vocbase != nullptr);
 
-      auto context = buildContext(std::move(vocbase), nextId());
+      auto context = buildContext(vocbase.get(), nextId());
       TRI_ASSERT(context != nullptr);
+      vocbase.release();
 
       guard.lock();
       // push_back will not fail as we reserved enough memory before
@@ -756,12 +757,11 @@ std::unique_ptr<V8Context> V8DealerFeature::addContext() {
   TRI_ASSERT(vocbase != nullptr);
 
   // vocbase will be released when the context is garbage collected
-  auto context = buildContext(std::move(vocbase), nextId());
+  auto context = buildContext(vocbase.get(), nextId());
   TRI_ASSERT(context != nullptr);
 
   auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
   auto database = sysDbFeature.use();
-
   TRI_ASSERT(database != nullptr);
 
   // no other thread can use the context when we are here, as the
@@ -770,7 +770,7 @@ std::unique_ptr<V8Context> V8DealerFeature::addContext() {
                               context.get(), nullptr);
 
   ++_contextsCreated;
-
+  vocbase.release();
   return context;
 }
 
@@ -1562,7 +1562,7 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
   return context;
 }
 
-std::unique_ptr<V8Context> V8DealerFeature::buildContext(VocbasePtr vocbase,
+std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
                                                          size_t id) {
   double const start = TRI_microtime();
 
@@ -1685,14 +1685,14 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(VocbasePtr vocbase,
       JavaScriptSecurityContext old(v8g->_securityContext);
       v8g->_securityContext =
           JavaScriptSecurityContext::createInternalContext();
-
-      TRI_InitV8VocBridge(isolate, localContext, queryRegistry,
-                          std::move(vocbase), id);
-      TRI_InitV8Queries(isolate, localContext);
-      TRI_InitV8Cluster(isolate, localContext);
-      TRI_InitV8Agency(isolate, localContext);
-      TRI_InitV8Dispatcher(isolate, localContext);
-      TRI_InitV8Actions(isolate);
+      {
+        TRI_InitV8VocBridge(isolate, localContext, queryRegistry, *vocbase, id);
+        TRI_InitV8Queries(isolate, localContext);
+        TRI_InitV8Cluster(isolate, localContext);
+        TRI_InitV8Agency(isolate, localContext);
+        TRI_InitV8Dispatcher(isolate, localContext);
+        TRI_InitV8Actions(isolate);
+      }
 
       // restore old security settings
       v8g->_securityContext = old;

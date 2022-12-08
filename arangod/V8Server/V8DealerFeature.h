@@ -143,7 +143,7 @@ class V8DealerFeature final : public ArangodFeature {
   void copyInstallationFiles();
   void startGarbageCollection();
   std::unique_ptr<V8Context> addContext();
-  std::unique_ptr<V8Context> buildContext(VocbasePtr vocbase, size_t id);
+  std::unique_ptr<V8Context> buildContext(TRI_vocbase_t* vocbase, size_t id);
   V8Context* pickFreeContextForGc();
   void shutdownContext(V8Context* context);
   void unblockDynamicContextCreation();
