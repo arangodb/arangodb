@@ -3890,7 +3890,8 @@ class mock_term_reader : public irs::term_reader {
 
 void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
                            IResearchLinkMeta const& meta,
-                           std::set<irs::field_id> expected) {
+                           std::set<irs::field_id> expected,
+                           std::unordered_set<std::string>* expectedGeoColumns = nullptr) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
@@ -3918,6 +3919,11 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   std::set<irs::field_id> actual;
   std::unordered_set<std::string> geoColumns;
   collectCachedColumns(actual, geoColumns, mockFieldsReader.get(), meta);
+  if (!expectedGeoColumns) {
+    ASSERT_TRUE(geoColumns.empty());
+  } else {
+    ASSERT_EQ(*expectedGeoColumns, geoColumns);
+  }
   ASSERT_EQ(actual, expected);
 }
 
@@ -3927,7 +3933,11 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
+         { "name": "geo", "type": "geojson", 
+           "properties": {
+             "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
+           "features": [ "frequency" ]},
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
          { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
       ],
@@ -3937,7 +3947,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
         "field": {
           "fields": {
             "foo": {"cache":false},
-            "hotfoo": { "includeAllFields":true}
+            "hotfoo": { "includeAllFields":true, "analyzers":["identity", "empty", "_system::empty", "::empty", "geo"]}
           },
           "cache":true,
           "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
@@ -4010,6 +4020,12 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
   }
   {
     irs::field_meta field_meta;
+    field_meta.name = "field.hotfoo\1geo";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 10);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
     field_meta.name = "field.hotfoo.sub\1identity";
     field_meta.features.emplace(irs::type<irs::Norm2>::id(), 11);
     mockedFields.push_back(std::move(field_meta));
@@ -4069,7 +4085,8 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
         &mockFieldIterator.get());
   });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15};
-  makeCachedColumnsTest(mockedFields, meta, expected);
+  std::unordered_set<std::string> expectedGeo{"field.hotfoo\1geo"};
+  makeCachedColumnsTest(mockedFields, meta, expected, &expectedGeo);
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
