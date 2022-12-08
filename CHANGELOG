@@ -7,6 +7,12 @@ v3.10.2 (XXXX-XX-XX)
 * SEARCH-433 Fix Inverted index fields presence checks
   for IN clauses.
 
+* Added a feature to the ResignLeadership job. By default, it will now
+  undo the leader changes automatically after the server is restarted,
+  unless the option `undoMoves` is set to `false`. This will help to
+  make rolling upgrades and restarts less troublesome, since the shard
+  leaderships will not get unbalanced.
+
 * Add missing metrics for user traffic: Histograms:
     `arangodb_client_user_connection_statistics_bytes_received`
     `arangodb_client_user_connection_statistics_bytes_sent`
