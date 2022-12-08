@@ -1033,7 +1033,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
 
   auto vocbase = dbFeature.useDatabase("testVocbase");
 
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1103,7 +1103,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
   createDatabase("testVocbase"s);
 
   auto vocbase = dbFeature.useDatabase("testVocbase");
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1172,7 +1172,7 @@ TEST_F(RestAnalyzerHandlerTest,
   createDatabase("testVocbase"s);
 
   auto vocbase = dbFeature.useDatabase("testVocbase");
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1240,7 +1240,7 @@ TEST_F(RestAnalyzerHandlerTest,
 
   auto vocbase = dbFeature.useDatabase("testVocbase");
 
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
