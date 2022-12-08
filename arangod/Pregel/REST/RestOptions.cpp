@@ -1,4 +1,5 @@
 #include "RestOptions.h"
+#include <variant>
 
 #include "Pregel/Collections/Graph/Properties.h"
 
@@ -14,24 +15,20 @@ overloaded(Ts...) -> overloaded<Ts...>;
 using namespace arangodb::pregel;
 
 auto RestOptions::options() -> PregelOptions {
-  return std::visit(
-      overloaded{[&](pregel::RestGraphSettings const& x) -> PregelOptions {
-                   return PregelOptions{
-                       .algorithm = x.options.algorithm,
-                       .userParameters = x.options.userParameters,
-                       .graphSource = {
-                           {collections::graph::GraphName{.graph = x.graph}},
-                           {x.options.edgeCollectionRestrictions}}};
-                 },
-                 [&](pregel::RestCollectionSettings const& x) -> PregelOptions {
-                   return PregelOptions{
-                       .algorithm = x.options.algorithm,
-                       .userParameters = x.options.userParameters,
-                       .graphSource = {
-                           {collections::graph::GraphCollectionNames{
-                               .vertexCollections = x.vertexCollections,
-                               .edgeCollections = x.edgeCollections}},
-                           {x.options.edgeCollectionRestrictions}}};
-                 }},
-      *this);
+  if (std::holds_alternative<pregel::RestGraphSettings>(*this)) {
+    auto x = std::get<pregel::RestGraphSettings>(*this);
+    return PregelOptions{
+        .algorithm = x.options.algorithm,
+        .userParameters = x.options.userParameters,
+        .graphSource = {{collections::graph::GraphName{.graph = x.graph}},
+                        {x.options.edgeCollectionRestrictions}}};
+  }
+  auto x = std::get<pregel::RestCollectionSettings>(*this);
+  return PregelOptions{
+      .algorithm = x.options.algorithm,
+      .userParameters = x.options.userParameters,
+      .graphSource = {{collections::graph::GraphCollectionNames{
+                          .vertexCollections = x.vertexCollections,
+                          .edgeCollections = x.edgeCollections}},
+                      {x.options.edgeCollectionRestrictions}}};
 }
