@@ -127,6 +127,8 @@ class PhysicalCollection {
   /// @brief get list of all indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
+  virtual Index* primaryIndex() const;
+
   void getIndexesVPack(
       velocypack::Builder&,
       std::function<bool(Index const*,
@@ -179,6 +181,10 @@ class PhysicalCollection {
   virtual Result lookupKey(transaction::Methods*, std::string_view,
                            std::pair<LocalDocumentId, RevisionId>&,
                            ReadOwnWrites readOwnWrites) const = 0;
+
+  virtual Result lookupKeyForUpdate(
+      transaction::Methods*, std::string_view,
+      std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,

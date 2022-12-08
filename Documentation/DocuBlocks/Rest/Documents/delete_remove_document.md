@@ -64,6 +64,13 @@ is returned if the document was removed successfully and
 is returned if the collection or the document was not found.
 The response body contains an error document in this case.
 
+@RESTRETURNCODE{409}
+is returned if we fail to lock the document key due to some
+concurrent operation that is operating on the same document.
+This also also referred to as a write-write conflict.
+The response body contains an error document in this case with the
+errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
+
 @RESTRETURNCODE{412}
 is returned if a "If-Match" header or `rev` is given and the found
 document has a different version. The response also contain the found

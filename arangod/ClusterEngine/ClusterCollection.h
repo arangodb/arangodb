@@ -104,6 +104,10 @@ class ClusterCollection final : public PhysicalCollection {
                    std::pair<LocalDocumentId, RevisionId>& result,
                    ReadOwnWrites) const override;
 
+  Result lookupKeyForUpdate(
+      transaction::Methods* trx, std::string_view key,
+      std::pair<LocalDocumentId, RevisionId>& result) const override;
+
   Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;

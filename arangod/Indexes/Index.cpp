@@ -915,12 +915,12 @@ Result Index::warmup() {
 
 /// @brief generate error message
 /// @param key the conflicting key
-Result& Index::addErrorMsg(Result& r, std::string const& key) const {
+Result& Index::addErrorMsg(Result& r, std::string_view key) const {
   return r.withError(
       [this, &key](result::Error& err) { addErrorMsg(err, key); });
 }
 
-void Index::addErrorMsg(result::Error& r, std::string const& key) const {
+void Index::addErrorMsg(result::Error& r, std::string_view key) const {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());

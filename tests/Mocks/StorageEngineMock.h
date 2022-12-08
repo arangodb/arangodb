@@ -106,6 +106,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::transaction::Methods*, std::string_view,
       std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&,
       arangodb::ReadOwnWrites) const override;
+  virtual arangodb::Result lookupKeyForUpdate(
+      arangodb::transaction::Methods*, std::string_view,
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&)
+      const override;
   virtual uint64_t numberDocuments(
       arangodb::transaction::Methods* trx) const override;
   virtual std::string const& path() const override;
@@ -199,6 +203,7 @@ class TransactionStateMock : public arangodb::TransactionState {
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
   virtual arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(

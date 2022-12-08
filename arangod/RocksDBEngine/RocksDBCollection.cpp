@@ -926,23 +926,34 @@ Result RocksDBCollection::lookupKey(
     transaction::Methods* trx, std::string_view key,
     std::pair<LocalDocumentId, RevisionId>& result,
     ReadOwnWrites readOwnWrites) const {
+  return doLookupKey(trx, key, result, readOwnWrites, false);
+}
+
+Result RocksDBCollection::lookupKeyForUpdate(
+    transaction::Methods* trx, std::string_view key,
+    std::pair<LocalDocumentId, RevisionId>& result) const {
+  return doLookupKey(trx, key, result, ReadOwnWrites::yes, true);
+}
+
+Result RocksDBCollection::doLookupKey(
+    transaction::Methods* trx, std::string_view key,
+    std::pair<LocalDocumentId, RevisionId>& result, ReadOwnWrites readOwnWrites,
+    bool lockForUpdate) const {
   result.first = LocalDocumentId::none();
   result.second = RevisionId::none();
 
   // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, key, result.first, result.second,
-                                      readOwnWrites)) {
-    // document not found
+  auto res = primaryIndex()->lookupRevision(
+      trx, key, result.first, result.second, readOwnWrites, lockForUpdate);
+
+  if (res.ok()) {
+    TRI_ASSERT(result.first.isSet());
+    TRI_ASSERT(result.second.isSet());
+  } else {
     TRI_ASSERT(!result.first.isSet());
     TRI_ASSERT(result.second.empty());
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
-
-  // document found, but revisionId may not have been present in the primary
-  // index. this can happen for "older" collections
-  TRI_ASSERT(result.first.isSet());
-  TRI_ASSERT(result.second.isSet());
-  return {};
+  return res;
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
@@ -950,20 +961,13 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
                                        RevisionId& revisionId,
                                        ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(key.isString());
-  LocalDocumentId documentId;
-  revisionId = RevisionId::none();
-  // lookup the revision id in the primary index
-  if (!primaryIndex()->lookupRevision(trx, key.stringView(), documentId,
-                                      revisionId, readOwnWrites)) {
-    // document not found
-    TRI_ASSERT(revisionId.empty());
-    return false;
+  std::pair<LocalDocumentId, RevisionId> v;
+  auto res = lookupKey(trx, key.stringView(), v, readOwnWrites);
+  if (res.ok()) {
+    revisionId = v.second;
+    return true;
   }
-
-  // document found, and we have a valid revisionId
-  TRI_ASSERT(documentId.isSet());
-  TRI_ASSERT(revisionId.isSet());
-  return true;
+  return false;
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
@@ -1048,8 +1052,8 @@ Result RocksDBCollection::insert(transaction::Methods& trx,
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
                              TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  Result res = insertDocument(&trx, savepoint, newDocumentId, newDocument,
-                              options, newRevisionId);
+  Result res = doInsertDocument(&trx, savepoint, newDocumentId, newDocument,
+                                options, newRevisionId);
 
   if (res.ok()) {
     res = savepoint.finish(newRevisionId);
@@ -1289,12 +1293,12 @@ void RocksDBCollection::figuresSpecific(
   }
 }
 
-Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
-                                         RocksDBSavePoint& savepoint,
-                                         LocalDocumentId documentId,
-                                         VPackSlice doc,
-                                         OperationOptions const& options,
-                                         RevisionId revisionId) const {
+Result RocksDBCollection::doInsertDocument(arangodb::transaction::Methods* trx,
+                                           RocksDBSavePoint& savepoint,
+                                           LocalDocumentId documentId,
+                                           VPackSlice doc,
+                                           OperationOptions const& options,
+                                           RevisionId revisionId) const {
   savepoint.prepareOperation(revisionId);
 
   // Coordinator doesn't know index internals
