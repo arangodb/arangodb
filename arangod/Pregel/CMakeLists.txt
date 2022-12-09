@@ -8,7 +8,6 @@ add_library(arango_pregel STATIC
   OutgoingCache.cpp
   PregelFeature.cpp
   PregelMetrics.cpp
-  Recovery.cpp
   Reports.cpp
   Reports.h
   Utils.cpp
