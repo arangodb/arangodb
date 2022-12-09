@@ -499,11 +499,9 @@ void v8Init() {
       v8::V8::Initialize();
     }
     ~V8Init() {
-      if (_platform) {
-        v8::V8::Dispose();
-        v8::V8::ShutdownPlatform();
-        _platform = nullptr;
-      }
+      v8::V8::Dispose();
+      v8::V8::ShutdownPlatform();
+      _platform = nullptr;
     }
 
    private:
