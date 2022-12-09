@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
