@@ -1,6 +1,10 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a
+  remedy for OOM kills during restarts.
+
 * Add missing metrics for user traffic: Histograms:
     `arangodb_client_user_connection_statistics_bytes_received`
     `arangodb_client_user_connection_statistics_bytes_sent`
