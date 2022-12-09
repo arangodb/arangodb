@@ -27,20 +27,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
-#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "StorageEngine/TransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "VocBase/ComputedValues.h"
-#include "VocBase/KeyGenerator.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -52,8 +47,7 @@
 
 namespace arangodb {
 
-PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
-                                       velocypack::Slice info)
+PhysicalCollection::PhysicalCollection(LogicalCollection& collection)
     : _logicalCollection(collection) {}
 
 /// @brief fetches current index selectivity estimates
@@ -72,16 +66,83 @@ void PhysicalCollection::flushClusterIndexEstimates() {
   // collections
 }
 
-void PhysicalCollection::drop() {
+void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
+  TRI_ASSERT(indexesSlice.isArray());
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine();
+
+  std::vector<std::shared_ptr<Index>> indexes;
   {
-    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    _indexes.clear();
+    // link creation needs read-lock too
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    if (indexesSlice.length() == 0 && _indexes.empty()) {
+      engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    } else {
+      engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice,
+                                           indexes);
+    }
   }
+
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  TRI_ASSERT(_indexes.empty());
+
+  for (auto& idx : indexes) {
+    TRI_ASSERT(idx != nullptr);
+    auto const id = idx->id();
+    for (auto const& it : _indexes) {
+      TRI_ASSERT(it != nullptr);
+      if (it->id() == id) {  // index is there twice
+        idx.reset();
+        break;
+      }
+    }
+
+    if (idx) {
+      _indexes.emplace(idx);
+      duringAddIndex(idx);
+    }
+  }
+
+  auto it = _indexes.cbegin();
+  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
+      (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
+       (_indexes.size() < 3 ||
+        ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
+         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
+    std::string msg = "got invalid indexes for collection '" +
+                      _logicalCollection.name() + "'";
+    LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    for (auto const& it : _indexes) {
+      LOG_TOPIC("19e0b", ERR, arangodb::Logger::ENGINES)
+          << "- " << it->context();
+    }
+#endif
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  }
+
+  TRI_ASSERT(!_indexes.empty());
+}
+
+void PhysicalCollection::close() {
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  for (auto& it : _indexes) {
+    it->unload();
+  }
+}
+
+void PhysicalCollection::drop() {
   try {
     // close collection. this will also invalidate the revisions cache
     close();
   } catch (...) {
     // don't throw from here... dropping should succeed
+  }
+  {
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+    _indexes.clear();
   }
 }
 
@@ -97,22 +158,12 @@ bool PhysicalCollection::hasDocuments() {
       "hasDocuments not implemented for this engine");
 }
 
-bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto const& idx : _indexes) {
-    if (idx->type() == type) {
-      return true;
-    }
-  }
-  return false;
-}
-
 /// @brief Find index by definition
 /*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
-    VPackSlice info, IndexContainerType const& indexes) {
+    velocypack::Slice info, IndexContainerType const& indexes) {
   TRI_ASSERT(info.isObject());
 
-  auto value = info.get(arangodb::StaticStrings::IndexType);  // extract type
+  auto value = info.get(StaticStrings::IndexType);  // extract type
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
@@ -120,8 +171,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
                                    "invalid index type definition");
   }
 
-  arangodb::Index::IndexType const type =
-      arangodb::Index::type(value.stringView());
+  auto const type = Index::type(value.stringView());
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
@@ -141,7 +191,8 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 }
 
 /// @brief Find index by definition
-std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice info) const {
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(
+    velocypack::Slice info) const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return findIndex(info, _indexes);
 }
@@ -168,7 +219,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
 }
 
 std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
-    transaction::Methods& trx) {
+    transaction::Methods& /*trx*/) {
   return nullptr;
 }
 
@@ -328,5 +379,81 @@ bool PhysicalCollection::IndexOrder::operator()(
   // use id to make  order of equally-sorted indexes deterministic
   return left->id() < right->id();
 }
+
+Result PhysicalCollection::dropIndex(IndexId iid) {
+  if (iid.empty() || iid.isPrimary()) {
+    return {};
+  }
+
+  Result res = basics::catchToResult([&]() -> Result {
+    auto& selector = _logicalCollection.vocbase()
+                         .server()
+                         .getFeature<EngineSelectorFeature>();
+    auto& engine = selector.engine();
+    bool const inRecovery = engine.inRecovery();
+
+    std::shared_ptr<arangodb::Index> toRemove;
+    {
+      RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
+
+      // create a copy of _indexes, in case we need to roll back changes.
+      auto copy = _indexes;
+
+      for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
+        if (iid != (*it)->id()) {
+          continue;
+        }
+
+        toRemove = *it;
+        // we have to remove from _indexes already here, because the
+        // duringDropIndex may serialize the collection's indexes
+        // and look at the _indexes member... and there we need the
+        // index to be deleted already.
+        _indexes.erase(it);
+
+        if (!inRecovery) {
+          Result res = duringDropIndex(*it);
+          if (res.fail()) {
+            // callback failed - revert back to copy
+            _indexes = std::move(copy);
+            return res;
+          }
+        }
+
+        break;
+      }
+
+      if (toRemove == nullptr) {
+        // index not found
+        return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+      }
+    }
+
+    TRI_ASSERT(toRemove != nullptr);
+
+    return afterDropIndex(toRemove);
+  });
+
+  events::DropIndex(_logicalCollection.vocbase().name(),
+                    _logicalCollection.name(), std::to_string(iid.id()),
+                    res.errorNumber());
+
+  return res;
+}
+
+// callback that is called directly before the index is dropped.
+// the write-lock on all indexes is still held
+Result PhysicalCollection::duringDropIndex(std::shared_ptr<Index> /*idx*/) {
+  return {};
+}
+
+// callback that is called directly after the index has been dropped.
+// no locks are held anymore.
+Result PhysicalCollection::afterDropIndex(std::shared_ptr<Index> /*idx*/) {
+  return {};
+}
+
+// callback that is called while adding a new index
+void PhysicalCollection::duringAddIndex(std::shared_ptr<Index> /*idx*/) {}
 
 }  // namespace arangodb

@@ -10,8 +10,7 @@ add_library(arango_cluster_engine STATIC
   ClusterSelectivityEstimates.cpp
   ClusterTransactionCollection.cpp
   ClusterTransactionState.cpp
-  ClusterV8Functions.cpp
-  RocksDBMethods.cpp)
+  ClusterV8Functions.cpp)
 
 target_link_libraries(arango_cluster_engine
   arango_health

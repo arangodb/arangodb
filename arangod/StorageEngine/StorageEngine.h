@@ -108,7 +108,7 @@ class StorageEngine : public ArangodFeature {
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) = 0;
+      LogicalCollection& collection, velocypack::Slice info) = 0;
 
   // status functionality
   // --------------------

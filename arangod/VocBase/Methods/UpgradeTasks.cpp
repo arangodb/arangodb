@@ -65,7 +65,6 @@ namespace {
 arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
                                   arangodb::RocksDBIndex* oldIndex) {
-  arangodb::Result res;
   IndexId iid = oldIndex->id();
 
   VPackBuilder oldDesc;
@@ -80,11 +79,9 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   VPackBuilder newDesc =
       VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  bool dropped = collection.dropIndex(iid);
+  arangodb::Result res = collection.dropIndex(iid);
 
-  if (!dropped) {
-    res.reset(TRI_ERROR_INTERNAL);
-
+  if (res.fail()) {
     return res;
   }
 

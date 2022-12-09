@@ -197,14 +197,15 @@ template<typename ViewType>
 Result dropLink(LogicalCollection& collection, IResearchLink const& link) {
   // don't need to create an extra transaction inside
   // arangodb::methods::Indexes::drop(...)
-  if (!collection.dropIndex(link.id())) {
+  Result res = collection.dropIndex(link.id());
+  if (res.fail()) {
     return {TRI_ERROR_INTERNAL, std::string("failed to drop link '") +
                                     std::to_string(link.id().id()) +
                                     "' from collection '" + collection.name() +
-                                    "'"};
+                                    "': " + std::string(res.errorMessage())};
   }
 
-  return {};
+  return res;
 }
 
 template<>
