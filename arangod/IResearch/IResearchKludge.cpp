@@ -173,7 +173,7 @@ std::string_view extractAnalyzerName(std::string_view fieldName) {
   if (analyzerSep != fieldName.end()) {
     ++analyzerSep;
     TRI_ASSERT(analyzerSep != fieldName.end());
-    return std::string_view {
+    return std::string_view{
         &(*analyzerSep),
         static_cast<size_t>(std::distance(analyzerSep, fieldName.end()))};
   }
