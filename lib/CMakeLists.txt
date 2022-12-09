@@ -136,7 +136,6 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Futures/Future.cpp
   Logger/Escaper.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
@@ -155,12 +154,13 @@ add_library(arango STATIC
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
+  ProgramOptions/IniFileParser.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/Parameters.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
-  ProgramOptions/IniFileParser.cpp
+  ProgramOptions/UnitsHelper.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
@@ -194,6 +194,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_futures
   arango_static_strings
   arango_crashhandler
   velocypack
@@ -254,6 +255,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_subdirectory(Futures)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)

@@ -158,7 +158,7 @@ function makeDataWrapper (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
   opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..','release-test-automation'));

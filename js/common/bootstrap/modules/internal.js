@@ -50,6 +50,9 @@ global.DEFINE_MODULE('internal', (function () {
         this.code = error.code;                  // int - http status code
         this.errorNum = error.errorNum;          // int - internal arangodb error code
         this.errorMessage = error.errorMessage;  // string - error message
+        if (error.error) {
+          this.original = error;
+        }
       }
     };
 

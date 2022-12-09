@@ -3029,7 +3029,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     for (size_t i = 1; i < n; ++i) {
       VPackSlice rhs = node->getMemberUnchecked(i)->computeValue(&temp);
 
-      if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
+      if (basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
         break;
       }
@@ -3045,10 +3045,10 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   // TODO: sort values in place first and compare two adjacent members each
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(n, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(n, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);

@@ -39,6 +39,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"

@@ -388,7 +388,7 @@ function shellClientReplication2Recovery(options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_v8'] = shellV8;
   testFns['shell_server_v8'] = shellV8Server;
@@ -403,19 +403,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
   testFns['shell_client_traffic'] = shellClientTraffic;
-
-  defaultFns.push('shell_v8');
-  defaultFns.push('shell_server_v8');
-  defaultFns.push('shell_api');
-  defaultFns.push('shell_api_multi');
-  defaultFns.push('shell_client');
-  defaultFns.push('shell_client_multi');
-  defaultFns.push('shell_server');
-  defaultFns.push('shell_client_aql');
-  defaultFns.push('shell_server_aql');
-  defaultFns.push('shell_client_transaction');
-  defaultFns.push('shell_client_replication2_recovery');
-  defaultFns.push('shell_client_traffic');
 
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
