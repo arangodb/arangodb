@@ -268,11 +268,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vocbase = df.useDatabase(dbColPair.first);
+    auto vocbase = df.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
     return static_cast<RocksDBCollection*>(
         vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
@@ -284,11 +283,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vb = df.useDatabase(std::get<0>(triple));
+    auto vb = df.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vb->release(); });
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 
