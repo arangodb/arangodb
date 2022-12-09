@@ -834,7 +834,7 @@ class AssertionCallbackSetter {
                                    message.data());
   }
 
-} const kSetCallback;
+};  // FIXME(gnusi): instantiate when assertions are fixed
 
 }  // namespace
 
