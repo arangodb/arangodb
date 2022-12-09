@@ -169,6 +169,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+    _jb->add("addsFollower", VPackValue(_addsFollower));
   }
 
   if (b == nullptr) {
