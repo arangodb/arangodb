@@ -1158,6 +1158,7 @@ void IResearchDataStore::shutdownDataStore() noexcept {
   std::atomic_store(&_flushSubscription, {});  // reset together with _asyncSelf
   // the data-store is being deallocated, link use is no longer valid
   _asyncSelf->reset();  // wait for all the view users to finish
+  std::lock_guard lock{_commitMutex};
   try {
     if (_dataStore) {
       removeMetrics();  // TODO(MBkkt) Should be noexcept?
@@ -1176,6 +1177,7 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 
 Result IResearchDataStore::deleteDataStore() noexcept {
   shutdownDataStore();
+  std::lock_guard lock{_commitMutex};
   bool exists;
   // remove persisted data store directory if present
   if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
