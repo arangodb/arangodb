@@ -147,8 +147,83 @@ function OptionsTestSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-    }
+    },
 
+    testExclusiveExpectNoConflicts : function () {
+      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+      let task = tasks.register({
+        command: function() {
+          let db = require("internal").db;
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+
+          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
+            require("internal").sleep(0.02);
+          }
+
+          try {
+            for (let i = 0; i < 50; ++i) {
+              let db = require("internal").db;
+              for (let i = 0; i < 200; ++i) {
+                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+              }
+
+              if (db.UnitTestsExclusiveCollection2.document("runner2").value) {
+                break;
+              }
+            }
+          } catch (err) {
+            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+          }
+          db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
+        }
+      });
+
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
+        require("internal").sleep(0.02);
+      }
+
+      try {
+        for (let i = 0; i < 50; ++i) {
+          let db = require("internal").db;
+          for (let i = 0; i < 200; ++i) {
+            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+          }
+
+          if (db.UnitTestsExclusiveCollection2.document("runner1").value) {
+            break;
+          }
+        }
+      } catch (err) {
+        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+      }
+      db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
+
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
+      
+      let keys = ["other-failed", "we-failed"];
+      let errors = [];
+      keys.forEach((k) => {
+        if (db.UnitTestsExclusiveCollection2.exists(k)) {
+          let doc = db.UnitTestsExclusiveCollection2.document(k);
+          errors.push(doc);
+          db.UnitTestsExclusiveCollection2.remove(k);
+        }
+      });
+
+      assertEqual(0, errors.length, "Found errors: " + JSON.stringify(errors));
+
+      // only one transaction should have succeeded
+      assertEqual(2, c2.count());
+    }
   };
 }
 

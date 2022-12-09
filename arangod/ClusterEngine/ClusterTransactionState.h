@@ -42,6 +42,8 @@ class ClusterTransactionState final : public TransactionState {
                           transaction::Options const& options);
   ~ClusterTransactionState() override = default;
 
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 

@@ -74,7 +74,7 @@ class ClusterEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) override;
+      LogicalCollection& collection, velocypack::Slice info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 

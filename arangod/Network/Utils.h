@@ -63,7 +63,7 @@ template<typename T>
 OperationResult opResultFromBody(T const& body, ErrorCode defaultErrorCode,
                                  OperationOptions&& options) {
   return OperationResult(
-      arangodb::network::resultFromBody(body, defaultErrorCode),
+      arangodb::network::resultFromBody(body, defaultErrorCode), body,
       std::move(options));
 }
 

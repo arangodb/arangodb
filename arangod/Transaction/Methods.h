@@ -447,7 +447,7 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result insertLocalHelper(LogicalCollection& collection,
+  Result insertLocalHelper(LogicalCollection& collection, std::string_view key,
                            velocypack::Slice value, RevisionId& newRevisionId,
                            velocypack::Builder& newDocumentBuilder,
                            OperationOptions& options,
