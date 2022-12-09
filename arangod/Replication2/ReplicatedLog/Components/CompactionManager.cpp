@@ -75,15 +75,13 @@ auto CompactionManager::GuardedData::isCompactionInProgress() const noexcept
   return _compactionInProgress;
 }
 
-auto CompactionManager::calculateCompactionIndex(GuardedData const& data,
+auto CompactionManager::calculateCompactionIndex(LogIndex releaseIndex,
+                                                 LogIndex largestIndexToKeep,
                                                  LogRange bounds,
                                                  std::size_t threshold)
     -> std::tuple<LogIndex, CompactionStopReason> {
-  // TODO make this function a stand alone functional program
-  //      and write tests for it, separately.
   auto [first, last] = bounds;
-  auto newCompactionIndex =
-      std::min(data.releaseIndex, data.largestIndexToKeep);
+  auto newCompactionIndex = std::min(releaseIndex, largestIndexToKeep);
   auto nextAutomaticCompactionAt = first + threshold;
   if (nextAutomaticCompactionAt > newCompactionIndex) {
     return {first,
@@ -93,12 +91,11 @@ auto CompactionManager::calculateCompactionIndex(GuardedData const& data,
 
   if (first == last) {
     return {first, {CompactionStopReason::NothingToCompact{}}};
-  } else if (newCompactionIndex == data.releaseIndex) {
-    return {
-        newCompactionIndex,
-        {CompactionStopReason::NotReleasedByStateMachine{data.releaseIndex}}};
+  } else if (newCompactionIndex == releaseIndex) {
+    return {newCompactionIndex,
+            {CompactionStopReason::NotReleasedByStateMachine{releaseIndex}}};
   } else {
-    TRI_ASSERT(newCompactionIndex == data.largestIndexToKeep);
+    TRI_ASSERT(newCompactionIndex == largestIndexToKeep);
     return {newCompactionIndex,
             {CompactionStopReason::LeaderBlocksReleaseEntry{}}};
   }
@@ -111,8 +108,8 @@ void CompactionManager::checkCompaction(
 
   auto threshold =
       guard->_fullCompactionNextRound ? 0 : options->_thresholdLogCompaction;
-  auto [index, reason] =
-      calculateCompactionIndex(guard.get(), logBounds, threshold);
+  auto [index, reason] = calculateCompactionIndex(
+      guard->releaseIndex, guard->largestIndexToKeep, logBounds, threshold);
   guard->_fullCompactionNextRound = false;
   auto promises = std::move(guard->compactAggregator);
 

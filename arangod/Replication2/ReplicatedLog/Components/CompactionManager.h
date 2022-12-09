@@ -100,6 +100,10 @@ struct CompactionManager : ICompactionManager,
 
   auto getCompactionStatus() const noexcept -> CompactionStatus override;
 
+  [[nodiscard]] static auto calculateCompactionIndex(
+      LogIndex releaseIndex, LogIndex largestIndexToKeep, LogRange bounds,
+      std::size_t threshold) -> std::tuple<LogIndex, CompactionStopReason>;
+
  private:
   struct GuardedData {
     explicit GuardedData(IStorageManager& storage);
@@ -123,10 +127,6 @@ struct CompactionManager : ICompactionManager,
   void triggerAsyncCompaction(Guarded<GuardedData>::mutex_guard_type guard,
                               bool ignoreThreshold);
   void checkCompaction(Guarded<GuardedData>::mutex_guard_type);
-  [[nodiscard]] static auto calculateCompactionIndex(GuardedData const& data,
-                                                     LogRange bounds,
-                                                     std::size_t threshold)
-      -> std::tuple<LogIndex, CompactionStopReason>;
 };
 }  // namespace comp
 }  // namespace replication2::replicated_log

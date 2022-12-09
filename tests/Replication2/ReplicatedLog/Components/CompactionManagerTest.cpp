@@ -421,3 +421,34 @@ TEST_F(CompactionManagerTest, run_automatic_compaction_twice_but_delayed) {
   // finally resolve the future
   p->setValue(TRI_ERROR_NO_ERROR);
 }
+
+namespace {
+auto operator""_Lx(unsigned long long idx) -> LogIndex { return LogIndex{idx}; }
+}  // namespace
+
+TEST(ComputeCompactionIndex, nothing_to_compact) {
+  auto [index, reason] = CompactionManager::calculateCompactionIndex(
+      12_Lx, 10_Lx, {1_Lx, 25_Lx}, 100);
+  EXPECT_EQ(index, 1_Lx);
+  EXPECT_TRUE(
+      std::holds_alternative<
+          CompactionStopReason::CompactionThresholdNotReached>(reason.value));
+}
+
+TEST(ComputeCompactionIndex, compact_upto_release_index) {
+  auto [index, reason] = CompactionManager::calculateCompactionIndex(
+      12_Lx, 15_Lx, {1_Lx, 25_Lx}, 10);
+  EXPECT_EQ(index, 12_Lx);
+  EXPECT_TRUE(
+      std::holds_alternative<CompactionStopReason::NotReleasedByStateMachine>(
+          reason.value));
+}
+
+TEST(ComputeCompactionIndex, compact_upto_largest_index_to_keep) {
+  auto [index, reason] = CompactionManager::calculateCompactionIndex(
+      13_Lx, 12_Lx, {1_Lx, 25_Lx}, 10);
+  EXPECT_EQ(index, 12_Lx);
+  EXPECT_TRUE(
+      std::holds_alternative<CompactionStopReason::LeaderBlocksReleaseEntry>(
+          reason.value));
+}

@@ -48,7 +48,7 @@ struct StorageManagerTest : ::testing::Test {
           .stateId = logId, .snapshot = {.status = SnapshotStatus::kFailed}}};
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.getMethods(),
-                                       LoggerContext{Logger::FIXME});
+                                       LoggerContext{Logger::REPLICATION2});
 };
 
 TEST_F(StorageManagerTest, transaction_resign) {
