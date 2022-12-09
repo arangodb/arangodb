@@ -124,6 +124,8 @@ class MutexGuard {
        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv, Predicate stop_waiting);
 
+  auto isLocked() const noexcept -> bool;
+
  private:
   struct nop {
     void operator()(T*) {}
@@ -157,6 +159,11 @@ void MutexGuard<T, L>::unlock() noexcept(noexcept(std::declval<L>().unlock())) {
   _value.reset();
   _mutexLock.unlock();
   _mutexLock.release();
+}
+
+template<class T, class L>
+auto MutexGuard<T, L>::isLocked() const noexcept -> bool {
+  return _value != nullptr;
 }
 
 template<class T, class L>

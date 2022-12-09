@@ -68,7 +68,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   }
 
   auto removeBack(LogIndex start) noexcept -> futures::Future<Result> override {
-    LOG_CTX("eb8da", TRACE, manager.loggerContext)
+    LOG_CTX("eb9da", TRACE, manager.loggerContext)
         << "scheduling remove back, start = " << start;
     auto newLog = guard->spearheadLog.removeBack(start);
     return scheduleOperation(
@@ -161,7 +161,8 @@ auto StorageManager::scheduleOperationLambda(GuardType&& guard,
 }
 
 void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
-  auto const worker = [](GuardType guard, std::shared_ptr<StorageManager> self)
+  auto const worker = [](GuardType guard,
+                         std::shared_ptr<StorageManager> self) noexcept
       -> futures::Future<futures::Unit> {
     LOG_CTX("6efe9", TRACE, self->loggerContext)
         << "starting new storage worker";

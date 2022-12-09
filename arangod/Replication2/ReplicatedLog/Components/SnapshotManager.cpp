@@ -93,11 +93,11 @@ auto SnapshotManager::setSnapshotStateAvailable(
       [lctx = loggerContext](auto&& tryResult) {
         auto result = basics::catchToResult([&] { return tryResult.get(); });
         if (result.fail()) {
-          LOG_CTX("ea624", FATAL, lctx) << "failed to snapshot state on leader";
+          LOG_CTX("eb674", FATAL, lctx) << "failed to snapshot state on leader";
           FATAL_ERROR_EXIT();
         }
         // TODO add log context
-        LOG_CTX("b2c65", INFO, lctx) << "snapshot status updated on leader";
+        LOG_CTX("b2d65", INFO, lctx) << "snapshot status updated on leader";
       });
   return result;
 }

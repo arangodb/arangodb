@@ -126,7 +126,6 @@ struct CompactionManager : ICompactionManager,
 
   void triggerAsyncCompaction(Guarded<GuardedData>::mutex_guard_type guard,
                               bool ignoreThreshold);
-  void checkCompaction(Guarded<GuardedData>::mutex_guard_type);
 };
 }  // namespace comp
 }  // namespace replication2::replicated_log
