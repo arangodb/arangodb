@@ -104,16 +104,18 @@ FollowerManager::FollowerManager(
 auto FollowerManager::getStatus() const -> LogStatus {
   auto commitIndex = commit->getCommitIndex();
   auto log = storage->getCommittedLog();
+  auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   return LogStatus{FollowerStatus{
       .local =
           LogStatistics{
               .spearHead = log.getLastTermIndexPair(),
               .commitIndex = commitIndex,
               .firstIndex = log.getFirstIndex(),
-              .releaseIndex = LogIndex{0},  // TODO set release index properly
+              .releaseIndex = releaseIndex,  // TODO set release index properly
           },
       .leader = termInfo->leader,
       .term = termInfo->term,
+      .lowestIndexToKeep = lowestIndexToKeep,
       .compactionStatus = compaction->getCompactionStatus(),
       .snapshotAvailable =
           snapshot->checkSnapshotState() == SnapshotState::AVAILABLE,
@@ -123,6 +125,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
 auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   auto commitIndex = commit->getCommitIndex();
   auto log = storage->getCommittedLog();
+  auto [releaseIndex, largestIndexToKeep] = compaction->getIndexes();
   return QuickLogStatus{
       .role = ParticipantRole::kFollower,
       .term = termInfo->term,
@@ -131,7 +134,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
               .spearHead = log.getLastTermIndexPair(),
               .commitIndex = commitIndex,
               .firstIndex = log.getFirstIndex(),
-              .releaseIndex = LogIndex{0},  // TODO set release index properly
+              .releaseIndex = releaseIndex,
           },
       .leadershipEstablished = commitIndex.value > 0,
       .snapshotAvailable =

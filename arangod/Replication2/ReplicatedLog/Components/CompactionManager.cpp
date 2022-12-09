@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/coro-helper.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -105,8 +106,14 @@ auto CompactionManager::calculateCompactionIndex(LogIndex releaseIndex,
 void CompactionManager::triggerAsyncCompaction(
     Guarded<GuardedData>::mutex_guard_type guard, bool ignoreThreshold) {
   auto worker = [](Guarded<GuardedData>::mutex_guard_type guard,
-                   std::shared_ptr<CompactionManager> self) noexcept
+                   std::shared_ptr<CompactionManager> self)
       -> futures::Future<futures::Unit> {
+    ScopeGuard clearCompactionRunning([&]() noexcept {
+      ADB_PROD_ASSERT(guard.isLocked());
+      guard->_compactionInProgress = false;
+    });
+
+    guard->_compactionInProgress = true;
     while (true) {
       ADB_PROD_ASSERT(guard.isLocked());
       auto store = guard->storage.transaction();
@@ -125,7 +132,6 @@ void CompactionManager::triggerAsyncCompaction(
         compaction.time = CompactionStatus::clock ::now();
         LogRange compactionRange = LogRange{logBounds.from, index};
         compaction.range = compactionRange;
-        guard->_compactionInProgress = true;
         LOG_CTX("28d7d", TRACE, self->loggerContext)
             << "starting compaction on range " << compactionRange;
         auto f = store->removeFront(index);
@@ -144,7 +150,7 @@ void CompactionManager::triggerAsyncCompaction(
               << result;
           cresult.error = std::move(result).error();
           guard->status.lastCompaction->error = cresult.error;
-          guard->_compactionInProgress = false;
+          clearCompactionRunning.fire();
           break;
         } else {
           LOG_CTX("1ffec", TRACE, self->loggerContext)
@@ -156,7 +162,7 @@ void CompactionManager::triggerAsyncCompaction(
         LOG_CTX("35f56", TRACE, self->loggerContext)
             << "stopping compaction, reason = " << reason
             << " index = " << index << " log-range = " << logBounds;
-        guard->_compactionInProgress = false;
+        clearCompactionRunning.fire();
         guard->status.stop = reason;
         ADB_PROD_ASSERT(guard.isLocked());
         guard.unlock();
@@ -177,4 +183,11 @@ void CompactionManager::triggerAsyncCompaction(
     LOG_CTX("b6135", TRACE, loggerContext)
         << "another compaction is still in progress";
   }
+}
+
+auto CompactionManager::getIndexes() const noexcept
+    -> CompactionManager::Indexes {
+  auto guard = guarded.getLockedGuard();
+  return Indexes{.releaseIndex = guard->releaseIndex,
+                 .largestIndexToKeep = guard->largestIndexToKeep};
 }

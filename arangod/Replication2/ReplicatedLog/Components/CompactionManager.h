@@ -98,6 +98,12 @@ struct CompactionManager : ICompactionManager,
   void updateLargestIndexToKeep(LogIndex index) noexcept override;
   auto compact() noexcept -> futures::Future<CompactResult> override;
 
+  struct Indexes {
+    LogIndex releaseIndex, largestIndexToKeep;
+  };
+
+  [[nodiscard]] auto getIndexes() const noexcept -> Indexes;
+
   auto getCompactionStatus() const noexcept -> CompactionStatus override;
 
   [[nodiscard]] static auto calculateCompactionIndex(

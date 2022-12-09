@@ -46,7 +46,7 @@ struct LazyDeserializingIterator
       //_current.emplace(velocypack::deserialize<To>(current->logPayload()));
       _current.emplace(std::move(value));
       // TODO return correct log index
-      return {{{}, std::cref(*_current)}};
+      return {{current->logIndex(), std::cref(*_current)}};
     } else {
       _current.reset();
       return std::nullopt;
