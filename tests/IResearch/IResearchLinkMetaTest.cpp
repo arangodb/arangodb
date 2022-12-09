@@ -4159,7 +4159,8 @@ class mock_term_reader : public irs::term_reader {
 void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
                            arangodb::iresearch::IResearchLinkMeta const& meta,
                            std::set<irs::field_id> expected,
-                           arangodb::containers::FlatHashSet<std::string> const* expectedGeoColumns = nullptr) {
+                           arangodb::containers::FlatHashSet<std::string> const*
+                               expectedGeoColumns = nullptr) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
@@ -4186,8 +4187,8 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   });
   std::set<irs::field_id> actual;
   arangodb::containers::FlatHashSet<std::string> geoColumns;
-  arangodb::iresearch::collectCachedColumns(actual, geoColumns, mockFieldsReader.get(),
-                                                meta);
+  arangodb::iresearch::collectCachedColumns(actual, geoColumns,
+                                            mockFieldsReader.get(), meta);
   if (!expectedGeoColumns) {
     ASSERT_TRUE(geoColumns.empty());
   } else {
