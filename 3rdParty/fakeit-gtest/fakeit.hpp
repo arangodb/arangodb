@@ -5273,6 +5273,9 @@ namespace fakeit {
 
         template<typename C>
         static typename std::enable_if<std::has_virtual_destructor<C>::value, unsigned int>::type
+#if defined(__clang__)
+__attribute__((no_sanitize("undefined")))
+#endif
         getDestructorOffset() {
             VirtualOffsetSelector offsetSelctor;
             union_cast<C *>(&offsetSelctor)->~C();
