@@ -937,11 +937,6 @@ void TRI_vocbase_t::stop() {
       _replicationApplier->stopAndJoin();
     }
 
-    // resign replicated states
-    // this is needed to clear all ongoing snapshots and release collection
-    // locks
-    // _logManager->resignStates();
-
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
 
