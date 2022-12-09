@@ -64,14 +64,14 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
           _pk);
 
   irs::doc_id_t doc{irs::doc_limits::eof()};
+  pkField->read_documents(pkRef, {&doc, 1});
 
-  if (!pkField->read_documents(pkRef, {&doc, 1}) || irs::doc_limits::eof(doc)) {
+  if (irs::doc_limits::eof(doc)) {
     // no such term
     return irs::doc_iterator::empty();
   }
 
   _pkIterator.reset(getRemovalBoundary(segment, doc, _nested), doc);
-  _seen = true;
 
   return irs::memory::to_managed<irs::doc_iterator, false>(
       const_cast<PrimaryKeyIterator*>(&_pkIterator));
@@ -91,7 +91,7 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
     irs::score_t /*boost*/, irs::attribute_provider const* /*ctx*/) const {
   // optimization, since during regular runtime should have at most 1 identical
   // primary key in the entire datastore
-  if (!_seen) {
+  if (!irs::doc_limits::valid(_pkIterator.value())) {
     return irs::memory::to_managed<const irs::filter::prepared, false>(this);
   }
 

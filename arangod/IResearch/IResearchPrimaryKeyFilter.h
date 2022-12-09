@@ -113,12 +113,11 @@ class PrimaryKeyFilter final : public irs::filter,
     // We intentionally violate iresearch iterator specification
     // to keep memory footprint as small as possible.
     irs::document _doc;
-    irs::doc_id_t _count{};
+    irs::doc_id_t _count;
   };
 
   mutable LocalDocumentId::BaseType _pk;
   mutable PrimaryKeyIterator _pkIterator;
-  mutable bool _seen{false};
   bool _nested;
 };
 
