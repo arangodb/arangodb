@@ -2420,11 +2420,10 @@ IResearchAnalyzerFeature::splitAnalyzerName(
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     std::string_view vocbaseName, bool forceLoadPlan /* = false */) const {
-  TRI_vocbase_t* vocbase{nullptr};
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  vocbase = dbFeature.useDatabase(vocbaseName.empty()
-                                      ? arangodb::StaticStrings::SystemDatabase
-                                      : static_cast<std::string>(vocbaseName));
+  auto vocbase = dbFeature.useDatabase(
+      vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase
+                          : vocbaseName);
   if (vocbase) {
     return getAnalyzersRevision(*vocbase, forceLoadPlan);
   }
@@ -2470,8 +2469,7 @@ void IResearchAnalyzerFeature::prepare() {
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto* voc = dbFeature.useDatabase(static_cast<std::string>(
-      vocbase));  // FIXME: after C++20 remove cast and use heterogeneous lookup
+  auto voc = dbFeature.useDatabase(vocbase);
   if (!voc) {
     return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
             "failure to find vocbase while removing arangosearch analyzer '" +
@@ -2639,9 +2637,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view name,
     } else {
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
-      auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
-          split.first));  // FIXME: after C++20 remove cast and use
-                          // heterogeneous lookup
+      auto vocbase = dbFeature.useDatabase(split.first);
 
       if (!vocbase) {
         return {
@@ -2808,8 +2804,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     auto const split = splitAnalyzerName(pool.name());
-    // FIXME: after C++20 remove cast and use heterogeneous
-    // lookup
+    auto vocbase = dbFeature.useDatabase(split.first);
     auto* vocbase =
         dbFeature.useDatabase(static_cast<std::string>(split.first));
 

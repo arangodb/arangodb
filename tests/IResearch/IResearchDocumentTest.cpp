@@ -3084,8 +3084,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
     arangodb::transaction::BatchOptions batchOptions;
     arangodb::OperationOptions options;
     ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
-                    trx, *analyzersCollection, builder.slice(), rev, document,
-                    options, batchOptions)
+                    trx, *analyzersCollection, "test", builder.slice(), rev,
+                    document, options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
@@ -3142,8 +3142,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     arangodb::transaction::BatchOptions batchOptions;
     arangodb::OperationOptions options;
     ASSERT_TRUE(arangodb::transaction::helpers::newObjectForInsert(
-                    trx, *analyzersCollection, builder.slice(), rev, document,
-                    options, batchOptions)
+                    trx, *analyzersCollection, "test", builder.slice(), rev,
+                    document, options, batchOptions)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }

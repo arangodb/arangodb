@@ -1227,7 +1227,7 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice const& info) {
+    LogicalCollection& collection, velocypack::Slice info) {
   return std::make_unique<RocksDBCollection>(collection, info);
 }
 
@@ -1721,7 +1721,7 @@ void RocksDBEngine::processTreeRebuilds() {
 
     scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, candidate]() {
       if (!server().isStopping()) {
-        TRI_vocbase_t* vocbase = nullptr;
+        VocbasePtr vocbase;
         try {
           auto& df = server().getFeature<DatabaseFeature>();
           vocbase = df.useDatabase(candidate.first);
@@ -1780,10 +1780,6 @@ void RocksDBEngine::processTreeRebuilds() {
         } catch (...) {
           LOG_TOPIC("0bcbf", WARN, Logger::ENGINES)
               << "caught unknown exception during tree rebuilding";
-        }
-
-        if (vocbase != nullptr) {
-          vocbase->release();
         }
       }
 
