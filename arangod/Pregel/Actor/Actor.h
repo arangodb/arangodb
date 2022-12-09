@@ -29,25 +29,63 @@
 #include "MPSCQueue.h"
 
 namespace arangodb::pregel::actor {
+struct ActorID {
+  size_t id;
+
+  auto operator<=>(ActorID const& other) const = default;
+};
+
+}  // namespace arangodb::pregel::actor
+
+namespace std {
+template<>
+struct hash<arangodb::pregel::actor::ActorID> {
+  size_t operator()(arangodb::pregel::actor::ActorID const& x) const noexcept {
+    return std::hash<size_t>()(x.id);
+  };
+};
+}  // namespace std
+
+namespace arangodb::pregel::actor {
+using ServerID = std::string;
+
+struct ActorPID {
+  ActorID id;
+  ServerID server;
+};
+
+struct MessagePayload {
+  virtual ~MessagePayload() = default;
+};
+
+struct ActorBase {
+  virtual ~ActorBase() = default;
+  //
+
+  virtual auto process(ActorPID sender, std::unique_ptr<MessagePayload> payload) -> void= 0;
+  // state: initialised, running, finished
+};
 
 template<typename Scheduler, typename MessageHandler, typename State,
          typename Message>
-struct Actor {
-  Actor(Scheduler& schedule, std::unique_ptr<State> initialState)
+struct Actor : ActorBase {
+  Actor(std::shared_ptr<Scheduler> schedule, std::unique_ptr<State> initialState)
       : schedule(schedule), state(std::move(initialState)) {}
 
-  Actor(Scheduler& schedule, std::unique_ptr<State> initialState,
+  Actor(std::shared_ptr<Scheduler> schedule, std::unique_ptr<State> initialState,
         std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule) {}
 
-  void process(std::unique_ptr<Message> msg) {
-    inbox.push(std::move(msg));
+  ~Actor() = default;
+
+  void process(ActorPID sender, std::unique_ptr<MessagePayload> msg) override {
+//    inbox.push(std::move(msg));
     kick();
   }
 
   void kick() {
     // Make sure that *someone* works here
-    schedule([this]() { this->work(); });
+    (*schedule)([this]() { this->work(); });
   }
 
   void work() {
@@ -56,7 +94,7 @@ struct Actor {
       auto i = batchSize;
 
       while (auto msg = inbox.pop()) {
-        state = std::visit(MessageHandler{std::move(state)}, *msg);
+        state = std::visit(MessageHandler{std::move(state)}, msg->message);
         i--;
         if (i == 0) {
           break;
@@ -73,7 +111,7 @@ struct Actor {
   std::size_t batchSize{16};
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<Message> inbox;
-  Scheduler& schedule;
+  std::shared_ptr<Scheduler> schedule;
   std::unique_ptr<State> state;
 };
 
