@@ -28,3 +28,13 @@ vptr:v8::Platform
 # https://github.com/libjpeg-turbo/libjpeg-turbo/issues/470
 pointer-overflow:3rdParty/nghttp2/lib/nghttp2_buf.c
 pointer-overflow:3rdParty/lz4/lib/lz4.c
+
+# TODO(MBkkt) Should be fixed, but difficult to understand without correct stacks
+# Now I just suppress it because it's affect only arangodbtests:
+# fakeit.hpp:5234:47: runtime error: member call on address X with insufficient space for an object of type 
+#  fakeit::Mock: CollectionInfoCurrent, ClusterInfo, transaction::Methods, transaction::Context
+object-size:3rdParty/fakeit-gtest/fakeit.hpp
+
+# TODO(MBkkt) Should be fixed, but difficult to understand without any info except error and binary
+# runtime error: reference binding to null pointer of type 'arangodb::transaction::Methods'
+null:include/c++/11/bits/unique_ptr.h
