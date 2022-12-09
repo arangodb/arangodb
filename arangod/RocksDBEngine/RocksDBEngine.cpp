@@ -1069,6 +1069,9 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
+      if (_scheduler->server().isStopping()) {
+        return;
+      }
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 
@@ -1716,6 +1719,10 @@ void RocksDBEngine::processTreeRebuilds() {
     }
 
     if (candidate.first == 0 || candidate.second.empty()) {
+      return;
+    }
+
+    if (server().isStopping()) {
       return;
     }
 

@@ -86,6 +86,9 @@ class Scheduler {
       RequestLane lane, clock::duration delay,
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
+  // Returns the scheduler's server object
+  ArangodServer& server() noexcept { return _server; }
+
   class DelayedWorkItem {
    public:
     ~DelayedWorkItem() {

@@ -125,6 +125,10 @@ std::optional<std::string> ClusterMetricsFeature::update(
 
 void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
   TRI_ASSERT(_timeout > 0);
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::DELAYED_FUTURE, std::chrono::milliseconds{timeoutMs},
       [this](bool canceled) noexcept {
@@ -138,6 +142,10 @@ void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
 }
 
 void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::CLUSTER_INTERNAL, std::chrono::milliseconds{timeoutMs},
       [this](bool canceled) noexcept {
