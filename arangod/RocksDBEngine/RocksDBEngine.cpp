@@ -1227,7 +1227,7 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice const& info) {
+    LogicalCollection& collection, velocypack::Slice info) {
   return std::make_unique<RocksDBCollection>(collection, info);
 }
 

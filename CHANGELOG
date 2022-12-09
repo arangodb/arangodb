@@ -1,6 +1,9 @@
 devel
 -----
 
+* Print the pid of the process which sent a SIGABRT or other fatal 
+  signal that shuts down ArangoDB ungracefully.
+
 * Avoid write-write conflicts for single document operations performed via the
   document REST API (i.e., no AQL, but also no streaming transactions). This is
   achieved by locking the key of each document before performing the actual
