@@ -1387,15 +1387,15 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         TRI_ASSERT(false);
       }
 
-      auto dbName = info.getName();
-      auto vocbase = databaseFeature.useDatabase(dbName);
-      if (vocbase == nullptr) {
+      auto const dbName = info.getName();
+
+      if (auto vocbase = databaseFeature.useDatabase(dbName);
+          vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        TRI_vocbase_t* new_db{};
-        Result res = databaseFeature.createDatabase(std::move(info), new_db);
-        vocbase.reset(new_db);
+        [[maybe_unused]] TRI_vocbase_t* unused{};
+        Result res = databaseFeature.createDatabase(std::move(info), unused);
 
         events::CreateDatabase(dbName, res, ExecContext::current());
 
