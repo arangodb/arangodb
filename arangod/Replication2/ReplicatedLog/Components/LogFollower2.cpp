@@ -86,7 +86,8 @@ FollowerManager::FollowerManager(
       options(options),
       storage(
           std::make_shared<StorageManager>(std::move(methods), loggerContext)),
-      compaction(std::make_shared<CompactionManager>(*storage, options)),
+      compaction(std::make_shared<CompactionManager>(*storage, options,
+                                                     loggerContext)),
       stateHandle(
           std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
       snapshot(std::make_shared<SnapshotManager>(

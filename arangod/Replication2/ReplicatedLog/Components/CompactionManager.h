@@ -27,6 +27,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
+#include "Replication2/LoggerContext.h"
 
 namespace arangodb {
 template<typename T>
@@ -85,7 +86,8 @@ struct CompactionManager : ICompactionManager,
                            std::enable_shared_from_this<CompactionManager> {
   explicit CompactionManager(
       IStorageManager& storage,
-      std::shared_ptr<ReplicatedLogGlobalSettings const> options);
+      std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      LoggerContext const& loggerContext);
 
   CompactionManager(CompactionManager const&) = delete;
   CompactionManager(CompactionManager&&) noexcept = delete;
@@ -114,17 +116,16 @@ struct CompactionManager : ICompactionManager,
     IStorageManager& storage;
   };
   Guarded<GuardedData> guarded;
+  LoggerContext const loggerContext;
 
   std::shared_ptr<ReplicatedLogGlobalSettings const> const options;
 
   void triggerAsyncCompaction(Guarded<GuardedData>::mutex_guard_type guard,
                               bool ignoreThreshold);
   void checkCompaction(Guarded<GuardedData>::mutex_guard_type);
-  void scheduleCompaction(Guarded<GuardedData>::mutex_guard_type guard,
-                          bool ignoreThreshold);
-  [[nodiscard]] auto calculateCompactionIndex(GuardedData const& data,
-                                              LogRange bounds,
-                                              bool ignoreThreshold) const
+  [[nodiscard]] static auto calculateCompactionIndex(GuardedData const& data,
+                                                     LogRange bounds,
+                                                     std::size_t threshold)
       -> std::tuple<LogIndex, CompactionStopReason>;
 };
 }  // namespace comp

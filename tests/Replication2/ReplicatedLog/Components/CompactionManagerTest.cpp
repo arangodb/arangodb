@@ -72,7 +72,8 @@ struct CompactionManagerTest : ::testing::Test {
       std::make_shared<ReplicatedLogGlobalSettings>();
 
   std::shared_ptr<CompactionManager> compactionManager =
-      std::make_shared<CompactionManager>(storageManagerMock, options);
+      std::make_shared<CompactionManager>(storageManagerMock, options,
+                                          LoggerContext{Logger::REPLICATION2});
 };
 
 TEST_F(CompactionManagerTest, no_compaction_after_release_index_update) {
@@ -297,4 +298,126 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
   auto result = cf.get();
   EXPECT_EQ(result.error, std::nullopt);
   EXPECT_EQ(result.compactedRange, (LogRange{LogIndex{20}, LogIndex{40}}));
+}
+
+TEST_F(CompactionManagerTest, run_automatic_compaction_twice) {
+  options->_thresholdLogCompaction = 0;
+
+  EXPECT_CALL(storageManagerMock, transaction).WillOnce([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{0}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
+    return trx;
+  });
+  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+
+  // We expect two transactions to be started:
+  // 1. see the log in range [1, 101) and calls removeFront with stop = 20
+  // 2. sees the log in range [20, 101) and does nothing else (stops compaction
+  // loop)
+  EXPECT_CALL(storageManagerMock, transaction)
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{1}, LogIndex{101}}));
+        EXPECT_CALL(*trx, removeFront(LogIndex{20}))
+            .WillOnce([&](LogIndex stop) { return Result{}; });
+        return trx;
+      })
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+        return trx;
+      });
+
+  compactionManager->updateReleaseIndex(
+      LogIndex{45});  // should start a compaction now
+
+  // We expect two transactions to be started:
+  // 1. see the log in range [20, 101) and calls removeFront with stop = 45
+  // 2. sees the log in range [45, 101) and does nothing else (stops compaction
+  // loop)
+  EXPECT_CALL(storageManagerMock, transaction)
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+        EXPECT_CALL(*trx, removeFront(LogIndex{45}))
+            .WillOnce([&](LogIndex stop) { return Result{}; });
+        return trx;
+      })
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{45}, LogIndex{101}}));
+        return trx;
+      });
+
+  compactionManager->updateLargestIndexToKeep(
+      LogIndex{45});  // should start another compaction now
+}
+
+TEST_F(CompactionManagerTest, run_automatic_compaction_twice_but_delayed) {
+  options->_thresholdLogCompaction = 0;
+
+  EXPECT_CALL(storageManagerMock, transaction).WillOnce([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    ON_CALL(*trx, getLogBounds)
+        .WillByDefault(testing::Return(LogRange{LogIndex{0}, LogIndex{101}}));
+    EXPECT_CALL(*trx, getLogBounds).Times(1);
+    return trx;
+  });
+  compactionManager->updateLargestIndexToKeep(LogIndex{20});
+
+  // We expect two transactions to be started:
+  // 1. see the log in range [1, 101) and calls removeFront with stop = 20
+  // This time however, we return a future from removeFront and resolve it
+  // at the end.
+  std::optional<futures::Promise<Result>> p;
+  EXPECT_CALL(storageManagerMock, transaction).WillOnce([&] {
+    auto trx = std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+    EXPECT_CALL(*trx, getLogBounds)
+        .WillOnce(testing::Return(LogRange{LogIndex{1}, LogIndex{101}}));
+    EXPECT_CALL(*trx, removeFront(LogIndex{20})).WillOnce([&](LogIndex stop) {
+      return p.emplace().getFuture();
+    });
+    return trx;
+  });
+
+  compactionManager->updateReleaseIndex(
+      LogIndex{45});  // should start a compaction now
+
+  // We expect two transactions to be started:
+  // 1. see the log in range [20, 101) and calls removeFront with stop = 45
+  // 2. sees the log in range [45, 101) and does nothing else (stops compaction
+  // loop)
+  EXPECT_CALL(storageManagerMock, transaction)
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{20}, LogIndex{101}}));
+        EXPECT_CALL(*trx, removeFront(LogIndex{45}))
+            .WillOnce([&](LogIndex stop) { return Result{}; });
+        return trx;
+      })
+      .WillOnce([&] {
+        auto trx =
+            std::make_unique<testing::StrictMock<StorageTransactionMock>>();
+        EXPECT_CALL(*trx, getLogBounds)
+            .WillOnce(testing::Return(LogRange{LogIndex{45}, LogIndex{101}}));
+        return trx;
+      });
+
+  compactionManager->updateLargestIndexToKeep(
+      LogIndex{45});  // should start another compaction now
+
+  // finally resolve the future
+  p->setValue(TRI_ERROR_NO_ERROR);
 }

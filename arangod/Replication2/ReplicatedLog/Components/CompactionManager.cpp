@@ -25,22 +25,31 @@
 #include "Basics/ResultT.h"
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 CompactionManager::CompactionManager(
     IStorageManager& storage,
-    std::shared_ptr<ReplicatedLogGlobalSettings const> options)
-    : guarded(storage), options(std::move(options)) {}
+    std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    LoggerContext const& loggerContext)
+    : guarded(storage),
+      loggerContext(
+          loggerContext.with<logContextKeyLogComponent>("compaction-man")),
+      options(std::move(options)) {}
 
 void CompactionManager::updateReleaseIndex(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
+  LOG_CTX_IF("641f7", TRACE, loggerContext, index > guard->releaseIndex)
+      << "updating release index for compaction to " << index;
   guard->releaseIndex = std::max(guard->releaseIndex, index);
   triggerAsyncCompaction(std::move(guard), false);
 }
 
 void CompactionManager::updateLargestIndexToKeep(LogIndex index) noexcept {
   auto guard = guarded.getLockedGuard();
+  LOG_CTX_IF("ff33a", TRACE, loggerContext, index > guard->largestIndexToKeep)
+      << "updating largest index to keep to " << index;
   guard->largestIndexToKeep = std::max(guard->largestIndexToKeep, index);
   triggerAsyncCompaction(std::move(guard), false);
 }
@@ -48,6 +57,7 @@ void CompactionManager::updateLargestIndexToKeep(LogIndex index) noexcept {
 auto CompactionManager::compact() noexcept -> futures::Future<CompactResult> {
   auto guard = guarded.getLockedGuard();
   auto f = guard->compactAggregator.waitFor();
+  LOG_CTX("43337", INFO, loggerContext) << "triggering manual compaction";
   triggerAsyncCompaction(std::move(guard), true);
   return f;
 }
@@ -67,15 +77,15 @@ auto CompactionManager::GuardedData::isCompactionInProgress() const noexcept
 
 auto CompactionManager::calculateCompactionIndex(GuardedData const& data,
                                                  LogRange bounds,
-                                                 bool ignoreThreshold) const
+                                                 std::size_t threshold)
     -> std::tuple<LogIndex, CompactionStopReason> {
   // TODO make this function a stand alone functional program
   //      and write tests for it, separately.
   auto [first, last] = bounds;
   auto newCompactionIndex =
       std::min(data.releaseIndex, data.largestIndexToKeep);
-  auto nextAutomaticCompactionAt = first + options->_thresholdLogCompaction;
-  if (not ignoreThreshold and nextAutomaticCompactionAt > newCompactionIndex) {
+  auto nextAutomaticCompactionAt = first + threshold;
+  if (nextAutomaticCompactionAt > newCompactionIndex) {
     return {first,
             {CompactionStopReason::CompactionThresholdNotReached{
                 nextAutomaticCompactionAt}}};
@@ -99,17 +109,22 @@ void CompactionManager::checkCompaction(
   auto store = guard->storage.transaction();
   auto logBounds = store->getLogBounds();
 
-  auto [index, reason] = calculateCompactionIndex(
-      guard.get(), logBounds, guard->_fullCompactionNextRound);
+  auto threshold =
+      guard->_fullCompactionNextRound ? 0 : options->_thresholdLogCompaction;
+  auto [index, reason] =
+      calculateCompactionIndex(guard.get(), logBounds, threshold);
   guard->_fullCompactionNextRound = false;
   auto promises = std::move(guard->compactAggregator);
 
+  // TODO maybe we want to rewrite this as a coroutine?
   if (index > logBounds.from) {
     auto& compaction = guard->status.inProgress.emplace();
     compaction.time = CompactionStatus::clock ::now();
     LogRange compactionRange = LogRange{logBounds.from, index};
     compaction.range = compactionRange;
     guard->_compactionInProgress = true;
+    LOG_CTX("28d7d", TRACE, loggerContext)
+        << "starting compaction on range " << compactionRange;
     auto f = store->removeFront(index);
     guard.unlock();
     std::move(f).thenFinal(
@@ -130,9 +145,14 @@ void CompactionManager::checkCompaction(
             guard->status.lastCompaction = guard->status.inProgress;
             guard->status.inProgress.reset();
             if (result.fail()) {
+              LOG_CTX("aa739", ERR, self->loggerContext)
+                  << "error during compaction on range " << compactionRange
+                  << ": " << result;
               cresult.error = std::move(result).error();
               guard->status.lastCompaction->error = cresult.error;
             } else {
+              LOG_CTX("1ffec", TRACE, self->loggerContext)
+                  << "compaction completed on range " << compactionRange;
               self->checkCompaction(std::move(guard));
             }
           }
@@ -140,6 +160,10 @@ void CompactionManager::checkCompaction(
           promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
         });
   } else {
+    LOG_CTX("35f56", TRACE, loggerContext)
+        << "stopping compaction, reason = " << reason << " index = " << index
+        << " log-range = " << logBounds;
+    guard->_compactionInProgress = false;
     guard->status.stop = reason;
     guard.unlock();
     auto cresult = CompactResult{.stopReason = reason};
@@ -152,5 +176,8 @@ void CompactionManager::triggerAsyncCompaction(
   guard->_fullCompactionNextRound |= ignoreThreshold;
   if (not guard->_compactionInProgress) {
     checkCompaction(std::move(guard));
+  } else {
+    LOG_CTX("b6135", TRACE, loggerContext)
+        << "another compaction is still in progress";
   }
 }
