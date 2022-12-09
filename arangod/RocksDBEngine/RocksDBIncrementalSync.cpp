@@ -726,6 +726,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       trx = std::make_unique<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(syncer.vocbase()), *col,
           AccessMode::Type::EXCLUSIVE);
+      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       return trx->begin();
     };
 

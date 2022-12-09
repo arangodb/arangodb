@@ -1,3 +1,11 @@
+v3.9.7 (XXXX-XX-XX)
+-------------------
+
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a
+  remedy for OOM kills during restarts.
+
+
 v3.9.6 (XXXX-XX-XX)
 -------------------
 
