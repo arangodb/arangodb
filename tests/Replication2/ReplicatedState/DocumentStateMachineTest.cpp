@@ -26,9 +26,6 @@
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
-#include "Replication2/Mocks/MockStatePersistorInterface.h"
-
-#include "velocypack/Value.h"
 
 #include <thread>
 #include <vector>
@@ -39,19 +36,7 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 using namespace arangodb::replication2::test;
 
-struct DocumentStateMachineTest : test::ReplicatedLogTest {
-  DocumentStateMachineTest() {
-    feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              handlersFactoryMock,
-                                              transactionManagerMock);
-  }
-
-  std::shared_ptr<ReplicatedStateFeature> feature =
-      std::make_shared<ReplicatedStateFeature>();
-
-  std::shared_ptr<MockStatePersistorInterface> statePersistor =
-      std::make_shared<MockStatePersistorInterface>();
-
+struct DocumentStateMachineTest : testing::Test {
   std::vector<std::string> collectionData;
   std::shared_ptr<testing::NiceMock<MockCollectionReader>>
       collectionReaderMock =
@@ -78,19 +63,11 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       leaderInterfaceMock = std::make_shared<
           testing::NiceMock<MockDocumentStateLeaderInterface>>();
 
-  MockTransactionManager transactionManagerMock;
-
-  const std::string collectionId = "testCollectionID";
-  const LogId logId = LogId{1};
-  const std::string dbName = "testDB";
-  const GlobalLogIdentifier globalId{dbName, logId};
-  const ShardID shardId = DocumentStateShardHandler::stateIdToShardId(logId);
-  const document::DocumentCoreParameters coreParams{collectionId, dbName};
-
   std::shared_ptr<testing::NiceMock<MockDocumentStateHandlersFactory>>
       handlersFactoryMock =
           std::make_shared<testing::NiceMock<MockDocumentStateHandlersFactory>>(
               collectionReaderFactoryMock);
+  MockTransactionManager transactionManagerMock;
 
   void SetUp() override {
     using namespace testing;
@@ -179,6 +156,15 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
     Mock::VerifyAndClearExpectations(collectionReaderMock.get());
     Mock::VerifyAndClearExpectations(collectionReaderFactoryMock.get());
   }
+
+  const std::string collectionId = "testCollectionID";
+  static constexpr LogId logId = LogId{1};
+  const std::string dbName = "testDB";
+  const GlobalLogIdentifier globalId{dbName, logId};
+  const ShardID shardId = DocumentStateShardHandler::stateIdToShardId(logId);
+  const document::DocumentCoreParameters coreParams{collectionId, dbName};
+  const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
+  const std::string leaderId = "leader";
 };
 
 TEST_F(DocumentStateMachineTest,
@@ -410,7 +396,7 @@ TEST_F(DocumentStateMachineTest,
 
 TEST_F(
     DocumentStateMachineTest,
-    test__transactionHandler_ensureTransaction_creates_new_transaction_only_once) {
+    test_transactionHandler_ensureTransaction_creates_new_transaction_only_once) {
   using namespace testing;
 
   auto transactionHandler = DocumentStateTransactionHandler(
@@ -567,38 +553,6 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
   result = transactionHandler.applyEntry(doc);
   ASSERT_TRUE(result.fail());
   Mock::VerifyAndClearExpectations(transactionMock.get());
-}
-
-TEST_F(DocumentStateMachineTest,
-       shard_is_created_along_with_the_replicated_state) {
-  using namespace testing;
-
-  auto leaderLog = makeReplicatedLog(globalId);
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
-  leader->triggerAsyncReplication();
-
-  auto leaderReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog,
-                                         statePersistor));
-  ASSERT_NE(leaderReplicatedState, nullptr);
-
-  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
-  EXPECT_CALL(*agencyHandlerMock,
-              reportShardInCurrent(collectionId, shardId, _))
-      .Times(1);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
-  leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
-      coreParams.toSharedSlice());
-
-  // Very methods called during core construction
-  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
-  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
-
-  auto leaderState = leaderReplicatedState->getLeader();
-  ASSERT_NE(leaderState, nullptr);
-  ASSERT_EQ(leaderState->shardId, shardId);
 }
 
 TEST_F(
@@ -779,21 +733,13 @@ TEST_F(DocumentStateMachineTest,
        leader_resign_should_abort_active_transactions) {
   using namespace testing;
 
-  auto leaderLog = makeReplicatedLog(globalId);
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {}, 1);
-  leader->triggerAsyncReplication();
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  auto leaderReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog,
-                                         statePersistor));
-  ASSERT_NE(leaderReplicatedState, nullptr);
-  leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
-      coreParams.toSharedSlice());
-
-  auto leaderState = leaderReplicatedState->getLeader();
-  ASSERT_NE(leaderState, nullptr);
+  auto core = factory.constructCore(globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
+  leaderState->setStream(stream);
 
   {
     VPackBuilder builder;
@@ -824,12 +770,11 @@ TEST_F(DocumentStateMachineTest,
   }
   EXPECT_EQ(1U, leaderState->getActiveTransactionsCount());
 
+  // resigning should abort the remaining transaction with ID 13
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{13}, globalId.database))
       .Times(1);
-
-  // resigning as leader should abort the remaining transaction with id 13
-  std::ignore = leaderLog->becomeFollower("leader", LogTerm{2}, "dummy");
+  std::ignore = std::move(*leaderState).resign();
   Mock::VerifyAndClearExpectations(&transactionManagerMock);
 }
 
@@ -837,22 +782,14 @@ TEST_F(DocumentStateMachineTest,
        recoverEntries_should_abort_remaining_active_transactions) {
   using namespace testing;
 
-  std::vector<PersistingLogEntry> entries;
+  std::vector<DocumentLogEntry> entries;
 
   auto addEntry = [&entries, this](OperationType op, TransactionId trxId) {
     VPackBuilder builder;
     builder.openObject();
     builder.close();
     auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
-
-    builder.clear();
-    builder.openArray();
-    builder.add(VPackValue(1));
-    velocypack::serialize(builder, entry);
-    builder.close();
-
-    entries.emplace_back(LogTerm{1}, LogIndex{entries.size() + 1},
-                         LogPayload::createFromSlice(builder.slice()));
+    entries.emplace_back(std::move(entry));
   };
 
   // Transaction IDs are of follower type, as if they were replicated.
@@ -862,212 +799,33 @@ TEST_F(DocumentStateMachineTest,
   addEntry(OperationType::kAbort, TransactionId{6});
   addEntry(OperationType::kCommit, TransactionId{10});
 
-  auto core = makeLogCore<MockLog>(globalId);
-  auto it = test::make_iterator(entries);
-  core->insert(*it, true);
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
-  auto leaderLog = std::make_shared<TestReplicatedLog>(
-      std::move(core), _logMetricsMock, _optionsMock,
-      LoggerContext(Logger::REPLICATION2));
+  auto core = factory.constructCore(globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<MockProducerStream>();
 
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{2}, {}, 1);
-  leader->triggerAsyncReplication();
+  leaderState->setStream(stream);
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
-  auto leaderReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog,
-                                         statePersistor));
-  ASSERT_NE(leaderReplicatedState, nullptr);
-
-  EXPECT_CALL(*transactionMock, apply).Times(3);
-  EXPECT_CALL(*transactionMock, commit).Times(1);
-  EXPECT_CALL(*transactionMock, abort).Times(1);
-
-  // The leader adds a tombstone for the remaining transaction.
+  EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
+    EXPECT_EQ(entry.shardId, "s1");
+    EXPECT_EQ(entry.operation, OperationType::kAbortAllOngoingTrx);
+    return LogIndex{entries.size() + 1};
+  });
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{14}.asLeaderTransactionId(),
                               globalId.database))
       .Times(1);
-  leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
-      coreParams.toSharedSlice());
+  EXPECT_CALL(*transactionMock, apply).Times(3);
+  EXPECT_CALL(*transactionMock, commit).Times(1);
+  EXPECT_CALL(*transactionMock, abort).Times(1);
+
+  leaderState->recoverEntries(std::move(entryIterator));
+
   Mock::VerifyAndClearExpectations(&transactionManagerMock);
   Mock::VerifyAndClearExpectations(transactionMock.get());
-}
-
-/*
- * This is a larger test designed to check the overall integration between
- * leader and follower. It also servers as an example of how to use the document
- * state in other unit tests.
- */
-TEST_F(DocumentStateMachineTest, leader_follower_integration) {
-  using namespace testing;
-
-  auto followerLog = makeReplicatedLog(logId);
-  auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
-
-  auto leaderLog = makeReplicatedLog(logId);
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{1}, {follower}, 2);
-  leader->triggerAsyncReplication();
-
-  auto leaderReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, leaderLog,
-                                         statePersistor));
-  ASSERT_NE(leaderReplicatedState, nullptr);
-
-  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
-  EXPECT_CALL(*agencyHandlerMock,
-              reportShardInCurrent(collectionId, shardId, _))
-      .Times(1);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
-  leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
-      coreParams.toSharedSlice());
-
-  // Very methods called during core construction
-  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
-  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
-
-  follower->runAllAsyncAppendEntries();
-  auto leaderState = leaderReplicatedState->getLeader();
-  ASSERT_NE(leaderState, nullptr);
-  ASSERT_EQ(leaderState->shardId, shardId);
-
-  // During leader recovery, all ongoing transactions must be aborted
-  auto inMemoryLog = leader->copyInMemoryLog();
-  auto lastIndex = inMemoryLog.getLastIndex();
-  auto entry = inMemoryLog.getEntryByIndex(lastIndex);
-  auto doc = velocypack::deserialize<DocumentLogEntry>(
-      entry->entry().logPayload()->slice()[1]);
-  ASSERT_EQ(doc.operation, OperationType::kAbortAllOngoingTrx);
-
-  auto followerReplicatedState =
-      std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
-          feature->createReplicatedState(DocumentState::NAME, followerLog,
-                                         statePersistor));
-  ASSERT_NE(followerReplicatedState, nullptr);
-
-  auto transactionHandlerMock =
-      handlersFactoryMock->makeRealTransactionHandler(globalId);
-  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
-      .WillByDefault([&](GlobalLogIdentifier const& gid) {
-        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
-            transactionHandlerMock);
-      });
-
-  EXPECT_CALL(*agencyHandlerMock, getCollectionPlan(collectionId)).Times(1);
-  EXPECT_CALL(*agencyHandlerMock,
-              reportShardInCurrent(collectionId, shardId, _))
-      .Times(1);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
-  followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
-      coreParams.toSharedSlice());
-
-  // Very methods called during core construction
-  Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
-  Mock::VerifyAndClearExpectations(shardHandlerMock.get());
-
-  auto followerState = followerReplicatedState->getFollower();
-  ASSERT_NE(followerState, nullptr);
-
-  // Insert a document
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder ob(&builder);
-    builder.add("document1_key", "document1_value");
-    ob->close();
-
-    auto operation = OperationType::kInsert;
-    auto tid = TransactionId{5};
-    auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                               tid, ReplicationOptions{});
-
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
-
-    inMemoryLog = leader->copyInMemoryLog();
-    entry = inMemoryLog.getEntryByIndex(logIndex);
-    doc = velocypack::deserialize<DocumentLogEntry>(
-        entry->entry().logPayload()->slice()[1]);
-    EXPECT_EQ(doc.shardId, shardId);
-    EXPECT_EQ(doc.operation, operation);
-    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
-    EXPECT_EQ(doc.data.get("document1_key").stringView(), "document1_value");
-
-    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
-    EXPECT_CALL(*transactionMock, apply).Times(1);
-    follower->runAllAsyncAppendEntries();
-    Mock::VerifyAndClearExpectations(transactionMock.get());
-    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
-  }
-
-  // Insert another document, but fail with UNIQUE_CONSTRAINT_VIOLATED. The
-  // follower should continue.
-  builder.clear();
-  {
-    VPackObjectBuilder ob(&builder);
-    builder.add("document2_key", "document2_value");
-    ob->close();
-
-    auto operation = OperationType::kInsert;
-    auto tid = TransactionId{5};
-    auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                               tid, ReplicationOptions{});
-
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
-
-    inMemoryLog = leader->copyInMemoryLog();
-    entry = inMemoryLog.getEntryByIndex(logIndex);
-    doc = velocypack::deserialize<DocumentLogEntry>(
-        entry->entry().logPayload()->slice()[1]);
-    EXPECT_EQ(doc.shardId, shardId);
-    EXPECT_EQ(doc.operation, operation);
-    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
-    EXPECT_EQ(doc.data.get("document2_key").stringView(), "document2_value");
-
-    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
-    EXPECT_CALL(*transactionMock, apply(_))
-        .WillOnce([](DocumentLogEntry const& entry) {
-          auto opRes = OperationResult{Result{}, OperationOptions{}};
-          opRes.countErrorCodes[TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED] =
-              1;
-          return opRes;
-        });
-    follower->runAllAsyncAppendEntries();
-    Mock::VerifyAndClearExpectations(transactionMock.get());
-    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
-  }
-
-  // Commit
-  {
-    auto operation = OperationType::kCommit;
-    auto tid = TransactionId{5};
-    auto res = leaderState->replicateOperation(
-        velocypack::SharedSlice{}, operation, tid,
-        ReplicationOptions{.waitForCommit = true});
-
-    ASSERT_FALSE(res.isReady());
-
-    EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(1);
-    EXPECT_CALL(*transactionMock, commit).Times(1);
-    follower->runAllAsyncAppendEntries();
-    Mock::VerifyAndClearExpectations(transactionMock.get());
-    Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
-    ASSERT_TRUE(res.isReady());
-    auto logIndex = res.result().get();
-
-    inMemoryLog = follower->copyInMemoryLog();
-    entry = inMemoryLog.getEntryByIndex(logIndex);
-    doc = velocypack::deserialize<DocumentLogEntry>(
-        entry->entry().logPayload()->slice()[1]);
-    EXPECT_EQ(doc.shardId, shardId);
-    EXPECT_EQ(doc.operation, operation);
-    EXPECT_EQ(doc.tid, tid.asFollowerTransactionId());
-    EXPECT_TRUE(doc.data.isNone());
-  }
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {
