@@ -119,10 +119,13 @@ TRI_v8_global_t::TRI_v8_global_t(
   PortKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "port"));
   PortTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "portType"));
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
-  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
-  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RawRequestBodyKey.Reset(isolate,
                           TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
+  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
+  RefillIndexCachesKey.Reset(
+      isolate, TRI_V8_ASCII_STD_STRING(
+                   isolate, arangodb::StaticStrings::RefillIndexCachesString));
+  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));

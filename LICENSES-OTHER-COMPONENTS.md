@@ -16,7 +16,7 @@
 ### Abseil - C++ Common Libraries
 
 * Name: abseil-cpp
-* Version: e6f568445f406318b970a56ae377e7ab8885cb50
+* Version: 13708db87b1ab69f4f2b3214f3f51e986546f282
 * Date: 2022-11-22
 * Project Home: https://abseil.io
 * License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE
@@ -359,10 +359,10 @@ _Enterprise Edition only_
 ### immer
 
 * Name: immer
-* Version: 0.7.0
-* Date: 2021-11-08 17:27:00 UTC
+* Version: 0.8.0
+* Date: 2022-12-06 11:30 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.8.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc

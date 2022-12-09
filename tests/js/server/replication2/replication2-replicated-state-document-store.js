@@ -768,11 +768,12 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    testLeaderRestAPI: function (testName) {
+    // This is disabled because we currently implement no cleanup for snapshots
+    DISABLED_testDropCollectionOngoingTransfer: function (testName) {
       collection.insert({_key: testName});
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let leaderUrl = lh.getServerUrl(leader);
-      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot?waitForIndex=0`;
+      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/first?waitForIndex=0`;
       let result = request.get({url: url});
       lh.checkRequestResult(result);
     },
@@ -787,18 +788,24 @@ const replicatedStateSnapshotTransferSuite = function () {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      collection.insert([{_key: "test1"}, {_key: "test2"}]);
-
-      let documents = [];
+      let documents1 = [];
       for (let counter = 0; counter < 100; ++counter) {
-        documents.push({_key: `foo${counter}`});
+        documents1.push({_key: `foo${counter}`});
       }
-      for (let idx = 0; idx < documents.length; ++idx) {
-        collection.insert(documents[idx]);
+      for (let idx = 0; idx < documents1.length; ++idx) {
+        collection.insert(documents1[idx]);
       }
 
       // Trigger compaction intentionally.
       log.compact();
+
+      let documents2 = [];
+      for (let counter = 0; counter < 100; ++counter) {
+        documents2.push({_key: `bar${counter}`});
+      }
+      for (let idx = 0; idx < documents2.length; ++idx) {
+        collection.insert(documents2[idx]);
+      }
 
       // Replace the follower.
       const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
@@ -819,10 +826,7 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       syncShardsWithLogs(database);
 
-      // The new follower should've executed a snapshot transfer.
-      const checkKeys = ["test1", "test2"];
-      // Skipping some documents to save time
-      checkKeys.push(...documents.map(doc => doc._key));
+      let checkKeys = [...documents1.map(doc => doc._key)].concat([...documents2.map(doc => doc._key)]);
       let bulk = sh.getBulkDocuments(lh.getServerUrl(newParticipant), database, shardId, checkKeys);
       let keysSet = new Set(checkKeys);
       for (let doc of bulk) {
@@ -850,7 +854,6 @@ const replicatedStateSnapshotTransferSuite = function () {
       //      election is done (by deleting the current leader when increasing the term)
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
-      // Skipping some documents to save time
       let checkKeys = documents.map(doc => doc._key);
       let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
       let bulk = sh.getBulkDocuments(lh.getServerUrl(leader), database, shardId, checkKeys);

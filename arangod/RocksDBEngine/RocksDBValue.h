@@ -129,6 +129,7 @@ class RocksDBValue {
   static replication2::LogPayload logPayload(rocksdb::Slice const&);
 
  public:
+  RocksDBEntryType type() const noexcept { return _type; }
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
   //////////////////////////////////////////////////////////////////////////////
@@ -155,7 +156,6 @@ class RocksDBValue {
   }
 
  private:
-  RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
                RevisionId revision);

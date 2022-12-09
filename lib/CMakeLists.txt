@@ -81,7 +81,6 @@ add_library(arango_lightweight STATIC
         Basics/system-functions.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
-        Futures/Future.cpp
         Logger/Escaper.cpp
         Logger/LogAppender.cpp
         Logger/LogAppenderFile.cpp
@@ -89,17 +88,18 @@ add_library(arango_lightweight STATIC
         Logger/LogContext.cpp
         Logger/LogLevel.cpp
         Logger/LogThread.cpp
-        Logger/LogTimeFormat.cpp
         Logger/LogTopic.cpp
         Logger/Logger.cpp
         Logger/LoggerFeature.cpp
         Logger/LoggerStream.cpp
+        Logger/LogTimeFormat.cpp
         ProgramOptions/IniFileParser.cpp
         ProgramOptions/Option.cpp
         ProgramOptions/Parameters.cpp
         ProgramOptions/ProgramOptions.cpp
         ProgramOptions/Section.cpp
         ProgramOptions/Translator.cpp
+        ProgramOptions/UnitsHelper.cpp
         Random/RandomGenerator.cpp
 )
 
@@ -130,7 +130,7 @@ add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
 target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt
-        arango_assertions arango_static_strings)
+        arango_assertions arango_static_strings arango_futures)
 
 # yes we need absl now everywhere
 target_link_libraries(arango_lightweight PUBLIC
@@ -237,6 +237,7 @@ target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
+  arango_futures
   arango_static_strings
   velocypack
   linenoise-ng
@@ -258,7 +259,6 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
-target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/function2)
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
@@ -296,28 +296,7 @@ if (USE_ENTERPRISE)
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-################################################################################
-## LIB_ARANGO_AIR_SOURCES
-################################################################################
-
-set(LIB_ARANGO_AIR_SOURCES
-  Greenspun/Interpreter.cpp
-  Greenspun/Primitives.cpp
-  Greenspun/lib/DateTime.cpp
-  Greenspun/lib/Math.cpp
-  Greenspun/lib/Strings.cpp
-  Greenspun/lib/Lists.cpp
-  Greenspun/lib/Lists.h
-  Greenspun/lib/Dicts.cpp
-  Greenspun/lib/Dicts.h)
-
-add_library(arango_greenspun STATIC
-        ${LIB_ARANGO_AIR_SOURCES})
-
-target_link_libraries(arango_greenspun immer)
-target_link_libraries(arango_greenspun arango)
-target_link_libraries(arango_greenspun date_interface)
-
+add_subdirectory(Futures)
 add_subdirectory(Geo)
 add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)

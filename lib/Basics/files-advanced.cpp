@@ -301,7 +301,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
 
     if (sizeRead > 0) {
       *crc = static_cast<uint32_t>(absl::ExtendCrc32c(
-          absl::ToCrc32c(*crc), std::string_view{&buffer[0], sizeRead}));
+          absl::crc32c_t{*crc}, std::string_view{&buffer[0], sizeRead}));
     } else /* if (sizeRead <= 0) */ {
       break;
     }

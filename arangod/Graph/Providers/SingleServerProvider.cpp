@@ -32,6 +32,8 @@
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
+#include "Logger/LogMacros.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif

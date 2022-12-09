@@ -21,6 +21,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #ReplicatedLog/TestHelper.cpp
         )
 
+
 set(ARANGODB_REPLICATION2_TEST_SOURCES
         ReplicatedLog/Integration/MaintenanceTests.cpp
         ReplicatedState/DocumentStateMachineTest.cpp
@@ -45,6 +46,7 @@ target_link_libraries(arango_tests_replication2 PRIVATE
         gmock
         arango
         arango_replication2
+        arango_futures
         velocypack
         fmt)
 
@@ -119,6 +121,7 @@ target_link_libraries(arango_tests_replication2_pure PUBLIC
         arango_replication2_pure
         arango_lightweight
         arango_crashhandler_light
+        arango_futures
         gtest
         gmock
         immer

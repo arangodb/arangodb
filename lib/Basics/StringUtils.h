@@ -38,6 +38,10 @@
 #include "Basics/debugging.h"
 
 namespace arangodb {
+
+template<typename T>
+class ResultT;
+
 namespace basics {
 
 static constexpr size_t maxUInt64StringSize = 21;
@@ -343,6 +347,10 @@ uint64_t uint64(std::string_view value) noexcept;
 /// is highly optimized
 uint64_t uint64_trusted(char const* value, size_t length) noexcept;
 uint64_t uint64_trusted(std::string_view value) noexcept;
+
+/// @brief parses an unsigned integers, but returns any errors
+ResultT<uint64_t> try_uint64(char const* value, size_t size) noexcept;
+ResultT<uint64_t> try_uint64(std::string_view value) noexcept;
 
 /// @brief parses an integer
 int32_t int32(char const* value, size_t size) noexcept;

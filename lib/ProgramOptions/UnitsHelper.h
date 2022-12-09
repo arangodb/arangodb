@@ -26,7 +26,6 @@
 #include "Basics/Arithmetic.h"
 #include "Basics/NumberUtils.h"
 
-#include <array>
 #include <cstdint>
 #include <limits>
 #include <numeric>
@@ -36,6 +35,8 @@
 
 namespace arangodb::options::UnitsHelper {
 
+std::pair<std::string_view, uint64_t> extractSuffix(std::string_view value);
+
 // turns a number string with an optional unit suffix into a numeric
 // value. will throw std::out_of_range for invalid values.
 // it is required that any input value to this function is stripped of
@@ -43,49 +44,11 @@ namespace arangodb::options::UnitsHelper {
 // function will throw an exception
 template<typename T, typename internal>
 inline T parseNumberWithUnit(std::string_view value, T base = 1) {
-  constexpr internal oneKiB = 1'024;
-  constexpr internal oneKB = 1'000;
-
-  constexpr std::array<std::pair<std::string_view, internal>, 28> units = {{
-      {std::string_view{"kib"}, oneKiB},
-      {std::string_view{"KiB"}, oneKiB},
-      {std::string_view{"KIB"}, oneKiB},
-      {std::string_view{"mib"}, oneKiB * oneKiB},
-      {std::string_view{"MiB"}, oneKiB * oneKiB},
-      {std::string_view{"MIB"}, oneKiB * oneKiB},
-      {std::string_view{"gib"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"GiB"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"GIB"}, oneKiB * oneKiB * oneKiB},
-      {std::string_view{"tib"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"TiB"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"TIB"}, oneKiB * oneKiB * oneKiB * oneKiB},
-      {std::string_view{"kb"}, oneKB},
-      {std::string_view{"KB"}, oneKB},
-      {std::string_view{"mb"}, oneKB * oneKB},
-      {std::string_view{"MB"}, oneKB * oneKB},
-      {std::string_view{"gb"}, oneKB * oneKB * oneKB},
-      {std::string_view{"GB"}, oneKB * oneKB * oneKB},
-      {std::string_view{"tb"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"TB"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"k"}, oneKB},
-      {std::string_view{"K"}, oneKB},
-      {std::string_view{"m"}, oneKB * oneKB},
-      {std::string_view{"M"}, oneKB * oneKB},
-      {std::string_view{"g"}, oneKB * oneKB * oneKB},
-      {std::string_view{"G"}, oneKB * oneKB * oneKB},
-      {std::string_view{"t"}, oneKB * oneKB * oneKB * oneKB},
-      {std::string_view{"T"}, oneKB * oneKB * oneKB * oneKB},
-  }};
-
   // handle unit suffixes
   internal m = 1;
-  std::string_view suffix;
-  for (auto const& unit : units) {
-    if (value.ends_with(unit.first)) {
-      suffix = unit.first;
-      m = unit.second;
-      break;
-    }
+  auto [suffix, multiplier] = extractSuffix(value);
+  if (!suffix.empty()) {
+    m = static_cast<internal>(multiplier);
   }
 
   // handle % suffix
@@ -97,7 +60,7 @@ inline T parseNumberWithUnit(std::string_view value, T base = 1) {
   }
 
   bool valid = true;
-  auto v = arangodb::NumberUtils::atoi<T>(
+  auto v = NumberUtils::atoi<T>(
       value.data(), value.data() + value.size() - suffix.size(), valid);
   if (!valid) {
     throw std::out_of_range(std::string{value});

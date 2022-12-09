@@ -16,6 +16,7 @@ target_link_libraries(arango_replication2
   arango # -> V8
   arango_network # NetworkWorkAttachedFollower
   arangoserver # RestHandler, arango_rocksdb
+  arango_futures
   fmt
   immer)
 
@@ -36,7 +37,7 @@ add_library(arango_replication2_pure STATIC
 		)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight
-		velocypack immer fmt arango_metrics_base)
+		velocypack immer fmt arango_metrics_base arango_futures)
 
 target_include_directories(arango_replication2_pure PUBLIC
 		"${PROJECT_SOURCE_DIR}/arangod"

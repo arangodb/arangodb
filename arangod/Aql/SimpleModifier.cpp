@@ -36,6 +36,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>

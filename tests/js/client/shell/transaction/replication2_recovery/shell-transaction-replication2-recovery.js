@@ -126,7 +126,7 @@ function transactionReplication2Recovery() {
       // Stop the leader. This triggers a failover.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];
-      assertTrue(participants !== undefined);
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
       const leader = participants[0];
       const followers = participants.slice(1);
       let term = replicatedLogsHelper.readReplicatedLogAgency(dbn, logId).plan.currentTerm.term;
@@ -160,14 +160,17 @@ function transactionReplication2Recovery() {
         }
         return entry.payload.operation === "AbortAllOngoingTrx";
       });
-      assertTrue(abortAllEntryFound);
+      assertTrue(abortAllEntryFound, `AbortAllOngoingTrx not found in log ${logId}.` +
+        ` Log contents: ${JSON.stringify(logContents)}`);
 
       // Expect further transaction operations to fail.
       try {
         tc.insert({ _key: 'test3', value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum);
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, ex.errorNum,
+          `Log ${logId} contents ${JSON.stringify(logContents)}.`);
       }
 
       syncShardsWithLogs(dbn);
@@ -194,7 +197,9 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "foo" });
         trx.commit();
       } catch (err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
 
       servers = Object.assign({}, ...followers.map(
@@ -220,7 +225,9 @@ function transactionReplication2Recovery() {
         tc.insert({ _key: "bar" });
         trx.commit();
       } catch (err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
+        logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       }
 
       // Expect "bar" to be found on all servers.
@@ -249,7 +256,7 @@ function transactionReplication2Recovery() {
       // Prepare the grounds for replacing a follower.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];
-      assertTrue(participants !== undefined);
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
       const followers = participants.slice(1);
       const oldParticipant = _.sample(followers);
       const nonParticipants = _.without(replicatedLogsHelper.dbservers, ...participants);
@@ -300,8 +307,10 @@ function transactionReplication2Recovery() {
       // Continue the transaction and expect it to succeed.
       try {
         tc.insert({_key: "test3", value: 3});
-      } catch (ex) {
-        fail("Transaction failed with: " + JSON.stringify(ex));
+      } catch (err) {
+        const logContents = replicatedLogsHelper.dumpShardLog(shardId);
+        fail(`Transaction failed with: ${JSON.stringify(err)}.` +
+          ` Log ${logId} contents: ${JSON.stringify(logContents)}`);
       } finally {
         if (trx) {
           trx.commit();
@@ -326,7 +335,7 @@ function transactionReplication2Recovery() {
     testCannotReachWriteConcernDuringTransaction: function () {
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
       const participants = logs[logId];
-      assertTrue(participants !== undefined);
+      assertTrue(participants !== undefined, `Could not find participants for log ${logId}`);
       const leader = participants[0];
       const followers = participants.slice(1);
       const allOtherServers = _.without(replicatedLogsHelper.dbservers, leader);

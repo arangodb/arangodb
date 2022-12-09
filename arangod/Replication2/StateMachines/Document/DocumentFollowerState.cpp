@@ -23,11 +23,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 
-#include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
 
@@ -57,30 +57,23 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  return _guardedData
-      .doUnderLock([self = shared_from_this(), &destination, waitForIndex](
-                       auto& data) -> futures::Future<ResultT<Snapshot>> {
+  auto truncateRes = _guardedData.doUnderLock(
+      [self = shared_from_this()](auto& data) -> Result {
         if (data.didResign()) {
-          return ResultT<Snapshot>::error(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
+          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-
-        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
-          return ResultT<Snapshot>::error(truncateRes);
-        }
-
-        // A follower may request a snapshot before leadership has been
-        // established. A retry will occur in that case.
-        auto leaderInterface =
-            self->_networkHandler->getLeaderInterface(destination);
-        return leaderInterface->getSnapshot(waitForIndex);
-      })
-      .thenValue([self = shared_from_this()](
-                     auto&& result) -> futures::Future<Result> {
-        if (result.fail()) {
-          return result.result();
-        }
-        return self->populateLocalShard(result->documents);
+        return self->truncateLocalShard();
       });
+  if (truncateRes.fail()) {
+    return truncateRes;
+  }
+
+  // A follower may request a snapshot before leadership has been
+  // established. A retry will occur in that case.
+  auto leader = _networkHandler->getLeaderInterface(destination);
+  auto fut = leader->startSnapshot(waitForIndex);
+  return handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
@@ -89,7 +82,7 @@ auto DocumentFollowerState::applyEntries(
                                    ptr = std::move(ptr)](
                                       auto& data) -> futures::Future<Result> {
     if (data.didResign()) {
-      return {TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
     }
 
     if (self->_transactionHandler == nullptr) {
@@ -107,7 +100,10 @@ auto DocumentFollowerState::applyEntries(
         auto doc = entry->second;
         auto res = self->_transactionHandler->applyEntry(doc);
         if (res.fail()) {
-          return res;
+          LOG_TOPIC("d82d4", FATAL, Logger::REPLICATION2)
+              << "Failed to apply entry " << entry->first << " to local shard "
+              << self->shardId << " with error: " << res;
+          FATAL_ERROR_EXIT();
         }
 
         if (doc.operation == OperationType::kAbortAllOngoingTrx) {
@@ -159,6 +155,56 @@ auto DocumentFollowerState::truncateLocalShard() -> Result {
 auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
     -> Result {
   return forceLocalTransaction(OperationType::kInsert, std::move(slice));
+}
+
+auto DocumentFollowerState::handleSnapshotTransfer(
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    LogIndex waitForIndex,
+    futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
+    -> futures::Future<Result> {
+  return std::move(snapshotFuture)
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
+                futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
+            -> futures::Future<Result> {
+        auto self = weak.lock();
+        if (self == nullptr) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+        }
+
+        auto catchRes =
+            basics::catchToResultT([&] { return std::move(tryResult).get(); });
+        if (catchRes.fail()) {
+          return catchRes.result();
+        }
+
+        auto snapshotRes = catchRes.get();
+        if (snapshotRes.fail()) {
+          return snapshotRes.result();
+        }
+
+        // Will be removed once we introduce collection groups
+        TRI_ASSERT(snapshotRes->shardId == self->shardId);
+
+        auto& docs = snapshotRes->payload;
+        auto insertRes = self->_guardedData.doUnderLock(
+            [&self, &docs](auto& data) -> Result {
+              if (data.didResign()) {
+                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+              }
+              return self->populateLocalShard(docs);
+            });
+        if (insertRes.fail()) {
+          return insertRes;
+        }
+
+        if (snapshotRes->hasMore) {
+          auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
+          return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
+                                              std::move(fut));
+        }
+
+        return leader->finishSnapshot(snapshotRes->snapshotId);
+      });
 }
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

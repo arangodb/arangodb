@@ -1941,6 +1941,8 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
+  shutdown();
+
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design
