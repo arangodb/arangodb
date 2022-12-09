@@ -1,6 +1,10 @@
 devel
 -----
 
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a
+  remedy for OOM kills during restarts.
+
 * Print the pid of the process which sent a SIGABRT or other fatal 
   signal that shuts down ArangoDB ungracefully.
 
