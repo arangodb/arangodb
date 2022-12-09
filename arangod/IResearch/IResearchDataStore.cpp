@@ -1730,9 +1730,11 @@ bool IResearchDataStore::exists(IResearchDataStore::Snapshot const& snapshot,
     return false;
   }
 
+  auto const encoded = DocumentPrimaryKey::encode(documentId);
+
   auto const pk =
       irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
-          documentId.id());
+          encoded);
 
   for (auto const& segment : snapshot.getDirectoryReader()) {
     auto const* pkField = segment.field(DocumentPrimaryKey::PK());
