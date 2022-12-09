@@ -30,6 +30,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <string_view>
 #include <utility>
 
 #include "Futures/Future.h"
@@ -83,7 +84,7 @@ class Scheduler {
   // WorkHandle is a shared_ptr to a DelayedWorkItem. If all references the
   // DelayedWorkItem are dropped, the task is canceled.
   [[nodiscard]] virtual WorkHandle queueDelayed(
-      RequestLane lane, clock::duration delay,
+      std::string_view name, RequestLane lane, clock::duration delay,
       fu2::unique_function<void(bool canceled)> handler) noexcept;
 
   // Returns the scheduler's server object
@@ -106,9 +107,11 @@ class Scheduler {
     void run() { executeWithCancel(false); }
 
     explicit DelayedWorkItem(
+        std::string_view name,
         fu2::unique_function<void(bool canceled)>&& handler, RequestLane lane,
         Scheduler* scheduler)
-        : _handler(std::move(handler)),
+        : _name(name),
+          _handler(std::move(handler)),
           _lane(lane),
           _disable(false),
           _scheduler(scheduler) {}
@@ -118,6 +121,8 @@ class Scheduler {
     DelayedWorkItem(DelayedWorkItem&&) noexcept = delete;
     void operator=(DelayedWorkItem const&) = delete;
     void operator=(DelayedWorkItem&&) noexcept = delete;
+
+    std::string_view name() const noexcept { return _name; }
 
    private:
     inline void executeWithCancel(bool arg) {
@@ -138,6 +143,7 @@ class Scheduler {
 #endif
 
    private:
+    std::string_view _name;
     fu2::unique_function<void(bool)> _handler;
     RequestLane _lane;
     std::atomic<bool> _disable;
@@ -186,7 +192,8 @@ class Scheduler {
   // delay Future returns a future that will be fulfilled after the given
   // duration requires scheduler If d is zero, the future is fulfilled
   // immediately. Throws a logic error if delay was cancelled.
-  futures::Future<futures::Unit> delay(clock::duration d) {
+  futures::Future<futures::Unit> delay(std::string_view name,
+                                       clock::duration d) {
     if (d == clock::duration::zero()) {
       return futures::makeFuture();
     }
@@ -194,7 +201,7 @@ class Scheduler {
     futures::Promise<bool> p;
     futures::Future<bool> f = p.getFuture();
 
-    auto item = queueDelayed(RequestLane::DELAYED_FUTURE, d,
+    auto item = queueDelayed(name, RequestLane::DELAYED_FUTURE, d,
                              [pr = std::move(p)](bool cancelled) mutable {
                                pr.setValue(cancelled);
                              });

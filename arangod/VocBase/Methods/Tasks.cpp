@@ -385,7 +385,7 @@ bool Task::queue(std::chrono::microseconds offset) {
   }
   MUTEX_LOCKER(lock, _taskHandleMutex);
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::INTERNAL_LOW, offset, callbackFunction());
+      "v8-task", RequestLane::INTERNAL_LOW, offset, callbackFunction());
   return true;
 }
 

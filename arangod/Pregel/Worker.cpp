@@ -617,7 +617,8 @@ void Worker<V, E, M>::_continueAsync() {
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
   _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli),
+      "pregel-continue", RequestLane::INTERNAL_LOW,
+      std::chrono::milliseconds(milli),
       [this, self = shared_from_this()](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically

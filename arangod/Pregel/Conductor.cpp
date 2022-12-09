@@ -564,7 +564,7 @@ void Conductor::startRecovery() {
 
   // let's wait for a final state in the cluster
   _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
+      "pregel-recovery", RequestLane::CLUSTER_AQL, std::chrono::seconds(2),
       [this, self = shared_from_this()](bool cancelled) {
         if (cancelled || _state != ExecutionState::RECOVERING) {
           return;  // seems like we are canceled
