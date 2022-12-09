@@ -200,6 +200,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
           [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
               LeaderTermInfo info, ParticipantContext context) {
             EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{1});
             EXPECT_EQ(*info.initialConfig, config.get());
@@ -210,7 +211,12 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
-  EXPECT_CALL(std::move(*leaderMock), resign2).Times(1);
+  EXPECT_CALL(std::move(*leaderMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
+  });
   connection.disconnect();
 }
 
@@ -246,7 +252,12 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
 
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign2).Times(1);
+  EXPECT_CALL(std::move(*leaderMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
+  });
   connection.disconnect();
 }
 
@@ -289,8 +300,8 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
           [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
               FollowerTermInfo const& info, ParticipantContext context) {
             EXPECT_EQ(methods.release(), methodsPtr);
-            EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
+            EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.leader, "A");
             EXPECT_EQ(info.term, LogTerm{2});
             return followerMock = std::make_shared<LogFollowerMock>();
@@ -305,7 +316,12 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   log->updateConfig(term.get(), config.get());
   testing::Mock::VerifyAndClearExpectations(participantsFactoryMock.get());
 
-  EXPECT_CALL(std::move(*followerMock), resign2);
+  EXPECT_CALL(std::move(*followerMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
+  });
   connection.disconnect();
 }
 
@@ -345,6 +361,7 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
           [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
               LeaderTermInfo info, ParticipantContext context) {
             EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
             EXPECT_EQ(info.myself, myself.serverId);
             EXPECT_EQ(info.term, LogTerm{2});
             EXPECT_EQ(*info.initialConfig, config.get());
@@ -360,7 +377,12 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   term.setTerm(LogTerm{2}).setLeader(myself);
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign2);
+  EXPECT_CALL(std::move(*leaderMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
+  });
   connection.disconnect();
 }
 
@@ -383,6 +405,8 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
       .WillOnce(
           [&](std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
               LeaderTermInfo info, ParticipantContext context) {
+            EXPECT_EQ(methods.release(), methodsPtr);
+            EXPECT_EQ(context.stateHandle.release(), stateHandlePtr);
             return leaderMock =
                        std::make_shared<testing::StrictMock<LogLeaderMock>>();
           });
@@ -412,6 +436,11 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
   config.setParticipant("C", {}).incGeneration();
   log->updateConfig(term.get(), config.get());
 
-  EXPECT_CALL(std::move(*leaderMock), resign2);
+  EXPECT_CALL(std::move(*leaderMock), resign2).WillOnce([&] {
+    return std::make_tuple(
+        std::unique_ptr<replicated_state::IStorageEngineMethods>(methodsPtr),
+        std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
+        DeferredAction{});
+  });
   connection.disconnect();
 }

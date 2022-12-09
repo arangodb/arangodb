@@ -45,7 +45,6 @@ struct LazyDeserializingIterator
           Deserializer{}, streams::serializer_tag<std::decay_t<To>>, slice);
       //_current.emplace(velocypack::deserialize<To>(current->logPayload()));
       _current.emplace(std::move(value));
-      // TODO return correct log index
       return {{current->logIndex(), std::cref(*_current)}};
     } else {
       _current.reset();

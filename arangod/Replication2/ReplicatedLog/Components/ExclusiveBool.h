@@ -42,7 +42,11 @@ struct ExclusiveBoolGuard {
  private:
   friend struct ExclusiveBool;
   explicit ExclusiveBoolGuard(ExclusiveBool* flag) : ptr(flag) {}
-  std::unique_ptr<ExclusiveBool, decltype([](auto) {})> ptr;
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
+  std::unique_ptr<ExclusiveBool, noop> ptr;
 };
 
 struct ExclusiveBool {
