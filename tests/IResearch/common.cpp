@@ -492,20 +492,19 @@ void v8Init() {
   class V8Init {
    public:
     V8Init() {
-      _platform = v8::platform::NewDefaultPlatform().release();
+      _platform = v8::platform::NewDefaultPlatform();
       // avoid SIGSEGV during v8::Isolate::New(...)
-      v8::V8::InitializePlatform(_platform);
+      v8::V8::InitializePlatform(_platform.get());
       // avoid error: "Check failed: thread_data_table_"
       v8::V8::Initialize();
     }
     ~V8Init() {
       v8::V8::Dispose();
       v8::V8::ShutdownPlatform();
-      _platform = nullptr;
     }
 
    private:
-    v8::Platform* _platform = nullptr;
+    std::unique_ptr<v8::Platform> _platform;
   };
   [[maybe_unused]] static const V8Init init;
 }
