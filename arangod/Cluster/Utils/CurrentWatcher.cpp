@@ -35,10 +35,12 @@ void CurrentWatcher::reserve(size_t expectedSize) {
 }
 
 void CurrentWatcher::addWatchPath(
-    std::string path, std::function<bool(velocypack::Slice)> callback) {
+    std::string path, std::string identifier,
+    std::function<bool(velocypack::Slice)> callback) {
   // There cannot be any results while we are still adding new paths to watch
   TRI_ASSERT(_results.doUnderLock([](auto& lists) { return lists.empty(); }));
-  _callbacks.emplace_back(std::move(path), std::move(callback));
+  _callbacks.emplace_back(std::move(path), std::move(identifier),
+                          std::move(callback));
   _expectedResults++;
 }
 
@@ -63,8 +65,8 @@ bool CurrentWatcher::haveAllReported() const {
   });
 }
 
-std::vector<
-    std::pair<std::string, std::function<bool(velocypack::Slice)>>> const&
+std::vector<std::tuple<std::string, std::string,
+                       std::function<bool(velocypack::Slice)>>> const&
 CurrentWatcher::getCallbackInfos() const {
   return _callbacks;
 }

@@ -129,7 +129,7 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
         // as prefix.
         report->addWatchPath(
             collectionPath->str(arangodb::cluster::paths::SkipComponents(1)),
-            callback);
+            cid, callback);
       }
 
       for (auto const& [shardId, servers] : expectedShards.shards) {
@@ -162,11 +162,11 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
             // SO if they show up in correct version we just take them.
             report->addReport(id, TRI_ERROR_NO_ERROR);
           }
-          return false;
+          return true;
         };
         report->addWatchPath(
             statePath->str(arangodb::cluster::paths::SkipComponents(1)),
-            callback);
+            basics::StringUtils::itoa(orderedSpec.id.id()), callback);
       }
     }
   }

@@ -97,16 +97,16 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
         });
 
     // First register all callbacks
-    for (auto const& [path, cb] : callbackInfos->getCallbackInfos()) {
+    for (auto const& [path, identifier, cb] :
+         callbackInfos->getCallbackInfos()) {
       auto agencyCallback =
           std::make_shared<AgencyCallback>(server, path, cb, true, false);
       Result r = callbackRegistry.registerCallback(agencyCallback);
       if (r.fail()) {
         return r;
       }
-      // TODO Add CID
       callbackList.emplace_back(
-          std::make_pair(std::move(agencyCallback), StaticStrings::Empty));
+          std::make_pair(std::move(agencyCallback), identifier));
     }
     callbackInfos->clearCallbacks();
 

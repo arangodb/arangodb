@@ -40,21 +40,24 @@ class Result;
 struct CurrentWatcher {
   void reserve(size_t expectedSize);
 
-  void addWatchPath(std::string path,
+  void addWatchPath(std::string path, std::string identifier,
                     std::function<bool(velocypack::Slice)> callback);
 
   bool hasReported(std::string const& identifier) const;
   void addReport(std::string identifier, Result result);
   bool haveAllReported() const;
-  std::vector<
-      std::pair<std::string, std::function<bool(velocypack::Slice)>>> const&
+  std::vector<std::tuple<std::string, std::string,
+                         std::function<bool(velocypack::Slice)>>> const&
   getCallbackInfos() const;
 
   std::optional<Result> getResultIfAllReported() const;
   void clearCallbacks();
 
  private:
-  std::vector<std::pair<std::string, std::function<bool(velocypack::Slice)>>>
+  // Tuple has:
+  // path, identifier, callback
+  std::vector<std::tuple<std::string, std::string,
+                         std::function<bool(velocypack::Slice)>>>
       _callbacks{};
   Guarded<absl::flat_hash_map<std::string, Result>> _results;
   size_t _expectedResults{0};

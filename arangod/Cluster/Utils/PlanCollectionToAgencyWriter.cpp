@@ -106,7 +106,7 @@ PlanCollectionToAgencyWriter::prepareCurrentWatcher(
 
         return true;
       };
-      report->addWatchPath(collectionPath, callback);
+      report->addWatchPath(collectionPath, cid, callback);
     }
   }
 
