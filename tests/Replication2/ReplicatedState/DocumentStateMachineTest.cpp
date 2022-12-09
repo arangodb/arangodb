@@ -24,6 +24,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Inspection/VPack.h"
+#include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -33,13 +34,13 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Transaction/Manager.h"
 #include "velocypack/Value.h"
-#include "Replication2/Mocks/DocumentStateMocks.h"
 
 #include <thread>
 #include <vector>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 

@@ -19,6 +19,7 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
         #Mocks/PersistedLog.h
         #Mocks/ReplicatedStateMetricsMock.cpp
         #ReplicatedLog/TestHelper.cpp
+        Mocks/DocumentStateMocks.cpp
         )
 
 
