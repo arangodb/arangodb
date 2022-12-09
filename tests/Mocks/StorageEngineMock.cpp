@@ -242,7 +242,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::Result insert(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const doc) {
+                          arangodb::velocypack::Slice doc) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -269,7 +269,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const&,
-                          arangodb::velocypack::Slice const& doc,
+                          arangodb::velocypack::Slice doc,
                           arangodb::IndexOperationMode) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
@@ -624,7 +624,7 @@ class HashIndexMap {
   }
 
   bool remove(arangodb::LocalDocumentId const& documentId,
-              arangodb::velocypack::Slice const& doc) {
+              arangodb::velocypack::Slice doc) {
     size_t i = 0;
     auto documentRemoved = false;
     for (auto& map : _valueMaps) {
@@ -827,7 +827,8 @@ class HashIndexMock final : public arangodb::Index {
 
   arangodb::Result remove(arangodb::transaction::Methods&,
                           arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const doc) {
+                          arangodb::velocypack::Slice doc,
+                          arangodb::OperationOptions const& /*options*/) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -1006,24 +1007,8 @@ uint8_t const* PhysicalCollectionMock::DocElement::vptr() const {
 std::function<void()> PhysicalCollectionMock::before = []() -> void {};
 
 PhysicalCollectionMock::PhysicalCollectionMock(
-    arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info)
-    : PhysicalCollection(collection, info), _lastDocumentId{0} {}
-
-arangodb::PhysicalCollection* PhysicalCollectionMock::clone(
-    arangodb::LogicalCollection& collection) const {
-  before();
-  TRI_ASSERT(false);
-  return nullptr;
-}
-
-ErrorCode PhysicalCollectionMock::close() {
-  for (auto& index : _indexes) {
-    index->unload();
-  }
-
-  return TRI_ERROR_NO_ERROR;  // assume close successful
-}
+    arangodb::LogicalCollection& collection)
+    : PhysicalCollection(collection), _lastDocumentId{0} {}
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     arangodb::velocypack::Slice info, bool restore, bool& created) {
@@ -1138,19 +1123,19 @@ void PhysicalCollectionMock::deferDropCollection(
                                  // immediately)
 }
 
-bool PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
+arangodb::Result PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
   before();
 
   for (auto itr = _indexes.begin(), end = _indexes.end(); itr != end; ++itr) {
     if ((*itr)->id() == iid) {
       if ((*itr)->drop().ok()) {
         _indexes.erase(itr);
-        return true;
+        return {};
       }
     }
   }
 
-  return false;
+  return {TRI_ERROR_INTERNAL};
 }
 
 void PhysicalCollectionMock::figuresSpecific(bool /*details*/,
@@ -1265,6 +1250,12 @@ arangodb::Result PhysicalCollectionMock::lookupKey(
   result.first = arangodb::LocalDocumentId::none();
   result.second = arangodb::RevisionId::none();
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
+}
+
+arangodb::Result PhysicalCollectionMock::lookupKeyForUpdate(
+    arangodb::transaction::Methods* methods, std::string_view key,
+    std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>& result) const {
+  return lookupKey(methods, key, result, arangodb::ReadOwnWrites::yes);
 }
 
 uint64_t PhysicalCollectionMock::numberDocuments(
@@ -1677,10 +1668,9 @@ arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*,
 std::unique_ptr<arangodb::PhysicalCollection>
 StorageEngineMock::createPhysicalCollection(
     arangodb::LogicalCollection& collection,
-    arangodb::velocypack::Slice const& info) {
+    arangodb::velocypack::Slice /*info*/) {
   before();
-  return std::unique_ptr<arangodb::PhysicalCollection>(
-      new PhysicalCollectionMock(collection, info));
+  return std::make_unique<PhysicalCollectionMock>(collection);
 }
 
 arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
@@ -2087,11 +2077,12 @@ arangodb::Result TransactionStateMock::beginTransaction(
 
 arangodb::futures::Future<arangodb::Result>
 TransactionStateMock::commitTransaction(arangodb::transaction::Methods* trx) {
+  applyBeforeCommitCallbacks();
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   resetTransactionId();
   //  releaseUsage();
-
+  applyAfterCommitCallbacks();
   return arangodb::Result();
 }
 

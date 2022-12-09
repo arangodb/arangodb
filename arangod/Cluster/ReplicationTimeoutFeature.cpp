@@ -27,6 +27,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::options;
@@ -56,55 +57,84 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(Server& server)
 
 void ReplicationTimeoutFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--cluster.synchronous-replication-timeout-minimum",
-                     "all synchronous replication timeouts will be at least "
-                     "this value (in seconds)",
-                     new DoubleParameter(&_lowerLimit),
-                     arangodb::options::makeDefaultFlags(
-                         arangodb::options::Flags::Uncommon,
-                         arangodb::options::Flags::OnDBServer));
+  options
+      ->addOption("--cluster.synchronous-replication-timeout-minimum",
+                  "All synchronous replication timeouts are at least "
+                  "this value (in seconds).",
+                  new DoubleParameter(&_lowerLimit),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(30501)
+      .setLongDescription(R"(**Warning**: This option should generally remain
+untouched and only be changed with great care!
+
+The minimum timeout in seconds for the internal synchronous replication
+mechanism between DB-Servers. If replication requests are slow, but the servers
+are otherwise healthy, timeouts can cause followers to be dropped unnecessarily,
+resulting in costly resync operations. Increasing this value may help avoid such
+resyncs. Conversely, decreasing it may cause more resyncs, while lowering the
+latency of individual write operations.
+
+**Warning**: If you use multiple DB-Servers, use the same value on all
+DB-Servers.)");
 
   options
       ->addOption("--cluster.synchronous-replication-timeout-maximum",
-                  "all synchronous replication timeouts will be at most "
-                  "this value (in seconds)",
+                  "All synchronous replication timeouts are at most "
+                  "this value (in seconds).",
                   new DoubleParameter(&_upperLimit),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(**Warning**: This option should generally remain
+untouched and only be changed with great care!
 
-  options->addOption(
-      "--cluster.synchronous-replication-timeout-factor",
-      "all synchronous replication timeouts are multiplied by this factor",
-      new DoubleParameter(&_timeoutFactor),
-      arangodb::options::makeDefaultFlags(
-          arangodb::options::Flags::Uncommon,
-          arangodb::options::Flags::OnDBServer));
+Extend or shorten the timeouts for the internal synchronous replication
+mechanism between DB-Servers. All such timeouts are affected by this change.
 
-  options->addOption(
-      "--cluster.synchronous-replication-timeout-per-4k",
-      "all synchronous replication timeouts are increased by this amount per "
-      "4096 bytes (in seconds)",
-      new DoubleParameter(&_timeoutPer4k),
-      arangodb::options::makeDefaultFlags(
-          arangodb::options::Flags::Uncommon,
-          arangodb::options::Flags::OnDBServer));
+**Warning**: If you use multiple DB-Servers, use the same value on all
+DB-Servers.)");
+
+  options
+      ->addOption(
+          "--cluster.synchronous-replication-timeout-factor",
+          "All synchronous replication timeouts are multiplied by this factor.",
+          new DoubleParameter(&_timeoutFactor),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::OnDBServer))
+      .setLongDescription(R"(**Warning**: If you use multiple DB-Servers, use
+the same value on all DB-Servers.)");
+
+  options
+      ->addOption("--cluster.synchronous-replication-timeout-per-4k",
+                  "All synchronous replication timeouts are increased by this "
+                  "amount per 4096 bytes (in seconds).",
+                  new DoubleParameter(&_timeoutPer4k),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(R"(**Warning**: If you use multiple DB-Servers, use
+the same value on all DB-Servers.)");
 
   options
       ->addOption(
           "--cluster.shard-synchronization-attempt-timeout",
-          "timeout (in seconds) for every shard synchronization attempt. "
-          "running into the timeout will not lead to a synchronization "
-          "failure, but will continue the synchronization shortly after. "
-          "setting a timeout can help to split the replication of large "
+          "The timeout (in seconds) for every shard synchronization attempt. "
+          "Running into the timeout does not lead to a synchronization "
+          "failure, but continues the synchronization shortly after. "
+          "Setting a timeout can help to split the replication of large "
           "shards into smaller chunks and release snapshots on the "
-          "leader earlier",
+          "leader earlier.",
           new DoubleParameter(&_shardSynchronizationAttemptTimeout),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon,
               arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(30902);
+      .setIntroducedIn(30902)
+      .setLongDescription(R"(**Warning**: If you use multiple DB-Servers, use
+the same value on all DB-Servers.)");
 }
 
 void ReplicationTimeoutFeature::validateOptions(

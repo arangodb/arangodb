@@ -85,6 +85,7 @@
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
 #include "V8Server/v8-prototype-state.h"
+#include "V8Server/v8-pregel.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -1654,16 +1655,16 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& databaseFeature = v8g->server().getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-  auto* vocbase = &GetContextVocBase(isolate);
 
-  if (vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
+  if (auto* vocbase = &GetContextVocBase(isolate);
+      vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
     // still allow changing back into the _system database even if
     // the current database has been dropped
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature.useDatabase(name);
+  auto vocbase = databaseFeature.useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1672,13 +1673,11 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase->isDangling());
 
   // switch databases
-  void* orig = v8g->_vocbase;
+  VocbasePtr orig{std::exchange(v8g->_vocbase, vocbase.release())};
   TRI_ASSERT(orig != nullptr);
+  orig.reset();
 
-  v8g->_vocbase = vocbase;
-  static_cast<TRI_vocbase_t*>(orig)->release();
-
-  TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
+  TRI_V8_RETURN(WrapVocBase(isolate, v8g->_vocbase));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2157,8 +2156,10 @@ static void JS_EncryptionKeyReload(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                         arangodb::aql::QueryRegistry* queryRegistry,
+                         arangodb::aql::QueryRegistry* /*queryRegistry*/,
                          TRI_vocbase_t& vocbase, size_t threadNumber) {
+  auto& server = vocbase.server();
+
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -2168,9 +2169,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // register the database
   v8g->_vocbase = &vocbase;
 
-  // .............................................................................
+  // ...........................................................................
   // generate the TRI_vocbase_t template
-  // .............................................................................
+  // ...........................................................................
 
   v8::Handle<v8::FunctionTemplate> ft = v8::FunctionTemplate::New(isolate);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"));
@@ -2240,6 +2241,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Pregel(isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
   TRI_InitV8PrototypeStates(v8g, isolate);
@@ -2248,8 +2250,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8cursor(context, v8g);
 
-  StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   engine.addV8Functions();
 
   // .............................................................................
@@ -2353,8 +2354,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       JS_SystemStatistics, true);
 
 #ifdef USE_ENTERPRISE
-  if (v8g->server().hasFeature<V8DealerFeature>() &&
-      v8g->server().getFeature<V8DealerFeature>().allowAdminExecute()) {
+  if (server.hasFeature<V8DealerFeature>() &&
+      server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
         JS_EncryptionKeyReload, true);
@@ -2393,9 +2394,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-          v8::Boolean::New(
-              isolate,
-              vocbase.server().getFeature<StatisticsFeature>().isEnabled()),
+          v8::Boolean::New(isolate,
+                           server.getFeature<StatisticsFeature>().isEnabled()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2403,27 +2403,27 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .defaultReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().defaultReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .minReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().minReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().maxReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2431,9 +2431,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxNumberOfShards()),
+          v8::Number::New(
+              isolate, server.getFeature<ClusterFeature>().maxNumberOfShards()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2441,9 +2440,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_MOVE_SHARDS"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxNumberOfMoveShards()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().maxNumberOfMoveShards()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2451,9 +2450,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
-          v8::Boolean::New(
-              isolate,
-              vocbase.server().getFeature<ClusterFeature>().forceOneShard()),
+          v8::Boolean::New(isolate,
+                           server.getFeature<ClusterFeature>().forceOneShard()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 

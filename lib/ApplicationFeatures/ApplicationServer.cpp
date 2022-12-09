@@ -21,13 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
 #include <atomic>
 #include <chrono>
-#include <exception>
+#include <cstdlib>
 #include <iostream>
 #include <new>
-#include <unordered_set>
 #include <utility>
 
 #include <boost/range/adaptor/filtered.hpp>
@@ -343,13 +341,15 @@ void ApplicationServer::collectOptions() {
       Section("", "general settings", "", "general options", false, false));
 
   _options->addOption(
-      "--dump-dependencies", "dump dependency graph",
+      "--dump-dependencies",
+      "Dump the dependency graph of the feature phases (internal) and exit.",
       new BooleanParameter(&_dumpDependencies),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   _options->addOption(
-      "--dump-options", "dump configuration options in JSON format",
+      "--dump-options",
+      "Dump all available startup options in JSON format and exit.",
       new BooleanParameter(&_dumpOptions),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));

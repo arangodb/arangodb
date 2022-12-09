@@ -1281,14 +1281,13 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // new analyzer creation, validate
   if (emplaceRes.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup =
-        irs::make_finally([&erase, &analyzers, &emplaceRes]() noexcept {
-          // cppcheck-suppress knownConditionTrueFalse
-          if (erase) {
-            // ensure no broken analyzers are left behind
-            analyzers.erase(emplaceRes.first);
-          }
-        });
+    irs::Finally cleanup = [&erase, &analyzers, &emplaceRes]() noexcept {
+      // cppcheck-suppress knownConditionTrueFalse
+      if (erase) {
+        // ensure no broken analyzers are left behind
+        analyzers.erase(emplaceRes.first);
+      }
+    };
 
     // emplaceAnalyzer is used by Analyzers API where we don't actually use
     // features
@@ -1391,12 +1390,12 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = emplaceRes.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &emplaceRes]() noexcept {
+    irs::Finally cleanup = [&erase, this, &emplaceRes]() noexcept {
       if (erase) {
         // ensure no broken analyzers are left behind
         _analyzers.erase(emplaceRes.first);
       }
-    });
+    };
     auto pool = emplaceRes.first->second;
 
     // new pool creation
@@ -1598,14 +1597,14 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_view> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
+    irs::Finally cleanup = [&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
           // ensure no broken analyzers are left behind
           _analyzers.erase(s);
         }
       }
-    });
+    };
     for (auto const& slice : VPackArrayIterator(dumpedAnalyzers)) {
       if (!slice.isObject()) {
         continue;
@@ -2447,11 +2446,10 @@ IResearchAnalyzerFeature::splitAnalyzerName(
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     std::string_view vocbaseName, bool forceLoadPlan /* = false */) const {
-  TRI_vocbase_t* vocbase{nullptr};
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  vocbase = dbFeature.useDatabase(vocbaseName.empty()
-                                      ? arangodb::StaticStrings::SystemDatabase
-                                      : static_cast<std::string>(vocbaseName));
+  auto vocbase = dbFeature.useDatabase(
+      vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase
+                          : vocbaseName);
   if (vocbase) {
     return getAnalyzersRevision(*vocbase, forceLoadPlan);
   }
@@ -2497,8 +2495,7 @@ void IResearchAnalyzerFeature::prepare() {
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto* voc = dbFeature.useDatabase(static_cast<std::string>(
-      vocbase));  // FIXME: after C++20 remove cast and use heterogeneous lookup
+  auto voc = dbFeature.useDatabase(vocbase);
   if (!voc) {
     return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
             "failure to find vocbase while removing arangosearch analyzer '" +
@@ -2665,9 +2662,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view const& name,
     } else {
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
-      auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
-          split.first));  // FIXME: after C++20 remove cast and use
-                          // heterogeneous lookup
+      auto vocbase = dbFeature.useDatabase(split.first);
 
       if (!vocbase) {
         return {
@@ -2835,9 +2830,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     auto split = splitAnalyzerName(pool.name());
-    auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
-        split.first));  // FIXME: after C++20 remove cast and use heterogeneous
-                        // lookup
+    auto vocbase = dbFeature.useDatabase(split.first);
 
     if (!vocbase) {
       return {

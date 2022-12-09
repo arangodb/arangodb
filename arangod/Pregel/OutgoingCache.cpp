@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
@@ -35,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -301,8 +301,3 @@ template class arangodb::pregel::OutCache<ColorPropagationMessageValue>;
 template class arangodb::pregel::ArrayOutCache<ColorPropagationMessageValue>;
 template class arangodb::pregel::CombiningOutCache<
     ColorPropagationMessageValue>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::OutCache<MessageData>;
-template class arangodb::pregel::ArrayOutCache<MessageData>;
-template class arangodb::pregel::CombiningOutCache<MessageData>;

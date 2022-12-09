@@ -125,7 +125,8 @@ class RocksDBIndex : public Index {
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice doc) = 0;
+                        arangodb::velocypack::Slice doc,
+                        OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,
@@ -133,6 +134,9 @@ class RocksDBIndex : public Index {
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice newDoc,
                         OperationOptions const& options, bool performChecks);
+
+  virtual void refillCache(transaction::Methods& trx,
+                           std::vector<std::string> const& keys);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -166,9 +170,11 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache,
                cache::Manager* cacheManager, RocksDBEngine& engine);
 
-  inline bool hasCache() const noexcept {
+  bool hasCache() const noexcept {
     return _cacheEnabled && (_cache != nullptr);
   }
+
+  bool canWarmup() const noexcept override;
 
   virtual std::shared_ptr<cache::Cache> makeCache() const;
 

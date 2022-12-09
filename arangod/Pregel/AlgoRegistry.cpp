@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
@@ -89,10 +89,7 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::ReadWrite(server, userParams);
   }
 #endif
-  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return new algos::accumulators::ProgrammablePregelAlgorithm(server,
-                                                                userParams);
-  } else {
+  else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
@@ -182,12 +179,6 @@ template<typename V, typename E, typename M>
                         feature);
   }
 #endif
-  else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return createWorker(vocbase,
-                        new algos::accumulators::ProgrammablePregelAlgorithm(
-                            server, userParams),
-                        body, feature);
-  }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");
 }

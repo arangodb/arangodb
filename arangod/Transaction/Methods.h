@@ -134,7 +134,6 @@ class Methods {
 
   enum class CallbacksTag {
     StatusChange = 0,
-    PreCommit = 1,
   };
 
   /// @brief definition from TransactionState::StatusChangeCallback
@@ -144,7 +143,6 @@ class Methods {
   ///               since their staus is not updated from RUNNING
   using StatusChangeCallback = std::function<void(transaction::Methods& trx,
                                                   transaction::Status status)>;
-  using PreCommitCallback = std::function<void(transaction::Methods& trx)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -157,8 +155,6 @@ class Methods {
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
   bool removeStatusChangeCallback(StatusChangeCallback const* callback);
-
-  bool addPreCommitCallback(PreCommitCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
@@ -451,7 +447,7 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result insertLocalHelper(LogicalCollection& collection,
+  Result insertLocalHelper(LogicalCollection& collection, std::string_view key,
                            velocypack::Slice value, RevisionId& newRevisionId,
                            velocypack::Builder& newDocumentBuilder,
                            OperationOptions& options,

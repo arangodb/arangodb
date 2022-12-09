@@ -33,6 +33,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
@@ -92,11 +93,10 @@ bool RocksDBReplicationContext::findCollection(
     std::function<void(TRI_vocbase_t& vocbase,
                        LogicalCollection& collection)> const& cb) {
   auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
-  TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbName);
+  auto vocbase = dbfeature.useDatabase(dbName);
   if (!vocbase) {
     return false;
   }
-  auto dbGuard = scopeGuard([&]() noexcept { vocbase->release(); });
 
   std::shared_ptr<LogicalCollection> coll;
   try {

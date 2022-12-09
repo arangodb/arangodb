@@ -97,11 +97,6 @@ arangodb::CreateDatabaseInfo createExpressionVocbaseInfo(
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-   // i am here for debugging only.
-TRI_vocbase_t* DatabaseFeature::CURRENT_VOCBASE = nullptr;
-#endif
-
 /// @brief database manager thread main loop
 /// the purpose of this thread is to physically remove directories of databases
 /// that have been dropped
@@ -440,17 +435,7 @@ void IOHeartbeatThread::run() {
 }
 
 DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _defaultWaitForSync(false),
-      _ignoreDatafileErrors(false),
-      _isInitiallyEmpty(false),
-      _checkVersion(false),
-      _upgrade(false),
-      _defaultReplicationVersion(replication::Version::ONE),
-      _extendedNamesForDatabases(false),
-      _performIOHeartbeat(true),
-      _databasesLists(new DatabasesLists()),
-      _started(false) {
+    : ArangodFeature{server, *this}, _databasesLists(new DatabasesLists()) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -483,21 +468,22 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--database.wait-for-sync",
-      "default wait-for-sync behavior, can be overwritten "
-      "when creating a collection",
+      "The default waitForSync behavior. Can be overwritten when creating a "
+      "collection.",
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // the following option was obsoleted in 3.9
-  options->addObsoleteOption("--database.force-sync-properties",
-                             "force syncing of collection properties to disk, "
-                             "will use waitForSync value of collection when "
-                             "turned off",
-                             false);
+  options->addObsoleteOption(
+      "--database.force-sync-properties",
+      "Force syncing of collection properties to disk after creating a "
+      "collection or updating its properties. Otherwise, let the waitForSync "
+      "property of each collection determine it.",
+      false);
 
   options->addOption(
       "--database.ignore-datafile-errors",
-      "load collections even if datafiles may contain errors",
+      "Load collections even if datafiles may contain errors.",
       new BooleanParameter(&_ignoreDatafileErrors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -513,7 +499,7 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.io-heartbeat",
-                  "perform IO heartbeat to test underlying volume",
+                  "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -700,7 +686,6 @@ void DatabaseFeature::stop() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only.
     currentVocbase = vocbase;
-    CURRENT_VOCBASE = vocbase;
     static size_t currentCursorCount =
         currentVocbase->cursorRepository()->count();
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
@@ -992,7 +977,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 }
 
 /// @brief drop database
-ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
+ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
                                         bool removeAppsDirectory) {
   if (name == StaticStrings::SystemDatabase) {
     // prevent deletion of system database
@@ -1139,8 +1124,11 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
+    auto& databases = theLists->_databases;
 
-    for (auto& p : theLists->_databases) {
+    ids.reserve(databases.size());
+
+    for (auto& p : databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
       if (vocbase->isDropped()) {
@@ -1162,8 +1150,11 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
+    auto& databases = theLists->_databases;
 
-    for (auto& p : theLists->_databases) {
+    names.reserve(databases.size());
+
+    for (auto& p : databases) {
       TRI_vocbase_t* vocbase = p.second;
       TRI_ASSERT(vocbase != nullptr);
       if (vocbase->isDropped()) {
@@ -1173,9 +1164,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNames() {
     }
   }
 
-  std::sort(
-      names.begin(), names.end(),
-      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+  std::sort(names.begin(), names.end());
 
   return names;
 }
@@ -1209,9 +1198,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     }
   }
 
-  std::sort(
-      names.begin(), names.end(),
-      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+  std::sort(names.begin(), names.end());
 
   return names;
 }
@@ -1242,23 +1229,23 @@ void DatabaseFeature::inventory(
   result.close();
 }
 
-TRI_vocbase_t* DatabaseFeature::useDatabase(std::string const& name) const {
+VocbasePtr DatabaseFeature::useDatabase(std::string_view name) const {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
-  auto it = theLists->_databases.find(name);
+  auto const& databases = theLists->_databases;
 
-  if (it != theLists->_databases.end()) {
+  if (auto const it = databases.find(name); it != databases.end()) {
     TRI_vocbase_t* vocbase = it->second;
     if (vocbase->use()) {
-      return vocbase;
+      return VocbasePtr{vocbase};
     }
   }
 
   return nullptr;
 }
 
-TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
+VocbasePtr DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -1267,7 +1254,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
 
     if (vocbase->id() == id) {
       if (vocbase->use()) {
-        return vocbase;
+        return VocbasePtr{vocbase};
       }
       break;
     }
@@ -1277,7 +1264,7 @@ TRI_vocbase_t* DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
 }
 
 /// @brief lookup a database by its name, not increasing its reference count
-TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) const {
+TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string_view name) const {
   if (name.empty()) {
     return nullptr;
   }
@@ -1308,7 +1295,7 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) const {
 }
 
 std::string DatabaseFeature::translateCollectionName(
-    std::string const& dbName, std::string const& collectionName) {
+    std::string_view dbName, std::string_view collectionName) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
   auto itr = theLists->_databases.find(dbName);

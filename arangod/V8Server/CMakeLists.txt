@@ -8,6 +8,7 @@ add_library(arango_v8server STATIC
   v8-collection.cpp
   v8-dispatcher.cpp
   v8-general-graph.cpp
+  v8-pregel.cpp
   v8-prototype-states.cpp
   v8-query.cpp
   v8-replicated-logs.cpp
@@ -36,6 +37,3 @@ target_link_libraries(arango_v8server
 target_include_directories(arango_v8server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_v8server PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})

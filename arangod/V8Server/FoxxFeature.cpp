@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <shared_mutex>
@@ -53,31 +54,69 @@ void FoxxFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.foxx-queues-poll-interval",
                         "foxx.queues-poll-interval");
 
-  options->addOption("--foxx.queues", "enable Foxx queues",
-                     new BooleanParameter(&_enabled),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options
+      ->addOption("--foxx.queues", "Enable or disable Foxx queues.",
+                  new BooleanParameter(&_enabled),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(If set to `true`, the Foxx queues are available
+and jobs in the queues are executed asynchronously.
 
-  options->addOption("--foxx.queues-poll-interval",
-                     "poll interval (in seconds) for Foxx queue manager",
-                     new DoubleParameter(&_pollInterval),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+If set to `false`, the queue manager is disabled and any jobs are prevented from
+being processed, which may reduce CPU load a bit.)");
+
+  options
+      ->addOption("--foxx.queues-poll-interval",
+                  "The poll interval for the Foxx queue manager (in seconds)",
+                  new DoubleParameter(&_pollInterval),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(Lower values lead to more immediate and more
+frequent Foxx queue job execution, but make the queue thread wake up and query
+the queues more often. If set to a low value, the queue thread might cause
+CPU load.
+
+If you don't use Foxx queues much, then you may increase this value to make the
+queues thread wake up less.)");
 
   options
       ->addOption("--foxx.force-update-on-startup",
-                  "ensure all Foxx services are synchronized before "
-                  "completeing the boot sequence",
+                  "Ensure that all Foxx services are synchronized before "
+                  "completing the startup sequence.",
                   new BooleanParameter(&_startupWaitForSelfHeal),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30705);
+      .setIntroducedIn(30610)
+      .setIntroducedIn(30706)
+      .setLongDescription(R"(If set to `true`, all Foxx services in all
+databases are synchronized between multiple Coordinators during the startup
+sequence. This ensures that all Foxx services are up-to-date when a Coordinator
+reports itself as ready.
+
+In case the option is set to `false` (i.e. no waiting), the Coordinator
+completes the startup sequence faster, and the Foxx services are propagated
+lazily. Until the initialization procedure has completed for the local Foxx
+apps, any request to a Foxx app is responded to with an HTTP 500 error and a
+message `waiting for initialization of Foxx services in this database`. This can
+cause an unavailability window for Foxx services on Coordinator startup for the
+initial requests to Foxx apps until the app propagation has completed.
+
+If you don't use Foxx, you should set this option to `false` to benefit from a
+faster Coordinator startup. Deployments relying on Foxx apps being available as
+soon as a Coordinator is integrated or responding should set this option to
+`true`.
+
+The option only has an effect for cluster setups. On single servers and in
+Active Failover mode, all Foxx apps are available from the very beginning.
+
+**Note**: ArangoDB 3.8 changes the default value to `false` for this option.
+In previous versions, this option had a default value of `true`.)");
 }
 
 void FoxxFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

@@ -25,8 +25,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/fpconv.h"
+#include "ProgramOptions/UnitsHelper.h"
 
 #include <velocypack/Builder.h>
 
@@ -37,98 +37,32 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
-#include <stdexcept>
+#include <vector>
 
-namespace arangodb {
-namespace options {
+namespace arangodb::options {
 
 // helper function to strip-non-numeric data from a string
-std::string removeCommentsFromNumber(std::string const& value);
+std::string removeWhitespaceAndComments(std::string const& value);
 
-// convert a string into a number, base version for signed or unsigned integer
+// convert a string into a number, base version for signed and unsigned integer
 // types
 template<typename T>
 inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
-  value = removeCommentsFromNumber(value);
+  value = removeWhitespaceAndComments(value);
 
-  auto n = value.size();
-  int64_t m = 1;
-  int64_t d = 1;
-  bool seen = false;
-  if (n > 3) {
-    std::string suffix = value.substr(n - 3);
-
-    if (suffix == "kib" || suffix == "KiB" || suffix == "KIB") {
-      m = 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "mib" || suffix == "MiB" || suffix == "MIB") {
-      m = 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    } else if (suffix == "gib" || suffix == "GiB" || suffix == "GIB") {
-      m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 3);
-      seen = true;
-    }
+  if constexpr (std::is_signed_v<T>) {
+    return UnitsHelper::parseNumberWithUnit<T, int64_t>(value, base);
+  } else {
+    return UnitsHelper::parseNumberWithUnit<T, uint64_t>(value, base);
   }
-  if (!seen && n > 2) {
-    std::string suffix = value.substr(n - 2);
-
-    if (suffix == "kb" || suffix == "KB") {
-      m = 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "mb" || suffix == "MB") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    } else if (suffix == "gb" || suffix == "GB") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 2);
-      seen = true;
-    }
-  }
-  if (!seen && n > 1) {
-    std::string suffix = value.substr(n - 1);
-
-    if (suffix == "k" || suffix == "K") {
-      m = 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "m" || suffix == "M") {
-      m = 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "g" || suffix == "G") {
-      m = 1000 * 1000 * 1000;
-      value = value.substr(0, n - 1);
-    } else if (suffix == "%") {
-      m = static_cast<int64_t>(base);
-      d = 100;
-      value = value.substr(0, n - 1);
-    }
-  }
-
-  char const* p = value.data();
-  char const* e = p + value.size();
-  // skip leading whitespace
-  while (p < e && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
-    ++p;
-  }
-
-  bool valid = true;
-  auto v = arangodb::NumberUtils::atoi<T>(p, e, valid);
-  if (!valid) {
-    throw std::out_of_range(value);
-  }
-  return static_cast<T>(v * m / d);
 }
 
 // convert a string into a number, version for double values
 template<>
 inline double toNumber<double>(std::string value, double /*base*/) {
   // replace leading spaces, replace trailing spaces & comments
-  return std::stod(removeCommentsFromNumber(value));
+  return std::stod(removeWhitespaceAndComments(value));
 }
 
 // convert a string into another type, specialized version for numbers
@@ -156,7 +90,7 @@ template<>
 inline std::string stringifyValue<double>(double const& value) {
   char buf[32];
   int length = fpconv_dtoa(value, &buf[0]);
-  return std::string(&buf[0], static_cast<size_t>(length));
+  return std::string(&buf[0], static_cast<std::size_t>(length));
 }
 
 // stringify a boolean value, specialized version
@@ -169,6 +103,31 @@ inline std::string stringifyValue<bool>(bool const& value) {
 template<>
 inline std::string stringifyValue<std::string>(std::string const& value) {
   return "\"" + value + "\"";
+}
+
+template<typename T>
+inline std::string stringifyValues(T const& values) {
+  std::string value;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    if (i > 0) {
+      value.append(", ");
+    }
+    value.append(stringifyValue(values.at(i)));
+  }
+  return value;
+}
+
+template<typename T>
+inline std::string joinValues(T const& values) {
+  std::string result;
+  std::size_t i = 0;
+  for (auto const& it : values) {
+    if (i++ > 0) {
+      result.append(", ");
+    }
+    result.append(it);
+  }
+  return result;
 }
 
 // abstract base parameter type struct
@@ -192,10 +151,9 @@ struct Parameter {
 };
 
 // specialized type for boolean values
-struct BooleanParameter : public Parameter {
-  typedef bool ValueType;
-
-  explicit BooleanParameter(ValueType* ptr, bool required = false)
+template<typename ValueType>
+struct BooleanParameterBase : public Parameter {
+  explicit BooleanParameterBase(ValueType* ptr, bool required = false)
       : ptr(ptr), required(required) {}
 
   bool requiresValue() const override { return required; }
@@ -235,49 +193,11 @@ struct BooleanParameter : public Parameter {
   bool required;
 };
 
+// specialized type for normal boolean values
+using BooleanParameter = BooleanParameterBase<bool>;
+
 // specialized type for atomic boolean values
-struct AtomicBooleanParameter : public Parameter {
-  typedef std::atomic<bool> ValueType;
-
-  explicit AtomicBooleanParameter(ValueType* ptr, bool required = false)
-      : ptr(ptr), required(required) {}
-
-  bool requiresValue() const override { return required; }
-  std::string name() const override { return "boolean"; }
-  std::string valueString() const override {
-    return stringifyValue(ptr->load());
-  }
-
-  std::string set(std::string const& value) override {
-    if (!required && value.empty()) {
-      // the empty value "" is considered "true", e.g. "--force" will mean
-      // "--force true"
-      *ptr = true;
-      return "";
-    }
-    if (value == "true" || value == "false" || value == "on" ||
-        value == "off" || value == "1" || value == "0") {
-      ptr->store(value == "true" || value == "on" || value == "1");
-      return "";
-    }
-    return "invalid value for type " + this->name() +
-           ". expecting 'true' or 'false'";
-  }
-
-  std::string typeDescription() const override {
-    return Parameter::typeDescription();
-  }
-
-  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
-    builder.add(VPackValue(ptr->load()));
-    if (detailed) {
-      builder.add("required", VPackValue(required));
-    }
-  }
-
-  ValueType* ptr;
-  bool required;
-};
+using AtomicBooleanParameter = BooleanParameterBase<std::atomic<bool>>;
 
 // specialized type for numeric values
 // this templated type needs a concrete number type
@@ -438,22 +358,12 @@ struct DiscreteValuesParameter : public T {
 
   // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
-    std::string msg("Possible values: ");
     std::vector<std::string> values;
     for (auto const& it : allowed) {
       values.emplace_back(stringifyValue(it));
     }
     std::sort(values.begin(), values.end());
-
-    size_t i = 0;
-    for (auto const& it : values) {
-      if (i > 0) {
-        msg.append(", ");
-      }
-      msg.append(it);
-      ++i;
-    }
-    return msg;
+    return std::string("Possible values: ") + joinValues(values);
   }
 
   std::unordered_set<typename T::ValueType> allowed;
@@ -471,16 +381,7 @@ struct VectorParameter : public Parameter {
     return std::string(param.name()) + "...";
   }
 
-  std::string valueString() const override {
-    std::string value;
-    for (size_t i = 0; i < ptr->size(); ++i) {
-      if (i > 0) {
-        value.append(", ");
-      }
-      value.append(stringifyValue(ptr->at(i)));
-    }
-    return value;
-  }
+  std::string valueString() const override { return stringifyValues(*ptr); }
 
   std::string set(std::string const& value) override {
     typename T::ValueType dummy;
@@ -496,7 +397,7 @@ struct VectorParameter : public Parameter {
 
   void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
     }
     builder.close();
@@ -513,7 +414,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
       std::vector<typename T::ValueType>* ptr,
       std::unordered_set<typename T::ValueType> const& allowed)
       : ptr(ptr), allowed(allowed) {
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       if (allowed.find(ptr->at(i)) == allowed.end()) {
         // default value is not in list of allowed values
         std::string msg(
@@ -536,7 +437,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
 
   std::string valueString() const override {
     std::string value;
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       if (i > 0) {
         value.append(", ");
       }
@@ -568,29 +469,20 @@ struct DiscreteValuesVectorParameter : public Parameter {
 
   void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
-    for (size_t i = 0; i < ptr->size(); ++i) {
+    for (std::size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
     }
     builder.close();
   }
 
   std::string description() const override {
-    std::string msg("Possible values: ");
     std::vector<std::string> values;
+    values.reserve(allowed.size());
     for (auto const& it : allowed) {
       values.emplace_back(stringifyValue(it));
     }
     std::sort(values.begin(), values.end());
-
-    size_t i = 0;
-    for (auto const& it : values) {
-      if (i > 0) {
-        msg.append(", ");
-      }
-      msg.append(it);
-      ++i;
-    }
-    return msg;
+    return std::string("Possible values: ") + joinValues(values);
   }
 
   std::vector<typename T::ValueType>* ptr;
@@ -610,5 +502,4 @@ struct ObsoleteParameter : public Parameter {
 
   bool required;
 };
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options
