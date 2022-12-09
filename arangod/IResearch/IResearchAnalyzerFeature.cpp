@@ -2355,24 +2355,23 @@ IResearchAnalyzerFeature::splitAnalyzerName(
     if (analyzer[i] == ANALYZER_PREFIX_DELIM  // current is delim
         &&
         analyzer[i - 1] == ANALYZER_PREFIX_DELIM) {  // previous is also delim
-      auto vocbase =
+      auto const vocbase =
           i > 1  // non-empty prefix, +1 for first delimiter char
-              ? std::string_view(analyzer.data(),
-                                 i - 1)  // -1 for the first ':' delimiter
+              ? std::string_view{analyzer.data(), i - 1}
+              // -1 for the first ':' delimiter
               : irs::kEmptyStringView<char>;
-      auto name = i < count - 1  // have suffix
-                      ? std::string_view(
-                            analyzer.data() + i + 1,
-                            count - i - 1)  // +-1 for the suffix after '::'
-                      : irs::kEmptyStringView<char>;  // do not point after end
-                                                      // of buffer
+      auto const name =
+          i < count - 1  // have suffix
+              ? std::string_view{analyzer.data() + i + 1, count - i - 1}
+              // +-1 for the suffix after '::'
+              : irs::kEmptyStringView<char>;  // do not point after end of
+                                              // buffer
 
-      return std::make_pair(vocbase, name);  // prefixed analyzer name
+      return {vocbase, name};  // prefixed analyzer name
     }
   }
 
-  return std::make_pair(std::string_view{},
-                        analyzer);  // unprefixed analyzer name
+  return {std::string_view{}, analyzer};  // unprefixed analyzer name
 }
 
 /*static*/ std::string IResearchAnalyzerFeature::normalize(
@@ -2805,8 +2804,6 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
 
     auto const split = splitAnalyzerName(pool.name());
     auto vocbase = dbFeature.useDatabase(split.first);
-    auto* vocbase =
-        dbFeature.useDatabase(static_cast<std::string>(split.first));
 
     if (!vocbase) {
       return {
