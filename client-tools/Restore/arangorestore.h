@@ -32,12 +32,12 @@ class TempFeature;
 class RestoreFeature;
 class EncryptionFeature;
 
-using ArangoRestoreFeatures = ArangoClientFeatures<
+using ArangoRestoreFeaturesList = ArangoClientFeaturesList<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
     BasicFeaturePhaseClient, TempFeature, RestoreFeature>;
-
+struct ArangoRestoreFeatures : ArangoRestoreFeaturesList {};
 using ArangoRestoreServer = ApplicationServerT<ArangoRestoreFeatures>;
 using ArangoRestoreFeature = ApplicationFeatureT<ArangoRestoreServer>;
 
