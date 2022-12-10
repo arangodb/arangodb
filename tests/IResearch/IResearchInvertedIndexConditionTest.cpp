@@ -171,8 +171,12 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = index->supportsFilterCondition(
-          query->trxForOptimization(), id, indexFields, {}, filterNode, ref, 0);
+      // We use this noop transaction because query transaction is empty
+      // TODO(MBkkt) Needs ability to create empty transaction
+      //  with failed begin but correct in other
+      arangodb::transaction::Methods trx{ctx};
+      auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
+                                                  filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
