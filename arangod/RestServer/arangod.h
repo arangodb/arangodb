@@ -301,9 +301,7 @@ using ArangodFeaturesList = TypeList<
     replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
-
 struct ArangodFeatures : ArangodFeaturesList {};
-
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
 
