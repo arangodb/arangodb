@@ -12,7 +12,7 @@ jobs:
           name: Install required software
           command: |
             sudo apt-get update
-            sudo apt-get install libssl-dev gcc-10 g++-10 snapd ccache flex bison
+            sudo apt-get install libssl-dev clang-14 clang++-14 snapd ccache flex bison
       - run:
           name: Checkout Source
           command: |
@@ -27,19 +27,13 @@ jobs:
           name: Zero CCache Statistics
           command: ccache -z
       - run:
-          name: Create build directories
-          command: |
-            mkdir -p build
-      - run:
           name: Configure
           command: |
-            cd build
-            cmake .. -DUSE_SEPARATE_REPLICATION2_TESTS_BINARY=On -DUSE_MAINTAINER_MODE=On -DCMAKE_C_COMPILER=/usr/lib/ccache/gcc-10 -DCMAKE_CXX_COMPILER=/usr/lib/ccache/g++-10
+            cmake --preset community-developer -DCMAKE_C_COMPILER=/usr/lib/ccache/clang-14 -DCMAKE_CXX_COMPILER=/usr/lib/ccache/clang++-14
       - run:
           name: Build
           command: |
-            cd build
-            make -j $(nproc) arangodbtests_replication2 arangod arangosh arangobench arangodump arangorestore arangoimport arangoexport
+            cmake --build --preset community-developer --parallel $(nproc) arangodbtests
       - run:
           name: CCache Statistics
           command: ccache -s
@@ -127,16 +121,16 @@ jobs:
 
 
 workflows:
-  replication-two-pr:
+  devel-pr:
     when:
       matches:
-        pattern: /^(bug-fix|feature)\/cinfra-.*$/
+        pattern: /^(bug-fix|feature|chore)\/.*$/
         value: << pipeline.git.branch >>
     jobs:
       - compile-linux-community
       - run-gtest-executable-linux:
           name: replication2 gtest linux
-          executable: 'build/bin/arangodbtests_replication2'
+          executable: 'build/bin/arangodbtests'
           requires:
             - compile-linux-community
       - testing-js-run-test-suite:
