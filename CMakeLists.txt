@@ -1365,3 +1365,5 @@ else ()
   add_custom_target(arangodb
     DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()
+
+add_subdirectory(utils/gdb-pretty-printers/immer/test)
