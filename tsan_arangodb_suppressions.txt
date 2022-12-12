@@ -32,10 +32,6 @@ race:VersionSet::SetLastSequence
 race:AllowImplicitCollectionsSwitcher
 race:graph::RefactoredTraverserCache::appendVertex
 
-# Known false-positive, see https://github.com/google/sanitizers/issues/953
-race:absl/synchronization/internal/waiter.cc
-race:absl::synchronization_internal::Waiter
-
 # TODO Fix known thread leaks
 thread:ClusterFeature::startHeartbeatThread
 thread:CacheManagerFeature::start

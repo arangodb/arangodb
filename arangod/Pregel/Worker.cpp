@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Worker.h"
+#include "Basics/voc-errors.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
@@ -36,11 +36,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VocBase/vocbase.h"
 
 #include "Inspection/VPack.h"
 #include "velocypack/Builder.h"
@@ -716,117 +718,15 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
                          VPackValueType::String));
 
     V const& data = vertexEntry->data();
-    // bool store =
-    if (auto res =
-            _graphStore->graphFormat()->buildVertexDocumentWithResult(b, &data);
-        res.fail()) {
-      LOG_PREGEL("37fde", ERR)
-          << "failed to build vertex document: " << res.error().toString();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
-                                     res.error().toString());
+    if (auto res = _graphStore->graphFormat()->buildVertexDocument(b, &data);
+        !res) {
+      LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Failed to build vertex document");
     }
     b.close();
   }
   b.close();
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
-  // other methods might lock _commandMutex
-  MUTEX_LOCKER(guard, _commandMutex);
-  VPackSlice method = data.get(Utils::recoveryMethodKey);
-  if (method.compareString(Utils::compensate) != 0) {
-    LOG_PREGEL("742c5", ERR) << "Unsupported operation";
-    return;
-  }
-  // else if (method.compareString(Utils::rollback) == 0)
-
-  _state = WorkerState::RECOVERING;
-  {
-    MY_WRITE_LOCKER(guard, _cacheRWLock);
-    _writeCache->clear();
-    _readCache->clear();
-    if (_writeCacheNextGSS) {
-      _writeCacheNextGSS->clear();
-    }
-  }
-
-  VPackBuilder copy(data);
-  // hack to determine newly added vertices
-  _preRecoveryTotal = _graphStore->localVertexCount();
-  WorkerConfig nextState(_config);
-  nextState.updateConfig(_feature, data);
-  _graphStore->loadShards(
-      &nextState, []() {},
-      [this, nextState, copy] {
-        _config = nextState;
-        compensateStep(copy.slice());
-      });
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _commandMutex);
-
-  _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
-
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(),
-                                               this] {
-    if (_state != WorkerState::RECOVERING) {
-      LOG_PREGEL("554e2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
-
-    auto vertexIterator = _graphStore->vertexIterator();
-    std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
-        _algorithm->createCompensation(&_config));
-    _initializeVertexContext(vCompensate.get());
-    if (!vCompensate) {
-      _state = WorkerState::DONE;
-      LOG_PREGEL("938d2", WARN) << "Compensation aborted prematurely.";
-      return;
-    }
-    vCompensate->_writeAggregators = _workerAggregators.get();
-
-    size_t i = 0;
-    for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V, E>* vertexEntry = *vertexIterator;
-      vCompensate->_vertexEntry = vertexEntry;
-      vCompensate->compensate(i > _preRecoveryTotal);
-      i++;
-      if (_state != WorkerState::RECOVERING) {
-        LOG_PREGEL("e9011", WARN) << "Execution aborted prematurely.";
-        break;
-      }
-    }
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _workerAggregators->serializeValues(package);
-    package.close();
-    _callConductor(Utils::finishedRecoveryPath, package);
-  });
-}
-
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _commandMutex);
-  if (_state != WorkerState::RECOVERING) {
-    LOG_PREGEL("22e42", WARN) << "Compensation aborted prematurely.";
-    return;
-  }
-
-  _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
-  _messageStats.resetTracking();
-  _state = WorkerState::IDLE;
-  LOG_PREGEL("17f3c", INFO) << "Recovery finished";
 }
 
 template<typename V, typename E, typename M>
@@ -952,6 +852,3 @@ template class arangodb::pregel::Worker<LPValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<SLPAValue, int8_t, uint64_t>;
 template class arangodb::pregel::Worker<ColorPropagationValue, int8_t,
                                         ColorPropagationMessageValue>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::Worker<VertexData, EdgeData, MessageData>;

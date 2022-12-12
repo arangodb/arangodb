@@ -116,8 +116,13 @@ set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 ## Google Abseil
 ################################################################################
 
+UpdateModule(${GIT_EXECUTABLE} "abseil-cpp" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+
 add_subdirectory(abseil-cpp)
-set(ARANGO_ABSEIL_CPP_VERSION "${ARANGO_ABSEIL_CPP_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## Google S2
@@ -250,12 +255,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 ## IMMER
 ################################################################################
 
-set(IMMER_VERSION "0.7.0")
+UpdateModule(${GIT_EXECUTABLE} "immer" ${CMAKE_CURRENT_SOURCE_DIR} "README.rst")
 set(immer_BUILD_EXAMPLES    OFF CACHE BOOL "don't build examples")
 set(immer_BUILD_EXTRAS    OFF CACHE BOOL "don't build extras")
 set(immer_BUILD_TESTS OFF CACHE BOOL "don't build tests")
 set(immer_BUILD_DOCS OFF CACHE BOOL "don't docs")
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer/v${IMMER_VERSION} EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/immer EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## DATE

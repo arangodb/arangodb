@@ -33,6 +33,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -44,6 +45,24 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+RefillIndexCaches readFillIndexCachesValue(GeneralRequest const& request) {
+  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
+
+  bool found = false;
+  // this attribute can have 3 values: default, true and false. only
+  // pick it up when it is set to true or false
+  std::string const& value =
+      request.value(StaticStrings::RefillIndexCachesString, found);
+  if (found) {
+    refillIndexCaches = StringUtils::boolean(value)
+                            ? RefillIndexCaches::kRefill
+                            : RefillIndexCaches::kDontRefill;
+  }
+  return refillIndexCaches;
+}
+}  // namespace
 
 RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
                                          GeneralRequest* request,
@@ -189,6 +208,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew =
       _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
@@ -225,9 +245,14 @@ RestStatus RestDocumentHandler::insertDocument() {
     }
   }
 
-  // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
+  // find and load collection given by name or identifier
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -531,6 +556,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -584,8 +610,14 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   }
 
+  bool const isMultiple = body.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -702,6 +734,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -744,7 +777,13 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
+  bool const isMultiple = search.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -774,8 +813,6 @@ RestStatus RestDocumentHandler::removeDocument() {
             "' does not contain collection '" + cname +
             "' with the required access mode.");
   }
-
-  bool const isMultiple = search.isArray();
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)

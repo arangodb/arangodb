@@ -255,7 +255,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
-    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
                  logicalCollection->getIndexes().empty()));
   }
 
@@ -329,7 +329,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
-    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
                  logicalCollection->getIndexes().empty()));
   }
 
@@ -871,7 +871,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -938,7 +938,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1007,7 +1007,7 @@ TEST_F(IResearchLinkTest, test_write) {
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1120,7 +1120,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1226,7 +1226,7 @@ TEST_F(IResearchLinkTest,
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1339,7 +1339,7 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1450,7 +1450,7 @@ TEST_F(IResearchLinkTest,
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(dataPath);
+  irs::FSDirectory directory(dataPath);
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
@@ -1574,7 +1574,7 @@ TEST_F(
               (std::string("arangosearch-") +
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
-  irs::fs_directory directory(
+  irs::FSDirectory directory(
       dataPath, irs::directory_attributes(
                     0, std::make_unique<iresearch::mock::test_encryption>(
                            kEncBlockSize)));

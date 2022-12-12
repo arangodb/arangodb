@@ -186,6 +186,17 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
         TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SilentKey)
                                          .FromMaybe(v8::Local<v8::Value>()));
   }
+  TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+  // this attribute can have 3 values: default, true and false. only
+  // pick it up when it is set to true or false
+  if (TRI_HasProperty(context, isolate, optionsObject, RefillIndexCachesKey)) {
+    options.refillIndexCaches =
+        (TRI_ObjectToBoolean(isolate,
+                             optionsObject->Get(context, RefillIndexCachesKey)
+                                 .FromMaybe(v8::Local<v8::Value>())))
+            ? RefillIndexCaches::kRefill
+            : RefillIndexCaches::kDontRefill;
+  }
   TRI_GET_GLOBAL_STRING(IsSynchronousReplicationKey);
   if (TRI_HasProperty(context, isolate, optionsObject,
                       IsSynchronousReplicationKey)) {
@@ -709,14 +720,19 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  bool payloadIsArray = args[0]->IsArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+                                            // single document operations
+
   VPackSlice toRemove = searchBuilder.slice();
   transaction::V8Context transactionContext(col->vocbase(), true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::V8Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
 
-  if (!args[0]->IsArray()) {
+  if (!payloadIsArray) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -806,10 +822,13 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice toRemove = builder.slice();
   TRI_ASSERT(toRemove.isObject());
 
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = true;
+
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -1521,13 +1540,18 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   VPackSlice const update = updateBuilder.slice();
   transaction::V8Context transactionContext(col->vocbase(), true);
 
+  bool payloadIsArray = args[0]->IsArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+                                            // single document operations
+
   // Now start the transaction:
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
 
-  if (!args[0]->IsArray()) {
+  if (!payloadIsArray) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -1646,10 +1670,13 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     }
   }
 
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = true;
+
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      collectionName, AccessMode::Type::WRITE);
+      collectionName, AccessMode::Type::WRITE, trxOpts);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
@@ -1868,6 +1895,18 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                                   .FromMaybe(v8::Local<v8::Value>())) &&
           options.isOverwriteModeUpdateReplace();
     }
+    TRI_GET_GLOBAL_STRING(RefillIndexCachesKey);
+    // this attribute can have 3 values: default, true and false. only
+    // pick it up when it is set to true or false
+    if (TRI_HasProperty(context, isolate, optionsObject,
+                        RefillIndexCachesKey)) {
+      options.refillIndexCaches =
+          (TRI_ObjectToBoolean(isolate,
+                               optionsObject->Get(context, RefillIndexCachesKey)
+                                   .FromMaybe(v8::Local<v8::Value>())))
+              ? RefillIndexCaches::kRefill
+              : RefillIndexCaches::kDontRefill;
+    }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (TRI_HasProperty(context, isolate, optionsObject, IsRestoreKey)) {
       options.isRestore =
@@ -1935,12 +1974,16 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     doOneDocument(payload);
   }
 
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+                                            // single document operations
+
   // load collection
   transaction::V8Context transactionContext(collection->vocbase(), true);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &transactionContext),
-      *collection, AccessMode::Type::WRITE);
+      *collection, AccessMode::Type::WRITE, trxOpts);
 
   if (!payloadIsArray && !options.isOverwriteModeUpdateReplace()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

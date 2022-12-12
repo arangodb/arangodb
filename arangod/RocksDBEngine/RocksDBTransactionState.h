@@ -100,11 +100,6 @@ class RocksDBTransactionState : public TransactionState {
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;
 
-  /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
-  /// already had a snapshot)
-  [[nodiscard]] virtual bool ensureSnapshot() = 0;
-
   [[nodiscard]] static RocksDBTransactionState* toState(
       transaction::Methods* trx);
 
@@ -129,6 +124,9 @@ class RocksDBTransactionState : public TransactionState {
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
+
+  void trackIndexCacheRefill(DataSourceId cid, IndexId idxObjectId,
+                             std::string_view key);
 
   /// @brief whether or not a transaction only has exclusive or read accesses
   bool isOnlyExclusiveTransaction() const noexcept;
