@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include "Actor/ActorPID.h"
 #include "Actor/Runtime.h"
 
 #include "TrivialActor.h"
@@ -35,9 +36,7 @@ struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
 
-struct MockSendingMechanism {
-
-};
+struct MockSendingMechanism {};
 
 TEST(RuntimeTest, gives_back_stuff_pushed) {
   auto scheduler = std::make_shared<MockScheduler>();
@@ -45,13 +44,36 @@ TEST(RuntimeTest, gives_back_stuff_pushed) {
 
   Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
 
-  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(TrivialState("foo"),
-                                                              TrivialMessage1("bar"));
+  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState("foo"), TrivialMessage1("bar"));
 
-  auto state = runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(ActorID{0});
-  if(state != std::nullopt) {
-    std::cout << " state: " << state->state << " called: " << state->called << std::endl;
-  } else {
-    std::cout << "state was nullopt";
+  {
+    auto state =
+        runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
+            ActorID{0});
+    if (state != std::nullopt) {
+      std::cout << " state: " << state->state << " called: " << state->called
+                << std::endl;
+    } else {
+      std::cout << "state was nullopt";
+    }
+  }
+
+  auto msg = std::make_unique<Message>(
+      ActorPID{.id = ActorID{0}, .server = "Foo"},
+      ActorPID{.id = ActorID{0}, .server = "PRMR-1234"},
+      std::make_unique<MessagePayload<TrivialMessage>>(TrivialMessage1("baz")));
+  runtime.dispatch(std::move(msg));
+
+  {
+    auto state =
+        runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
+            ActorID{0});
+    if (state != std::nullopt) {
+      std::cout << " state: " << state->state << " called: " << state->called
+                << std::endl;
+    } else {
+      std::cout << "state was nullopt";
+    }
   }
 }
