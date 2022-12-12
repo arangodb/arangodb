@@ -47,23 +47,15 @@ class LocalDocumentId;
 class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
 
-  RocksDBCollection(LogicalCollection& collection,
-                    PhysicalCollection const*);  // use in cluster only!!!!!
-
  public:
   explicit RocksDBCollection(LogicalCollection& collection,
                              velocypack::Slice info);
   ~RocksDBCollection();
 
-  arangodb::Result updateProperties(velocypack::Slice slice) override;
-
-  virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
+  Result updateProperties(velocypack::Slice slice) override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-
-  /// @brief closes an open collection
-  ErrorCode close() override;
 
   /// return bounds for all documents
   RocksDBKeyBounds bounds() const override;
@@ -72,13 +64,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(velocypack::Slice indexesSlice) override;
-
   std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
                                      bool& created) override;
-
-  /// @brief Drop an index with the given iid.
-  bool dropIndex(IndexId iid) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
@@ -186,35 +173,31 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
-  arangodb::Result doInsertDocument(arangodb::transaction::Methods* trx,
-                                    RocksDBSavePoint& savepoint,
-                                    LocalDocumentId documentId,
-                                    arangodb::velocypack::Slice doc,
-                                    OperationOptions const& options,
-                                    RevisionId revisionId) const;
+  Result doInsertDocument(arangodb::transaction::Methods* trx,
+                          RocksDBSavePoint& savepoint,
+                          LocalDocumentId documentId,
+                          arangodb::velocypack::Slice doc,
+                          OperationOptions const& options,
+                          RevisionId revisionId) const;
 
-  arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
-                                  RocksDBSavePoint& savepoint,
-                                  LocalDocumentId documentId,
-                                  arangodb::velocypack::Slice doc,
-                                  OperationOptions const& options,
-                                  RevisionId revisionId) const;
+  Result removeDocument(transaction::Methods* trx, RocksDBSavePoint& savepoint,
+                        LocalDocumentId documentId, velocypack::Slice doc,
+                        OperationOptions const& options,
+                        RevisionId revisionId) const;
 
-  arangodb::Result modifyDocument(
-      transaction::Methods* trx, RocksDBSavePoint& savepoint,
-      LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
-      LocalDocumentId newDocumentId, velocypack::Slice newDoc,
-      RevisionId oldRevisionId, RevisionId newRevisionId,
-      OperationOptions const& options) const;
+  Result modifyDocument(transaction::Methods* trx, RocksDBSavePoint& savepoint,
+                        LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
+                        LocalDocumentId newDocumentId, velocypack::Slice newDoc,
+                        RevisionId oldRevisionId, RevisionId newRevisionId,
+                        OperationOptions const& options) const;
 
   /// @brief lookup document in cache and / or rocksdb
   /// @param readCache attempt to read from cache
   /// @param fillCache fill cache with found document
-  arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
-                                       LocalDocumentId const& documentId,
-                                       rocksdb::PinnableSlice& ps,
-                                       bool readCache, bool fillCache,
-                                       ReadOwnWrites readOwnWrites) const;
+  Result lookupDocumentVPack(transaction::Methods* trx,
+                             LocalDocumentId const& documentId,
+                             rocksdb::PinnableSlice& ps, bool readCache,
+                             bool fillCache, ReadOwnWrites readOwnWrites) const;
 
   Result lookupDocumentVPack(transaction::Methods*,
                              LocalDocumentId const& documentId,
@@ -236,6 +219,18 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool canUseRangeDeleteInWal() const;
 
  private:
+  // callback that is called directly before the index is dropped.
+  // the write-lock on all indexes is still held
+  Result duringDropIndex(std::shared_ptr<Index> idx) override;
+
+  // callback that is called directly after the index has been dropped.
+  // no locks are held anymore.
+  Result afterDropIndex(std::shared_ptr<Index> idx) override;
+
+  // callback that is called while adding a new index. called under
+  // indexes write-lock
+  void duringAddIndex(std::shared_ptr<Index> idx) override;
+
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
 
@@ -248,7 +243,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   std::atomic<bool> _cacheEnabled;
 
-  arangodb::TransactionStatistics& _statistics;
+  TransactionStatistics& _statistics;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
