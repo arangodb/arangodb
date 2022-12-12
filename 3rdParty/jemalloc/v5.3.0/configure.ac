@@ -1709,7 +1709,7 @@ if test "x$LG_PAGE" = "xdetect"; then
 #include <stdio.h>
 ]],
 [[
-    int result;
+    long result;
     FILE *f;
 
 #ifdef _WIN32
@@ -1719,7 +1719,7 @@ if test "x$LG_PAGE" = "xdetect"; then
 #else
     result = sysconf(_SC_PAGESIZE);
 #endif
-    if (result == -1) {
+    if (result == (long) -1) {
 	return 1;
     }
     result = JEMALLOC_INTERNAL_FFSL(result) - 1;

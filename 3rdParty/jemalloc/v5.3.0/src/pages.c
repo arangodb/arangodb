@@ -579,7 +579,7 @@ os_page_detect(void) {
 	return getpagesize();
 #else
 	long result = sysconf(_SC_PAGESIZE);
-	if (result == -1) {
+	if (result == (long)-1) {
 		return LG_PAGE;
 	}
 	return (size_t)result;
