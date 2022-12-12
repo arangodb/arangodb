@@ -908,14 +908,13 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     try {
-      std::unique_lock lock{_databasesMutex};
+      std::lock_guard lock{_databasesMutex};
       auto prev = _databases.load();
 
       auto next = _databases.make(prev);
       next->insert(std::make_pair(name, vocbase.get()));
 
       _databases.store(std::move(next));
-      lock.unlock();
       waitUnique(prev);
     } catch (...) {
       LOG_TOPIC("34825", ERR, arangodb::Logger::FIXME)
@@ -1316,8 +1315,8 @@ void DatabaseFeature::closeOpenDatabases() {
 
   // Replace the old by the new:
   _databases.store(_databases.create());
-  lock.unlock();
   waitUnique(databases);
+  lock.unlock();
 
   // Now it is safe to destroy the old databases:
   for (auto& p : *databases) {
@@ -1426,7 +1425,7 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   auto res = TRI_ERROR_NO_ERROR;
 
   // open databases in defined order
-  std::unique_lock lock{_databasesMutex};
+  std::lock_guard lock{_databasesMutex};
 
   auto prev = _databases.load();
   auto next = _databases.make(prev);
@@ -1509,7 +1508,6 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   }
 
   _databases.store(std::move(next));
-  lock.unlock();
   waitUnique(prev);
 
   return res;
