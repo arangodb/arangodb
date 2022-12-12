@@ -35,7 +35,7 @@ auto AutoIncrementGeneratorProperties::Invariants::isReasonableOffsetValue(
 
 auto AutoIncrementGeneratorProperties::Invariants::isReasonableIncrementValue(
     uint64_t const& inc) -> inspection::Status {
-  if (inc >= (1ULL << 16)) {
+  if (inc == 0 || inc >= (1ULL << 16)) {
     return {"increment value must be greater than zero and smaller than 65536"};
   }
   return {};

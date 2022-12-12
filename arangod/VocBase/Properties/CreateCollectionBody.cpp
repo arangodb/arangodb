@@ -53,6 +53,12 @@ ResultT<CreateCollectionBody> parseAndValidate(
       // on "name"
       return Result{TRI_ERROR_ARANGO_ILLEGAL_NAME};
     }
+
+    if (status.path().rfind("keyOptions", 0) == 0) {
+      // Special handling to be backwards compatible error reporting
+      // on "keyOptions"
+      return Result{TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, status.error()};
+    }
     if (status.path() == StaticStrings::SmartJoinAttribute) {
       return Result{TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE, status.error()};
     }
