@@ -261,7 +261,9 @@ auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
   std::vector<size_t> skipped{};
   skipped.reserve(n);
   for (auto& input : _inputs) {
-    skipped.emplace_back(input.skipAllShadowRowsOfDepth(depth));
+    // This can never be a SubqueryStartNode, therefore the depthOffset here is
+    // always zero / "0".
+    skipped.emplace_back(input.skipAllShadowRowsOfDepth<0>(depth));
   }
   return skipped;
 }
