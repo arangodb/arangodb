@@ -62,6 +62,7 @@ function ParallelIndexLinkCreateDropSuite() {
       let docs = [];
       for (let i = 0; i < 100 * 1000; ++i) {
         docs.push({ value1: i, value2: "test" + i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -105,7 +106,7 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
   require("console").log("thread ${i}, iteration " + iteration);
 
   try {
-    db._view("${vn}").properties({ links : { ${cn} : { includeAllFields: true} } }, true);
+    db._view("${vn}").properties({ links : { ${cn} : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }, true);
     db._view("${vn}").properties({ links : { ${cn} : null }}, true);   
   } catch (err) {
     // concurrent modification of links can fail in the cluster

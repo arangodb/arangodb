@@ -215,12 +215,12 @@ function SynchronousReplicationWithViewSuite () {
 
     // Insert with check:
     var id = c.insert({Hallo:12});
-    assertEqual(1, c.count());
+    assertEqual(4, c.count());
 
     viewOperations("assert", null, function assert() {
       assertEqual(
         viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} COLLECT WITH COUNT into iCount RETURN iCount",
-        bind: '{ "@vn" : name }' }).toArray()[0], 1); } );
+        bind: '{ "@vn" : name }' }).toArray()[0], 4); } );
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
@@ -237,11 +237,11 @@ function SynchronousReplicationWithViewSuite () {
     if (failure.place === 3) { makeFailure(failure); }
 
     var ids = c.insert([{Hallo:13}, {Hallo:14}]);
-    assertEqual(3, c.count());
+    assertEqual(6, c.count());
     assertEqual(2, ids.length);
     viewOperations("assert", null, function assert() {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(result.length, 3);
+      assertEqual(result.length, 6);
     });
 
     if (healing.place === 3) { healFailure(healing); }
@@ -385,11 +385,11 @@ function SynchronousReplicationWithViewSuite () {
     if (healing.place === 15) { healFailure(healing); }
     if (failure.place === 16) { makeFailure(failure); }
 
-    assertEqual(2, c.count());
+    assertEqual(5, c.count());
     viewOperations("assert", null, function assert(doc = id._key) {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(2, result.length);
+      assertEqual(5, result.length);
       assertEqual(undefined, result.find(e => e._key === doc));
     });
 
@@ -408,7 +408,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert(doc = id._key) {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(0, result.length);
+      assertEqual(3, result.length);
     });
 
     if (healing.place === 18) { healFailure(healing); }
@@ -488,8 +488,12 @@ function SynchronousReplicationWithViewSuite () {
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
                             avoidServers: systemCollServers});
         
+        c.save({ name_1: "abc", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        c.save({ name_1: "cde", "value": [{ "nested_1": [{ "nested_2": "foo234"}]}]});
+        c.save({ name_1: "efg", "value": [{ "nested_1": [{ "nested_2": "foo423"}]}]});
+
         viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
-        viewOperations("create", { properties: { links: { [cn]: { includeAllFields: true } } } });
+        viewOperations("create", { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } });
 
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);

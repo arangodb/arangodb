@@ -1105,7 +1105,6 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(db[viewName], undefined);
     },
 
-
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test link on analyzers collection
     ////////////////////////////////////////////////////////////////////////////////
@@ -1168,7 +1167,6 @@ function IResearchFeatureDDLTestSuite () {
       if (isCluster) {
         triggerMetrics();
       }
-      print("HERE")
 
       // check link stats
       checkIndexMetrics(function () {
@@ -1197,7 +1195,6 @@ function IResearchFeatureDDLTestSuite () {
       if (isCluster) {
         triggerMetrics();
       }
-      print("HERE")
 
       // check link stats
       checkIndexMetrics(function () {
@@ -1218,39 +1215,38 @@ function IResearchFeatureDDLTestSuite () {
 
       let syncIndex = function (expected) {
         const syncQuery = `FOR d IN TestCollection OPTIONS {indexHint: "TestIndex", waitForSync:true}
-                            FILTER d.foo != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
+                            FILTER d.name_1 != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
         let count = db._query(syncQuery).toArray()[0];
         assertEqual(expected, count);
       };
       // ensure data is synchronized
       var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(5, res.length);
-      // assertEqual('bar', res[0].foo);
-      // assertEqual('baz', res[1].foo);
       syncIndex(5);
       res = db._query(`for d in TestCollection OPTIONS { 'forceIndexHint': true, 'waitForSync': true, 'indexHint': 'TestIndex' }
                       filter d.name_1 == 'abc' return d  
-      `);
-      print("isCluster = ", isCluster);
+      `).toArray();
       if (isCluster) {
         triggerMetrics();
       }
 
-      print("HERE")
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          print(type)
           let figures = db.TestCollection.getIndexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
-          print(figures)
           assertTrue(Object === figures.constructor);
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
-          assertEqual(15, figures.numDocs);
-          assertEqual(15, figures.numLiveDocs);
+          if (type == "arangosearch") {
+            assertEqual(10, figures.numDocs);
+            assertEqual(10, figures.numLiveDocs);
+          } else {
+            assertEqual(15, figures.numDocs);
+            assertEqual(15, figures.numLiveDocs);
+          }
           assertEqual(6, figures.numFiles);
           assertEqual(1, figures.numSegments);
         }
@@ -1260,10 +1256,11 @@ function IResearchFeatureDDLTestSuite () {
       col.remove(res[0]._key);
 
       // ensure data is synchronized
-      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
-      assertEqual(1, res.length);
-      assertEqual('baz', res[0].foo);
-      syncIndex(1);
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(4, res.length); // 5 docs in the beginning, 1 deleted afterwards
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo FILTER HAS(d, 'foo') RETURN d").toArray();
+      assertEqual('bar', res[0].foo);
+      syncIndex(4);
 
       if (isCluster) {
         triggerMetrics();
@@ -1279,8 +1276,13 @@ function IResearchFeatureDDLTestSuite () {
           assertTrue(Object === figures.constructor);
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
-          assertEqual(2, figures.numDocs);
-          assertEqual(1, figures.numLiveDocs);
+          if (type == "arangosearch") {
+            assertEqual(10, figures.numDocs);
+            assertEqual(7, figures.numLiveDocs);
+          } else {
+            assertEqual(15, figures.numDocs);
+            assertEqual(12, figures.numLiveDocs);
+          }
           assertEqual(7, figures.numFiles);
           assertEqual(1, figures.numSegments);
         }
@@ -1499,6 +1501,7 @@ function IResearchFeatureDDLTestSuite () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
+
     testAutoLoadAnalyzerOnViewCreation: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
@@ -1530,6 +1533,7 @@ function IResearchFeatureDDLTestSuite () {
         db._dropDatabase(dbName);
       }
     },
+
     testAutoLoadAnalyzerOnViewUpdate: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";

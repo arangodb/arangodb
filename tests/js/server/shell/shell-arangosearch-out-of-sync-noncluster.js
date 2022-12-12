@@ -45,13 +45,14 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } });
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({});
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
       c.insert(docs);
@@ -66,7 +67,7 @@ function ArangoSearchOutOfSyncSuite () {
       c.insert(docs);
       
       v = db._createView('UnitTestsView2', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection2: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection2: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } });
      
       db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc");
 
@@ -132,13 +133,14 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } });
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: (i + 2).toString(), "value": [{ "nested_1": [{ "nested_2": "foo"}]}]});
       }
       
       c.insert(docs);
@@ -173,13 +175,14 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } });
       
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: (i + 1).toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -218,11 +221,12 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } });
       
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -268,11 +272,12 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true } } });
+      v.properties({ links: { UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } });
       
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);

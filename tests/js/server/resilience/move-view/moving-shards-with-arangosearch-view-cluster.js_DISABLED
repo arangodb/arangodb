@@ -597,6 +597,7 @@ function MovingShardsWithViewSuite (options) {
         var coll = db._create(name, {numberOfShards: nrShards,
                                      replicationFactor: replFactor,
                                      avoidServers: systemCollServers});
+        coll.save({ name_1: "321", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         var servers = findCollectionServers("_system", name);
         console.info("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
@@ -612,7 +613,7 @@ function MovingShardsWithViewSuite (options) {
             {links:
               {[name]:
                 {fields:
-                  {'a': { analyzers: ['identity']}, 'b': { analyzers: ['text_en']}}
+                  {'a': { analyzers: ['identity']}, 'b': { analyzers: ['text_en']}, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
                 }
               }
             });
@@ -621,6 +622,7 @@ function MovingShardsWithViewSuite (options) {
           if (withData) {
             for (let i = 0; i < 1000; ++i) {
               coll.save({a: i, b: "text" + i});
+              coll.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "123foo"}]}]});
             }
           }
           break;
