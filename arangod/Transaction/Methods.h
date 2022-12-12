@@ -413,7 +413,7 @@ class Methods {
 
   Result triggerIntermediateCommit();
 
- private:
+  // private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
   // perform a (deferred) intermediate commit if required
@@ -446,12 +446,6 @@ class Methods {
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice value,
                                       OperationOptions& options);
-
-  Result insertLocalHelper(LogicalCollection& collection, std::string_view key,
-                           velocypack::Slice value, RevisionId& newRevisionId,
-                           velocypack::Builder& newDocumentBuilder,
-                           OperationOptions& options,
-                           BatchOptions& batchOptions);
 
   Result determineReplicationTypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
@@ -499,13 +493,6 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result removeLocalHelper(LogicalCollection& collection,
-                           velocypack::Slice value,
-                           LocalDocumentId previousDocumentId,
-                           RevisionId previousRevisionId,
-                           velocypack::Slice previousDocument,
-                           OperationOptions& options);
-
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,
                                  OperationOptions& options);
@@ -526,7 +513,7 @@ class Methods {
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
 
- protected:
+  // protected:
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
@@ -600,6 +587,7 @@ class Methods {
 
   bool _mainTransaction;
 
+ public:
   Future<Result> replicateOperations(
       TransactionCollection& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
