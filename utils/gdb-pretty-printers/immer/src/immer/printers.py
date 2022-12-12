@@ -1,42 +1,12 @@
-import re
-import traceback
-
-
-# {
-#   static bits = 5,
-#   static bits_leaf = 3,
-#   static embed_relaxed = false,
-#   impl = {
-#       n = {
-#           <immer::detail::csl::inherit<immer::no_transience_policy::apply<immer::free_list_heap_policy<immer::cpp_heap, 1024ul> >::type::ownee, void>::type> = {<immer::no_transience_policy::apply<immer::free_list_heap_policy<immer::cpp_heap, 1024ul> >::type::ownee> = {<No data fields>}, <No data fields>},
-#           d = {refcount = std::atomic<int> = { 2 }}
-#       },
-#       d = {data = {inner = {relaxed = 0x0, buffer = {__data = "\000\000\000\000\000\000\000", __align = {<No data
-#       fields>}}},
-#       leaf = {buffer = {__data = '\000' <repeats 31 times>, __align = {<No data fields>}}}}}},
-#       static keep_headroom = <optimized out>,
-#       static max_sizeof_leaf = <optimized out>,
-#       static max_sizeof_inner = 272,
-#       static max_sizeof_relaxed = <optimized out>,
-#       static max_sizeof_inner_r = <optimized out>}
-class Node:
+class ImmerRrbTreeNode:
     def __init__(self, node):
         self.node = node
         self.impl = node['impl']
         self.value_type = node.type.template_argument(0)
         self.value_pointer_type = self.value_type.pointer()
-        # help(node)
 
     def relaxed(self):
         return self.impl['d']['data']['inner']['relaxed']
-
-    """
-    T* leaf()
-    {
-        IMMER_ASSERT_TAGGED(kind() == kind_t::leaf);
-        return reinterpret_cast<T*>(&impl.d.data.leaf.buffer);
-    }
-    """
 
     def leaf(self):
         buffer = self.impl['d']['data']['leaf']['buffer']
@@ -46,37 +16,25 @@ class Node:
         buffer = self.impl['d']['data']['inner']['buffer']
         return buffer.address.reinterpret_cast(self.node.type.pointer().pointer())
 
-    # def to_string(self):
-    #     print(f'Node<{self.value_type}>@{self.node.address}')
-
 
 class ImmerRrbTreePrinter:
     """Print an immer::detail::rbts::rrbtree<T>."""
 
     def __init__(self, rrbtree):
         self.rrbtree = rrbtree
+        # TODO Writing out all template arguments doesn't seem helpful, but it would be better to rely on
+        #      rrbtree.type as the basis of this, instead of a hard-coded string.
+        self.typename = 'immer::detail::rbts::rrbtree'
         self.size = rrbtree['size']
         assert self.size >= 0
         self.shift = rrbtree['shift']
-        self.root = Node(rrbtree['root'].dereference())
-        self.tail = Node(rrbtree['tail'].dereference())
+        self.root = ImmerRrbTreeNode(rrbtree['root'].dereference())
+        self.tail = ImmerRrbTreeNode(rrbtree['tail'].dereference())
         self.bits = rrbtree.type.template_argument(2)
         self.bits_leaf = rrbtree.type.template_argument(3)
 
     def mask(self, bits):
         return (1 << bits) - 1
-
-    """
-        auto tail_offset() const
-        {
-            auto r = root->relaxed();
-            assert(r == nullptr || r->d.count);
-            return r      ? r->d.sizes[r->d.count - 1]
-                   : size ? (size - 1) & ~mask<BL>
-                          /* otherwise */
-                          : 0;
-        }
-    """
 
     def tail_offset(self):
         r = self.root.relaxed()
@@ -120,7 +78,7 @@ class ImmerRrbTreePrinter:
             offset = idx >> shift
             while (sizes[offset] <= idx):
                 offset = offset + 1
-            child = Node((node.inner() + offset).dereference().dereference())
+            child = ImmerRrbTreeNode((node.inner() + offset).dereference().dereference())
             left_size = sizes[offset - 1] if offset > 0 else 0
             next_idx = idx - left_size
             r = child.relaxed()
@@ -137,7 +95,7 @@ class ImmerRrbTreePrinter:
             sizes = relaxed.dereference()['d']['sizes']
             while sizes[offset] <= idx:
                 offset = offset + 1
-            child = Node((node.inner() + offset).dereference().dereference())
+            child = ImmerRrbTreeNode((node.inner() + offset).dereference().dereference())
             left_size = sizes[offset - 1] if offset > 0 else 0
             next_idx = idx - left_size
             # leaf_descent_pos<NodeT>{child}.visit(v, next_idx)
@@ -152,7 +110,7 @@ class ImmerRrbTreePrinter:
             # (idx >> Shift) & mask<B>
             offset = (idx >> shift) & self.mask(self.bits)
             # child  = node_->inner()[offset]
-            child = Node((node.inner() + offset).dereference().dereference())
+            child = ImmerRrbTreeNode((node.inner() + offset).dereference().dereference())
             # regular_descent_pos<NodeT, Shift - B>{child}.visit(v, idx)
             return self._get_inner_regular(child, shift - self.bits, idx)
         else:
@@ -160,7 +118,7 @@ class ImmerRrbTreePrinter:
             # (idx >> BL) & mask<B>
             offset = (idx >> self.bits_leaf) & self.mask(self.bits)
             # child  = node_->inner()[offset]
-            child = Node((node.inner() + offset).dereference().dereference())
+            child = ImmerRrbTreeNode((node.inner() + offset).dereference().dereference())
             # make_leaf_descent_pos(child).visit(v, idx)
             return self._get_leaf(child, idx)
 
@@ -174,34 +132,30 @@ class ImmerRrbTreePrinter:
             return self._get_inner(self.root, idx)
 
     def to_string(self):
-        s = f'rrbtree({self.size})['
+        return f'{self.typename} of length {self.size}'
+
+    def children(self):
         for i in range(0, self.size):
-            s += str(self.get(i))
-            s += ", "
-        s += "]"
-        return s
+            yield (f'[{i}]', self.get(i))
 
 
-# immer::flex_vector<std::string>({"hello, world"s})
-#  ===
-# $1 = {static bits = 5, static bits_leaf = 3,; impl_ = {size = 1, shift = 3, root = 0x5555561291d8, tail = 0x555556129418, static supports_transient_concat = <optimized out>}}
 class ImmerFlexVectorPrinter:
     """Print an immer::flex_vector<T>."""
 
     def __init__(self, val):
         self.val = val
-        self.typename = val.type.name
+        # TODO Writing out all template arguments doesn't seem helpful, but it would be better to rely on
+        #      rrbtree.type as the basis of this, instead of a hard-coded string.
+        self.typename = 'immer::flex_vector'
         self.rrbtree = ImmerRrbTreePrinter(val['impl_'])
         self.bits = val.type.template_argument(2)
         self.bits_leaf = val.type.template_argument(3)
-        # static bits = 5, static bits_leaf = 3,
 
     def to_string(self):
-        try:
-            return ("flex_vector{" + self.rrbtree.to_string() + "}")
-        except Exception as err:
-            traceback.print_exc()
-            raise
+        return f'{self.typename} of length {self.rrbtree.size}'
+
+    def children(self):
+        return self.rrbtree.children()
 
 
 import gdb.printing
@@ -209,8 +163,6 @@ import gdb.printing
 
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("immer")
-    # pp.add_printer('foo', '^foo$', fooPrinter)
-    # pp.add_printer('bar', '^bar$', barPrinter)
     pp.add_printer('flex_vector<T>', "^immer::flex_vector<.*>$", ImmerFlexVectorPrinter)
     pp.add_printer('rrbtree<T>', "^immer::detail::rbts::rrbtree<.*>$", ImmerRrbTreePrinter)
     return pp

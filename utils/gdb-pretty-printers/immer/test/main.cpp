@@ -25,6 +25,7 @@
 #include <fmt/core.h>
 #include <immer/flex_vector.hpp>
 #include <string>
+#include <vector>
 
 //void clobber() { asm volatile("" : : : "memory"); }
 //
@@ -34,6 +35,8 @@ void stub() {}
 
 int main() {
   using namespace std::string_literals;
+
+  auto v = std::vector<std::string>();
 
   auto vec1 = immer::flex_vector<std::string>({"hello"s, "world"s});
 
