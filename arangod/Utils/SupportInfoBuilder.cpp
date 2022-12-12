@@ -58,6 +58,8 @@
 
 #include "Logger/LogMacros.h"
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
