@@ -35,17 +35,6 @@
 
 namespace arangodb::pregel::actor {
 
-struct Message {
-  Message(ActorPID sender, ActorPID receiver,
-          std::unique_ptr<MessagePayload> payload)
-      : sender(sender), receiver(receiver), payload(std::move(payload)) {}
-
-  ActorPID sender;
-  ActorPID receiver;
-
-  std::unique_ptr<MessagePayload> payload;
-};
-
 template<typename Scheduler, typename SendingMechanism>
 struct Runtime {
   Runtime() = delete;
@@ -68,7 +57,7 @@ struct Runtime {
   }
 
   template<typename ActorState, typename ActorMessage, typename ActorHandler>
-  auto spawn(ActorState initialState, ActorMessage initialMessage) -> void {
+  auto spawn(ActorState initialState, std::unique_ptr<MessagePayloadBase> initialMessage) -> void {
     auto new_id = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
 
@@ -81,7 +70,7 @@ struct Runtime {
     // Send initial message to newly created actor
     auto address = ActorPID{.id = new_id, .server = myServerID};
     dispatch(std::make_unique<Message>(
-        address, address, std::make_unique<ActorMessage>(initialMessage)));
+        address, address, std::move(initialMessage)));
   }
 
   auto shutdown() -> void {

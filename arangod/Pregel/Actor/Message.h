@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,31 +21,29 @@
 /// @author Julia Volmer
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include <gtest/gtest.h>
+#include <Inspection/VPackWithErrorT.h>
+#include <memory>
 
-#include "Actor/Runtime.h"
+#include "ActorPID.h"
+#include "MPSCQueue.h"
 
-#include "TrivialActor.h"
+namespace arangodb::pregel::actor {
 
-using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::actor::test;
-
-struct MockScheduler {
-  auto operator()(auto fn) { fn(); }
+struct MessagePayloadBase {
+  virtual ~MessagePayloadBase() = default;
 };
 
-struct MockSendingMechanism {
+struct Message {
+  Message(ActorPID sender, ActorPID receiver,
+          std::unique_ptr<MessagePayloadBase> payload)
+      : sender(sender), receiver(receiver), payload(std::move(payload)) {}
 
+  ActorPID sender;
+  ActorPID receiver;
+
+  std::unique_ptr<MessagePayloadBase> payload;
 };
 
-TEST(RuntimeTest, gives_back_stuff_pushed) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
-
-  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(TrivialState("foo"), nullptr);
-
-
-}
+}  // namespace arangodb::pregel::actor

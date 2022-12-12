@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,31 +21,34 @@
 /// @author Julia Volmer
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#include <gtest/gtest.h>
+namespace arangodb::pregel::actor {
+struct ActorID {
+  size_t id;
 
-#include "Actor/Runtime.h"
-
-#include "TrivialActor.h"
-
-using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::actor::test;
-
-struct MockScheduler {
-  auto operator()(auto fn) { fn(); }
+  auto operator<=>(ActorID const& other) const = default;
 };
 
-struct MockSendingMechanism {
+}  // namespace arangodb::pregel::actor
 
+namespace std {
+template<>
+struct hash<arangodb::pregel::actor::ActorID> {
+  size_t operator()(arangodb::pregel::actor::ActorID const& x) const noexcept {
+    return std::hash<size_t>()(x.id);
+  };
 };
+}  // namespace std
 
-TEST(RuntimeTest, gives_back_stuff_pushed) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
+namespace arangodb::pregel::actor {
 
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+// TODO: at some point this needs to be ArangoDB's ServerID or compatible
+using ServerID = std::string;
 
-  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(TrivialState("foo"), nullptr);
-
+struct ActorPID {
+  ActorID id;
+  ServerID server;
+};
 
 }

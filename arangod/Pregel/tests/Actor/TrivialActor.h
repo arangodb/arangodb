@@ -42,17 +42,13 @@ struct TrivialState {
 
 struct TrivialMessage0 {
 };
+
 struct TrivialMessage1 {
   TrivialMessage1(std::string value) : store(std::move(value)) {}
-  TrivialMessage1(TrivialMessage1&&) = default;
-  TrivialMessage1& operator=(TrivialMessage1&&) = default;
   std::string store;
 };
 
-struct TrivialMessage : public MessagePayload, public mpscqueue::MPSCQueue<TrivialMessage>::Node {
-  std::variant<TrivialMessage0, TrivialMessage1> message;
-  ~TrivialMessage() = default;
-};
+using TrivialMessage = std::variant<TrivialMessage0, TrivialMessage1>;
 
 struct TrivialHandler {
   TrivialHandler(std::unique_ptr<TrivialState> state)
