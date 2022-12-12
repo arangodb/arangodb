@@ -240,172 +240,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("host", hostInfo.slice());
     }
   }
-
-  /*
-  DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
-  std::vector<std::string> databases = methods::Databases::list(server, "");
-  result.add("numDatabases", VPackValue(databases.size()));
-
-  size_t numSingleShards = 0;
-  try {
-    result.add("databases", VPackValue(VPackValueType::Array));
-
-    for (auto const& database : databases) {
-      auto vocbase = dbFeature.lookupDatabase(database);
-      result.openObject();
-      result.add("name", VPackValue(database));
-
-      bool isSingleShard = true;
-      size_t numColls = 0;
-      size_t numGraphColls = 0;
-      size_t numSmartColls = 0;
-      result.add("collections", VPackValue(VPackValueType::Array));
-
-      DatabaseGuard guard(dbFeature, database);
-      methods::Collections::enumerate(
-          &guard.database(),
-          [&](std::shared_ptr<LogicalCollection> const& coll) {
-            result.openObject();
-            size_t numShards = coll->numberOfShards();
-            if (!isSingleServer && numShards != 1) {
-              isSingleShard = false;
-            }
-            result.add("numShards", VPackValue(numShards));
-
-            LOG_DEVEL << "BEFORE";
-            if (!isSingleServer) {
-              auto shardMap = coll->shardIds();
-              for (auto const& shardInfo : *(shardMap.get())) {
-                LOG_DEVEL << "for " << shardInfo.first;
-                for (auto const& serverId : shardInfo.second) {
-                  LOG_DEVEL << serverId;
-                }
-              }
-            }
-            LOG_DEVEL << "AFTER";
-
-
-            auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
-            auto& collName = coll->name();
-            SingleCollectionTransaction trx(ctx, collName,
-                                            AccessMode::Type::READ);
-
-            Result res = trx.begin();
-
-            if (res.ok()) {
-              OperationOptions options(ExecContext::current());
-              OperationResult opResult = trx.count(
-                  collName, transaction::CountType::Normal, options);
-              std::ignore = trx.finish(opResult.result);
-              if (opResult.fail()) {
-                LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
-                    << "Failed to get number of documents: "
-                    << res.errorMessage();
-              } else {
-                VPackBuilder builder(*(opResult.buffer));
-                result.add("numDocs", VPackValue(builder.slice().getUInt()));
-              }
-            } else {
-              LOG_TOPIC("e7497", WARN, Logger::STATISTICS)
-                  << "Failed to begin transaction for getting number of "
-                     "documents: "
-                  << res.errorMessage();
-            }
-
-            auto collType = coll->type();
-            if (collType == TRI_COL_TYPE_DOCUMENT) {
-              result.add("type", VPackValue("document"));
-            } else if (collType == TRI_COL_TYPE_EDGE) {
-              result.add("type", VPackValue("edge"));
-              numGraphColls++;
-              if (coll->isSmart()) {
-                numSmartColls++;
-                result.add("smartGraph", VPackValue(true));
-              } else {
-                result.add("smartGraph", VPackValue(false));
-              }
-            } else {
-              result.add("type", VPackValue("unknown"));
-            }
-
-            std::unordered_map<std::string, size_t> idxTypesToAmounts;
-
-            auto flags = Index::makeFlags(Index::Serialize::Estimates,
-                                          Index::Serialize::Figures);
-            VPackBuilder output;
-            std::ignore =
-                methods::Indexes::getAll(coll.get(), flags, false, output);
-            velocypack::Slice outSlice = output.slice();
-
-            result.add("idxs", VPackValue(VPackValueType::Array));
-            for (auto const it : velocypack::ArrayIterator(outSlice)) {
-              result.openObject();
-              if (auto figures = it.get("figures"); !figures.isNone()) {
-
-              }
-              using std::operator""sv;
-              auto idxType = it.get("type").stringView();
-              result.add("type", VPackValue(idxType));
-              if (idxType.compare("edge"sv) == 0) {
-                idxTypesToAmounts["edge"]++;
-              } else if (idxType.compare("geo"sv) == 0) {
-                idxTypesToAmounts["geo"]++;
-              } else if (idxType.compare("hash"sv) == 0) {
-                idxTypesToAmounts["hash"]++;
-              } else if (idxType.compare("fulltext"sv) == 0) {
-                idxTypesToAmounts["fulltext"]++;
-              } else if (idxType.compare("inverted"sv) == 0) {
-                idxTypesToAmounts["inverted"]++;
-              } else if (idxType.compare("no-access"sv) == 0) {
-                idxTypesToAmounts["no-access"]++;
-              } else if (idxType.compare("persistent"sv) == 0) {
-                idxTypesToAmounts["persistent"]++;
-              } else if (idxType.compare("iresearch"sv) == 0) {
-                idxTypesToAmounts["iresearch"]++;
-              } else if (idxType.compare("skiplist"sv) == 0) {
-                idxTypesToAmounts["skiplist"]++;
-              } else if (idxType.compare("ttl"sv) == 0) {
-                idxTypesToAmounts["ttl"]++;
-              } else if (idxType.compare("zkd"sv) == 0) {
-                idxTypesToAmounts["zkd"]++;
-              } else if (idxType.compare("primary"sv) == 0) {
-                idxTypesToAmounts["primary"]++;
-              } else {
-                idxTypesToAmounts["unknown"]++;
-              }
-              result.close();
-            }
-            result.close();
-
-            for (auto const& [type, amount] : idxTypesToAmounts) {
-              result.add(std::string("amount" + type), VPackValue(amount));
-            }
-
-            result.close();
-          });
-
-      result.close();
-
-      if (isSingleShard) {
-        numSingleShards++;
-      }
-      result.add("amountSingleShards", VPackValue(numSingleShards));
-      result.add("numCollections", VPackValue(numColls));
-      result.add("numGraphCollections", VPackValue(numGraphColls));
-      result.add("numSmartCollections", VPackValue(numSmartColls));
-
-      result.close();
-    }
-
-    result.close();
-
-  } catch (const std::exception& e) {
-    LOG_DEVEL << "ERROR " << e.what();
-    // must ignore any errors here in case a database or collection
-    // got deleted in the meantime
-  }
-   */
   result.close();
 }
 
@@ -506,14 +340,11 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
 
 void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                                            ArangodServer& server) {
-  bool isSingleServer = ServerState::instance()->isSingleServer();
-
   DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
   std::vector<std::string> databases = methods::Databases::list(server, "");
   result.openObject();
   result.add("numDatabases", VPackValue(databases.size()));
 
-  // size_t numSingleShards = 0;
   try {
     result.add("databases", VPackValue(VPackValueType::Array));
 
@@ -523,17 +354,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
       result.add("name", VPackValue(database));
       auto dbViews = vocbase->views();
       result.add("numViews", VPackValue(dbViews.size()));
-      /*
-      result.add("views", VPackValue(VPackValueType::Array));
-      for (auto const& viewInfo : dbViews) {
-        result.openObject();
 
-            result.close();
-      }
-      result.close();
-       */
-
-      // bool isSingleShard = true;
       size_t numColls = 0;
       size_t numGraphColls = 0;
       size_t numSmartColls = 0;
@@ -546,11 +367,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
           [&](std::shared_ptr<LogicalCollection> const& coll) {
             result.openObject();
             size_t numShards = coll->numberOfShards();
-            /*
-            if (!isSingleServer && numShards != 1) {
-              isSingleShard = false;
-            }
-             */
             result.add("numShards", VPackValue(numShards));
 
             /*
