@@ -120,14 +120,10 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
     }
   }
 
-  if (config.isOneShardDB) {
-    if (replicationFactor.has_value()) {
-      if (replicationFactor.value() == 0) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Collection in a 'oneShardDatabase' cannot be a "
-                "'satellite'"};
-      }
-    }
+  if (config.isOneShardDB && isSatellite()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Collection in a 'oneShardDatabase' cannot be a "
+            "'satellite'"};
   }
   return {TRI_ERROR_NO_ERROR};
 }
