@@ -7,6 +7,7 @@ add_library(arango_pregel STATIC
   OutgoingCache.cpp
   PregelFeature.cpp
   PregelMetrics.cpp
+  PregelOptions.cpp
   Utils.cpp)
 
 target_link_libraries(arango_pregel
@@ -32,6 +33,7 @@ endif ()
 
 add_subdirectory(REST)
 add_subdirectory(Algos)
+add_subdirectory(Collections)
 add_subdirectory(Conductor)
 add_subdirectory(Worker)
 add_subdirectory(Connection)

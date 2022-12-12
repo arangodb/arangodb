@@ -43,6 +43,7 @@
 #include "Pregel/Conductor/States/LoadingState.h"
 #include "Pregel/Conductor/States/State.h"
 #include "Pregel/Conductor/States/StoringState.h"
+#include "Pregel/Conductor/GraphSource.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 #include "velocypack/Builder.h"
@@ -88,21 +89,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   mutable Mutex
       _callbackMutex;  // prevents concurrent calls to finishedGlobalStep
 
-  std::vector<CollectionID> _vertexCollections;
-  std::vector<CollectionID> _edgeCollections;
-
-  // maps from vertex collection name to a list of edge collections that this
-  // vertex collection is restricted to. only use for a collection if there is
-  // at least one entry for the collection!
-  std::unordered_map<CollectionID, std::vector<CollectionID>>
-      _edgeCollectionRestrictions;
+  conductor::PregelGraphSource _graphSource;
 
   // initialized on startup
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
-  /// tracks the servers which responded, only used for stages where we expect
-  /// an unique response
-  std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
   /// some algorithms need several gss per iteration and it is more natural
@@ -139,14 +130,9 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   auto _preGlobalSuperStep() -> void;
   auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
 
-  std::vector<ShardID> getShardIds(ShardID const& collection) const;
-
  public:
   Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
-            std::vector<CollectionID> const& vertexCollections,
-            std::vector<CollectionID> const& edgeCollections,
-            std::unordered_map<std::string, std::vector<std::string>> const&
-                edgeCollectionRestrictions,
+            conductor::PregelGraphSource graphStore,
             std::string const& algoName, VPackSlice const& userConfig,
             PregelFeature& feature);
 

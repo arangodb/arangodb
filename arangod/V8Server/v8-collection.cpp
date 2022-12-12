@@ -40,6 +40,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"

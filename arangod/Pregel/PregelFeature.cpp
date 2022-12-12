@@ -45,6 +45,7 @@
 #include "ExecutionNumber.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -52,12 +53,14 @@
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Messaging/ConductorMessages.h"
 #include "Pregel/Messaging/WorkerMessages.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/Messaging/Message.h"
+#include "Pregel/Conductor/GraphSource.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -115,140 +118,35 @@ network::Headers buildHeaders() {
 
 using namespace arangodb;
 
-ResultT<ExecutionNumber> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
-    std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    VPackSlice const& params) {
+ResultT<ExecutionNumber> PregelFeature::startExecution(PregelOptions options,
+                                                       TRI_vocbase_t& vocbase) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return ResultT<ExecutionNumber>::error(TRI_ERROR_SHUTTING_DOWN,
                                            "pregel system not available");
   }
 
-  ServerState* ss = ServerState::instance();
+  TRI_ASSERT(options.userParameters.slice().isObject());
+  VPackSlice storeSlice = options.userParameters.slice().get("store");
+  bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+  std::string shardKeyAttribute =
+      options.userParameters.slice().hasKey("shardKeyAttribute")
+          ? options.userParameters.slice().get("shardKeyAttribute").copyString()
+          : "vertex";
 
-  // check the access rights to collections
-  ExecContext const& exec = ExecContext::current();
-  if (!exec.isSuperuser()) {
-    TRI_ASSERT(params.isObject());
-    VPackSlice storeSlice = params.get("store");
-    bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
-    for (std::string const& vc : vertexCollections) {
-      bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
-      bool canRead = exec.canUseCollection(vc, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
-      }
-    }
-    for (std::string const& ec : edgeCollections) {
-      bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
-      bool canRead = exec.canUseCollection(ec, auth::Level::RO);
-      if ((storeResults && !canWrite) || !canRead) {
-        return ResultT<ExecutionNumber>::error(TRI_ERROR_FORBIDDEN);
-      }
-    }
-  }
-
-  for (std::string const& name : vertexCollections) {
-    if (ss->isCoordinator()) {
-      try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-        auto coll = ci.getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_BAD_PARAMETER,
-              "Cannot use pregel on system collection");
-        }
-
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-        }
-      } catch (...) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
-          coll->deleted()) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else {
-      return ResultT<ExecutionNumber>::error(TRI_ERROR_INTERNAL);
-    }
-  }
-
-  std::vector<CollectionID> edgeColls;
-
-  // load edge collection
-  for (std::string const& name : edgeCollections) {
-    if (ss->isCoordinator()) {
-      try {
-        auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-        auto coll = ci.getCollection(vocbase.name(), name);
-
-        if (coll->system()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_BAD_PARAMETER,
-              "Cannot use pregel on system collection");
-        }
-
-        if (!coll->isSmart()) {
-          std::vector<std::string> eKeys = coll->shardKeys();
-
-          std::string shardKeyAttribute = "vertex";
-          if (params.hasKey("shardKeyAttribute")) {
-            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
-          }
-
-          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
-            return ResultT<ExecutionNumber>::error(
-                TRI_ERROR_BAD_PARAMETER,
-                "Edge collection needs to be sharded "
-                "by shardKeyAttribute parameter ('" +
-                    shardKeyAttribute +
-                    "'), or use SmartGraphs. The current shardKey is: " +
-                    (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'"));
-          }
-        }
-
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return ResultT<ExecutionNumber>::error(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-        }
-
-        // smart edge collections contain multiple actual collections
-        std::vector<std::string> actual = coll->realNamesForRead();
-
-        edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-      } catch (...) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-    } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      auto coll = vocbase.lookupCollection(name);
-
-      if (coll == nullptr || coll->deleted()) {
-        return ResultT<ExecutionNumber>::error(
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
-      }
-      std::vector<std::string> actual = coll->realNamesForRead();
-      edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
-    } else {
-      return ResultT<ExecutionNumber>::error(TRI_ERROR_INTERNAL);
-    }
+  auto graphSourceSettings = conductor::GraphSourceSettings{
+      .graphDataSource = options.graphDataSource,
+      .edgeCollectionRestrictions = {options.edgeCollectionRestrictions},
+      .shardKeyAttribute = shardKeyAttribute,
+      .storeResults = storeResults};
+  auto pregelSource = graphSourceSettings.getSource(vocbase);
+  if (pregelSource.fail()) {
+    return pregelSource.result();
   }
 
   auto en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
-      en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      algorithm, params, *this);
+      en, vocbase, std::move(pregelSource).get(), options.algorithm,
+      options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
