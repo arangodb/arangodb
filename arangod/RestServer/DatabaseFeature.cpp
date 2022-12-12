@@ -633,6 +633,9 @@ void DatabaseFeature::stop() {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   engine.cleanupReplicationContexts();
 
+  std::unique_lock lock{_databasesMutex};
+  auto databases = _databases.load();
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto queryRegistry = QueryRegistryFeature::registry();
   if (queryRegistry != nullptr) {
@@ -676,18 +679,14 @@ void DatabaseFeature::stop() {
 #endif
   };
 
-  {
-    std::lock_guard lock{_databasesMutex};
-    auto databases = _databases.load();
-
-    for (auto& [name, vocbase] : *databases) {
-      stopVocbase(vocbase);
-    }
-
-    for (auto& vocbase : _droppedDatabases) {
-      stopVocbase(vocbase);
-    }
+  for (auto& [name, vocbase] : *databases) {
+    stopVocbase(vocbase);
   }
+
+  for (auto& vocbase : _droppedDatabases) {
+    stopVocbase(vocbase);
+  }
+  lock.unlock();
 
   // flush again so we are sure no query is left in the cache here
   arangodb::aql::QueryCache::instance()->invalidate();
