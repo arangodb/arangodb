@@ -11671,7 +11671,7 @@ int
 main ()
 {
 
-    int result;
+    long result;
     FILE *f;
 
 #ifdef _WIN32
@@ -11681,7 +11681,7 @@ main ()
 #else
     result = sysconf(_SC_PAGESIZE);
 #endif
-    if (result == -1) {
+    if (result == (long) -1) {
 	return 1;
     }
     result = JEMALLOC_INTERNAL_FFSL(result) - 1;
