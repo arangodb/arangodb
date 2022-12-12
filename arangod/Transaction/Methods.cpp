@@ -72,6 +72,7 @@
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -102,6 +103,16 @@ template<>
 struct ToType<Methods::CallbacksTag::StatusChange> {
   using Type = Methods::StatusChangeCallback;
 };
+
+void buildDocumentStub(velocypack::Builder& builder, std::string_view key,
+                       RevisionId revisionId) {
+  builder.openObject(/*unindexed*/ true);
+  builder.add(StaticStrings::KeyString, VPackValue(key));
+
+  char ridBuffer[basics::maxUInt64StringSize];
+  builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+  builder.close();
+}
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
@@ -1382,6 +1393,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
       (followers->empty() &&
        collection->replicationVersion() != replication::Version::TWO);
 
+  auto indexesSnapshot = collection->getPhysical()->getIndexesSnapshot();
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
   // all document data that are going to be replicated, append-only
@@ -1455,7 +1468,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         TRI_ASSERT(lookupResult.second.isSet());
         std::tie(oldDocumentId, oldRevisionId) = lookupResult;
       }
-    } else if (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
           replicationType != ReplicationType::FOLLOWER) {
@@ -1473,7 +1486,6 @@ Future<OperationResult> transaction::Methods::insertLocal(
         if (index) {
           return index->addErrorMsg(res, key);
         }
-        return res;
       }
       return res;
     }
@@ -1487,11 +1499,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
     bool didReplace = false;
     bool excludeFromReplication = excludeAllFromReplication;
 
-    if (not oldDocumentId.isSet()) {
+    if (!oldDocumentId.isSet()) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
-      res = insertLocalHelper(*collection, key, value, newRevisionId,
-                              *newDocumentBuilder, options, batchOptions);
+      res = insertLocalHelper(*collection, indexesSnapshot, key, value,
+                              newRevisionId, *newDocumentBuilder, options,
+                              batchOptions);
 
       TRI_ASSERT(res.fail() || newDocumentBuilder->slice().isObject());
     } else {
@@ -1526,7 +1539,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
 
           res = modifyLocalHelper(
-              *collection, value, oldDocumentId, oldRevisionId,
+              *collection, indexesSnapshot, value, oldDocumentId, oldRevisionId,
               previousDocumentBuilder->slice(), newRevisionId,
               *newDocumentBuilder, options, batchOptions,
               /*isUpdate*/ overwriteMode ==
@@ -1633,6 +1646,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
   }
   replicationData->close();
 
+  indexesSnapshot.release();
+
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
@@ -1707,8 +1722,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
 }
 
 Result transaction::Methods::insertLocalHelper(
-    LogicalCollection& collection, std::string_view key,
-    velocypack::Slice value, RevisionId& newRevisionId,
+    LogicalCollection& collection, IndexesSnapshot const& indexesSnapshot,
+    std::string_view key, velocypack::Slice value, RevisionId& newRevisionId,
     velocypack::Builder& newDocumentBuilder, OperationOptions& options,
     BatchOptions& batchOptions) {
   TRI_IF_FAILURE("LogicalCollection::insert") { return {TRI_ERROR_DEBUG}; }
@@ -1749,8 +1764,9 @@ Result transaction::Methods::insertLocalHelper(
   }
 
   if (res.ok()) {
-    res = collection.getPhysical()->insert(*this, newRevisionId,
-                                           newDocumentBuilder.slice(), options);
+    res =
+        collection.getPhysical()->insert(*this, indexesSnapshot, newRevisionId,
+                                         newDocumentBuilder.slice(), options);
 
     if (res.ok()) {
       trackWaitForSync(collection, options);
@@ -1868,6 +1884,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       (followers->empty() &&
        collection->replicationVersion() != replication::Version::TWO);
 
+  auto indexesSnapshot = collection->getPhysical()->getIndexesSnapshot();
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser newDocumentBuilder(this);
   // builder for a single, old version of document (will be recycled for each
@@ -1938,10 +1956,10 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     bool excludeFromReplication = excludeAllFromReplication;
     TRI_ASSERT(previousDocumentBuilder->slice().isObject());
     RevisionId newRevisionId;
-    res =
-        modifyLocalHelper(*collection, newValue, oldDocumentId, oldRevisionId,
-                          previousDocumentBuilder->slice(), newRevisionId,
-                          *newDocumentBuilder, options, batchOptions, isUpdate);
+    res = modifyLocalHelper(
+        *collection, indexesSnapshot, newValue, oldDocumentId, oldRevisionId,
+        previousDocumentBuilder->slice(), newRevisionId, *newDocumentBuilder,
+        options, batchOptions, isUpdate);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
@@ -2021,6 +2039,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   }
   replicationData->close();
 
+  indexesSnapshot.release();
+
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
@@ -2084,11 +2104,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 }
 
 Result transaction::Methods::modifyLocalHelper(
-    LogicalCollection& collection, velocypack::Slice value,
-    LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
-    velocypack::Slice previousDocument, RevisionId& newRevisionId,
-    velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-    BatchOptions& batchOptions, bool isUpdate) {
+    LogicalCollection& collection, IndexesSnapshot const& indexesSnapshot,
+    velocypack::Slice value, LocalDocumentId previousDocumentId,
+    RevisionId previousRevisionId, velocypack::Slice previousDocument,
+    RevisionId& newRevisionId, velocypack::Builder& newDocumentBuilder,
+    OperationOptions& options, BatchOptions& batchOptions, bool isUpdate) {
   TRI_IF_FAILURE("LogicalCollection::update") {
     if (isUpdate) {
       return {TRI_ERROR_DEBUG};
@@ -2166,12 +2186,14 @@ Result transaction::Methods::modifyLocalHelper(
     if (res.ok()) {
       if (isUpdate) {
         res = collection.getPhysical()->update(
-            *this, previousDocumentId, previousRevisionId, previousDocument,
-            newRevisionId, newDocumentBuilder.slice(), options);
+            *this, indexesSnapshot, previousDocumentId, previousRevisionId,
+            previousDocument, newRevisionId, newDocumentBuilder.slice(),
+            options);
       } else {
         res = collection.getPhysical()->replace(
-            *this, previousDocumentId, previousRevisionId, previousDocument,
-            newRevisionId, newDocumentBuilder.slice(), options);
+            *this, indexesSnapshot, previousDocumentId, previousRevisionId,
+            previousDocument, newRevisionId, newDocumentBuilder.slice(),
+            options);
       }
     }
 
@@ -2252,8 +2274,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
       (followers->empty() &&
        collection->replicationVersion() != replication::Version::TWO);
 
-  // total result that is going to be returned to the caller, append-only
-  VPackBuilder resultBuilder;
+  auto indexesSnapshot = collection->getPhysical()->getIndexesSnapshot();
+
   // all document data that are going to be replicated, append-only
   transaction::BuilderLeaser replicationData(this);
   // builder for a single, old version of document (will be recycled for each
@@ -2261,6 +2283,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
   transaction::BuilderLeaser previousDocumentBuilder(this);
   // temporary builder for building keys
   transaction::BuilderLeaser keyBuilder(this);
+  // total result that is going to be returned to the caller, append-only
+  VPackBuilder resultBuilder;
 
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     std::string_view key;
@@ -2318,19 +2342,29 @@ Future<OperationResult> transaction::Methods::removeLocal(
     auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     previousDocumentBuilder->clear();
-    res = collection->getPhysical()->lookupDocument(
-        *this, oldDocumentId, *previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+    if (indexesSnapshot.hasSecondaryIndex()) {
+      // need to read the full document, so that we can remove all
+      // secondary index entries for it
+      res = collection->getPhysical()->lookupDocument(
+          *this, oldDocumentId, *previousDocumentBuilder,
+          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
 
-    if (res.fail()) {
-      return res;
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      // no need to read the full document, as we don't have secondary
+      // index entries to remove. now build an artificial document with
+      // just _key for our removal operation
+      buildDocumentStub(*previousDocumentBuilder, key, oldRevisionId);
     }
 
     bool excludeFromReplication = excludeAllFromReplication;
     TRI_ASSERT(previousDocumentBuilder->slice().isObject());
 
-    res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,
-                            previousDocumentBuilder->slice(), options);
+    res = removeLocalHelper(*collection, indexesSnapshot, value, oldDocumentId,
+                            oldRevisionId, previousDocumentBuilder->slice(),
+                            options);
 
     // we should never get a write-write conflict here since the key is already
     // locked earlier, and in case of a remove there cannot be any conflicts on
@@ -2346,13 +2380,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     if (res.ok() && !excludeFromReplication) {
-      replicationData->openObject(/*unindexed*/ true);
-      replicationData->add(StaticStrings::KeyString, VPackValue(key));
-
-      char ridBuffer[arangodb::basics::maxUInt64StringSize];
-      replicationData->add(StaticStrings::RevString,
-                           oldRevisionId.toValuePair(ridBuffer));
-      replicationData->close();
+      buildDocumentStub(*replicationData, key, oldRevisionId);
     }
 
     return res;
@@ -2387,6 +2415,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
   }
   replicationData->close();
+
+  indexesSnapshot.release();
 
   // on a follower, our result should always be an empty array or object
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
@@ -2448,9 +2478,10 @@ Future<OperationResult> transaction::Methods::removeLocal(
 }
 
 Result transaction::Methods::removeLocalHelper(
-    LogicalCollection& collection, velocypack::Slice value,
-    LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
-    velocypack::Slice previousDocument, OperationOptions& options) {
+    LogicalCollection& collection, IndexesSnapshot const& indexesSnapshot,
+    velocypack::Slice value, LocalDocumentId previousDocumentId,
+    RevisionId previousRevisionId, velocypack::Slice previousDocument,
+    OperationOptions& options) {
   TRI_IF_FAILURE("LogicalCollection::remove") { return {TRI_ERROR_DEBUG}; }
 
   // check revisions only if value is a proper object. if value is simply
@@ -2469,7 +2500,8 @@ Result transaction::Methods::removeLocalHelper(
   }
 
   Result res = collection.getPhysical()->remove(
-      *this, previousDocumentId, previousRevisionId, previousDocument, options);
+      *this, indexesSnapshot, previousDocumentId, previousRevisionId,
+      previousDocument, options);
 
   if (res.ok()) {
     trackWaitForSync(collection, options);

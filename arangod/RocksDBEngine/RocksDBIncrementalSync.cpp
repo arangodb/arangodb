@@ -40,6 +40,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -97,6 +98,8 @@ Result removeKeysOutsideRange(
   TRI_ASSERT(highSlice.isString());
   std::string_view highRef = highSlice.stringView();
 
+  auto indexesSnapshot = physical->getIndexesSnapshot();
+
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
   VPackBuilder builder;
@@ -116,7 +119,7 @@ Result removeKeysOutsideRange(
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
-            r = physical->remove(trx, documentId,
+            r = physical->remove(trx, indexesSnapshot, documentId,
                                  RevisionId::fromSlice(builder.slice()),
                                  builder.slice(), options);
           }
@@ -162,7 +165,7 @@ Result removeKeysOutsideRange(
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
-            r = physical->remove(trx, documentId,
+            r = physical->remove(trx, indexesSnapshot, documentId,
                                  RevisionId::fromSlice(builder.slice()),
                                  builder.slice(), options);
           }
@@ -281,6 +284,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   }
   TRI_ASSERT(numKeys > 0);
 
+  auto indexesSnapshot = physical->getIndexesSnapshot();
   // this will be very verbose, so intentionally not active
   // LOG_TOPIC("3c002", TRACE, Logger::REPLICATION) << "received chunk: " <<
   // responseBody.toJson();
@@ -342,7 +346,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
-            r = physical->remove(*trx, documentId, revisionId,
+            r = physical->remove(*trx, indexesSnapshot, documentId, revisionId,
                                  tempBuilder->slice(), options);
           }
         }
@@ -410,7 +414,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
         if (r.ok()) {
           TRI_ASSERT(tempBuilder->slice().isObject());
-          r = physical->remove(*trx, documentId, revisionId,
+          r = physical->remove(*trx, indexesSnapshot, documentId, revisionId,
                                tempBuilder->slice(), options);
         }
       }
@@ -578,7 +582,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
-            r = physical->remove(*trx, documentId, revisionId,
+            r = physical->remove(*trx, indexesSnapshot, documentId, revisionId,
                                  tempBuilder->slice(), options);
           }
         }
@@ -810,6 +814,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     std::vector<std::string> markers;
     bool foundLowKey = false;
 
+    auto indexesSnapshot = physical->getIndexesSnapshot();
+
     auto resetChunk = [&]() -> void {
       if (!syncer._state.isChildSyncer) {
         syncer._batch.extend(syncer._state.connection, syncer._progress,
@@ -863,6 +869,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         [&trx, &physical, &options, &foundLowKey, &markers, &localHash,
          &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
          &resetChunk, &compareChunk, &lowKey, &highKey, &tempBuilder,
+         &indexesSnapshot,
          &stats](std::string const& docKey, RevisionId docRev) {
           int cmp1 = docKey.compare(lowKey);
 
@@ -884,8 +891,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());
-                r = physical->remove(*trx, documentId, revisionId,
-                                     tempBuilder.slice(), options);
+                r = physical->remove(*trx, indexesSnapshot, documentId,
+                                     revisionId, tempBuilder.slice(), options);
               }
             }
 

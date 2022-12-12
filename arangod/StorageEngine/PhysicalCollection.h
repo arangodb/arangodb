@@ -23,7 +23,9 @@
 
 #pragma once
 
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
 #include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
@@ -55,11 +57,14 @@ class Slice;
 class LocalDocumentId;
 class Index;
 class IndexIterator;
+class IndexesSnapshot;
 class LogicalCollection;
 struct OperationOptions;
 class Result;
 
 class PhysicalCollection {
+  friend class IndexesSnapshot;
+
  public:
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
@@ -95,8 +100,8 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
+  /// if allowUpdate is true, will potentially make a cluster-internal
+  /// roundtrip to fetch current values!
   virtual IndexEstMap clusterIndexEstimates(bool allowUpdating,
                                             TransactionId tid);
 
@@ -126,6 +131,10 @@ class PhysicalCollection {
 
   /// @brief get list of all indexes
   std::vector<std::shared_ptr<Index>> getIndexes() const;
+
+  /// @brief get a snapshot of all indexes of the collection, with the read
+  /// lock on the list of indexes being held while the snapshot is active
+  IndexesSnapshot getIndexesSnapshot();
 
   virtual Index* primaryIndex() const;
 
@@ -200,26 +209,27 @@ class PhysicalCollection {
                                 bool fillCache,
                                 ReadOwnWrites readOwnWrites) const = 0;
 
-  virtual Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                        velocypack::Slice newDocument,
+  virtual Result insert(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId newDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,
                         RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
-  virtual Result replace(transaction::Methods& trx,
-                         LocalDocumentId newDocumentId,
-                         RevisionId previousRevisionId,
-                         velocypack::Slice previousDocument,
-                         RevisionId newRevisionId,
-                         velocypack::Slice newDocument,
-                         OperationOptions const& options) = 0;
+  virtual Result replace(
+      transaction::Methods& trx, IndexesSnapshot const& indexesSnapshot,
+      LocalDocumentId newDocumentId, RevisionId previousRevisionId,
+      velocypack::Slice previousDocument, RevisionId newRevisionId,
+      velocypack::Slice newDocument, OperationOptions const& options) = 0;
 
   virtual Result remove(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId previousDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,

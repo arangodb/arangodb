@@ -121,23 +121,30 @@ class ClusterCollection final : public PhysicalCollection {
                         bool fillCache,
                         ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                velocypack::Slice newDocument,
+  Result insert(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                RevisionId newRevisionId, velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result update(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result update(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument, RevisionId newRevisionId,
                 velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result replace(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result replace(transaction::Methods& trx,
+                 IndexesSnapshot const& indexesSnapshot,
+                 LocalDocumentId previousDocumentId,
                  RevisionId previousRevisionId,
                  velocypack::Slice previousDocument, RevisionId newRevisionId,
                  velocypack::Slice newDocument,
                  OperationOptions const& options) override;
 
-  Result remove(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result remove(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;

@@ -82,6 +82,7 @@ class IndexIterator;
 class LocalDocumentId;
 class LogicalDataSource;
 struct IndexIteratorOptions;
+class IndexesSnapshot;
 struct OperationOptions;
 struct OperationResult;
 struct ResourceMonitor;
@@ -447,8 +448,10 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result insertLocalHelper(LogicalCollection& collection, std::string_view key,
-                           velocypack::Slice value, RevisionId& newRevisionId,
+  Result insertLocalHelper(LogicalCollection& collection,
+                           IndexesSnapshot const& indexesSnapshot,
+                           std::string_view key, velocypack::Slice value,
+                           RevisionId& newRevisionId,
                            velocypack::Builder& newDocumentBuilder,
                            OperationOptions& options,
                            BatchOptions& batchOptions);
@@ -484,11 +487,11 @@ class Methods {
                                       OperationOptions& options, bool isUpdate);
 
   Result modifyLocalHelper(
-      LogicalCollection& collection, velocypack::Slice value,
-      LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
-      velocypack::Slice previousDocument, RevisionId& newRevisionId,
-      velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-      BatchOptions& batchOptions, bool isUpdate);
+      LogicalCollection& collection, IndexesSnapshot const& indexesSnapshot,
+      velocypack::Slice value, LocalDocumentId previousDocumentId,
+      RevisionId previousRevisionId, velocypack::Slice previousDocument,
+      RevisionId& newRevisionId, velocypack::Builder& newDocumentBuilder,
+      OperationOptions& options, BatchOptions& batchOptions, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
@@ -500,6 +503,7 @@ class Methods {
                                       OperationOptions& options);
 
   Result removeLocalHelper(LogicalCollection& collection,
+                           IndexesSnapshot const& indexesSnapshot,
                            velocypack::Slice value,
                            LocalDocumentId previousDocumentId,
                            RevisionId previousRevisionId,

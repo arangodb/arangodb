@@ -290,25 +290,28 @@ Result ClusterCollection::lookupDocument(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::insert(transaction::Methods&, RevisionId,
-                                 velocypack::Slice, OperationOptions const&) {
+Result ClusterCollection::insert(transaction::Methods&, IndexesSnapshot const&,
+                                 RevisionId, velocypack::Slice,
+                                 OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::update(transaction::Methods&, LocalDocumentId,
-                                 RevisionId, velocypack::Slice, RevisionId,
-                                 velocypack::Slice, OperationOptions const&) {
+Result ClusterCollection::update(transaction::Methods&, IndexesSnapshot const&,
+                                 LocalDocumentId, RevisionId, velocypack::Slice,
+                                 RevisionId, velocypack::Slice,
+                                 OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::replace(transaction::Methods&, LocalDocumentId,
-                                  RevisionId, velocypack::Slice, RevisionId,
+Result ClusterCollection::replace(transaction::Methods&, IndexesSnapshot const&,
+                                  LocalDocumentId, RevisionId,
+                                  velocypack::Slice, RevisionId,
                                   velocypack::Slice, OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::remove(transaction::Methods&, LocalDocumentId,
-                                 RevisionId, velocypack::Slice,
+Result ClusterCollection::remove(transaction::Methods&, IndexesSnapshot const&,
+                                 LocalDocumentId, RevisionId, velocypack::Slice,
                                  OperationOptions const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
