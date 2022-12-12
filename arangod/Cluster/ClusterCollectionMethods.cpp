@@ -39,14 +39,12 @@
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
 #include "Cluster/Utils/TargetCollectionAgencyWriter.h"
 #include "Cluster/Utils/SatelliteDistribution.h"
+#include "Rest/GeneralResponse.h"
 #include "Sharding/ShardingInfo.h"
-#include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/vocbase.h"
 
-// TODO: TEMPORARY!
-#include "Cluster/ClusterMethods.h"
 
 using namespace arangodb;
 
