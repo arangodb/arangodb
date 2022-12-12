@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -4164,7 +4165,9 @@ class mock_term_reader : public irs::term_reader {
 
 void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
                            arangodb::iresearch::IResearchLinkMeta const& meta,
-                           std::set<irs::field_id> expected) {
+                           std::set<irs::field_id> expected,
+                           arangodb::containers::FlatHashSet<std::string> const*
+                               expectedGeoColumns = nullptr) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
@@ -4190,8 +4193,14 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
         &mockFieldIterator.get());
   });
   std::set<irs::field_id> actual;
-  arangodb::iresearch::collectCachedNormColumns(actual, mockFieldsReader.get(),
-                                                meta);
+  arangodb::containers::FlatHashSet<std::string> geoColumns;
+  arangodb::iresearch::collectCachedColumns(actual, geoColumns,
+                                            mockFieldsReader.get(), meta);
+  if (!expectedGeoColumns) {
+    ASSERT_TRUE(geoColumns.empty());
+  } else {
+    ASSERT_EQ(*expectedGeoColumns, geoColumns);
+  }
   ASSERT_EQ(actual, expected);
 }
 
@@ -4201,7 +4210,11 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
+         { "name": "geo", "type": "geojson", 
+           "properties": {
+             "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
+           "features": [ "frequency" ]},
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
          { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
       ],
@@ -4211,7 +4224,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
         "field": {
           "fields": {
             "foo": {"cache":false},
-            "hotfoo": { "includeAllFields":true}
+            "hotfoo": { "includeAllFields":true, "analyzers":["geo"]}
           },
           "cache":true,
           "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
