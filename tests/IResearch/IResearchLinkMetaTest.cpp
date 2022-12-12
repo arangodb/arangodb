@@ -4142,6 +4142,13 @@ class mock_term_reader : public irs::term_reader {
     return 0;
   }
 
+  irs::term_meta term(irs::bytes_view) const noexcept override { return {}; }
+
+  size_t read_documents(irs::bytes_view,
+                        std::span<irs::doc_id_t>) const override {
+    return 0;
+  }
+
   irs::doc_iterator::ptr postings(const irs::seek_cookie& cookie,
                                   irs::IndexFeatures features) const override {
     return nullptr;
