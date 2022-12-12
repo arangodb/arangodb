@@ -116,15 +116,25 @@ auto inspect(Inspector& f, PaddedKeyGeneratorProperties& props) {
       f.field(StaticStrings::LastValue, props.lastValue).fallback(f.keep()));
 }
 
-struct KeyGeneratorProperties
-    : std::variant<TraditionalKeyGeneratorProperties,
-                   AutoIncrementGeneratorProperties, UUIDKeyGeneratorProperties,
-                   PaddedKeyGeneratorProperties> {
-  bool operator==(KeyGeneratorProperties const&) const = default;
-};
+using KeyGeneratorProperties =
+    std::variant<TraditionalKeyGeneratorProperties,
+                 AutoIncrementGeneratorProperties, UUIDKeyGeneratorProperties,
+                 PaddedKeyGeneratorProperties>;
 
 template<class Inspector>
 auto inspect(Inspector& f, KeyGeneratorProperties& props) {
+  if constexpr (Inspector::isLoading) {
+    // Special handling if user omits type name, we fall back
+    // to traditional.
+    if (f.slice().isObject() && !f.slice().hasKey("type")) {
+      TraditionalKeyGeneratorProperties tmp;
+      auto status = f.apply(tmp);
+      if (status.ok()) {
+        props = tmp;
+      }
+      return status;
+    }
+  }
   return f.variant(props).embedded("type").alternatives(
       inspection::type<TraditionalKeyGeneratorProperties>("traditional"),
       inspection::type<AutoIncrementGeneratorProperties>("autoincrement"),
