@@ -41,8 +41,14 @@ struct ActorBase {
   // state: initialised, running, finished
 };
 
+template<typename S, typename M, typename H>
+concept VariantType = requires(S state, M message) {
+  {std::visit(H{std::move(std::make_unique<S>(state))}, message)};
+};
+
 template<typename Scheduler, typename MessageHandler, typename State,
          typename ActorMessage>
+requires VariantType<State, ActorMessage, MessageHandler>
 struct Actor : ActorBase {
   Actor(std::shared_ptr<Scheduler> schedule,
         std::unique_ptr<State> initialState)

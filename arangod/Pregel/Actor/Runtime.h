@@ -60,6 +60,7 @@ struct Runtime {
   }
 
   template<typename ActorState, typename ActorMessage, typename ActorHandler>
+  requires VariantType<ActorState, ActorMessage, ActorHandler>
   auto spawn(ActorState initialState, ActorMessage initialMessage) -> ActorID {
     auto newId = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
