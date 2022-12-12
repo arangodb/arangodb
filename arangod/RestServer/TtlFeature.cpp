@@ -265,14 +265,11 @@ class TtlThread final : public ServerThread<ArangodServer> {
         return;
       }
 
-      TRI_vocbase_t* vocbase = db.useDatabase(name);
+      auto vocbase = db.useDatabase(name);
 
       if (vocbase == nullptr) {
         continue;
       }
-
-      // make sure we decrease the reference counter later
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       LOG_TOPIC("ec905", TRACE, Logger::TTL)
           << "TTL thread going to process database '" << vocbase->name() << "'";

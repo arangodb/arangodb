@@ -67,7 +67,7 @@ struct Server::Impl {
 
   void start(char const* exectuable);
 
-  TRI_vocbase_t* vocbase() { return _vocbase; }
+  TRI_vocbase_t* vocbase() { return _vocbase.get(); }
 
  private:
   void setupServer(std::string const& name, int& result);
@@ -78,7 +78,7 @@ struct Server::Impl {
   std::string _databaseDirectory;
   ::ArangodServer _server;
   std::thread _serverThread;
-  TRI_vocbase_t* _vocbase = nullptr;
+  VocbasePtr _vocbase;
 };
 
 Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
@@ -94,10 +94,7 @@ Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
 }
 
 Server::Impl::~Impl() {
-  if (_vocbase) {
-    _vocbase->release();
-    _vocbase = nullptr;
-  }
+  _vocbase = nullptr;
   _server.beginShutdown();
   if (_serverThread.joinable()) {
     _serverThread.join();

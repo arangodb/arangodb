@@ -132,8 +132,9 @@ void ClusterRestWalHandler::flush() {
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  auto res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res =
+      flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,
