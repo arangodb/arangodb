@@ -2,9 +2,8 @@ version: 2.1
 
 jobs:
   compile-linux-community:
-    machine:
-      image: ubuntu-2004:202201-02
-    resource_class: large
+    docker:
+      - image: cimg/base:2022.12
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
