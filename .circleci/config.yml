@@ -12,11 +12,9 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install libssl-dev clang-14 clang++-14 snapd ccache flex bison
-      - run:
-          name: Checkout Source
-          command: |
-            cd ..
-            git clone --no-tags --depth 1 "$CIRCLE_REPOSITORY_URL" --branch "$CIRCLE_BRANCH" project
+      - checkout
+      - run: git submodule sync
+      - run: git submodule update --init
       - restore_cache:
           keys:
             - ccache-v1-{{ .Branch }}-{{ .Revision }}
