@@ -58,10 +58,10 @@ irs::encryption::stream::ptr RocksDBEncryptionProvider::create_stream(
 }
 }  // namespace arangodb::iresearch
 
-namespace iresearch {
+namespace irs {
 // use base irs::encryption type for ancestors
 template<>
 struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<encryption> {
 };
 
-}  // namespace iresearch
+}  // namespace irs

@@ -1735,7 +1735,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     return root.begin();
   };
   auto checkAtLeast = [](irs::Or& actual, irs::score_t boost) {
-    SCOPED_TRACE(testing::Message("Actual:") << iresearch::to_string(actual));
+    SCOPED_TRACE(testing::Message("Actual:") << irs::to_string(actual));
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());

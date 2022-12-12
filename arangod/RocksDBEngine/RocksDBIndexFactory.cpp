@@ -398,8 +398,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
-std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases()
-    const {
+std::vector<std::pair<std::string_view, std::string_view>>
+RocksDBIndexFactory::indexAliases() const {
   return {
       {"hash", "persistent"},
       {"skiplist", "persistent"},

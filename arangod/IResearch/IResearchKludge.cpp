@@ -166,6 +166,16 @@ std::string_view demangleNested(std::string_view name, std::string& buf) {
 
   return buf;
 }
+
+std::string_view extractAnalyzerName(std::string_view fieldName) {
+  auto analyzerIndex = fieldName.find(kAnalyzerDelimiter);
+  if (analyzerIndex != std::string_view::npos) {
+    ++analyzerIndex;
+    TRI_ASSERT(analyzerIndex != fieldName.size());
+    return fieldName.substr(analyzerIndex);
+  }
+  return {};
+}
 #endif
 
 }  // namespace arangodb::iresearch::kludge
