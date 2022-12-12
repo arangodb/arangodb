@@ -205,10 +205,7 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    objectId, /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()) {}
+                   collection.vocbase().engine<RocksDBEngine>()) {}
 namespace {
 
 template<typename T>

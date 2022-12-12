@@ -46,8 +46,8 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  explicit NetworkFeature(Server& server);
-  NetworkFeature(Server& server, network::ConnectionPool::Config);
+  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+                 network::ConnectionPool::Config);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;

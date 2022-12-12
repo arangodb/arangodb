@@ -4835,7 +4835,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
     return collectionFromPlan.state();
   }
 
-  auto& engine = _server.getFeature<EngineSelectorFeature>().engine();
+  auto& engine = collection.vocbase().engine();
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());

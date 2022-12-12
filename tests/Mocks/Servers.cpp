@@ -382,7 +382,10 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
 
   if (start) {
     MockV8Server::startFeatures();
@@ -451,7 +454,10 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<QueryRegistryFeature>(
       false, getFeature<arangodb::metrics::MetricsFeature>());
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -514,7 +520,8 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
-  addFeature<NetworkFeature>(true, config);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(), config);
 }
 
 MockClusterServer::~MockClusterServer() {
@@ -979,6 +986,9 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
   MockRestAqlServer::startFeatures();
 }

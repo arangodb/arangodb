@@ -80,7 +80,7 @@ class Supervision : public arangodb::Thread {
   typedef std::string ServerID;
 
   /// @brief Construct cluster consistency checking
-  explicit Supervision(ArangodServer& server);
+  Supervision(ArangodServer& server, metrics::MetricsFeature& metrics);
 
   /// @brief Default dtor
   ~Supervision();

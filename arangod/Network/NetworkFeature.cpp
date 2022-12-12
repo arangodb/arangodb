@@ -61,16 +61,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-NetworkFeature::NetworkFeature(Server& server)
-    : NetworkFeature(server,
-                     network::ConnectionPool::Config{
-                         server.getFeature<metrics::MetricsFeature>()}) {
-  static_assert(
-      Server::isCreatedAfter<NetworkFeature, metrics::MetricsFeature>());
-  this->_numIOThreads = 2;  // override default
-}
-
 struct NetworkFeatureScale {
   static metrics::FixScale<double> scale() {
     return {0.0, 100.0, {1.0, 5.0, 15.0, 50.0}};
@@ -88,7 +78,7 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
-NetworkFeature::NetworkFeature(Server& server,
+NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
                                network::ConnectionPool::Config config)
     : ArangodFeature{server, *this},
       _protocol(),
@@ -97,14 +87,12 @@ NetworkFeature::NetworkFeature(Server& server,
       _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
-      _forwardedRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_forwarded_requests_total{})),
+      _forwardedRequests(
+          metrics.add(arangodb_network_forwarded_requests_total{})),
       _maxInFlight(::MaxAllowedInFlight),
-      _requestsInFlight(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_requests_in_flight{})),
-      _requestTimeouts(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_request_timeouts_total{})),
-      _requestDurations(server.getFeature<metrics::MetricsFeature>().add(
+      _requestsInFlight(metrics.add(arangodb_network_requests_in_flight{})),
+      _requestTimeouts(metrics.add(arangodb_network_request_timeouts_total{})),
+      _requestDurations(metrics.add(
           arangodb_network_request_duration_as_percentage_of_timeout{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();

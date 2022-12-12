@@ -88,8 +88,19 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
+        [](auto& server, TypeTag<ClusterUpgradeFeature>) {
+          return std::make_unique<ClusterUpgradeFeature>(
+              server, server.template getFeature<arangodb::DatabaseFeature>(),
+              server.template getFeature<arangodb::ClusterFeature>()
+                  .agencyCache());
+        },
         [&name](auto& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, name);
+        },
+        [](auto& server, TypeTag<GeneralServerFeature>) {
+          return std::make_unique<GeneralServerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<InitDatabaseFeature>) {
           return std::make_unique<InitDatabaseFeature>(server,
@@ -97,6 +108,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         },
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
+        },
+        [](auto& server, TypeTag<NetworkFeature>) {
+          auto& metrics =
+              server.template getFeature<arangodb::metrics::MetricsFeature>();
+          return std::make_unique<NetworkFeature>(
+              server, metrics, network::ConnectionPool::Config{metrics});
         },
         [](auto& server, TypeTag<QueryRegistryFeature>) {
           return std::make_unique<QueryRegistryFeature>(

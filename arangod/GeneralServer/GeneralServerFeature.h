@@ -44,7 +44,8 @@ class GeneralServerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
-  explicit GeneralServerFeature(Server& server);
+  explicit GeneralServerFeature(Server& server,
+                                metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

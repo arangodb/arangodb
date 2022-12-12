@@ -1475,7 +1475,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       return cleanupResult;
     }
   }
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = vocbase.engine();
   TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
@@ -1593,7 +1593,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
 
     WRITE_LOCKER(lock, _mutex);
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = vocbase.engine();
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_view> inserted;

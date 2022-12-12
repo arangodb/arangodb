@@ -24,8 +24,9 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-
 namespace arangodb {
+
+class AgencyCache;
 
 // this feature is responsible for performing a cluster upgrade.
 // it is only doing something in a coordinator, and only if the server was
@@ -37,7 +38,8 @@ class ClusterUpgradeFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ClusterUpgrade"; }
 
-  explicit ClusterUpgradeFeature(ArangodServer& server);
+  ClusterUpgradeFeature(ArangodServer& server, DatabaseFeature& databaseFeature,
+                        AgencyCache& agencyCache);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -51,6 +53,8 @@ class ClusterUpgradeFeature final : public ArangodFeature {
 
  private:
   std::string _upgradeMode;
+  DatabaseFeature& _databaseFeature;
+  AgencyCache& _agencyCache;
 };
 
 }  // namespace arangodb

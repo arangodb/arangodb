@@ -2532,7 +2532,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     arangodb::ArangodServer newServer(nullptr, nullptr);
     newServer.addFeature<arangodb::metrics::MetricsFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
-    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();
+    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
+        newServer.getFeature<arangodb::metrics::MetricsFeature>(),
+        arangodb::network::ConnectionPool::Config(
+            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
@@ -2615,7 +2618,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::metrics::MetricsFeature>();
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
-    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();
+    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
+        newServer.getFeature<arangodb::metrics::MetricsFeature>(),
+        arangodb::network::ConnectionPool::Config(
+            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);

@@ -390,7 +390,7 @@ void AgencyFeature::prepare() {
   }
 
   _agent = std::make_unique<consensus::Agent>(
-      server(),
+      server(), server().getFeature<metrics::MetricsFeature>(),
       consensus::config_t(_recoveryId, _size, _minElectionTimeout,
                           _maxElectionTimeout, endpoint, _agencyEndpoints,
                           _supervision, _supervisionTouched, _waitForSync,

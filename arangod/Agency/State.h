@@ -55,7 +55,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  State(ArangodServer& server);
+  explicit State(metrics::MetricsFeature& metrics);
 
   /// @brief Default Destructor
   virtual ~State();
@@ -266,9 +266,6 @@ class State {
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
-
-  /// @brief Our agent
-  ArangodServer& _server;
 
   /// @brief Our agent
   Agent* _agent;

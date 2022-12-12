@@ -94,11 +94,12 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(ArangodServer& server, config_t const& config)
+Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
+             config_t const& config)
     : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
-      _supervision(std::make_unique<Supervision>(server)),
-      _state(server),
+      _supervision(std::make_unique<Supervision>(server, metrics)),
+      _state(metrics),
       _config(config),
       _commitIndex(0),
       _spearhead(server, this),
@@ -109,30 +110,15 @@ Agent::Agent(ArangodServer& server, config_t const& config)
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_write_ok_total{})),
-      _write_no_leader(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_write_no_leader_total{})),
-      _read_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_read_ok_total{})),
-      _read_no_leader(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_read_no_leader_total{})),
-      _write_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_write_hist{})),
-      _commit_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_commit_hist{})),
-      _append_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_append_hist{})),
-      _compaction_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_compaction_hist{})),
-      _local_index(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_local_commit_index{})) {
+      _write_ok(metrics.add(arangodb_agency_write_ok_total{})),
+      _write_no_leader(metrics.add(arangodb_agency_write_no_leader_total{})),
+      _read_ok(metrics.add(arangodb_agency_read_ok_total{})),
+      _read_no_leader(metrics.add(arangodb_agency_read_no_leader_total{})),
+      _write_hist_msec(metrics.add(arangodb_agency_write_hist{})),
+      _commit_hist_msec(metrics.add(arangodb_agency_commit_hist{})),
+      _append_hist_msec(metrics.add(arangodb_agency_append_hist{})),
+      _compaction_hist_msec(metrics.add(arangodb_agency_compaction_hist{})),
+      _local_index(metrics.add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
