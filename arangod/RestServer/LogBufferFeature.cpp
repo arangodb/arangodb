@@ -206,12 +206,10 @@ class LogAppenderEventLog final : public LogAppender {
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(ArangodServer& server)
+  LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
       : LogAppender(),
-        _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(
-            arangodb_logger_warnings_total{})),
-        _errorsCounter(server.getFeature<metrics::MetricsFeature>().add(
-            arangodb_logger_errors_total{})) {}
+        _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
+        _errorsCounter(metrics.add(arangodb_logger_errors_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -244,7 +242,8 @@ LogBufferFeature::LogBufferFeature(Server& server)
 #endif
   LogAppender::addGlobalAppender(
       Logger::defaultLogGroup(),
-      std::make_shared<LogAppenderMetricsCounter>(server));
+      std::make_shared<LogAppenderMetricsCounter>(
+          server.getFeature<metrics::MetricsFeature>()));
 }
 
 void LogBufferFeature::collectOptions(

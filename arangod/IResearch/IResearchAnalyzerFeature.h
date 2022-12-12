@@ -587,6 +587,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace iresearch

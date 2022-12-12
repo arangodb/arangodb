@@ -467,7 +467,10 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(server, *this);
+      arangodb::ClusterIndexFactory::linkIndexFactories(
+          server, *this,
+          server.getFeature<arangodb::EngineSelectorFeature>()
+              .engine<arangodb::ClusterEngine>());
     }
   }
 

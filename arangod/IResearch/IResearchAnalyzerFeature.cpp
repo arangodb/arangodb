@@ -1072,7 +1072,8 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this},
+      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   // used for registering IResearch analyzer functions
@@ -1230,8 +1231,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+  bool extendedNames = _databaseFeature.extendedNamesForAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(
           extendedNames,
           std::string_view(split.second.data(), split.second.size()))) {
@@ -1958,9 +1958,8 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
                   std::string(database) + "'"};
     }
 
-    auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto* vocbase = dbFeature.lookupDatabase(
+    auto* vocbase = _databaseFeature.lookupDatabase(
         static_cast<std::string>(database));  // FIXME: after C++20 remove cast
                                               // and use heterogeneous lookup
     if (!vocbase) {
@@ -2061,8 +2060,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
                 std::string(database) + "'"};
   }
 
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-
   try {
     // '_analyzers'/'_lastLoad' can be asynchronously read
     WRITE_LOCKER(lock, _mutex);
@@ -2092,7 +2089,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       };
 
-      dbFeature.enumerateDatabases(visitor);
+      _databaseFeature.enumerateDatabases(visitor);
 
       std::unordered_set<std::string>
           unseen;  // make copy since original removed
@@ -2142,7 +2139,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         databaseKey));  // find last update timestamp FIXME: after C++20 remove
                         // cast and use heterogeneous lookup
 
-    auto* vocbase = dbFeature.lookupDatabase(
+    auto* vocbase = _databaseFeature.lookupDatabase(
         static_cast<std::string>(database));  // FIXME: after C++20 remove cast
                                               // and use heterogeneous lookup
 
@@ -2447,10 +2444,9 @@ IResearchAnalyzerFeature::splitAnalyzerName(
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     std::string_view vocbaseName, bool forceLoadPlan /* = false */) const {
   TRI_vocbase_t* vocbase{nullptr};
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  vocbase = dbFeature.useDatabase(vocbaseName.empty()
-                                      ? arangodb::StaticStrings::SystemDatabase
-                                      : static_cast<std::string>(vocbaseName));
+  vocbase = _databaseFeature.useDatabase(
+      vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase
+                          : static_cast<std::string>(vocbaseName));
   if (vocbase) {
     return getAnalyzersRevision(*vocbase, forceLoadPlan);
   }
@@ -2495,8 +2491,7 @@ void IResearchAnalyzerFeature::prepare() {
 
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase) {
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto* voc = dbFeature.useDatabase(static_cast<std::string>(
+  auto* voc = _databaseFeature.useDatabase(static_cast<std::string>(
       vocbase));  // FIXME: after C++20 remove cast and use heterogeneous lookup
   if (!voc) {
     return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -2662,9 +2657,7 @@ Result IResearchAnalyzerFeature::remove(std::string_view const& name,
       }
       _analyzers.erase(itr);
     } else {
-      auto& dbFeature = server().getFeature<DatabaseFeature>();
-
-      auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
+      auto* vocbase = _databaseFeature.useDatabase(static_cast<std::string>(
           split.first));  // FIXME: after C++20 remove cast and use
                           // heterogeneous lookup
 
@@ -2816,8 +2809,6 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
   TRI_IF_FAILURE("FailStoreAnalyzer") { return Result(TRI_ERROR_DEBUG); }
 
   try {
-    auto& dbFeature = server().getFeature<DatabaseFeature>();
-
     if (irs::IsNull(pool.type())) {
       return {TRI_ERROR_BAD_PARAMETER,
               "failure to persist arangosearch analyzer '" + pool.name() +
@@ -2834,7 +2825,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     auto split = splitAnalyzerName(pool.name());
-    auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(
+    auto* vocbase = _databaseFeature.useDatabase(static_cast<std::string>(
         split.first));  // FIXME: after C++20 remove cast and use heterogeneous
                         // lookup
 

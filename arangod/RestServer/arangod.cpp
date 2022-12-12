@@ -25,6 +25,7 @@
 
 #include <string_view>
 #include <type_traits>
+#include "RestServer/DatabaseFeature.h"
 #ifdef _WIN32
 #include <iostream>
 #endif
