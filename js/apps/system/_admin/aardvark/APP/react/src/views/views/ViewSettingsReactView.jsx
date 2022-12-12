@@ -1,7 +1,17 @@
 /* global frontendConfig */
 
-import { cloneDeep, times } from 'lodash';
+import { cloneDeep, isEqual, uniqueId, times } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
+import useSWR from 'swr';
+import Textarea from '../../components/pure-css/form/Textarea';
+import { Cell, Grid } from '../../components/pure-css/grid';
+import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { HashRouter, Route, Switch } from 'react-router-dom';
+import LinkList from './Components/LinkList';
+import { ViewContext } from './constants';
+import LinkPropertiesForm from './forms/LinkPropertiesForm';
+import CopyFromInput from './forms/inputs/CopyFromInput';
+import JsonForm from './forms/JsonForm';
 import ToolTip from '../../components/arango/tootip';
 import Textbox from '../../components/pure-css/form/Textbox';
 import {
@@ -12,9 +22,6 @@ import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
 import { postProcessor, useNavbar, useView } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
-//import 'semantic-ui-css/semantic.min.css';
-//import { Container, Header, List } from "semantic-ui-react";
-//import AccordionExclusive from './Components/AccordionExclusive';
 
 const ViewSettingsReactView = ({ name }) => {
 
@@ -174,6 +181,9 @@ const ViewSettingsReactView = ({ name }) => {
     console.log("dispatch in ViewSettingsReactView: ", dispatch);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const { data } = useSWR(isAdminUser ? '/view' : null,
+    (path) => getApiRouteForCurrentDB().get(path));
+  const [views, setViews] = useState([]);
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);
@@ -204,7 +214,18 @@ const ViewSettingsReactView = ({ name }) => {
   const formState = state.formState;
   const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
-  //<AccordionExclusive panels={panels} />
+  if (data) {
+    if (!isEqual(data.body.result, views)) {
+      setViews(data.body.result);
+    }
+  }
+
+  let jsonFormState = '';
+  let jsonRows = 1;
+  if (!isAdminUser) {
+    jsonFormState = JSON.stringify(formState, null, 4);
+    jsonRows = jsonFormState.split('\n').length;
+  }
 
   return <>
     <div style={{
@@ -215,6 +236,77 @@ const ViewSettingsReactView = ({ name }) => {
     }}>
       {name}
     </div>
+    <div>
+      Links
+    </div>
+    <ViewContext.Provider
+      value={{
+        formState,
+        dispatch,
+        isAdminUser,
+        changed,
+        setChanged
+      }}
+    >
+      <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
+        <Switch>
+          <Route path={'/:link'}>
+            <LinkPropertiesForm name={name}/>
+          </Route>
+          <Route exact path={'/'}>
+            <LinkList name={name}/>
+          </Route>
+        </Switch>
+      </HashRouter>
+    </ViewContext.Provider>
+    <div>
+      JSON-Editor
+    </div>
+    <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+              aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
+    <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
+      <div className={'tab-content'} style={{ display: 'unset' }}>
+        <div className="tab-pane tab-pane-modal active" id="JSON">
+          <Grid>
+            {
+              isAdminUser && views.length
+                ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+                  <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+                </Cell>
+                : null
+            }
+
+            <Cell size={'1'}>
+              {
+                isAdminUser
+                  ? <JsonForm formState={formState} dispatch={dispatch}
+                              renderKey={state.renderKey}/>
+                  : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                              rows={jsonRows}
+                              style={{ cursor: 'text' }}/>
+              }
+            </Cell>
+          </Grid>
+        </div>
+      </div>
+      {
+        isAdminUser && changed
+          ? <div className="tab-content" id="Save" style={{
+            marginTop: 25,
+            minHeight: 'unset',
+            borderTop: '1px solid rgba(64, 74, 83, 0.2)',
+            paddingLeft: 10
+          }}>
+            <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+          </div>
+          : null
+      }
+    </div>
+  </div>;
     <AccordionView
         allowMultipleOpen
         accordionConfig={[
