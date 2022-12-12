@@ -83,93 +83,84 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     containers::FlatHashSet<std::string>& uniqueColumns,
     std::vector<std::string_view>& fieldNames,
     irs::type_info::type_id compression, bool cached) {
-  if (columnSlice.isArray()) {
-    // skip empty column
-    if (columnSlice.length() == 0) {
-      return true;
-    }
-    fieldNames.clear();
-    size_t columnLength = 0;
-    StoredColumn sc;
-    sc.fields.reserve(columnSlice.length());
-    for (auto fieldSlice : VPackArrayIterator(columnSlice)) {
-      if (!fieldSlice.isString()) {
-        clear();
-        return false;
-      }
-      auto fieldName = fieldSlice.stringRef();
-      // skip empty field
-      if (fieldName.empty()) {
-        continue;
-      }
-      std::vector<basics::AttributeName> field;
-      try {
-        // no expansions
-        basics::TRI_ParseAttributeString(fieldName, field, false);
-      } catch (...) {
-        clear();
-        return false;
-      }
-      // check field uniqueness
-      auto newField = true;
-      auto fieldSize = field.size();
-      size_t i = 0;
-      for (auto& f : sc.fields) {
-        if (f.second.size() == fieldSize) {
-          if (basics::AttributeName::isIdentical(f.second, field, false)) {
-            newField = false;
-            break;
-          }
-        } else if (f.second.size() < fieldSize) {
-          if (isPrefix(f.second, field)) {
-            newField = false;
-            break;
-          }
-        } else {  // f.second.size() > fieldSize
-          if (isPrefix(field, f.second)) {
-            // take shortest path field (obj.a is better than obj.a.sub_a)
-            columnLength += fieldName.size() - f.second.size();
-            f.first = fieldName;
-            f.second = std::move(field);
-            fieldNames[i] = std::move(fieldName);
-            newField = false;
-            break;
-          }
-        }
-        ++i;
-      }
-      if (!newField) {
-        continue;
-      }
-      // cppcheck-suppress accessMoved
-      sc.fields.emplace_back(fieldName, std::move(field));
-      columnLength += fieldName.size() + 1;  // + 1 for FIELDS_DELIMITER
-      // cppcheck-suppress accessMoved
-      fieldNames.emplace_back(std::move(fieldName));
-    }
-    // skip empty column
-    if (fieldNames.empty()) {
-      return true;
-    }
-    // check column uniqueness
-    std::sort(fieldNames.begin(), fieldNames.end());
-    std::string columnName;
-    TRI_ASSERT(columnLength > 1);
-    columnName.reserve(columnLength);
-    for (auto const& fieldName : fieldNames) {
-      columnName += FIELDS_DELIMITER;  // a prefix for EXISTS()
-      columnName += fieldName;
-    }
-    if (!uniqueColumns.emplace(columnName).second) {
-      return true;
-    }
-    sc.name = std::move(columnName);
-    sc.compression = compression;
-    sc.cached = cached;
-    _storedColumns.emplace_back(std::move(sc));
-  } else {
+  if (!columnSlice.isArray() && !columnSlice.isString()) {
     return false;
   }
+  fieldNames.clear();
+  size_t columnLength = 0;
+  StoredColumn sc;
+  auto addColumn = [&](std::string_view fieldName) {
+    if (fieldName.empty()) {
+      return true;
+    }
+    std::vector<basics::AttributeName> field;
+    try {
+      // no expansions
+      basics::TRI_ParseAttributeString(fieldName, field, false);
+    } catch (...) {
+      return false;
+    }
+    // check field uniqueness
+    auto fieldSize = field.size();
+    size_t i = 0;
+    for (auto& f : sc.fields) {
+      if (f.second.size() == fieldSize) {
+        if (basics::AttributeName::isIdentical(f.second, field, false)) {
+          return true;
+        }
+      } else if (f.second.size() < fieldSize) {
+        if (isPrefix(f.second, field)) {
+          return true;
+        }
+      } else {  // f.second.size() > fieldSize
+        if (isPrefix(field, f.second)) {
+          // take shortest path field (obj.a is better than obj.a.sub_a)
+          columnLength += fieldName.size() - f.second.size();
+          f.first = fieldName;
+          f.second = std::move(field);
+          fieldNames[i] = fieldName;
+          return true;
+        }
+      }
+      ++i;
+    }
+    sc.fields.emplace_back(fieldName, std::move(field));
+    columnLength += fieldName.size() + 1;  // + 1 for FIELDS_DELIMITER
+    fieldNames.emplace_back(fieldName);
+    return true;
+  };
+  if (columnSlice.isArray()) {
+    sc.fields.reserve(columnSlice.length());
+    for (auto fieldSlice : VPackArrayIterator(columnSlice)) {
+      if (!fieldSlice.isString() || !addColumn(fieldSlice.stringView())) {
+        clear();
+        return false;
+      }
+    }
+  } else if (!addColumn(columnSlice.stringView())) {
+    clear();
+    return false;
+  }
+  // skip empty column
+  if (fieldNames.empty()) {
+    return true;
+  }
+  // check column uniqueness
+  std::sort(fieldNames.begin(), fieldNames.end());
+  std::string columnName;
+  TRI_ASSERT(columnLength > 1);
+  columnName.reserve(columnLength);
+  for (auto const& fieldName : fieldNames) {
+    columnName += FIELDS_DELIMITER;  // a prefix for EXISTS()
+    columnName += fieldName;
+  }
+  if (!uniqueColumns.emplace(columnName).second) {
+    return true;
+  }
+  sc.name = std::move(columnName);
+  sc.compression = compression;
+  sc.cached = cached;
+  _storedColumns.emplace_back(std::move(sc));
   return true;
 }
 
