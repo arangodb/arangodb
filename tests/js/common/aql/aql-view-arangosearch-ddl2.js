@@ -25,9 +25,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const internal = require('internal');
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
+const isServer = require("@arangodb").isServer;
+const isCluster = require("internal").isCluster();
+const request = require("@arangodb/request");
+const { triggerMetrics } = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1103,7 +1109,8 @@ function IResearchFeatureDDLTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test link on analyzers collection
     ////////////////////////////////////////////////////////////////////////////////
-    testIndexStats : function() {
+    testIndexStats: function () {
+      const arango = require("@arangodb").arango;
       const colName = 'TestCollection';
       const viewName = 'TestView';
 
@@ -1116,114 +1123,197 @@ function IResearchFeatureDDLTestSuite () {
         consolidationIntervalMsec: 0, // disable consolidation
         cleanupIntervalStep: 0        // disable cleanup
       });
-      view.properties({ links: { [colName]: { includeAllFields: true }, "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}} } });
+      view.properties({ links: { [colName]: { 
+        "includeAllFields": true, 
+        "fields": { 
+          "value": { 
+            "nested": { 
+              "nested_1": {
+                "nested": {
+                  "nested_2": {}
+                }
+              }
+            }
+          },
+          "name_1": {}
+        }
+      }}});
+
+      const idx = col.ensureIndex({
+        name: "TestIndex",
+        type: "inverted",
+        fields: [
+          {
+            "name": "value", 
+            "nested": [
+              {
+                "name": "nested_1", 
+                "nested": [
+                  {
+                    "name": "nested_2"
+                  }
+                ]
+              }
+            ]
+          },
+          "name_1"
+        ],
+        commitIntervalMsec: 0,        // disable auto-commit
+        consolidationIntervalMsec: 0, // disable consolidation
+        cleanupIntervalStep: 0        // disable cleanup
+      });
+
+      const types = ["arangosearch", "inverted"];
+
+      if (isCluster) {
+        triggerMetrics();
+      }
+      print("HERE")
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(1, figures.numFiles);
-        assertEqual(0, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(5, Object.keys(figures).length);
+          assertEqual(0, figures.indexSize);
+          assertEqual(0, figures.numDocs);
+          assertEqual(0, figures.numLiveDocs);
+          assertEqual(1, figures.numFiles);
+          assertEqual(0, figures.numSegments);
+        }
+      });
 
       // insert documents
-      col.save({ foo: 'bar' });
-      col.save({ foo: 'baz' });
+      col.save([{ foo: 'bar' }]);
+      col.save([{ foo: 'baz' }]);
+      col.save({ name_1: "abc", text: "the quick brown fox jumps over the lazy dog", "value": [{"nested_1": [{"nested_2": "the"}]}] });
+      col.save({ name_1: "abc", text: "the quick brown fox", "value": [{"nested_1": [{"nested_2": "quick"}]}] });
+      col.save({ name_1: "abc", text: "the quick brown fox", "value": [{"nested_1": []}] });
+
+      if (isCluster) {
+        triggerMetrics();
+      }
+      print("HERE")
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(1, figures.numFiles);
-        assertEqual(0, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+            let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(5, Object.keys(figures).length);
+          assertEqual(0, figures.indexSize);
+          assertEqual(0, figures.numDocs);
+          assertEqual(0, figures.numLiveDocs);
+          assertEqual(1, figures.numFiles);
+          assertEqual(0, figures.numSegments);
+        }
+      });
 
+      let syncIndex = function (expected) {
+        const syncQuery = `FOR d IN TestCollection OPTIONS {indexHint: "TestIndex", waitForSync:true}
+                            FILTER d.foo != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
+        let count = db._query(syncQuery).toArray()[0];
+        assertEqual(expected, count);
+      };
       // ensure data is synchronized
       var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
-      assertEqual(2 + docCount, res.length);
-
-      var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} filter HAS(d, 'foo') SORT d.foo RETURN d").toArray();
-      assertEqual(2, res.length);
-
-      assertEqual('bar', res[0].foo);
-      assertEqual('baz', res[1].foo);
-
-      // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertTrue(0 < figures.indexSize);
-        assertEqual(2, figures.numDocs);
-        assertEqual(2, figures.numLiveDocs);
-        assertEqual(6, figures.numFiles);
-        assertEqual(1, figures.numSegments);
+      assertEqual(5, res.length);
+      // assertEqual('bar', res[0].foo);
+      // assertEqual('baz', res[1].foo);
+      syncIndex(5);
+      res = db._query(`for d in TestCollection OPTIONS { 'forceIndexHint': true, 'waitForSync': true, 'indexHint': 'TestIndex' }
+                      filter d.name_1 == 'abc' return d  
+      `);
+      print("isCluster = ", isCluster);
+      if (isCluster) {
+        triggerMetrics();
       }
+
+      print("HERE")
+      // check link stats
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          print(type)
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          print(figures)
+          assertTrue(Object === figures.constructor);
+          assertEqual(5, Object.keys(figures).length);
+          assertTrue(1000 < figures.indexSize);
+          assertEqual(15, figures.numDocs);
+          assertEqual(15, figures.numLiveDocs);
+          assertEqual(6, figures.numFiles);
+          assertEqual(1, figures.numSegments);
+        }
+      });
 
       // remove document
       col.remove(res[0]._key);
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
-      assertEqual(1 + docCount, res.length);
-
-      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} filter has(d, 'foo') SORT d.foo RETURN d").toArray();
       assertEqual(1, res.length);
       assertEqual('baz', res[0].foo);
+      syncIndex(1);
+
+      if (isCluster) {
+        triggerMetrics();
+      }
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertTrue(0 < figures.indexSize);
-        assertEqual(2, figures.numDocs);
-        assertEqual(1, figures.numLiveDocs);
-        assertEqual(7, figures.numFiles);
-        assertEqual(1, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(5, Object.keys(figures).length);
+          assertTrue(1000 < figures.indexSize);
+          assertEqual(2, figures.numDocs);
+          assertEqual(1, figures.numLiveDocs);
+          assertEqual(7, figures.numFiles);
+          assertEqual(1, figures.numSegments);
+        }
+      });
 
       // truncate collection
       col.truncate({ compact: false });
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
-      assertEqual(docCount, res.length);
+      assertEqual(0, res.length);
+      syncIndex(0);
+
+      if (isCluster) {
+        triggerMetrics();
+      }
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(1, figures.numFiles);
-        assertEqual(0, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(5, Object.keys(figures).length);
+          assertEqual(0, figures.indexSize);
+          assertEqual(0, figures.numDocs);
+          assertEqual(0, figures.numLiveDocs);
+          assertEqual(1, figures.numFiles);
+          assertEqual(0, figures.numSegments);
+        }
+      });
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1365,53 +1455,114 @@ function IResearchFeatureDDLTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test link on analyzers collection
     ////////////////////////////////////////////////////////////////////////////////
-    testIndexAnalyzerCollection : function() {
+    testIndexAnalyzerCollection: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
       try {
-        db._useDatabase("_system");
-        assertNotEqual(null, db._collection("_analyzers"));
-        try { db._dropDatabase(dbName); } catch (e) {}
-        try { analyzers.remove(analyzerName); } catch (e) {}
-        db._createDatabase(dbName);
-        db._useDatabase(dbName);
-        assertEqual(0, db._analyzers.count());
-        analyzers.save(analyzerName, "identity");
-        // recreating database
-        db._useDatabase("_system");
         db._dropDatabase(dbName);
+      } catch (e) {
+      }
+      try {
+        analyzers.remove(analyzerName);
+      } catch (e) {
+      }
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", { "stopwords": [], "locale": "en" });
+      assertEqual(1, db._analyzers.count());
+
+      var view = db._createView("analyzersView", "arangosearch", {
+        links: {
+          _analyzers: {
+            includeAllFields: true,
+            analyzers: [analyzerName]
+          }
+        }
+      });
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+    testAutoLoadAnalyzerOnViewCreation: function () {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+      try {
         db._createDatabase(dbName);
         db._useDatabase(dbName);
-
-        assertNull(analyzers.analyzer(analyzerName));
-        // this should be no name conflict
-        assertEqual(0, db._analyzers.count());
-        analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
-        assertEqual(1, db._analyzers.count());
-
+        db._analyzers.save({ type: "identity", name: analyzerName });
         db._create("collection321");
-        db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{"nested_1": [{"nested_2": "jumps"}]}] });
-
         var view = db._createView("analyzersView", "arangosearch", {
           links: {
-            _analyzers : {
-              includeAllFields:true,
-              analyzers: [ analyzerName ]
+            _analyzers: {
+              includeAllFields: true,
+              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
             },
             "collection321": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
           }
         });
-
+        db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{"nested_1": [{"nested_2": "jumps"}]}] });
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-        assertEqual(1, db._analyzers.count());
         assertEqual(2, res.length);
-        assertEqual(db._analyzers.toArray()[0], res[0]);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    testAutoLoadAnalyzerOnViewUpdate: function () {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+      try {
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        db._analyzers.save({ type: "identity", name: analyzerName });
+        db._create("collection321");
+        var view = db._createView("analyzersView", "arangosearch", {});
+        var links = {
+          links: {
+            _analyzers: {
+              includeAllFields: true,
+              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
+            },
+            "collection321": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+          }
+        };
+        db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{"nested_1": [{"nested_2": "jumps"}]}] });
+        view.properties(links, true);
+        var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+        assertEqual(2, res.length);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
     }
-
   };
 }
 
