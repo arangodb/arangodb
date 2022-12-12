@@ -528,29 +528,31 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       if (shards->empty()) {
         return {};  // treat missing collection as if there are no analyzers
       }
-      // If this is indeed OneShard this should be us!
-      TRI_ASSERT(shards->begin()->second.front() ==
-                 ServerState::instance()->getId());
-      auto oneShardQueryString =
-          aql::QueryString("FOR d IN "s + shards->begin()->first + " RETURN d");
-      auto query =
-          aql::Query::create(transaction::StandaloneContext::Create(vocbase),
-                             std::move(oneShardQueryString), nullptr);
+      // If this is indeed OneShard this should be us.
+      // satellite collections and dirty-reads may break this assumption.
+      // In that case we just proceed with regular cluster query
+      if (shards->begin()->second.front() == ServerState::instance()->getId()) {
+        auto oneShardQueryString = aql::QueryString(
+            "FOR d IN "s + shards->begin()->first + " RETURN d");
+        auto query =
+            aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                               std::move(oneShardQueryString), nullptr);
 
-      auto result = query->executeSync();
+        auto result = query->executeSync();
 
-      if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-          result.result.errorNumber()) {
-        return {};  // treat missing collection as if there are no analyzers
+        if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+            result.result.errorNumber()) {
+          return {};  // treat missing collection as if there are no analyzers
+        }
+
+        if (result.result.fail()) {
+          return result.result;
+        }
+
+        auto slice = result.data->slice();
+
+        return resultVisitor(visitor, vocbase, slice);
       }
-
-      if (result.result.fail()) {
-        return result.result;
-      }
-
-      auto slice = result.data->slice();
-
-      return resultVisitor(visitor, vocbase, slice);
     }
 
     network::RequestOptions reqOpts;
