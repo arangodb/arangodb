@@ -184,7 +184,7 @@ struct DocumentStateMachineFeature;
 using namespace application_features;
 
 // clang-format off
-using ArangodFeatures = TypeList<
+using ArangodFeaturesList = TypeList<
     // Adding the Phases
     AgencyFeaturePhase,
     CommunicationFeaturePhase,
@@ -303,7 +303,7 @@ using ArangodFeatures = TypeList<
     replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
-
+struct ArangodFeatures : ArangodFeaturesList {};
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
 

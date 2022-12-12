@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 #include "Replication2/ReplicatedState/UpdateReplicatedState.h"
 
 #include "Futures/Try.h"
