@@ -36,7 +36,7 @@ void stub() {}
 int main() {
   using namespace std::string_literals;
 
-  auto v = std::vector<std::string>();
+  auto v = std::vector<std::string>({"hello"s, "world"s});
 
   auto vec1 = immer::flex_vector<std::string>({"hello"s, "world"s});
 

@@ -138,6 +138,9 @@ class ImmerRrbTreePrinter:
         for i in range(0, self.size):
             yield (f'[{i}]', self.get(i))
 
+    def display_hint(self):
+        return 'array'
+
 
 class ImmerFlexVectorPrinter:
     """Print an immer::flex_vector<T>."""
@@ -156,6 +159,9 @@ class ImmerFlexVectorPrinter:
 
     def children(self):
         return self.rrbtree.children()
+
+    def display_hint(self):
+        return 'array'
 
 
 import gdb.printing
