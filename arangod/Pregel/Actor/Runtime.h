@@ -49,15 +49,18 @@ struct Runtime {
   auto dispatch(std::unique_ptr<Message> msg) -> void {
     if (msg->receiver.server == myServerID) {
       auto& actor = actors.at(msg->receiver.id);
+      if(msg->payload == nullptr) {
+        std::cout << "dispatch found nullptr payload" << std::endl;
+      }
       actor->process(msg->sender, std::move(msg->payload));
     } else {
-      assert(false);
       //      sending_mechanism.send(std::move(msg));
+        assert(false);
     }
   }
 
   template<typename ActorState, typename ActorMessage, typename ActorHandler>
-  auto spawn(ActorState initialState, std::unique_ptr<MessagePayloadBase> initialMessage) -> void {
+  auto spawn(ActorState initialState, ActorMessage initialMessage) -> void {
     auto new_id = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
 
@@ -69,12 +72,42 @@ struct Runtime {
 
     // Send initial message to newly created actor
     auto address = ActorPID{.id = new_id, .server = myServerID};
-    dispatch(std::make_unique<Message>(
-        address, address, std::move(initialMessage)));
+
+    auto initialPayload = std::make_unique<MessagePayload<ActorMessage>>(initialMessage);
+
+    if(initialPayload == nullptr) {
+      std::cout << "initialPayload was nullptr" << std::endl;
+    }
+
+    auto msg = std::make_unique<Message>(
+        address, address, std::move(initialPayload));
+
+    dispatch(std::move(msg));
   }
 
   auto shutdown() -> void {
     //
+  }
+
+  auto getActorIDs() -> std::vector<ActorID> {
+    auto res = std::vector<ActorID>{};
+
+    for(auto& [id, _] : actors) {
+      res.push_back(id);
+    }
+
+    return res;
+  }
+
+  template<typename ActorState, typename ActorMessage, typename ActorHandler>
+  auto getActorStateByID(ActorID id) -> std::optional<ActorState> {
+    if(actors.contains(id)) {
+      auto* actor = dynamic_cast<Actor<Scheduler, ActorHandler, ActorState, ActorMessage> *>(actors[id].get());
+      if(actor != nullptr && actor->state != nullptr) {
+        return *actor->state;
+      }
+    }
+    return std::nullopt;
   }
 
   ServerID myServerID;

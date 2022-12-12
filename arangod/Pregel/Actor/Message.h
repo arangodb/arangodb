@@ -35,6 +35,14 @@ struct MessagePayloadBase {
   virtual ~MessagePayloadBase() = default;
 };
 
+template<typename Payload>
+struct MessagePayload : MessagePayloadBase {
+  template<typename... Args>
+  MessagePayload(Args&&... args) : payload(std::forward<Args>(args)...) {}
+
+  Payload payload;
+};
+
 struct Message {
   Message(ActorPID sender, ActorPID receiver,
           std::unique_ptr<MessagePayloadBase> payload)

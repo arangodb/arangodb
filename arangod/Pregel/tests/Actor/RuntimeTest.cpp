@@ -45,7 +45,13 @@ TEST(RuntimeTest, gives_back_stuff_pushed) {
 
   Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
 
-  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(TrivialState("foo"), nullptr);
+  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(TrivialState("foo"),
+                                                              TrivialMessage1("bar"));
 
-
+  auto state = runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(ActorID{0});
+  if(state != std::nullopt) {
+    std::cout << " state: " << state->state << " called: " << state->called << std::endl;
+  } else {
+    std::cout << "state was nullopt";
+  }
 }
