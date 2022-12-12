@@ -45,9 +45,9 @@ struct ReadOptions : public rocksdb::ReadOptions {
 
 class RocksDBTransactionMethods : public RocksDBMethods {
  public:
-  explicit RocksDBTransactionMethods(RocksDBTransactionState const* state)
+  explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
       : _state(state) {}
-  virtual ~RocksDBTransactionMethods() = default;
+  ~RocksDBTransactionMethods() override = default;
 
   virtual Result beginTransaction() = 0;
 
@@ -115,7 +115,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
 #endif
 
  protected:
-  RocksDBTransactionState const* _state;
+  RocksDBTransactionState* _state;
 };
 
 }  // namespace arangodb

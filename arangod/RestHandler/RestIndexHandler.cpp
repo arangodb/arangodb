@@ -30,6 +30,8 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
@@ -66,6 +68,14 @@ RestStatus RestIndexHandler::execute() {
     }
     return getIndexes();
   } else if (type == rest::RequestType::POST) {
+    if (_request->suffixes().size() == 1 &&
+        _request->suffixes()[0] == "sync-caches") {
+      // this is an unofficial API to sync the in-memory
+      // index caches with the data queued in the index
+      // refill background thread. it is not supposed to
+      // be used publicly.
+      return syncCaches();
+    }
     return createIndex();
   } else if (type == rest::RequestType::DELETE_REQ) {
     return dropIndex();
@@ -399,9 +409,6 @@ RestStatus RestIndexHandler::createIndex() {
   return RestStatus::WAITING;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_api_database_delete
-// //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::dropIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 2) {
@@ -442,5 +449,14 @@ RestStatus RestIndexHandler::dropIndex() {
   } else {
     generateError(res);
   }
+  return RestStatus::DONE;
+}
+
+RestStatus RestIndexHandler::syncCaches() {
+  StorageEngine& engine =
+      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  engine.syncIndexCaches();
+
+  generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
   return RestStatus::DONE;
 }

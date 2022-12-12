@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchKludge.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VelocyPackHelper.h"

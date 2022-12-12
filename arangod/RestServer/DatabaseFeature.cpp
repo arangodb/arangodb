@@ -243,7 +243,7 @@ void DatabaseManagerThread::run() {
 
         // directly start next iteration
       } else {  // if (database != nullptr)
-        // perfom some cleanup tasks
+        // perform some cleanup tasks
         if (isStopping()) {
           // done
           break;
@@ -1405,8 +1405,6 @@ void DatabaseFeature::closeOpenDatabases() {
   for (auto& p : oldList->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    vocbase->shutdown();
-
     delete vocbase;
   }
 
@@ -1634,10 +1632,8 @@ void DatabaseFeature::closeDroppedDatabases() {
   for (TRI_vocbase_t* vocbase : oldList->_droppedDatabases) {
     TRI_ASSERT(vocbase != nullptr);
 
-    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-      vocbase->shutdown();
-      delete vocbase;
-    } else if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL ||
+        vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
       delete vocbase;
     } else {
       LOG_TOPIC("b8b0e", ERR, arangodb::Logger::FIXME)

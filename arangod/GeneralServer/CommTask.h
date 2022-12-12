@@ -26,6 +26,7 @@
 
 #include "Auth/TokenCache.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -34,6 +35,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 
 namespace arangodb {
@@ -93,6 +95,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void start() = 0;
   virtual void stop() = 0;
 
+  void setStatistics(uint64_t id, RequestStatistics::Item&& stat);
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
@@ -117,9 +121,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  RequestStatistics::Item const& acquireStatistics(uint64_t);
-  RequestStatistics::Item const& statistics(uint64_t);
-  RequestStatistics::Item stealStatistics(uint64_t);
+  RequestStatistics::Item const& acquireStatistics(uint64_t id);
+  RequestStatistics::Item const& statistics(uint64_t id);
+  RequestStatistics::Item stealStatistics(uint64_t id);
 
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,
@@ -155,6 +159,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 
+  mutable std::mutex _statisticsMutex;
+  containers::FlatHashMap<uint64_t, RequestStatistics::Item> _statisticsMap;
+
  protected:
   GeneralServer& _server;
   ConnectionInfo _connectionInfo;
@@ -162,9 +169,6 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
-
-  mutable std::mutex _statisticsMutex;
-  std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
 };
 }  // namespace rest
 }  // namespace arangodb

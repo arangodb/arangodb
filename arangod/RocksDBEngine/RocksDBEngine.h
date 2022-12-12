@@ -365,9 +365,15 @@ class RocksDBEngine final : public StorageEngine {
   bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const override;
-  virtual TRI_voc_tick_t releasedTick() const override;
-  virtual void releaseTick(TRI_voc_tick_t) override;
+  TRI_voc_tick_t currentTick() const override;
+  TRI_voc_tick_t releasedTick() const override;
+  void releaseTick(TRI_voc_tick_t) override;
+
+  void scheduleFullIndexRefill(std::string const& database,
+                               std::string const& collection,
+                               IndexId iid) override;
+
+  void syncIndexCaches() override;
 
   /// @brief whether or not the database existed at startup. this function
   /// provides a valid answer only after start() has successfully finished,
@@ -475,7 +481,7 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
-  void verifySstFiles(rocksdb::Options const& options) const;
+  [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);

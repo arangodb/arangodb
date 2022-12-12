@@ -151,7 +151,7 @@ function gtestRunner (testname, options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
 
   const tests = [ 'arangodbtests_zkd' ];
@@ -162,9 +162,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['gtest'] = x => gtestRunner('arangodbtests', x);
 
   opts['skipGtest'] = false;
-
-  defaultFns.push('gtest');
-
   testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

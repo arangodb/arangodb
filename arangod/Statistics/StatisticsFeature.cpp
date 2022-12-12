@@ -141,9 +141,15 @@ struct RequestTimeScale {
 };
 
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
-                  BytesReceivedScale, "Bytes received for a request");
+                  BytesReceivedScale, "Bytes received for requests");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
-                  BytesSentScale, "Bytes sent for a request");
+                  BytesSentScale, "Bytes sent for responses");
+DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_received,
+                  BytesReceivedScale,
+                  "Bytes received for requests, only user traffic");
+DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
+                  BytesSentScale,
+                  "Bytes sent for responses, only user traffic");
 DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
@@ -250,10 +256,16 @@ auto const statStrings = std::map<std::string_view,
                                   std::vector<std::string_view>>{
     {"bytesReceived",
      {"arangodb_client_connection_statistics_bytes_received", "histogram",
-      "Bytes received for a request"}},
+      "Bytes received for requests"}},
     {"bytesSent",
      {"arangodb_client_connection_statistics_bytes_sent", "histogram",
-      "Bytes sent for a request"}},
+      "Bytes sent for responses"}},
+    {"bytesReceivedUser",
+     {"arangodb_client_user_connection_statistics_bytes_received", "histogram",
+      "Bytes received for requests, only user traffic"}},
+    {"bytesSentUser",
+     {"arangodb_client_user_connection_statistics_bytes_sent", "histogram",
+      "Bytes sent for responses, only user traffic"}},
     {"minorPageFaults",
      {"arangodb_process_statistics_minor_page_faults_total", "counter",
       "The number of minor faults the process has made which have not required "
@@ -438,6 +450,10 @@ auto const statBuilder = makeStatBuilder({
     {"bytesReceived",
      new arangodb_client_connection_statistics_bytes_received()},
     {"bytesSent", new arangodb_client_connection_statistics_bytes_sent()},
+    {"bytesReceivedUser",
+     new arangodb_client_user_connection_statistics_bytes_received()},
+    {"bytesSentUser",
+     new arangodb_client_user_connection_statistics_bytes_sent()},
     {"minorPageFaults",
      new arangodb_process_statistics_minor_page_faults_total()},
     {"majorPageFaults",
@@ -806,7 +822,8 @@ VPackBuilder StatisticsFeature::fillDistribution(
 
 void StatisticsFeature::appendHistogram(
     std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les) {
+    std::string const& label, std::initializer_list<std::string> const& les,
+    bool isInteger) {
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
@@ -827,7 +844,13 @@ void StatisticsFeature::appendHistogram(
     result.append(std::to_string(sum)) += '\n';
   }
   result.append(name).append("_count{}").append(std::to_string(sum)) += '\n';
-  result.append(name).append("_sum{}").append(std::to_string(sum)) += '\n';
+  if (isInteger) {
+    uint64_t v = slc.get("sum").getNumber<uint64_t>();
+    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+  } else {
+    double v = slc.get("sum").getNumber<double>();
+    result.append(name).append("_sum{}").append(std::to_string(v)) += '\n';
+  }
 }
 
 void StatisticsFeature::appendMetric(std::string& result,
@@ -902,23 +925,35 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()),
                  "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime",
-                    {"0.01", "1.0", "60.0", "+Inf"});
+                    {"0.01", "1.0", "60.0", "+Inf"}, false);
     appendHistogram(result, requestStats.totalTime, "totalTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"});
+                     "30.0", "+Inf"},
+                    false);
     appendHistogram(result, requestStats.requestTime, "requestTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"});
+                     "30.0", "+Inf"},
+                    false);
     appendHistogram(result, requestStats.queueTime, "queueTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"});
+                     "30.0", "+Inf"},
+                    false);
     appendHistogram(result, requestStats.ioTime, "ioTime",
                     {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                     "30.0", "+Inf"});
+                     "30.0", "+Inf"},
+                    false);
     appendHistogram(result, requestStats.bytesSent, "bytesSent",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"});
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived",
-                    {"250", "1000", "2000", "5000", "10000", "+Inf"});
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+
+    RequestStatistics::Snapshot requestStatsUser;
+    RequestStatistics::getSnapshot(requestStatsUser,
+                                   stats::RequestStatisticsSource::USER);
+    appendHistogram(result, requestStatsUser.bytesSent, "bytesSentUser",
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
+    appendHistogram(result, requestStatsUser.bytesReceived, "bytesReceivedUser",
+                    {"250", "1000", "2000", "5000", "10000", "+Inf"}, true);
 
     // _httpStatistics()
     using rest::RequestType;

@@ -504,13 +504,13 @@ struct TRI_v8_global_t {
   ~TRI_v8_global_t();
 
   /// @brief whether or not the context has active externals
-  inline bool hasActiveExternals() const { return _activeExternals > 0; }
+  bool hasActiveExternals() const { return _activeExternals > 0; }
 
   /// @brief increase the number of active externals
-  inline void increaseActiveExternals() { ++_activeExternals; }
+  void increaseActiveExternals() { ++_activeExternals; }
 
   /// @brief decrease the number of active externals
-  inline void decreaseActiveExternals() { --_activeExternals; }
+  void decreaseActiveExternals() { --_activeExternals; }
 
   /// @brief agency template
   v8::Persistent<v8::ObjectTemplate> AgencyTempl;
@@ -720,14 +720,17 @@ struct TRI_v8_global_t {
   /// @brief "protocol" key name
   v8::Persistent<v8::String> ProtocolKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "rawSuffix" key name
   v8::Persistent<v8::String> RawSuffixKey;
 
+  /// @brief "refillIndexCaches" key name
+  v8::Persistent<v8::String> RefillIndexCachesKey;
+
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
-
-  /// @brief "rawRequestBody" key name
-  v8::Persistent<v8::String> RawRequestBodyKey;
 
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
@@ -904,51 +907,23 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 
 /// @brief adds a method to the prototype of an object
 template<typename TARGET>
-bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl,
+void TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl,
                            v8::Handle<v8::String> name,
                            v8::FunctionCallback callback,
                            bool isHidden = false) {
-  // hidden method
   if (isHidden) {
+    // hidden method
     tpl->PrototypeTemplate()->Set(
         name, v8::FunctionTemplate::New(isolate, callback), v8::DontEnum);
-  }
-
-  // normal method
-  else {
+  } else {
+    // normal method
     tpl->PrototypeTemplate()->Set(name,
                                   v8::FunctionTemplate::New(isolate, callback));
   }
-  return true;
 }
 
 /// @brief adds a method to an object
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, v8::Function tpl,
-                             v8::Handle<v8::String> name,
-                             v8::Handle<v8::FunctionTemplate> callback,
-                             bool isHidden = false) {
-  auto context = TRI_IGETC;
-  // hidden method
-  if (isHidden) {
-    return tpl
-        .DefineOwnProperty(
-            context, name,
-            callback->GetFunction(context).FromMaybe(v8::Local<v8::Function>()),
-            v8::DontEnum)
-        .FromMaybe(false);
-  }
-  // normal method
-  else {
-    return tpl
-        .Set(context, name,
-             callback->GetFunction(context).FromMaybe(v8::Local<v8::Value>()))
-        .FromMaybe(false);
-  }
-  return false;
-}
-
-/// @brief adds a method to an object
-bool TRI_AddMethodVocbase(
+void TRI_AddMethodVocbase(
     v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
