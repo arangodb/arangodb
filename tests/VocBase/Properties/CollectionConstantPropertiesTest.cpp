@@ -93,18 +93,8 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   EXPECT_FALSE(testee->isSystem);
   EXPECT_FALSE(testee->cacheEnabled);
   EXPECT_FALSE(testee->smartJoinAttribute.has_value());
-  {
-    // Key Options have a more complex default value
-    ASSERT_TRUE(testee->keyOptions.slice().isObject());
-    auto keyOpts = testee->keyOptions.slice();
-
-    // Helper will only return true, if it exists and is true.
-    EXPECT_TRUE(basics::VelocyPackHelper::getBooleanValue(
-        keyOpts, "allowUserKeys", false));
-    EXPECT_EQ(basics::VelocyPackHelper::getStringValue(keyOpts, "type",
-                                                       "not_existing"),
-              "traditional");
-  }
+  EXPECT_TRUE(std::holds_alternative<TraditionalKeyGeneratorProperties>(
+      testee->keyOptions));
   EXPECT_FALSE(testee->isSmart);
   EXPECT_FALSE(testee->isDisjoint);
   EXPECT_FALSE(testee->smartGraphAttribute.has_value());

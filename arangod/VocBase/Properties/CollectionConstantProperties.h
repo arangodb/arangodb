@@ -25,6 +25,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Properties/KeyGeneratorProperties.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
@@ -44,9 +45,6 @@ struct CollectionConstantProperties {
   struct Invariants {
     [[nodiscard]] static auto isSmartConfiguration(
         CollectionConstantProperties const& props) -> inspection::Status;
-
-    [[nodiscard]] static auto isValidKeyOptions(
-        arangodb::velocypack::Builder const& keyOptions) -> inspection::Status;
   };
 
   std::underlying_type_t<TRI_col_type_e> type =
@@ -55,9 +53,7 @@ struct CollectionConstantProperties {
 
   inspection::NonNullOptional<std::string> smartJoinAttribute = std::nullopt;
 
-  // TODO: This can be optimized into it's own struct.
-  // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder keyOptions = defaultKeyOptions();
+  KeyGeneratorProperties keyOptions{};
 
   // NOTE: These attributes are not documented
   bool isSmart = false;
@@ -76,7 +72,6 @@ struct CollectionConstantProperties {
   bool operator==(CollectionConstantProperties const&) const;
 
  private:
-  static arangodb::velocypack::Builder defaultKeyOptions();
   static std::string defaultShardingStrategy();
 };
 
@@ -106,10 +101,7 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           f.field("type", props.type)
               .fallback(f.keep())
               .invariant(UtilityInvariants::isValidCollectionType),
-          f.field("keyOptions", props.keyOptions)
-              .fallback(f.keep())
-              .invariant(
-                  CollectionConstantProperties::Invariants::isValidKeyOptions),
+          f.field("keyOptions", props.keyOptions).fallback(f.keep()),
           /* Backwards compatibility, fields are allowed (MMFILES) but have no
              relevance anymore */
           f.ignoreField("doCompact"), f.ignoreField("isVolatile"),

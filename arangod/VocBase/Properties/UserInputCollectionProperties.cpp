@@ -199,8 +199,7 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
       return {TRI_ERROR_BAD_PARAMETER, "'satellite' cannot use shardKeys"};
     }
   }
-  if (basics::VelocyPackHelper::getStringValue(keyOptions.slice().get("type"),
-                                               "") == "autoincrement") {
+  if (std::holds_alternative<AutoIncrementGeneratorProperties>(keyOptions)) {
     // AutoIncrement is not allowed with any other than 1 shard.
     if (numberOfShards.value() != 1) {
       return {TRI_ERROR_CLUSTER_UNSUPPORTED,

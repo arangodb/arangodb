@@ -47,16 +47,6 @@ CollectionConstantProperties::Invariants::isSmartConfiguration(
   return inspection::Status::Success{};
 }
 
-[[nodiscard]] auto CollectionConstantProperties::Invariants::isValidKeyOptions(
-    arangodb::velocypack::Builder const& keyOptions) -> inspection::Status {
-  // This is rudimentary. The KeyOptions should get their own Inspect.
-  auto slice = keyOptions.slice();
-  if (!slice.isObject()) {
-    return {"has to be an object"};
-  }
-  return inspection::Status::Success{};
-}
-
 bool CollectionConstantProperties::operator==(
     CollectionConstantProperties const& other) const {
   if (type != other.type) {
@@ -80,22 +70,10 @@ bool CollectionConstantProperties::operator==(
   if (smartGraphAttribute != other.smartGraphAttribute) {
     return false;
   }
-  if (!basics::VelocyPackHelper::equal(keyOptions.slice(),
-                                       other.keyOptions.slice(), false)) {
+  if (keyOptions != other.keyOptions) {
     return false;
   }
   return true;
-}
-
-VPackBuilder CollectionConstantProperties::defaultKeyOptions() {
-  // NOTE: Only required until keyGenerator has it's own inspection
-  VPackBuilder defaultEntry;
-  {
-    VPackObjectBuilder objectBuilder{&defaultEntry};
-    defaultEntry.add("allowUserKeys", VPackValue(true));
-    defaultEntry.add("type", VPackValue("traditional"));
-  }
-  return defaultEntry;
 }
 
 std::string CollectionConstantProperties::defaultShardingStrategy() {
