@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <unordered_set>
 
 #include "Actor/ActorPID.h"
 #include "Actor/Runtime.h"
@@ -38,42 +39,72 @@ struct MockScheduler {
 
 struct MockSendingMechanism {};
 
-TEST(RuntimeTest, gives_back_stuff_pushed) {
+TEST(RuntimeTest, spawns_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
   auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-
   Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
 
-  runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
-      TrivialState("foo"), TrivialMessage1("bar"));
+  auto actor = runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState{.state = "foo"}, TrivialMessage0());
 
-  {
-    auto state =
-        runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
-            ActorID{0});
-    if (state != std::nullopt) {
-      std::cout << " state: " << state->state << " called: " << state->called
-                << std::endl;
-    } else {
-      std::cout << "state was nullopt";
-    }
-  }
-
-  auto msg = std::make_unique<Message>(
-      ActorPID{.id = ActorID{0}, .server = "Foo"},
-      ActorPID{.id = ActorID{0}, .server = "PRMR-1234"},
-      std::make_unique<MessagePayload<TrivialMessage>>(TrivialMessage1("baz")));
-  runtime.dispatch(std::move(msg));
-
-  {
-    auto state =
-        runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
-            ActorID{0});
-    if (state != std::nullopt) {
-      std::cout << " state: " << state->state << " called: " << state->called
-                << std::endl;
-    } else {
-      std::cout << "state was nullopt";
-    }
-  }
+  auto state =
+      runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
+          actor);
+  ASSERT_EQ(state, (TrivialState{.state = "foo", .called = 1}));
 }
+
+TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+
+  auto actor = runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState{.state = "foo"}, TrivialMessage1("bar"));
+
+  auto state =
+      runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
+          actor);
+  ASSERT_EQ(state, (TrivialState{.state = "foobar", .called = 1}));
+}
+
+TEST(RuntimeTest, gives_all_existing_actor_ids) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+
+  ASSERT_TRUE(runtime.getActorIDs().empty());
+
+  auto actor_foo = runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState{.state = "foo"}, TrivialMessage0());
+  auto actor_bar = runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState{.state = "bar"}, TrivialMessage0());
+
+  auto allActorIDs = runtime.getActorIDs();
+  ASSERT_EQ(allActorIDs.size(), 2);
+  ASSERT_EQ(
+      (std::unordered_set<ActorID>(allActorIDs.begin(), allActorIDs.end())),
+      (std::unordered_set<ActorID>{actor_foo, actor_bar}));
+}
+
+TEST(RuntimeTest, sends_message_to_an_actor) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+  auto actor = runtime.spawn<TrivialState, TrivialMessage, TrivialHandler>(
+      TrivialState{.state = "foo"}, TrivialMessage0{});
+
+  runtime.dispatch(std::make_unique<Message>(
+      ActorPID{.id = actor, .server = "Foo"},
+      ActorPID{.id = actor, .server = "PRMR-1234"},
+      std::make_unique<MessagePayload<TrivialMessage>>(
+          TrivialMessage1("baz"))));
+
+  auto state =
+      runtime.getActorStateByID<TrivialState, TrivialMessage, TrivialHandler>(
+          actor);
+  ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
+}
+
+// TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
+//   // TODO what happens then? currently aborts
+// }

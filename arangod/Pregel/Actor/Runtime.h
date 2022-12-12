@@ -49,50 +49,43 @@ struct Runtime {
   auto dispatch(std::unique_ptr<Message> msg) -> void {
     if (msg->receiver.server == myServerID) {
       auto& actor = actors.at(msg->receiver.id);
-      if(msg->payload == nullptr) {
+      if (msg->payload == nullptr) {
         std::cout << "dispatch found nullptr payload" << std::endl;
       }
       actor->process(msg->sender, std::move(msg->payload));
     } else {
-      //      sending_mechanism.send(std::move(msg));
-        assert(false);
+      // TODO  sending_mechanism.send(std::move(msg));
+      assert(false);
     }
   }
 
   template<typename ActorState, typename ActorMessage, typename ActorHandler>
-  auto spawn(ActorState initialState, ActorMessage initialMessage) -> void {
-    auto new_id = ActorID{
+  auto spawn(ActorState initialState, ActorMessage initialMessage) -> ActorID {
+    auto newId = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
-
-    auto new_actor = std::make_unique<
+    auto newActor = std::make_unique<
         Actor<Scheduler, ActorHandler, ActorState, ActorMessage>>(
         scheduler, std::make_unique<ActorState>(initialState));
-
-    actors.emplace(new_id, std::move(new_actor));
+    actors.emplace(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    auto address = ActorPID{.id = new_id, .server = myServerID};
+    auto address = ActorPID{.id = newId, .server = myServerID};
+    auto initialPayload =
+        std::make_unique<MessagePayload<ActorMessage>>(initialMessage);
+    dispatch(
+        std::make_unique<Message>(address, address, std::move(initialPayload)));
 
-    auto initialPayload = std::make_unique<MessagePayload<ActorMessage>>(initialMessage);
-
-    if(initialPayload == nullptr) {
-      std::cout << "initialPayload was nullptr" << std::endl;
-    }
-
-    auto msg = std::make_unique<Message>(
-        address, address, std::move(initialPayload));
-
-    dispatch(std::move(msg));
+    return newId;
   }
 
   auto shutdown() -> void {
-    //
+    // TODO
   }
 
   auto getActorIDs() -> std::vector<ActorID> {
     auto res = std::vector<ActorID>{};
 
-    for(auto& [id, _] : actors) {
+    for (auto& [id, _] : actors) {
       res.push_back(id);
     }
 
@@ -101,9 +94,11 @@ struct Runtime {
 
   template<typename ActorState, typename ActorMessage, typename ActorHandler>
   auto getActorStateByID(ActorID id) -> std::optional<ActorState> {
-    if(actors.contains(id)) {
-      auto* actor = dynamic_cast<Actor<Scheduler, ActorHandler, ActorState, ActorMessage> *>(actors[id].get());
-      if(actor != nullptr && actor->state != nullptr) {
+    if (actors.contains(id)) {
+      auto* actor = dynamic_cast<
+          Actor<Scheduler, ActorHandler, ActorState, ActorMessage>*>(
+          actors[id].get());
+      if (actor != nullptr && actor->state != nullptr) {
         return *actor->state;
       }
     }

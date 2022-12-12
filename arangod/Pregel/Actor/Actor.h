@@ -31,12 +31,12 @@
 #include "Message.h"
 #include "MPSCQueue.h"
 
-
 namespace arangodb::pregel::actor {
 
 struct ActorBase {
   virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender, std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
+  virtual auto process(ActorPID sender,
+                       std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
   // virtual auto typeName() -> std::string = 0;
   // state: initialised, running, finished
 };
@@ -44,26 +44,28 @@ struct ActorBase {
 template<typename Scheduler, typename MessageHandler, typename State,
          typename ActorMessage>
 struct Actor : ActorBase {
-  Actor(std::shared_ptr<Scheduler> schedule, std::unique_ptr<State> initialState)
+  Actor(std::shared_ptr<Scheduler> schedule,
+        std::unique_ptr<State> initialState)
       : schedule(schedule), state(std::move(initialState)) {}
 
-  Actor(std::shared_ptr<Scheduler> schedule, std::unique_ptr<State> initialState,
-        std::size_t batchSize)
+  Actor(std::shared_ptr<Scheduler> schedule,
+        std::unique_ptr<State> initialState, std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule) {}
 
   ~Actor() = default;
 
-  void process(ActorPID sender, std::unique_ptr<MessagePayloadBase> msg) override {
+  void process(ActorPID sender,
+               std::unique_ptr<MessagePayloadBase> msg) override {
     auto* ptr = msg.release();
     auto* m = dynamic_cast<MessagePayload<ActorMessage>*>(ptr);
-    if(m == nullptr) {
+    if (m == nullptr) {
+      // TODO possibly send an information back to the runtime
       std::cout << "actor process found a nullptr payload" << std::endl;
       std::abort();
-      // ADB_PROD_ASSERT(false);
-      // platzen
     }
-    // TODO: we're leaking m
-    inbox.push(std::make_unique<InternalMessage>(sender, std::make_unique<ActorMessage>(m->payload)));
+    inbox.push(std::make_unique<InternalMessage>(
+        sender, std::make_unique<ActorMessage>(std::move(m->payload))));
+    delete m;
     kick();
   }
 
@@ -78,10 +80,10 @@ struct Actor : ActorBase {
       auto i = batchSize;
 
       while (auto msg = inbox.pop()) {
-        if(msg == nullptr) {
+        if (msg == nullptr) {
           std::cout << "work msg was nullptr" << std::endl;
         }
-        if(msg->payload == nullptr) {
+        if (msg->payload == nullptr) {
           std::cout << "work payload was nullptr" << std::endl;
         }
 
@@ -93,14 +95,16 @@ struct Actor : ActorBase {
       }
       busy.store(false);
 
-      if(!inbox.empty()) {
+      if (!inbox.empty()) {
         kick();
       }
     }
   }
 
-  struct InternalMessage : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
-    InternalMessage(ActorPID sender, std::unique_ptr<ActorMessage>&& payload) : sender(sender), payload(std::move(payload)) {}
+  struct InternalMessage
+      : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
+    InternalMessage(ActorPID sender, std::unique_ptr<ActorMessage>&& payload)
+        : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
     std::unique_ptr<ActorMessage> payload;
   };

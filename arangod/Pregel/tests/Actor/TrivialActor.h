@@ -34,20 +34,19 @@
 
 namespace arangodb::pregel::actor::test {
 
-  /*
-  struct ActorParameters {
-    using State = ...
+/*
+struct ActorParameters {
+  using State = ...
 
-  }
+}
 */
 struct TrivialState {
-  TrivialState(std::string state) : state(std::move(state)) {}
   std::string state;
   std::size_t called{};
+  bool operator==(const TrivialState&) const = default;
 };
 
-struct TrivialMessage0 {
-};
+struct TrivialMessage0 {};
 
 struct TrivialMessage1 {
   TrivialMessage1(std::string value) : store(std::move(value)) {}
@@ -62,7 +61,6 @@ struct TrivialHandler {
   std::unique_ptr<TrivialState> state;
 
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
-    std::cout << "hello, world" << std::endl;
     state->called++;
     return std::move(state);
   }
@@ -74,4 +72,4 @@ struct TrivialHandler {
   }
 };
 
-}
+}  // namespace arangodb::pregel::actor::test
