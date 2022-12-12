@@ -56,8 +56,7 @@ replicated_log::ReplicatedLog::ReplicatedLog(
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),
-      _myself(std::move(myself)),
-      _guarded(std::move(core)) {}
+      _guarded(std::move(core), std::move(myself)) {}
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
   ADB_PROD_ASSERT(_guarded.getLockedGuard()->stateHandle == nullptr)
@@ -124,6 +123,23 @@ auto replicated_log::ReplicatedLog::updateConfig(
   }
 }
 
+auto replicated_log::ReplicatedLog::updateMyInstanceReference(
+    agency::ServerInstanceReference newReference)
+    -> futures::Future<futures::Unit> {
+  auto guard = _guarded.getLockedGuard();
+  ADB_PROD_ASSERT(newReference.serverId == guard->_myself.serverId);
+  bool rebootIdChanged = guard->_myself.rebootId != newReference.rebootId;
+  if (rebootIdChanged) {
+    LOG_CTX("fa471", INFO, _logContext)
+        << "detected a change in reboot id, restarting participant";
+    guard->_myself = newReference;
+    resetParticipant(guard.get());
+    return tryBuildParticipant(guard.get());
+  } else {
+    return {futures::Unit{}};
+  }
+}
+
 auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     -> futures::Future<futures::Unit> {
   if (not data.latest or not data.stateHandle) {
@@ -144,9 +160,9 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     // rebuild participant
     ADB_PROD_ASSERT(data.core != nullptr);
     auto const& term = data.latest->term;
-    if (term.leader == _myself) {
+    if (term.leader == data._myself) {
       LeaderTermInfo info = {.term = term.term,
-                             .myself = _myself.serverId,
+                             .myself = data._myself.serverId,
                              .initialConfig = configShared};
 
       LOG_CTX("79015", DEBUG, _logContext)
@@ -157,7 +173,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
     } else {
       // follower
       FollowerTermInfo info = {
-          .term = term.term, .myself = _myself.serverId, .leader = {}};
+          .term = term.term, .myself = data._myself.serverId, .leader = {}};
       if (term.leader) {
         info.leader = term.leader->serverId;
       }

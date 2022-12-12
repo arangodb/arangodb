@@ -194,10 +194,14 @@ struct alignas(64) ReplicatedLog {
 
   [[nodiscard]] auto resign() && -> std::unique_ptr<LogCore>;
 
+  auto updateMyInstanceReference(agency::ServerInstanceReference)
+      -> futures::Future<futures::Unit>;
+
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<LogCore> core)
-        : core(std::move(core)) {}
+    explicit GuardedData(std::unique_ptr<LogCore> core,
+                         agency::ServerInstanceReference myself)
+        : core(std::move(core)), _myself(std::move(myself)) {}
 
     struct LatestConfig {
       explicit LatestConfig(agency::LogPlanTermSpecification term,
@@ -210,6 +214,7 @@ struct alignas(64) ReplicatedLog {
     bool resigned{false};
     std::unique_ptr<LogCore> core = nullptr;
     std::shared_ptr<ILogParticipant> participant = nullptr;
+    agency::ServerInstanceReference _myself;
     std::optional<LatestConfig> latest;
     std::shared_ptr<IReplicatedStateHandle> stateHandle;
   };
@@ -222,7 +227,6 @@ struct alignas(64) ReplicatedLog {
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<IParticipantsFactory> const _participantsFactory;
-  agency::ServerInstanceReference const _myself;
   Guarded<GuardedData> _guarded;
 };
 
