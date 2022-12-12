@@ -107,6 +107,7 @@ add_library(arangoserver STATIC
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestSupervisionStateHandler.cpp
+  RestHandler/RestServerInfoHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp

@@ -23,25 +23,19 @@
 
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-
 namespace velocypack {
 class Builder;
 }
 
-class SupportInfoBuilder {
+class RestServerInfoHandler : public arangodb::RestBaseHandler {
  public:
-  SupportInfoBuilder() = delete;
-  static void buildInfoMessage(velocypack::Builder& result,
-                               std::string const& dbName, ArangodServer& server,
-                               bool isLocal, bool detailed = false);
-  static void buildDbServerInfo(velocypack::Builder& result,
-                                ArangodServer& server);
+  RestServerInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- private:
-  static void buildHostInfo(velocypack::Builder& result, ArangodServer& server);
+  char const* name() const override final { return "RestServerInfoHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
 };
-
 }  // namespace arangodb

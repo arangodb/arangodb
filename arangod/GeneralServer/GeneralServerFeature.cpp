@@ -97,6 +97,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestServerInfoHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -802,6 +803,8 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
   }
+  f.addHandler("/_admin/server-info",
+               RestHandlerCreator<RestServerInfoHandler>::createNoData);
 
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData);

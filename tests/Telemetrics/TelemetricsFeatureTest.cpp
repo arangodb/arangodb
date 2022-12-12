@@ -27,9 +27,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Metrics/TelemetricsFeature.h"
 #include "Mocks/Servers.h"
-#include "Scheduler/Scheduler.h"
 
 using namespace arangodb;
+using cast = std::chrono::duration<std::uint64_t>;
 
 class TelemetricsFeatureTest : public ::testing::Test {
  protected:
@@ -55,7 +55,7 @@ TEST_F(TelemetricsFeatureTest, test_log_telemetrics) {
     ASSERT_FALSE(result.get("OK").isNone());
     ASSERT_EQ(result.get("OK").getBoolean(), true);
   });
-  EXPECT_CALL(*sender, send).Times(2);
+  EXPECT_CALL(*sender, send).Times(7);
 
   arangodb::tests::mocks::MockRestServer server(false);
 
@@ -65,7 +65,6 @@ TEST_F(TelemetricsFeatureTest, test_log_telemetrics) {
   ON_CALL(*updateHandler, handleLastUpdatePersistance)
       .WillByDefault([&](bool isCoordinator, std::string& oldRev,
                          uint64_t& lastUpdate, uint64_t interval) {
-        using cast = std::chrono::duration<std::uint64_t>;
         std::uint64_t rightNowSecs =
             std::chrono::duration_cast<cast>(
                 std::chrono::steady_clock::now().time_since_epoch())
@@ -87,12 +86,13 @@ TEST_F(TelemetricsFeatureTest, test_log_telemetrics) {
     updateHandler->getSender()->send(result.slice());
   });
 
-  EXPECT_CALL(*updateHandler, sendTelemetrics).Times(2);
+  EXPECT_CALL(*updateHandler, sendTelemetrics).Times(7);
 
   updateHandler->setTelemetricsSender(std::move(sender));
 
   uint64_t lastUpdate = 0;
   std::string mockOldRev = "abc";
+  uint64_t maxValue = std::numeric_limits<uint64_t>::max();
   ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
                                                          lastUpdate, 5));
   ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
@@ -101,4 +101,41 @@ TEST_F(TelemetricsFeatureTest, test_log_telemetrics) {
                                                           lastUpdate, 5));
   ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
                                                          lastUpdate, 0));
+  lastUpdate = 128;
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 12));
+  lastUpdate = 1;
+
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 1));
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(
+      false, mockOldRev, lastUpdate, maxValue));
+  lastUpdate = std::chrono::duration_cast<cast>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count();
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 0));
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                          lastUpdate, 1));
+  lastUpdate += 10;
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 10));
+  lastUpdate = std::chrono::duration_cast<cast>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count() -
+               10;
+  ASSERT_TRUE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                         lastUpdate, 10));
+  lastUpdate = std::chrono::duration_cast<cast>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count() -
+               10;
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(false, mockOldRev,
+                                                          lastUpdate, 11));
+  lastUpdate = std::chrono::duration_cast<cast>(
+                   std::chrono::steady_clock::now().time_since_epoch())
+                   .count() -
+               10;
+  ASSERT_FALSE(updateHandler->handleLastUpdatePersistance(
+      false, mockOldRev, lastUpdate, maxValue));
 }

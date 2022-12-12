@@ -264,6 +264,7 @@ CommTask::Flow CommTask::prepareExecution(
           !path.starts_with("/_admin/status") &&
           !path.starts_with("/_admin/statistics") &&
           !path.starts_with("/_admin/support-info") &&
+          !path.starts_with("/_admin/server-info") &&
           !path.starts_with("/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET &&
             path.starts_with("/_api/collection")) &&

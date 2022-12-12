@@ -89,6 +89,7 @@ void TelemetricsFeature::collectOptions(
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
   // make it no les than an hour for sending telemetrics
+
   if (_interval < 3600) {
     _interval = 3600;
   }
