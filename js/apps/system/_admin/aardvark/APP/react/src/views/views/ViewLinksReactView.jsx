@@ -13,6 +13,7 @@ const ViewLinksReactView = ({ name }) => {
     formCache: { name }
   });
   const view = useView(name);
+  console.log("name in ViewLInksReactView: ", name);
   const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
   const [state, dispatch] = useReducer(
     getReducer(initialState.current, postProcessor, setChanged, name),
