@@ -74,6 +74,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -3746,7 +3747,7 @@ class IResearchViewVolatitlityTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
-  TRI_vocbase_t* vocbase{nullptr};
+  arangodb::VocbasePtr vocbase;
 
   IResearchViewVolatitlityTest() : server(false) {
     arangodb::tests::init(true);

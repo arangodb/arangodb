@@ -225,44 +225,41 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(
-      v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
+  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(isolate.get());
+  v8::Isolate::Scope isolateScope(isolate);
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(isolate.get());
-  auto context = v8::Context::New(isolate.get());
+  v8::HandleScope handleScope(isolate);
+  auto context = v8::Context::New(isolate);
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate.get(), 0));
+      CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
-  v8g->ArangoErrorTempl.Reset(isolate.get(),
-                              v8::ObjectTemplate::New(isolate.get()));
+  v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   v8g->_vocbase = &vocbase;
-  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
 
-  auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate.get());
-  auto fn_name = getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "name");
-  auto fn_type = getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "type");
+  auto v8Analyzer = getAnalyzersInstance(v8g.get(), isolate);
+  auto fn_name = getAnalyzersMethodFunction(isolate, v8Analyzer, "name");
+  auto fn_type = getAnalyzersMethodFunction(isolate, v8Analyzer, "type");
   auto fn_properties =
-      getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "properties");
+      getAnalyzersMethodFunction(isolate, v8Analyzer, "properties");
   auto fn_features =
-      getAnalyzersMethodFunction(isolate.get(), v8Analyzer, "features");
+      getAnalyzersMethodFunction(isolate, v8Analyzer, "features");
 
   v8Analyzer->SetInternalField(
-      SLOT_CLASS_TYPE,
-      v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
-  v8Analyzer->SetInternalField(
-      SLOT_CLASS, v8::External::New(isolate.get(), analyzer.get()));
+      SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_IRESEARCH_ANALYZER_TYPE));
+  v8Analyzer->SetInternalField(SLOT_CLASS,
+                               v8::External::New(isolate, analyzer.get()));
   // test name (authorised)
   {
     std::vector<v8::Local<v8::Value>> args = {};
@@ -285,7 +282,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->name() ==
-                 TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
+                 TRI_ObjectToString(isolate, result.ToLocalChecked())));
   }
 
   // test name (not authorised)
@@ -306,12 +303,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_name->CallAsFunction(
         context, v8Analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -343,7 +340,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsString());
     EXPECT_TRUE((analyzer->type() ==
-                 TRI_ObjectToString(isolate.get(), result.ToLocalChecked())));
+                 TRI_ObjectToString(isolate, result.ToLocalChecked())));
   }
 
   // test type (not authorised)
@@ -364,12 +361,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_type->CallAsFunction(
         context, v8Analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -402,7 +399,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
     VPackBuilder resultVPack;
-    TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false);
+    TRI_V8ToVPack(isolate, resultVPack, result.ToLocalChecked(), false);
     EXPECT_EQUAL_SLICES(resultVPack.slice(), VPackSlice::emptyObjectSlice());
   }
 
@@ -424,12 +421,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_properties->CallAsFunction(
         context, v8Analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -485,12 +482,12 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_features->CallAsFunction(
         context, v8Analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -551,14 +548,13 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(
-      v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
+  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(isolate.get());
+  v8::Isolate::Scope isolateScope(isolate);
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -566,23 +562,21 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(isolate.get());
-  auto context = v8::Context::New(isolate.get());
+  v8::HandleScope handleScope(isolate);
+  auto context = v8::Context::New(isolate);
 
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate.get(), 0));
+      CreateV8Globals(server.server(), isolate, 0));
 
   // otherwise v8:-utils::CreateErrorObject(...) will fail
-  v8g->ArangoErrorTempl.Reset(isolate.get(),
-                              v8::ObjectTemplate::New(isolate.get()));
+  v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
   v8g->_vocbase = &vocbase;
-  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
 
-  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
-  auto fn_save =
-      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "save");
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate);
+  auto fn_save = getAnalyzersMethodFunction(isolate, v8AnalyzerManager, "save");
 
   // invalid params (no args)
   {
@@ -604,12 +598,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -622,10 +616,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // invalid params (invalid type)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"),
-        v8::True(isolate.get()),
+        TRI_V8_STD_STRING(isolate, arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer2"),
+        v8::True(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -642,12 +635,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -660,11 +653,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // invalid params (invalid name)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::test:Analyzer2"),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        v8::True(isolate.get()),
+        TRI_V8_STD_STRING(isolate, arangodb::StaticStrings::SystemDatabase +
+                                       "::test:Analyzer2"),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        v8::True(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -682,12 +674,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     userManager->setAuthInfo(userMap);
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -700,9 +692,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // invalid params (invalid name)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "::test:Analyzer2"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        v8::True(isolate.get()),
+        TRI_V8_STD_STRING(isolate, "::test:Analyzer2"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        v8::True(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -719,12 +711,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -737,9 +729,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // invalid params (invalid name)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::testAnalyzer"),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        v8::Null(isolate.get()),
+        TRI_V8_ASCII_STRING(isolate, "unknownVocbase::testAnalyzer"),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        v8::Null(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -756,12 +748,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -774,9 +766,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // name collision
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
+        TRI_V8_STD_STRING(isolate, "emptyAnalyzer"s),
+        TRI_V8_ASCII_STRING(isolate, "v8-analyzer-empty"),
+        TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -793,12 +785,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -811,9 +803,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // duplicate matching
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "testAnalyzer1"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        v8::Null(isolate.get()),
+        TRI_V8_STD_STRING(isolate, "testAnalyzer1"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        v8::Null(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -853,9 +845,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // not authorised
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
+        TRI_V8_STD_STRING(isolate, "testAnalyzer2"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -872,12 +864,12 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_save->CallAsFunction(
         context, fn_save, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -890,9 +882,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // successful creation
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
+        TRI_V8_STD_STRING(isolate, "testAnalyzer2"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user = userMap
@@ -930,9 +922,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // successful creation with DB name prefix
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), vocbase.name() + "::testAnalyzer3"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
+        TRI_V8_STD_STRING(isolate, vocbase.name() + "::testAnalyzer3"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user = userMap
@@ -969,9 +961,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   // successful creation in system db by :: prefix
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(isolate.get(), "::testAnalyzer4"s),
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")};
+        TRI_V8_STD_STRING(isolate, "::testAnalyzer4"s),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
+        TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     auto& user = userMap
@@ -1059,14 +1051,13 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(
-      v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
+  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(isolate.get());
+  v8::Isolate::Scope isolateScope(isolate);
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -1074,25 +1065,25 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
 
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(isolate.get());
-  auto context = v8::Context::New(isolate.get());
+  v8::HandleScope handleScope(isolate);
+  auto context = v8::Context::New(isolate);
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
 
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate.get(), 0));
+      CreateV8Globals(server.server(), isolate, 0));
   v8g->ArangoErrorTempl.Reset(
-      isolate.get(),
+      isolate,
       v8::ObjectTemplate::New(
-          isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will
-                            // fail
+          isolate));  // otherwise v8:-utils::CreateErrorObject(...) will
+                      // fail
   v8g->_vocbase = &vocbase;
-  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
 
-  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate);
   auto fn_analyzer =
-      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "analyzer");
+      getAnalyzersMethodFunction(isolate, v8AnalyzerManager, "analyzer");
 
   // invalid params (no name)
   {
@@ -1112,12 +1103,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1130,7 +1121,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get static (known analyzer)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "identity"),
+        TRI_V8_ASCII_STRING(isolate, "identity"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1167,7 +1158,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get static (unknown analyzer)
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
+        TRI_V8_ASCII_STRING(isolate, "unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1192,9 +1183,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (known analyzer) authorized
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
+        TRI_V8_STD_STRING(isolate, arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1230,7 +1220,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (known analyzer) authorized but wrong current db
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
+        TRI_V8_ASCII_STRING(isolate, "testVocbase::testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1246,13 +1236,13 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO);
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     arangodb::velocypack::Builder response;
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1264,9 +1254,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (known analyzer) authorized from system with another current db
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
+        TRI_V8_STD_STRING(isolate, arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1303,9 +1292,8 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (known analyzer) not authorized
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
+        TRI_V8_STD_STRING(isolate, arangodb::StaticStrings::SystemDatabase +
+                                       "::testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1322,12 +1310,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1341,8 +1329,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::unknown"),
+            isolate, arangodb::StaticStrings::SystemDatabase + "::unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1368,8 +1355,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(
-            isolate.get(),
-            arangodb::StaticStrings::SystemDatabase + "::unknown"),
+            isolate, arangodb::StaticStrings::SystemDatabase + "::unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1386,12 +1372,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1404,11 +1390,11 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
+        TRI_V8_ASCII_STRING(isolate, "unknownVocbase::unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     arangodb::velocypack::Builder response;
     auto& user = userMap
                      .emplace("", arangodb::auth::User::newUser(
@@ -1425,7 +1411,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1439,7 +1425,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
+        TRI_V8_ASCII_STRING(isolate, "unknownVocbase::unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1456,12 +1442,12 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result = fn_analyzer->CallAsFunction(
         context, fn_analyzer, static_cast<int>(args.size()), args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1523,33 +1509,31 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(
-      v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
+  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(isolate.get());
+  v8::Isolate::Scope isolateScope(isolate);
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(isolate.get());
-  auto context = v8::Context::New(isolate.get());
+  v8::HandleScope handleScope(isolate);
+  auto context = v8::Context::New(isolate);
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate.get(), 0));
+      CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
-  v8g->ArangoErrorTempl.Reset(isolate.get(),
-                              v8::ObjectTemplate::New(isolate.get()));
-  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+  v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
 
-  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate);
   auto fn_toArray =
-      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "toArray");
+      getAnalyzersMethodFunction(isolate, v8AnalyzerManager, "toArray");
   // system database (authorised)
   {
     v8g->_vocbase = &systemDBVocbase;
@@ -1931,33 +1915,31 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
-  auto isolate = std::shared_ptr<v8::Isolate>(
-      v8::Isolate::New(isolateParams),
-      [](v8::Isolate* p) -> void { p->Dispose(); });
+  auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
+  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::Isolate::Scope isolateScope(isolate.get());
+  v8::Isolate::Scope isolateScope(isolate);
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
-  v8::HandleScope handleScope(isolate.get());
-  auto context = v8::Context::New(isolate.get());
+  v8::HandleScope handleScope(isolate);
+  auto context = v8::Context::New(isolate);
   // required for TRI_AddMethodVocbase(...)
   v8::Context::Scope contextScope(context);
   // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   std::unique_ptr<V8Global<arangodb::ArangodServer>> v8g(
-      CreateV8Globals(server.server(), isolate.get(), 0));
+      CreateV8Globals(server.server(), isolate, 0));
   // otherwise v8:-utils::CreateErrorObject(...) will fail
-  v8g->ArangoErrorTempl.Reset(isolate.get(),
-                              v8::ObjectTemplate::New(isolate.get()));
-  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
+  v8g->ArangoErrorTempl.Reset(isolate, v8::ObjectTemplate::New(isolate));
+  arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate);
 
-  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate.get());
+  auto v8AnalyzerManager = getAnalyzerManagerInstance(v8g.get(), isolate);
   auto fn_remove =
-      getAnalyzersMethodFunction(isolate.get(), v8AnalyzerManager, "remove");
+      getAnalyzersMethodFunction(isolate, v8AnalyzerManager, "remove");
 
   // invalid params (no name)
   {
@@ -1978,14 +1960,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     userManager->setAuthInfo(userMap);
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
                              args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -1999,7 +1981,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
+        TRI_V8_ASCII_STRING(isolate, "unknown"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2016,14 +1998,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
                              args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -2037,7 +2019,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
+        TRI_V8_ASCII_STRING(isolate, "testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2054,14 +2036,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
                              args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -2079,8 +2061,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
-        v8::False(isolate.get()),
+        TRI_V8_ASCII_STRING(isolate, "testAnalyzer2"),
+        v8::False(isolate),
     };
     auto inUseAnalyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
@@ -2102,14 +2084,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
                              args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -2127,8 +2109,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
-        v8::True(isolate.get()),
+        TRI_V8_ASCII_STRING(isolate, "testAnalyzer2"),
+        v8::True(isolate),
     };
     auto inUseAnalyzer = analyzers.get(
         arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
@@ -2165,7 +2147,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
+        TRI_V8_ASCII_STRING(isolate, "testAnalyzer1"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2196,8 +2178,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "::testAnalyzer3"),
-        v8::False(isolate.get()),
+        TRI_V8_ASCII_STRING(isolate, "::testAnalyzer3"),
+        v8::False(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2214,7 +2196,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
@@ -2230,8 +2212,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &systemDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
-        v8::False(isolate.get()),
+        TRI_V8_ASCII_STRING(isolate, "testVocbase::testAnalyzer1"),
+        v8::False(isolate),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2253,14 +2235,14 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
                                         // configuration from system database
 
     arangodb::velocypack::Builder response;
-    v8::TryCatch tryCatch(isolate.get());
+    v8::TryCatch tryCatch(isolate);
     auto result =
         v8::Function::Cast(*fn_remove)
             ->CallAsFunction(context, fn_remove, static_cast<int>(args.size()),
                              args.data());
     ASSERT_TRUE(result.IsEmpty());
     ASSERT_TRUE(tryCatch.HasCaught());
-    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    TRI_V8ToVPack(isolate, response, tryCatch.Exception(), false);
     auto slice = response.slice();
     ASSERT_TRUE(slice.isObject());
     ASSERT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
@@ -2277,7 +2259,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
+        TRI_V8_ASCII_STRING(isolate, "testAnalyzer2"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -2308,7 +2290,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   {
     v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {
-        TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer3"),
+        TRI_V8_ASCII_STRING(isolate, "testVocbase::testAnalyzer3"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions

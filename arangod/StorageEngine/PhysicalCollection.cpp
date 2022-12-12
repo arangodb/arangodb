@@ -412,7 +412,7 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
         _indexes.erase(it);
 
         if (!inRecovery) {
-          Result res = duringDropIndex(*it);
+          Result res = duringDropIndex(toRemove);
           if (res.fail()) {
             // callback failed - revert back to copy
             _indexes = std::move(copy);

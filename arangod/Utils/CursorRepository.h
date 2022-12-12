@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Utils/Cursor.h"

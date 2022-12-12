@@ -249,14 +249,12 @@ bool ClusterUpgradeFeature::upgradeCoordinator() {
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       // probably deleted in the meantime... so we can ignore it here
       continue;
     }
-
-    auto guard = scopeGuard([&vocbase]() noexcept { vocbase->release(); });
 
     auto res = methods::Upgrade::startupCoordinator(*vocbase);
     if (res.fail()) {
