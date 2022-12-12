@@ -1,6 +1,9 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
 * Add missing metrics for user traffic: Histograms:
     `arangodb_client_user_connection_statistics_bytes_received`
     `arangodb_client_user_connection_statistics_bytes_sent`

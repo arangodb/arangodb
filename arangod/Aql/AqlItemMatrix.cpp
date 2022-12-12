@@ -38,29 +38,32 @@ static constexpr size_t InvalidRowIndex = std::numeric_limits<size_t>::max();
 
 size_t AqlItemMatrix::numberOfBlocks() const noexcept { return _blocks.size(); }
 
-std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(size_t index) const noexcept {
+std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(
+    size_t index) const noexcept {
   TRI_ASSERT(index < numberOfBlocks());
   // The first block could contain a shadowRow
   // and the first unused data row, could be after the
   // shadowRow.
   // All other blocks start with the first row as data row
-  return  {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
+  return {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
 }
 
-std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(size_t index) const noexcept {
+std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(
+    size_t index) const noexcept {
   TRI_ASSERT(index < numberOfBlocks());
   // The first block could contain a shadowRow
   // and the first unused data row, could be after the
   // shadowRow.
   // All other blocks start with the first row as data row
   TRI_ASSERT(_blocks[index].get());
-  return  {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
+  return {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
 }
 
-InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
-  auto const& [block, unused] = getBlock(index.first);
+InputAqlItemRow AqlItemMatrix::getRow(
+    AqlItemMatrix::RowIndex index) const noexcept {
+  auto [block, unused] = getBlock(index.first);
   TRI_ASSERT(index.second >= unused);
-  return InputAqlItemRow{block, index.second};
+  return InputAqlItemRow{std::move(block), index.second};
 }
 
 std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
@@ -70,13 +73,15 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
     for (auto const& [index, block] : enumerate(_blocks)) {
       // Default case, 0 -> end
       size_t startRow = 0;
-      // We know block size is <= DefaultBatchSize (1000) so it should easily fit into 32bit...
+      // We know block size is <= DefaultBatchSize (1000) so it should easily
+      // fit into 32bit...
       size_t endRow = block->numRows();
 
       if (index == 0) {
         startRow = _startIndexInFirstBlock;
       }
-      if (index + 1 == _blocks.size() && _stopIndexInLastBlock != InvalidRowIndex) {
+      if (index + 1 == _blocks.size() &&
+          _stopIndexInLastBlock != InvalidRowIndex) {
         endRow = _stopIndexInLastBlock;
       }
       for (; startRow < endRow; ++startRow) {
@@ -97,7 +102,9 @@ void AqlItemMatrix::clear() {
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
-RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
+RegisterCount AqlItemMatrix::getNumRegisters() const noexcept {
+  return _nrRegs;
+}
 
 uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
 
@@ -120,7 +127,8 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
         "limit after sorting.");
   }
   // Test if we have more than uint32_t many rows within a block
-  if (ADB_UNLIKELY(blockPtr->numRows() > std::numeric_limits<uint32_t>::max())) {
+  if (ADB_UNLIKELY(blockPtr->numRows() >
+                   std::numeric_limits<uint32_t>::max())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_RESOURCE_LIMIT,
         "Reaching the limit of AqlItems to SORT, please consider lowering "
@@ -129,7 +137,8 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
 
   // ShadowRow handling
   if (blockPtr->hasShadowRows()) {
-    auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(0);
+    auto [shadowRowsBegin, shadowRowsEnd] =
+        blockPtr->getShadowRowIndexesFrom(0);
     TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
     _stopIndexInLastBlock = *shadowRowsBegin;
@@ -153,7 +162,8 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
   ShadowAqlItemRow shadowRow{_blocks.back(), _stopIndexInLastBlock};
 
   // We need to move forward the next shadow row.
-  auto [shadowRowsBegin, shadowRowsEnd] = blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  auto [shadowRowsBegin, shadowRowsEnd] =
+      blockPtr->getShadowRowIndexesFrom(_stopIndexInLastBlock);
   _startIndexInFirstBlock = _stopIndexInLastBlock + 1;
 
   shadowRowsBegin++;
@@ -189,9 +199,12 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
-    : _numDataRows(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
+    : _numDataRows(0),
+      _nrRegs(nrRegs),
+      _stopIndexInLastBlock(InvalidRowIndex) {}
 
-[[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept -> std::size_t {
+[[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept
+    -> std::size_t {
   size_t num = 0;
   for (auto const& block : _blocks) {
     // We only have valid blocks
@@ -206,18 +219,22 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   return num - _startIndexInFirstBlock - countShadowRows();
 }
 
-[[nodiscard]] auto AqlItemMatrix::countShadowRows() const noexcept -> std::size_t {
+[[nodiscard]] auto AqlItemMatrix::countShadowRows() const noexcept
+    -> std::size_t {
   // We can only have shadow rows in the last block
   if (!stoppedOnShadowRow()) {
     return 0;
   }
   auto const& block = _blocks.back();
-  auto [shadowRowsBegin, shadowRowsEnd] = block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
-  return std::count_if(shadowRowsBegin, shadowRowsEnd,
-                       [&](auto r) -> bool { return r >= _stopIndexInLastBlock; });
+  auto [shadowRowsBegin, shadowRowsEnd] =
+      block->getShadowRowIndexesFrom(_stopIndexInLastBlock);
+  return std::count_if(shadowRowsBegin, shadowRowsEnd, [&](auto r) -> bool {
+    return r >= _stopIndexInLastBlock;
+  });
 }
 
-[[nodiscard]] auto AqlItemMatrix::hasMoreAfterShadowRow() const noexcept -> bool {
+[[nodiscard]] auto AqlItemMatrix::hasMoreAfterShadowRow() const noexcept
+    -> bool {
   if (_blocks.empty()) {
     return false;
   }
@@ -245,3 +262,4 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
   clear();
   return {skipped, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
 }
+
