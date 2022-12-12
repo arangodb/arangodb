@@ -458,8 +458,10 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
               using std::operator""sv;
               auto idxType = it.get("type").stringView();
               result.add("type", VPackValue(idxType));
-              result.add("sparse", VPackValue(idxType));
-              result.add("unique", VPackValue(idxType));
+              bool isSparse = it.get("sparse").getBoolean();
+              bool isUnique = it.get("unique").getBoolean();
+              result.add("sparse", VPackValue(isSparse));
+              result.add("unique", VPackValue(isUnique));
               if (idxType.compare("edge"sv) == 0) {
                 idxTypesToAmounts["edge"]++;
               } else if (idxType.compare("geo"sv) == 0) {
@@ -492,7 +494,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
             result.close();
 
             for (auto const& [type, amount] : idxTypesToAmounts) {
-              result.add(std::string("amount" + type), VPackValue(amount));
+              result.add(std::string("amount-" + type), VPackValue(amount));
             }
 
             result.close();
