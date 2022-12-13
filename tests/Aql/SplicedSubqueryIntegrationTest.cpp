@@ -37,6 +37,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ReturnExecutor.h"
@@ -49,11 +50,6 @@
 #include "Aql/AqlExecutorTestCase.h"
 #include "Aql/TestLambdaExecutor.h"
 #include "Aql/WaitingExecutionBlockMock.h"
-
-// TODO: remove me
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -406,6 +402,43 @@ TEST_P(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
       .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({0}, {})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+};
+
+// Regression test for https://github.com/arangodb/arangodb/issues/16451
+TEST_P(SplicedSubqueryIntegrationTest, nested_subqueries_inner_limit) {
+  auto helper = makeExecutorTestHelper<1, 1>();
+  auto call = AqlCall{};
+  ExecutionBlock::setDefaultBatchSize(2);
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    ExecutionBlock::setDefaultBatchSize(
+        ExecutionBlock::ProductionDefaultBatchSize);
+  });
+  helper
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
+                                          makeSubqueryStartExecutorInfos(),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryStartRegisterInfos(),
+                                          makeSubqueryStartExecutorInfos(),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
+                                        makeSubqueryEndExecutorInfos(0),
+                                        ExecutionNode::SUBQUERY_END)
+      .addConsumer<LimitExecutor>(
+          RegisterInfos(RegIdSet{}, RegIdSet{}, RegisterCount{2},
+                        RegisterCount{2}, {},
+                        RegIdSetStack{RegIdSet{RegisterId{0}, RegisterId{0},
+                                               RegisterId{0}}}),
+          LimitExecutor::Infos(0, 1 /* limit */, false), ExecutionNode::LIMIT)
+      .addConsumer<SubqueryEndExecutor>(makeSubqueryEndRegisterInfos(0),
+                                        makeSubqueryEndExecutorInfos(0),
+                                        ExecutionNode::SUBQUERY_END)
+      .setInputValueList(1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run();

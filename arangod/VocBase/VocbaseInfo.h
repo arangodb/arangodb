@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Utils/OperationOptions.h"
@@ -79,13 +80,13 @@ class CreateDatabaseInfo {
                      ExecContext const&);
   Result load(std::string const& name, uint64_t id);
 
-  Result load(std::string const& name, VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice());
+  Result load(std::string const& name, VPackSlice options,
+              VPackSlice users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name, uint64_t id, VPackSlice const& options,
-              VPackSlice const& users);
+  Result load(std::string const& name, uint64_t id, VPackSlice options,
+              VPackSlice users);
 
-  Result load(VPackSlice const& options, VPackSlice const& users);
+  Result load(VPackSlice options, VPackSlice users);
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
@@ -132,8 +133,8 @@ class CreateDatabaseInfo {
   void shardingPrototype(ShardingPrototype type);
 
  private:
-  Result extractUsers(VPackSlice const& users);
-  Result extractOptions(VPackSlice const& options, bool extactId = true,
+  Result extractUsers(VPackSlice users);
+  Result extractOptions(VPackSlice options, bool extactId = true,
                         bool extractName = true);
   Result checkOptions();
 

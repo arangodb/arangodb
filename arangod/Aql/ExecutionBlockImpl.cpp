@@ -1442,7 +1442,31 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // We can never hit an offset on the shadowRow level again,
         // we can only hit this with HARDLIMIT / FULLCOUNT
         TRI_ASSERT(shadowCall.getOffset() == 0);
-        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+
+        // `depthToSkip` is the depth according to our call and output; when
+        // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
+        // applied to our input.
+        // For SQS nodes, this needs to be adjusted; in principle we'd just need
+        //   depthToSkip += offset;
+        // , except depthToSkip is unsigned, and we would get integer
+        // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
+        // Note that SubqueryEnd nodes do *not* need this adjustment, as an
+        // additional call is pushed to the stack already when the
+        // ExecutionContext is constructed at the beginning of
+        // executeWithoutTrace, so input and call-stack already align at this
+        // point.
+        auto skipped = std::invoke([&]() {
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<-1>(
+                depthToSkip);
+          }
+          if constexpr (std::is_same_v<DataRange, AqlItemBlockInputRange>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<0>(depthToSkip);
+          } else {
+            return _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+          }
+        });
+
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
                                        MultiAqlItemBlockInputRange>) {
