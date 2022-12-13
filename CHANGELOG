@@ -1,6 +1,8 @@
 devel
 -----
 
+* Remove async mode from pregel
+
 * Print the pid of the process which sent a SIGABRT or other fatal 
   signal that shuts down ArangoDB ungracefully.
 
