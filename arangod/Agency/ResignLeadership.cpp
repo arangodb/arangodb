@@ -46,10 +46,12 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_undoMoves = _snapshot.hasAsBool(path + "undoMoves");
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
     _creator = tmp_creator.value();
+    _undoMoves = tmp_undoMoves.value_or(true);
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -168,6 +170,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add("server", VPackValue(_server));
       _jb->add("jobId", VPackValue(_jobId));
       _jb->add("creator", VPackValue(_creator));
+      _jb->add("undoMoves", VPackValue(_undoMoves));
       _jb->add("timeCreated",
                VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -403,7 +406,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, true)
+                    toServer, isLeader, /*remainsFollower*/ true, _undoMoves)
               .withParent(_jobId)
               .create(trx);
 
