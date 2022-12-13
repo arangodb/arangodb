@@ -934,7 +934,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     // we should have written exactly all score registers by now
     TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
-    UNUSED(bufferEntry);
+    IRS_IGNORE(bufferEntry);
   }
   return true;
 }
