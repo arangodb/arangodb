@@ -32,6 +32,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
+const isEnterprise = require("internal").isEnterprise();
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
@@ -493,7 +494,13 @@ function SynchronousReplicationWithViewSuite () {
         c.save({ name_1: "efg", "value": [{ "nested_1": [{ "nested_2": "foo423"}]}]});
 
         viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
-        viewOperations("create", { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } });
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } };
+        } else {
+          viewMeta = { properties: { links: { [cn]: { includeAllFields: true } } } };
+        }
+        viewOperations("create", viewMeta);
 
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);

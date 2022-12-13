@@ -33,6 +33,7 @@ const analyzers = require("@arangodb/analyzers");
 const internal = require("internal");
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
+const isEnterprise = require("internal").isEnterprise();
 
 const qqWithSync = `FOR doc IN UnitTestsView 
                       SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'myText'), 'myText') 
@@ -100,7 +101,12 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+      let meta = { };
+      if (isEnterprise) {
+        meta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+      } else {
+        meta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }}}}};
+      }
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -140,7 +146,12 @@ function TransactionsIResearchSuite() {
     testRollbackInsertWithLinks2 : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      } else {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      }
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;

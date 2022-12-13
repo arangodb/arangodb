@@ -31,6 +31,7 @@ var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
 const isCluster = require("internal").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 const request = require("@arangodb/request");
 const { triggerMetrics } = require("@arangodb/test-helper");
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
@@ -68,6 +69,8 @@ function IResearchFeatureDDLTestSuite() {
     /// @brief test creating link with 'inBackground' set to true
     ////////////////////////////////////////////////////////////////////////////
     testCreateLinkInBackgroundMode: function () {
+      var fs = require('fs');
+      var db = require('internal').db;
       const colName = 'TestCollection';
       const viewName = 'TestView';
       const initialCount = 500;
@@ -86,8 +89,6 @@ function IResearchFeatureDDLTestSuite() {
         db._executeTransaction({
           collections: { write: params.colName },
           action: function (params) {
-            var fs = require('fs');
-            var db = require('internal').db;
             var c = db._collection(params.colName);
             fs.write(params.markerFileName, "TEST");
             for (var i = 0; i < params.inTransCount; ++i) {
@@ -1225,49 +1226,74 @@ function IResearchFeatureDDLTestSuite() {
         consolidationIntervalMsec: 0, // disable consolidation
         cleanupIntervalStep: 0        // disable cleanup
       });
-      view.properties({
-        links: {
-          [colName]: {
-            "includeAllFields": true,
-            "fields": {
-              "value": {
-                "nested": {
-                  "nested_1": {
-                    "nested": {
-                      "nested_2": {}
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = {
+          links: {
+            [colName]: {
+              "includeAllFields": true,
+              "fields": {
+                "value": {
+                  "nested": {
+                    "nested_1": {
+                      "nested": {
+                        "nested_2": {}
+                      }
                     }
                   }
-                }
-              },
-              "name_1": {}
+                },
+                "name_1": {}
+              }
+            }
+          }
+        };
+      } else {
+        viewMeta = {
+          links: {
+            [colName]: {
+              "includeAllFields": true
             }
           }
         }
-      });
+      }
+      view.properties(viewMeta);
 
-      const idx = col.ensureIndex({
-        name: "TestIndex",
-        type: "inverted",
-        fields: [
-          {
-            "name": "value",
-            "nested": [
-              {
-                "name": "nested_1",
-                "nested": [
-                  {
-                    "name": "nested_2"
-                  }
-                ]
-              }
-            ]
-          },
-          "name_1"
-        ],
-        commitIntervalMsec: 0,        // disable auto-commit
-        consolidationIntervalMsec: 0, // disable consolidation
-        cleanupIntervalStep: 0        // disable cleanup
-      });
+      let indexMeta = {};
+      if (isEnterprise) {
+        indexMeta = {
+          name: "TestIndex",
+          type: "inverted",
+          fields: [
+            {
+              "name": "value",
+              "nested": [
+                {
+                  "name": "nested_1",
+                  "nested": [
+                    {
+                      "name": "nested_2"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name_1"
+          ],
+          commitIntervalMsec: 0,        // disable auto-commit
+          consolidationIntervalMsec: 0, // disable consolidation
+          cleanupIntervalStep: 0        // disable cleanup
+        };
+      } else {
+        indexMeta = {
+          name: "TestIndex",
+          type: "inverted",
+          "includeAllFields": true,
+          commitIntervalMsec: 0,        // disable auto-commit
+          consolidationIntervalMsec: 0, // disable consolidation
+          cleanupIntervalStep: 0        // disable cleanup
+        }
+      }
+      const idx = col.ensureIndex(indexMeta);
 
       const types = ["arangosearch", "inverted"];
 

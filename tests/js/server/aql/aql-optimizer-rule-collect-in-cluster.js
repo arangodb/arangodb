@@ -35,6 +35,7 @@ const db = require("@arangodb").db;
 const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function optimizerCollectInClusterSuite(isSearchAlias) {
@@ -48,19 +49,31 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       c = db._create("UnitTestsCollection", {numberOfShards: 3});
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({
-          type: "inverted",
-          includeAllFields: true,
-          // primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-          fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
-        });
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+            fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+          };
+        } else {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+            fields: [{"name": "value_nested"}]
+          };
+        }
+        let i = c.ensureIndex(indexMeta);
         v = db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{collection: "UnitTestsCollection", index: i.name}]
         });
       } else {
-        v = db._createView("UnitTestViewSorted", "arangosearch",
-          {
-            // primarySort: [{"field": "value", "direction": "asc"}],
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
+            primarySort: [{"field": "value", "direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
@@ -71,7 +84,23 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
                 }
               }
             }
-          });
+          };
+        } else {
+          viewMeta = {
+            primarySort: [{"field": "value", "direction": "asc"}],
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {analyzers: ["identity"]},
+                  group: {analyzers: ["identity"]},
+                  "value_nested": {}
+                }
+              }
+            }
+          };
+        }
+        v = db._createView("UnitTestViewSorted", "arangosearch", viewMeta);
       }
 
       let docs = [];
@@ -269,19 +298,31 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       c = db._create("UnitTestsCollection", {numberOfShards: 1});
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({
-          type: "inverted",
-          includeAllFields: true,
-          // primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-          fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
-        });
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+            fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+          };
+        } else {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+            fields: [{"name": "value_nested"}]
+          };
+        }
+        let i = c.ensureIndex(indexMeta);
         v = db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{collection: "UnitTestsCollection", index: i.name}]
         });
       } else {
-        v = db._createView("UnitTestViewSorted", "arangosearch",
-          {
-            // primarySort: [{"field": "value", "direction": "asc"}],
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
+            primarySort: [{"field": "value", "direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
@@ -292,7 +333,23 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
                 }
               }
             }
-          });
+          };
+        } else {
+          viewMeta = {
+            primarySort: [{"field": "value", "direction": "asc"}],
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {analyzers: ["identity"]},
+                  group: {analyzers: ["identity"]},
+                  "value_nested": {}
+                }
+              }
+            }
+          };
+        }
+        v = db._createView("UnitTestViewSorted", "arangosearch", viewMeta);
       }
 
       let docs = [];

@@ -2205,9 +2205,16 @@ function iResearchFeatureAqlTestSuite () {
         let col = db._create(collectionName);
         col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" },  ]);
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        db._createView(viewName, "arangosearch", {
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
             links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true,
-            "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}});
+            "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {
+            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
       } catch (e) { }
       {
         try {
@@ -2258,13 +2265,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({field:"frank"});
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:true, 
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         assertEqual(3, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
                                  "OPTIONS { waitForSync: true } RETURN d ",
                                 { '@v':viewName }).toArray().length);
@@ -2293,13 +2309,24 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
                                               returnType:"number"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                      "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       includeAllFields:true, 
-                                       analyzers:['calcUnderTest']}}});
+        
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+              "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        }
+                                                                                    
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2338,13 +2365,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_STRING(@param)",
                                               returnType:"number"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                      "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       includeAllFields:true, 
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+              "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        }                                     
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2383,14 +2419,24 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
                                               returnType:"number"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                      "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       includeAllFields:false, 
-                                       fields:{field:{}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {   
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+              "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               includeAllFields:false, 
+               fields:{field:{}},
+               analyzers:['calcUnderTest']}}};      
+        } else {
+          viewMeta =  {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}},
+               analyzers:['calcUnderTest']}}};
+        }                             
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2430,13 +2476,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_STRING(a)",
                                               returnType:"number"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:false, 
-                                       fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {        
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2476,13 +2531,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN @param",
                                               returnType:"string"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:true,
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2522,13 +2586,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
                                               returnType:"string"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:true,
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2568,13 +2641,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
                                               returnType:"string"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:false, 
-                                       fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2615,13 +2697,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_NUMBER(a)",
                                               returnType:"string"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:false, 
-                                       fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2662,13 +2753,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ",
                                               returnType:"bool"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                      "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       includeAllFields:true, 
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+              "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2703,13 +2803,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ? 1 : 0 ",
                                               returnType:"bool"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:true,
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true,
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2744,13 +2853,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2",
                                               returnType:"bool"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:false, 
-                                       fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2787,13 +2905,22 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2 ? 1 : 0",
                                               returnType:"bool"});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:false, 
-                                       fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['calcUnderTest']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['calcUnderTest']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:false, 
+               analyzers:['calcUnderTest']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2847,13 +2974,22 @@ function iResearchFeatureAqlTestSuite () {
         let col = db._create(colName);
         col.save({field:"value"});
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        db._createView(viewName, "arangosearch", 
-                                  {links: 
-                                    {[colName]: 
-                                      {storeValues: 'id', 
-                                       includeAllFields:true, 
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['identity']}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['identity']}}};
+        } else {
+          viewMeta = {links: 
+            {[colName]: 
+              {storeValues: 'id', 
+               includeAllFields:true, 
+               analyzers:['identity']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " + 
                                  "OPTIONS { waitForSync: true } RETURN d ",
                                 { '@v':viewName }).toArray().length);
@@ -2883,13 +3019,22 @@ function iResearchFeatureAqlTestSuite () {
         db._useDatabase(dbName);
         let col = db._create(colName);
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        db._createView(viewName, "arangosearch", 
-                                  {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
-                                    {[colName]: 
-                                      {storeValues: 'id',
-                                       includeAllFields:true, 
-                                       "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-                                       analyzers:['identity']}}});
+        let viewMeta = {};
+        if (isEnterprise) { 
+          viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
+            {[colName]: 
+              {storeValues: 'id',
+               includeAllFields:true, 
+               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers:['identity']}}};
+        } else {
+          viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
+            {[colName]: 
+              {storeValues: 'id',
+               includeAllFields:true, 
+               analyzers:['identity']}}};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({field: i});

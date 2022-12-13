@@ -34,6 +34,7 @@ const analyzers = require("@arangodb/analyzers");
 const internal = require("internal");
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
 const db = internal.db;
 
@@ -497,26 +498,48 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         });
       } else {
         v = db._createView("UnitTestsView", "arangosearch", {});
-        var meta = {
-          links: {
-            "UnitTestsCollection": {
-              includeAllFields: true,
-              storeValues: "id",
-              fields: {
-                text: { analyzers: [ "text_en" ] }
+        var meta = {};
+        if (isEnterprise) {
+          meta = {
+            links: {
+              "UnitTestsCollection": {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [ "text_en" ] },
+                  "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                }
               }
             }
-          }
-        };
+          };
+        } else {
+          meta = {
+            links: {
+              "UnitTestsCollection": {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [ "text_en" ] }
+                }
+              }
+            }
+          };
+        }
+;
         v.properties(meta);
-        v2 = db._createView("CompoundView", "arangosearch",
-          { links : {
-              UnitTestsCollection: { includeAllFields: true },
-              UnitTestsCollection2 : { includeAllFields: true }
-            }}
-        );
+        if (isEnterprise) {
+          meta = { links : {
+            UnitTestsCollection: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
+            UnitTestsCollection2 : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
+          }};
+        } else {
+          meta = { links : {
+            UnitTestsCollection: { includeAllFields: true },
+            UnitTestsCollection2 : { includeAllFields: true }
+          }};
+        }
+        v2 = db._createView("CompoundView", "arangosearch", meta);
       }
-
 
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
@@ -528,10 +551,12 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         docs.push({ a: "foo", b: "baz", c: i });
         docs.push({ a: "bar", b: "foo", c: i });
         docs.push({ a: "baz", b: "foo", c: i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
 
         docs2.push({ a: "foo", b: "bar", c: i });
         docs2.push({ a: "bar", b: "foo", c: i });
         docs2.push({ a: "baz", b: "foo", c: i });
+        docs2.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
 
       docs.push({ name: "full", text: "the quick brown fox jumps over the lazy dog" });

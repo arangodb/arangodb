@@ -31,6 +31,7 @@ var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 function viewFiltersMerging(isSearchAlias) {
@@ -49,30 +50,60 @@ function viewFiltersMerging(isSearchAlias) {
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({
-          type: "inverted",
-          fields: ["value", "count", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
-        });
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {
+            type: "inverted",
+            fields: ["value", "count", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+          };
+        } else {
+          indexMeta = {
+            type: "inverted",
+            fields: ["value", "count", "value_nested"]
+          };
+        }
+        let i = c.ensureIndex(indexMeta);
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
       } else {
-        db._createView("UnitTestView", "arangosearch", {
-          links: {
-            UnitTestsCollection: {
-              includeAllFields: false,
-              fields: {
-                value: {
-                  analyzers: ["identity"]
-                },
-                count: {
-                  analyzers: ["identity"]
-                },
-                value_nested: {
-                  "nested": { "nested_1": {"nested": {"nested_2": {}}}}
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {
+                    analyzers: ["identity"]
+                  },
+                  count: {
+                    analyzers: ["identity"]
+                  },
+                  value_nested: {
+                    "nested": { "nested_1": {"nested": {"nested_2": {}}}}
+                  }
                 }
               }
             }
-          }
-        });
+          };
+        } else {
+          viewMeta = {
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {
+                    analyzers: ["identity"]
+                  },
+                  count: {
+                    analyzers: ["identity"]
+                  },
+                  value_nested: {}
+                }
+              }
+            }
+          };
+        }
+        db._createView("UnitTestView", "arangosearch", viewMeta);
       }
       // sync the views
       db._query("FOR d IN UnitTestView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");

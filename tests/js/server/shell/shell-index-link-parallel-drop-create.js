@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
+const isEnterprise = require("internal").isEnterprise();
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
@@ -88,6 +89,13 @@ function ParallelIndexLinkCreateDropSuite() {
       const iterations = 15;
 
       let c = require("internal").db._collection(cn);
+      
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = `{ links : { cn : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }`;
+      } else {
+        viewMeta = `{ links : { cn : { includeAllFields: true} } }`;
+      }
 
       for (let i = 0; i < threads; ++i) {
         let command = `
@@ -106,7 +114,7 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
   require("console").log("thread ${i}, iteration " + iteration);
 
   try {
-    db._view("${vn}").properties({ links : { ${cn} : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }, true);
+    db._view("${vn}").properties(${viewMeta}, true);
     db._view("${vn}").properties({ links : { ${cn} : null }}, true);   
   } catch (err) {
     // concurrent modification of links can fail in the cluster
@@ -121,7 +129,6 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
         command += `
 c.insert({ _key: "done${i}", value: true });
 `;
-
         tasks.register({ name: "UnitTestsIndexCreateDrop" + i, command });
       }
 

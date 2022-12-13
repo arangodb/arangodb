@@ -32,6 +32,7 @@ var internal = require("internal");
 var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
+const isEnterprise = require("internal").isEnterprise();
 var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -52,14 +53,29 @@ function viewCountOptimization(isSearchAlias) {
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({type: "inverted", includeAllFields: true, "fields": [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]});
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, "fields": [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true};
+        }
+        let i = c.ensureIndex(indexMeta);
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
-        let i2 = c.ensureIndex({
-          type: "inverted",
-          fields: ["value", "count",
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
-          primarySort: {fields: [{"field": "count", "direction": "asc"}]}
-        });
+        if (isEnterprise) {
+          indexMeta = {
+            type: "inverted",
+            fields: ["value", "count",
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
+            primarySort: {fields: [{"field": "count", "direction": "asc"}]}
+          };
+        } else {
+          indexMeta = {
+            type: "inverted",
+            fields: ["value", "count"],
+            primarySort: {fields: [{"field": "count", "direction": "asc"}]}
+          };
+        }
+        let i2 = c.ensureIndex(indexMeta);
         db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{
             collection: "UnitTestsCollection",
@@ -67,44 +83,81 @@ function viewCountOptimization(isSearchAlias) {
           }]
         });
       } else {
-        db._createView("UnitTestView", "arangosearch", {
-          links: {
-            UnitTestsCollection: {
-              includeAllFields: false,
-              fields: {
-                value: {
-                  analyzers: ["identity"]
-                },
-                count: {
-                  analyzers: ["identity"]
-                },
-                "value_nested": { 
-                  "nested": { 
-                    "nested_1": {
-                      "nested": {
-                        "nested_2": {
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {
+                    analyzers: ["identity"]
+                  },
+                  count: {
+                    analyzers: ["identity"]
+                  },
+                  "value_nested": { 
+                    "nested": { 
+                      "nested_1": {
+                        "nested": {
+                          "nested_2": {
+                            }
                           }
                         }
                       }
                     }
+                }
+              }
+            }
+          };
+        } else {
+          viewMeta = {
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {
+                    analyzers: ["identity"]
+                  },
+                  count: {
+                    analyzers: ["identity"]
                   }
+                }
               }
             }
-          }
-        });
-        db._createView("UnitTestViewSorted", "arangosearch", {
-          primarySort: [{"field": "count", "direction": "asc"}],
-          links: {
-            UnitTestsCollection: {
-              includeAllFields: false,
-              fields: {
-                value: {analyzers: ["identity"]},
-                count: {analyzers: ["identity"]},
-                "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+          };
+        }
+        db._createView("UnitTestView", "arangosearch", viewMeta);
+
+        if (isEnterprise) {
+          viewMeta = {
+            primarySort: [{"field": "count", "direction": "asc"}],
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {analyzers: ["identity"]},
+                  count: {analyzers: ["identity"]},
+                  "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                }
               }
             }
-          }
-        });
+          };
+        } else {
+          viewMeta = {
+            primarySort: [{"field": "count", "direction": "asc"}],
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {analyzers: ["identity"]},
+                  count: {analyzers: ["identity"]}
+                }
+              }
+            }
+          };
+        }
+        db._createView("UnitTestViewSorted", "arangosearch", viewMeta);
       }
       // sync the views
       db._query("FOR d IN UnitTestView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");

@@ -27,6 +27,7 @@ const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
@@ -255,7 +256,11 @@ function CommunicationSuite() {
 
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
-      c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
+      if (isEnterprise) {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
+      } else {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value.nested_1.nested_2"}]});
+      }
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
         docs.push({ value: i , new_value: [{nested_1: [{nested_2: i.toString()}]}]});
@@ -670,7 +675,9 @@ function GenericAqlSetupPathSuite(type) {
         }
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
-          db._createView(viewName, "arangosearch", { links: { [vertexName]: { 
+          let meta = {};
+          if (isEnterprise) {
+            meta = { links: { [vertexName]: { 
               includeAllFields: true, 
               fields: {
                 "b": {
@@ -681,7 +688,13 @@ function GenericAqlSetupPathSuite(type) {
                   }
                 }
               } 
-            }}});
+            }}};
+          } else {
+            meta = { links: { [vertexName]: { 
+              includeAllFields: true
+            }}};
+          }
+          db._createView(viewName, "arangosearch", meta);
           db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobar'}]}] });
           break;
         }
@@ -764,7 +777,7 @@ if (internal.isCluster()) {
   jsunity.run(AqlGraphSetupPathSuite);
   jsunity.run(AqlNamedGraphSetupPathSuite);
   jsunity.run(AqlViewSetupPathSuite);
-  if (internal.isEnterprise()) {
+  if (isEnterprise) {
     jsunity.run(AqlSatelliteSetupPathSuite);
   }
 }

@@ -32,7 +32,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const analyzers = require("@arangodb/analyzers");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-
+const isEnterprise = require("internal").isEnterprise();
 const collName1 = "collection_1";
 const collName2 = "collection_2";
 
@@ -125,9 +125,11 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
 
       for (let i = 0; i < data1.length; i += 2) {
         c1.save(data1[i]);
+        c1.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       for (let i = 1; i < data1.length; i += 2) {
         c2.save(data1[i]);
+        c2.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       if (isSearchAlias) {
         let i1 = c1.ensureIndex({
@@ -148,19 +150,39 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
           ]
         });
       } else {
-        const view = db._createView(viewName, "arangosearch", {
-          links: {
-            [collName1]: {
-              analyzers: [analyzerName, "identity"],
-              includeAllFields: true,
-              trackListPositions: true,
+        let metaView = {};
+        if (isEnterprise) {
+          metaView = {
+            links: {
+              [collName1]: {
+                analyzers: [analyzerName, "identity"],
+                includeAllFields: true,
+                trackListPositions: true,
+                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
+              },
+              [collName2]: {
+                analyzers: [analyzerName, "identity"],
+                includeAllFields: true,
+                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
+              },
             },
-            [collName2]: {
-              analyzers: [analyzerName, "identity"],
-              includeAllFields: true,
+          }
+        } else {
+          metaView = {
+            links: {
+              [collName1]: {
+                analyzers: [analyzerName, "identity"],
+                includeAllFields: true,
+                trackListPositions: true,
+              },
+              [collName2]: {
+                analyzers: [analyzerName, "identity"],
+                includeAllFields: true,
+              },
             },
-          },
-        });
+          };
+        }
+        const view = db._createView(viewName, "arangosearch", metaView);
       }
     },
     tearDownAll,
