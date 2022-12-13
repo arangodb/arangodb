@@ -121,6 +121,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           paramsSecondRun.options.forEach(option => {
             clonedOpts[option] = paramsSecondRun[option];
           });
+          delete paramsSecondRun.options;
         }
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
 
