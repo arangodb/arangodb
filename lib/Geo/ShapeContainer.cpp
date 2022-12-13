@@ -680,13 +680,12 @@ bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
     return poly->Contains(rect->lo().ToPoint());
   }
   auto bound = poly->GetRectBound();
-  if (ADB_UNLIKELY(rect->Contains(bound))) {
-    return true;
-  } else if (ADB_UNLIKELY(rect->is_point())) {
-    return poly->Contains(rect->lo().ToPoint());
-  } else if (ADB_LIKELY(!rect->Intersects(bound))) {
+  if (ADB_LIKELY(!rect->Intersects(bound))) {
     return false;
+  } else if (ADB_LIKELY(rect->Contains(bound))) {
+    return true;
   }
+  // TODO(MBkkt) Maybe fast check each rect point contains in poly?
   auto rectPoly = ::latLngRectToPolygon(rect);
   return S2BooleanOperation::Intersects(poly->index(), rectPoly.index());
 }
