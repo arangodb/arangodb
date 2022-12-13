@@ -44,7 +44,8 @@ void queueShutdownChecker(std::mutex& mutex,
                           std::function<void(bool)>& checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = scheduler->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
+  workItem = scheduler->queueDelayed("soft-shutdown",
+                                     arangodb::RequestLane::CLUSTER_INTERNAL,
                                      std::chrono::seconds(2), checkFunc);
 }
 

@@ -277,8 +277,8 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset,
-                                        [this](bool canceled) {
+  auto handle = scheduler->queueDelayed("pregel-gc", RequestLane::INTERNAL_LOW,
+                                        offset, [this](bool canceled) {
                                           if (!canceled) {
                                             garbageCollectConductors();
                                             scheduleGarbageCollection();

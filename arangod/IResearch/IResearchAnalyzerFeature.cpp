@@ -781,7 +781,8 @@ void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc) {
   std::lock_guard<std::mutex> guard(mutex);
   workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::INTERNAL_LOW, std::chrono::seconds(5), gcfunc);
+      "analyzers-gc", RequestLane::INTERNAL_LOW, std::chrono::seconds(5),
+      gcfunc);
 }
 
 // first - input type,
