@@ -2,10 +2,24 @@ cmake_minimum_required(VERSION 3.20)
 
 project(immer-pretty-printer-test CXX)
 
-#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../../../3rdParty/ EXCLUDE_FROM_ALL)
+add_executable(flex_vector_test flex_vector_test.cpp)
 
-# TODO rename target and file
-add_executable(main main.cpp)
+target_link_libraries(flex_vector_test immer)
+target_link_libraries(flex_vector_test fmt::fmt)
 
-target_link_libraries(main immer)
-target_link_libraries(main fmt::fmt)
+set_target_properties(flex_vector_test
+        PROPERTIES
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
+        )
+
+enable_testing()
+
+add_test(NAME flex_vector_test
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.sh
+        $<TARGET_FILE:flex_vector_test>
+        ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.gdbscript
+
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        )

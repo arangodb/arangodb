@@ -50,6 +50,7 @@ class ImmerRrbTreePrinter:
                 # (size - 1) & ~mask<BL>
                 return (self.size - 1) & ~self.mask(self.bits_leaf)
             else:
+                # TODO This branch is not covered by any test yet
                 return 0
 
     def _get_leaf(self, node, idx):
