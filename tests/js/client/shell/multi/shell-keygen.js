@@ -465,7 +465,7 @@ function AutoIncrementSuite() {
         db._create(cn, {keyOptions: null});
         fail();
       } catch (e) {
-        assertEqual(e.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+        assertEqual(e.errorNum, ERRORS.ERROR_ARANGO_INVALID_KEY_GENERATOR.code);
       }
     },
 
