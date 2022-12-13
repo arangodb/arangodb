@@ -457,7 +457,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                 }
               }
 
-              using std::operator""sv;
               auto idxType = it.get("type").stringView();
               result.add("type", VPackValue(idxType));
               bool isSparse = it.get("sparse").getBoolean();
