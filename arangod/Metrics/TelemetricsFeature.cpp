@@ -29,6 +29,7 @@
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LoggerFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -294,8 +295,11 @@ void TelemetricsFeature::beginShutdown() {
 void TelemetricsFeature::start() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   bool isCoordinator = ServerState::instance()->isCoordinator(role);
-  if (!this->isEnabled() ||
-      (!ServerState::instance()->isSingleServer() && !isCoordinator)) {
+  if (!this->isEnabled() || ((!ServerState::instance()->isSingleServer() ||
+                              !_updateHandler->server()
+                                   .getFeature<ReplicationFeature>()
+                                   .isActiveFailoverEnabled()) &&
+                             !isCoordinator)) {
     return;
   }
   // server id prepare with timestamp, then remove it

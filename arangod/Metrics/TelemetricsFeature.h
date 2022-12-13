@@ -70,6 +70,7 @@ struct LastUpdateHandler {
     _sender = std::move(sender);
   }
   ITelemetricsSender* getSender() { return _sender.get(); }
+  ArangodServer& server() { return _server; }
 
  private:
   std::unique_ptr<ITelemetricsSender> _sender;
