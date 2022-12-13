@@ -54,6 +54,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -1071,9 +1072,11 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
 
     if (viewNode.isBuilding()) {
-      query.warnings().registerWarning(TRI_ERROR_ARANGO_INCOMPLETE_READ,
-                                       "ArangoSearch view 'v' building is in "
-                                       "progress. Results can be incomplete.");
+      query.warnings().registerWarning(
+          TRI_ERROR_ARANGO_INCOMPLETE_READ,
+          absl::StrCat(
+              "ArangoSearch view '", viewNode.view()->name(),
+              "' building is in progress. Results can be incomplete."));
     }
 
     if (!viewNode.isInInnerLoop()) {
