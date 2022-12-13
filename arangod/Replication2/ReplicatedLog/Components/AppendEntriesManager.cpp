@@ -31,11 +31,15 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/MetricsHelper.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
+  MeasureTimeGuard timer(*metrics->replicatedLogFollowerAppendEntriesRtUs);
+  // TODO more metrics?
+
   LoggerContext lctx =
       loggerContext.with<logContextKeyMessageId>(request.messageId)
           .with<logContextKeyPrevLogIdx>(request.prevLogEntry);
@@ -53,11 +57,6 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
             AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
         guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
   }
-
-  // TODO handle message ids properly
-  // TODO add snapshot status to response
-  // TODO metrics
-  // TODO logging
 
   if (auto error = guard->preflightChecks(request, *termInfo, lctx); error) {
     error->messageId = request.messageId;
@@ -136,10 +135,12 @@ AppendEntriesManager::AppendEntriesManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     IStorageManager& storage, ISnapshotManager& snapshot,
     ICompactionManager& compaction, IFollowerCommitManager& commit,
+    std::shared_ptr<ReplicatedLogMetrics> metrics,
     LoggerContext const& loggerContext)
     : loggerContext(
           loggerContext.with<logContextKeyLogComponent>("append-entries-man")),
       termInfo(std::move(termInfo)),
+      metrics(std::move(metrics)),
       guarded(storage, snapshot, compaction, commit) {}
 
 auto AppendEntriesManager::getLastReceivedMessageId() const noexcept

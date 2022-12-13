@@ -100,7 +100,8 @@ FollowerManager::FollowerManager(
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
                                                      loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
-          termInfo, *storage, *snapshot, *compaction, *commit, loggerContext)),
+          termInfo, *storage, *snapshot, *compaction, *commit, metrics,
+          loggerContext)),
       termInfo(termInfo) {
   metrics->replicatedLogFollowerNumber->operator++();
   auto provider = std::make_unique<MethodsProvider>(*this);

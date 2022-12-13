@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "IFollowerCommitManager.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
@@ -51,6 +52,7 @@ struct AppendEntriesManager
                        IStorageManager& storage, ISnapshotManager& snapshot,
                        ICompactionManager& compaction,
                        IFollowerCommitManager& commit,
+                       std::shared_ptr<ReplicatedLogMetrics> metrics,
                        LoggerContext const& loggerContext);
 
   auto appendEntries(AppendEntriesRequest request)
@@ -77,6 +79,7 @@ struct AppendEntriesManager
 
   LoggerContext const loggerContext;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
+  std::shared_ptr<ReplicatedLogMetrics> const metrics;
   Guarded<GuardedData> guarded;
 };
 }  // namespace comp
