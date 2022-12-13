@@ -53,6 +53,8 @@ std::string const config_t::supervisionDelayAddFollowerStr =
     "supervision delay add follower job time";
 std::string const config_t::supervisionDelayFailedFollowerStr =
     "supervision delay failed follower job time";
+std::string const config_t::supervisionFailedLeaderAddsFollowerStr =
+    "supervision FailedLeader job adds a new follower";
 std::string const config_t::compactionStepSizeStr = "compaction step size";
 std::string const config_t::compactionKeepSizeStr = "compaction keep size";
 std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
@@ -86,7 +88,7 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
                    std::vector<std::string> const& g, bool s, bool st, bool w,
                    double f, uint64_t c, uint64_t k, double p, double o,
-                   uint64_t q, uint64_t r, bool t, size_t a)
+                   uint64_t q, uint64_t r, bool t2, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _poolSize(ps),
@@ -105,6 +107,7 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
       _supervisionOkThreshold(o),
       _supervisionDelayAddFollower(q),
       _supervisionDelayFailedFollower(r),
+      _supervisionFailedLeaderAddsFollower(t2),
       _cmdLineTimings(t),
       _version(0),
       _startup("origin"),
@@ -140,6 +143,8 @@ config_t& config_t::operator=(config_t const& other) {
   _supervisionOkThreshold = other._supervisionOkThreshold;
   _supervisionDelayAddFollower = other._supervisionDelayAddFollower;
   _supervisionDelayFailedFollower = other._supervisionDelayFailedFollower;
+  _supervisionFailedLeaderAddsFollower =
+      other._supervisionFailedLeaderAddsFollower;
   _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
   _startup = other._startup;
@@ -171,6 +176,8 @@ config_t& config_t::operator=(config_t&& other) {
   _supervisionDelayAddFollower = std::move(other._supervisionDelayAddFollower);
   _supervisionDelayFailedFollower =
       std::move(other._supervisionDelayFailedFollower);
+  _supervisionFailedLeaderAddsFollower =
+      std::move(other._supervisionFailedLeaderAddsFollower);
   _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
@@ -206,6 +213,11 @@ uint64_t config_t::supervisionDelayAddFollower() const {
 uint64_t config_t::supervisionDelayFailedFollower() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionDelayFailedFollower;
+}
+
+bool config_t::supervisionFailedLeaderAddsFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionFailedLeaderAddsFollower;
 }
 
 double config_t::minPing() const {
@@ -498,6 +510,8 @@ void config_t::toBuilder(VPackBuilder& builder) const {
                 VPackValue(_supervisionDelayAddFollower));
     builder.add(supervisionDelayFailedFollowerStr,
                 VPackValue(_supervisionDelayFailedFollower));
+    builder.add(supervisionFailedLeaderAddsFollowerStr,
+                VPackValue(_supervisionFailedLeaderAddsFollower));
     builder.add(versionStr, VPackValue(_version));
     builder.add(startupStr, VPackValue(_startup));
   }
@@ -769,6 +783,10 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   if (other.hasKey(supervisionDelayFailedFollowerStr)) {
     _supervisionDelayFailedFollower =
         other.get(supervisionDelayFailedFollowerStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(supervisionFailedLeaderAddsFollowerStr)) {
+    _supervisionFailedLeaderAddsFollower =
+        other.get(supervisionFailedLeaderAddsFollowerStr).getBoolean();
   }
   if (other.hasKey(compactionStepSizeStr)) {
     _compactionStepSize =

@@ -36,7 +36,8 @@ struct FailedLeader : public Job {
                std::string const& database = std::string(),
                std::string const& collection = std::string(),
                std::string const& shard = std::string(),
-               std::string const& from = std::string());
+               std::string const& from = std::string(),
+               bool addsFollower = true);
 
   FailedLeader(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
                std::string const& jobId);
@@ -56,6 +57,7 @@ struct FailedLeader : public Job {
   std::string _from;
   std::string _to;
   std::chrono::time_point<std::chrono::system_clock> _created;
+  bool _addsFollower{true};
 };
 }  // namespace consensus
 }  // namespace arangodb
