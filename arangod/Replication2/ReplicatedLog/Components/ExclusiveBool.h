@@ -50,14 +50,11 @@ struct ExclusiveBoolGuard {
 };
 
 struct ExclusiveBool {
-  operator bool() const noexcept { return value; }
-
   auto acquire() noexcept -> ExclusiveBoolGuard {
-    if (value) {
-      return ExclusiveBoolGuard{};
-    } else {
-      value = true;
+    if (not value.test_and_set()) {
       return ExclusiveBoolGuard{this};
+    } else {
+      return ExclusiveBoolGuard{};
     }
   }
 
@@ -71,12 +68,12 @@ struct ExclusiveBool {
 
  private:
   friend struct ExclusiveBoolGuard;
-  std::atomic<bool> value{false};
+  std::atomic_flag value{false};
 };
 
 inline void ExclusiveBoolGuard::reset() noexcept {
   if (ptr) {
-    ptr->value = false;
+    ptr->value.clear();
   }
 }
 

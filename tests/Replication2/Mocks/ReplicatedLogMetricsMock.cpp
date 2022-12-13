@@ -22,7 +22,7 @@
 
 #include "ReplicatedLogMetricsMock.h"
 
-using namespace arangodb;
+using namespace arangodb::replication2::test;
 
 ReplicatedLogMetricsMock::ReplicatedLogMetricsMock()
     : ReplicatedLogMetricsIndirect(nullptr) {}

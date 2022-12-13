@@ -719,7 +719,7 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {
   auto const& target = log.target;
-
+  // TODO add status report for each exit point
   if (!log.current.has_value()) {
     return;
   }
@@ -730,12 +730,19 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
     return;
   }
 
-  if (log.plan->participantsConfig.generation !=
+  ADB_PROD_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+  if (not plan.currentTerm or not plan.currentTerm->leader) {
+    return;
+  }
+
+  if (plan.participantsConfig.generation !=
       current.leader->committedParticipantsConfig->generation) {
     return;
   }
 
-  if (!current.leader->leadershipEstablished) {
+  if (current.leader->term != plan.currentTerm->term and
+      not current.leader->leadershipEstablished) {
     return;
   }
 

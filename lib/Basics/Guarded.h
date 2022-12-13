@@ -25,9 +25,7 @@
 
 #include "Basics/system-compiler.h"
 
-#include <algorithm>
 #include <condition_variable>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -260,14 +258,14 @@ template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>

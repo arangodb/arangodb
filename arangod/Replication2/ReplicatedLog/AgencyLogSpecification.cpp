@@ -68,6 +68,12 @@ auto agency::operator<<(std::ostream& os, LogPlanTermSpecification const& term)
   return os << builder.toJson();
 }
 
+auto agency::operator<<(std::ostream& os,
+                        ServerInstanceReference const& sir) noexcept
+    -> std::ostream& {
+  return os << sir.serverId << ":" << sir.rebootId;
+}
+
 auto agency::operator<<(std::ostream& os, ParticipantsConfig const& config)
     -> std::ostream& {
   VPackBuilder builder;

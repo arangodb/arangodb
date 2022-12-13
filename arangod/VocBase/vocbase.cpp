@@ -233,7 +233,6 @@ struct arangodb::VocBaseLogManager {
 
     if (result.ok()) {
       auto& feature = _server.getFeature<ReplicatedLogFeature>();
-      feature.metrics()->replicatedLogNumber->fetch_sub(1);
       feature.metrics()->replicatedLogDeletionNumber->count();
     }
 
@@ -425,9 +424,6 @@ struct arangodb::VocBaseLogManager {
 
       auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
 
-      server.getFeature<ReplicatedLogFeature>()
-          .metrics()
-          ->replicatedLogNumber->fetch_add(1);
       server.getFeature<ReplicatedLogFeature>()
           .metrics()
           ->replicatedLogCreationNumber->count();

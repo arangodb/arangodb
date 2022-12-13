@@ -24,6 +24,9 @@
 #include "LogFollower2.h"
 #include "Logger/LogContextKeys.h"
 
+#include "Metrics/Gauge.h"
+
+#include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
@@ -81,9 +84,11 @@ FollowerManager::FollowerManager(
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+    std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ILeaderCommunicator> leaderComm)
     : loggerContext(deriveLoggerContext(*termInfo)),
       options(options),
+      metrics(metrics),
       storage(
           std::make_shared<StorageManager>(std::move(methods), loggerContext)),
       compaction(std::make_shared<CompactionManager>(*storage, options,
@@ -97,8 +102,13 @@ FollowerManager::FollowerManager(
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit, loggerContext)),
       termInfo(termInfo) {
+  metrics->replicatedLogFollowerNumber->operator++();
   auto provider = std::make_unique<MethodsProvider>(*this);
   stateHandle->becomeFollower(std::move(provider));
+}
+
+FollowerManager::~FollowerManager() {
+  metrics->replicatedLogFollowerNumber->operator--();
 }
 
 auto FollowerManager::getStatus() const -> LogStatus {
@@ -111,7 +121,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
               .spearHead = log.getLastTermIndexPair(),
               .commitIndex = commitIndex,
               .firstIndex = log.getFirstIndex(),
-              .releaseIndex = releaseIndex,  // TODO set release index properly
+              .releaseIndex = releaseIndex,
           },
       .leader = termInfo->leader,
       .term = termInfo->term,
@@ -220,7 +230,9 @@ LogFollowerImpl::LogFollowerImpl(
     std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,
+    std::shared_ptr<ReplicatedLogMetrics> metrics,
     std::shared_ptr<ILeaderCommunicator> leaderComm)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
-              std::move(termInfo), std::move(options), std::move(leaderComm)) {}
+              std::move(termInfo), std::move(options), std::move(metrics),
+              std::move(leaderComm)) {}

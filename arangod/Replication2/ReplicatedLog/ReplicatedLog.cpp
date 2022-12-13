@@ -37,6 +37,8 @@
 
 #include <optional>
 #include <utility>
+#include "Metrics/Gauge.h"
+#include "Logger/LogContextKeys.h"
 
 namespace arangodb::replication2::replicated_log {
 struct AbstractFollower;
@@ -50,16 +52,19 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    : _logContext(logContext),
+    : _logContext(logContext.with<logContextKeyMyself>(std::cref(_myself))),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),
       _myself(std::move(myself)),
-      _guarded(std::move(storage)) {}
+      _guarded(std::move(storage)) {
+  _metrics->replicatedLogNumber->operator++();
+}
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
   ADB_PROD_ASSERT(_guarded.getLockedGuard()->stateHandle == nullptr)
       << "replicated log is destroyed before it was disconnected";
+  _metrics->replicatedLogNumber->operator--();
 }
 
 auto replicated_log::ReplicatedLog::connect(
@@ -255,7 +260,7 @@ auto DefaultParticipantsFactory::constructFollower(
 
   return std::make_shared<refactor::LogFollowerImpl>(
       info.myself, std::move(methods), std::move(context.stateHandle), info2,
-      std::move(context.options), leaderComm);
+      std::move(context.options), std::move(context.metrics), leaderComm);
 }
 
 auto DefaultParticipantsFactory::constructLeader(

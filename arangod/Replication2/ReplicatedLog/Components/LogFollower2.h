@@ -63,7 +63,9 @@ struct FollowerManager {
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ILeaderCommunicator>);
+  ~FollowerManager();
   auto getStatus() const -> LogStatus;
   auto getQuickStatus() const -> QuickLogStatus;
   auto resign()
@@ -77,7 +79,8 @@ struct FollowerManager {
   friend struct MethodsProvider;
   friend struct LogFollowerImpl;
   LoggerContext const loggerContext;
-  std::shared_ptr<ReplicatedLogGlobalSettings const> options;
+  std::shared_ptr<ReplicatedLogGlobalSettings const> const options;
+  std::shared_ptr<ReplicatedLogMetrics> const metrics;
 
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
@@ -95,6 +98,7 @@ struct LogFollowerImpl : ILogFollower {
       std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
+      std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ILeaderCommunicator> leaderComm);
 
   auto getStatus() const -> LogStatus override;

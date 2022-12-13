@@ -166,8 +166,8 @@ struct ReplicatedLogConnectTest : ::testing::Test {
           12, LogId{12}, std::make_shared<test::ThreadAsyncExecutor>());
   replicated_state::IStorageEngineMethods* methodsPtr =
       storageContext->getMethods().release();
-  std::shared_ptr<ReplicatedLogMetricsMock> logMetricsMock =
-      std::make_shared<ReplicatedLogMetricsMock>();
+  std::shared_ptr<test::ReplicatedLogMetricsMock> logMetricsMock =
+      std::make_shared<test::ReplicatedLogMetricsMock>();
   std::shared_ptr<ReplicatedLogGlobalSettings> optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
   LoggerContext loggerContext = LoggerContext(Logger::REPLICATION2);

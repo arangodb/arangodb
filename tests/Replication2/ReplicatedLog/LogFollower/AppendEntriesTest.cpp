@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedLog/Components/LogFollower2.h"
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
+#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include <immer/flex_vector_transient.hpp>
 
@@ -69,6 +70,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       std::make_shared<FollowerTermInformation>();
 
   ReplicatedStateHandleMock* stateHandle = new ReplicatedStateHandleMock();
+  std::shared_ptr<ReplicatedLogMetrics> metrics =
+      std::make_shared<test::ReplicatedLogMetricsMock>();
 
   MessageId lastMessageId{1};
 
@@ -76,7 +79,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
     return std::make_shared<refactor::FollowerManager>(
         storage.getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
-        options, nullptr);
+        options, metrics, nullptr);
   }
 };
 

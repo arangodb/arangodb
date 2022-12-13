@@ -96,7 +96,6 @@ auto SnapshotManager::setSnapshotStateAvailable(
           LOG_CTX("eb674", FATAL, lctx) << "failed to snapshot state on leader";
           FATAL_ERROR_EXIT();
         }
-        // TODO add log context
         LOG_CTX("b2d65", INFO, lctx) << "snapshot status updated on leader";
       });
   return result;
