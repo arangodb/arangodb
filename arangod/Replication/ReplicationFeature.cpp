@@ -307,7 +307,7 @@ bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
 
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isRunningInCluster());
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
   if (!ServerState::instance()->isClusterRole() &&
@@ -344,7 +344,7 @@ void ReplicationFeature::disableReplicationApplier() {
 
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(!ServerState::instance()->isRunningInCluster());
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (!ServerState::instance()->isClusterRole() &&
       vocbase->replicationApplier() != nullptr) {
