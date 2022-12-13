@@ -203,7 +203,13 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
-)
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+  absl::synchronization
+  absl::strings
+  )
 
 target_link_libraries(arango PUBLIC fmt::fmt)
 
