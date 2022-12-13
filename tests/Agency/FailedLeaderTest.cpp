@@ -569,21 +569,22 @@ TEST_F(FailedLeaderTest,
 
   std::string jobId = "1";
   When(Method(mockAgent, write))
-      .AlwaysDo([&](velocypack::Slice q,
+      .AlwaysDo([&](query_t const& q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        EXPECT_EQ(std::string(q.typeName()), "array");
-        EXPECT_EQ(q.length(), 1);
-        EXPECT_EQ(std::string(q[0].typeName()), "array");
-        EXPECT_EQ(q[0].length(),
+        EXPECT_EQ(std::string(q->slice().typeName()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+        EXPECT_EQ(q->slice()[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
-        EXPECT_EQ(q[0][0].length(),
+        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(q->slice()[0][0].length(),
                   1);  // should ONLY do an entry in todo
-        EXPECT_TRUE(std::string(q[0][0].get(expectedJobKey).typeName()) ==
-                    "object");
+        EXPECT_TRUE(
+            std::string(q->slice()[0][0].get(expectedJobKey).typeName()) ==
+            "object");
 
-        auto job = q[0][0].get(expectedJobKey);
+        auto job = q->slice()[0][0].get(expectedJobKey);
         EXPECT_EQ(std::string(job.get("creator").typeName()), "string");
         EXPECT_EQ(std::string(job.get("type").typeName()), "string");
         EXPECT_EQ(job.get("type").copyString(), "failedLeader");
@@ -1238,15 +1239,15 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
-        EXPECT_EQ(std::string(q.typeName()), "array");
-        EXPECT_EQ(q.length(), 1);
-        EXPECT_EQ(std::string(q[0].typeName()), "array");
-        EXPECT_EQ(q[0].length(), 2);  // preconditions!
-        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
-        EXPECT_EQ(std::string(q[0][1].typeName()), "object");
+      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+        EXPECT_EQ(std::string(q->slice().typeName()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+        EXPECT_EQ(q->slice()[0].length(), 2);  // preconditions!
+        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q->slice()[0][1].typeName()), "object");
 
-        auto writes = q[0][0];
+        auto writes = q->slice()[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -1306,7 +1307,7 @@ TEST_F(FailedLeaderTest,
                              COLLECTION + "/shards/" + SHARD)[2]
                         .copyString() == SHARD_FOLLOWER1);
 
-        auto preconditions = q[0][1];
+        auto preconditions = q->slice()[0][1];
         EXPECT_TRUE(
             std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
                             .typeName()) == "object");
