@@ -47,15 +47,17 @@ function viewCountOptimization(isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 10010; ++i) {
         docs.push({value: "test" + (i % 10), count: i});
+        docs.push({name_1: i.toString(), count: i, "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+        let i = c.ensureIndex({type: "inverted", includeAllFields: true, "fields": [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]});
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
         let i2 = c.ensureIndex({
           type: "inverted",
-          fields: ["value", "count"],
+          fields: ["value", "count",
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
           primarySort: {fields: [{"field": "count", "direction": "asc"}]}
         });
         db._createView("UnitTestViewSorted", "search-alias", {
@@ -75,7 +77,17 @@ function viewCountOptimization(isSearchAlias) {
                 },
                 count: {
                   analyzers: ["identity"]
-                }
+                },
+                "value_nested": { 
+                  "nested": { 
+                    "nested_1": {
+                      "nested": {
+                        "nested_2": {
+                          }
+                        }
+                      }
+                    }
+                  }
               }
             }
           }
@@ -87,7 +99,8 @@ function viewCountOptimization(isSearchAlias) {
               includeAllFields: false,
               fields: {
                 value: {analyzers: ["identity"]},
-                count: {analyzers: ["identity"]}
+                count: {analyzers: ["identity"]},
+                "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
               }
             }
           }
@@ -106,19 +119,19 @@ function viewCountOptimization(isSearchAlias) {
 
     testNoSortWithoutFiltersExact() {
       let res = db._query("FOR d IN UnitTestView  COLLECT WITH COUNT INTO c RETURN c").toArray();
-      assertEqual(10010, res[0]);
+      assertEqual(20020, res[0]);
     },
     testNoSortWithoutFiltersCost() {
       let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " +
         "COLLECT WITH COUNT INTO c RETURN c").toArray();
-      assertEqual(10010, res[0]);
+      assertEqual(20020, res[0]);
     },
     testNoSortLimitFullCountExact() {
       if (isCluster) {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestView LIMIT 10, 100 RETURN d", {}, {fullCount: true});
-      assertEqual(10010, res.getExtra().stats.fullCount);
+      assertEqual(20020, res.getExtra().stats.fullCount);
     },
     testNoSortLimitFullCountCost() {
       if (isCluster) {
@@ -126,7 +139,7 @@ function viewCountOptimization(isSearchAlias) {
       }
       let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " +
         "LIMIT 10, 100 RETURN d", {}, {fullCount: true});
-      assertEqual(10010, res.getExtra().stats.fullCount);
+      assertEqual(20020, res.getExtra().stats.fullCount);
     },
     testNoSortLimitFiltersFullCountExact() {
       if (isCluster) {
@@ -162,7 +175,7 @@ function viewCountOptimization(isSearchAlias) {
       }
       let res = db._query("FOR d IN UnitTestViewSorted SORT d.count ASC LIMIT 10, 100 RETURN d",
         {}, {fullCount: true});
-      assertEqual(10010, res.getExtra().stats.fullCount);
+      assertEqual(20020, res.getExtra().stats.fullCount);
     },
     testSortLimitWithFullCountCost() {
       if (isCluster) {
@@ -170,7 +183,7 @@ function viewCountOptimization(isSearchAlias) {
       }
       let res = db._query("FOR d IN UnitTestViewSorted OPTIONS{countApproximate:'cost'} " +
         "SORT d.count ASC LIMIT 10, 100 RETURN d", {}, {fullCount: true});
-      assertEqual(10010, res.getExtra().stats.fullCount);
+      assertEqual(20020, res.getExtra().stats.fullCount);
     },
     testSortLimitFiltersFullCountExact() {
       if (isCluster) {

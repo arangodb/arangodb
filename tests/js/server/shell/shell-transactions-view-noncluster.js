@@ -100,7 +100,7 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -108,6 +108,7 @@ function TransactionsIResearchSuite() {
 
       c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog" });
       c.save({ _key: "half", text: "quick fox over lazy" });
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}], text1: "quick fox is lazy"});
 
       try {
         db._executeTransaction({
@@ -117,6 +118,7 @@ function TransactionsIResearchSuite() {
   
             c.save({ _key: "other_half", text: "the brown jumps the dog" });
             c.save({ _key: "quarter", text: "quick over" });
+            c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is lazy"});
 
             throw "myerror";
           }
@@ -136,9 +138,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks2 : function () {
-      c.ensureIndex({type: 'hash', fields:['val'], unique: true});
+      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -151,9 +153,12 @@ function TransactionsIResearchSuite() {
           c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
           c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
           c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
+          c.save({ _key: "a", name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is crazy"});
+          c.save({ _key: "b", name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text1: "crazy fox is crazy"});
 
           try {
             c.save({ _key: "quarter", text: "quick over", val: 3 });
+            c.save({ _key: "c", name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
             fail();
           } catch(err) {
             assertEqual(err.errorNum, ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
@@ -172,13 +177,13 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks3 : function () {
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
-      c.ensureIndex({type: 'hash', fields:['val'], unique: true});
+      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
       db._executeTransaction({
         collections: {write: 'UnitTestsCollection'},
@@ -187,6 +192,9 @@ function TransactionsIResearchSuite() {
           c.save({ _key: "full", text: "the quick brown fox jumps over the lazy dog", val: 1 });
           c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
           c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
+          c.save({ _key: "1", name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
+          c.save({ _key: "2", name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is crazy"});
+          c.save({ _key: "3", name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text1: "crazy fox is crazy"});
 
           try {
             c.save({ _key: "quarter", text: "quick over", val: 3 });
@@ -208,9 +216,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackRemovalWithLinks1 : function () {
-      c.ensureIndex({type: 'hash', fields:['val'], unique: true});
+      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -220,6 +228,9 @@ function TransactionsIResearchSuite() {
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
       c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
       c.save({ _key: "quarter", text: "quick quick over", val: 4 });
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
+      c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is crazy"});
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text1: "crazy fox is crazy"});
 
       try {
         db._executeTransaction({
@@ -251,9 +262,9 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testWaitForSyncError : function () {
-      c.ensureIndex({type: 'hash', fields:['val'], unique: true});
+      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -263,6 +274,9 @@ function TransactionsIResearchSuite() {
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
       c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
       c.save({ _key: "quarter", text: "quick quick over", val: 4 });
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
+      c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is crazy"});
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text1: "crazy fox is crazy"});
 
       try {
         db._executeTransaction({

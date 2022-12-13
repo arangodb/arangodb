@@ -51,7 +51,8 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
         let i = c.ensureIndex({
           type: "inverted",
           includeAllFields: true,
-          primarySort: {fields: [{"field": "value", "direction": "asc"}]}
+          // primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+          fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
         });
         v = db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{collection: "UnitTestsCollection", index: i.name}]
@@ -59,13 +60,14 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       } else {
         v = db._createView("UnitTestViewSorted", "arangosearch",
           {
-            primarySort: [{"field": "value", "direction": "asc"}],
+            // primarySort: [{"field": "value", "direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
                 fields: {
                   value: {analyzers: ["identity"]},
-                  group: {analyzers: ["identity"]}
+                  group: {analyzers: ["identity"]},
+                  "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
                 }
               }
             }
@@ -75,6 +77,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({group: "test" + (i % 10), value: i});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       c.insert(docs);
 
@@ -92,7 +95,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(1000, results.json[0]);
+      assertEqual(2000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -108,7 +111,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(1000, results.json[0]);
+      assertEqual(2000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -120,11 +123,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
     },
 
     testCountMulti: function () {
-      let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
-
+      let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 and doc1.value != null FOR doc2 IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
+      
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(10000, results.json[0]);
+      assertEqual(20000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -140,7 +143,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(10000, results.json[0]);
+      assertEqual(20000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -156,6 +159,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let results = AQL_EXECUTE(query);
       
       let expected = [];
+      expected.push({ value: null, length: 1000 }); // Because we inserted 1k documents without field 'group'
       for (let i = 0; i < 10; ++i) {
         expected.push({ value: "test" + i, length: 100 });
       }
@@ -175,9 +179,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let query = "FOR doc IN " + c.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -193,9 +199,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let query = "FOR doc IN " + v.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -211,9 +219,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, {optimizer: {rules: ["-interchange-adjacent-enumerations"]}});
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -229,9 +239,10 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + v.name() + " SEARCH doc1.value < 10 FOR doc2 IN " + v.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, {optimizer: {rules: ["-interchange-adjacent-enumerations"]}});
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -242,7 +253,6 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     }
-
   };
 }
 
@@ -262,7 +272,8 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
         let i = c.ensureIndex({
           type: "inverted",
           includeAllFields: true,
-          primarySort: {fields: [{"field": "value", "direction": "asc"}]}
+          // primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+          fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
         });
         v = db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{collection: "UnitTestsCollection", index: i.name}]
@@ -270,13 +281,14 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       } else {
         v = db._createView("UnitTestViewSorted", "arangosearch",
           {
-            primarySort: [{"field": "value", "direction": "asc"}],
+            // primarySort: [{"field": "value", "direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
                 fields: {
                   value: {analyzers: ["identity"]},
-                  group: {analyzers: ["identity"]}
+                  group: {analyzers: ["identity"]},
+                  "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
                 }
               }
             }
@@ -286,6 +298,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({group: "test" + (i % 10), value: i});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       c.insert(docs);
 
@@ -303,7 +316,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(1000, results.json[0]);
+      assertEqual(2000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -319,7 +332,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(1000, results.json[0]);
+      assertEqual(2000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -331,11 +344,11 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
     },
 
     testSingleCountMulti: function () {
-      let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
+      let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 and doc1.value != null FOR doc2 IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(10000, results.json[0]);
+      assertEqual(20000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -351,7 +364,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(10000, results.json[0]);
+      assertEqual(20000, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -367,6 +380,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let results = AQL_EXECUTE(query);
       
       let expected = [];
+      expected.push({ value: null, length: 1000 });
       for (let i = 0; i < 10; ++i) {
         expected.push({ value: "test" + i, length: 100 });
       }
@@ -394,9 +408,10 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc IN " + c.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query, null, opt);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
@@ -412,9 +427,10 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc IN " + v.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query, null, opt);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
@@ -430,9 +446,10 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, opt2);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query, null, opt2).plan;
@@ -448,9 +465,10 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + v.name() + " SEARCH doc1.value < 10 FOR doc2 IN " + v.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, opt2);
-      assertEqual(1000, results.json.length);
-      for (let i = 0; i < 1000; ++i) {
-        assertEqual(i, results.json[i]);
+      assertEqual(1001, results.json.length);
+      assertEqual(null, results.json[0]);
+      for (let i = 1; i < 1001; ++i) {
+        assertEqual(i - 1, results.json[i]);
       }
 
       let plan = AQL_EXPLAIN(query, null, opt2).plan;

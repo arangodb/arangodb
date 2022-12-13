@@ -42,15 +42,16 @@ function viewFiltersMerging(isSearchAlias) {
       let c = db._create("UnitTestsCollection", {numberOfShards: 3});
 
       let docs = [];
-      for (let i = 0; i < 20; ++i) {
+      for (let i = 0; i < 50; ++i) {
         docs.push({value: "footest" + i, count: i});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
         let i = c.ensureIndex({
           type: "inverted",
-          fields: ["value", "count"]
+          fields: ["value", "count", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
         });
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
       } else {
@@ -64,6 +65,9 @@ function viewFiltersMerging(isSearchAlias) {
                 },
                 count: {
                   analyzers: ["identity"]
+                },
+                value_nested: {
+                  "nested": { "nested_1": {"nested": {"nested_2": {}}}}
                 }
               }
             }
@@ -89,7 +93,7 @@ function viewFiltersMerging(isSearchAlias) {
       let res = db._query("FOR d IN UnitTestView SEARCH " +
         "LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) " +
         "AND STARTS_WITH(d.value, 'footest') OPTIONS {filterOptimization: 0} RETURN d").toArray();
-      assertEqual(20, res.length);
+      assertEqual(50, res.length);
     },
   };
 }
