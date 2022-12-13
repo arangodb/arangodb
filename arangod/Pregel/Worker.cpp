@@ -71,9 +71,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
-      _algorithm(algo),
-      _nextGSSSendMessageCount(0),
-      _requestedNextGSS(false) {
+      _algorithm(algo) {
   _config.updateConfig(_feature, initConfig);
 
   MUTEX_LOCKER(guard, _commandMutex);
@@ -90,11 +88,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
-  if (_config.asynchronousMode()) {
-    _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
-  } else {
-    _messageBatchSize = 5000;
-  }
+  _messageBatchSize = 5000;
 
   _initializeMessageCaches();
 }
@@ -128,10 +122,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
                                          _messageCombiner.get());
     _writeCache = new CombiningInCache<M>(&_config, _messageFormat.get(),
                                           _messageCombiner.get());
-    if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new CombiningInCache<M>(
-          &_config, _messageFormat.get(), _messageCombiner.get());
-    }
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
           nullptr, _messageFormat.get(), _messageCombiner.get());
@@ -143,9 +133,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
   } else {
     _readCache = new ArrayInCache<M>(&_config, _messageFormat.get());
     _writeCache = new ArrayInCache<M>(&_config, _messageFormat.get());
-    if (_config.asynchronousMode()) {
-      _writeCacheNextGSS = new ArrayInCache<M>(&_config, _messageFormat.get());
-    }
     for (size_t i = 0; i < p; i++) {
       auto incoming =
           std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
@@ -242,21 +229,10 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
   // make us ready to receive messages
   _config._globalSuperstep = gss;
   // write cache becomes the readable cache
-  if (_config.asynchronousMode()) {
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);  // by design shouldn't be necessary
-    TRI_ASSERT(_readCache->containedMessageCount() == 0);
-    TRI_ASSERT(_writeCache->containedMessageCount() == 0);
-    std::swap(_readCache, _writeCacheNextGSS);
-    _writeCache->clear();
-    _requestedNextGSS = false;  // only relevant for async
-    _messageStats.sendCount = _nextGSSSendMessageCount;
-    _nextGSSSendMessageCount = 0;
-  } else {
-    MY_WRITE_LOCKER(wguard, _cacheRWLock);
-    TRI_ASSERT(_readCache->containedMessageCount() == 0);
-    std::swap(_readCache, _writeCache);
-    _config._localSuperstep = gss;
-  }
+  MY_WRITE_LOCKER(wguard, _cacheRWLock);
+  TRI_ASSERT(_readCache->containedMessageCount() == 0);
+  std::swap(_readCache, _writeCache);
+  _config._localSuperstep = gss;
 
   VPackBuilder messageToMaster;
   // only place where is makes sense to call this, since startGlobalSuperstep
@@ -291,15 +267,8 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
       _writeCache->parseMessages(data);
     }
 
-    // Trigger the processing of vertices
-    if (_config.asynchronousMode() && _state == WorkerState::IDLE) {
-      _continueAsync();
-    }
-  } else if (_config.asynchronousMode() &&
-             gss == _config._globalSuperstep + 1) {
-    MY_READ_LOCKER(guard, _cacheRWLock);
-    _writeCacheNextGSS->parseMessages(data);
   } else {
+    // Trigger the processing of vertices
     LOG_PREGEL("ecd34", ERR)
         << "Expected: " << _config._globalSuperstep << "Got: " << gss;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -423,11 +392,6 @@ bool Worker<V, E, M>::_processVertices(
   OutCache<M>* outCache = _outCaches[threadId];
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
-  if (_config.asynchronousMode()) {
-    outCache->sendToNextGSS(_requestedNextGSS);
-    outCache->setLocalCacheNextGSS(_writeCacheNextGSS);
-    TRI_ASSERT(outCache->sendCountNextGSS() == 0);
-  }
   TRI_ASSERT(outCache->sendCount() == 0);
 
   AggregatorHandler workerAggregator(_algorithm.get());
@@ -437,10 +401,6 @@ bool Worker<V, E, M>::_processVertices(
   _initializeVertexContext(vertexComputation.get());
   vertexComputation->_writeAggregators = &workerAggregator;
   vertexComputation->_cache = outCache;
-  if (!_config.asynchronousMode()) {
-    // Should cause enterNextGlobalSuperstep to do nothing
-    vertexComputation->_enterNextGSS = true;
-  }
 
   size_t activeCount = 0;
   for (; vertexIterator.hasMore(); ++vertexIterator) {
@@ -474,10 +434,6 @@ bool Worker<V, E, M>::_processVertices(
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
     LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
     return false;
-  }
-  if (vertexComputation->_enterNextGSS) {
-    _requestedNextGSS = true;
-    _nextGSSSendMessageCount += outCache->sendCountNextGSS();
   }
 
   // double t = TRI_microtime();
@@ -558,86 +514,17 @@ void Worker<V, E, M>::_finishedProcessing() {
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
-    if (_config.asynchronousMode()) {
-      _workerAggregators->serializeValues(package, true);
-    }
     package.close();
 
-    if (_config.asynchronousMode()) {
-      // async adaptive message buffering
-      _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
-    } else {
-      uint64_t tn = _config.parallelism();
-      uint64_t s = _messageStats.sendCount / tn / 2UL;
-      _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-    }
+    uint64_t tn = _config.parallelism();
+    uint64_t s = _messageStats.sendCount / tn / 2UL;
+    _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
     _messageStats.resetTracking();
     LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
   }
 
-  if (_config.asynchronousMode()) {
-    LOG_PREGEL("56a27", DEBUG) << "Finished LSS: " << package.toJson();
-
-    // if the conductor is unreachable or has send data (try to) proceed
-    _callConductorWithResponse(
-        Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
-          if (response.isObject()) {
-            _conductorAggregators->aggregateValues(
-                response);  // only aggregate values
-            VPackSlice nextGSS = response.get(Utils::enterNextGSSKey);
-            if (nextGSS.isBool()) {
-              _requestedNextGSS = _requestedNextGSS || nextGSS.getBool();
-            }
-            _continueAsync();
-          }
-        });
-
-  } else {  // no answer expected
-    _callConductor(Utils::finishedWorkerStepPath, package);
-    LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << package.toJson();
-  }
-}
-
-/// WARNING only call this while holding the _commandMutex
-/// in async mode checks if there are messages to process
-template<typename V, typename E, typename M>
-void Worker<V, E, M>::_continueAsync() {
-  {
-    MUTEX_LOCKER(guard, _commandMutex);
-    if (_state != WorkerState::IDLE ||
-        _writeCache->containedMessageCount() == 0) {
-      return;
-    }
-    // avoid calling this method accidentially
-    _state = WorkerState::COMPUTING;
-  }
-
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-
-  // wait for new messages before beginning to process
-  int64_t milli =
-      _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
-  // start next iteration in $milli mseconds.
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      "pregel-continue", RequestLane::INTERNAL_LOW,
-      std::chrono::milliseconds(milli),
-      [this, self = shared_from_this()](bool cancelled) {
-        if (!cancelled) {
-          {  // swap these pointers atomically
-            MY_WRITE_LOCKER(guard, _cacheRWLock);
-            std::swap(_readCache, _writeCache);
-            if (_writeCacheNextGSS->containedMessageCount() > 0) {
-              _requestedNextGSS = true;
-            }
-          }
-          MUTEX_LOCKER(guard, _commandMutex);
-          // overwrite conductor values with local values
-          _conductorAggregators->resetValues();
-          _conductorAggregators->aggregateValues(*_workerAggregators.get());
-          _workerAggregators->resetValues();
-          _startProcessing();
-        }
-      });
+  _callConductor(Utils::finishedWorkerStepPath, package);
+  LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << package.toJson();
 }
 
 template<typename V, typename E, typename M>

@@ -67,7 +67,6 @@ class Utils {
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
-  static std::string const asyncModeKey;
   static std::string const useMemoryMapsKey;
   static std::string const parallelismKey;
   static std::string const activateAllKey;
@@ -124,10 +123,6 @@ class Utils {
   /// Used to track number of messages send during the last
   /// superstep (bookkeeping)
   static std::string const sendCountKey;
-
-  /// Used to communicate to enter the next phase
-  /// only send by the conductor
-  static std::string const enterNextGSSKey;
 
   /// Algorithms parameters
   static std::string const maxGSS;

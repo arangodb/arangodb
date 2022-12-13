@@ -40,7 +40,6 @@ class MasterContext {
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
   // Should cause the master to tell everyone to enter the next phase
-  bool _enterNextGSS = false;
   AggregatorHandler* _aggregators = nullptr;
   ReportManager* _reports;
 
@@ -89,8 +88,6 @@ class MasterContext {
 #endif
   }
 
-  inline void enterNextGlobalSuperstep() { _enterNextGSS = true; }
-
   virtual void preApplication() {}
 
   /// @brief called before supersteps
@@ -130,11 +127,6 @@ class MasterContext {
   virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) {
     return ContinuationResult::DONT_CARE;
   }
-
-  /// Called when a worker send updated aggregator values.
-  /// Only called in async mode, never called after a global superstep
-  /// Can be used to decide to enter the next phase
-  virtual void postLocalSuperstep() {}
 
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }
