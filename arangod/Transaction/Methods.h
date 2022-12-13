@@ -477,13 +477,6 @@ class Methods {
                                       VPackSlice newValue,
                                       OperationOptions& options, bool isUpdate);
 
-  Result modifyLocalHelper(
-      LogicalCollection& collection, velocypack::Slice value,
-      LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
-      velocypack::Slice previousDocument, RevisionId& newRevisionId,
-      velocypack::Builder& newDocumentBuilder, OperationOptions& options,
-      BatchOptions& batchOptions, bool isUpdate);
-
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
                                             OperationOptions const& options,
