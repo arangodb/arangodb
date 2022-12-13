@@ -1,6 +1,12 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* BTS-1141: Changed the default value of startup option
+  `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`.
+  This change prevents RocksDB from going into read-only mode when an internal
+  operation tries to insert some value into the block cache, but can't do so
+  because the block cache's capacity limit is reached.
+
 * Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'` when
   a peer closes an SSL/TLS connection without performing a proper connection
   shutdown.
