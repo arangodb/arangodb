@@ -24,6 +24,7 @@
 #include "IResearchViewCoordinator.h"
 #include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchLinkCoordinator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -46,6 +47,8 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
+
+#include <iostream>
 
 namespace arangodb::iresearch {
 namespace {
@@ -238,8 +241,8 @@ ViewFactory const& IResearchViewCoordinator::factory() {
   return factory;
 }
 
-Result IResearchViewCoordinator::link(IResearchLink const& link) {
-  auto& collection = link.collection();
+Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
+  auto& collection = static_cast<IResearchLink const&>(link).collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
     return {TRI_ERROR_NO_ERROR};
@@ -247,7 +250,7 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
   velocypack::Builder builder;
   builder.openObject();
   // generate user-visible definition, agency will not see links
-  auto r = link.properties(builder, true);
+  auto r = link.properties(builder);
   if (!r.ok()) {
     return r;
   }
@@ -304,6 +307,18 @@ bool IResearchViewCoordinator::visitCollections(
     }
   }
   return true;
+}
+
+bool IResearchViewCoordinator::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _collections) {
+    if (basics::VelocyPackHelper::getBooleanValue(
+            entry.second.second.slice(),
+            arangodb::StaticStrings::IndexIsBuilding, false)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 Result IResearchViewCoordinator::properties(velocypack::Slice slice,

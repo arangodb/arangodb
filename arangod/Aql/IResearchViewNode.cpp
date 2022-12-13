@@ -2160,4 +2160,13 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
   return uniqueVariables;
 }
 
+bool IResearchViewNode::isBuilding() const {
+  if (!_view || !ServerState::instance()->isCoordinator() ||
+      _view->type() != ViewType::kArangoSearch) {
+    return false;
+  }
+  auto& view = basics::downCast<IResearchViewCoordinator>(*_view);
+  return view.isBuilding();
+}
+
 }  // namespace arangodb::iresearch

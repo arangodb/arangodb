@@ -88,9 +88,23 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
 }
 
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
+  _isBuilding = basics::VelocyPackHelper::getBooleanValue(
+      definition, arangodb::StaticStrings::IndexIsBuilding, false);
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);
+  return r;
+}
+
+Result IResearchLinkCoordinator::properties(
+    velocypack::Builder& builder) const {
+  auto r = IResearchLink::properties(builder, true);
+  if (!r.ok()) {
+    return r;
+  }
+  if (_isBuilding) {
+    builder.add(arangodb::StaticStrings::IndexIsBuilding, true);
+  }
   return r;
 }
 
@@ -132,7 +146,7 @@ void IResearchLinkCoordinator::toVelocyPack(
 
   builder.openObject();
 
-  if (!properties(builder, forPersistence).ok()) {
+  if (!IResearchLink::properties(builder, forPersistence).ok()) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to generate link definition for arangosearch view "

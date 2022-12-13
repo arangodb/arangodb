@@ -39,7 +39,7 @@ struct ViewFactory;
 
 namespace arangodb::iresearch {
 
-class IResearchLink;
+class IResearchLinkCoordinator;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
@@ -64,7 +64,7 @@ class IResearchViewCoordinator final : public LogicalView {
   /// @note definitions are not persisted
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  Result link(IResearchLink const& link);
+  Result link(IResearchLinkCoordinator const& link);
 
   void open() final {}
 
@@ -117,6 +117,8 @@ class IResearchViewCoordinator final : public LogicalView {
     return false;
 #endif
   }
+
+  [[nodiscard]] bool isBuilding() const;
 
  private:
   Result appendVPackImpl(VPackBuilder& build, Serialization ctx,

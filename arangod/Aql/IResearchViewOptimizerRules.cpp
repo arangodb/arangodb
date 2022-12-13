@@ -1066,9 +1066,15 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node &&
-               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+
+    if (viewNode.isBuilding()) {
+      query.warnings().registerWarning(TRI_ERROR_ARANGO_INCOMPLETE_READ,
+                                       "ArangoSearch view 'v' building is in "
+                                       "progress. Results can be incomplete.");
+    }
 
     if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away sort that follows the EnumerateView
