@@ -140,9 +140,6 @@ class Worker : public IWorker {
                         RangeIterator<Vertex<V, E>>& vertexIterator);
   void _finishedProcessing();
   void _callConductor(std::string const& path, VPackBuilder const& message);
-  void _callConductorWithResponse(std::string const& path,
-                                  VPackBuilder const& message,
-                                  std::function<void(VPackSlice slice)> handle);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 

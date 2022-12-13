@@ -106,7 +106,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool _useMemoryMaps = true;
   bool _storeResults = false;
-  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
