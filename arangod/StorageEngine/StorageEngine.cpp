@@ -96,8 +96,8 @@ void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
 
   builder.add("aliases", velocypack::Value(VPackValueType::Object));
   builder.add("indexes", velocypack::Value(VPackValueType::Object));
-  for (auto const& it : indexFactory().indexAliases()) {
-    builder.add(it.first, velocypack::Value(it.second));
+  for (auto const& [alias, type] : indexFactory().indexAliases()) {
+    builder.add(alias, velocypack::Value(type));
   }
   builder.close();  // indexes
   builder.close();  // aliases

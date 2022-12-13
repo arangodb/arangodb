@@ -55,10 +55,6 @@ class Utils {
   static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
-  static std::string const startRecoveryPath;
-  static std::string const continueRecoveryPath;
-  static std::string const finishedRecoveryPath;
-  static std::string const finalizeRecoveryPath;
   static std::string const storeCheckpointPath;
   static std::string const aqlResultsPath;
 
@@ -95,9 +91,6 @@ class Utils {
   /// sender cluster id
   static std::string const senderKey;
   static std::string const payloadKey;
-
-  /// Recovery method name
-  static std::string const recoveryMethodKey;
 
   /// Tells workers to store the result into the collections
   /// otherwise dicard results
