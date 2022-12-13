@@ -1,6 +1,14 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Added a configuration option (for the agency):
+    --agency.supervision-failed-leader-adds-follower
+  with a default of `true` (behaviour as before). If set to `false`,
+  a `FailedLeader` job does not automatically configure a new shard
+  follower, thereby preventing unnecessary network traffic, CPU and IO load
+  for the case that the server comes back quickly. If the server is
+  permanently failed, an `AddFollower` job will be created anyway eventually.
+
 * Added a feature to the ResignLeadership job. By default, it will now
   undo the leader changes automatically after the server is restarted,
   unless the option `undoMoves` is set to `false`. This will help to
