@@ -58,10 +58,9 @@
 
 #include "Logger/LogMacros.h"
 
-#include <string_view>
-
 using namespace arangodb;
 using namespace arangodb::rest;
+using namespace std::literals;
 
 namespace {
 network::Headers buildHeaders() {
@@ -457,6 +456,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                              VPackValue(figures.get("cacheUsage").getUInt()));
                 }
               }
+
               using std::operator""sv;
               auto idxType = it.get("type").stringView();
               result.add("type", VPackValue(idxType));
