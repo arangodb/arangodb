@@ -399,8 +399,8 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::retryTryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   if (++ctx->tries < 60) {
-    return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
-        [this, ctx = std::move(ctx)](auto) mutable {
+    return SchedulerFeature::SCHEDULER->delay("remove-server", 1s)
+        .thenValue([this, ctx = std::move(ctx)](auto) mutable {
           return tryDeleteServer(std::move(ctx));
         });
   } else {
@@ -1484,7 +1484,7 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
     clock::time_point startTime) {
-  return SchedulerFeature::SCHEDULER->delay(1s)
+  return SchedulerFeature::SCHEDULER->delay("wait-for-supervision", 1s)
       .thenValue([](auto) {
         return AsyncAgencyComm().getValues(arangodb::cluster::paths::root()
                                                ->arango()
