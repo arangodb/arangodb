@@ -29,6 +29,7 @@
 #include "Actor/Runtime.h"
 
 #include "TrivialActor.h"
+#include "PingPongActors.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
@@ -108,3 +109,22 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
 // TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
 //   // TODO what happens then? currently aborts
 // }
+
+TEST(RuntimeTest, ping_pong_game) {
+  auto serverID = ServerID{"PRMR-1234"};
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
+  Runtime runtime(serverID, "RuntimeTest", scheduler, sendingMechanism);
+
+  auto pong_actor =
+      runtime.spawn<pong_actor::PongState, pong_actor::PongMessage,
+                    pong_actor::PongHandler>(pong_actor::PongState{},
+                                             pong_actor::Start{});
+
+//  auto ping_actor =
+      runtime.spawn<ping_actor::PingState, ping_actor::PingMessage,
+                    ping_actor::PingHandler>(
+          ping_actor::PingState{},
+          ping_actor::Start{
+              .pongActor = ActorPID{.id = pong_actor, .server = serverID}});
+}
