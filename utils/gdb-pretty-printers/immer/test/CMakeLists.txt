@@ -17,9 +17,10 @@ set_target_properties(flex_vector_test
 enable_testing()
 
 add_test(NAME flex_vector_test
-        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.sh
+        COMMAND gdb
         $<TARGET_FILE:flex_vector_test>
-        ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.gdbscript
+        -x ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.gdbscript
+        -batch
 
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         )
