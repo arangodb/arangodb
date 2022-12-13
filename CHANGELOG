@@ -1,6 +1,11 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Max value of minhash_value was set to 2^53 - 1 (9007199254740991) to stay in
+  safe integer limits for javascript.
+
+* SEARCH-433 Fix Inverted index fields presence checks for IN clauses.
+
 * BTS-1141: Changed the default value of startup option
   `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`.
   This change prevents RocksDB from going into read-only mode when an internal
