@@ -1190,8 +1190,6 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1384,8 +1382,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1761,8 +1757,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1792,8 +1786,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1826,8 +1818,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1860,8 +1850,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1899,8 +1887,6 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1939,8 +1925,6 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1999,8 +1983,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2063,8 +2045,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2128,8 +2108,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2181,8 +2159,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2234,8 +2210,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2293,8 +2267,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2342,8 +2314,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2391,8 +2361,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2440,8 +2408,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2501,8 +2467,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2564,8 +2528,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2627,8 +2589,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2679,8 +2639,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2731,8 +2689,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2795,8 +2751,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2859,8 +2813,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2924,8 +2876,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2989,8 +2939,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);

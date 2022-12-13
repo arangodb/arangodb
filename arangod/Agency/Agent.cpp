@@ -2535,7 +2535,7 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
     bool b = slice.getBool();
     LOG_TOPIC("12345", DEBUG, Logger::SUPERVISION)
         << "Updating failedLeaderAddsFollower to " << b;
-    _config.setSupervisionDelayFailedFollower(b);
+    _config.setSupervisionFailedLeaderAddsFollower(b);
     _supervision->setFailedLeaderAddsFollower(b);
   }
 }

@@ -3,7 +3,7 @@ devel
 
 * Added a configuration option (for the agency):
     --agency.supervision-failed-leader-adds-follower
-  with a default of `true` (behaviour as before). If set to `false`,
+  with a default of `true` (behavior as before). If set to `false`,
   a `FailedLeader` job does not automatically configure a new shard
   follower, thereby preventing unnecessary network traffic, CPU and IO load
   for the case that the server comes back quickly. If the server is

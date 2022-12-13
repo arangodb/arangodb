@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 
 #include <velocypack/Iterator.h>
 
@@ -242,23 +243,32 @@ struct config_t {
   bool supervisionFailedLeaderAddsFollower() const;
 
   /// @brief set Supervision grace period
-  void setSupervisionGracePeriod(double d) { _supervisionGracePeriod = d; }
+  void setSupervisionGracePeriod(double d) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionGracePeriod = d;
+  }
 
   /// @brief set Supervision ok threshold
-  void setSupervisionOkThreshold(double d) { _supervisionOkThreshold = d; }
+  void setSupervisionOkThreshold(double d) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionOkThreshold = d;
+  }
 
   /// @brief set Supervision delay add follower
   void setSupervisionDelayAddFollower(uint64_t d) {
+    WRITE_LOCKER(writeLocker, _lock);
     _supervisionDelayAddFollower = d;
   }
 
   /// @brief set Supervision delay failed follower
   void setSupervisionDelayFailedFollower(uint64_t d) {
+    WRITE_LOCKER(writeLocker, _lock);
     _supervisionDelayFailedFollower = d;
   }
 
   /// @brief set Supervision FailedLeader adds follower flag
   void setSupervisionFailedLeaderAddsFollower(bool f) {
+    WRITE_LOCKER(writeLocker, _lock);
     _supervisionFailedLeaderAddsFollower = f;
   }
 
