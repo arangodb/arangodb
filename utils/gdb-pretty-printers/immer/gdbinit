@@ -1,6 +1,7 @@
 python
 import sys
-sys.path.insert(0, '/home/tobias/Documents/ArangoDB/arangodb/arangodb/utils/gdb-pretty-printers/immer/src/')
+# enter the correct path here, probably an absolute one
+sys.path.insert(0, './utils/gdb-pretty-printers/immer/src/')
 from immer.printers import register_immer_printers
 register_immer_printers()
 end
