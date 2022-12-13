@@ -44,9 +44,17 @@ struct PregelGraphSource {
   std::vector<ShardID> allShards;
   std::unordered_map<CollectionID, std::string> planIds;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, PregelGraphSource& x) {
+  return f.object(x).fields(
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
+      f.field("vertexShards", x.vertexShards),
+      f.field("edgeShards", x.edgeShards), f.field("allShards", x.allShards),
+      f.field("planIds", x.planIds));
+}
 
 struct GraphSettings {
-  collections::graph::GraphSource graphDataSource;
+  collections::graph::GraphSource graphSource;
   std::string shardKeyAttribute;
   bool storeResults;
 
@@ -56,5 +64,11 @@ struct GraphSettings {
   auto isShardingCorrect(
       std::shared_ptr<collections::Collection> const& collection) -> Result;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, GraphSettings& x) {
+  return f.object(x).fields(f.field("graphDataSource", x.graphSource),
+                            f.field("shardKeyAttribute", x.shardKeyAttribute),
+                            f.field("storeResults", x.storeResults));
+}
 
 }  // namespace arangodb::pregel::conductor

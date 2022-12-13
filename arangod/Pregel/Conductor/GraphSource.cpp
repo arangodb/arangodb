@@ -28,7 +28,7 @@ auto GraphSettings::isShardingCorrect(
 
 auto GraphSettings::getSource(TRI_vocbase_t& vocbase)
     -> ResultT<PregelGraphSource> {
-  auto graphCollectionNames = graphDataSource.collectionNames(vocbase);
+  auto graphCollectionNames = graphSource.collectionNames(vocbase);
   if (graphCollectionNames.fail()) {
     return graphCollectionNames.result();
   }
@@ -65,7 +65,7 @@ auto GraphSettings::getSource(TRI_vocbase_t& vocbase)
     }
   }
 
-  auto edgeCollectionRestrictions = graphDataSource.restrictions(vocbase);
+  auto edgeCollectionRestrictions = graphSource.restrictions(vocbase);
   if (edgeCollectionRestrictions.fail()) {
     return edgeCollectionRestrictions.result();
   }

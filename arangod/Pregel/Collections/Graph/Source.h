@@ -29,6 +29,14 @@
 
 namespace arangodb::pregel::collections::graph {
 
+struct GraphOrCollection : std::variant<GraphCollectionNames, GraphName> {};
+template<class Inspector>
+auto inspect(Inspector& f, GraphOrCollection& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<GraphCollectionNames>("collectionNames"),
+      arangodb::inspection::type<GraphName>("graphName"));
+}
+
 /**
    The source of a graph includes the name of its collections and the
 restrictions on edge collections.
@@ -37,19 +45,27 @@ names. If a graph is given, the graph edges are automatically added
 to the edge collection restrictions.
  **/
 struct GraphSource {
-  GraphSource(std::variant<GraphCollectionNames, GraphName> graphOrCollections,
+  GraphSource(GraphOrCollection graphOrCollections,
               EdgeCollectionRestrictions restrictions)
       : graphOrCollections{std::move(graphOrCollections)},
         edgeCollectionRestrictions{std::move(restrictions)} {}
   auto collectionNames(TRI_vocbase_t& vocbase) -> ResultT<GraphCollectionNames>;
   auto restrictions(TRI_vocbase_t& vocbase)
       -> ResultT<EdgeCollectionRestrictions>;
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, GraphSource& x);
 
  private:
-  std::variant<GraphCollectionNames, GraphName> graphOrCollections;
+  GraphOrCollection graphOrCollections;
   EdgeCollectionRestrictions edgeCollectionRestrictions;
   auto graphRestrictions(TRI_vocbase_t& vocbase)
       -> ResultT<EdgeCollectionRestrictions>;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, GraphSource& x) {
+  return f.object(x).fields(
+      f.field("graphOrCollection", x.graphOrCollections),
+      f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions));
+}
 
 }  // namespace arangodb::pregel::collections::graph

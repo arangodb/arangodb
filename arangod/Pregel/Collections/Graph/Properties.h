@@ -39,10 +39,19 @@ struct GraphCollectionNames {
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, GraphCollectionNames& x) {
+  return f.object(x).fields(f.field("vertexCollections", x.vertexCollections),
+                            f.field("edgeCollections", x.edgeCollections));
+}
 
 struct GraphName {
   std::string graph;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, GraphName& x) {
+  return f.object(x).fields(f.field("graph", x.graph));
+}
 
 /**
 Maps from vertex collection name to a list of edge collections that this
@@ -55,5 +64,9 @@ struct EdgeCollectionRestrictions {
   auto add(EdgeCollectionRestrictions others) const
       -> EdgeCollectionRestrictions;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, EdgeCollectionRestrictions& x) {
+  return f.object(x).fields(f.field("items", x.items));
+}
 
 }  // namespace arangodb::pregel::collections::graph
