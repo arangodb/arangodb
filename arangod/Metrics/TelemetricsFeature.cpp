@@ -101,6 +101,7 @@ void LastUpdateHandler::sendTelemetrics() {
   SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
                                        _server, false, true);
   _sender->send(result.slice());
+  TRI_IF_FAILURE("DisableTelemetricsSenderCoordinator") { return; }
 }
 
 void LastUpdateHandler::doLastUpdate(std::string_view oldRev,
@@ -330,7 +331,7 @@ void TelemetricsFeature::start() {
     }
 
     workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-        arangodb::RequestLane::INTERNAL_LOW,
+        "telemetrics-task", arangodb::RequestLane::INTERNAL_LOW,
         std::chrono::seconds(_rescheduleInterval), _telemetricsEnqueue);
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem = std::move(workItem);
