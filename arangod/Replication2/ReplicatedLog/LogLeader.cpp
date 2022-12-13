@@ -147,7 +147,7 @@ namespace {
 auto delayedFuture(std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
   if (SchedulerFeature::SCHEDULER) {
-    return SchedulerFeature::SCHEDULER->delay(duration);
+    return SchedulerFeature::SCHEDULER->delay("r2 appendentries", duration);
   }
 
   // std::this_thread::sleep_for(duration);

@@ -49,7 +49,7 @@ void queueGarbageCollection(std::mutex& mutex,
                             std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
   workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
+      "networkfeature-gc", arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
