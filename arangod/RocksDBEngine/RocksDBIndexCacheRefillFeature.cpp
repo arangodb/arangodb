@@ -136,6 +136,10 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
+  {
+    std::unique_lock lock(_indexFillTasksMutex);
+    _indexFillTasks.clear();
+  }
   if (_refillThread != nullptr) {
     _refillThread->beginShutdown();
   }
@@ -245,6 +249,9 @@ void RocksDBIndexCacheRefillFeature::scheduleIndexRefillTasks() {
   // index refills concurrently, in order to not overwhelm the instance.
   while (!_indexFillTasks.empty() &&
          _currentlyRunningIndexFillTasks < _maxConcurrentIndexFillTasks) {
+    if (server().isStopping()) {
+      return;
+    }
     auto task = std::move(_indexFillTasks.back());
     _indexFillTasks.pop_back();
 
