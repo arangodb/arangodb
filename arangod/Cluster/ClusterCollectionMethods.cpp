@@ -39,6 +39,7 @@
 #include "Cluster/Utils/PlanCollectionToAgencyWriter.h"
 #include "Cluster/Utils/TargetCollectionAgencyWriter.h"
 #include "Cluster/Utils/SatelliteDistribution.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
