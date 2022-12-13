@@ -2512,7 +2512,7 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     LOG_TOPIC("12345", DEBUG, Logger::SUPERVISION)
         << "Updating failedLeaderAddsFollower to " << b;
     _config.setSupervisionDelayFailedFollower(b);
-    _supervision->setFailedLeaderAddsFollower(b);
+    _supervision.setFailedLeaderAddsFollower(b);
   }
 }
 
