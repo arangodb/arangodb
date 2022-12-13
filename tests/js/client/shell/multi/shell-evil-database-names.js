@@ -84,9 +84,6 @@ function EvilDatabaseNamesSuite () {
     },
 
     testViewCreationDeletion: function () {
-      if(!isEnterprise) {
-        print("enterpise");
-      }
       dbs.forEach((database) => {
         db._useDatabase(database);
         db._create("tmpColl");

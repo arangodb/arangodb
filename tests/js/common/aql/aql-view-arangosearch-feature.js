@@ -2424,9 +2424,8 @@ function iResearchFeatureAqlTestSuite () {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
-              "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+              "fields": { field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                includeAllFields:false, 
-               fields:{field:{}},
                analyzers:['calcUnderTest']}}};      
         } else {
           viewMeta =  {links: 

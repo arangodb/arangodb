@@ -166,7 +166,7 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
                 "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
               },
             },
-          }
+          };
         } else {
           metaView = {
             links: {

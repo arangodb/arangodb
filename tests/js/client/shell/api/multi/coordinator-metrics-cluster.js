@@ -115,7 +115,7 @@ function createClusterWideMetrics() {
   }
   db.foo1.save(foo1_values);
   db.foo2.save(foo2_values);
-  db.foo3.save(foo3_values)
+  db.foo3.save(foo3_values);
   if (isEnterprise) {
     db._createView("foov", "arangosearch", {
       "consolidationIntervalMsec": 0,
