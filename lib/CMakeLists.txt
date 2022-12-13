@@ -72,7 +72,6 @@ add_library(arango STATIC
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp

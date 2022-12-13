@@ -174,7 +174,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(std::string_view data) override { return true; }
+  virtual bool reset(std::string_view) override { return true; }
 
  private:
   irs::frequency _attr;
@@ -262,7 +262,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
   virtual bool next() override { return false; }
-  virtual bool reset(std::string_view data) override { return true; }
+  virtual bool reset(std::string_view) override { return true; }
 
  private:
   TestAttribute _attr;
@@ -314,7 +314,7 @@ class TypedAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual bool reset(std::string_view data) override {
+  virtual bool reset(std::string_view) override {
     _resetted = true;
     return true;
   }
@@ -2594,8 +2594,6 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
   EXPECT_EQ(1, reader->size());
   EXPECT_EQ(size, reader->docs_count());
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-
   size_t found = 0;
   for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
     auto const ridSlice = docSlice.get("rid");
@@ -2612,10 +2610,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     arangodb::iresearch::PrimaryKeyFilterContainer filters;
     EXPECT_TRUE(filters.empty());
-    auto& filter =
-        filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-    ASSERT_EQ(filter.type(engine),
-              arangodb::iresearch::PrimaryKeyFilter::type(engine));
+    auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
     EXPECT_FALSE(filters.empty());
 
     // first execution
@@ -2630,11 +2625,6 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
       for (auto& segment : *reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
-        // TRI_ASSERT(...) check
-        EXPECT_EQ(irs::filter::prepared::empty(),
-                  filter.prepare(*reader));  // unusable filter (after execute)
-
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++found;
@@ -2785,8 +2775,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   EXPECT_EQ(expectedLiveDocs + 1,
             store.reader->live_docs_count());  // +1 for keep-alive doc
 
-  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
-
   // check regular filter case (unique rid)
   {
     size_t actualDocs = 0;
@@ -2798,10 +2786,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto rid = ridSlice.getNumber<uint64_t>();
       arangodb::iresearch::PrimaryKeyFilterContainer filters;
       EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
+      auto& filter = filters.emplace(arangodb::LocalDocumentId(rid), false);
       EXPECT_FALSE(filters.empty());
 
       auto prepared = filter.prepare(*store.reader);
@@ -2814,17 +2799,12 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       for (auto& segment : *store.reader) {
         auto docs = prepared->execute(segment);
         ASSERT_TRUE(docs);
-        // EXPECT_EQ(nullptr, prepared->execute(segment)); // unusable filter
-        // TRI_ASSERT(...) check
-        EXPECT_EQ(
-            irs::filter::prepared::empty(),
-            filter.prepare(*store.reader));  // unusable filter (after execute)
-
         EXPECT_TRUE(docs->next());
         auto const id = docs->value();
         ++actualDocs;
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
+        EXPECT_FALSE(docs->next());
         EXPECT_FALSE(docs->next());
         EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
 
@@ -2847,230 +2827,6 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     }
 
     EXPECT_EQ(expectedDocs, actualDocs);
-  }
-
-  // remove + insert (simulate recovery)
-  for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
-    auto const ridSlice = docSlice.get("rid");
-    EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
-
-    auto rid = ridSlice.getNumber<uint64_t>();
-    arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
-        arangodb::LocalDocumentId(rid));
-
-    // remove + insert document
-    {
-      auto ctx = store.writer->documents();
-      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          engine, arangodb::LocalDocumentId(rid), false));
-      auto doc = ctx.insert();
-      arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
-      EXPECT_TRUE(doc);
-      ++expectedDocs;
-    }
-  }
-
-  // add extra doc to hold segment after others are removed
-  {
-    arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
-        arangodb::LocalDocumentId(123456));
-    auto ctx = store.writer->documents();
-    auto doc = ctx.insert();
-    arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
-    EXPECT_TRUE(doc);
-  }
-
-  store.writer->commit();
-  store.reader = store.reader->reopen();
-  EXPECT_EQ(2, store.reader->size());
-  EXPECT_EQ(expectedDocs + 2,
-            store.reader->docs_count());  // +2 for keep-alive doc
-  EXPECT_EQ(expectedLiveDocs + 2,
-            store.reader->live_docs_count());  // +2 for keep-alive doc
-
-  // check 1st recovery case
-  {
-    size_t actualDocs = 0;
-
-    auto beforeRecovery = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
-      StorageEngineMock::recoveryStateResult = beforeRecovery;
-    };
-
-    for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
-      auto const ridSlice = docSlice.get("rid");
-      EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
-
-      auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeyFilterContainer filters;
-      EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
-      EXPECT_FALSE(filters.empty());
-
-      auto prepared = filter.prepare(*store.reader);
-      ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter ==
-                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                       prepared.get())));  // same object
-
-      for (auto& segment : *store.reader) {
-        auto docs = prepared->execute(segment);
-        ASSERT_TRUE(docs);
-        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(
-            nullptr,
-            filter.prepare(*store.reader));  // usable filter (after execute)
-
-        if (docs->next()) {  // old segments will not have any matching docs
-          auto const id = docs->value();
-          ++actualDocs;
-          EXPECT_FALSE(docs->next());
-          EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
-          EXPECT_FALSE(docs->next());
-          EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
-
-          auto column =
-              segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
-          ASSERT_TRUE(column);
-
-          auto values = column->iterator(irs::ColumnHint::kNormal);
-          ASSERT_NE(nullptr, values);
-          auto* value = irs::get<irs::payload>(*values);
-          ASSERT_NE(nullptr, value);
-
-          EXPECT_EQ(id, values->seek(id));
-
-          arangodb::LocalDocumentId pk;
-          EXPECT_TRUE(
-              arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
-          EXPECT_EQ(rid, pk.id());
-        }
-      }
-    }
-
-    EXPECT_EQ(expectedLiveDocs, actualDocs);
-  }
-
-  // remove + insert (simulate recovery) 2nd time
-  for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
-    auto const ridSlice = docSlice.get("rid");
-    EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
-
-    auto rid = ridSlice.getNumber<uint64_t>();
-    arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
-        arangodb::LocalDocumentId(rid));
-
-    // remove + insert document
-    {
-      auto ctx = store.writer->documents();
-      ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(
-          engine, arangodb::LocalDocumentId(rid), false));
-      auto doc = ctx.insert();
-      arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
-      EXPECT_TRUE(doc);
-      ++expectedDocs;
-    }
-  }
-
-  // add extra doc to hold segment after others are removed
-  {
-    arangodb::iresearch::Field field;
-    auto pk = arangodb::iresearch::DocumentPrimaryKey::encode(
-        arangodb::LocalDocumentId(1234567));
-    auto ctx = store.writer->documents();
-    auto doc = ctx.insert();
-    arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
-    EXPECT_TRUE(doc);
-  }
-
-  store.writer->commit();
-  store.reader = store.reader->reopen();
-  EXPECT_EQ(3, store.reader->size());
-  EXPECT_EQ(expectedDocs + 3,
-            store.reader->docs_count());  // +3 for keep-alive doc
-  EXPECT_EQ(expectedLiveDocs + 3,
-            store.reader->live_docs_count());  // +3 for keep-alive doc
-
-  // check 2nd recovery case
-  {
-    size_t actualDocs = 0;
-
-    auto beforeRecovery = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    irs::Finally restoreRecovery = [&beforeRecovery]() noexcept {
-      StorageEngineMock::recoveryStateResult = beforeRecovery;
-    };
-
-    for (auto const docSlice : arangodb::velocypack::ArrayIterator(dataSlice)) {
-      auto const ridSlice = docSlice.get("rid");
-      EXPECT_TRUE(ridSlice.isNumber<uint64_t>());
-
-      auto rid = ridSlice.getNumber<uint64_t>();
-      arangodb::iresearch::PrimaryKeyFilterContainer filters;
-      EXPECT_TRUE(filters.empty());
-      auto& filter =
-          filters.emplace(engine, arangodb::LocalDocumentId(rid), false);
-      ASSERT_EQ(filter.type(engine),
-                arangodb::iresearch::PrimaryKeyFilter::type(engine));
-      EXPECT_FALSE(filters.empty());
-
-      auto prepared = filter.prepare(*store.reader);
-      ASSERT_TRUE(prepared);
-      EXPECT_EQ(prepared, filter.prepare(*store.reader));  // same object
-      EXPECT_TRUE((&filter ==
-                   dynamic_cast<arangodb::iresearch::PrimaryKeyFilter const*>(
-                       prepared.get())));  // same object
-
-      for (auto& segment : *store.reader) {
-        auto docs = prepared->execute(segment);
-        ASSERT_TRUE(docs);
-        EXPECT_NE(nullptr, prepared->execute(segment));  // usable filter
-        EXPECT_NE(
-            nullptr,
-            filter.prepare(*store.reader));  // usable filter (after execute)
-
-        if (docs->next()) {  // old segments will not have any matching docs
-          auto const id = docs->value();
-          ++actualDocs;
-          EXPECT_FALSE(docs->next());
-          EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
-          EXPECT_FALSE(docs->next());
-          EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
-
-          auto column =
-              segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
-          ASSERT_TRUE(column);
-
-          auto values = column->iterator(irs::ColumnHint::kNormal);
-          ASSERT_NE(nullptr, values);
-          auto* value = irs::get<irs::payload>(*values);
-          ASSERT_NE(nullptr, value);
-
-          EXPECT_EQ(id, values->seek(id));
-
-          arangodb::LocalDocumentId pk;
-          EXPECT_TRUE(
-              arangodb::iresearch::DocumentPrimaryKey::read(pk, value->value));
-          EXPECT_EQ(rid, pk.id());
-        }
-      }
-    }
-
-    EXPECT_EQ(expectedLiveDocs, actualDocs);
   }
 }
 
