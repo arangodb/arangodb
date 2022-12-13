@@ -39,9 +39,8 @@ struct Ping;
 
 namespace ping_actor {
 
-/* Ping Actor */
-struct PingState {
-  bool operator==(const PingState&) const = default;
+struct State {
+  bool operator==(const State&) const = default;
 };
 
 struct Start {
@@ -52,27 +51,31 @@ struct Pong {
   std::string text;
 };
 
-using PingMessage = std::variant<Start, Pong>;
-
-struct PingHandler : HandlerBase<PingState> {
-  auto operator()(Start msg) -> std::unique_ptr<PingState> {
+struct Handler : HandlerBase<State> {
+  auto operator()(Start msg) -> std::unique_ptr<State> {
     std::cout << "pong actor: " << msg.pongActor.server << " "
               << msg.pongActor.id.id << std::endl;
     // runtime.send(msg.pongActor, pong_actor::Ping{.text = "hello world"});
     return std::move(state);
   }
 
-  auto operator()(Pong msg) -> std::unique_ptr<PingState> {
+  auto operator()(Pong msg) -> std::unique_ptr<State> {
     return std::move(state);
   }
 };
+
+struct Actor {
+  using State = State;
+  using Handler = Handler;
+  using Message = std::variant<Start, Pong>;
+};
+
 }  // namespace ping_actor
 
 namespace pong_actor {
 
-/* Pong Actor */
-struct PongState {
-  bool operator==(const PongState&) const = default;
+struct State {
+  bool operator==(const State&) const = default;
 };
 
 struct Start {};
@@ -82,17 +85,21 @@ struct Ping {
   std::string text;
 };
 
-using PongMessage = std::variant<Start, Ping>;
-
-struct PongHandler : HandlerBase<PongState> {
-  auto operator()(Start msg) -> std::unique_ptr<PongState> {
+struct Handler : HandlerBase<State> {
+  auto operator()(Start msg) -> std::unique_ptr<State> {
     return std::move(state);
   }
 
-  auto operator()(Ping msg) -> std::unique_ptr<PongState> {
+  auto operator()(Ping msg) -> std::unique_ptr<State> {
     // runtime.send(msg.sender, ping_actor::Pong{.text = msg.text});
     return std::move(state);
   }
+};
+
+struct Actor {
+  using State = State;
+  using Handler = Handler;
+  using Message = std::variant<Start, Ping>;
 };
 
 }  // namespace pong_actor

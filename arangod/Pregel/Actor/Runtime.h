@@ -59,20 +59,20 @@ struct Runtime {
     }
   }
 
-  template<typename ActorState, typename ActorMessage, typename ActorHandler>
-  requires Actorable<ActorState, ActorMessage, ActorHandler>
-  auto spawn(ActorState initialState, ActorMessage initialMessage) -> ActorID {
+  template<Actorable ActorConfig>
+  auto spawn(typename ActorConfig::State initialState,
+             typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
-    auto newActor = std::make_unique<
-        Actor<Scheduler, ActorHandler, ActorState, ActorMessage>>(
-        scheduler, std::make_unique<ActorState>(initialState));
+    auto newActor = std::make_unique<Actor<Scheduler, ActorConfig>>(
+        scheduler, std::make_unique<typename ActorConfig::State>(initialState));
     actors.emplace(newId, std::move(newActor));
 
     // Send initial message to newly created actor
     auto address = ActorPID{.id = newId, .server = myServerID};
     auto initialPayload =
-        std::make_unique<MessagePayload<ActorMessage>>(initialMessage);
+        std::make_unique<MessagePayload<typename ActorConfig::Message>>(
+            initialMessage);
     dispatch(
         std::make_unique<Message>(address, address, std::move(initialPayload)));
 
@@ -93,12 +93,12 @@ struct Runtime {
     return res;
   }
 
-  template<typename ActorState, typename ActorMessage, typename ActorHandler>
-  auto getActorStateByID(ActorID id) -> std::optional<ActorState> {
+  template<Actorable ActorConfig>
+  auto getActorStateByID(ActorID id)
+      -> std::optional<typename ActorConfig::State> {
     if (actors.contains(id)) {
-      auto* actor = dynamic_cast<
-          Actor<Scheduler, ActorHandler, ActorState, ActorMessage>*>(
-          actors[id].get());
+      auto* actor =
+          dynamic_cast<Actor<Scheduler, ActorConfig>*>(actors[id].get());
       if (actor != nullptr && actor->state != nullptr) {
         return *actor->state;
       }

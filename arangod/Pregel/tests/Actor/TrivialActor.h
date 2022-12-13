@@ -44,8 +44,6 @@ struct TrivialMessage1 {
   std::string store;
 };
 
-using TrivialMessage = std::variant<TrivialMessage0, TrivialMessage1>;
-
 struct TrivialHandler : HandlerBase<TrivialState> {
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
     state->called++;
@@ -59,4 +57,9 @@ struct TrivialHandler : HandlerBase<TrivialState> {
   }
 };
 
+struct TrivialActor {
+  using State = TrivialState;
+  using Message = std::variant<TrivialMessage0, TrivialMessage1>;
+  using Handler = TrivialHandler;
+};
 }  // namespace arangodb::pregel::actor::test

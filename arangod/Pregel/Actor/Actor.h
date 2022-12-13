@@ -49,26 +49,36 @@ struct HandlerBase {
 };
 
 namespace {
-template<typename H, typename S>
-concept BaseHandlerInherited = std::is_base_of<HandlerBase<S>, H>::value;
-template<typename S, typename M, typename H>
-concept MessageVariant = requires(S state, M message) {
-  {std::visit(H{std::move(std::make_unique<S>(state))}, message)};
+template<typename A>
+concept IncludesAllActorRelevantTypes =
+    std::is_class<typename A::State>::value &&
+    std::is_class<typename A::Handler>::value &&
+    std::is_class<typename A::Message>::value;
+template<typename A>
+concept HandlerInheritsFromBaseHandler =
+    std::is_base_of < HandlerBase<typename A::State>,
+typename A::Handler > ::value;
+template<typename A>
+concept MessageIsVariant = requires(typename A::State state,
+                                    typename A::Message message) {
+  {std::visit(typename A::Handler{std::move(
+                  std::make_unique<typename A::State>(state))},
+              message)};
 };
 };  // namespace
-template<typename S, typename M, typename H>
-concept Actorable = BaseHandlerInherited<H, S> && MessageVariant<S, M, H>;
+template<typename A>
+concept Actorable = IncludesAllActorRelevantTypes<A> &&
+    HandlerInheritsFromBaseHandler<A> && MessageIsVariant<A>;
 
-template<typename Scheduler, typename MessageHandler, typename State,
-         typename ActorMessage>
-requires Actorable<State, ActorMessage, MessageHandler>
+template<typename Scheduler, Actorable Config>
 struct Actor : ActorBase {
   Actor(std::shared_ptr<Scheduler> schedule,
-        std::unique_ptr<State> initialState)
+        std::unique_ptr<typename Config::State> initialState)
       : schedule(schedule), state(std::move(initialState)) {}
 
   Actor(std::shared_ptr<Scheduler> schedule,
-        std::unique_ptr<State> initialState, std::size_t batchSize)
+        std::unique_ptr<typename Config::State> initialState,
+        std::size_t batchSize)
       : batchSize(batchSize), schedule(schedule) {}
 
   ~Actor() = default;
@@ -76,14 +86,15 @@ struct Actor : ActorBase {
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
     auto* ptr = msg.release();
-    auto* m = dynamic_cast<MessagePayload<ActorMessage>*>(ptr);
+    auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
       std::cout << "actor process found a nullptr payload" << std::endl;
       std::abort();
     }
     inbox.push(std::make_unique<InternalMessage>(
-        sender, std::make_unique<ActorMessage>(std::move(m->payload))));
+        sender,
+        std::make_unique<typename Config::Message>(std::move(m->payload))));
     delete m;
     kick();
   }
@@ -106,7 +117,8 @@ struct Actor : ActorBase {
           std::cout << "work payload was nullptr" << std::endl;
         }
 
-        state = std::visit(MessageHandler{std::move(state)}, *msg->payload);
+        state = std::visit(typename Config::Handler{std::move(state)},
+                           *msg->payload);
         i--;
         if (i == 0) {
           break;
@@ -122,17 +134,18 @@ struct Actor : ActorBase {
 
   struct InternalMessage
       : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
-    InternalMessage(ActorPID sender, std::unique_ptr<ActorMessage>&& payload)
+    InternalMessage(ActorPID sender,
+                    std::unique_ptr<typename Config::Message>&& payload)
         : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
-    std::unique_ptr<ActorMessage> payload;
+    std::unique_ptr<typename Config::Message> payload;
   };
 
   std::size_t batchSize{16};
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Scheduler> schedule;
-  std::unique_ptr<State> state;
+  std::unique_ptr<typename Config::State> state;
 };
 
 // template<typename Scheduler, typename MessageHandler, typename State,
