@@ -65,6 +65,7 @@
 #include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Indexes/Index.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
@@ -293,6 +294,7 @@ struct arangodb::VocBaseLogManager {
 
   struct GuardedData {
     struct StateAndLog {
+      cluster::CallbackGuard rebootTrackerGuard;
       std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>
           log;
       std::shared_ptr<
@@ -303,6 +305,28 @@ struct arangodb::VocBaseLogManager {
     };
     absl::flat_hash_map<arangodb::replication2::LogId, StateAndLog>
         statesAndLogs;
+
+    void registerRebootTracker(
+        replication2::LogId id,
+        replication2::agency::ServerInstanceReference myself,
+        ArangodServer& server, TRI_vocbase_t& vocbase) {
+      auto& rbt =
+          server.getFeature<ClusterFeature>().clusterInfo().rebootTracker();
+
+      if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
+        iter->second.rebootTrackerGuard = rbt.callMeOnChange(
+            {myself.serverId, myself.rebootId},
+            [log = iter->second.log, id, &vocbase, &server] {
+              auto myself = replication2::agency::ServerInstanceReference(
+                  ServerState::instance()->getId(),
+                  ServerState::instance()->getRebootId());
+              log->updateMyInstanceReference(myself);
+              vocbase._logManager->_guardedData.getLockedGuard()
+                  ->registerRebootTracker(id, myself, server, vocbase);
+            },
+            "update reboot id in replicated log");
+      }
+    }
 
     auto buildReplicatedState(
         replication2::LogId const id, std::string_view type,
@@ -423,10 +447,13 @@ struct arangodb::VocBaseLogManager {
       stateAndLog.connection = log->connect(std::move(stateHandle));
 
       auto iter = statesAndLogs.emplace(id, std::move(stateAndLog));
-
       server.getFeature<ReplicatedLogFeature>()
           .metrics()
           ->replicatedLogCreationNumber->count();
+      registerRebootTracker(id, myself, server, vocbase);
+      auto metrics = server.getFeature<ReplicatedLogFeature>().metrics();
+      metrics->replicatedLogNumber->fetch_add(1);
+      metrics->replicatedLogCreationNumber->count();
 
       return iter.first->second.state;
     } catch (std::exception& ex) {

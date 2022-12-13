@@ -141,6 +141,5 @@ auto agency::operator==(ImplementationSpec const& s,
   }
   return !s.parameters.has_value();
   /*         basics::VelocyPackHelper::equal(s.parameters->slice(),
-                                           s2.parameters->slice(), true)*/
-  ;
+                                           s2.parameters->slice(), true);*/
 }
