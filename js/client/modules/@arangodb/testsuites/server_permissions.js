@@ -23,6 +23,20 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Wilfried Goesgens
+// /
+// / This suite runs tests in 3 phases:
+// / - initial eval of the testsuite, `getOptions === true`:
+// /     The test should only return an object of options. These can be:
+// /      - server.jwt-secret - the jwt
+// /      - database.password - the password to access the database
+// /      - options.* - any options to use by launching the instances
+// /      - runSetup - the server should be launched once without special params
+// / - the [optional, runSetup controlled launch of the server]. 
+// /     The test then has a server instance it can work with to setup test conditions
+// /     The code should test for `runSetup === true` to detect this phase
+// / - The server is now restarted with the additional options specified by `getOptions`.
+// / - the final testrun - neither `getOptions` nor `runSetup` set, run like regular jsunity test.
+// /
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
@@ -103,6 +117,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           clonedOpts['password'] = paramsSecondRun['database.password'];
           paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
         }
+        if (paramsSecondRun.hasOwnProperty('options')) {
+          paramsSecondRun.options.forEach(option => {
+            clonedOpts[option] = paramsSecondRun[option];
+          });
+        }
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
 
         if (runSetup) {
@@ -110,11 +129,12 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           if (this.options.extremeVerbosity !== 'silent') {
             print(paramsFirstRun);
           }
-          this.instanceManager = new im.instanceManager(clonedOpts.protocol,
-                                                       clonedOpts,
-                                                       paramsFirstRun,
-                                                       this.friendlyName,
-                                                       rootDir);
+          global.instanceManager = this.instanceManager =
+            new im.instanceManager(clonedOpts.protocol,
+                                   clonedOpts,
+                                   paramsFirstRun,
+                                   this.friendlyName,
+                                   rootDir);
           
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
