@@ -27,19 +27,10 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/Runtime.h"
 #include "Actor/Actor.h"
-
-#include "fmt/core.h"
 
 namespace arangodb::pregel::actor::test {
 
-/*
-struct ActorParameters {
-  using State = ...
-
-}
-*/
 struct TrivialState {
   std::string state;
   std::size_t called{};
@@ -55,11 +46,7 @@ struct TrivialMessage1 {
 
 using TrivialMessage = std::variant<TrivialMessage0, TrivialMessage1>;
 
-struct TrivialHandler {
-  TrivialHandler(std::unique_ptr<TrivialState> state)
-      : state{std::move(state)} {};
-  std::unique_ptr<TrivialState> state;
-
+struct TrivialHandler : HandlerBase<TrivialState> {
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
     state->called++;
     return std::move(state);

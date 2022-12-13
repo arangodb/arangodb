@@ -26,6 +26,7 @@
 #include <Inspection/VPackWithErrorT.h>
 #include <memory>
 #include <iostream>
+#include <type_traits>
 
 #include "ActorPID.h"
 #include "Message.h"
@@ -41,14 +42,26 @@ struct ActorBase {
   // state: initialised, running, finished
 };
 
+template<typename State>
+struct HandlerBase {
+  HandlerBase(std::unique_ptr<State> state) : state{std::move(state)} {};
+  std::unique_ptr<State> state;
+};
+
+namespace {
+template<typename H, typename S>
+concept BaseHandlerInherited = std::is_base_of<HandlerBase<S>, H>::value;
 template<typename S, typename M, typename H>
-concept VariantType = requires(S state, M message) {
+concept MessageVariant = requires(S state, M message) {
   {std::visit(H{std::move(std::make_unique<S>(state))}, message)};
 };
+};  // namespace
+template<typename S, typename M, typename H>
+concept Actorable = BaseHandlerInherited<H, S> && MessageVariant<S, M, H>;
 
 template<typename Scheduler, typename MessageHandler, typename State,
          typename ActorMessage>
-requires VariantType<State, ActorMessage, MessageHandler>
+requires Actorable<State, ActorMessage, MessageHandler>
 struct Actor : ActorBase {
   Actor(std::shared_ptr<Scheduler> schedule,
         std::unique_ptr<State> initialState)

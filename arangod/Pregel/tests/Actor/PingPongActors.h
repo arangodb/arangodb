@@ -54,14 +54,11 @@ struct Pong {
 
 using PingMessage = std::variant<Start, Pong>;
 
-struct PingHandler {
-  PingHandler(std::unique_ptr<PingState> state) : state{std::move(state)} {};
-  std::unique_ptr<PingState> state;
-
+struct PingHandler : HandlerBase<PingState> {
   auto operator()(Start msg) -> std::unique_ptr<PingState> {
     std::cout << "pong actor: " << msg.pongActor.server << " "
               << msg.pongActor.id.id << std::endl;
-    runtime.send(msg.pongActor, pong_actor::Ping{.text = "hello world"});
+    // runtime.send(msg.pongActor, pong_actor::Ping{.text = "hello world"});
     return std::move(state);
   }
 
@@ -87,16 +84,13 @@ struct Ping {
 
 using PongMessage = std::variant<Start, Ping>;
 
-struct PongHandler {
-  PongHandler(std::unique_ptr<PongState> state) : state{std::move(state)} {};
-  std::unique_ptr<PongState> state;
-
+struct PongHandler : HandlerBase<PongState> {
   auto operator()(Start msg) -> std::unique_ptr<PongState> {
     return std::move(state);
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<PongState> {
-    runtime.send(msg.sender, ping_actor::Pong{.text = msg.text});
+    // runtime.send(msg.sender, ping_actor::Pong{.text = msg.text});
     return std::move(state);
   }
 };
