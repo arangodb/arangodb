@@ -595,17 +595,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _workItem =
-        sch->queueDelayed(_options.continuationLane, tryAgainAfter,
-                          [self = shared_from_this()](bool canceled) {
-                            if (canceled) {
-                              self->_promise.setValue(Response{
-                                  std::move(self->_destination),
-                                  Error::ConnectionCanceled, nullptr, nullptr});
-                            } else {
-                              self->startRequest();
-                            }
-                          });
+    _workItem = sch->queueDelayed(
+        "request-retry", _options.continuationLane, tryAgainAfter,
+        [self = shared_from_this()](bool canceled) {
+          if (canceled) {
+            self->_promise.setValue(Response{std::move(self->_destination),
+                                             Error::ConnectionCanceled, nullptr,
+                                             nullptr});
+          } else {
+            self->startRequest();
+          }
+        });
   }
 };
 
