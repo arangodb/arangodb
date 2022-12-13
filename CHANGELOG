@@ -1,6 +1,14 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Added a configuration option (for the agency):
+    --agency.supervision-failed-leader-adds-follower
+  with a default of `true` (behavior as before). If set to `false`, a
+  `FailedLeader` job does not automatically configure a new shard follower,
+  thereby preventing unnecessary network traffic, CPU and IO load for the case
+  that the server comes back quickly. If the server is permanently failed, an
+  `AddFollower` job will be created anyway eventually.
+
 * Max value of minhash_value was set to 2^53 - 1 (9007199254740991) to stay in
   safe integer limits for javascript.
 
