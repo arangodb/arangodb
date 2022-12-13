@@ -36,7 +36,6 @@ TEST_F(KeyGeneratorPropertiesTest, traditional) {
   builder.add("type", "traditional");
   builder.close();
 
-
   KeyGeneratorProperties res;
 
   auto status = velocypack::deserializeWithStatus(builder.slice(), res);
@@ -45,4 +44,4 @@ TEST_F(KeyGeneratorPropertiesTest, traditional) {
   EXPECT_FALSE(std::holds_alternative<AutoIncrementGeneratorProperties>(res));
 }
 
-}
+}  // namespace arangodb::tests

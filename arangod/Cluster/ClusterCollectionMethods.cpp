@@ -45,7 +45,6 @@
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/vocbase.h"
 
-
 using namespace arangodb;
 
 namespace {
