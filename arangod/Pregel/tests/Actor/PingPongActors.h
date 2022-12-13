@@ -68,6 +68,7 @@ struct Actor {
   using State = State;
   using Handler = Handler;
   using Message = std::variant<Start, Pong>;
+  static constexpr auto typeName() -> std::string_view { return "PongActor"; };
 };
 
 }  // namespace ping_actor
@@ -100,6 +101,7 @@ struct Actor {
   using State = State;
   using Handler = Handler;
   using Message = std::variant<Start, Ping>;
+  static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 
 }  // namespace pong_actor

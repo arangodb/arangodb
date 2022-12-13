@@ -40,6 +40,13 @@ struct MockScheduler {
 
 struct MockSendingMechanism {};
 
+TEST(ActorTest, has_a_type_name) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto actor = Actor<MockScheduler, TrivialActor>(
+      scheduler, std::make_unique<TrivialState>());
+  ASSERT_EQ(actor.typeName(), "TrivialActor");
+}
+
 TEST(RuntimeTest, spawns_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
   auto sendingMechanism = std::make_shared<MockSendingMechanism>();

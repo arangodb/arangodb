@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
+#include <string_view>
 #include <thread>
 #include <string>
 #include <memory>
@@ -61,5 +62,8 @@ struct TrivialActor {
   using State = TrivialState;
   using Message = std::variant<TrivialMessage0, TrivialMessage1>;
   using Handler = TrivialHandler;
+  static constexpr auto typeName() -> std::string_view {
+    return "TrivialActor";
+  };
 };
 }  // namespace arangodb::pregel::actor::test

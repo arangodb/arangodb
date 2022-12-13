@@ -26,6 +26,7 @@
 #include <Inspection/VPackWithErrorT.h>
 #include <memory>
 #include <iostream>
+#include <string_view>
 #include <type_traits>
 
 #include "ActorPID.h"
@@ -38,7 +39,7 @@ struct ActorBase {
   virtual ~ActorBase() = default;
   virtual auto process(ActorPID sender,
                        std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
-  // virtual auto typeName() -> std::string = 0;
+  virtual auto typeName() -> std::string_view = 0;
   // state: initialised, running, finished
 };
 
@@ -55,6 +56,10 @@ concept IncludesAllActorRelevantTypes =
     std::is_class<typename A::Handler>::value &&
     std::is_class<typename A::Message>::value;
 template<typename A>
+concept IncludesName = requires() {
+  { A::typeName() } -> std::convertible_to<std::string_view>;
+};
+template<typename A>
 concept HandlerInheritsFromBaseHandler =
     std::is_base_of < HandlerBase<typename A::State>,
 typename A::Handler > ::value;
@@ -67,7 +72,7 @@ concept MessageIsVariant = requires(typename A::State state,
 };
 };  // namespace
 template<typename A>
-concept Actorable = IncludesAllActorRelevantTypes<A> &&
+concept Actorable = IncludesAllActorRelevantTypes<A> && IncludesName<A> &&
     HandlerInheritsFromBaseHandler<A> && MessageIsVariant<A>;
 
 template<typename Scheduler, Actorable Config>
@@ -82,6 +87,8 @@ struct Actor : ActorBase {
       : batchSize(batchSize), schedule(schedule) {}
 
   ~Actor() = default;
+
+  auto typeName() -> std::string_view override { return Config::typeName(); };
 
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
