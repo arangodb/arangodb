@@ -28,6 +28,16 @@
 #include <string>
 #include <vector>
 
+auto breakpoint() {
+#ifndef WIN32
+  raise(SIGTRAP);
+#else
+  // Note that I haven't actually tried whether this works with gdb on Windows.
+  // But Windows has no SIGTRAP, so.
+  raise(SIGINT);
+#endif
+}
+
 auto get_testees() {
   using namespace std::string_literals;
 
@@ -106,7 +116,7 @@ auto gen_expected(auto testees) {
 }
 
 auto run_test(auto const& testee, auto const& expected, auto i) {
-  raise(SIGTRAP);
+  breakpoint();
 }
 
 template<std::size_t... idxs>
@@ -127,7 +137,7 @@ int main() {
   // way.
   [[maybe_unused]] const auto n = expected.size();
 
-  raise(SIGTRAP);
+  breakpoint();
   run_tests(testees, expected);
 
   return 0;
