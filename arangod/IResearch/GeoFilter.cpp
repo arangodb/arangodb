@@ -288,8 +288,8 @@ struct GeoDistanceAcceptor {
 };
 
 template<typename Acceptor>
-irs::filter::prepared::ptr make_query(GeoStates&& states, irs::bstring&& stats,
-                                      irs::score_t boost, Acceptor&& acceptor) {
+irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
+                                     irs::score_t boost, Acceptor&& acceptor) {
   return irs::memory::make_managed<GeoQuery<Acceptor>>(
       std::move(states), std::move(stats), std::move(acceptor), boost);
 }
@@ -464,11 +464,11 @@ irs::filter::prepared::ptr prepareOpenInterval(
   auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
   if (incl) {
-    return ::make_query(std::move(states), std::move(stats), boost,
-                        GeoDistanceAcceptor<true>{bound});
+    return ::makeQuery(std::move(states), std::move(stats), boost,
+                       GeoDistanceAcceptor<true>{bound});
   } else {
-    return ::make_query(std::move(states), std::move(stats), boost,
-                        GeoDistanceAcceptor<false>{bound});
+    return ::makeQuery(std::move(states), std::move(stats), boost,
+                       GeoDistanceAcceptor<false>{bound});
   }
 }
 
@@ -507,7 +507,7 @@ irs::filter::prepared::ptr prepareInterval(
 
     auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
-    return ::make_query(
+    return ::makeQuery(
         std::move(states), std::move(stats), boost,
         [bound = fromPoint(origin)](geo::ShapeContainer const& shape) {
           return bound.InteriorContains(shape.centroid());
@@ -548,19 +548,19 @@ irs::filter::prepared::ptr prepareInterval(
 
   switch (size_t(minIncl) + 2 * size_t(maxIncl)) {
     case 0:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<false, false>{minBound, maxBound});
     case 1:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<true, false>{minBound, maxBound});
     case 2:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<false, true>{minBound, maxBound});
     case 3:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<true, true>{minBound, maxBound});
     default:
@@ -601,20 +601,20 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 
   switch (options().type) {
     case GeoFilterType::INTERSECTS: {
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
             return filterShape.intersects(&shape);
           });
     }
     case GeoFilterType::CONTAINS:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
             return filterShape.contains(&shape);
           });
     case GeoFilterType::IS_CONTAINED:
-      return ::make_query(
+      return ::makeQuery(
           std::move(states), std::move(stats), boost,
           [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
             return shape.contains(&filterShape);
