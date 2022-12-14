@@ -4,6 +4,8 @@ devel
 * Updated transitive JS dependency hoek to @hapi/hoek@8.5.1 to resolve
   CVE-2020-36604 in joi.
 
+* Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
+
 * Deleted customizable Pregel (AIR) and Greenspun library
 
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 

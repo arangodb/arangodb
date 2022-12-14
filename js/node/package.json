@@ -21,7 +21,7 @@
     "js-yaml": "3.14.1",
     "lodash": "4.17.21",
     "mime-types": "2.1.31",
-    "minimatch": "3.0.4",
+    "minimatch": "3.1.2",
     "ms": "2.1.3",
     "netmask": "2.0.2",
     "node-netstat": "^1.8.0",
