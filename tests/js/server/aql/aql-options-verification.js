@@ -31,6 +31,7 @@ const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
 function aqlOptionsVerificationSuite(isSearchAlias) {
   const cn = 'UnitTestsCollection';
@@ -61,10 +62,22 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
 
       db._dropView(cn + "View");
       if (isSearchAlias) {
-        let i1 = c.ensureIndex({type: "inverted", includeAllFields: true});
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true};
+        }
+        let i1 = c.ensureIndex(indexMeta);
         db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(), index: i1.name}]});
       } else {
-        db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {[cn]: {includeAllFields: true}}};
+        }
+        db._createView(cn + "View", "arangosearch", viewMeta);
       }
     },
 

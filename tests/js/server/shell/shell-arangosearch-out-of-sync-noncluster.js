@@ -42,8 +42,8 @@ function ArangoSearchOutOfSyncSuite () {
     },
 
     testMarkLinksAsOutOfSync : function () {
-      let c = db._create('UnitTestsCollection1');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
+      let c1 = db._create('UnitTestsCollection1');
+      c1.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
@@ -62,16 +62,16 @@ function ArangoSearchOutOfSyncSuite () {
         docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
-      c.insert(docs);
+      c1.insert(docs);
       
       db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
      
       internal.debugClearFailAt();
       
-      c = db._create('UnitTestsCollection2');
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
-      c.insert(docs);
+      let c2 = db._create('UnitTestsCollection2');
+      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
+      c2.insert(docs);
       
       v = db._createView('UnitTestsView2', 'arangosearch', {});
       if (isEnterprise) {

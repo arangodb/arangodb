@@ -124,7 +124,8 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(2000, results.json[0]);
+      let expected = (isEnterprise ? 2000 : 1000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -140,7 +141,9 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(2000, results.json[0]);
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 2000 : 1000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -156,7 +159,8 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(20000, results.json[0]);
+      let expected = (isEnterprise ? 20000 : 10000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -172,7 +176,9 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual(20000, results.json[0]);
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 20000 : 10000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -229,9 +235,13 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query);
 
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 
@@ -249,9 +259,13 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, {optimizer: {rules: ["-interchange-adjacent-enumerations"]}});
 
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 
@@ -268,9 +282,13 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + v.name() + " SEARCH doc1.value < 10 FOR doc2 IN " + v.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, {optimizer: {rules: ["-interchange-adjacent-enumerations"]}});
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 
@@ -373,7 +391,8 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(2000, results.json[0]);
+      let expected = (isEnterprise ? 2000 : 1000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -389,7 +408,8 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(2000, results.json[0]);
+      let expected = (isEnterprise ? 2000 : 1000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -405,7 +425,8 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(20000, results.json[0]);
+      let expected = (isEnterprise ? 20000 : 10000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -421,7 +442,8 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
-      assertEqual(20000, results.json[0]);
+      let expected = (isEnterprise ? 20000 : 10000); 
+      assertEqual(expected, results.json[0]);
 
       let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -465,9 +487,13 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc IN " + c.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query, null, opt);
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 
@@ -484,9 +510,13 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc IN " + v.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
       let results = AQL_EXECUTE(query, null, opt);
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 
@@ -503,11 +533,15 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, opt2);
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
-        assertEqual(i - 1, results.json[i]);
-      }
+       // Because in CE indexing of nested fields is impossible 
+       let expected = (isEnterprise ? 1001 : 1000); 
+       assertEqual(expected, results.json.length);
+       if (isEnterprise) {
+         assertEqual(null, results.json[0]);
+       }
+       for (let i = 1; i < expected; ++i) {
+         assertEqual(i - 1, results.json[i]);
+       }
 
       let plan = AQL_EXPLAIN(query, null, opt2).plan;
       let nodeTypes = plan.nodes.map(function (node) {
@@ -522,9 +556,13 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       let query = "FOR doc1 IN " + v.name() + " SEARCH doc1.value < 10 FOR doc2 IN " + v.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
       let results = AQL_EXECUTE(query, null, opt2);
-      assertEqual(1001, results.json.length);
-      assertEqual(null, results.json[0]);
-      for (let i = 1; i < 1001; ++i) {
+      // Because in CE indexing of nested fields is impossible 
+      let expected = (isEnterprise ? 1001 : 1000); 
+      assertEqual(expected, results.json.length);
+      if (isEnterprise) {
+        assertEqual(null, results.json[0]);
+      }
+      for (let i = 1; i < expected; ++i) {
         assertEqual(i - 1, results.json[i]);
       }
 

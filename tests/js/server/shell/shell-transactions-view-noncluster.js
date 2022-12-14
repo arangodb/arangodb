@@ -101,7 +101,7 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
 
-      let meta = { };
+      let meta = {};
       if (isEnterprise) {
         meta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
       } else {
@@ -188,7 +188,12 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks3 : function () {
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      } else {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": {} } } } };
+      }
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -229,7 +234,12 @@ function TransactionsIResearchSuite() {
     testRollbackRemovalWithLinks1 : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      } else {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+      }
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;
@@ -275,7 +285,12 @@ function TransactionsIResearchSuite() {
     testWaitForSyncError : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+      } else {
+        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+      }
       view = db._createView("UnitTestsView", "arangosearch", {});
       view.properties(meta);
       let links = view.properties().links;

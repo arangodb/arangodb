@@ -55,6 +55,9 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._dropView("TestView1");
       db._dropView("TestView2");
+      db._dropView("TestNameConflictDB");
+      db._dropView("testDatabaseAnalyzer");
+      db._dropView("testDatabaseView");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
@@ -86,7 +89,13 @@ function IResearchFeatureDDLTestSuite() {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo" + i.toString() }] }] });
         db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
-        db._createView("TestView", "arangosearch", { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } });
+        let meta = {};
+        if (isEnterprise) {
+          meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        } else {
+          meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        }
+        db._createView("TestView", "arangosearch", meta);
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 2);
@@ -100,14 +109,19 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._create("TestCollection0");
 
-      var addLink = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta ={ links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+      }
 
       for (let i = 0; i < 100; ++i) {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": i.toString() + "foo" }] }] });
         db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
         var view = db._createView("TestView", "arangosearch", {});
-        view.properties(addLink, true); // partial update
+        view.properties(meta, true); // partial update
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
@@ -132,14 +146,19 @@ function IResearchFeatureDDLTestSuite() {
       db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      var addLink = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {  } } } } };
+      }
       var removeLink = { links: { "TestCollection0": null, "collection123": null } };
 
       for (let i = 0; i < 100; ++i) {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
-        view.properties(addLink, true); // partial update
+        view.properties(meta, true); // partial update
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
@@ -164,8 +183,13 @@ function IResearchFeatureDDLTestSuite() {
       var view = db._createView("TestView", "arangosearch", {});
       db._create("TestCollection0");
       db.TestCollection0.save({ name: 'foo' });
-      var addLink = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
-      view.properties(addLink, true); // partial update
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+      }
+      view.properties(meta, true); // partial update
       let properties = view.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(2, Object.keys(properties.links).length);
@@ -246,7 +270,7 @@ function IResearchFeatureDDLTestSuite() {
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
 
-      var meta = { links: { "TestCollection0": { includeAllFields: true } } };
+      let meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -258,7 +282,12 @@ function IResearchFeatureDDLTestSuite() {
       assertTrue(Object === properties.links.constructor);
       assertEqual(2, Object.keys(properties.links).length);
 
-      meta = { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      meta = {};
+      if (isEnterprise) {
+        meta = { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "collection123": { "fields": { "value": { } } } } };
+      }
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -345,21 +374,40 @@ function IResearchFeatureDDLTestSuite() {
         docCount += 1;
       }
 
-      var meta = {
-        links: {
-          "TestCollection0": {},
-          "TestCollection1": { analyzers: ["text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
-          "TestCollection2": {
-            fields: {
-              "b": { fields: { "b1": {} } },
-              "c": { includeAllFields: true },
-              "d": { trackListPositions: true, storeValues: "id" },
-              "e": { analyzers: ["text_de"] }
+      let meta = {};
+      if (isEnterprise) {
+        meta = {
+          links: {
+            "TestCollection0": {},
+            "TestCollection1": { analyzers: ["text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
+            "TestCollection2": {
+              fields: {
+                "b": { fields: { "b1": {} } },
+                "c": { includeAllFields: true },
+                "d": { trackListPositions: true, storeValues: "id" },
+                "e": { analyzers: ["text_de"] }
+              }
+            },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          links: {
+            "TestCollection0": {},
+            "TestCollection1": { analyzers: ["text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
+            "TestCollection2": {
+              fields: {
+                "b": { fields: { "b1": {} } },
+                "c": { includeAllFields: true },
+                "d": { trackListPositions: true, storeValues: "id" },
+                "e": { analyzers: ["text_de"] }
+              }
             }
-          },
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      };
+          }
+        };
+      }
+
       view.properties(meta, true); // partial update
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -514,7 +562,12 @@ function IResearchFeatureDDLTestSuite() {
       var col0 = db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      var meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+      }
       view.properties(meta, true); // partial update
 
       var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -545,7 +598,12 @@ function IResearchFeatureDDLTestSuite() {
       db["collection123"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       docCount += 4;
 
-      meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+      }
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -571,13 +629,24 @@ function IResearchFeatureDDLTestSuite() {
       col1.save({ name: "other half", text: "the brown jumps the dog" });
       col1.save({ name: "quarter", text: "quick over" });
 
-      meta = {
-        links: {
-          "TestCollection0": { includeAllFields: true },
-          "TestCollection1": { includeAllFields: true },
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      };
+      meta = {};
+      if (isEnterprise) {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true }
+          }
+        };
+      }
+
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -605,14 +674,26 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name: "other half", text: "the brown jumps the dog" });
       col0.save({ name: "quarter", text: "quick over" });
 
-      meta = {
-        links: {
-          "TestCollection0": { includeAllFields: true },
-          "TestCollection1": { includeAllFields: true },
-          "TestCollection2": { includeAllFields: true },
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      };
+      meta = {};
+      if (isEnterprise) {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "TestCollection2": { includeAllFields: true },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "TestCollection2": { includeAllFields: true }
+          }
+        };
+      }
+
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -645,7 +726,12 @@ function IResearchFeatureDDLTestSuite() {
       var col0 = db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      var meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+      }
       view.properties(meta, true); // partial update
 
       meta = {
@@ -693,7 +779,12 @@ function IResearchFeatureDDLTestSuite() {
       let key4 = db["collection123"].save({ name: "quarter", text: "quick over" })["_key"];
       docCount += 4;
 
-      meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+      }
       view.properties(meta, true); // partial update
 
       meta = {
@@ -744,13 +835,24 @@ function IResearchFeatureDDLTestSuite() {
       key4 = db["collection123"].save({ name: "quarter", text: "quick over" });
       docCount += 4;
 
-      meta = {
-        links: {
-          "TestCollection0": { includeAllFields: true },
-          "TestCollection1": { includeAllFields: true },
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      };
+      meta = {};
+      if (isEnterprise) {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true }
+          }
+        };
+      }
+
       view.properties(meta, true); // partial update
 
       meta = {
@@ -798,14 +900,26 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ nameE: "other half", text: "the brown jumps the dog" });
       col0.save({ nameE: "quarter", text: "quick over" });
 
-      meta = {
-        links: {
-          "TestCollection0": { includeAllFields: true },
-          "TestCollection1": { includeAllFields: true },
-          "TestCollection2": { includeAllFields: true },
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      };
+      meta = {};
+      if (isEnterprise) {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "TestCollection2": { includeAllFields: true },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "TestCollection1": { includeAllFields: true },
+            "TestCollection2": { includeAllFields: true }
+          }
+        };
+      }
+
       view.properties(meta, true); // partial update
 
       meta = {
@@ -856,23 +970,46 @@ function IResearchFeatureDDLTestSuite() {
     testViewModifyImmutableProperties: function() {
       db._dropView("TestView");
 
-      var view = db._createView("TestView", "arangosearch", { 
-        writebufferActive: 25,
-        writebufferIdle: 12,
-        writebufferSizeMax: 44040192,
-        locale: "C",
-        version: 1,
-        primarySort: [
-          { field: "my.Nested.field", direction: "asc" },
-          { field: "another.field", asc: false }
-        ],
-        primarySortCompression:"none",
-        "cleanupIntervalStep": 42,
-        "commitIntervalMsec": 12345,
-        "links": {
-          "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
-        }
-      });
+      let meta = {};
+      if (isEnterprise) {
+        meta = { 
+          writebufferActive: 25,
+          writebufferIdle: 12,
+          writebufferSizeMax: 44040192,
+          locale: "C",
+          version: 1,
+          primarySort: [
+            { field: "my.Nested.field", direction: "asc" },
+            { field: "another.field", asc: false }
+          ],
+          primarySortCompression:"none",
+          "cleanupIntervalStep": 42,
+          "commitIntervalMsec": 12345,
+          "links": {
+            "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+          }
+        };
+      } else {
+        meta = { 
+          writebufferActive: 25,
+          writebufferIdle: 12,
+          writebufferSizeMax: 44040192,
+          locale: "C",
+          version: 1,
+          primarySort: [
+            { field: "my.Nested.field", direction: "asc" },
+            { field: "another.field", asc: false }
+          ],
+          primarySortCompression:"none",
+          "cleanupIntervalStep": 42,
+          "commitIntervalMsec": 12345,
+          "links": {
+            "collection123": {"fields": { "value": { }}}
+          }
+        };
+      }
+
+      var view = db._createView("TestView", "arangosearch", meta);
 
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -900,19 +1037,38 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
-      view.properties({ 
-        writebufferActive: 225,
-        writebufferIdle: 112,
-        writebufferSizeMax: 414040192,
-        locale: "en_EN.UTF-8",
-        version: 2,
-        primarySort: [ { field: "field", asc: false } ],
-        primarySortCompression:"lz4",
-        "cleanupIntervalStep": 442,
-        "links": {
-          "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
-        }
-      }, false); // full update
+      meta = {};
+      if (isEnterprise) {
+        meta = { 
+          writebufferActive: 225,
+          writebufferIdle: 112,
+          writebufferSizeMax: 414040192,
+          locale: "en_EN.UTF-8",
+          version: 2,
+          primarySort: [ { field: "field", asc: false } ],
+          primarySortCompression:"lz4",
+          "cleanupIntervalStep": 442,
+          "links": {
+            "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+          }
+        };
+      } else {
+        meta = { 
+          writebufferActive: 225,
+          writebufferIdle: 112,
+          writebufferSizeMax: 414040192,
+          locale: "en_EN.UTF-8",
+          version: 2,
+          primarySort: [ { field: "field", asc: false } ],
+          primarySortCompression:"lz4",
+          "cleanupIntervalStep": 442,
+          "links": {
+            "collection123": {"fields": { "value": {}}}
+          }
+        };
+      }
+
+      view.properties(meta, false); // full update
 
       // check properties after upgrade
       properties = view.properties();
@@ -946,11 +1102,21 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
-      var view = db._createView("TestView", "arangosearch", {
-        "links": {
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      });
+      let meta = {};
+      if (isEnterprise) {
+        meta = {
+          "links": {
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          "links": {
+            "collection123": { "fields": { "value": { } } }
+          }
+        };
+      }
+      var view = db._createView("TestView", "arangosearch", meta);
       var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
 
       col0.save({ a: "foo", c: "bar", z: 0 });
@@ -958,7 +1124,7 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ b: "bar", c: "foo", z: 2 });
       col0.save({ b: "baz", d: "foz", z: 3 });
 
-      var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
+      meta = { links: { "TestCollection0": { fields: { a: {} } } } };
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
@@ -969,7 +1135,12 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
 
-      meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { } } } } };
+      }
       view.properties(meta, true); // partial update
 
       var updatedMeta = view.properties();
@@ -984,7 +1155,12 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
 
-      meta = { links: { "TestCollection0": { fields: { c: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      meta = {};
+      if (isEnterprise) {
+        meta = { links: { "TestCollection0": { fields: { c: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "TestCollection0": { fields: { c: {} } }, "collection123": { "fields": { "value": {} } } } };
+      }
       view.properties(meta, false); // full update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
@@ -1010,8 +1186,15 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ b: "bar", c: "foo", z: 2 });
       col0.save({ b: "baz", d: "foz", z: 3 });
 
-      var meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
-      var meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      let meta1 = {};
+      let meta2 = {};
+      if (isEnterprise) {
+        meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { } } } } };
+        meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { } } } } };
+      }
 
       view1.properties(meta1, true); // partial update
       var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
@@ -1053,15 +1236,30 @@ function IResearchFeatureDDLTestSuite() {
       db._create("collection321");
       db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       try {
-        db._createView("FOO_view", "arangosearch", { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } } });
+        let meta = {};
+        if (isEnterprise) {
+          meta = { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } } };
+        } else {
+          meta = { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { } } } } } };
+        }
+        db._createView("FOO_view", "arangosearch", meta);
         fail();
       } catch (e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
           e.errorNum);
       }
       // but cross-db usage of system analyzers is ok
-      db._createView("FOO_view", "arangosearch", { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } });
-      db._createView("FOO_view2", "arangosearch", { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } });
+      let meta1 = {};
+      let meta2 = {};
+      if (isEnterprise) {
+        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { } } } } };
+      }
+      db._createView("FOO_view", "arangosearch", meta1);
+      db._createView("FOO_view2", "arangosearch", meta2);
 
       db._useDatabase("_system");
       db._dropDatabase(databaseNameAnalyzer);
@@ -1119,7 +1317,13 @@ function IResearchFeatureDDLTestSuite() {
       }
       {
         const view = db._createView(viewName, 'arangosearch', {});
-        view.properties({ links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } });
+        let meta = {};
+        if (isEnterprise) {
+          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+        } else {
+          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+        }
+        view.properties(meta);
         db._dropView(viewName);
       } // forget variable `view`, it's invalid now
       assertEqual(db[viewName], undefined);
@@ -1415,25 +1619,49 @@ function IResearchFeatureDDLTestSuite() {
         },
         ["position", "norm", "frequency"]);
 
-      let v = db._createView("view1", "arangosearch", {
-        "links": {
-          "col1": {
-            "analyzers": ["identity"],
-            "fields": { "name": { "analyzers": ["custom_analyzer"] } },
-            "includeAllFields": false,
-            "storeValues": "none",
-            "trackListPositions": false
-          },
-          "col2": {
-            "analyzers": ["identity"],
-            "fields": { "name": { "analyzers": ["custom_analyzer"] } },
-            "includeAllFields": false,
-            "storeValues": "none",
-            "trackListPositions": false
-          },
-          "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-        }
-      });
+      let meta = {};
+      if (isEnterprise) {
+        meta = {
+          "links": {
+            "col1": {
+              "analyzers": ["identity"],
+              "fields": { "name": { "analyzers": ["custom_analyzer"] } },
+              "includeAllFields": false,
+              "storeValues": "none",
+              "trackListPositions": false
+            },
+            "col2": {
+              "analyzers": ["identity"],
+              "fields": { "name": { "analyzers": ["custom_analyzer"] } },
+              "includeAllFields": false,
+              "storeValues": "none",
+              "trackListPositions": false
+            },
+            "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
+      } else {
+        meta = {
+          "links": {
+            "col1": {
+              "analyzers": ["identity"],
+              "fields": { "name": { "analyzers": ["custom_analyzer"] } },
+              "includeAllFields": false,
+              "storeValues": "none",
+              "trackListPositions": false
+            },
+            "col2": {
+              "analyzers": ["identity"],
+              "fields": { "name": { "analyzers": ["custom_analyzer"] } },
+              "includeAllFields": false,
+              "storeValues": "none",
+              "trackListPositions": false
+            },
+            "collection321": { "fields": { "value": { } } }
+          }
+        };
+      }
+      let v = db._createView("view1", "arangosearch", meta);
       let properties = v.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(3, Object.keys(properties.links).length);
@@ -1566,15 +1794,29 @@ function IResearchFeatureDDLTestSuite() {
         db._useDatabase(dbName);
         db._analyzers.save({ type: "identity", name: analyzerName });
         db._create("collection321");
-        var view = db._createView("analyzersView", "arangosearch", {
-          links: {
-            _analyzers: {
-              includeAllFields: true,
-              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
-            },
-            "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-          }
-        });
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            links: {
+              _analyzers: {
+                includeAllFields: true,
+                analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
+              },
+              "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+            }
+          };
+        } else {
+          meta = {
+            links: {
+              _analyzers: {
+                includeAllFields: true,
+                analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
+              },
+              "collection321": { "fields": { "value": { } } }
+            }
+          };
+        }
+        var view = db._createView("analyzersView", "arangosearch", meta);
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
         assertEqual(2, res.length);
@@ -1599,17 +1841,30 @@ function IResearchFeatureDDLTestSuite() {
         db._analyzers.save({ type: "identity", name: analyzerName });
         db._create("collection321");
         var view = db._createView("analyzersView", "arangosearch", {});
-        var links = {
-          links: {
-            _analyzers: {
-              includeAllFields: true,
-              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
-            },
-            "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-          }
-        };
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            links: {
+              _analyzers: {
+                includeAllFields: true,
+                analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
+              },
+              "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+            }
+          };
+        } else {
+          meta = {
+            links: {
+              _analyzers: {
+                includeAllFields: true,
+                analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
+              },
+              "collection321": { "fields": { "value": { } } }
+            }
+          };
+        }
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
-        view.properties(links, true);
+        view.properties(meta, true);
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
         assertEqual(2, res.length);
       } finally {

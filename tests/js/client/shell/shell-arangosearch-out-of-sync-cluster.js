@@ -30,6 +30,7 @@ const request = require("@arangodb/request");
 const getMetric = require('@arangodb/test-helper').getMetric;
 const internal = require("internal");
 const errors = internal.errors;
+const isEnterprise = require("internal").isEnterprise();
   
 const {
   getCoordinators,
@@ -60,7 +61,13 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
-      v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true } } });
+      let viewMeta = {};
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsRecovery1: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } };
+      } else {
+        viewMeta = { links: { UnitTestsRecovery1: { includeAllFields: true } } };
+      }
+      v.properties();
       
       let servers = getDBServers();
       let shardInfo = c.shards(true);
@@ -82,6 +89,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({});
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
       c.insert(docs);
@@ -96,7 +104,12 @@ function ArangoSearchOutOfSyncSuite () {
       c.insert(docs);
       
       v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
-      v.properties({ links: { UnitTestsRecovery2: { includeAllFields: true } } });
+      if (isEnterprise) {
+        viewMeta = { links: { UnitTestsRecovery2: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } };
+      } else {
+        viewMeta = { links: { UnitTestsRecovery2: { includeAllFields: true } } };
+      }
+      v.properties(viewMeta);
      
       db._query("FOR doc IN UnitTestsRecoveryView2 OPTIONS {waitForSync: true} RETURN doc");
 

@@ -2488,6 +2488,7 @@ function iResearchFeatureAqlTestSuite () {
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:false, 
+               fields:{field:{}},
                analyzers:['calcUnderTest']}}};
         }
         db._createView(viewName, "arangosearch", viewMeta);
@@ -2653,6 +2654,7 @@ function iResearchFeatureAqlTestSuite () {
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:false, 
+               fields:{field:{}},
                analyzers:['calcUnderTest']}}};
         }
         db._createView(viewName, "arangosearch", viewMeta);
@@ -2709,6 +2711,7 @@ function iResearchFeatureAqlTestSuite () {
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:false, 
+               fields:{field:{}},
                analyzers:['calcUnderTest']}}};
         }
         db._createView(viewName, "arangosearch", viewMeta);
@@ -2864,7 +2867,8 @@ function iResearchFeatureAqlTestSuite () {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
-               includeAllFields:false, 
+               includeAllFields:false,
+               fields:{field:{}},
                analyzers:['calcUnderTest']}}};
         }
         db._createView(viewName, "arangosearch", viewMeta);
@@ -2917,6 +2921,7 @@ function iResearchFeatureAqlTestSuite () {
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:false, 
+               fields:{field:{}},
                analyzers:['calcUnderTest']}}};
         }
         db._createView(viewName, "arangosearch", viewMeta);
