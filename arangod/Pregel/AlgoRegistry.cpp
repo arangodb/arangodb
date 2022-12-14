@@ -24,7 +24,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
@@ -67,8 +66,6 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::ConnectedComponents(server, userParams);
   } else if (algorithm == "scc") {
     return new algos::SCC(server, userParams);
-  } else if (algorithm == "asyncscc") {
-    return new algos::AsyncSCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
   } else if (algorithm == "hitskleinberg") {
@@ -145,9 +142,6 @@ template<typename V, typename E, typename M>
                         body, feature);
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(server, userParams), body,
-                        feature);
-  } else if (algorithm == "asyncscc") {
-    return createWorker(vocbase, new algos::AsyncSCC(server, userParams), body,
                         feature);
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(server, userParams), body,
