@@ -47,6 +47,7 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -201,6 +202,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     std::size_t numErrorsSinceLastAnswer = 0;
     AppendEntriesErrorReason lastErrorReason;
     LoggerContext const logContext;
+    Scheduler::WorkHandle lastRequestHandle;
 
     enum class State {
       IDLE,
