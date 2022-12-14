@@ -95,7 +95,7 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
-
+#include <openssl/evp.h>
 #include <absl/crc/crc32c.h>
 
 using namespace arangodb::basics;
@@ -107,12 +107,13 @@ TRI_SHA256Functor::TRI_SHA256Functor()
 #else
     : _context(EVP_MD_CTX_create()) {
 #endif
-  if (_context == nullptr) {
+  auto* context = static_cast<EVP_MD_CTX*>(_context);
+  if (context == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-  if (EVP_DigestInit_ex(_context, EVP_sha256(), nullptr) == 0) {
+  if (EVP_DigestInit_ex(context, EVP_sha256(), nullptr) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    EVP_MD_CTX_free(_context);
+    EVP_MD_CTX_free(context);
 #else
     EVP_MD_CTX_destroy(_context);
 #endif
@@ -122,21 +123,24 @@ TRI_SHA256Functor::TRI_SHA256Functor()
 }
 
 TRI_SHA256Functor::~TRI_SHA256Functor() {
+  auto* context = static_cast<EVP_MD_CTX*>(_context);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-  EVP_MD_CTX_free(_context);
+  EVP_MD_CTX_free(context);
 #else
-  EVP_MD_CTX_destroy(_context);
+  EVP_MD_CTX_destroy(context);
 #endif
 }
 
 bool TRI_SHA256Functor::operator()(char const* data, size_t size) noexcept {
-  return EVP_DigestUpdate(_context, static_cast<void const*>(data), size) == 1;
+  auto* context = static_cast<EVP_MD_CTX*>(_context);
+  return EVP_DigestUpdate(context, static_cast<void const*>(data), size) == 1;
 }
 
 std::string TRI_SHA256Functor::finalize() {
   unsigned char hash[EVP_MAX_MD_SIZE];
   unsigned int lengthOfHash = 0;
-  if (EVP_DigestFinal_ex(_context, hash, &lengthOfHash) == 0) {
+  auto* context = static_cast<EVP_MD_CTX*>(_context);
+  if (EVP_DigestFinal_ex(context, hash, &lengthOfHash) == 0) {
     TRI_ASSERT(false);
   }
   return arangodb::basics::StringUtils::encodeHex(

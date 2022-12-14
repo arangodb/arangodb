@@ -32,8 +32,6 @@
 #include <string>
 #include <vector>
 
-#include <openssl/evp.h>
-
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
@@ -454,5 +452,5 @@ struct TRI_SHA256Functor {
 
   std::string finalize();
 
-  EVP_MD_CTX* _context;
+  void* _context;
 };  // struct TRI_SHA256Functor
