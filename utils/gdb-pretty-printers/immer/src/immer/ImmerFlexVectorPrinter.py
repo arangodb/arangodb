@@ -1,4 +1,4 @@
-from . import ImmerRrbTreePrinter
+from .ImmerRrbTreePrinter import ImmerRrbTreePrinter
 
 
 class ImmerFlexVectorPrinter:

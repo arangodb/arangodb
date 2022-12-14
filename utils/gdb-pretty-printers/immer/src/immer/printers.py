@@ -1,5 +1,5 @@
-from . import ImmerFlexVectorPrinter
-from . import ImmerRrbTreePrinter
+from .ImmerFlexVectorPrinter import ImmerFlexVectorPrinter
+from .ImmerRrbTreePrinter import ImmerRrbTreePrinter
 import gdb.printing
 
 
