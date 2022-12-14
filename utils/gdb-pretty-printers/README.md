@@ -7,12 +7,19 @@ to `sys.path.insert`.
 # Run tests
 
 Run `./utils/build_and_run_tests.sh` to test the pretty printers. The tests currently don't run automatically in the CI.
-I've tested them only on Linux. It's to be expected that the tests might break if not built
-with `CMAKE_BUILD_TYPE=Debug` (we're testing `gdb`, after all).
+I've tested them only on Linux.
+
+It's to be expected that the tests might break if not built with `CMAKE_BUILD_TYPE=Debug` (we're testing `gdb`, after
+all).
+
+The tests also rely on a pretty-printer for `std::string` of the installed stdlib to be installed, and to pretty-print
+a `std::string{"hello, world"}` as `"hello, world"` (the ones I have for `libstdc++` and `libc++` both do).
 
 # Extend tests
 
-The `flex_vector_test` is executed by `ctest`, and consists of two files. `flex_vector_test.cpp`, which sets up both `testee` and `expected` data structures. And `flex_vector_test.gdbscript`, which runs the `flex_vector` pretty printer on each `testee` and compares it to `expected`. 
+The `flex_vector_test` is executed by `ctest`, and consists of two files. `flex_vector_test.cpp`, which sets up
+both `testee` and `expected` data structures. And `flex_vector_test.gdbscript`, which runs the `flex_vector` pretty
+printer on each `testee` and compares it to `expected`.
 
 # Future work
 

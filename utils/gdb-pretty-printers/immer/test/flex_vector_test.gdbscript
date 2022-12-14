@@ -3,7 +3,7 @@ run
 select-frame function main
 
 set $i = 0
-set $n = expected.size()
+set $n = n
 set $success = true
 
 while $i < $n

@@ -123,6 +123,9 @@ auto run_tests(auto testees, auto expected) {
 int main() {
   auto testees = get_testees();
   auto expected = gen_expected(testees);
+  // in some settings, size() is inlined, so we make it accessible to gdb this
+  // way.
+  [[maybe_unused]] const auto n = expected.size();
 
   raise(SIGTRAP);
   run_tests(testees, expected);
