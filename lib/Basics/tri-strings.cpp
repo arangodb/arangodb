@@ -25,11 +25,8 @@
 
 #include "tri-strings.h"
 
-#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
-#include "Basics/debugging.h"
 #include "Basics/memory.h"
-#include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a unicode escape sequence
