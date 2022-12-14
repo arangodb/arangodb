@@ -98,7 +98,6 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         count += 1;
         // pass on JWT secret
         let shutdownStatus;
-        let clonedOpts = _.clone(this.options);
         let paramsFirstRun = {};
 
         let fileContent = fs.read(te);
@@ -108,6 +107,13 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        let clonedOpts;
+        if (paramsSecondRun.hasOwnProperty('options')) {
+          clonedOpts = _.defaults(paramsSecondRun.options, this.options);
+          delete paramsSecondRun.options;
+        } else {
+          clonedOpts = _.clone(this.options);
+        }
         clonedOpts['startupMaxCount'] = 600; // Slow startups may occur on slower machines.
         if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
           clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
@@ -116,12 +122,6 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           clonedOpts['server.password'] = paramsSecondRun['database.password'];
           clonedOpts['password'] = paramsSecondRun['database.password'];
           paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
-        }
-        if (paramsSecondRun.hasOwnProperty('options')) {
-          paramsSecondRun.options.forEach(option => {
-            clonedOpts[option] = paramsSecondRun[option];
-          });
-          delete paramsSecondRun.options;
         }
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
 

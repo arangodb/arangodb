@@ -40,7 +40,7 @@ const intervalValue = 30;
 
 if (getOptions === true) {
   return {
-    //  options: {coordinators: 3},
+    options: {coordinators: 3},
     'server.send-telemetrics': "true",
     'server.telemetrics-interval': intervalValue,
   };
@@ -58,7 +58,8 @@ function TelemetricsTestSuite() {
 
   return {
     testGetTelemetricsWithFailover: function() {
-      if (!debugCanUseFailAt()) {
+      const coordinatorEndpoint = arango.getEndpoint();
+      if (!debugCanUseFailAt(coordinatorEndpoint)) {
         print("will return");
         return;
       }
