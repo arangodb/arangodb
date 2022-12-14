@@ -35,6 +35,8 @@ const isEnterprise = require("internal").isEnterprise();
 const request = require("@arangodb/request");
 const { triggerMetrics } = require("@arangodb/test-helper");
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
+const tasks = require('@arangodb/tasks');
+const fs = require('fs');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1048,7 +1050,7 @@ function IResearchFeatureDDLTestSuite() {
       tmpIdentity = undefined;
       db._useDatabase(databaseNameView);
       db._create("FOO");
-      db._create("collection321")
+      db._create("collection321");
       db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       try {
         db._createView("FOO_view", "arangosearch", { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } } });
@@ -1287,7 +1289,7 @@ function IResearchFeatureDDLTestSuite() {
           assertTrue(Object === figures.constructor);
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
-          if (type == "arangosearch") {
+          if (type === "arangosearch") {
             assertEqual(10, figures.numDocs);
             assertEqual(10, figures.numLiveDocs);
           } else {
@@ -1323,7 +1325,7 @@ function IResearchFeatureDDLTestSuite() {
           assertTrue(Object === figures.constructor);
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
-          if (type == "arangosearch") {
+          if (type === "arangosearch") {
             assertEqual(10, figures.numDocs);
             assertEqual(7, figures.numLiveDocs);
           } else {
