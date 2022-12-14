@@ -47,7 +47,7 @@
 namespace {
 
 // assume up to 2x machine epsilon in precision errors for signleton caps
-constexpr auto SIGNLETON_CAP_EPS = 2 * std::numeric_limits<double_t>::epsilon();
+constexpr auto kSingletonCapEps = 2 * std::numeric_limits<double_t>::epsilon();
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
@@ -69,29 +69,29 @@ irs::filter::prepared::ptr match_all(irs::index_reader const& index,
 
 // Returns singleton S2Cap that tolerates precision errors
 inline S2Cap fromPoint(S2Point const& origin) {
-  return S2Cap(origin, S1Angle::Radians(SIGNLETON_CAP_EPS));
+  return S2Cap{origin, S1Angle::Radians(kSingletonCapEps)};
 }
 
 template<typename Acceptor>
 class GeoIterator : public irs::doc_iterator {
  private:
   // Two phase iterator is heavier than a usual disjunction
-  static constexpr irs::cost::cost_t EXTRA_COST = 2;
+  static constexpr irs::cost::cost_t kExtraCost = 2;
 
  public:
   GeoIterator(doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt,
               Acceptor& acceptor, const irs::sub_reader& reader,
               const irs::term_reader& field, const irs::byte_type* query_stats,
               irs::Order const& order, irs::score_t boost)
-      : _approx(std::move(approx)),
-        _columnIt(std::move(columnIt)),
-        _storedValue(irs::get<irs::payload>(*_columnIt)),
-        _acceptor(acceptor) {
+      : _approx{std::move(approx)},
+        _columnIt{std::move(columnIt)},
+        _storedValue{irs::get<irs::payload>(*_columnIt)},
+        _acceptor{acceptor} {
     std::get<irs::attribute_ptr<irs::document>>(_attrs) =
         irs::get_mutable<irs::document>(_approx.get());
 
     std::get<irs::cost>(_attrs).reset([this]() noexcept {
-      return EXTRA_COST * irs::cost::extract(*_approx);
+      return kExtraCost * irs::cost::extract(*_approx);
     });
 
     if (!order.empty()) {
@@ -175,11 +175,15 @@ class GeoIterator : public irs::doc_iterator {
 };
 
 template<typename Acceptor>
-irs::doc_iterator::ptr make_iterator(
+irs::doc_iterator::ptr makeIterator(
     typename Disjunction::doc_iterators_t&& itrs,
     irs::doc_iterator::ptr&& columnIt, const irs::sub_reader& reader,
     const irs::term_reader& field, const irs::byte_type* query_stats,
     irs::Order const& order, irs::score_t boost, Acceptor& acceptor) {
+  if (ADB_UNLIKELY(itrs.empty() || !columnIt)) {
+    return irs::doc_iterator::empty();
+  }
+
   return irs::memory::make_managed<GeoIterator<Acceptor>>(
       irs::MakeDisjunction<Disjunction>(std::move(itrs), irs::NoopAggregator{}),
       std::move(columnIt), acceptor, reader, field, query_stats, order, boost);
@@ -187,8 +191,6 @@ irs::doc_iterator::ptr make_iterator(
 
 // Cached per reader query state
 struct GeoState {
-  using TermState = irs::seek_cookie::ptr;
-
   // Corresponding stored field
   const irs::column_reader* storedField;
 
@@ -207,10 +209,10 @@ class GeoQuery final : public irs::filter::prepared {
  public:
   GeoQuery(GeoStates&& states, irs::bstring&& stats, Acceptor&& acceptor,
            irs::score_t boost) noexcept
-      : prepared(boost),
-        _states(std::move(states)),
-        _stats(std::move(stats)),
-        _acceptor(std::move(acceptor)) {}
+      : prepared{boost},
+        _states{std::move(states)},
+        _stats{std::move(stats)},
+        _acceptor{std::move(acceptor)} {}
 
   irs::doc_iterator::ptr execute(
       irs::ExecutionContext const& ctx) const override {
@@ -223,7 +225,7 @@ class GeoQuery final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    auto field = state->reader;
+    auto* field = state->reader;
     TRI_ASSERT(field);
 
     typename Disjunction::doc_iterators_t itrs;
@@ -231,11 +233,10 @@ class GeoQuery final : public irs::filter::prepared {
 
     for (auto& entry : state->states) {
       assert(entry);
-      auto docs = field->postings(*entry, irs::IndexFeatures::NONE);
+      auto& it =
+          itrs.emplace_back(field->postings(*entry, irs::IndexFeatures::NONE));
 
-      itrs.emplace_back(std::move(docs));
-
-      if (IRS_UNLIKELY(!itrs.back().it)) {
+      if (IRS_UNLIKELY(!it || irs::doc_limits::eof(it->value()))) {
         itrs.pop_back();
 
         continue;
@@ -243,16 +244,12 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     auto* reader = state->storedField;
-    auto columnIt =
-        reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
+    TRI_ASSERT(reader);
 
-    if (!columnIt) {
-      return irs::doc_iterator::empty();
-    }
+    auto columnIt = reader->iterator(irs::ColumnHint::kNormal);
 
-    return make_iterator(std::move(itrs), std::move(columnIt), segment,
-                         *state->reader, _stats.c_str(), ctx.scorers, boost(),
-                         _acceptor);
+    return makeIterator(std::move(itrs), std::move(columnIt), segment, *reader,
+                        _stats.c_str(), ctx.scorers, boost(), _acceptor);
   }
 
   void visit(irs::sub_reader const&, irs::PreparedStateVisitor&,
@@ -305,16 +302,16 @@ std::pair<GeoStates, irs::bstring> prepareStates(
   std::vector<std::string_view> sortedTerms(geoTerms.begin(), geoTerms.end());
   std::sort(sortedTerms.begin(), sortedTerms.end());
 
-  std::pair<GeoStates, irs::bstring> res(
+  std::pair<GeoStates, irs::bstring> res{
       std::piecewise_construct, std::forward_as_tuple(index),
-      std::forward_as_tuple(order.stats_size(), 0));
+      std::forward_as_tuple(order.stats_size(), 0)};
 
   auto const size = sortedTerms.size();
-  irs::field_collectors fieldStats(order);
-  std::vector<GeoState::TermState> termStates;
+  irs::field_collectors fieldStats{order};
+  std::vector<irs::seek_cookie::ptr> termStates;
 
-  for (auto& segment : index) {
-    auto* reader = segment.field(field);
+  for (auto const& segment : index) {
+    auto const* reader = segment.field(field);
 
     if (!reader) {
       continue;
@@ -329,7 +326,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     fieldStats.collect(segment, *reader);
     termStates.reserve(size);
 
-    for (auto& term : sortedTerms) {
+    for (std::string_view const term : sortedTerms) {
       if (!terms->seek(irs::ViewCast<irs::byte_type>(term))) {
         continue;
       }
@@ -339,14 +336,16 @@ std::pair<GeoStates, irs::bstring> prepareStates(
       termStates.emplace_back(terms->cookie());
     }
 
-    if (termStates.empty()) {
+    const auto* storedField = segment.column(field);
+
+    if (termStates.empty() || !storedField) {
       continue;
     }
 
     auto& state = res.first.insert(segment);
     state.reader = reader;
     state.states = std::move(termStates);
-    state.storedField = segment.column(field);
+    state.storedField = storedField;
     termStates.clear();
   }
 
