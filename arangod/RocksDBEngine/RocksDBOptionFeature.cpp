@@ -48,6 +48,7 @@
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>
 #include <rocksdb/filter_policy.h>
+#include <rocksdb/memory_allocator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
@@ -250,6 +251,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _formatVersion(5),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
+      _useJemallocAllocator(false),
       _prepopulateBlockCache(false),
       _reserveTableBuilderMemory(false),
       _reserveTableReaderMemory(false),
@@ -1069,6 +1071,24 @@ version.)");
       .setIntroducedIn(31000);
 
   options
+      ->addOption(
+          "--rocksdb.use-jemalloc-allocator",
+          "Use jemalloc-based memory allocator for RocksDB block cache.",
+          new BooleanParameter(&_useJemallocAllocator),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Experimental,
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(
+          R"(The jemalloc-based memory allocator for the RocksDB block cache
+will also exclude the block cache contents from coredumps, potentially making generated 
+coredumps a lot smaller.)");
+
+  options
       ->addOption("--rocksdb.prepopulate-block-cache",
                   "Pre-populate block cache on flushes.",
                   new BooleanParameter(&_prepopulateBlockCache),
@@ -1303,6 +1323,7 @@ void RocksDBOptionFeature::start() {
       << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow
+      << ", use_jemalloc_allocator: " << _useJemallocAllocator
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_strict_capacity_limit: " << std::boolalpha
@@ -1515,9 +1536,26 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
-    result.block_cache = rocksdb::NewLRUCache(
-        _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-        /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
+    rocksdb::LRUCacheOptions opts;
+
+    opts.capacity = _blockCacheSize;
+    opts.num_shard_bits = static_cast<int>(_blockCacheShardBits);
+    opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
+
+    if (_useJemallocAllocator) {
+      rocksdb::JemallocAllocatorOptions jopts;
+      std::shared_ptr<rocksdb::MemoryAllocator> allocator;
+      rocksdb::Status s =
+          rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
+      if (s.ok()) {
+        opts.memory_allocator = allocator;
+      } else {
+        LOG_TOPIC("004e6", WARN, Logger::ENGINES)
+            << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
+      }
+    }
+
+    result.block_cache = rocksdb::NewLRUCache(opts);
   } else {
     result.no_block_cache = true;
   }
