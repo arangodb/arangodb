@@ -66,7 +66,8 @@ auto UtilityInvariants::isValidShardingStrategy(std::string const& strat)
   // Hash is first on purpose (default)
   if (strat == "" || strat == "hash" || strat == "enterprise-hash-smart-edge" ||
       strat == "community-compat" || strat == "enterprise-compat" ||
-      strat == "enterprise-smart-edge-compat") {
+      strat == "enterprise-smart-edge-compat" ||
+      strat == "enterprise-hex-smart-vertex") {
     return inspection::Status::Success{};
   }
   return {
