@@ -38,26 +38,17 @@ class GeoFilter;
 class GeoDistanceFilter;
 
 enum class GeoFilterType : uint32_t {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape intersects indexed data
-  ////////////////////////////////////////////////////////////////////////////////
+  // Check if a given shape intersects indexed data
   INTERSECTS = 0,
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape fully contains indexed data
-  ////////////////////////////////////////////////////////////////////////////////
+  // Check if a given shape fully contains indexed data
   CONTAINS,
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if a given shape is fully contained within indexed data
-  ////////////////////////////////////////////////////////////////////////////////
+  // Check if a given shape is fully contained within indexed data
   IS_CONTAINED
-};  // GeoFilterType
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct GeoFilterOptions
-/// @brief options for geo filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for geo filter
 struct GeoFilterOptions {
  public:
   using filter_type = GeoFilter;
@@ -87,12 +78,9 @@ struct GeoFilterOptions {
   std::string prefix;
   S2RegionTermIndexer::Options options;
   GeoFilterType type{GeoFilterType::INTERSECTS};
-};  // GeoFilterOptions
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class GeoFilter
-/// @brief user-side geo filter
-//////////////////////////////////////////////////////////////////////////////
+// User-side geo filter
 class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
@@ -106,10 +94,7 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
                         irs::attribute_provider const* /*ctx*/) const override;
 };  // GeoFilter
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct GeoFilterOptions
-/// @brief options for term filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for term filter
 class GeoDistanceFilterOptions {
  public:
   using filter_type = GeoDistanceFilter;
@@ -126,12 +111,9 @@ class GeoDistanceFilterOptions {
   irs::search_range<double_t> range;
   std::string prefix;
   S2RegionTermIndexer::Options options;
-};  // GeoFilterOptions
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class GeoDistanceFilter
-/// @brief user-side geo distance filter
-//////////////////////////////////////////////////////////////////////////////
+// User-side geo distance filter
 class GeoDistanceFilter final
     : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
@@ -141,10 +123,10 @@ class GeoDistanceFilter final
 
   using filter::prepare;
 
-  virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
-      const irs::attribute_provider* /*ctx*/) const override;
-};  // GeoDistanceFilter
+  prepared::ptr prepare(const irs::index_reader& rdr, const irs::Order& ord,
+                        irs::score_t boost,
+                        const irs::attribute_provider* /*ctx*/) const override;
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
