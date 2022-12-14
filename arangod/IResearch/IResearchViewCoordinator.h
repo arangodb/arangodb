@@ -135,7 +135,12 @@ class IResearchViewCoordinator final : public LogicalView {
 
   // transient member, not persisted
   struct Data {
-    std::string name;
+    Data(std::string cname, VPackBuilder&& builder, bool building)
+        : collectionName{std::move(cname)},
+          definition{std::move(builder)},
+          isBuilding{building} {}
+
+    std::string collectionName;
     VPackBuilder definition;
     bool isBuilding{false};
   };
