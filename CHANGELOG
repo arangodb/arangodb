@@ -5,6 +5,8 @@ devel
   overly large RocksDB transactions when syncing large shards, which is a
   remedy for OOM kills during restarts.
 
+* Remove async mode from pregel
+
 * Added a configuration option (for the agency):
     --agency.supervision-failed-leader-adds-follower
   with a default of `true` (behavior as before). If set to `false`,
