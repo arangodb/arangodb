@@ -1,6 +1,9 @@
+# Use this file as example code for your ~/.gdbinit file.
+# However, it is also used in the flex_vector_test, so make sure not to break the tests when changing anything here.
 python
 import sys
-# enter the correct path here, probably an absolute one
+# enter the correct path here, probably an absolute one.
+# The relative path is used by the flex_vector_test.
 sys.path.insert(0, './utils/gdb-pretty-printers/immer/src/')
 from immer.printers import register_immer_printers
 register_immer_printers()

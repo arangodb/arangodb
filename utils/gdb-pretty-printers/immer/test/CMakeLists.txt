@@ -16,6 +16,8 @@ set_target_properties(flex_vector_test
 
 enable_testing()
 
+# Note that the working directory is important, because the `gdbinit` file includes the python modules with a path
+# relative to the source directory.
 add_test(NAME flex_vector_test
         COMMAND gdb
         $<TARGET_FILE:flex_vector_test>
