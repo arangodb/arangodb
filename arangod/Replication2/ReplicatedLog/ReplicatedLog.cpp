@@ -209,6 +209,7 @@ void ReplicatedLog::resetParticipant(GuardedData& data) {
     LOG_CTX("9a54b", DEBUG, _logContext)
         << "reset participant of replicated log";
     auto [core, action] = std::move(*data.participant).resign();
+    ADB_PROD_ASSERT(core != nullptr);
     data.core = std::move(core);
     data.participant.reset();
   }
