@@ -57,8 +57,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice definition);
 
-  Result properties(velocypack::Builder& builder) const;
-
   bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
 
   arangodb::Result drop() final { return IResearchLink::drop(); }
@@ -132,9 +130,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   };
 
   static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
-
- private:
-  bool _isBuilding{false};
 };
 
 }  // namespace arangodb::iresearch

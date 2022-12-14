@@ -248,7 +248,7 @@ Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
   velocypack::Builder builder;
   builder.openObject();
   // generate user-visible definition, agency will not see links
-  auto r = link.properties(builder);
+  auto r = link.properties(builder, true);
   if (!r.ok()) {
     return r;
   }
@@ -265,19 +265,19 @@ Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
   // from externally visible link definition
   if (!mergeSliceSkipKeys(sanitizedBuild, builder.slice(), acceptor)) {
     return {TRI_ERROR_INTERNAL,
-            "failed to generate externally visible link definition while "
-            "emplacing collection '" +
-                std::to_string(cid.id()) + "' into arangosearch View '" +
-                name() + "'"};
+            absl::StrCat(
+                "failed to generate externally visible link definition while "
+                "emplace to collection '",
+                cid.id(), "' into arangosearch View '", name(), "'")};
   }
   sanitizedBuild.close();
   std::lock_guard lock{_mutex};
-  auto entry = _collections.try_emplace(cid, cname, std::move(sanitizedBuild));
+  auto entry = _collections.try_emplace(cid, cname, std::move(sanitizedBuild),
+                                        link.isBuilding());
   if (!entry.second) {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-            "duplicate entry while emplacing collection '" +
-                std::to_string(cid.id()) + "' into arangosearch View '" +
-                name() + "'"};
+            absl::StrCat("duplicate entry while emplacing collection '",
+                         cid.id(), "' into arangosearch View '", name(), "'")};
   }
   return {};
 }
@@ -310,9 +310,7 @@ bool IResearchViewCoordinator::visitCollections(
 bool IResearchViewCoordinator::isBuilding() const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
-    if (basics::VelocyPackHelper::getBooleanValue(
-            entry.second.second.slice(),
-            arangodb::StaticStrings::IndexIsBuilding, false)) {
+    if (entry.second.isBuilding) {
       return true;
     }
   }

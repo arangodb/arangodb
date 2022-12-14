@@ -27,6 +27,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -118,8 +119,6 @@ class IResearchViewCoordinator final : public LogicalView {
 #endif
   }
 
-  [[nodiscard]] bool isBuilding() const;
-
  private:
   Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
                          bool safe) const final;
@@ -128,13 +127,19 @@ class IResearchViewCoordinator final : public LogicalView {
 
   Result renameImpl(std::string const& oldName) final;
 
+  bool isBuilding() const final;
+
   struct ViewFactory;
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
 
   // transient member, not persisted
-  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
-      _collections;
+  struct Data {
+    std::string name;
+    VPackBuilder definition;
+    bool isBuilding{false};
+  };
+  containers::FlatHashMap<DataSourceId, Data> _collections;
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };

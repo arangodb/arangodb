@@ -88,23 +88,11 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
 }
 
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
-  _isBuilding = basics::VelocyPackHelper::getBooleanValue(
-      definition, arangodb::StaticStrings::IndexIsBuilding, false);
+  setBuilding(basics::VelocyPackHelper::getBooleanValue(
+      definition, arangodb::StaticStrings::IndexIsBuilding, false));
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);
-  return r;
-}
-
-Result IResearchLinkCoordinator::properties(
-    velocypack::Builder& builder) const {
-  auto r = IResearchLink::properties(builder, true);
-  if (!r.ok()) {
-    return r;
-  }
-  if (_isBuilding) {
-    builder.add(arangodb::StaticStrings::IndexIsBuilding, true);
-  }
   return r;
 }
 
