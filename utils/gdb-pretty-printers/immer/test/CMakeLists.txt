@@ -19,8 +19,9 @@ enable_testing()
 add_test(NAME flex_vector_test
         COMMAND gdb
         $<TARGET_FILE:flex_vector_test>
+        -x ${CMAKE_CURRENT_SOURCE_DIR}/../gdbinit
         -x ${CMAKE_CURRENT_SOURCE_DIR}/flex_vector_test.gdbscript
         -batch
 
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
