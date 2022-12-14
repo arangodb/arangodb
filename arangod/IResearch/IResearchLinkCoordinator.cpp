@@ -134,7 +134,7 @@ void IResearchLinkCoordinator::toVelocyPack(
 
   builder.openObject();
 
-  if (!IResearchLink::properties(builder, forPersistence).ok()) {
+  if (!properties(builder, forPersistence).ok()) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
         std::string("failed to generate link definition for arangosearch view "
