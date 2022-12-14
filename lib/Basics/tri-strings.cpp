@@ -23,8 +23,6 @@
 
 #include <cstring>
 
-#include <openssl/sha.h>
-
 #include "tri-strings.h"
 
 #include "Basics/Utf8Helper.h"
