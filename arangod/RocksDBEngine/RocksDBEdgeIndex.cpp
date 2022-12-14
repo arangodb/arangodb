@@ -616,8 +616,9 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   return res;
 }
 
-void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
-                                   std::vector<std::string> const& keys) {
+void RocksDBEdgeIndex::refillCache(
+    transaction::Methods& trx,
+    containers::FlatHashSet<std::string> const& keys) {
   if (_cache == nullptr || keys.empty()) {
     return;
   }

@@ -175,7 +175,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
   void refillCache(transaction::Methods& trx,
-                   std::vector<std::string> const& keys) override;
+                   containers::FlatHashSet<std::string> const& keys) override;
 
  private:
   Result insertUnique(transaction::Methods& trx, RocksDBMethods* mthds,

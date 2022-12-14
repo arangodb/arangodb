@@ -296,7 +296,7 @@ void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
 
 void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
                                                          std::string_view key) {
-  _trackedCacheRefills[iid].emplace_back(key.data(), key.size());
+  _trackedCacheRefills[iid].emplace(key.data(), key.size());
 }
 
 void RocksDBTransactionCollection::handleIndexCacheRefills() {
@@ -309,6 +309,7 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
                        .getFeature<RocksDBIndexCacheRefillFeature>();
 
   for (auto const& it : _trackedCacheRefills) {
+    // TODO: handle return value
     refiller.trackRefill(_collection, it.first, std::move(it.second));
   }
   _trackedCacheRefills.clear();

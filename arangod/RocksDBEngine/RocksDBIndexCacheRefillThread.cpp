@@ -26,10 +26,9 @@
 #include "Basics/ConditionLocker.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -40,22 +39,16 @@
 
 using namespace arangodb;
 
-DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
-                "Total number of auto-refilled in-memory cache items");
-DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
-                "Total number of dropped items for in-memory cache refilling");
-
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
-    ArangodServer& server, size_t maxCapacity)
-    : ServerThread<ArangodServer>(server, "RocksDBCacheRefiller"),
+    ArangodServer& server, size_t id, size_t maxCapacity)
+    : ServerThread<ArangodServer>(
+          server, std::string("RocksDBCacheRefiller") + std::to_string(id)),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
+      _refillFeature(server.getFeature<RocksDBIndexCacheRefillFeature>()),
+      _id(id),
       _maxCapacity(maxCapacity),
       _numQueued(0),
-      _proceeding(0),
-      _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_auto_refill_loaded_total{})),
-      _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_auto_refill_dropped_total{})) {}
+      _proceeding(0) {}
 
 RocksDBIndexCacheRefillThread::~RocksDBIndexCacheRefillThread() { shutdown(); }
 
@@ -71,7 +64,7 @@ void RocksDBIndexCacheRefillThread::beginShutdown() {
 
 void RocksDBIndexCacheRefillThread::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-    std::vector<std::string> keys) {
+    containers::FlatHashSet<std::string> keys) {
   TRI_ASSERT(!keys.empty());
   size_t const n = keys.size();
 
@@ -82,7 +75,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
       // we have reached the maximum queueing capacity, so give up on whatever
       // keys we received just now.
       // increase metric and return
-      _totalNumDropped += n;
+      _refillFeature.increaseTotalNumDropped(n);
       return;
     }
 
@@ -110,7 +103,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
 
       // move keys over to us
       for (auto& key : keys) {
-        target.emplace_back(std::move(key));
+        target.emplace(std::move(key));
       }
     }
     _numQueued += n;
@@ -119,7 +112,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
   // wake up background thread
   _condition.signal();
   // increase metric
-  _totalNumQueued += n;
+  _refillFeature.increaseTotalNumQueued(n);
 }
 
 void RocksDBIndexCacheRefillThread::waitForCatchup() {

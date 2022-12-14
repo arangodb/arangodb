@@ -107,7 +107,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                 OperationOptions const& options) override;
 
   void refillCache(transaction::Methods& trx,
-                   std::vector<std::string> const& keys) override;
+                   containers::FlatHashSet<std::string> const& keys) override;
 
  private:
   std::unique_ptr<IndexIterator> createEqIterator(

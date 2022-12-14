@@ -2071,8 +2071,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   return res;
 }
 
-void RocksDBVPackIndex::refillCache(transaction::Methods& trx,
-                                    std::vector<std::string> const& keys) {
+void RocksDBVPackIndex::refillCache(
+    transaction::Methods& trx,
+    containers::FlatHashSet<std::string> const& keys) {
   if (_cache == nullptr || keys.empty()) {
     return;
   }

@@ -50,12 +50,7 @@ namespace active_failover_test {
 
 const std::string PREFIX = "arango";
 const std::string LEADER = "SNGL-leader";
-const std::string FOLLOWER1 = "SNGL-follower1";   // tick 10, STATE GOOD
-const std::string FOLLOWER2 = "SNGL-follower2";   // tick 1, STATE GOOD
-const std::string FOLLOWER3 = "SNGL-follower23";  // tick 9, STATE GOOD
-const std::string FOLLOWER4 = "SNGL-follower4";   // tick 100, STATE BAD
-const std::string FOLLOWER5 =
-    "SNGL-follower5";  // tick 1000, STATE GOOD wrong leader
+const std::string FOLLOWER1 = "SNGL-follower1";  // tick 10, STATE GOOD
 
 bool aborts = false;
 
@@ -345,8 +340,7 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
   ASSERT_TRUE(job.start(aborts));
   ASSERT_EQ(job.status(), JOB_STATUS::FINISHED);
   Verify(Method(mockAgent, write)).Exactly(2);
-
-}  // SECTION
+}
 
 TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
   // follower follows wrong leader

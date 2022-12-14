@@ -50,6 +50,14 @@
 using namespace arangodb;
 
 namespace {
+size_t defaultBackgroundRefillThreads() {
+  size_t n = NumberOfCores::getValue();
+  if (n >= 16) {
+    return n >> 3U;
+  }
+  return 1;
+}
+
 size_t defaultConcurrentIndexFillTasks() {
   size_t n = NumberOfCores::getValue();
   if (n >= 16) {
@@ -62,16 +70,26 @@ size_t defaultConcurrentIndexFillTasks() {
 
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
+                "Total number of auto-refilled in-memory cache items");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
+                "Total number of dropped items for in-memory cache refilling");
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
       _databaseFeature(server.getFeature<DatabaseFeature>()),
+      _currentBackgroundThreadIdx(0),
       _maxCapacity(128 * 1024),
+      _numBackgroundThreads(::defaultBackgroundRefillThreads()),
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
       _fillOnStartup(false),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
+      _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_loaded_total{})),
+      _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_dropped_total{})),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -80,11 +98,12 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
   startsAfter<RocksDBEngine>();
 
   // default value must be at least 1, as the minimum allowed value is also 1.
+  TRI_ASSERT(_numBackgroundThreads >= 1);
   TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
 }
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
-  stopThread();
+  stopThreads();
 }
 
 void RocksDBIndexCacheRefillFeature::collectOptions(
@@ -133,6 +152,18 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                              options::Flags::OnSingle, options::Flags::Dynamic))
       .setIntroducedIn(30906)
       .setIntroducedIn(31020);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-refill-background-threads",
+          "Number of background threads for in-memory index cache refill "
+          "operations.",
+          new options::SizeTParameter(&_numBackgroundThreads),
+          options::makeFlags(options::Flags::DefaultNoComponents,
+                             options::Flags::OnDBServer,
+                             options::Flags::OnSingle, options::Flags::Dynamic))
+      .setIntroducedIn(30907)
+      .setIntroducedIn(31020);
 }
 
 void RocksDBIndexCacheRefillFeature::beginShutdown() {
@@ -140,24 +171,36 @@ void RocksDBIndexCacheRefillFeature::beginShutdown() {
     std::unique_lock lock(_indexFillTasksMutex);
     _indexFillTasks.clear();
   }
-  if (_refillThread != nullptr) {
-    _refillThread->beginShutdown();
+
+  for (auto& t : _backgroundThreads) {
+    t->beginShutdown();
   }
 }
 
 void RocksDBIndexCacheRefillFeature::start() {
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isAgent()) {
     // we don't have in-memory caches for indexes on the coordinator
+    // and don't need them on agents
     return;
   }
 
-  _refillThread =
-      std::make_unique<RocksDBIndexCacheRefillThread>(server(), _maxCapacity);
+  if (_numBackgroundThreads > 0) {
+    // start background index cache refill threads
+    _backgroundThreads.resize(_numBackgroundThreads);
+    for (size_t i = 0; i < _numBackgroundThreads; ++i) {
+      _backgroundThreads[i] = std::make_unique<RocksDBIndexCacheRefillThread>(
+          server(), i, _maxCapacity);
 
-  if (!_refillThread->start()) {
-    LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
-        << "could not start rocksdb index cache refill thread";
-    FATAL_ERROR_EXIT();
+      if (!_backgroundThreads[i]->start()) {
+        //        stopThreads();
+        LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
+            << "could not start rocksdb index cache refill thread";
+        FATAL_ERROR_EXIT();
+      }
+    }
+
+    TRI_ASSERT(!_backgroundThreads.empty());
   }
 
   if (_fillOnStartup) {
@@ -166,7 +209,17 @@ void RocksDBIndexCacheRefillFeature::start() {
   }
 }
 
-void RocksDBIndexCacheRefillFeature::stop() { stopThread(); }
+void RocksDBIndexCacheRefillFeature::increaseTotalNumQueued(
+    uint64_t value) noexcept {
+  _totalNumQueued += value;
+}
+
+void RocksDBIndexCacheRefillFeature::increaseTotalNumDropped(
+    uint64_t value) noexcept {
+  _totalNumDropped += value;
+}
+
+void RocksDBIndexCacheRefillFeature::stop() { stopThreads(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
   return _autoRefill;
@@ -180,12 +233,22 @@ bool RocksDBIndexCacheRefillFeature::fillOnStartup() const noexcept {
   return _fillOnStartup;
 }
 
-void RocksDBIndexCacheRefillFeature::trackRefill(
+bool RocksDBIndexCacheRefillFeature::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-    std::vector<std::string> keys) {
-  if (_refillThread != nullptr) {
-    _refillThread->trackRefill(collection, iid, std::move(keys));
+    containers::FlatHashSet<std::string> keys) {
+  if (_backgroundThreads.empty()) {
+    return false;
   }
+  TRI_ASSERT(_numBackgroundThreads > 0);
+
+  // it is ok to increase this value forever and even overflow it to 0.
+  uint64_t idx =
+      _currentBackgroundThreadIdx.fetch_add(1, std::memory_order_relaxed) %
+      _numBackgroundThreads;
+  TRI_ASSERT(idx < _backgroundThreads.size());
+  auto& t = _backgroundThreads[idx];
+  t->trackRefill(collection, iid, std::move(keys));
+  return true;
 }
 
 void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(
@@ -202,12 +265,17 @@ void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(
 
 // wait until the background thread has applied all operations
 void RocksDBIndexCacheRefillFeature::waitForCatchup() {
-  if (_refillThread != nullptr) {
-    _refillThread->waitForCatchup();
+  for (auto& t : _backgroundThreads) {
+    TRI_ASSERT(t != nullptr);
+    t->waitForCatchup();
   }
 }
 
-void RocksDBIndexCacheRefillFeature::stopThread() { _refillThread.reset(); }
+void RocksDBIndexCacheRefillFeature::stopThreads() {
+  for (auto& t : _backgroundThreads) {
+    t.reset();
+  }
+}
 
 void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

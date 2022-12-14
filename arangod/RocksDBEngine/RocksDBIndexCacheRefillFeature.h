@@ -24,10 +24,13 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string_view>
@@ -54,9 +57,10 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   void start() override;
   void stop() override;
 
-  // track the refill of the specified keys
-  void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, std::vector<std::string> keys);
+  // track the refill of the specified keys. returns true if the keys
+  // were taken, false otherwise
+  bool trackRefill(std::shared_ptr<LogicalCollection> const& collection,
+                   IndexId iid, containers::FlatHashSet<std::string> keys);
 
   // schedule the refill of the full index
   void scheduleFullIndexRefill(std::string const& database,
@@ -74,8 +78,11 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
 
+  void increaseTotalNumQueued(uint64_t value) noexcept;
+  void increaseTotalNumDropped(uint64_t value) noexcept;
+
  private:
-  void stopThread();
+  void stopThreads();
 
   // build the initial data in _indexFillTasks
   void buildStartupIndexRefillTasks();
@@ -93,14 +100,21 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   DatabaseFeature& _databaseFeature;
 
-  // index refill thread used for auto-refilling after insert/update/replace
+  // index refill threads used for auto-refilling after insert/update/replace
   // (not used for initial filling at startup)
-  std::unique_ptr<RocksDBIndexCacheRefillThread> _refillThread;
+  std::vector<std::unique_ptr<RocksDBIndexCacheRefillThread>>
+      _backgroundThreads;
+
+  // currently responsible background thread (for receiving new keys)
+  std::atomic<uint64_t> _currentBackgroundThreadIdx;
 
   // maximum capacity of queue used for automatic refilling of in-memory index
   // caches after insert/update/replace (not used for initial filling at
   // startup)
   size_t _maxCapacity;
+
+  // number of background threads available for refilling
+  size_t _numBackgroundThreads;
 
   // maximum concurrent index fill tasks that we are allowed to run to fill
   // indexes during startup
@@ -116,6 +130,12 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   // total number of full index refills completed
   metrics::Counter& _totalFullIndexRefills;
+
+  // total number of items ever queued
+  metrics::Counter& _totalNumQueued;
+
+  // total number of items ever dropped (because of queue full)
+  metrics::Counter& _totalNumDropped;
 
   // protects _indexFillTasks and _currentlyRunningIndexFillTasks
   std::mutex _indexFillTasksMutex;

@@ -110,7 +110,7 @@ function AutoRefillIndexCachesEdge() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
       runCheck(true);
     },
@@ -132,7 +132,7 @@ function AutoRefillIndexCachesEdge() {
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
       runCheck(true);
     },
@@ -155,7 +155,7 @@ function AutoRefillIndexCachesEdge() {
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
       runCheck(true);
     },
