@@ -2029,7 +2029,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              replicationData->slice().isEmptyArray());
   TRI_ASSERT(!newValue.isArray() || options.silent ||
-             resultBuilder.slice().length() == newValue.length());
+             resultBuilder.slice().length() == newValue.length())
+      << "isUpdate: " << isUpdate << ", silent: " << options.silent
+      << ", leader: " << (replicationType == ReplicationType::LEADER)
+      << ", follower: " << (replicationType == ReplicationType::FOLLOWER)
+      << ", newValue: " << newValue.toJson()
+      << ", resultBuilder: " << resultBuilder.slice().toJson();
 
   auto resDocs = resultBuilder.steal();
   auto intermediateCommit = futures::makeFuture(res);
