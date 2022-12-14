@@ -564,9 +564,9 @@ function IResearchFeatureDDLTestSuite() {
 
       let meta = {};
       if (isEnterprise) {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -600,9 +600,9 @@ function IResearchFeatureDDLTestSuite() {
 
       meta = {};
       if (isEnterprise) {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -1319,9 +1319,9 @@ function IResearchFeatureDDLTestSuite() {
         const view = db._createView(viewName, 'arangosearch', {});
         let meta = {};
         if (isEnterprise) {
-          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } }
+          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
         } else {
-          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } }
+          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
         }
         view.properties(meta);
         db._dropView(viewName);
