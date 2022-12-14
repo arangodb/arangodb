@@ -3,6 +3,14 @@ devel
 
 * Remove async mode from pregel
 
+* Added a configuration option (for the agency):
+    --agency.supervision-failed-leader-adds-follower
+  with a default of `true` (behavior as before). If set to `false`,
+  a `FailedLeader` job does not automatically configure a new shard
+  follower, thereby preventing unnecessary network traffic, CPU and IO load
+  for the case that the server comes back quickly. If the server is
+  permanently failed, an `AddFollower` job will be created anyway eventually.
+
 * Print the pid of the process which sent a SIGABRT or other fatal 
   signal that shuts down ArangoDB ungracefully.
 
