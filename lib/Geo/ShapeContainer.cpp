@@ -464,7 +464,7 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
       return true;
     }
     case ShapeContainer::Type::S2_POLYGON: {
-      return (static_cast<S2Polygon const*>(_data))->Contains(poly);
+      return (static_cast<S2Polygon const*>(_data))->Contains(*poly);
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
@@ -551,12 +551,12 @@ bool ShapeContainer::equals(double lat2, double lon2) const {
 
 bool ShapeContainer::equals(S2Polyline const* other) const {
   S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
-  return ll->Equals(other);
+  return ll->Equals(*other);
 }
 
 bool ShapeContainer::equals(S2Polyline const* poly,
                             S2Polyline const* other) const {
-  return poly->Equals(other);
+  return poly->Equals(*other);
 }
 
 bool ShapeContainer::equals(S2LatLngRect const* other) const {
@@ -567,7 +567,7 @@ bool ShapeContainer::equals(S2LatLngRect const* other) const {
 
 bool ShapeContainer::equals(S2Polygon const* other) const {
   S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-  return poly->Equals(other);
+  return poly->Equals(*other);
 }
 
 bool ShapeContainer::equals(ShapeContainer const* cc) const {
@@ -645,7 +645,7 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
-      return ll->Intersects(other);
+      return ll->Intersects(*other);
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
       // only used in legacy situations
@@ -762,7 +762,7 @@ bool ShapeContainer::intersects(S2Polygon const* other) const {
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
-      return self->Intersects(other);
+      return self->Intersects(*other);
     }
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
