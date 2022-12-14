@@ -1,6 +1,8 @@
 #include "Source.h"
+#include <variant>
 
 #include "Graph/GraphManager.h"
+#include "Pregel/Collections/Graph/Properties.h"
 
 namespace {
 template<class... Ts>
@@ -15,35 +17,31 @@ using namespace arangodb::pregel::collections::graph;
 
 auto GraphSource::collectionNames(TRI_vocbase_t& vocbase)
     -> ResultT<GraphCollectionNames> {
-  return std::visit(
-      overloaded{
-          [&](GraphName const& x) -> ResultT<GraphCollectionNames> {
-            arangodb::graph::GraphManager gmngr{vocbase};
-            auto graphRes = gmngr.lookupGraphByName(x.graph);
-            if (graphRes.fail()) {
-              return graphRes.result();
-            }
-            std::unique_ptr<arangodb::graph::Graph> graph =
-                std::move(graphRes.get());
+  if (std::holds_alternative<GraphCollectionNames>(graphOrCollections)) {
+    return std::get<GraphCollectionNames>(graphOrCollections);
+  }
 
-            std::vector<std::string> vertexCollections;
-            std::vector<std::string> edgeCollections;
-            auto const& gv = graph->vertexCollections();
-            for (auto const& v : gv) {
-              vertexCollections.push_back(v);
-            }
-            auto const& ge = graph->edgeCollections();
-            for (auto const& e : ge) {
-              edgeCollections.push_back(e);
-            }
+  auto x = std::get<GraphName>(graphOrCollections);
+  arangodb::graph::GraphManager gmngr{vocbase};
+  auto graphRes = gmngr.lookupGraphByName(x.graph);
+  if (graphRes.fail()) {
+    return graphRes.result();
+  }
+  std::unique_ptr<arangodb::graph::Graph> graph = std::move(graphRes.get());
 
-            return {GraphCollectionNames{.vertexCollections = vertexCollections,
-                                         .edgeCollections = edgeCollections}};
-          },
-          [&](GraphCollectionNames const& x) -> ResultT<GraphCollectionNames> {
-            return x;
-          }},
-      graphOrCollections);
+  std::vector<std::string> vertexCollections;
+  std::vector<std::string> edgeCollections;
+  auto const& gv = graph->vertexCollections();
+  for (auto const& v : gv) {
+    vertexCollections.push_back(v);
+  }
+  auto const& ge = graph->edgeCollections();
+  for (auto const& e : ge) {
+    edgeCollections.push_back(e);
+  }
+
+  return {GraphCollectionNames{.vertexCollections = vertexCollections,
+                               .edgeCollections = edgeCollections}};
 }
 
 auto GraphSource::restrictions(TRI_vocbase_t& vocbase)
@@ -58,32 +56,26 @@ auto GraphSource::restrictions(TRI_vocbase_t& vocbase)
 
 auto GraphSource::graphRestrictions(TRI_vocbase_t& vocbase)
     -> ResultT<EdgeCollectionRestrictions> {
-  return std::visit(
-      overloaded{
-          [&](GraphName const& x) -> ResultT<EdgeCollectionRestrictions> {
-            arangodb::graph::GraphManager gmngr{vocbase};
-            auto graphRes = gmngr.lookupGraphByName(x.graph);
-            if (graphRes.fail()) {
-              return graphRes.result();
-            }
-            std::unique_ptr<arangodb::graph::Graph> graph =
-                std::move(graphRes.get());
+  if (std::holds_alternative<GraphCollectionNames>(graphOrCollections)) {
+    return EdgeCollectionRestrictions{};
+  }
 
-            auto restrictions =
-                std::unordered_map<VertexCollectionID,
-                                   std::vector<EdgeCollectionID>>{};
-            auto const& ed = graph->edgeDefinitions();
-            for (auto const& [_, edgeDefinition] : ed) {
-              auto const& from = edgeDefinition.getFrom();
-              for (auto const& f : from) {
-                restrictions[f].push_back(edgeDefinition.getName());
-              }
-            }
-            return EdgeCollectionRestrictions{restrictions};
-          },
-          [&](GraphCollectionNames const& x)
-              -> ResultT<EdgeCollectionRestrictions> {
-            return EdgeCollectionRestrictions{};
-          }},
-      graphOrCollections);
+  auto x = std::get<GraphName>(graphOrCollections);
+  arangodb::graph::GraphManager gmngr{vocbase};
+  auto graphRes = gmngr.lookupGraphByName(x.graph);
+  if (graphRes.fail()) {
+    return graphRes.result();
+  }
+  std::unique_ptr<arangodb::graph::Graph> graph = std::move(graphRes.get());
+
+  auto restrictions =
+      std::unordered_map<VertexCollectionID, std::vector<EdgeCollectionID>>{};
+  auto const& ed = graph->edgeDefinitions();
+  for (auto const& [_, edgeDefinition] : ed) {
+    auto const& from = edgeDefinition.getFrom();
+    for (auto const& f : from) {
+      restrictions[f].push_back(edgeDefinition.getName());
+    }
+  }
+  return EdgeCollectionRestrictions{restrictions};
 }
