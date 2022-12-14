@@ -23,7 +23,6 @@
 
 #include <stddef.h>
 #include <algorithm>
-#include <array>
 
 #include <s2/s1angle.h>
 #include <s2/s2cell.h>
@@ -59,11 +58,15 @@ namespace {
 
 S2Polygon latLngRectToPolygon(S2LatLngRect const* rect) {
   // Construct polygon from rect:
-  auto first = rect->GetVertex(0).ToPoint();
-  std::array<S2Point, 5> v{first, rect->GetVertex(1).ToPoint(),
-                           rect->GetVertex(2).ToPoint(),
-                           rect->GetVertex(3).ToPoint(), first};
-  auto loop = std::make_unique<S2Loop>(v, S2Debug::DISABLE);
+  std::vector<S2Point> v;
+  v.reserve(5);
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  v.emplace_back(rect->GetVertex(1).ToPoint());
+  v.emplace_back(rect->GetVertex(2).ToPoint());
+  v.emplace_back(rect->GetVertex(3).ToPoint());
+  v.emplace_back(rect->GetVertex(0).ToPoint());
+  std::unique_ptr<S2Loop> loop;
+  loop = std::make_unique<S2Loop>(std::move(v), S2Debug::DISABLE);
   return S2Polygon{std::move(loop), S2Debug::DISABLE};
 }
 
@@ -673,25 +676,20 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
 }
 
 namespace {
-
 bool intersectRectPolygon(S2LatLngRect const* rect, S2Polygon const* poly) {
   // only used in legacy situations
-  if (ADB_UNLIKELY(rect->is_point())) {
-    return poly->Contains(rect->lo().ToPoint());
-  }
-  auto bound = poly->GetRectBound();
-  if (ADB_UNLIKELY(rect->Contains(bound))) {
-    return true;
-  } else if (ADB_UNLIKELY(rect->is_point())) {
-    return poly->Contains(rect->lo().ToPoint());
-  } else if (ADB_LIKELY(!rect->Intersects(bound))) {
-    return false;
+  if (rect->is_full()) {
+    return true;  // rectangle spans entire sphere
+  } else if (rect->is_point()) {
+    return poly->Contains(rect->lo().ToPoint());  // easy case
+  } else if (!rect->Intersects(poly->GetRectBound())) {
+    return false;  // cheap rejection
   }
   auto rectPoly = ::latLngRectToPolygon(rect);
-  return S2BooleanOperation::Intersects(poly->index(), rectPoly.index());
+  return poly->Intersects(&rectPoly);
 }
 
-bool intersectMultiPointsRegion(S2MultiPointRegion const* points,
+bool insersectMultiPointsRegion(S2MultiPointRegion const* points,
                                 S2Region const* region) {
   for (int i = 0; i < points->num_points(); ++i) {
     if (region->Contains(points->point(i))) {
@@ -700,7 +698,6 @@ bool intersectMultiPointsRegion(S2MultiPointRegion const* points,
   }
   return false;
 }
-
 }  // namespace
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
@@ -731,7 +728,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion* self = static_cast<S2MultiPointRegion*>(_data);
-      return intersectMultiPointsRegion(self, other);
+      return insersectMultiPointsRegion(self, other);
     }
 
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
@@ -811,7 +808,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
             "instable and thus not supported.");
       }
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
-      return intersectMultiPointsRegion(pts, _data);
+      return insersectMultiPointsRegion(pts, _data);
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
