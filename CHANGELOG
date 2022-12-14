@@ -6,6 +6,8 @@ devel
 
 * Updated JS dependency minimatch to 3.1.2 to resolve CVE-2022-3517.
 
+* Updated JS dependency qs to 6.11.0 to resolve CVE-2022-24999.
+
 * Deleted customizable Pregel (AIR) and Greenspun library
 
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
