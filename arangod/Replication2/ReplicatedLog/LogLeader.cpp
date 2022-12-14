@@ -659,6 +659,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   };
 
   if (not _leadershipEstablished) {
+    // leadership is established if commitIndex is non-zero
+    ADB_PROD_ASSERT(newIndex > LogIndex{0});
+    _leadershipEstablished = true;
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
   }
 
