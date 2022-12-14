@@ -91,7 +91,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
-  /// an unique response, not necessarily during the async mode
+  /// an unique response
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
@@ -104,11 +104,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   /// continue.
   uint64_t _maxSuperstep = 500;
 
-  /// determines whether we support async execution
-  bool _asyncMode = false;
   bool _useMemoryMaps = true;
   bool _storeResults = false;
-  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;

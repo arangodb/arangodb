@@ -49,7 +49,6 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   VPackSlice execNum = params.get(Utils::executionNumberKey);
   VPackSlice collectionPlanIdMap = params.get(Utils::collectionPlanIdMapKey);
   VPackSlice globalShards = params.get(Utils::globalShardListKey);
-  VPackSlice async = params.get(Utils::asyncModeKey);
 
   if (!coordID.isString() || !edgeShardMap.isObject() ||
       !vertexShardMap.isObject() || !execNum.isInteger() ||
@@ -59,7 +58,6 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   }
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
-  _asynchronousMode = async.getBool();
 
   // memory mapping
   // start off with default value
