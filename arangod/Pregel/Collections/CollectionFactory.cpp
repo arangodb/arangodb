@@ -49,7 +49,7 @@ auto CollectionFactory::create(std::vector<CollectionID> names)
         internalCollections.emplace_back(internalCollection);
       }
       collections[name] = std::make_shared<ClusterCollection>(
-          collection->name(), std::move(internalCollections), ci);
+          collection, std::move(internalCollections), ci);
     }
     return {Collections{std::move(collections)}};
   }

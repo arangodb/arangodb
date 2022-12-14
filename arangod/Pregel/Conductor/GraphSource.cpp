@@ -48,11 +48,16 @@ auto GraphSettings::getSource(TRI_vocbase_t& vocbase)
     if (collection->isDeleted()) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collection->name());
     }
-    if (!collection->hasAccessRights(auth::Level::RW)) {
-      return Result{TRI_ERROR_FORBIDDEN};
+    if (!collection->hasAccessRights(auth::Level::RO)) {
+      return Result{TRI_ERROR_FORBIDDEN,
+                    fmt::format("Missing reading access for collection {}",
+                                collection->name())};
     }
     if (storeResults && !collection->hasAccessRights(auth::Level::RW)) {
-      return Result{TRI_ERROR_FORBIDDEN};
+      return Result{TRI_ERROR_FORBIDDEN,
+                    fmt::format("Missing writing access for collection {} when "
+                                "storing results to database",
+                                collection->name())};
     }
   }
 

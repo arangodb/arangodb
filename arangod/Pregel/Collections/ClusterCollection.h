@@ -32,16 +32,17 @@ namespace arangodb::pregel::collections {
 
 /**
    Collection on a cluster
-In case of a smart collection, this can consist out of several collections
-(which differ by their shardings). In that case, name is the name of the virtual
-collection, all other functions check all underlying collections
+In case of a smart collection, this consist out of the virtual smart collection
+and several system collections (which differ by their shardings).
  **/
 struct ClusterCollection : Collection {
  public:
-  ClusterCollection(std::string name,
+  ClusterCollection(std::shared_ptr<LogicalCollection> virtualCollection,
                     std::vector<std::shared_ptr<LogicalCollection>> collections,
                     ClusterInfo& clusterInfo)
-      : virtualName{name}, collections{collections}, clusterInfo{clusterInfo} {}
+      : virtualCollection{virtualCollection},
+        collections{collections},
+        clusterInfo{clusterInfo} {}
   ~ClusterCollection() = default;
   auto name() const -> std::string_view override;
   auto shards() const -> std::vector<ShardID> override;
@@ -56,8 +57,7 @@ struct ClusterCollection : Collection {
   auto shardKeys() const -> std::vector<std::string> override;
 
  private:
-  std::string virtualName;
-  // smart edge collections contain multiple actual collections
+  std::shared_ptr<LogicalCollection> virtualCollection;
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   ClusterInfo& clusterInfo;
 };

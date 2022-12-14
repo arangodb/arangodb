@@ -3,7 +3,9 @@
 
 using namespace arangodb::pregel::collections;
 
-auto ClusterCollection::name() const -> std::string_view { return virtualName; }
+auto ClusterCollection::name() const -> std::string_view {
+  return virtualCollection->name();
+}
 
 auto ClusterCollection::shards() const -> std::vector<ShardID> {
   auto shards = std::vector<ShardID>{};
@@ -43,22 +45,12 @@ auto ClusterCollection::planIds() const
 }
 
 auto ClusterCollection::isSystem() const -> bool {
-  for (auto const& collection : collections) {
-    if (collection->system()) {
-      return true;
-    }
-  }
-  return false;
+  return virtualCollection->system();
 }
 
 auto ClusterCollection::isDeleted() const -> bool {
-  for (auto const& collection : collections) {
-    if (collection->deleted() ||
-        collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-      return true;
-    }
-  }
-  return false;
+  return virtualCollection->deleted() ||
+         virtualCollection->status() == TRI_VOC_COL_STATUS_DELETED;
 }
 
 auto ClusterCollection::hasAccessRights(auth::Level requested) -> bool {
@@ -73,12 +65,7 @@ auto ClusterCollection::hasAccessRights(auth::Level requested) -> bool {
 }
 
 auto ClusterCollection::isSmart() const -> bool {
-  for (auto const& collection : collections) {
-    if (collection->isSmart()) {
-      return true;
-    }
-  }
-  return false;
+  return virtualCollection->isSmart();
 }
 
 auto ClusterCollection::shardKeys() const -> std::vector<std::string> {
