@@ -35,16 +35,11 @@
 
 namespace arangodb::pregel::actor {
 
-template<typename Scheduler, typename SendingMechanism>
-struct Runtime {
-  Runtime() = delete;
-  Runtime(ServerID myServerID, std::string runtimeID,
-          std::shared_ptr<Scheduler> scheduler,
-          std::shared_ptr<SendingMechanism> sending_mechanism)
-      : myServerID(myServerID),
-        runtimeID(runtimeID),
-        scheduler(scheduler),
-        sending_mechanism(sending_mechanism) {}
+using ActorMap = std::unordered_map<ActorID, std::unique_ptr<ActorBase>>;
+
+struct Dispatcher {
+  Dispatcher(ServerID myServerID, ActorMap& actors)
+      : myServerID(myServerID), actors(actors) {}
 
   auto dispatch(std::unique_ptr<Message> msg) -> void {
     if (msg->receiver.server == myServerID) {
@@ -55,25 +50,45 @@ struct Runtime {
       actor->process(msg->sender, std::move(msg->payload));
     } else {
       // TODO  sending_mechanism.send(std::move(msg));
-      assert(false);
+      std::abort();
     }
   }
 
-  template<Actorable ActorConfig>
+  ServerID myServerID;
+  ActorMap& actors;
+};
+
+template<typename Scheduler, typename SendingMechanism>
+struct Runtime {
+  Runtime() = delete;
+  Runtime(ServerID myServerID, std::string runtimeID,
+          std::shared_ptr<Scheduler> scheduler,
+          std::shared_ptr<SendingMechanism> sending_mechanism)
+      : myServerID(myServerID),
+        runtimeID(runtimeID),
+        scheduler(scheduler),
+        sending_mechanism(sending_mechanism),
+        dispatcher(std::make_shared<Dispatcher>(myServerID, actors)) {}
+
+  template<typename ActorConfig>
+  requires Actorable<ActorConfig>
   auto spawn(typename ActorConfig::State initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{
         uniqueActorIdCounter++};  // TODO: check whether this is what we want
+
+    auto address = ActorPID{.id = newId, .server = myServerID};
+
     auto newActor = std::make_unique<Actor<Scheduler, ActorConfig>>(
-        scheduler, std::make_unique<typename ActorConfig::State>(initialState));
+        address, scheduler, dispatcher,
+        std::make_unique<typename ActorConfig::State>(initialState));
     actors.emplace(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    auto address = ActorPID{.id = newId, .server = myServerID};
     auto initialPayload =
         std::make_unique<MessagePayload<typename ActorConfig::Message>>(
             initialMessage);
-    dispatch(
+    dispatcher->dispatch(
         std::make_unique<Message>(address, address, std::move(initialPayload)));
 
     return newId;
@@ -111,8 +126,8 @@ struct Runtime {
 
   std::shared_ptr<Scheduler> scheduler;
   std::shared_ptr<SendingMechanism> sending_mechanism;
+  std::shared_ptr<Dispatcher> dispatcher;
 
-  using ActorMap = std::unordered_map<ActorID, std::unique_ptr<ActorBase>>;
   std::atomic<size_t> uniqueActorIdCounter{0};
 
   ActorMap actors;

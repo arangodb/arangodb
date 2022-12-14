@@ -35,6 +35,8 @@
 
 namespace arangodb::pregel::actor {
 
+struct Dispatcher;
+
 struct ActorBase {
   virtual ~ActorBase() = default;
   virtual auto process(ActorPID sender,
@@ -45,7 +47,13 @@ struct ActorBase {
 
 template<typename State>
 struct HandlerBase {
-  HandlerBase(std::unique_ptr<State> state) : state{std::move(state)} {};
+  HandlerBase(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
+              std::unique_ptr<State> state)
+      : pid(pid),
+        messageDispatcher(messageDispatcher),
+        state{std::move(state)} {};
+  ActorPID pid;
+  std::shared_ptr<Dispatcher> messageDispatcher;
   std::unique_ptr<State> state;
 };
 
@@ -64,10 +72,12 @@ concept HandlerInheritsFromBaseHandler =
     std::is_base_of < HandlerBase<typename A::State>,
 typename A::Handler > ::value;
 template<typename A>
-concept MessageIsVariant = requires(typename A::State state,
+concept MessageIsVariant = requires(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
+                                    typename A::State state,
                                     typename A::Message message) {
-  {std::visit(typename A::Handler{std::move(
-                  std::make_unique<typename A::State>(state))},
+{std::visit(typename A::Handler{{pid, messageDispatcher,
+                                  std::move(std::make_unique<typename A::State>(
+                                              state))}},
               message)};
 };
 };  // namespace
@@ -77,14 +87,23 @@ concept Actorable = IncludesAllActorRelevantTypes<A> && IncludesName<A> &&
 
 template<typename Scheduler, Actorable Config>
 struct Actor : ActorBase {
-  Actor(std::shared_ptr<Scheduler> schedule,
+  Actor(ActorPID pid, std::shared_ptr<Scheduler> schedule,
+        std::shared_ptr<Dispatcher> dispatcher,
         std::unique_ptr<typename Config::State> initialState)
-      : schedule(schedule), state(std::move(initialState)) {}
+      : schedule(schedule),
+        messageDispatcher(dispatcher),
+        state(std::move(initialState)),
+        pid(pid) {}
 
-  Actor(std::shared_ptr<Scheduler> schedule,
+  Actor(ActorPID pid, std::shared_ptr<Scheduler> schedule,
+        std::shared_ptr<Dispatcher> dispatcher,
         std::unique_ptr<typename Config::State> initialState,
         std::size_t batchSize)
-      : batchSize(batchSize), schedule(schedule) {}
+      : batchSize(batchSize),
+        schedule(schedule),
+        messageDispatcher(dispatcher),
+        state(std::move(initialState)),
+        pid(pid) {}
 
   ~Actor() = default;
 
@@ -124,8 +143,9 @@ struct Actor : ActorBase {
           std::cout << "work payload was nullptr" << std::endl;
         }
 
-        state = std::visit(typename Config::Handler{std::move(state)},
-                           *msg->payload);
+        state = std::visit(
+          typename Config::Handler{ { pid, messageDispatcher, std::move(state)} },
+            *msg->payload);
         i--;
         if (i == 0) {
           break;
@@ -152,14 +172,9 @@ struct Actor : ActorBase {
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Scheduler> schedule;
+  std::shared_ptr<Dispatcher> messageDispatcher;
   std::unique_ptr<typename Config::State> state;
+  ActorPID pid;
 };
-
-// template<typename Scheduler, typename MessageHandler, typename State,
-//          typename Message>
-// void send(Actor<Scheduler, MessageHandler, State, Message>& actor,
-//           std::unique_ptr<Message> msg) {
-//   actor.process(std::move(msg));
-// }
 
 }  // namespace arangodb::pregel::actor

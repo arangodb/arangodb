@@ -29,13 +29,23 @@
 #include <variant>
 
 #include "Actor/Runtime.h"
+#include "Actor/Message.h"
 #include "Actor/Actor.h"
 
 namespace arangodb::pregel::actor::test {
 
 namespace pong_actor {
-struct Ping;
-}
+struct Actor;
+
+struct Start {};
+
+struct Ping {
+  ActorPID sender;
+  std::string text;
+};
+
+using PingMessage = std::variant<Start, Ping>;
+}  // namespace pong_actor
 
 namespace ping_actor {
 
@@ -53,13 +63,21 @@ struct Pong {
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
+    std::cout << "I am the ping actor: " << pid.server << " " << pid.id.id << std::endl;
     std::cout << "pong actor: " << msg.pongActor.server << " "
               << msg.pongActor.id.id << std::endl;
-    // runtime.send(msg.pongActor, pong_actor::Ping{.text = "hello world"});
+
+//    dispatch(msg.pongActor, pong_actor::Ping{.sender = pid, .text = "hello, world"}>);
+
+    messageDispatcher->dispatch(std::make_unique<Message>(
+        pid, msg.pongActor,
+        std::make_unique<MessagePayload<typename pong_actor::PingMessage>>(
+            pong_actor::Ping{.sender = pid, .text = "hello world"})));
     return std::move(state);
   }
 
   auto operator()(Pong msg) -> std::unique_ptr<State> {
+    std::cout << "handler of Pong in ping_actor" << std::endl;
     return std::move(state);
   }
 };
@@ -79,20 +97,18 @@ struct State {
   bool operator==(const State&) const = default;
 };
 
-struct Start {};
-
-struct Ping {
-  ActorPID sender;
-  std::string text;
-};
-
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
     return std::move(state);
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<State> {
-    // runtime.send(msg.sender, ping_actor::Pong{.text = msg.text});
+    std::cout << "handler of Ping in pong_actor from " << msg.sender.server << " "  << msg.sender.id.id << std::endl;
+    std::cout << "content: " << msg.text;
+    messageDispatcher->dispatch(std::make_unique<Message>(
+        pid, msg.sender,
+        std::make_unique<MessagePayload<typename ping_actor::Actor::Message>>(
+            ping_actor::Pong{.text = msg.text})));
     return std::move(state);
   }
 };
@@ -100,7 +116,7 @@ struct Handler : HandlerBase<State> {
 struct Actor {
   using State = State;
   using Handler = Handler;
-  using Message = std::variant<Start, Ping>;
+  using Message = PingMessage;  // std::variant<Start, Ping>;
   static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 
