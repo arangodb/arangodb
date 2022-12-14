@@ -37,7 +37,9 @@
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
+namespace arangodb {
+class EncryptionFeature;
+}
 #endif
 
 struct stat;

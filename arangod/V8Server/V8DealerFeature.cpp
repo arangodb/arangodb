@@ -78,7 +78,9 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/vocbase.h"
-
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

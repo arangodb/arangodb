@@ -92,10 +92,6 @@
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
-
 #include <absl/crc/crc32c.h>
 
 using namespace arangodb::basics;

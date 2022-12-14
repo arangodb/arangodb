@@ -130,7 +130,7 @@ add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
 target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt
-        arango_assertions arango_static_strings arango_futures)
+        arango_assertions arango_static_strings arango_futures boost_boost boost_system)
 
 # yes we need absl now everywhere
 target_link_libraries(arango_lightweight PUBLIC
