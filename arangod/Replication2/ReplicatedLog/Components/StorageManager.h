@@ -30,6 +30,8 @@
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
+struct StorageManagerTransaction;
+struct StateInfoTransaction;
 struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
   using IStorageEngineMethods = replicated_state::IStorageEngineMethods;

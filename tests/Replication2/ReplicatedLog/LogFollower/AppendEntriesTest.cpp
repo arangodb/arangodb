@@ -62,7 +62,11 @@ struct AppendEntriesFollowerTest : ::testing::Test {
       {LogIndex{1}, LogIndex{100}},
       replicated_state::PersistedStateInfo{
           .stateId = logId,
-          .snapshot = {.status = SnapshotStatus::kCompleted}}};
+          .snapshot = {.status = SnapshotStatus::kCompleted,
+                       .timestamp = {},
+                       .error = {}},
+          .generation = {},
+          .specification = {}}};
 
   std::shared_ptr<ReplicatedLogGlobalSettings> options =
       std::make_shared<ReplicatedLogGlobalSettings>();

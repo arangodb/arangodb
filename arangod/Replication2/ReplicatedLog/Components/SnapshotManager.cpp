@@ -108,4 +108,5 @@ auto comp::to_string(SnapshotState state) noexcept -> std::string_view {
     case SnapshotState::AVAILABLE:
       return "AVAILABLE";
   }
+  std::abort();
 }

@@ -57,6 +57,7 @@ struct AppendEntriesManager;
 
 namespace arangodb::replication2::replicated_log::refactor {
 
+struct MethodsProvider;
 struct FollowerManager {
   explicit FollowerManager(
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods,

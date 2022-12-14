@@ -1072,6 +1072,7 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
     _self._logMetrics->replicatedLogNumberCompactedEntries->count(
         numberOfCompactedEntries);
     return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries,
+                            .range = {},
                             .stopReason = {}};
   }
   LOG_CTX("f1029", TRACE, _self._logContext)

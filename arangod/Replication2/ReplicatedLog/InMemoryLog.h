@@ -149,7 +149,6 @@ struct InMemoryLog {
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
 
-  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
   [[nodiscard]] static auto loadFromMethods(
       replicated_state::IStorageEngineMethods&) -> InMemoryLog;
 

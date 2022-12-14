@@ -137,7 +137,8 @@ void CompactionManager::triggerAsyncCompaction(
         auto f = store->removeFront(index);
         guard.unlock();
         auto result = co_await asResult(std::move(f));
-        auto cresult = CompactResult{.stopReason = reason,
+        auto cresult = CompactResult{.error = std::nullopt,
+                                     .stopReason = reason,
                                      .compactedRange = compactionRange};
 
         guard = self->guarded.getLockedGuard();
@@ -166,7 +167,8 @@ void CompactionManager::triggerAsyncCompaction(
         guard->status.stop = reason;
         ADB_PROD_ASSERT(guard.isLocked());
         guard.unlock();
-        auto cresult = CompactResult{.stopReason = reason};
+        auto cresult = CompactResult{
+            .error = std::nullopt, .stopReason = reason, .compactedRange = {}};
         promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
         break;
       }

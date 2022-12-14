@@ -54,9 +54,9 @@ struct StorageTransactionMock : IStorageTransaction {
 struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
-  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const override));
+  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
   MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
-              (const override));
+              (const, override));
   MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
               (override));
   MOCK_METHOD(Result, commitMetaInfoTrx,

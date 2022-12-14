@@ -141,7 +141,8 @@ struct LogFollowerMock : replicated_log::ILogFollower {
   MOCK_METHOD(ResultT<arangodb::replication2::replicated_log::CompactionResult>,
               compact, (), (override));
 
-  MOCK_METHOD(ParticipantId const&, getParticipantId, (), (const, noexcept));
+  MOCK_METHOD(ParticipantId const&, getParticipantId, (),
+              (const, noexcept, override));
   MOCK_METHOD(futures::Future<AppendEntriesResult>, appendEntries,
               (AppendEntriesRequest), (override));
 };

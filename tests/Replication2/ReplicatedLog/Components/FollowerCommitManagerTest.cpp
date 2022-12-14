@@ -39,9 +39,9 @@ namespace {
 struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
-  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const override));
+  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
   MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
-              (const override));
+              (const, override));
   MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
               (override));
   MOCK_METHOD(Result, commitMetaInfoTrx,
@@ -49,11 +49,14 @@ struct StorageManagerMock : IStorageManager {
 };
 
 struct StateHandleManagerMock : IStateHandleManager {
-  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept));
+  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
   MOCK_METHOD(void, becomeFollower,
-              (std::unique_ptr<IReplicatedLogFollowerMethods>), (noexcept));
-  MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (), (noexcept));
-  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&), (noexcept));
+              (std::unique_ptr<IReplicatedLogFollowerMethods>),
+              (noexcept, override));
+  MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (),
+              (noexcept, override));
+  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&),
+              (noexcept, override));
 };
 
 auto makeRange(LogRange range) -> InMemoryLog {

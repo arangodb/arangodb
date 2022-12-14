@@ -45,7 +45,12 @@ struct StorageManagerTest : ::testing::Test {
       executor,
       {LogIndex{1}, LogIndex{100}},
       replicated_state::PersistedStateInfo{
-          .stateId = logId, .snapshot = {.status = SnapshotStatus::kFailed}}};
+          .stateId = logId,
+          .snapshot = {.status = SnapshotStatus::kFailed,
+                       .timestamp = {},
+                       .error = {}},
+          .generation = {},
+          .specification = {}}};
   std::shared_ptr<StorageManager> storageManager =
       std::make_shared<StorageManager>(methods.getMethods(),
                                        LoggerContext{Logger::REPLICATION2});
@@ -252,7 +257,10 @@ struct StorageEngineMethodsMockFactory {
     });
 
     EXPECT_CALL(*ptr, readMetadata).Times(1).WillOnce([]() {
-      return replicated_state::PersistedStateInfo{.stateId = LogId{1}};
+      return replicated_state::PersistedStateInfo{.stateId = LogId{1},
+                                                  .snapshot = {},
+                                                  .generation = {},
+                                                  .specification = {}};
     });
 
     return ptr;
