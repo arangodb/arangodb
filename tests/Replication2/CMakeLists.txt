@@ -137,6 +137,6 @@ add_executable(arangodbtests_replication2_pure
 target_link_libraries(arangodbtests_replication2_pure PRIVATE
         arango_tests_replication2_pure arango_lightweight)
 
-add_test(arangodbtests_replication2_pure COMMAND arangodbtests_replication2_pure)
-
+add_test(NAME replication2_pure
+        COMMAND arangodbtests_replication2_pure)
 target_link_libraries(arangodbtests_replication2 PUBLIC arango_tests_replication2_pure)
