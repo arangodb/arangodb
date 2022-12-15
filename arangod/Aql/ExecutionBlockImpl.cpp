@@ -122,13 +122,13 @@ using namespace arangodb::aql;
  */
 
 #define CREATE_HAS_MEMBER_CHECK(methodName, checkName)               \
-  template <typename T>                                              \
+  template<typename T>                                               \
   class checkName {                                                  \
-    template <typename C>                                            \
+    template<typename C>                                             \
     static std::true_type test(decltype(&C::methodName));            \
-    template <typename C>                                            \
+    template<typename C>                                             \
     static std::true_type test(decltype(&C::template methodName<>)); \
-    template <typename>                                              \
+    template<typename>                                               \
     static std::false_type test(...);                                \
                                                                      \
    public:                                                           \
@@ -1261,9 +1261,34 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         // We can never hit an offset on the shadowRow level again,
         // we can only hit this with HARDLIMIT / FULLCOUNT
         TRI_ASSERT(shadowCall.getOffset() == 0);
-        auto skipped = _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+
+        // `depthToSkip` is the depth according to our call and output; when
+        // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
+        // applied to our input.
+        // For SQS nodes, this needs to be adjusted; in principle we'd just need
+        //   depthToSkip += offset;
+        // , except depthToSkip is unsigned, and we would get integer
+        // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
+        // Note that SubqueryEnd nodes do *not* need this adjustment, as an
+        // additional call is pushed to the stack already when the
+        // ExecutionContext is constructed at the beginning of
+        // executeWithoutTrace, so input and call-stack already align at this
+        // point.
+        auto skipped = std::invoke([&]() {
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<-1>(
+                depthToSkip);
+          }
+          if constexpr (std::is_same_v<DataRange, AqlItemBlockInputRange>) {
+            return _lastRange.template skipAllShadowRowsOfDepth<0>(depthToSkip);
+          } else {
+            return _lastRange.skipAllShadowRowsOfDepth(depthToSkip);
+          }
+        });
+
         if (shadowCall.needsFullCount()) {
-          if constexpr (std::is_same_v<DataRange, MultiAqlItemBlockInputRange>) {
+          if constexpr (std::is_same_v<DataRange,
+                                       MultiAqlItemBlockInputRange>) {
             _rowFetcher.reportSubqueryFullCounts(depthToSkip, skipped);
             // We need to report exactly one of those values to the _skipped container
             // If we need help from upstream, they report it via `execute` API.
