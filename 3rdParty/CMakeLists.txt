@@ -204,16 +204,15 @@ set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake def
 list(APPEND CMAKE_MODULE_PATH
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
   "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
-  )
+)
 
 # copy pre-built files over to the build directory
 # this is required to avoid triggering file generation via bison and perl during the build procedure
 file(GLOB_RECURSE IRESEARCH_PREBUILT RELATIVE "${IRESEARCH_ROOT}.build" FOLLOW_SYMLINKS "${IRESEARCH_ROOT}.build/*")
-foreach (ELEMENT ${IRESEARCH_PREBUILT})
+foreach(ELEMENT ${IRESEARCH_PREBUILT})
   configure_file("${IRESEARCH_ROOT}.build/${ELEMENT}" "${IRESEARCH_BUILD_DIR}/${ELEMENT}" COPYONLY)
-endforeach ()
+endforeach()
 
-set(USE_UTILS OFF)
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
@@ -331,7 +330,7 @@ add_subdirectory(fuerte)
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
 
-set(TAOCPP_JSON_BUILD_TESTS OFF CACHE BOOL "Build taocpp::json test programs" FORCE)
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
 add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)

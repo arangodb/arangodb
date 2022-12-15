@@ -209,7 +209,7 @@ target_link_libraries(arango PUBLIC
   absl::node_hash_map
   absl::synchronization
   absl::strings
-  )
+)
 
 target_link_libraries(arango PUBLIC fmt::fmt)
 
