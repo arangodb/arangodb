@@ -161,8 +161,6 @@ class ClusterEngine final : public StorageEngine {
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&& info, ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state

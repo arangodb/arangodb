@@ -238,8 +238,6 @@ class RocksDBEngine final : public StorageEngine {
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                ErrorCode& status) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                    velocypack::Slice slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;

@@ -36,6 +36,8 @@
 #include "VocBase/vocbase.h"
 
 #include <chrono>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -174,9 +176,9 @@ class StorageEngine : public ArangodFeature {
   // storage engine is required to fully clean up the creation and throw only
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
-  // "createDatabase" returns no way to acquire id within this function?!
+  // "createDatabase"
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&&, ErrorCode& status) = 0;
+      arangodb::CreateDatabaseInfo&&);
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,

@@ -1643,16 +1643,6 @@ arangodb::Result StorageEngineMock::changeView(
 void StorageEngineMock::createCollection(
     TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) {}
 
-std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    arangodb::CreateDatabaseInfo&& info, ErrorCode& status) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(
-        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
-  }
-  return std::make_unique<TRI_vocbase_t>(
-      TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(info));
-}
-
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*,
                                                       VPackBuilder&) {
   TRI_ASSERT(false);
@@ -1848,8 +1838,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(
-      TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(new_info));
+  return std::make_unique<TRI_vocbase_t>(std::move(new_info));
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
