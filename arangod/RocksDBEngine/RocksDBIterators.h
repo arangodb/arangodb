@@ -48,6 +48,7 @@ class RocksDBGenericIterator {
   RocksDBGenericIterator(rocksdb::TransactionDB* db,
                          rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
+  RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() = default;
 
