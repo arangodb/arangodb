@@ -1338,6 +1338,13 @@ class block_iterator : util::noncopyable {
   uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool done() const noexcept { return cur_ent_ == ent_count_; }
+  bool no_terms() const noexcept {
+    // FIXME(gnusi): add term mark to block entry?
+    //
+    // Block was loaded using address and doesn't have metadata,
+    // assume such blocks have terms
+    return sub_count_ != UNDEFINED_COUNT && !block_meta::terms(meta());
+  }
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
@@ -2226,8 +2233,14 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
       // target term is before the current term
       block_stack_[block].reset();
     } else if (0 == cmp) {
-      // we're already at current term
-      return true;
+      if (cur_block_->type() == ET_BLOCK) {
+        // we're at the block with matching prefix
+        cur_block_ = push_block(cur_block_->block_start(), term_.size());
+        return false;
+      } else {
+        // we're already at current term
+        return true;
+      }
     }
   } else {
     push_block(fst.Final(state), prefix);
@@ -2294,7 +2307,7 @@ SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
 
   assert(cur_block_);
 
-  if (!block_meta::terms(cur_block_->meta())) {
+  if (cur_block_->no_terms()) {
     // current block has no terms
     term_.reset(prefix);
     return SeekResult::NOT_FOUND;
