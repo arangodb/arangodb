@@ -57,13 +57,11 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView2");
       db._dropView("TestNameConflictDB");
       db._dropView("testDatabaseAnalyzer");
-      db._dropView("testDatabaseView");
       db._drop("TestCollection");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
       db._drop("collection123");
-      db._dropDatabase("TestDB");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +85,7 @@ function IResearchFeatureDDLTestSuite() {
 
       for (let i = 0; i < 100; ++i) {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo" + i.toString() }] }] });
-        db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
         let meta = {};
         if (isEnterprise) {
@@ -118,7 +116,7 @@ function IResearchFeatureDDLTestSuite() {
 
       for (let i = 0; i < 100; ++i) {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": i.toString() + "foo" }] }] });
-        db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
         var view = db._createView("TestView", "arangosearch", {});
         view.properties(meta, true); // partial update
@@ -156,7 +154,7 @@ function IResearchFeatureDDLTestSuite() {
 
       for (let i = 0; i < 100; ++i) {
         db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
-        db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
         docCount += 1;
         view.properties(meta, true); // partial update
         let properties = view.properties();
@@ -262,7 +260,7 @@ function IResearchFeatureDDLTestSuite() {
         db.TestCollection0.save({ name: i.toString() });
         db.TestCollection1.save({ name: i.toString() });
         db.TestCollection2.save({ name: i.toString() });
-        db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
         docCount += 1;
       }
 
@@ -370,7 +368,7 @@ function IResearchFeatureDDLTestSuite() {
         db.TestCollection0.save({ name: i.toString() });
         db.TestCollection1.save({ name: i.toString() });
         db.TestCollection2.save({ name: i.toString() });
-        db["collection123"].save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
         docCount += 1;
       }
 
@@ -403,7 +401,8 @@ function IResearchFeatureDDLTestSuite() {
                 "d": { trackListPositions: true, storeValues: "id" },
                 "e": { analyzers: ["text_de"] }
               }
-            }
+            },
+            "collection123": { "fields": { "value": { } } }
           }
         };
       }
@@ -571,10 +570,10 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0), result.length); // In CE in view there is no docs 
 
       col0.save({ name: "quarter", text: "quick over" });
-      let id = db["collection123"].save({ name_1: "quarter", text: "quick over" })["_id"];
+      let id = db.collection123.save({ name_1: "quarter", text: "quick over" })["_id"];
       docCount += 1;
       result = db._query('FOR doc IN TestView SEARCH ANALYZER(doc.name == "quarter", "identity") OPTIONS { waitForSync: true } SORT doc.name RETURN doc').toArray();
       assertEqual(1, result.length);
@@ -585,29 +584,33 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       col0 = db._create("TestCollection0");
       view = db._createView("TestView", "arangosearch", {});
-      db["collection123"].remove(id);
+      db.collection123.remove(id);
       docCount -= 1;
 
       col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
       col0.save({ name: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
       col0.save({ name: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
       col0.save({ name: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
-      db["collection123"].save({ name_1: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
-      db["collection123"].save({ name_1: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
-      db["collection123"].save({ name_1: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
-      db["collection123"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      let key1 = db.collection123.save({ name_1: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
+      let key2 = db.collection123.save({ name_1: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
+      let key3 = db.collection123.save({ name_1: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
+      let key4 = db.collection123.save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       docCount += 4;
 
       meta = {};
       if (isEnterprise) {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta = { links: { 
+          "TestCollection0": { includeAllFields: true }, 
+          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { 
+          "TestCollection0": { includeAllFields: true }, 
+          "collection123": { "fields": { "value": { } } } } };
       }
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount + 4, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'name') SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
@@ -619,6 +622,11 @@ function IResearchFeatureDDLTestSuite() {
       // 2 non-empty collections
       db._dropView("TestView");
       db._drop("TestCollection0");
+      db.collection123.remove(key1);
+      db.collection123.remove(key2);
+      db.collection123.remove(key3);
+      db.collection123.remove(key4);
+      docCount -= 4;
       db._drop("TestCollection1");
       col0 = db._create("TestCollection0");
       var col1 = db._create("TestCollection1");
@@ -628,6 +636,11 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name: "half", text: "quick fox over lazy" });
       col1.save({ name: "other half", text: "the brown jumps the dog" });
       col1.save({ name: "quarter", text: "quick over" });
+      key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "over" }] }] });
+      key4 = db.collection123.save({ text: "quick over", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
+      docCount += 4;
 
       meta = {};
       if (isEnterprise) {
@@ -648,9 +661,8 @@ function IResearchFeatureDDLTestSuite() {
       }
 
       view.properties(meta, true); // partial update
-
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount + 4, result.length);
+      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } RETURN doc").toArray();
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'name') SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
@@ -664,6 +676,11 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
+      db.collection123.remove(key1);
+      db.collection123.remove(key2);
+      db.collection123.remove(key3);
+      db.collection123.remove(key4);
+      docCount -= 4;
       col0 = db._create("TestCollection0");
       col1 = db._create("TestCollection1");
       var col2 = db._create("TestCollection2");
@@ -673,6 +690,11 @@ function IResearchFeatureDDLTestSuite() {
       col2.save({ name: "half", text: "quick fox over lazy" });
       col0.save({ name: "other half", text: "the brown jumps the dog" });
       col0.save({ name: "quarter", text: "quick over" });
+      key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "a" }] }] });
+      key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
+      key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "are" }] }] });
+      key4 = db.collection123.save({ text: "quick over", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      docCount += 4;
 
       meta = {};
       if (isEnterprise) {
@@ -697,7 +719,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount + 4, result.length);
+      assertEqual((isEnterprise ? docCount: 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'name') SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
@@ -705,11 +727,23 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
+
+      db.collection123.remove(key1);
+      db.collection123.remove(key2);
+      db.collection123.remove(key3);
+      db.collection123.remove(key4);
+      docCount -= 4;
     },
 
     testViewCreateDuplicate: function () {
       db._dropView("TestView");
-      var view = db._createView("TestView", "arangosearch", { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } });
+      let meta = {};
+      if (isEnterprise) {
+        meta = { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+      } else {
+        meta = { links: { "collection123": { "fields": { "value": { } } } } };
+      }
+      var view = db._createView("TestView", "arangosearch", meta);
 
       try {
         db._createView("TestView", "arangosearch", {});
@@ -742,7 +776,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0), result.length);
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
@@ -753,10 +787,10 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ nameZ: "quarter", text: "quick over" });
-      let key = db["collection123"].save({ name: "quarter", text: "quick over" })["_key"];
+      let key = db.collection123.save({ name: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       docCount += 1;
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 1, result.length);
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'nameZ') SORT doc.nameZ RETURN doc").toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].nameZ);
@@ -764,7 +798,7 @@ function IResearchFeatureDDLTestSuite() {
       // 1 non-empty collection
       db._dropView("TestView");
       db._drop("TestCollection0");
-      db["collection123"].remove(key);
+      db.collection123.remove(key);
       docCount -= 1;
       col0 = db._create("TestCollection0");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
@@ -773,10 +807,10 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ nameX: "half", text: "quick fox over lazy" });
       col0.save({ nameX: "other half", text: "the brown jumps the dog" });
       col0.save({ nameX: "quarter", text: "quick over" });
-      let key1 = db["collection123"].save({ name: "full", text: "the quick brown fox jumps over the lazy dog" })["_key"];
-      let key2 = db["collection123"].save({ name: "half", text: "quick fox over lazy" })["_key"];
-      let key3 = db["collection123"].save({ name: "other half", text: "the brown jumps the dog" })["_key"];
-      let key4 = db["collection123"].save({ name: "quarter", text: "quick over" })["_key"];
+      let key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
+      let key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
+      let key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
+      let key4 = db.collection123.save({ text: "quick over", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       docCount += 4;
 
       meta = {};
@@ -795,7 +829,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.nameX RETURN doc").toArray();
-      assertEqual(docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'nameX') SORT doc.nameX RETURN doc").toArray();
       assertEqual(4, result.length);
@@ -816,10 +850,10 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
-      db["collection123"].remove(key1);
-      db["collection123"].remove(key2);
-      db["collection123"].remove(key3);
-      db["collection123"].remove(key4);
+      db.collection123.remove(key1);
+      db.collection123.remove(key2);
+      db.collection123.remove(key3);
+      db.collection123.remove(key4);
       docCount -= 4;
       col0 = db._create("TestCollection0");
       var col1 = db._create("TestCollection1");
@@ -829,10 +863,10 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ nameY: "half", text: "quick fox over lazy" });
       col1.save({ nameY: "other half", text: "the brown jumps the dog" });
       col1.save({ nameY: "quarter", text: "quick over" });
-      key1 = db["collection123"].save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      key2 = db["collection123"].save({ name: "half", text: "quick fox over lazy" });
-      key3 = db["collection123"].save({ name: "other half", text: "the brown jumps the dog" });
-      key4 = db["collection123"].save({ name: "quarter", text: "quick over" });
+      key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key4 = db.collection123.save({ name42: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       docCount += 4;
 
       meta = {};
@@ -863,7 +897,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'nameY') SORT doc.nameY RETURN doc").toArray();
       assertEqual("full", result[0].nameY);
@@ -884,10 +918,10 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db["collection123"].remove(key1);
-      db["collection123"].remove(key2);
-      db["collection123"].remove(key3);
-      db["collection123"].remove(key4);
+      db.collection123.remove(key1);
+      db.collection123.remove(key2);
+      db.collection123.remove(key3);
+      db.collection123.remove(key4);
       docCount -= 4;
 
       col0 = db._create("TestCollection0");
@@ -899,6 +933,11 @@ function IResearchFeatureDDLTestSuite() {
       col2.save({ nameE: "half", text: "quick fox over lazy" });
       col0.save({ nameE: "other half", text: "the brown jumps the dog" });
       col0.save({ nameE: "quarter", text: "quick over" });
+      key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      key4 = db.collection123.save({ name42: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
+      docCount += 4;
 
       meta = {};
       if (isEnterprise) {
@@ -930,7 +969,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual(docCount + 4, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'nameE') SORT doc.nameE RETURN doc").toArray();
       assertEqual(4, result.length);
 
@@ -1102,39 +1141,46 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
-      let meta = {};
-      if (isEnterprise) {
-        meta = {
-          "links": {
-            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
-          }
-        };
-      } else {
-        meta = {
-          "links": {
-            "collection123": { "fields": { "value": { } } }
-          }
-        };
-      }
-      var view = db._createView("TestView", "arangosearch", meta);
-      var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      var view = db._createView("TestView", "arangosearch", {});
 
       col0.save({ a: "foo", c: "bar", z: 0 });
       col0.save({ a: "foz", d: "baz", z: 1 });
       col0.save({ b: "bar", c: "foo", z: 2 });
       col0.save({ b: "baz", d: "foz", z: 3 });
+      let key1 = db.collection123.save({ a: "foo", c: "bar", "value": [{ "nested_1": [{ "nested_2": "dog0" }] }] });
+      let key2 = db.collection123.save({ a: "foz", d: "baz", "value": [{ "nested_1": [{ "nested_2": "dog10" }] }] });
+      let key3 = db.collection123.save({ b: "bar", c: "foo", "value": [{ "nested_1": [{ "nested_2": "dog100" }] }] });
+      let key4 = db.collection123.save({ b: "baz", d: "foz", "value": [{ "nested_1": [{ "nested_2": "dog1000" }] }] });
+      docCount += 4;
 
-      meta = { links: { "TestCollection0": { fields: { a: {} } } } };
+      // a
+      let meta = {};
+      if (isEnterprise) {
+        meta = {
+          "links": {
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } },
+            "TestCollection0": { fields: { a: {} } }
+          }
+        };
+      } else {
+        meta = {
+          "links": {
+            "collection123": { "fields": { "value": { } } },
+            "TestCollection0": { fields: { a: {} } }
+          }
+        };
+      }
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
-      assertEqual(2 + docCount, result.length);
+      let result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } RETURN doc").toArray();
+      assertEqual((isEnterprise ? docCount : 0) + 2, result.length);
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'z') SORT doc.z RETURN doc").toArray();
+      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } FILTER doc.z != null SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
 
+      // b
       meta = {};
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
@@ -1148,13 +1194,14 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
-      assertEqual(2 + docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 2, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'z') SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
 
+      // c
       meta = {};
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { fields: { c: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
@@ -1164,7 +1211,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, false); // full update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
-      assertEqual(2 + docCount, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 2, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'z') SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
@@ -1185,6 +1232,11 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ a: "foz", d: "baz", z: 1 });
       col0.save({ b: "bar", c: "foo", z: 2 });
       col0.save({ b: "baz", d: "foz", z: 3 });
+      let key1 = db.collection123.save({ a: "foo", c: "bar", z: 0, "value": [{ "nested_1": [{ "nested_2": "dog10" }] }] });
+      let key2 = db.collection123.save({ a: "foz", d: "baz", z: 1, "value": [{ "nested_1": [{ "nested_2": "dog110" }] }] });
+      let key3 = db.collection123.save({ b: "bar", c: "foo", z: 2, "value": [{ "nested_1": [{ "nested_2": "dog1100" }] }] });
+      let key4 = db.collection123.save({ b: "baz", d: "foz", z: 3, "value": [{ "nested_1": [{ "nested_2": "dog11000" }] }] });
+      docCount += 4;
 
       let meta1 = {};
       let meta2 = {};
@@ -1255,7 +1307,7 @@ function IResearchFeatureDDLTestSuite() {
         meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
         meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { } } } } };
         meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { } } } } };
       }
       db._createView("FOO_view", "arangosearch", meta1);
@@ -1408,6 +1460,9 @@ function IResearchFeatureDDLTestSuite() {
           name: "TestIndex",
           type: "inverted",
           "includeAllFields": true,
+          fields: [
+            "name_1"
+          ],
           commitIntervalMsec: 0,        // disable auto-commit
           consolidationIntervalMsec: 0, // disable consolidation
           cleanupIntervalStep: 0        // disable cleanup
@@ -1494,11 +1549,11 @@ function IResearchFeatureDDLTestSuite() {
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
           if (type === "arangosearch") {
-            assertEqual(10, figures.numDocs);
-            assertEqual(10, figures.numLiveDocs);
+            assertEqual((isEnterprise ? 10 : 5), figures.numDocs);
+            assertEqual((isEnterprise ? 10 : 5), figures.numLiveDocs);
           } else {
-            assertEqual(15, figures.numDocs);
-            assertEqual(15, figures.numLiveDocs);
+            assertEqual((isEnterprise ? 15 : 5), figures.numDocs);
+            assertEqual((isEnterprise ? 15 : 5), figures.numLiveDocs);
           }
           assertEqual(6, figures.numFiles);
           assertEqual(1, figures.numSegments);
@@ -1530,11 +1585,11 @@ function IResearchFeatureDDLTestSuite() {
           assertEqual(5, Object.keys(figures).length);
           assertTrue(1000 < figures.indexSize);
           if (type === "arangosearch") {
-            assertEqual(10, figures.numDocs);
-            assertEqual(7, figures.numLiveDocs);
+            assertEqual((isEnterprise ? 10 : 5), figures.numDocs);
+            assertEqual((isEnterprise ? 7 : 4), figures.numLiveDocs);
           } else {
-            assertEqual(15, figures.numDocs);
-            assertEqual(12, figures.numLiveDocs);
+            assertEqual((isEnterprise ? 15 : 5), figures.numDocs);
+            assertEqual((isEnterprise ? 12 : 4), figures.numLiveDocs);
           }
           assertEqual(7, figures.numFiles);
           assertEqual(1, figures.numSegments);
@@ -1819,10 +1874,11 @@ function IResearchFeatureDDLTestSuite() {
         var view = db._createView("analyzersView", "arangosearch", meta);
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-        assertEqual(2, res.length);
+        assertEqual((isEnterprise ? 2 : 1), res.length);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
+        db._drop("collection321");
       }
     },
 
@@ -1866,10 +1922,11 @@ function IResearchFeatureDDLTestSuite() {
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
         view.properties(meta, true);
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-        assertEqual(2, res.length);
+        assertEqual((isEnterprise ? 2 : 1), res.length);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
+        db._drop("collection321");
       }
     }
   };

@@ -59,7 +59,7 @@ function viewFiltersMerging(isSearchAlias) {
         } else {
           indexMeta = {
             type: "inverted",
-            fields: ["value", "count", "value_nested"]
+            fields: ["value", "count"]
           };
         }
         let i = c.ensureIndex(indexMeta);

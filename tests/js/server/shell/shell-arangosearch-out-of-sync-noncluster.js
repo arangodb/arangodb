@@ -126,10 +126,12 @@ function ArangoSearchOutOfSyncSuite () {
 
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
-      assertEqual(docs.length, result.length);
+      let expected_length = (isEnterprise ? 2000 : 1000); 
+      assertEqual(expected_length, docs.length);
+      assertEqual(expected_length, result.length);
         
       result = db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
-      assertEqual(docs.length, result.length);
+      assertEqual(expected_length, result.length);
       
       // query should produce no results, but at least shouldn't fail
       result = db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc").toArray();

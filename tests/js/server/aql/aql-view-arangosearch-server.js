@@ -29,6 +29,7 @@ var ERRORS = require("@arangodb").errors;
 var internal = require('internal');
 var fs = require("fs");
 var isCluster = require("internal").isCluster();
+const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,24 +67,45 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           ]
         });
       } else {
-        docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
-            "docs": {
-              "analyzers": ["identity"],
-              "fields": {},
-              "includeAllFields": true,
-              "storeValues": "id",
-              "trackListPositions": false
-            }
-          } ,
-          consolidationIntervalMsec:0,
-          cleanupIntervalStep:0
-        });
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {
+                  "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                },
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+            consolidationIntervalMsec:0,
+            cleanupIntervalStep:0
+          };
+        } else {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+            consolidationIntervalMsec:0,
+            cleanupIntervalStep:0
+          };
+        }
+        docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+        docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
       
@@ -104,6 +126,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       for (let i = 11; i < 20; i++) {
         let docId = "TestDoc" + i;
         docsNew.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+        docsNew.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsNew.push(docs[5]); // this one will cause PK violation 
       docsCollection.save(docsNew);
@@ -137,6 +160,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       for (let i = 21; i < 30; i++) {
         let docId = "TestDoc" + i;
         docsNew2.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+        docsNew2.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsNew2.push({ _id: "docs/fail2", _key: "fail2", "indexField": 0 });// this one will cause hash unique violation 
       docsCollection.save(docsNew2);
@@ -172,24 +196,45 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           ]
         });
       } else {
-        docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
-            "docs": {
-              "analyzers": ["identity"],
-              "fields": {},
-              "includeAllFields": true,
-              "storeValues": "id",
-              "trackListPositions": false
-            }
-          },
-          consolidationIntervalMsec: 0,
-          cleanupIntervalStep: 0
-        });
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {
+                  "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                },
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          };
+        } else {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          };
+        }
+        docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+        docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
@@ -243,24 +288,45 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           ]
         });
       } else {
-        docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
-            "docs": {
-              "analyzers": ["identity"],
-              "fields": {},
-              "includeAllFields": true,
-              "storeValues": "id",
-              "trackListPositions": false
-            }
-          },
-          consolidationIntervalMsec: 0,
-          cleanupIntervalStep: 0
-        });
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {
+                  "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                },
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          };
+        } else {
+          meta = {
+            "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
+          };
+        }
+        docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i;
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+        docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
@@ -315,19 +381,46 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let properties = docsView.properties();
           assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
         } else {
-          let docsView = db._createView(docsViewName, "arangosearch", {
-            "links": {
-              "docs": {
-                "analyzers": ["identity"],
-                "fields": {},
-                "includeAllFields": true,
-                "storeValues": "id",
-                "trackListPositions": false
-              }
-            },
-            consolidationIntervalMsec: 0,
-            cleanupIntervalStep: 0
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {
+                    "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                  },
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              },
+              consolidationIntervalMsec: 0,
+              cleanupIntervalStep: 0
+            };
+          } else {
+            meta = {
+              "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {},
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              },
+              consolidationIntervalMsec: 0,
+              cleanupIntervalStep: 0
+            };
+          }
+          let docsView = db._createView(docsViewName, "arangosearch", meta);
+          let docs = [];
+          for (let i = 0; i < 10; i++) {
+            let docId = "TestDoc" + i;
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+            docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+          }
+          docsCollection.save(docs);
           let properties = docsView.properties();
           assertTrue(Object === properties.links.constructor);
           assertEqual(1, Object.keys(properties.links).length);
@@ -360,19 +453,46 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let properties = docsView.properties();
           assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
         } else {
-          let docsView = db._createView(docsViewName, "arangosearch", {
-            "links": {
-              "docs": {
-                "analyzers": ["identity"],
-                "fields": {},
-                "includeAllFields": true,
-                "storeValues": "id",
-                "trackListPositions": false
-              }
-            },
-            consolidationIntervalMsec: 0,
-            cleanupIntervalStep: 0
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {
+                    "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                  },
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              },
+              consolidationIntervalMsec: 0,
+              cleanupIntervalStep: 0
+            };
+          } else {
+            meta = {
+              "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {},
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              },
+              consolidationIntervalMsec: 0,
+              cleanupIntervalStep: 0
+            };
+          }
+          let docsView = db._createView(docsViewName, "arangosearch", meta);
+          let docs = [];
+          for (let i = 0; i < 10; i++) {
+            let docId = "TestDoc" + i;
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+            docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+          }
+          docsCollection.save(docs);
           let properties = docsView.properties();
           assertTrue(Object === properties.links.constructor);
           assertEqual(1, Object.keys(properties.links).length);
@@ -427,19 +547,46 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       try {
         let beforeLinkCount = getLinksCount();
         internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
-        let docsView = db._createView(docsViewName, "arangosearch", {
-          "links": {
-              "docs": {
-                "analyzers": ["identity"],
-                "fields": {},
-                "includeAllFields": true,
-                "storeValues": "id",
-                "trackListPositions": false
-              }
-            } ,
-          consolidationIntervalMsec:0,
-          cleanupIntervalStep:0
-        });
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {
+                    "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                  },
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              } ,
+            consolidationIntervalMsec:0,
+            cleanupIntervalStep:0
+          };
+        } else {
+          meta = {
+            "links": {
+                "docs": {
+                  "analyzers": ["identity"],
+                  "fields": {},
+                  "includeAllFields": true,
+                  "storeValues": "id",
+                  "trackListPositions": false
+                }
+              } ,
+            consolidationIntervalMsec:0,
+            cleanupIntervalStep:0
+          };
+        }
+        let docsView = db._createView(docsViewName, "arangosearch", meta);
+        let docs = [];
+        for (let i = 0; i < 10; i++) {
+          let docId = "TestDoc" + i;
+          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
+          docs.push({ _id: "docs/" + i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        }
+        docsCollection.save(docs);
         let properties = docsView.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(0, Object.keys(properties.links).length);
