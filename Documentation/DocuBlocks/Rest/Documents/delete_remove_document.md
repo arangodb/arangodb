@@ -25,6 +25,10 @@ If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the removed document. This option can be used to
 save some network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete an existing entry from the in-memory edge cache and refill it
+with another edge if an edge document is removed.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}
