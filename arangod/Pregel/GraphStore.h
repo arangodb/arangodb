@@ -25,13 +25,15 @@
 
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterInfo.h"
+#include "Utils/DatabaseGuard.h"
+
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Reports.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
-#include "Utils/DatabaseGuard.h"
 
 #include <atomic>
 #include <cstdint>
@@ -70,7 +72,7 @@ template<typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-             uint64_t executionNumber, GraphFormat<V, E>* graphFormat);
+             ExecutionNumber executionNumber, GraphFormat<V, E>* graphFormat);
 
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
@@ -145,7 +147,7 @@ class GraphStore final {
   PregelFeature& _feature;
   DatabaseGuard _vocbaseGuard;
   ResourceMonitor _resourceMonitor;
-  uint64_t const _executionNumber;
+  ExecutionNumber const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
 
