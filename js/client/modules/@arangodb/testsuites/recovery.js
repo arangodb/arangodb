@@ -297,7 +297,7 @@ function recovery (options) {
           if (params.keyDir !== "") {
             fs.removeDirectoryRecursive(params.keyDir, true);
           }
-          params.instance.cleanup()
+          params.instance.cleanup();
         }
         break;
       }
