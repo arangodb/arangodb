@@ -1,7 +1,7 @@
 v3.9.7 (XXXX-XX-XX)
 -------------------
 
-* Allow parallel access to the shards of smart edge collections in AQL via 
+* Allow parallel access to the shards of smart edge collections in AQL via
   parallel GatherNodes.
 
 * Added a configuration option (for the agency):
