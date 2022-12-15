@@ -651,8 +651,8 @@ auto ClusterInfo::deleteReplicatedStates(
     deletedStates.emplace_back(replicatedStateMethods->deleteReplicatedLog(id));
   }
 
-  auto const cb =
-      [](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
+  return futures::collectAll(std::move(deletedStates))
+      .then([](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
         auto deletionResults =
             basics::catchToResultT([&] { return std::move(tryResult.get()); });
 
@@ -678,9 +678,7 @@ auto ClusterInfo::deleteReplicatedStates(
         }
 
         return result;
-      };
-
-  return futures::collectAll(std::move(deletedStates)).then(cb);
+      });
 }
 
 /// @brief produces an agency dump and logs it

@@ -453,7 +453,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
 
  private:
-  void loadReplicatedStates(std::unique_ptr<TRI_vocbase_t> const& vocbase);
+  void loadReplicatedStates(TRI_vocbase_t& vocbase);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
