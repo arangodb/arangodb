@@ -224,7 +224,4 @@ target_include_directories(arangoserver PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arangoserver PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
-
 add_dependencies(arangoserver tzdata)

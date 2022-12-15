@@ -48,8 +48,6 @@ enum ExecutionState {
   STORING,      // store results
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
-  IN_ERROR,     // after an error which should allow recovery
-  RECOVERING,   // during recovery
   FATAL_ERROR,  // execution can not continue because of errors
 };
 extern const char* ExecutionStateNames[9];
@@ -93,7 +91,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
-  /// an unique response, not necessarily during the async mode
+  /// an unique response
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
@@ -106,11 +104,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   /// continue.
   uint64_t _maxSuperstep = 500;
 
-  /// determines whether we support async execution
-  bool _asyncMode = false;
   bool _useMemoryMaps = true;
   bool _storeResults = false;
-  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
@@ -145,7 +140,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void finishedWorkerStartup(VPackSlice const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);
-  void finishedRecoveryStep(VPackSlice const& data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
@@ -162,7 +156,6 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   void start();
   void cancel();
-  void startRecovery();
   void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
 

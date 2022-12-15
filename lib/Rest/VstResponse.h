@@ -23,10 +23,17 @@
 
 #pragma once
 
-#include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
 
+#include <cstdint>
+
+#include <velocypack/Buffer.h>
+
 namespace arangodb {
+namespace velocypack {
+struct Options;
+class Slice;
+}  // namespace velocypack
 
 class VstResponse : public GeneralResponse {
  public:
@@ -34,16 +41,15 @@ class VstResponse : public GeneralResponse {
 
   bool isResponseEmpty() const override { return _payload.empty(); }
 
-  virtual arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::VST;
-  };
+  virtual Endpoint::TransportType transportType() override {
+    return Endpoint::TransportType::VST;
+  }
 
   void reset(ResponseCode code) override final;
-  void addPayload(velocypack::Slice slice,
-                  arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice slice, velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addPayload(velocypack::Buffer<uint8_t>&&,
-                  arangodb::velocypack::Options const* = nullptr,
+                  velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addRawPayload(std::string_view payload) override;
 

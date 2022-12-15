@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestCollectionHandler.h"
-#include "ClusterEngine/RocksDBMethods.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -35,8 +38,8 @@ Result ClusterRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(
-        server(), _vocbase.name(), coll->name());
+    Result res = recalculateCountsOnAllDBServers(
+        server().getFeature<ClusterFeature>(), _vocbase.name(), coll->name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));
@@ -44,5 +47,5 @@ Result ClusterRestCollectionHandler::handleExtraCommandPut(
     return res;
   }
 
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }

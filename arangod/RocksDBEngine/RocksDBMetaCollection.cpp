@@ -70,8 +70,8 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             VPackSlice const& info)
-    : PhysicalCollection(collection, info),
+                                             velocypack::Slice info)
+    : PhysicalCollection(collection),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),

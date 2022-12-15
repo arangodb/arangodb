@@ -5232,6 +5232,7 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (0 < args.Length() && args[0]->IsObject()) {
     TRI_GET_GLOBAL_STRING(CodeKey);
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
+    TRI_GET_GLOBAL_STRING(OriginalKey);
 
     v8::Handle<v8::Object> data = TRI_ToObject(context, args[0]);
 
@@ -5258,6 +5259,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
                 TRI_GetProperty(context, isolate, data, ErrorMessageKey))
           .FromMaybe(false);
     }
+
+    self->Set(context, OriginalKey, data).FromMaybe(false);
   }
 
   {

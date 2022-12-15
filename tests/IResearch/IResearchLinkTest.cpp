@@ -64,10 +64,9 @@ namespace fs = std::filesystem;
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-REGISTER_COMPRESSION(
-    iresearch::compression::mock::test_compressor,
-    &iresearch::compression::mock::test_compressor::compressor,
-    &iresearch::compression::mock::test_compressor::decompressor);
+REGISTER_COMPRESSION(irs::compression::mock::test_compressor,
+                     &irs::compression::mock::test_compressor::compressor,
+                     &irs::compression::mock::test_compressor::decompressor);
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -255,7 +254,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
-    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
                  logicalCollection->getIndexes().empty()));
   }
 
@@ -329,7 +328,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
-    EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
+    EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
                  logicalCollection->getIndexes().empty()));
   }
 
@@ -1510,8 +1509,7 @@ TEST_F(
   auto linkCallbackRemover =
       arangodb::iresearch::IResearchLinkMock::setCallbackForScope([]() {
         return irs::directory_attributes{
-            0,
-            std::make_unique<iresearch::mock::test_encryption>(kEncBlockSize)};
+            0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)};
       });
   static std::vector<std::string> const kEmpty;
   auto doc0 = arangodb::velocypack::Parser::fromJson(
@@ -1575,9 +1573,9 @@ TEST_F(
                std::to_string(logicalCollection->id().id()) + "_42"))
                  .string();
   irs::FSDirectory directory(
-      dataPath, irs::directory_attributes(
-                    0, std::make_unique<iresearch::mock::test_encryption>(
-                           kEncBlockSize)));
+      dataPath,
+      irs::directory_attributes(
+          0, std::make_unique<irs::mock::test_encryption>(kEncBlockSize)));
 
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
@@ -2190,7 +2188,7 @@ void getStatsFromFolder(std::string_view path, uint64_t& indexSize,
     }
     return true;
   };
-  iresearch::file_utils::visit_directory(utf8Path.c_str(), visitor, false);
+  irs::file_utils::visit_directory(utf8Path.c_str(), visitor, false);
 }
 
 using LinkStats = arangodb::iresearch::IResearchDataStore::Stats;
@@ -2375,7 +2373,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       indexSize += currSize;
       return true;
     };
-    iresearch::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
+    irs::file_utils::visit_directory(_dirPath.c_str(), visitor, false);
     return {numFiles, indexSize};
   }
 };

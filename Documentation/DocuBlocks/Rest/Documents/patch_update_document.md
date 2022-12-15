@@ -149,8 +149,15 @@ an error document in this case.
 is returned if the collection or the document was not found.
 
 @RESTRETURNCODE{409}
-is returned if the update causes a unique constraint violation in 
-a secondary index.
+there are two possible reasons for this error:
+1) if the update causes a unique constraint violation in a secondary
+index. The response body contains an error document in
+this case with the errorNum set to 1210 (`ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED`).
+2) if we fail to lock the document key or some unique index entry
+due to some concurrent operation that is operating on the same
+document. This also also referred to as a write-write conflict.
+The response body contains an error document in this case with the
+errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
 
 @RESTRETURNCODE{412}
 is returned if the precondition was violated. The response also contains
