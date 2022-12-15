@@ -391,6 +391,24 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   estimateCosts(queryOptions, estimateAllPlans);
 
+  if (_plans.list.front().first->hasForcedIndexHints()) {
+    containers::SmallVector<ExecutionNode*, 8> nodes;
+    _plans.list.front().first->findNodesOfType(
+        nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+    for (auto n : nodes) {
+      TRI_ASSERT(n);
+      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION);
+      EnumerateCollectionNode const* en =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+      auto const& hint = en->hint();
+      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            "could not use index hint to serve query; " + hint.toString());
+      }
+    }
+  }
+
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
       << "optimization ends with " << _plans.size() << " plans";
 }
