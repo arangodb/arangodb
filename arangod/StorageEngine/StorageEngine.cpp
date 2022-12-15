@@ -28,6 +28,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "VocBase/VocbaseInfo.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 
@@ -54,6 +56,11 @@ StorageEngine::StorageEngine(Server& server, std::string_view engineName,
 
 void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
                                                   VPackSlice) {}
+
+std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
+    CreateDatabaseInfo&& info) {
+  return std::make_unique<TRI_vocbase_t>(std::move(info));
+}
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                                 velocypack::Slice slice) {
