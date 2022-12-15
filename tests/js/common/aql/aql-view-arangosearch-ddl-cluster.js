@@ -57,7 +57,10 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db._dropDatabase("TestDB");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -82,18 +85,23 @@ function IResearchFeatureDDLTestSuite() {
           debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuilding");
         }
       }
-      db._createView("ViewWithBuilding", "arangosearch", {
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
         links: {
           "TestCollection0": {includeAllFields: true},
           "TestCollection1": {includeAllFields: true},
         }
       });
-      try {
-        let r = db._query("FOR d IN ViewWithBuilding SEARCH 1 == 1 RETURN d");
-        print(r);
-      } finally {
-        db._dropView("ViewWithBuilding");
-      }
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
       if (isServer) {
         debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuilding");
       } else {
