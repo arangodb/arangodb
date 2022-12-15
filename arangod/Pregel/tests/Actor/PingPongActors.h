@@ -39,7 +39,6 @@ struct Actor;
 struct Start {};
 
 struct Ping {
-  ActorPID sender;
   std::string text;
 };
 
@@ -64,8 +63,8 @@ struct Pong {
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
-    dispatch<pong_actor::PingMessage>(
-        msg.pongActor, pong_actor::Ping{.sender = self, .text = "hello world"});
+    dispatch<pong_actor::PingMessage>(msg.pongActor,
+                                      pong_actor::Ping{.text = "hello world"});
     state->called++;
     return std::move(state);
   }
@@ -99,7 +98,7 @@ struct Handler : HandlerBase<State> {
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<State> {
-    dispatch<ping_actor::Actor::Message>(msg.sender,
+    dispatch<ping_actor::Actor::Message>(sender,
                                          ping_actor::Pong{.text = msg.text});
     state->called++;
     return std::move(state);
@@ -109,7 +108,7 @@ struct Handler : HandlerBase<State> {
 struct Actor {
   using State = State;
   using Handler = Handler;
-  using Message = PingMessage;  // std::variant<Start, Ping>;
+  using Message = PingMessage;
   static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 

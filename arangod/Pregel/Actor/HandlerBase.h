@@ -32,9 +32,10 @@ namespace arangodb::pregel::actor {
 
 template<typename State>
 struct HandlerBase {
-  HandlerBase(ActorPID self, std::unique_ptr<State> state,
+  HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
               std::shared_ptr<Dispatcher> messageDispatcher)
       : self(self),
+        sender(sender),
         state{std::move(state)},
         messageDispatcher(messageDispatcher){};
 

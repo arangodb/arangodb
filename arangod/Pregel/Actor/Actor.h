@@ -58,7 +58,7 @@ concept MessageIsVariant =
              typename A::State state, typename A::Message message) {
   {std::visit(
       typename A::Handler{
-          {pid, std::move(std::make_unique<typename A::State>(state)),
+          {pid, pid, std::move(std::make_unique<typename A::State>(state)),
            messageDispatcher}},
       message)};
 };
@@ -118,9 +118,10 @@ struct Actor : ActorBase {
       auto i = batchSize;
 
       while (auto msg = inbox.pop()) {
-        state = std::visit(typename Config::Handler{{pid, std::move(state),
-                                                     messageDispatcher}},
-                           *msg->payload);
+        state = std::visit(
+            typename Config::Handler{
+                {pid, msg->sender, std::move(state), messageDispatcher}},
+            *msg->payload);
         i--;
         if (i == 0) {
           break;
