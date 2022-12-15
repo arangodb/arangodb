@@ -16,7 +16,7 @@ if (![bool]$git_for_windows.InstallPath) {
 
 # Using bash.exe because git-bash.exe would open a new window
 $git_bash = Join-Path ($git_for_windows).InstallPath 'bin' 'bash.exe'
-$files = ''
+$files = $null
 if ($args.length -gt 0) {
     $files = $args.Replace('\', '/')
 }
