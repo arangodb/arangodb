@@ -48,9 +48,9 @@ function ArangoSearchOutOfSyncSuite () {
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
       } else {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value": { } }}};
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true }}};
       }
       v.properties(viewMeta);
       
@@ -59,7 +59,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({});
-        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
       c1.insert(docs);
@@ -75,7 +75,7 @@ function ArangoSearchOutOfSyncSuite () {
       
       v = db._createView('UnitTestsView2', 'arangosearch', {});
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection2: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        viewMeta = { links: { UnitTestsCollection2: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
       } else {
         viewMeta = { links: { UnitTestsCollection2: { includeAllFields: true} } };
       }
@@ -116,7 +116,6 @@ function ArangoSearchOutOfSyncSuite () {
       // query must not fail
       let result = db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
       let expected_length = (isEnterprise ? 2000 : 1000); 
-      assertEqual(2000, docs.length);
       assertEqual(expected_length, result.length);
       
       // query should produce no results, but at least shouldn't fail
@@ -129,7 +128,6 @@ function ArangoSearchOutOfSyncSuite () {
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
       expected_length = (isEnterprise ? 2000 : 1000); 
-      assertEqual(2000, docs.length);
       assertEqual(expected_length, result.length);
         
       result = db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
@@ -151,7 +149,7 @@ function ArangoSearchOutOfSyncSuite () {
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
       } else {
         viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true} } };
       }
@@ -162,7 +160,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
-        docs.push({ name_1: (i + 2).toString(), "value": [{ "nested_1": [{ "nested_2": "foo"}]}]});
+        docs.push({ name_1: (i + 2).toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo"}]}]});
       }
       
       c.insert(docs);
@@ -199,7 +197,7 @@ function ArangoSearchOutOfSyncSuite () {
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
       } else {
         viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true } } };
       }
@@ -210,7 +208,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
-        docs.push({ name_1: (i + 1).toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
+        docs.push({ name_1: (i + 1).toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -251,7 +249,7 @@ function ArangoSearchOutOfSyncSuite () {
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "name_1": {}, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
       } else {
         viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true } } };
       }
@@ -260,7 +258,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
-        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);
@@ -308,7 +306,7 @@ function ArangoSearchOutOfSyncSuite () {
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
       if (isEnterprise) {
-        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
+        viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } };
       } else {
         viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true } } };
       }
@@ -317,7 +315,7 @@ function ArangoSearchOutOfSyncSuite () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
         docs.push({ value: i });
-        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
+        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123456"}]}]});
       }
       
       c.insert(docs);

@@ -30,6 +30,8 @@
 
 (function () {
   let db = require("@arangodb").db;
+  const isEnterprise = require("internal").isEnterprise();
+
   return function (isSearchAlias) {
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
@@ -57,7 +59,13 @@
           let i = c.ensureIndex({type: "inverted", includeAllFields: true});
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
-          db._createView(vn, "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          } else {
+            meta = {links: {[cn]: {includeAllFields: true}}};
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -91,10 +99,15 @@
           });
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}},
-            primarySort: [{field: "value", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+            primarySort: [{field: "value", direction: "asc"}]}}};
+          } else {
+            meta = {links: {[cn]: {includeAllFields: true}},
+            primarySort: [{field: "value", direction: "asc"}]};
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -130,10 +143,15 @@
           });
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {links: {[cn]: {includeAllFields: true}},
+            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -171,10 +189,15 @@
           });
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}},
-            primarySort: [{field: "value", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            primarySort: [{field: "value", direction: "asc"}]};
+          } else {
+            meta = {links: {[cn]: {includeAllFields: true}},
+            primarySort: [{field: "value", direction: "asc"}]};
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -204,10 +227,15 @@
           });
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {links: {[cn]: {includeAllFields: true}},
+            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -245,10 +273,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -280,10 +317,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         let queries = [
@@ -317,22 +363,33 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            primarySort: [{field: "value", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in reverse order
         let values = [];
         for (let i = 0; i < 2000; ++i) {
           values.push({value: "test" + (4000 - i)});
+          values.push({ value: "test" + (4000 + (i + 1)), name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
         }
         db[cn].insert(values);
 
         values = [];
         for (let i = 2000; i < 4000; ++i) {
           values.push({value: "test" + (4000 - i)});
+          values.push({value: "test" + (4000 + (i + 1)), name_2: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": `bar${i}`}]}]});
         }
         db[cn1].insert(values);
 
@@ -343,7 +400,7 @@
         }).indexOf("SortNode"));
 
         result = AQL_EXECUTE(query).json;
-        assertEqual(4000, result.length);
+        assertEqual(2 * 4000, result.length);
         let last = "";
         result.forEach(function (doc) {
           assertTrue(doc.value > last);
@@ -367,10 +424,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value", direction: "desc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value", direction: "desc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value", direction: "desc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
         // insert in forward order
         let values = [];
@@ -419,10 +485,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in reverse order
@@ -475,10 +550,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in forward order
@@ -528,10 +612,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in forward order
@@ -579,10 +672,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in forward order
@@ -631,10 +733,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in forward order
@@ -706,10 +817,19 @@
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
         } else {
-          db._createView(vn, "arangosearch", {
-            links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
-            primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
-          });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {links: {
+              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
+          } else {
+            meta = {
+              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
+            };
+          }
+          db._createView(vn, "arangosearch", meta);
         }
 
         // insert in forward order
