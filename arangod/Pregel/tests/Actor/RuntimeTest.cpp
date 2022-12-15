@@ -40,6 +40,7 @@ struct MockScheduler {
 
 struct MockSendingMechanism {};
 
+// TODO make dispatcher generic to be able to mock it when creating an actor
 // TEST(ActorTest, has_a_type_name) {
 //   auto scheduler = std::make_shared<MockScheduler>();
 //   auto actor = Actor<MockScheduler, TrivialActor>(
@@ -119,10 +120,16 @@ TEST(RuntimeTest, ping_pong_game) {
 
   auto pong_actor = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
                                                      pong_actor::Start{});
-
-  //  auto ping_actor =
-  runtime.spawn<ping_actor::Actor>(
+  auto ping_actor = runtime.spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =
                             ActorPID{.id = pong_actor, .server = serverID}});
+
+  auto ping_actor_state =
+      runtime.getActorStateByID<ping_actor::Actor>(ping_actor);
+  ASSERT_EQ(ping_actor_state,
+            (ping_actor::State{.called = 2, .message = "hello world"}));
+  auto pong_actor_state =
+      runtime.getActorStateByID<pong_actor::Actor>(pong_actor);
+  ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 1}));
 }

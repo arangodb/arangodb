@@ -50,6 +50,8 @@ using PingMessage = std::variant<Start, Ping>;
 namespace ping_actor {
 
 struct State {
+  std::size_t called;
+  std::string message;
   bool operator==(const State&) const = default;
 };
 
@@ -63,21 +65,19 @@ struct Pong {
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
-    std::cout << "I am the ping actor: " << pid.server << " " << pid.id.id << std::endl;
-    std::cout << "pong actor: " << msg.pongActor.server << " "
-              << msg.pongActor.id.id << std::endl;
-
-//    dispatch(msg.pongActor, pong_actor::Ping{.sender = pid, .text = "hello, world"}>);
-
+    //    dispatch(msg.pongActor, pong_actor::Ping{.sender = pid, .text =
+    //    "hello, world"}>);
     messageDispatcher->dispatch(std::make_unique<Message>(
         pid, msg.pongActor,
         std::make_unique<MessagePayload<typename pong_actor::PingMessage>>(
             pong_actor::Ping{.sender = pid, .text = "hello world"})));
+    state->called++;
     return std::move(state);
   }
 
   auto operator()(Pong msg) -> std::unique_ptr<State> {
-    std::cout << "handler of Pong in ping_actor" << std::endl;
+    state->called++;
+    state->message = msg.text;
     return std::move(state);
   }
 };
@@ -94,6 +94,7 @@ struct Actor {
 namespace pong_actor {
 
 struct State {
+  std::size_t called;
   bool operator==(const State&) const = default;
 };
 
@@ -103,12 +104,11 @@ struct Handler : HandlerBase<State> {
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<State> {
-    std::cout << "handler of Ping in pong_actor from " << msg.sender.server << " "  << msg.sender.id.id << std::endl;
-    std::cout << "content: " << msg.text;
     messageDispatcher->dispatch(std::make_unique<Message>(
         pid, msg.sender,
         std::make_unique<MessagePayload<typename ping_actor::Actor::Message>>(
             ping_actor::Pong{.text = msg.text})));
+    state->called++;
     return std::move(state);
   }
 };
