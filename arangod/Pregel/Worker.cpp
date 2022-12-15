@@ -155,7 +155,7 @@ void Worker<V, E, M>::setupWorker() {
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
+                VPackValue(_config.executionNumber().value));
     package.add(Utils::vertexCountKey,
                 VPackValue(_graphStore->localVertexCount()));
     package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
@@ -498,7 +498,7 @@ void Worker<V, E, M>::_finishedProcessing() {
     _reports.clear();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber()));
+                VPackValue(_config.executionNumber().value));
     package.add(Utils::globalSuperstepKey,
                 VPackValue(_config.globalSuperstep()));
     _messageStats.serializeValues(package);
@@ -537,7 +537,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    body.add(Utils::executionNumberKey,
+             VPackValue(_config.executionNumber().value));
     body.add(VPackValue(Utils::reportsKey));
     _reports.intoBuilder(body);
     _reports.clear();
@@ -659,7 +660,7 @@ auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
       statusUpdateMsg.add(Utils::senderKey,
                           VPackValue(ServerState::instance()->getId()));
       statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber()));
+                          VPackValue(_config.executionNumber().value));
       statusUpdateMsg.add(VPackValue(Utils::payloadKey));
       auto update = _observeStatus();
       serialize(statusUpdateMsg, update);
