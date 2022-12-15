@@ -32,7 +32,7 @@ struct Dispatcher {
   Dispatcher(ServerID myServerID, ActorMap& actors)
       : myServerID(myServerID), actors(actors) {}
 
-  auto dispatch(std::unique_ptr<Message> msg) -> void {
+  auto operator()(std::unique_ptr<Message> msg) -> void {
     if (msg->receiver.server == myServerID) {
       if (not actors.contains(msg->receiver.id)) {
         // TODO

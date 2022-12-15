@@ -38,8 +38,6 @@ struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
 
-struct MockSendingMechanism {};
-
 // TODO make dispatcher generic to be able to mock it when creating an actor
 // TEST(ActorTest, has_a_type_name) {
 //   auto scheduler = std::make_shared<MockScheduler>();
@@ -50,8 +48,7 @@ struct MockSendingMechanism {};
 
 TEST(RuntimeTest, spawns_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
 
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage0());
@@ -62,8 +59,7 @@ TEST(RuntimeTest, spawns_actor) {
 
 TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
 
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage1("bar"));
@@ -74,8 +70,7 @@ TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
 
 TEST(RuntimeTest, gives_all_existing_actor_ids) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
 
   ASSERT_TRUE(runtime.getActorIDs().empty());
 
@@ -93,12 +88,11 @@ TEST(RuntimeTest, gives_all_existing_actor_ids) {
 
 TEST(RuntimeTest, sends_message_to_an_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, sendingMechanism);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage0{});
 
-  runtime.dispatcher->dispatch(std::make_unique<Message>(
+  (*runtime.dispatcher)(std::make_unique<Message>(
       ActorPID{.id = actor, .server = "Foo"},
       ActorPID{.id = actor, .server = "PRMR-1234"},
       std::make_unique<MessagePayload<TrivialActor::Message>>(
@@ -115,8 +109,7 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<MockScheduler>();
-  auto sendingMechanism = std::make_shared<MockSendingMechanism>();
-  Runtime runtime(serverID, "RuntimeTest", scheduler, sendingMechanism);
+  Runtime runtime(serverID, "RuntimeTest", scheduler);
 
   auto pong_actor = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
                                                      pong_actor::Start{});

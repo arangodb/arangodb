@@ -34,20 +34,17 @@
 
 namespace arangodb::pregel::actor {
 
-template<typename Scheduler, typename SendingMechanism>
+template<CallableOnFunction Scheduler>
 struct Runtime {
   Runtime() = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
-          std::shared_ptr<Scheduler> scheduler,
-          std::shared_ptr<SendingMechanism> sending_mechanism)
+          std::shared_ptr<Scheduler> scheduler)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
-        sending_mechanism(sending_mechanism),
         dispatcher(std::make_shared<Dispatcher>(myServerID, actors)) {}
 
-  template<typename ActorConfig>
-  requires Actorable<ActorConfig>
+  template<Actorable ActorConfig>
   auto spawn(typename ActorConfig::State initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{
@@ -64,7 +61,7 @@ struct Runtime {
     auto initialPayload =
         std::make_unique<MessagePayload<typename ActorConfig::Message>>(
             initialMessage);
-    dispatcher->dispatch(
+    (*dispatcher)(
         std::make_unique<Message>(address, address, std::move(initialPayload)));
 
     return newId;
@@ -101,7 +98,6 @@ struct Runtime {
   std::string const runtimeID;
 
   std::shared_ptr<Scheduler> scheduler;
-  std::shared_ptr<SendingMechanism> sending_mechanism;
   std::shared_ptr<Dispatcher> dispatcher;
 
   std::atomic<size_t> uniqueActorIdCounter{0};

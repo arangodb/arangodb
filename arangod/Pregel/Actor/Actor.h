@@ -67,7 +67,12 @@ template<typename A>
 concept Actorable = IncludesAllActorRelevantTypes<A> && IncludesName<A> &&
     HandlerInheritsFromBaseHandler<A> && MessageIsVariant<A>;
 
-template<typename Scheduler, Actorable Config>
+template<typename S>
+concept CallableOnFunction = requires(S s) {
+  {s([]() {})};
+};
+
+template<CallableOnFunction Scheduler, Actorable Config>
 struct Actor : ActorBase {
   Actor(ActorPID pid, std::shared_ptr<Scheduler> schedule,
         std::shared_ptr<Dispatcher> dispatcher,

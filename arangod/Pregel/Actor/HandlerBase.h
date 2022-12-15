@@ -39,11 +39,11 @@ struct HandlerBase {
         state{std::move(state)},
         messageDispatcher(messageDispatcher){};
 
-  template<typename M>
-  auto dispatch(ActorPID receiver, M message) -> void {
-    messageDispatcher->dispatch(std::make_unique<Message>(
+  template<typename ActorMessage>
+  auto dispatch(ActorPID receiver, ActorMessage message) -> void {
+    (*messageDispatcher)(std::make_unique<Message>(
         self, receiver,
-        std::make_unique<MessagePayload<M>>(std::move(message))));
+        std::make_unique<MessagePayload<ActorMessage>>(std::move(message))));
   }
 
   ActorPID self;
