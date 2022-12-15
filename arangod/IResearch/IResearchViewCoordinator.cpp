@@ -176,7 +176,7 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
         if (!exec.canUseCollection(vocbase().name(),
-                                   entry.second.collectionName,
+                                   entry.second->collectionName,
                                    auth::Level::RO)) {
           return {TRI_ERROR_FORBIDDEN};
         }
@@ -193,7 +193,7 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
              key != iresearch::StaticStrings::CollectionNameField;
     };
     for (auto& entry : _collections) {
-      auto linkSlice = entry.second.definition.slice();
+      auto linkSlice = entry.second->linkDefinition.slice();
       if (ctx == Serialization::Properties) {
         tmp.clear();
         tmp.openObject();
@@ -205,7 +205,7 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
         }
         linkSlice = tmp.close().slice();
       }
-      build.add(entry.second.collectionName, linkSlice);
+      build.add(entry.second->collectionName, linkSlice);
     }
     build.close();
   }
@@ -275,8 +275,9 @@ Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
   }
   sanitizedBuild.close();
   std::lock_guard lock{_mutex};
-  auto entry = _collections.try_emplace(cid, cname, std::move(sanitizedBuild),
-                                        link.isBuilding());
+  auto entry = _collections.try_emplace(
+      cid, std::make_unique<Data>(cname, std::move(sanitizedBuild),
+                                  link.isBuilding()));
   if (!entry.second) {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
             absl::StrCat("duplicate entry while emplacing collection '",
@@ -313,7 +314,7 @@ bool IResearchViewCoordinator::visitCollections(
 bool IResearchViewCoordinator::isBuilding() const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
-    if (entry.second.isBuilding) {
+    if (entry.second->isBuilding) {
       return true;
     }
   }

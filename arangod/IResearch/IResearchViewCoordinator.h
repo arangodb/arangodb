@@ -135,16 +135,16 @@ class IResearchViewCoordinator final : public LogicalView {
 
   // transient member, not persisted
   struct Data {
-    Data(std::string cname, VPackBuilder&& builder, bool building)
-        : collectionName{std::move(cname)},
-          definition{std::move(builder)},
+    Data(std::string name, VPackBuilder&& definition, bool building)
+        : collectionName{std::move(name)},
+          linkDefinition{std::move(definition)},
           isBuilding{building} {}
 
     std::string collectionName;
-    VPackBuilder definition;
+    VPackBuilder linkDefinition;
     bool isBuilding{false};
   };
-  containers::FlatHashMap<DataSourceId, Data> _collections;
+  containers::FlatHashMap<DataSourceId, std::unique_ptr<Data>> _collections;
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };
