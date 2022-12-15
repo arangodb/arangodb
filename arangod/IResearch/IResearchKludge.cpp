@@ -55,7 +55,10 @@ void syncIndexOnCreate(Index& index) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
       auto& store = basics::downCast<iresearch::IResearchRocksDBLink>(index);
       store.commit();
-      store.setBuilding(false);
+      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle") {}
+      else {
+        store.setBuilding(false);
+      }
     } break;
     case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
       auto& store =

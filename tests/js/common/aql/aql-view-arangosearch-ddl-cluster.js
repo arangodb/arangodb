@@ -79,10 +79,10 @@ function IResearchFeatureDDLTestSuite() {
 
     testViewIsBuilding: function () {
       if (isServer) {
-        debugSetFailAt("/_db/_system", "search::AlwaysIsBuilding");
+        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
       } else {
         for (const server of getCoordinators()) {
-          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuilding");
+          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
         }
       }
       db._drop("TestCollection0");
@@ -103,10 +103,10 @@ function IResearchFeatureDDLTestSuite() {
         "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
       }]);
       if (isServer) {
-        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuilding");
+        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
       } else {
         for (const server of getCoordinators()) {
-          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuilding");
+          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
         }
       }
     },

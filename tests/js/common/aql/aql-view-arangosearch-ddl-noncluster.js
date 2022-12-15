@@ -48,14 +48,17 @@ function IResearchFeatureDDLTestSuite () {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db._dropDatabase("TestDB");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
 
-    testStressAddRemoveView : function() {
+    testStressAddRemoveView: function () {
       db._dropView("TestView");
       for (let i = 0; i < 100; ++i) {
         db._createView("TestView", "arangosearch", {});
@@ -65,14 +68,43 @@ function IResearchFeatureDDLTestSuite () {
       }
     },
 
-    testStressAddRemoveViewWithDirectLinks : function() {
+    testViewIsBuilding: function () {
+      if (isServer) {
+        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingSingle");
+      } else {
+        // TODO(MBkkt) How to set fail point in SingleServer from client
+        return;
+      }
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      if (isServer) {
+        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingSingle");
+      }
+    },
+
+    testStressAddRemoveViewWithDirectLinks: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{ includeAllFields:true}}});
+        db.TestCollection0.save({name: i.toString()});
+        db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 1);
