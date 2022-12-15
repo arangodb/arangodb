@@ -391,6 +391,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   estimateCosts(queryOptions, estimateAllPlans);
 
+  // Best plan should not have forced hints left.
+  // There might be other plans that has, but we don't care
   if (_plans.list.front().first->hasForcedIndexHints()) {
     containers::SmallVector<ExecutionNode*, 8> nodes;
     _plans.list.front().first->findNodesOfType(

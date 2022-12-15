@@ -565,10 +565,10 @@ function optimizerRuleInvertedIndexTestSuite() {
           FILTER d.invalid == foo
           SORT d.count DESC
           RETURN d`;
-      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
       const res = AQL_EXPLAIN(query.query, query.bindVars);
       const appliedRules = res.plan.rules;
       assertFalse(appliedRules.includes(useIndexes));
+      assertEqual(0, db._query(query.query, query.bindVars).toArray().length);
     },
     testUnknownFieldInSubLoopPhraseIgnored: function () {
       const query = aql`
@@ -580,6 +580,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       const res = AQL_EXPLAIN(query.query, query.bindVars);
       const appliedRules = res.plan.rules;
       assertFalse(appliedRules.includes(useIndexes));
+      // intentionally do not run the query here as PHRASE is not yet
+      // supported as filter function
     },
     testKnownFieldInSubLoop: function () {
       const query = aql`
