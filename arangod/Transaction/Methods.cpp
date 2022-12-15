@@ -1457,8 +1457,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
       }
     } else if (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
       // Error reporting in the babies case is done outside of here.
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
-          replicationType != ReplicationType::FOLLOWER) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(replicationType != ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, it is possible that the
         // other transaction has not been committed yet, or that the document
@@ -1902,6 +1902,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
         this, key.stringView(), lookupResult);
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(replicationType != ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, it is possible that the
         // other transaction has not been committed yet, or that the document
@@ -2292,8 +2293,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
         collection->getPhysical()->lookupKeyForUpdate(this, key, lookupResult);
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here.
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
-          replicationType != ReplicationType::FOLLOWER) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(replicationType != ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, theoretically it is
         // possible that the document has been deleted by now.
