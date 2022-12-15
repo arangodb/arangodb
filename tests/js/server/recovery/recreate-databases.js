@@ -99,6 +99,7 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRecreateDatabases: function () {
+      assertTrue(false);
       var i;
       for (i = 0; i < 5; ++i) {
         db._useDatabase('UnitTestsRecovery' + i);

@@ -64,7 +64,7 @@ function recoverySuite () {
 
     testIntermediateCommits: function () {
       var c = db._collection('UnitTestsRecovery');
-
+      assertTrue(false);
       assertEqual(2000, c.count());
     }
 
