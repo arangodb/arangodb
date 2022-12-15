@@ -206,7 +206,7 @@ class IResearchLink : public IResearchDataStore {
 
   VPackComparer<IResearchViewSort> _comparer;
 
-  std::atomic_bool _isBuilding{true};
+  std::atomic_bool _isBuilding{false};
 };
 
 }  // namespace arangodb::iresearch
