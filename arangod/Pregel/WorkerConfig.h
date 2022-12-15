@@ -59,8 +59,6 @@ class WorkerConfig {
 
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
-  inline bool asynchronousMode() const { return _asynchronousMode; }
-
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
   inline uint64_t parallelism() const { return _parallelism; }
@@ -142,8 +140,6 @@ class WorkerConfig {
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
 
-  /// Let async
-  bool _asynchronousMode = false;
   // use memory mapping? will be updated by config later
   bool _useMemoryMaps = true;
   // parallelism. will be updated by config later
