@@ -23,6 +23,8 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include <thread>
 #include <iostream>
 
