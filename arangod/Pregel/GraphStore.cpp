@@ -97,7 +97,7 @@ size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft,
 
 template<typename V, typename E>
 GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-                             uint64_t executionNumber,
+                             ExecutionNumber executionNumber,
                              GraphFormat<V, E>* graphFormat)
     : _feature(feature),
       _vocbaseGuard(vocbase),
@@ -321,8 +321,7 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
                                              size_t cap) {
   if (config.useMemoryMaps()) {
     // prefix used for logging in TypedBuffer.h
-    std::string logPrefix =
-        "[job " + std::to_string(config.executionNumber()) + "] ";
+    std::string logPrefix = fmt::format("[job {}] ", config.executionNumber());
 
     auto ptr = std::make_unique<MappedFileBuffer<M>>(feature.tempPath(), cap,
                                                      logPrefix);
