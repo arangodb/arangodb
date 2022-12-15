@@ -34,10 +34,10 @@ struct Dispatcher {
 
   auto dispatch(std::unique_ptr<Message> msg) -> void {
     if (msg->receiver.server == myServerID) {
-      auto& actor = actors.at(msg->receiver.id);
-      if (msg->payload == nullptr) {
-        std::cout << "dispatch found nullptr payload" << std::endl;
+      if (not actors.contains(msg->receiver.id)) {
+        // TODO
       }
+      auto& actor = actors[msg->receiver.id];
       actor->process(msg->sender, std::move(msg->payload));
     } else {
       // TODO  sending_mechanism.send(std::move(msg));

@@ -28,9 +28,8 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/Runtime.h"
-#include "Actor/Message.h"
-#include "Actor/Actor.h"
+#include "Actor/ActorPID.h"
+#include "Actor/HandlerBase.h"
 
 namespace arangodb::pregel::actor::test {
 
@@ -65,12 +64,8 @@ struct Pong {
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
-    //    dispatch(msg.pongActor, pong_actor::Ping{.sender = pid, .text =
-    //    "hello, world"}>);
-    messageDispatcher->dispatch(std::make_unique<Message>(
-        pid, msg.pongActor,
-        std::make_unique<MessagePayload<typename pong_actor::PingMessage>>(
-            pong_actor::Ping{.sender = pid, .text = "hello world"})));
+    dispatch<pong_actor::PingMessage>(
+        msg.pongActor, pong_actor::Ping{.sender = self, .text = "hello world"});
     state->called++;
     return std::move(state);
   }
@@ -104,10 +99,8 @@ struct Handler : HandlerBase<State> {
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<State> {
-    messageDispatcher->dispatch(std::make_unique<Message>(
-        pid, msg.sender,
-        std::make_unique<MessagePayload<typename ping_actor::Actor::Message>>(
-            ping_actor::Pong{.text = msg.text})));
+    dispatch<ping_actor::Actor::Message>(msg.sender,
+                                         ping_actor::Pong{.text = msg.text});
     state->called++;
     return std::move(state);
   }

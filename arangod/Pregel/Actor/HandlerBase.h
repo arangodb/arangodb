@@ -24,22 +24,33 @@
 
 #pragma once
 
+#include "Actor/Dispatcher.h"
+#include "Message.h"
 #include "ActorPID.h"
 
 namespace arangodb::pregel::actor {
 
-struct Dispatcher;
-
 template<typename State>
 struct HandlerBase {
-  HandlerBase(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
-              std::unique_ptr<State> state)
-      : pid(pid),
-        messageDispatcher(messageDispatcher),
-        state{std::move(state)} {};
-  ActorPID pid;
-  std::shared_ptr<Dispatcher> messageDispatcher;
+  HandlerBase(ActorPID self, std::unique_ptr<State> state,
+              std::shared_ptr<Dispatcher> messageDispatcher)
+      : self(self),
+        state{std::move(state)},
+        messageDispatcher(messageDispatcher){};
+
+  template<typename M>
+  auto dispatch(ActorPID receiver, M message) -> void {
+    messageDispatcher->dispatch(std::make_unique<Message>(
+        self, receiver,
+        std::make_unique<MessagePayload<M>>(std::move(message))));
+  }
+
+  ActorPID self;
+  ActorPID sender;
   std::unique_ptr<State> state;
+
+ private:
+  std::shared_ptr<Dispatcher> messageDispatcher;
 };
 
 }  // namespace arangodb::pregel::actor
