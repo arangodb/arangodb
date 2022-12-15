@@ -60,3 +60,47 @@ TEST(TermIndexPair, compare_operator) {
   EXPECT_TRUE(B < C);
   EXPECT_TRUE(A < C);
 }
+
+TEST(LogRangeTest, empty_range) {
+  auto range = LogRange(LogIndex{5}, LogIndex{5});
+  EXPECT_TRUE(range.empty());
+  auto otherRange = LogRange(LogIndex{6}, LogIndex{6});
+  EXPECT_EQ(range, otherRange);
+  EXPECT_EQ(range, range);
+
+  auto nonEmptyRange = LogRange(LogIndex{5}, LogIndex{6});
+  EXPECT_NE(nonEmptyRange, range);
+  EXPECT_EQ(nonEmptyRange, nonEmptyRange);
+  EXPECT_FALSE(nonEmptyRange.empty());
+}
+
+TEST(LogRangeTest, count) {
+  EXPECT_EQ(LogRange(LogIndex{5}, LogIndex{8}).count(), 3);
+  EXPECT_EQ(LogRange(LogIndex{8}, LogIndex{8}).count(), 0);
+}
+
+TEST(LogRangeTest, contains) {
+  EXPECT_TRUE(LogRange(LogIndex{5}, LogIndex{6}).contains(LogIndex{5}));
+  EXPECT_FALSE(LogRange(LogIndex{5}, LogIndex{5}).contains(LogIndex{5}));
+  EXPECT_FALSE(LogRange(LogIndex{50}, LogIndex{60}).contains(LogIndex{5}));
+}
+
+TEST(LogRangeTest, intersect) {
+  auto a = LogRange(LogIndex{0}, LogIndex{10});
+  auto b = LogRange(LogIndex{5}, LogIndex{15});
+  auto c = LogRange(LogIndex{10}, LogIndex{20});
+
+  EXPECT_EQ(intersect(a, b), LogRange(LogIndex{5}, LogIndex{10}));
+  EXPECT_EQ(intersect(b, c), LogRange(LogIndex{10}, LogIndex{15}));
+  EXPECT_TRUE(intersect(a, c).empty());
+}
+
+TEST(LogRangeTest, iterate) {
+  std::vector<std::uint64_t> vec;
+  for (auto idx : LogRange(LogIndex{14}, LogIndex{18})) {
+    vec.push_back(idx.value);
+  }
+
+  auto expected = std::vector<std::uint64_t>{14, 15, 16, 17};
+  EXPECT_EQ(vec, expected);
+}
