@@ -186,7 +186,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _reserveTableReaderMemory(
           rocksDBTableOptionsDefaults.reserve_table_reader_memory),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _enforceBlockCacheSizeLimit(true),
+      _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
           rocksDBTableOptionsDefaults

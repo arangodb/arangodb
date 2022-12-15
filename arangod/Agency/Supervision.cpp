@@ -410,7 +410,7 @@ void handleOnStatusDBServer(
     HealthRecord& transisted, std::string const& serverID,
     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
     std::unordered_set<std::string> const& dbServersInMaintenance,
-    uint64_t delayFailedFollower) {
+    uint64_t delayFailedFollower, bool failedLeaderAddsFollower) {
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
@@ -446,7 +446,7 @@ void handleOnStatusDBServer(
               now + std::chrono::seconds(delayFailedFollower));
         }
         FailedServer(snapshot, agent, std::to_string(jobId), "supervision",
-                     serverID, notBefore)
+                     serverID, notBefore, failedLeaderAddsFollower)
             .create(envelope);
       }
     }
@@ -518,11 +518,11 @@ void handleOnStatus(
     HealthRecord& transisted, std::string const& serverID,
     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope,
     std::unordered_set<std::string> const& dbServersInMaintenance,
-    uint64_t delayFailedFollower) {
+    uint64_t delayFailedFollower, bool failedLeaderAddsFollower) {
   if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID,
                            jobId, envelope, dbServersInMaintenance,
-                           delayFailedFollower);
+                           delayFailedFollower, failedLeaderAddsFollower);
   } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
@@ -787,7 +787,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, snapshot(), persist, transist, serverID, _jobId,
-                       envelope, _DBServersInMaintenance, _delayFailedFollower);
+                       envelope, _DBServersInMaintenance, _delayFailedFollower,
+                       _failedLeaderAddsFollower);
         persist =
             transist;  // Now copy Status, SyncStatus from transient to persited
       } else {
@@ -2971,6 +2972,8 @@ bool Supervision::start(Agent* agent) {
   _gracePeriod = _agent->config().supervisionGracePeriod();
   _delayAddFollower = _agent->config().supervisionDelayAddFollower();
   _delayFailedFollower = _agent->config().supervisionDelayFailedFollower();
+  _failedLeaderAddsFollower =
+      _agent->config().supervisionFailedLeaderAddsFollower();
   return start();
 }
 
