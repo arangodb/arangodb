@@ -42,8 +42,7 @@ auto SnapshotManager::invalidateSnapshotState() -> arangodb::Result {
 }
 
 auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
-  auto guard = guardedData.getLockedGuard();
-  if (guard->state != state) {
+  if (auto guard = guardedData.getLockedGuard(); guard->state != state) {
     auto trx = guard->storage.beginMetaInfoTrx();
     trx->get().snapshot.status =
         state == SnapshotState::AVAILABLE
@@ -58,8 +57,10 @@ auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
         << "snapshot status locally updated to " << to_string(state);
     guard->state = state;
     ADB_PROD_ASSERT(termInfo->leader.has_value());
+    auto& stateHandle = guard->stateHandle;
+    guard.unlock();
     if (state == SnapshotState::MISSING) {
-      guard->stateHandle.acquireSnapshot(*termInfo->leader);
+      stateHandle.acquireSnapshot(*termInfo->leader);
     }
   }
   return {};
