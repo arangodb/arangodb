@@ -506,7 +506,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
 
     result.close();
 
-  } catch (const std::exception& e) {
+  } catch (...) {
     // must ignore any errors here in case a database or collection
     // got deleted in the meantime
     LOG_TOPIC("2ef96", DEBUG, Logger::STATISTICS)
