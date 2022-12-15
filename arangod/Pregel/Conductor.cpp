@@ -64,14 +64,15 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+      << "[job " << _executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(
-    uint64_t executionNumber, TRI_vocbase_t& vocbase,
+    ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
     std::vector<CollectionID> const& vertexCollections,
     std::vector<CollectionID> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const&
@@ -188,7 +189,7 @@ bool Conductor::_startGlobalStep() {
   // send prepare GSS notice
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
@@ -267,7 +268,7 @@ bool Conductor::_startGlobalStep() {
 
   b.clear();
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
@@ -527,7 +528,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     VPackBuffer<uint8_t> buffer;
     VPackBuilder b(buffer);
     b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
@@ -651,7 +652,7 @@ ErrorCode Conductor::_finalizeWorkers() {
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
@@ -715,7 +716,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
-      uint64_t exe = _executionNumber;
+      auto exe = _executionNumber;
       scheduler->queue(RequestLane::CLUSTER_AQL,
                        [this, exe, self = shared_from_this()] {
                          _feature.cleanupConductor(exe);
@@ -756,7 +757,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
 
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add("withId", VPackValue(withId));
   b.close();
 
@@ -778,7 +779,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   result.openObject();
-  result.add("id", VPackValue(std::to_string(_executionNumber)));
+  result.add("id", VPackValue(std::to_string(_executionNumber.value)));
   result.add("database", VPackValue(_vocbaseGuard.database().name()));
   if (_algorithm != nullptr) {
     result.add("algorithm", VPackValue(_algorithm->name()));
