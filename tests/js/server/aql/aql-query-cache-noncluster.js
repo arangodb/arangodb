@@ -1255,7 +1255,6 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
         c1.insert({value: i, "nested_value": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
-
       AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
       result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);

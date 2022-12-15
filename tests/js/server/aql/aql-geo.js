@@ -37,6 +37,7 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
 function makePolyInside(lon, lat) {
   // lon and lat are longitude and latitude ranges
@@ -181,19 +182,35 @@ function geoSuite(isSearchAlias) {
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
       let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+
+      withIndex.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      withView.save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      
       if (isSearchAlias) {
         let i = db.UnitTestsGeoWithView.ensureIndex({type: "inverted", fields: [{name: "geo", analyzer: "geo_json"}]});
         view = db._createView(viewName, "search-alias", {
           indexes: [{collection: "UnitTestsGeoWithView", index: i.name}]
         });
       } else {
-        view = db._createView(viewName, "arangosearch", {
-          links: {
-            UnitTestsGeoWithView: {
-              fields: {geo: {analyzers: ["geo_json"]}}
+        let meta = {};
+        if (isEnterprise) {
+          meta = {
+            links: {
+              UnitTestsGeoWithView: {
+                fields: {geo: {analyzers: ["geo_json"]}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
+              }
             }
-          }
-        });
+          };
+        } else {
+          meta = {
+            links: {
+              UnitTestsGeoWithView: {
+                fields: {geo: {analyzers: ["geo_json"]}}
+              }
+            }
+          };
+        }
+        view = db._createView(viewName, "arangosearch", meta);
       }
     },
 
