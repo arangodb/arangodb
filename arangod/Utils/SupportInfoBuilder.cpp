@@ -511,8 +511,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
     // got deleted in the meantime
     LOG_TOPIC("2ef96", DEBUG, Logger::STATISTICS)
         << "Got exception that will be ignored on building telemetrics "
-           "message: "
-        << res.errorMessage();
+           "message";
   }
   result.close();
 }
