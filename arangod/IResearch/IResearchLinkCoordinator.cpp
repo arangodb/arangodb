@@ -90,6 +90,7 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   setBuilding(basics::VelocyPackHelper::getBooleanValue(
       definition, arangodb::StaticStrings::IndexIsBuilding, false));
+  TRI_IF_FAILURE("search::AlwaysIsBuilding") { setBuilding(true); }
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);
