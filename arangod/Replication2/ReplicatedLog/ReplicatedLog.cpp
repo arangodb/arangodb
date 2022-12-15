@@ -212,7 +212,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 void ReplicatedLog::resetParticipant(GuardedData& data) {
   ADB_PROD_ASSERT(data.participant != nullptr || data.methods != nullptr);
   if (data.participant) {
-    ADB_PROD_ASSERT(data.core == nullptr);
+    ADB_PROD_ASSERT(data.methods == nullptr);
     LOG_CTX("9a54b", DEBUG, _logContext)
         << "reset participant of replicated log";
     DeferredAction action;
