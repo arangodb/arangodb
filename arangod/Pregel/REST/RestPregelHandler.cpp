@@ -58,22 +58,34 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
     }
 
-    VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 0) {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
           fmt::format("Worker path not found: {}", fmt::join(suffix, "/")));
+      return RestStatus::DONE;
     }
 
-    auto message = deserialize<ModernMessage>(body);
-    auto result = _pregel.process(message, _vocbase);
+    auto message = inspection::deserializeWithErrorT<ModernMessage>(
+        velocypack::SharedSlice(velocypack::SharedSlice{}, body));
+    if (!message.ok()) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                    message.error().error());
+      return RestStatus::DONE;
+    }
+
+    auto result = _pregel.process(message.get(), _vocbase);
     if (result.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
                                      result.errorMessage());
     }
-    serialize(response, result.get());
-    generateResult(rest::ResponseCode::OK, response.slice());
+    auto out = inspection::serializeWithErrorT(result.get());
+    if (!out.ok()) {
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                    out.error().error());
+      return RestStatus::DONE;
+    }
+    generateResult(rest::ResponseCode::OK, out.get().slice());
 
   } catch (basics::Exception const& ex) {
     LOG_TOPIC("d1b56", ERR, arangodb::Logger::PREGEL)

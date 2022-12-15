@@ -38,6 +38,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelMetrics.h"
 #include "Pregel/Messaging/Message.h"
@@ -59,13 +60,8 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  ResultT<ExecutionNumber> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
-      std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          edgeCollectionRestrictions,
-      VPackSlice const& params);
+  ResultT<ExecutionNumber> startExecution(PregelOptions options,
+                                          TRI_vocbase_t& vocbase);
 
   void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions>
                           options) override final;

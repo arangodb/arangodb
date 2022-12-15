@@ -32,6 +32,7 @@ endif ()
 
 add_subdirectory(REST)
 add_subdirectory(Algos)
+add_subdirectory(Collections)
 add_subdirectory(Conductor)
 add_subdirectory(Worker)
 add_subdirectory(Connection)

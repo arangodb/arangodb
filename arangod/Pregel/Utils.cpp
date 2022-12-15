@@ -71,7 +71,7 @@ ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci.getCollectionNT(config->database(), it->second);  // might throw
+    info = ci.getCollectionNT(config->database(), it->second);
     if (info == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }

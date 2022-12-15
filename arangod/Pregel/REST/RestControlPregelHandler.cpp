@@ -29,11 +29,12 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Graph/Graph.h"
-#include "Graph/GraphManager.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/REST/RestOptions.h"
 #include "Transaction/StandaloneContext.h"
+#include "Inspection/VPackWithErrorT.h"
+#include "velocypack/SharedSlice.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -118,75 +119,16 @@ void RestControlPregelHandler::startExecution() {
     return;
   }
 
-  // algorithm
-  std::string algorithm =
-      VelocyPackHelper::getStringValue(body, "algorithm", StaticStrings::Empty);
-  if ("" == algorithm) {
+  auto restOptions = inspection::deserializeWithErrorT<pregel::RestOptions>(
+      velocypack::SharedSlice(velocypack::SharedSlice{}, body));
+  if (!restOptions.ok()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "invalid algorithm");
+                  restOptions.error().error());
     return;
   }
+  pregel::PregelOptions options = std::move(restOptions).get().options();
 
-  // extract the parameters
-  auto parameters = body.get("params");
-  if (!parameters.isObject()) {
-    parameters = VPackSlice::emptyObjectSlice();
-  }
-
-  // extract the collections
-  std::vector<std::string> vertexCollections;
-  std::vector<std::string> edgeCollections;
-  std::unordered_map<std::string, std::vector<std::string>>
-      edgeCollectionRestrictions;
-  auto vc = body.get("vertexCollections");
-  auto ec = body.get("edgeCollections");
-  if (vc.isArray() && ec.isArray()) {
-    for (auto v : VPackArrayIterator(vc)) {
-      vertexCollections.push_back(v.copyString());
-    }
-    for (auto e : VPackArrayIterator(ec)) {
-      edgeCollections.push_back(e.copyString());
-    }
-  } else {
-    auto gs = VelocyPackHelper::getStringValue(body, "graphName", "");
-    if ("" == gs) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "expecting graphName as string");
-      return;
-    }
-
-    graph::GraphManager gmngr{_vocbase};
-    auto graphRes = gmngr.lookupGraphByName(gs);
-    if (graphRes.fail()) {
-      generateError(std::move(graphRes).result());
-      return;
-    }
-    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
-
-    auto const& gv = graph->vertexCollections();
-    for (auto const& v : gv) {
-      vertexCollections.push_back(v);
-    }
-
-    auto const& ge = graph->edgeCollections();
-    for (auto const& e : ge) {
-      edgeCollections.push_back(e);
-    }
-
-    auto const& ed = graph->edgeDefinitions();
-    for (auto const& e : ed) {
-      auto const& from = e.second.getFrom();
-      // intentionally create map entry
-      for (auto const& f : from) {
-        auto& restrictions = edgeCollectionRestrictions[f];
-        restrictions.push_back(e.second.getName());
-      }
-    }
-  }
-
-  auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
-                                    edgeCollections, edgeCollectionRestrictions,
-                                    parameters);
+  auto res = _pregel.startExecution(options, _vocbase);
   if (res.ok()) {
     VPackBuilder builder;
     builder.add(VPackValue(std::to_string(res.get().value)));

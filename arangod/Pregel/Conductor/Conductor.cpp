@@ -37,6 +37,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Conductor/States/CanceledState.h"
 #include "Pregel/Conductor/States/ComputingState.h"
 #include "Pregel/Conductor/States/DoneState.h"
@@ -51,6 +52,7 @@
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Messaging/Message.h"
+#include "Pregel/Conductor/GraphSource.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
@@ -85,43 +87,21 @@ using namespace arangodb::basics;
   LOG_TOPIC(logId, level, Logger::PREGEL) \
       << fmt::format("[job {}]", _executionNumber)
 
-Conductor::Conductor(
-    ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
-    std::vector<CollectionID> const& vertexCollections,
-    std::vector<CollectionID> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    std::string const& algoName, VPackSlice const& config,
-    PregelFeature& feature)
+Conductor::Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
+                     conductor::PregelGraphSource graphSource,
+                     std::string const& algoName, VPackSlice const& config,
+                     PregelFeature& feature)
     : _feature(feature),
       _created(std::chrono::system_clock::now()),
       _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _algorithm(
           AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
-      _vertexCollections(vertexCollections),
-      _edgeCollections(edgeCollections) {
+      _graphSource{std::move(graphSource)} {
   if (!config.isObject()) {
     _userParams.add(VPackSlice::emptyObjectSlice());
   } else {
     _userParams.add(config);
-  }
-
-  // handle edge collection restrictions
-  if (ServerState::instance()->isCoordinator()) {
-    for (auto const& it : edgeCollectionRestrictions) {
-      for (auto const& shardId : getShardIds(it.first)) {
-        // intentionally create key in map
-        auto& restrictions = _edgeCollectionRestrictions[shardId];
-        for (auto const& cn : it.second) {
-          for (auto const& edgeShardId : getShardIds(cn)) {
-            restrictions.push_back(edgeShardId);
-          }
-        }
-      }
-    }
-  } else {
-    _edgeCollectionRestrictions = edgeCollectionRestrictions;
   }
 
   if (!_algorithm) {
@@ -310,27 +290,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   serialize(result, conductorStatus);
 
   result.close();
-}
-
-std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
-  TRI_vocbase_t& vocbase = _vocbaseGuard.database();
-  ClusterInfo& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-
-  std::vector<ShardID> result;
-  try {
-    std::shared_ptr<LogicalCollection> lc =
-        ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci.getShardList(std::to_string(lc->id().id()));
-    result.reserve(shardIDs->size());
-    for (auto const& it : *shardIDs) {
-      result.emplace_back(it);
-    }
-  } catch (...) {
-    result.clear();
-  }
-
-  return result;
 }
 
 auto Conductor::receive(MessagePayload message) -> void {
