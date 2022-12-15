@@ -199,7 +199,6 @@ function recovery (options) {
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
-
   let count = 0;
 
   let tmpMgr = new tmpDirMmgr('recovery', options);
@@ -298,6 +297,7 @@ function recovery (options) {
           if (params.keyDir !== "") {
             fs.removeDirectoryRecursive(params.keyDir, true);
           }
+          params.instance.cleanup()
         }
         break;
       }
