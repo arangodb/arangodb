@@ -252,6 +252,10 @@ class Supervision : public arangodb::Thread {
 
   void setDelayFailedFollower(uint64_t d) noexcept { _delayFailedFollower = d; }
 
+  void setFailedLeaderAddsFollower(bool b) noexcept {
+    _failedLeaderAddsFollower = b;
+  }
+
  private:
   /**
    * @brief Report status of supervision in agency
@@ -294,6 +298,7 @@ class Supervision : public arangodb::Thread {
   double _okThreshold;
   uint64_t _delayAddFollower;
   uint64_t _delayFailedFollower;
+  bool _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;

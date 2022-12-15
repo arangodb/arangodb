@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -58,6 +59,7 @@ struct config_t {
   double _supervisionOkThreshold;
   uint64_t _supervisionDelayAddFollower;
   uint64_t _supervisionDelayFailedFollower;
+  bool _supervisionFailedLeaderAddsFollower;
   bool _cmdLineTimings;
   size_t _version;
   std::string _startup;
@@ -84,6 +86,7 @@ struct config_t {
   static std::string const supervisionOkThresholdStr;
   static std::string const supervisionDelayAddFollowerStr;
   static std::string const supervisionDelayFailedFollowerStr;
+  static std::string const supervisionFailedLeaderAddsFollowerStr;
   static std::string const compactionStepSizeStr;
   static std::string const compactionKeepSizeStr;
   static std::string const defaultEndpointStr;
@@ -99,7 +102,7 @@ struct config_t {
   config_t(std::string const& rid, size_t as, size_t ps, double minp,
            double maxp, std::string const& e, std::vector<std::string> const& g,
            bool s, bool st, bool w, double f, uint64_t c, uint64_t k, double p,
-           double o, uint64_t q, uint64_t r, bool t, size_t a);
+           double o, uint64_t q, uint64_t r, bool t2, bool t, size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -246,20 +249,37 @@ struct config_t {
   /// @brief Supervision delay failed follower
   uint64_t supervisionDelayFailedFollower() const;
 
+  /// @brief Supervision delay failed follower
+  bool supervisionFailedLeaderAddsFollower() const;
+
   /// @brief set Supervision grace period
-  void setSupervisionGracePeriod(double d) { _supervisionGracePeriod = d; }
+  void setSupervisionGracePeriod(double d) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionGracePeriod = d;
+  }
 
   /// @brief set Supervision ok threshold
-  void setSupervisionOkThreshold(double d) { _supervisionOkThreshold = d; }
+  void setSupervisionOkThreshold(double d) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionOkThreshold = d;
+  }
 
   /// @brief set Supervision delay add follower
   void setSupervisionDelayAddFollower(uint64_t d) {
+    WRITE_LOCKER(writeLocker, _lock);
     _supervisionDelayAddFollower = d;
   }
 
   /// @brief set Supervision delay failed follower
   void setSupervisionDelayFailedFollower(uint64_t d) {
+    WRITE_LOCKER(writeLocker, _lock);
     _supervisionDelayFailedFollower = d;
+  }
+
+  /// @brief set Supervision FailedLeader adds follower flag
+  void setSupervisionFailedLeaderAddsFollower(bool f) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionFailedLeaderAddsFollower = f;
   }
 
   /// @brief

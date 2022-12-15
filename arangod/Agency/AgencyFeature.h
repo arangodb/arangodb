@@ -65,6 +65,7 @@ class AgencyFeature : public application_features::ApplicationFeature {
   double _supervisionOkThreshold;
   uint64_t _supervisionDelayAddFollower;
   uint64_t _supervisionDelayFailedFollower;
+  bool _failedLeaderAddsFollower;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;
