@@ -1072,7 +1072,7 @@ version.)");
 
   options
       ->addOption(
-          "--rocksdb.use-jemalloc-allocator",
+          "--rocksdb.block-cache-jemalloc-allocator",
           "Use jemalloc-based memory allocator for RocksDB block cache.",
           new BooleanParameter(&_useJemallocAllocator),
           arangodb::options::makeFlags(
@@ -1086,7 +1086,9 @@ version.)");
       .setLongDescription(
           R"(The jemalloc-based memory allocator for the RocksDB block cache
 will also exclude the block cache contents from coredumps, potentially making generated 
-coredumps a lot smaller.)");
+coredumps a lot smaller.
+In order to use this option, the executable needs to be compiled with jemalloc
+support (which is the default).)");
 
   options
       ->addOption("--rocksdb.prepopulate-block-cache",
@@ -1543,16 +1545,23 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
     opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
 
     if (_useJemallocAllocator) {
+#ifdef ARANGODB_HAVE_JEMALLOC
       rocksdb::JemallocAllocatorOptions jopts;
       std::shared_ptr<rocksdb::MemoryAllocator> allocator;
       rocksdb::Status s =
           rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
-      if (s.ok()) {
-        opts.memory_allocator = allocator;
-      } else {
-        LOG_TOPIC("004e6", WARN, Logger::ENGINES)
+      if (!s.ok()) {
+        LOG_TOPIC("004e6", FATAL, Logger::STARTUP)
             << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
+        FATAL_ERROR_EXIT();
       }
+      opts.memory_allocator = allocator;
+#else
+      LOG_TOPIC("6d6cb", FATAL, Logger::STARTUP)
+          << "unable to use jemalloc allocator for RocksDB - jemalloc not "
+             "compiled";
+      FATAL_ERROR_EXIT();
+#endif
     }
 
     result.block_cache = rocksdb::NewLRUCache(opts);
