@@ -24,39 +24,15 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <Inspection/VPackWithErrorT.h>
 #include <string>
 #include <cstdint>
 #include <memory>
 #include <vector>
 
 #include "Actor.h"
+#include "Dispatcher.h"
 
 namespace arangodb::pregel::actor {
-
-using ActorMap = std::unordered_map<ActorID, std::unique_ptr<ActorBase>>;
-
-struct Dispatcher {
-  Dispatcher(ServerID myServerID, ActorMap& actors)
-      : myServerID(myServerID), actors(actors) {}
-
-  auto dispatch(std::unique_ptr<Message> msg) -> void {
-    if (msg->receiver.server == myServerID) {
-      auto& actor = actors.at(msg->receiver.id);
-      if (msg->payload == nullptr) {
-        std::cout << "dispatch found nullptr payload" << std::endl;
-      }
-      actor->process(msg->sender, std::move(msg->payload));
-    } else {
-      // TODO  sending_mechanism.send(std::move(msg));
-      std::abort();
-    }
-  }
-
-  ServerID myServerID;
-  ActorMap& actors;
-};
 
 template<typename Scheduler, typename SendingMechanism>
 struct Runtime {

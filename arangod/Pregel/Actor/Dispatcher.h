@@ -21,37 +21,32 @@
 /// @author Julia Volmer
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <cstddef>
-#include <string>
-
-namespace arangodb::pregel::actor {
-struct ActorID {
-  size_t id;
-
-  auto operator<=>(ActorID const& other) const = default;
-};
-
-}  // namespace arangodb::pregel::actor
-
-namespace std {
-template<>
-struct hash<arangodb::pregel::actor::ActorID> {
-  size_t operator()(arangodb::pregel::actor::ActorID const& x) const noexcept {
-    return std::hash<size_t>()(x.id);
-  };
-};
-}  // namespace std
+#include "Actor/ActorBase.h"
 
 namespace arangodb::pregel::actor {
 
-// TODO: at some point this needs to be ArangoDB's ServerID or compatible
-using ServerID = std::string;
+struct Dispatcher {
+  Dispatcher(ServerID myServerID, ActorMap& actors)
+      : myServerID(myServerID), actors(actors) {}
 
-struct ActorPID {
-  ActorID id;
-  ServerID server;
+  auto dispatch(std::unique_ptr<Message> msg) -> void {
+    if (msg->receiver.server == myServerID) {
+      auto& actor = actors.at(msg->receiver.id);
+      if (msg->payload == nullptr) {
+        std::cout << "dispatch found nullptr payload" << std::endl;
+      }
+      actor->process(msg->sender, std::move(msg->payload));
+    } else {
+      // TODO  sending_mechanism.send(std::move(msg));
+      std::abort();
+    }
+  }
+
+  ServerID myServerID;
+  ActorMap& actors;
 };
 
 }  // namespace arangodb::pregel::actor

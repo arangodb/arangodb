@@ -29,33 +29,14 @@
 #include <string_view>
 #include <type_traits>
 
-#include "ActorPID.h"
+#include "ActorBase.h"
+#include "HandlerBase.h"
 #include "Message.h"
 #include "MPSCQueue.h"
 
 namespace arangodb::pregel::actor {
 
 struct Dispatcher;
-
-struct ActorBase {
-  virtual ~ActorBase() = default;
-  virtual auto process(ActorPID sender,
-                       std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
-  virtual auto typeName() -> std::string_view = 0;
-  // state: initialised, running, finished
-};
-
-template<typename State>
-struct HandlerBase {
-  HandlerBase(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
-              std::unique_ptr<State> state)
-      : pid(pid),
-        messageDispatcher(messageDispatcher),
-        state{std::move(state)} {};
-  ActorPID pid;
-  std::shared_ptr<Dispatcher> messageDispatcher;
-  std::unique_ptr<State> state;
-};
 
 namespace {
 template<typename A>
@@ -72,13 +53,14 @@ concept HandlerInheritsFromBaseHandler =
     std::is_base_of < HandlerBase<typename A::State>,
 typename A::Handler > ::value;
 template<typename A>
-concept MessageIsVariant = requires(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
-                                    typename A::State state,
-                                    typename A::Message message) {
-{std::visit(typename A::Handler{{pid, messageDispatcher,
-                                  std::move(std::make_unique<typename A::State>(
-                                              state))}},
-              message)};
+concept MessageIsVariant =
+    requires(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
+             typename A::State state, typename A::Message message) {
+  {std::visit(
+      typename A::Handler{
+          {pid, messageDispatcher,
+           std::move(std::make_unique<typename A::State>(state))}},
+      message)};
 };
 };  // namespace
 template<typename A>
@@ -143,9 +125,9 @@ struct Actor : ActorBase {
           std::cout << "work payload was nullptr" << std::endl;
         }
 
-        state = std::visit(
-          typename Config::Handler{ { pid, messageDispatcher, std::move(state)} },
-            *msg->payload);
+        state = std::visit(typename Config::Handler{{pid, messageDispatcher,
+                                                     std::move(state)}},
+                           *msg->payload);
         i--;
         if (i == 0) {
           break;

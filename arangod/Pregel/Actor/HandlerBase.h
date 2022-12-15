@@ -18,40 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
 /// @author Markus Pfeiffer
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include <cstddef>
-#include <string>
-
-namespace arangodb::pregel::actor {
-struct ActorID {
-  size_t id;
-
-  auto operator<=>(ActorID const& other) const = default;
-};
-
-}  // namespace arangodb::pregel::actor
-
-namespace std {
-template<>
-struct hash<arangodb::pregel::actor::ActorID> {
-  size_t operator()(arangodb::pregel::actor::ActorID const& x) const noexcept {
-    return std::hash<size_t>()(x.id);
-  };
-};
-}  // namespace std
+#include "ActorPID.h"
 
 namespace arangodb::pregel::actor {
 
-// TODO: at some point this needs to be ArangoDB's ServerID or compatible
-using ServerID = std::string;
+struct Dispatcher;
 
-struct ActorPID {
-  ActorID id;
-  ServerID server;
+template<typename State>
+struct HandlerBase {
+  HandlerBase(ActorPID pid, std::shared_ptr<Dispatcher> messageDispatcher,
+              std::unique_ptr<State> state)
+      : pid(pid),
+        messageDispatcher(messageDispatcher),
+        state{std::move(state)} {};
+  ActorPID pid;
+  std::shared_ptr<Dispatcher> messageDispatcher;
+  std::unique_ptr<State> state;
 };
 
 }  // namespace arangodb::pregel::actor
