@@ -55,12 +55,6 @@ class MasterContext;
 struct IAlgorithm {
   virtual ~IAlgorithm() = default;
 
-  // virtual bool isFixpointAlgorithm() const {return false;}
-
-  [[nodiscard]] virtual bool supportsAsyncMode() const { return false; }
-
-  [[nodiscard]] virtual bool supportsCompensation() const { return false; }
-
   [[nodiscard]] virtual IAggregator* aggregator(std::string const& name) const {
     return nullptr;
   }

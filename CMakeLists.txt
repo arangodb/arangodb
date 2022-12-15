@@ -1136,18 +1136,9 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
-add_subdirectory(3rdParty)
-link_libraries(
-  absl::flat_hash_set
-  absl::flat_hash_map
-  absl::node_hash_set
-  absl::node_hash_map
-  absl::synchronization
-  absl::strings
-)
-
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
@@ -1365,3 +1356,5 @@ else ()
   add_custom_target(arangodb
     DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()
+
+add_subdirectory(utils/gdb-pretty-printers/immer/test)
