@@ -630,6 +630,10 @@ void DatabaseFeature::stop() {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   engine.cleanupReplicationContexts();
 
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
   std::unique_lock lock{_databasesMutex};
   auto databases = _databases.load();
 
@@ -640,47 +644,46 @@ void DatabaseFeature::stop() {
   }
 #endif
 
-  if (!ServerState::instance()->isCoordinator()) {
-    auto stopVocbase = [](TRI_vocbase_t* vocbase) {
-      // iterate over all databases
-      TRI_ASSERT(vocbase != nullptr);
+  auto stopVocbase = [](TRI_vocbase_t* vocbase) {
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // i am here for debugging only.
-      currentVocbase = vocbase;
-      static size_t currentCursorCount =
-          currentVocbase->cursorRepository()->count();
-      static size_t currentQueriesCount = currentVocbase->queryList()->count();
+    // i am here for debugging only.
+    currentVocbase = vocbase;
+    static size_t currentCursorCount =
+        currentVocbase->cursorRepository()->count();
+    static size_t currentQueriesCount = currentVocbase->queryList()->count();
 
-      LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
-          << "shutting down database " << currentVocbase->name() << ": "
-          << (void*)currentVocbase << ", cursors: " << currentCursorCount
-          << ", queries: " << currentQueriesCount;
+    LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
+        << "shutting down database " << currentVocbase->name() << ": "
+        << (void*)currentVocbase << ", cursors: " << currentCursorCount
+        << ", queries: " << currentQueriesCount;
 #endif
-      vocbase->stop();
+    vocbase->stop();
 
-      vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {
-        // no one else must modify the collection's status while we are in
-        // here
-        collection->executeWhileStatusWriteLocked(
-            [collection]() { collection->close(); });
-      });
+    vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {
+      // no one else must modify the collection's status while we are in
+      // here
+      collection->executeWhileStatusWriteLocked(
+          [collection]() { collection->close(); });
+    });
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // i am here for debugging only.
-      LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME)
-          << "shutting down database " << currentVocbase->name() << ": "
-          << (void*)currentVocbase << " successful";
+    // i am here for debugging only.
+    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME)
+        << "shutting down database " << currentVocbase->name() << ": "
+        << (void*)currentVocbase << " successful";
 #endif
-    };
+  };
 
-    for (auto& [name, vocbase] : *databases) {
-      stopVocbase(vocbase);
-    }
-
-    for (auto& vocbase : _droppedDatabases) {
-      stopVocbase(vocbase);
-    }
+  for (auto& [name, vocbase] : *databases) {
+    stopVocbase(vocbase);
   }
+
+  for (auto& vocbase : _droppedDatabases) {
+    stopVocbase(vocbase);
+  }
+
   lock.unlock();
 
   // flush again so we are sure no query is left in the cache here
@@ -931,7 +934,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
   }
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  TRI_voc_tick_t id = 0;
   auto res = TRI_ERROR_NO_ERROR;
   {
     std::lock_guard lock{_databasesMutex};
@@ -946,13 +948,11 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
     }
 
     TRI_vocbase_t* vocbase = it->second;
-    id = vocbase->id();
-    // mark as deleted
 
     // call LogicalDataSource::drop() to allow instances to clean up
     // internal state (e.g. for LogicalView implementations)
     TRI_vocbase_t::dataSourceVisitor visitor =
-        [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
+        [&res, &name](arangodb::LogicalDataSource& dataSource) -> bool {
       // skip LogicalCollection since their internal state is always in the
       // StorageEngine (optimization)
       if (arangodb::LogicalDataSource::Category::kCollection ==
@@ -966,7 +966,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
         res = result.errorNumber();
         LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
             << "failed to drop DataSource '" << dataSource.name()
-            << "' while dropping database '" << vocbase->name()
+            << "' while dropping database '" << name
             << "': " << result.errorNumber() << " " << result.errorMessage();
       }
 
@@ -982,15 +982,21 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
 
     next = _databases.make(prev);
     next->erase(name);
+
     _droppedDatabases.insert(vocbase);
 
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(id != 0);
+    TRI_ASSERT(vocbase->id() != 0);
 
     _databases.store(std::move(next));
     waitUnique(prev);
 
     TRI_ASSERT(!vocbase->isSystem());
+    // mark as deleted
+    // it is fine to do this here already, because the vocbase cannot be deleted
+    // while we are still holding the _databasesMutex. the DatabaseManagerThread
+    // can only pick a database for deletion once it is in _droppedDatabases
+    // *AND* it has acquired the _databasesMutex.
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
