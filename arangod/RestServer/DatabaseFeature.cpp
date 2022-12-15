@@ -31,6 +31,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -1487,26 +1488,24 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
 /// @brief close all dropped databases
 void DatabaseFeature::closeDroppedDatabases() {
-  std::vector<std::unique_ptr<TRI_vocbase_t>> dropped;
+  std::unique_lock lock{_databasesMutex};
+  // take a copy
+  auto dropped = std::move(_droppedDatabases);
+  _droppedDatabases.clear();
+  lock.unlock();
 
-  {
-    std::unique_lock lock{_databasesMutex};
-    dropped.reserve(_droppedDatabases.size());
-    for (auto it : _droppedDatabases) {
-      dropped.emplace_back(it);
+  auto guard = scopeGuard([&dropped]() noexcept {
+    for (auto p : dropped) {
+      delete p;
     }
-    _droppedDatabases.clear();
+  });
+
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
   }
-  // Now it is safe to destroy the old dropped databases:
-  for (auto& vocbase : dropped) {
-    TRI_ASSERT(vocbase != nullptr);
 
-    if (!ServerState::instance()->isCoordinator()) {
-      vocbase->shutdown();
-    }
-    // delete each vocbase individually inside the loop. however,
-    // if something inside this loop threads, data is not leaked
-    vocbase.reset();
+  for (auto p : dropped) {
+    p->shutdown();
   }
 }
 
