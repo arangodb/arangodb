@@ -54,6 +54,10 @@ If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the updated document. This option can be used to
 save some network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to update an existing entry in the in-memory edge cache if an
+edge document is updated.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}

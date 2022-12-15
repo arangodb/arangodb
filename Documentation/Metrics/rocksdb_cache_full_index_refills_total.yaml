@@ -1,8 +1,8 @@
 name: rocksdb_cache_full_index_refills_total
 introducedIn: "3.9.6"
 help: |
-  Total number of in-memory index cache refill operations for a complete
-  index.
+  Total number of in-memory edge cache refill operations for a complete
+  edge index.
 unit: number
 type: counter
 category: RocksDB
@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric shows the total number of refill operations for in-memory
-  index caches for a full index. On DB-Servers, a full index reload can
-  increase this metric by more than one, as counting will be done per shard.
-  On coordinators and agents, this metric will always contain a value of zero.
+  This metric shows the total number of refill operations to in-memory
+  edge caches for entire edge indexes. On DB-Servers, a full index reload can
+  increase this metric by more than one, as counting is done per shard.
+  On Coordinators and Agents, this metric always contains a value of zero.

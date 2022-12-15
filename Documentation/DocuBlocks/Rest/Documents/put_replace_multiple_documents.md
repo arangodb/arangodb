@@ -33,6 +33,10 @@ documents under the attribute *old* in the result.
 Return additionally the complete new documents under the attribute *new*
 in the result.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to update existing entries in the in-memory edge cache if
+edge documents are replaced.
+
 @RESTDESCRIPTION
 Replaces multiple documents in the specified collection with the
 ones in the body, the replaced documents are specified by the *_key*

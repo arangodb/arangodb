@@ -69,6 +69,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _supervisionOkThreshold(5.0),
       _supervisionDelayAddFollower(0),
       _supervisionDelayFailedFollower(0),
+      _failedLeaderAddsFollower(true),
       _cmdLineTimings(false) {
   setOptional(true);
   startsAfter<FoxxFeaturePhase>();
@@ -176,6 +177,17 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
       .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
+
+  options
+      ->addOption("--agency.supervision-failed-leader-adds-follower",
+                  "Flag indicating whether or not the FailedLeader job adds a "
+                  "new follower.",
+                  new BooleanParameter(&_failedLeaderAddsFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30907)
       .setIntroducedIn(31002);
 
   options->addOption(
@@ -393,7 +405,8 @@ void AgencyFeature::prepare() {
           _supervisionTouched, _waitForSync, _supervisionFrequency,
           _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
           _supervisionOkThreshold, _supervisionDelayAddFollower,
-          _supervisionDelayFailedFollower, _cmdLineTimings, _maxAppendSize)));
+          _supervisionDelayFailedFollower, _failedLeaderAddsFollower,
+          _cmdLineTimings, _maxAppendSize)));
 }
 
 void AgencyFeature::start() {

@@ -5,8 +5,29 @@ v3.9.7 (XXXX-XX-XX)
   overly large RocksDB transactions when syncing large shards, which is a
   remedy for OOM kills during restarts.
 
+* Allow parallel access to the shards of smart edge collections in AQL via
+  parallel GatherNodes.
 
-v3.9.6 (XXXX-XX-XX)
+* Added a configuration option (for the agency):
+    --agency.supervision-failed-leader-adds-follower
+  with a default of `true` (behavior as before). If set to `false`, a
+  `FailedLeader` job does not automatically configure a new shard follower,
+  thereby preventing unnecessary network traffic, CPU and IO load for the case
+  that the server comes back quickly. If the server is permanently failed, an
+  `AddFollower` job will be created anyway eventually.
+
+* Disallow creating new databases with a `replicationFactor` value set to a
+  value lower than `--cluster.min-replication-factor` or higher than
+  `--cluster.max-replication-factor`. Previously the `replicationFactor`
+  settings for new databases were not bounds-checked, only for new collections.
+
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
+* Fixed BTS-1153 GeoJson columns added to cache for ArangoSearch cached columns.
+
+
+v3.9.6 (2022-12-06)
 -------------------
 
 * Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
@@ -27,13 +48,18 @@ v3.9.6 (XXXX-XX-XX)
   for velocypack-based indexes (persistent, hash, sklipist index).
 
   Example usages:
-  - `db.<collection>.insert({ _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
-  - `db.<collection>.update(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
-  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
+  - `db.<collection>.insert({ _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
+  - `db.<collection>.update(key, { _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
+  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... }, 
+  { refillIndexCaches: true });`
   - `db.<collection>.remove(key, { refillIndexCaches: true });`
   - `INSERT { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
-  - `UPDATE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
-  - `REPLACE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `UPDATE { ... } WITH { ... } INTO <collection> 
+  OPTIONS { refillIndexCaches: true }`
+  - `REPLACE { ... } WITH { ... } INTO <collection> 
+  OPTIONS { refillIndexCaches: true }`
   - `REMOVE { ... } IN <collection> OPTIONS { refillIndexCaches: true }`
 
   The refilling of the in-memory caches for indexes is performed by a 
