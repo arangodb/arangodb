@@ -25,7 +25,6 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H 1
 
 #include <rocksdb/options.h>
-#include <rocksdb/utilities/transaction_db.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -110,20 +109,9 @@ class RocksDBGenericIterator {
  public:
   RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
-  RocksDBGenericIterator(RocksDBGenericIterator const&) = delete;
-  RocksDBGenericIterator(RocksDBGenericIterator&& other) 
-   : _bounds(std::move(other._bounds)), _db(std::move(other._db)),
-      _options(std::move(other._options)),
-      _iterator(std::move(other._iterator)),
-      _cmp(other._cmp) {
-      other._options.snapshot = nullptr;
-  }
+  RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
-  ~RocksDBGenericIterator() {
-    if (_options.snapshot != nullptr) {
-      _db->ReleaseSnapshot(_options.snapshot);
-    }
-  }
+  ~RocksDBGenericIterator() = default;
 
   //* The following functions returns true if the iterator is valid within bounds on return.
   //  @param limit - number of documents the callback should be applied to
@@ -138,9 +126,8 @@ class RocksDBGenericIterator {
  private:
   bool outOfRange() const;
 
-  RocksDBKeyBounds _bounds;
-  rocksdb::TransactionDB* _db;
-  rocksdb::ReadOptions _options;
+  RocksDBKeyBounds const _bounds;
+  rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
 };
