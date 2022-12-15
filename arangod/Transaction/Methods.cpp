@@ -1901,7 +1901,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     Result res = collection->getPhysical()->lookupKeyForUpdate(
         this, key.stringView(), lookupResult);
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, it is possible that the
         // other transaction has not been committed yet, or that the document
@@ -2029,12 +2029,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              replicationData->slice().isEmptyArray());
   TRI_ASSERT(!newValue.isArray() || options.silent ||
-             resultBuilder.slice().length() == newValue.length())
-      << "isUpdate: " << isUpdate << ", silent: " << options.silent
-      << ", leader: " << (replicationType == ReplicationType::LEADER)
-      << ", follower: " << (replicationType == ReplicationType::FOLLOWER)
-      << ", newValue: " << newValue.toJson()
-      << ", resultBuilder: " << resultBuilder.slice().toJson();
+             resultBuilder.slice().length() == newValue.length());
 
   auto resDocs = resultBuilder.steal();
   auto intermediateCommit = futures::makeFuture(res);
