@@ -132,12 +132,12 @@ function indexHintSuite() {
 
     testMultipleOrConditionsSomeOfThemOnNonIndexedAttributes: function () {
       [
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.testi == 99 RETURN doc`,
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 || doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.a == 99 RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 99 || doc._key == 'test' RETURN doc`,
       ].forEach((query) => {
-        // no indexes used here
+        // 2 indexes used here
         const usedIndexes = getIndexNames(query);
-        assertEqual(usedIndexes.length, 0, query);
+        assertEqual(usedIndexes[0].length, 2, query);
       });
     },
 
