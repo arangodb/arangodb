@@ -85,6 +85,12 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
     }
   });
 
+  if (result.fail()) {
+    LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
+        << "failed to modify replicated log " << _description.get(DATABASE)
+        << '/' << logId << "; " << result.errorMessage();
+  }
+
   _feature.addDirty(database);
   return false;
 }

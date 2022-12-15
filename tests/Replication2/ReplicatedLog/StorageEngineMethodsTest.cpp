@@ -97,7 +97,9 @@ struct RocksDBFactory {
 
   static void Drop(
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods) {
-    dynamic_cast<RocksDBLogStorageMethods&>(*methods).drop();
+    auto& rocksdbMethods = dynamic_cast<RocksDBLogStorageMethods&>(*methods);
+    rocksdbMethods.ctx.waitForCompletion();
+    rocksdbMethods.drop();
   }
 
   static auto BuildMethods(

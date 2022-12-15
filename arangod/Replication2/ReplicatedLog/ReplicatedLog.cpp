@@ -127,6 +127,11 @@ auto replicated_log::ReplicatedLog::updateMyInstanceReference(
     agency::ServerInstanceReference newReference)
     -> futures::Future<futures::Unit> {
   auto guard = _guarded.getLockedGuard();
+  if (guard->resigned) {
+    LOG_CTX("c1580", TRACE, _logContext)
+        << "ignoring update of reboot id. log already resigned";
+    return {futures::Unit{}};
+  }
   ADB_PROD_ASSERT(newReference.serverId == guard->_myself.serverId);
   bool rebootIdChanged = guard->_myself.rebootId != newReference.rebootId;
   if (rebootIdChanged) {
@@ -206,6 +211,7 @@ auto replicated_log::ReplicatedLog::tryBuildParticipant(GuardedData& data)
 void ReplicatedLog::resetParticipant(GuardedData& data) {
   ADB_PROD_ASSERT(data.participant != nullptr || data.core != nullptr);
   if (data.participant) {
+    ADB_PROD_ASSERT(data.core == nullptr);
     LOG_CTX("9a54b", DEBUG, _logContext)
         << "reset participant of replicated log";
     auto [core, action] = std::move(*data.participant).resign();

@@ -219,8 +219,8 @@ struct ReplicatedLogMethodsDBServer final
     auto result = log->getParticipant()->compact();
 
     CompactionResultMap map;
-    map[ServerState::instance()->getId()] =
-        CompactionResponse::fromResult(result);
+    map.emplace(ServerState::instance()->getId(),
+                CompactionResponse::fromResult(result));
     return map;
   }
 

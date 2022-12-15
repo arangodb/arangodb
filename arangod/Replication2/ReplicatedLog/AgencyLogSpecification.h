@@ -80,11 +80,6 @@ auto inspect(Inspector& f, ParticipantsConfig& x) {
                             f.field("participants", x.participants));
 }
 
-namespace static_strings {
-auto const String_Snapshot = velocypack::StringRef{"snapshot"};
-auto const String_Generation = velocypack::StringRef{"generation"};
-}  // namespace static_strings
-
 struct ImplementationSpec {
   std::string type;
   std::optional<velocypack::SharedSlice> parameters;

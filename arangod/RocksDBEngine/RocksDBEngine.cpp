@@ -2774,7 +2774,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
   try {
-    loadReplicatedStates(vocbase);
+    loadReplicatedStates(*vocbase);
   } catch (std::exception const& ex) {
     LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: " << ex.what();
@@ -2837,8 +2837,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   return vocbase;
 }
 
-void RocksDBEngine::loadReplicatedStates(
-    std::unique_ptr<TRI_vocbase_t> const& vocbase) {
+void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
       readOptions, RocksDBColumnFamilyManager::get(
@@ -2846,7 +2845,7 @@ void RocksDBEngine::loadReplicatedStates(
   auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
        iter->Next()) {
-    if (vocbase->id() != RocksDBKey::databaseId(iter->key())) {
+    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
       continue;
     }
 
@@ -2859,12 +2858,12 @@ void RocksDBEngine::loadReplicatedStates(
 
     auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
     auto methods = std::make_unique<RocksDBLogStorageMethods>(
-        info.objectId, vocbase->id(), info.stateId, _logPersistor, _db,
+        info.objectId, vocbase.id(), info.stateId, _logPersistor, _db,
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::Definitions),
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::ReplicatedLogs));
-    registerReplicatedState(*vocbase, info.stateId, std::move(methods));
+    registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
 
@@ -3598,23 +3597,18 @@ Result RocksDBEngine::dropReplicatedState(
     std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
         ptr) {
   // make sure that all pending async operations have completed
-  std::unique_ptr<RocksDBLogStorageMethods> methods{
-      &dynamic_cast<RocksDBLogStorageMethods&>(*ptr.release())};
+  auto methods = dynamic_cast<RocksDBLogStorageMethods*>(ptr.get());
+  ADB_PROD_ASSERT(methods != nullptr);
   methods->ctx.waitForCompletion();
-  // in case of an error, reset the unique_ptr
-  ScopeGuard guard([&]() noexcept { ptr = std::move(methods); });
 
   // drop everything
   if (auto res = methods->drop(); res.fail()) {
     return res;
   }
 
-  // write was committed, the log is gone. Transaction completed.
-  guard.cancel();
-
   // do a compaction for the log range
   std::ignore = methods->compact();
-  methods.reset();
+  ptr.reset();
   return {};
 }
 
