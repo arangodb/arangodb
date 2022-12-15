@@ -45,7 +45,6 @@ RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
           server, std::string("RocksDBCacheRefiller") + std::to_string(id)),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _refillFeature(server.getFeature<RocksDBIndexCacheRefillFeature>()),
-      _id(id),
       _maxCapacity(maxCapacity),
       _numQueued(0),
       _proceeding(0) {}

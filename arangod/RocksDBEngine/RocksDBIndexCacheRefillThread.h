@@ -76,9 +76,6 @@ class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
 
   RocksDBIndexCacheRefillFeature& _refillFeature;
 
-  // thread id
-  size_t const _id;
-
   // maximum queue capacity for thread
   size_t const _maxCapacity;
 
