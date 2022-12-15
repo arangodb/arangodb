@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual */
+/* global assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for intermediate commits
