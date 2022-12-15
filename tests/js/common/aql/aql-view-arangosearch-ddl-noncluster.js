@@ -24,19 +24,20 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var analyzers = require("@arangodb/analyzers");
-var ERRORS = require("@arangodb").errors;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const analyzers = require("@arangodb/analyzers");
+const ERRORS = require("@arangodb").errors;
+const internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchFeatureDDLTestSuite () {
+function IResearchFeatureDDLTestSuite() {
   return {
-    setUpAll : function () {
-     },
+    setUpAll: function () {
+    },
 
     tearDownAll : function () {
       db._useDatabase("_system");
@@ -69,12 +70,7 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     testViewIsBuilding: function () {
-      if (isServer) {
-        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingSingle");
-      } else {
-        // TODO(MBkkt) How to set fail point in SingleServer from client
-        return;
-      }
+      internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._dropView("TestView");
@@ -92,9 +88,7 @@ function IResearchFeatureDDLTestSuite () {
         "code": 1240,
         "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
       }]);
-      if (isServer) {
-        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingSingle");
-      }
+      internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
     },
 
     testStressAddRemoveViewWithDirectLinks: function () {

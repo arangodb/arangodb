@@ -88,9 +88,11 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
 }
 
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
-  setBuilding(basics::VelocyPackHelper::getBooleanValue(
-      definition, arangodb::StaticStrings::IndexIsBuilding, false));
-  TRI_IF_FAILURE("search::AlwaysIsBuildingCluster") { setBuilding(true); }
+  TRI_IF_FAILURE("search::AlwaysIsBuildingCluster") {}
+  else {
+    setBuilding(basics::VelocyPackHelper::getBooleanValue(
+        definition, arangodb::StaticStrings::IndexIsBuilding, false));
+  }
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);
