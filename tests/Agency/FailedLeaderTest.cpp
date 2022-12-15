@@ -110,7 +110,15 @@ Node createRootNode() { return createNode(agency); }
 char const* todo = R"=({
   "creator":"1", "type":"failedLeader", "database":"database",
   "collection":"collection", "shard":"s99", "fromServer":"leader",
-  "jobId":"1", "timeCreated":"2017-01-01 00:00:00"
+  "jobId":"1", "timeCreated":"2017-01-01 00:00:00",
+  "addsFollower": true
+  })=";
+
+char const* todo2 = R"=({
+  "creator":"1", "type":"failedLeader", "database":"database",
+  "collection":"collection", "shard":"s99", "fromServer":"leader",
+  "jobId":"1", "timeCreated":"2017-01-01 00:00:00",
+  "addsFollower": false
   })=";
 
 typedef std::function<std::unique_ptr<Builder>(Slice const&,
@@ -541,6 +549,7 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
         EXPECT_EQ(job.get("fromServer").copyString(), SHARD_LEADER);
         EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
         EXPECT_EQ(std::string(job.get("timeCreated").typeName()), "string");
+        EXPECT_TRUE(job.get("addsFollower").isTrue());
 
         return fakeWriteResult;
       });
@@ -548,8 +557,58 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(baseStructure, &agent, jobId, "unittest",
-                                   DATABASE, COLLECTION, SHARD, SHARD_LEADER);
+  auto failedLeader =
+      FailedLeader(baseStructure, &agent, jobId, "unittest", DATABASE,
+                   COLLECTION, SHARD, SHARD_LEADER, true);
+  failedLeader.create();
+}
+
+TEST_F(FailedLeaderTest,
+       creating_a_job_should_create_a_job_in_todo_no_leader_adds_follower) {
+  Mock<AgentInterface> mockAgent;
+
+  std::string jobId = "1";
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](query_t const& q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
+        EXPECT_EQ(std::string(q->slice().typeName()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+        EXPECT_EQ(q->slice()[0].length(),
+                  1);  // we always simply override! no preconditions...
+        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(q->slice()[0][0].length(),
+                  1);  // should ONLY do an entry in todo
+        EXPECT_TRUE(
+            std::string(q->slice()[0][0].get(expectedJobKey).typeName()) ==
+            "object");
+
+        auto job = q->slice()[0][0].get(expectedJobKey);
+        EXPECT_EQ(std::string(job.get("creator").typeName()), "string");
+        EXPECT_EQ(std::string(job.get("type").typeName()), "string");
+        EXPECT_EQ(job.get("type").copyString(), "failedLeader");
+        EXPECT_EQ(std::string(job.get("database").typeName()), "string");
+        EXPECT_EQ(job.get("database").copyString(), DATABASE);
+        EXPECT_EQ(std::string(job.get("collection").typeName()), "string");
+        EXPECT_EQ(job.get("collection").copyString(), COLLECTION);
+        EXPECT_EQ(std::string(job.get("shard").typeName()), "string");
+        EXPECT_EQ(job.get("shard").copyString(), SHARD);
+        EXPECT_EQ(std::string(job.get("fromServer").typeName()), "string");
+        EXPECT_EQ(job.get("fromServer").copyString(), SHARD_LEADER);
+        EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
+        EXPECT_EQ(std::string(job.get("timeCreated").typeName()), "string");
+        EXPECT_TRUE(job.get("addsFollower").isFalse());
+
+        return fakeWriteResult;
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  auto failedLeader =
+      FailedLeader(baseStructure, &agent, jobId, "unittest", DATABASE,
+                   COLLECTION, SHARD, SHARD_LEADER, false);
   failedLeader.create();
 }
 
@@ -1136,8 +1195,198 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
+  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
+                                   JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest,
+       job_should_be_written_to_pending_no_additional_follower) {
+  std::string jobId = "1";
+
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder(new Builder());
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+      if (path == "/arango/Target/ToDo") {
+        builder->add("1", createBuilder(todo2).slice());
+      }
+    } else {
+      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
+                      "/" + SHARD + "/servers") {
+        VPackArrayBuilder a(builder.get());
+        builder->add(VPackValue(SHARD_LEADER));
+        builder->add(VPackValue(SHARD_FOLLOWER2));
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  Node agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact))
+      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+        EXPECT_EQ(std::string(q->slice().typeName()), "array");
+        EXPECT_EQ(q->slice().length(), 1);
+        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+        EXPECT_EQ(q->slice()[0].length(), 2);  // preconditions!
+        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q->slice()[0][1].typeName()), "object");
+
+        auto writes = q->slice()[0][0];
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(
+            std::string(
+                writes.get("/arango/Target/ToDo/1").get("op").typeName()) ==
+            "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
+            "object");
+
+        auto job = writes.get("/arango/Target/Pending/1");
+        EXPECT_EQ(std::string(job.get("toServer").typeName()), "string");
+        EXPECT_EQ(job.get("toServer").copyString(), SHARD_FOLLOWER2);
+        EXPECT_EQ(std::string(job.get("timeStarted").typeName()), "string");
+
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .typeName()) == "array");
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .length() == 3);
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[0]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[1]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[2]
+                            .typeName()) == "string");
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[0]
+                        .copyString() == SHARD_FOLLOWER2);
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[1]
+                        .copyString() == SHARD_LEADER);
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[2]
+                        .copyString() == SHARD_FOLLOWER1);
+
+        auto preconditions = q->slice()[0][1];
+        EXPECT_TRUE(
+            std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                            .typeName()) == "object");
+        EXPECT_TRUE(
+            std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                            .get("oldEmpty")
+                            .typeName()) == "bool");
+        EXPECT_TRUE(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                        .get("oldEmpty")
+                        .getBool() == true);
+        EXPECT_TRUE(
+            preconditions
+                .get("/arango/Supervision/Health/" + SHARD_LEADER + "/Status")
+                .get("old")
+                .copyString() == "FAILED");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Supervision/Health/" + SHARD_FOLLOWER2 +
+                             "/Status")
+                        .get("old")
+                        .copyString() == "GOOD");
+
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .typeName()) == "object");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")
+                            .typeName()) == "array");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")
+                        .length() == 3);
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[0]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[1]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[2]
+                            .typeName()) == "string");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[0]
+                        .copyString() == SHARD_LEADER);
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[1]
+                        .copyString() == SHARD_FOLLOWER1);
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[2]
+                        .copyString() == SHARD_FOLLOWER2);
+
+        auto result = std::make_shared<Builder>();
+        result->openArray();
+        result->add(VPackValue((uint64_t)1));
+        result->close();
+        return trans_ret_t(true, "1", 1, 0, result);
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1423,6 +1672,7 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
           jobBuilder.add(
               "timeCreated",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
+          jobBuilder.add("addsFollower", VPackValue(true));
         }
         builder->add("1", jobBuilder.slice());
       }
@@ -1512,8 +1762,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1543,8 +1791,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1577,8 +1823,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1611,8 +1855,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1650,8 +1892,6 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1690,8 +1930,6 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1750,8 +1988,6 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1814,8 +2050,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1879,8 +2113,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1932,8 +2164,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -1985,8 +2215,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2044,8 +2272,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2093,8 +2319,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2142,8 +2366,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2191,8 +2413,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2252,8 +2472,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2315,8 +2533,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2378,8 +2594,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2430,8 +2644,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2482,8 +2694,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2546,8 +2756,6 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2555,7 +2763,7 @@ TEST_F(FailedLeaderTest,
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_all_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_all_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2610,8 +2818,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2619,7 +2825,7 @@ TEST_F(
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_leader_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_leader_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2675,8 +2881,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
@@ -2684,7 +2888,7 @@ TEST_F(
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_follower_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_follower_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2740,8 +2944,6 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
   auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
                                    JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);

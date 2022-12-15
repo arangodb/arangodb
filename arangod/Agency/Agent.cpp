@@ -2512,6 +2512,14 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
     _config.setSupervisionDelayFailedFollower(u);
     _supervision->setDelayFailedFollower(u);
   }
+  slice = data.get("failedLeaderAddsFollower");
+  if (slice.isBool()) {
+    bool b = slice.getBool();
+    LOG_TOPIC("12345", DEBUG, Logger::SUPERVISION)
+        << "Updating failedLeaderAddsFollower to " << b;
+    _config.setSupervisionFailedLeaderAddsFollower(b);
+    _supervision->setFailedLeaderAddsFollower(b);
+  }
 }
 
 std::vector<log_t> Agent::logs(index_t begin, index_t end) const {
