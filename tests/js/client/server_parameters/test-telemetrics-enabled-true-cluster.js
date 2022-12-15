@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNotEqual, AssertNull, assertNotNull, assertTrue, instanceManager, arango */
+/* global getOptions, fail, assertEqual, assertNotEqual, assertNull, assertNotNull, assertTrue, instanceManager, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -26,7 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-let {debugRemoveFailAt, debugSetFailAt, debugCanUseFailAt} = require('@arangodb/test-helper');
+let {debugRemoveFailAt, debugSetFailAt} = require('@arangodb/test-helper');
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
@@ -36,9 +36,10 @@ const suspendExternal = internal.suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
 
-const intervalValue = 30;
+const intervalValue = 40;
 
 if (getOptions === true) {
+
   return {
     options: {coordinators: 3},
     'server.send-telemetrics': "true",
@@ -52,80 +53,54 @@ function getServersHealth() {
   return result.parsedBody.Health;
 }
 
-
 function TelemetricsTestSuite() {
   'use strict';
 
   return {
+
     testGetTelemetricsWithFailover: function() {
-      const coordinatorEndpoint = arango.getEndpoint();
-      if (!debugCanUseFailAt(coordinatorEndpoint)) {
-        print("will return");
-        return;
-      }
-
       if (!isServer) {
-        print("is coordinator");
+        const originalEndpoint = arango.getEndpoint();
 
-        const arango = internal.arango;
-        const coordinatorEndpoint = arango.getEndpoint();
-        print("ENDPOINT " + coordinatorEndpoint);
-        /*
-        if (debugCanUseFailAt(coordinatorEndpoint)) {
-          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-        }
-
-         */
-        wait(intervalValue);
         const failurePoint = 'DisableTelemetricsSenderCoordinator';
-        let prepareCoordId = null;
-        let lastUpdateDocBefore = "";
         const colName = "_statistics";
 
+        let prepareCoordId = null;
+        let lastUpdateDocBefore = "";
         try {
-          debugSetFailAt(coordinatorEndpoint, failurePoint);
-          /*
-          print("AFTER");
-          wait(intervalValue + 1);
-          let res = null;
-          print("prepareCoordId " + prepareCoordId === "null");
+          debugSetFailAt(originalEndpoint, failurePoint);
           do {
-
-            res = db._query("FOR doc IN " + colName + " FILTER doc._key == 'telemetrics' RETURN doc").toArray();
-            assertNotNull(res);
-            assertNotEqual(res.length, 0);
-            const result = res[0];
-            print(result);
-            const telemetricsDoc = db["_statistics"].document("telemetrics");
-
-
-            print(telemetricsDoc);
-            assertTrue(telemetricsDoc.hasOwnProperty("prepareTimestamp"));
-            assertTrue(telemetricsDoc.hasOwnProperty("serverId"));
-            assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
-            prepareCoordId = telemetricsDoc["serverId"];
-            print("id ", prepareCoordId);
-            lastUpdateDocBefore = telemetricsDoc["lastUpdate"];
             wait(1);
-          } while (prepareCoordId === "null");
-*/
+            const telemetricsDoc = db[colName].document("telemetrics");
+            assertNotEqual(telemetricsDoc, 'undefined');
+
+            if (telemetricsDoc.hasOwnProperty("serverId")) {
+              prepareCoordId = telemetricsDoc["serverId"];
+              assertTrue(telemetricsDoc.hasOwnProperty("prepareTimestamp"));
+            }
+            assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
+            lastUpdateDocBefore = telemetricsDoc["lastUpdate"];
+          } while (prepareCoordId === null);
         } catch (err) {
-
+          fail("Failed to run telemetrics with failure point " + err.errorMessage);
         } finally {
-          print("finally");
-          debugRemoveFailAt(coordinatorEndpoint, failurePoint);
+          debugRemoveFailAt(originalEndpoint, failurePoint);
         }
-
-      /*  const coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
-
+        const coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
         assertEqual(coordinators.length, 3);
 
         for (let i = 0; i < coordinators.length; ++i) {
           const coordinator = coordinators[i];
-          if (coordinator.id == prepareCoordId) {
-
-            print("will stop server");
+          if (coordinator.id === prepareCoordId) {
+            if (coordinator.endpoint === originalEndpoint) {
+              let newEndpoint = null;
+              if (i === coordinators.length - 1) {
+                newEndpoint = coordinators[i - 1].endpoint;
+              } else {
+                newEndpoint = coordinators[i + 1].endpoint;
+              }
+              arango.reconnect(newEndpoint, db._name(), "root", "");
+            }
             assertTrue(suspendExternal(coordinator.pid));
             try {
               let serverHealth = null;
@@ -142,53 +117,45 @@ function TelemetricsTestSuite() {
               } while (serverHealth !== "FAILED");
               coordinator.suspended = true;
               assertEqual(serverHealth, "FAILED");
-            } finally {
-              print("finally 2");
-              const res = db._query("FOR doc IN " + colName + " FILTER doc._key == 'telemetrics' RETURN doc").toArray();
-              assertNotEqual(res.length, 0);
-              const result = res[0];
-              print(result);
-              const telemetricsDoc = db[colName].document("telemetrics");
+            } catch (err) {
+              fail("Failed to stop server " + err.errorMessage);
+            }
+            let telemetricsDoc = "";
+            do {
+              wait(1);
+              telemetricsDoc = db[colName].document("telemetrics");
 
-              print(telemetricsDoc);
               assertTrue(telemetricsDoc.hasOwnProperty("prepareTimestamp"));
               assertTrue(telemetricsDoc.hasOwnProperty("serverId"));
               assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
-              assertNull(telemetricsDoc["prepareTimestamp"]);
-              assertNull(telemetricsDoc["serverId"]);
-              const lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
-              assertFalse(lastUpdateDocAfter - lastUpdateDocBefore < intervalValue);
+            } while (telemetricsDoc["serverId"] !== null);
+            assertNull(telemetricsDoc["prepareTimestamp"]);
+            const lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
+            assertTrue(lastUpdateDocAfter - lastUpdateDocBefore < intervalValue);
 
+            assertTrue(continueExternal(coordinator.pid));
+            let serverHealth = null;
+            const startTime = Date.now();
+            do {
+              wait(2);
+              const result = getServersHealth();
+              assertNotNull(result);
+              serverHealth = result[coordinator.id].Status;
+              assertNotNull(serverHealth);
+              const timeElapsed = (Date.now() - startTime) / 1000;
+              assertTrue(timeElapsed < intervalValue, "Unable to get server " + coordinator.id + " in good state");
+            } while (serverHealth !== "GOOD");
+            coordinator.suspended = false;
 
-
-              assertTrue(continueExternal(coordinator.pid));
-              let serverHealth = null;
-              const startTime = Date.now();
-              do {
-                wait(2);
-                const result = getServersHealth();
-                assertNotNull(result);
-                serverHealth = result[coordinator.id].Status;
-                assertNotNull(serverHealth);
-                const timeElapsed = (Date.now() - startTime) / 1000;
-                assertTrue(timeElapsed < intervalValue, "Unable to get server " + coordinator.id + " in good state");
-              } while (serverHealth !== "GOOD");
-              coordinator.suspended = false;
-            }
+            break;
           }
-          print("coordinator ", coordinators[i].id);
         }
-        */
-
-
-      } else {
-        print("is dbserver");
       }
-
-      // will have a failure point and recovery
     },
   };
 }
 
-jsunity.run(TelemetricsTestSuite);
+if (internal.debugCanUseFailAt(arango.getEndpoint())) {
+  jsunity.run(TelemetricsTestSuite);
+}
 return jsunity.done();

@@ -106,7 +106,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
     result.add("date", VPackValue(timeString));
 
     if (detailed) {
-      buildDbServerInfo(result, server);
+      VPackBuilder serverInfo;
+      buildDbServerInfo(serverInfo, server);
+      result.add("databases", serverInfo.slice().get("databases"));
     }
 
   } else {
@@ -177,15 +179,16 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           auto& resp = it.get();
           auto res = resp.combinedResult();
           if (res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-
-          auto slice = resp.slice();
-          // copy results from other server
-          if (slice.isObject()) {
-            result.add(
-                basics::StringUtils::replace(resp.destination, "server:", ""),
-                slice.get("host"));
+            LOG_TOPIC("4800b", WARN, Logger::STATISTICS)
+                << "Failed to get server info: " << res.errorMessage();
+          } else {
+            auto slice = resp.slice();
+            // copy results from other server
+            if (slice.isObject()) {
+              result.add(
+                  basics::StringUtils::replace(resp.destination, "server:", ""),
+                  slice.get("host"));
+            }
           }
         }
       }
@@ -225,13 +228,14 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           auto& resp = it.get();
           auto res = resp.combinedResult();
           if (res.fail()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-
-          auto slice = resp.slice();
-          // copy results from other server
-          if (slice.isObject()) {
-            result.add("databases", slice.get("databases"));
+            LOG_TOPIC("2cde0", WARN, Logger::STATISTICS)
+                << "Failed to get server info: " << res.errorMessage();
+          } else {
+            auto slice = resp.slice();
+            // copy results from other server
+            if (slice.isObject()) {
+              result.add("databases", slice.get("databases"));
+            }
           }
         }
       }
@@ -343,6 +347,7 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
                                            ArangodServer& server) {
   DatabaseFeature& dbFeature = server.getFeature<DatabaseFeature>();
   std::vector<std::string> databases = methods::Databases::list(server, "");
+
   result.openObject();
   result.add("numDatabases", VPackValue(databases.size()));
 
@@ -361,7 +366,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
       size_t numSmartColls = 0;
       size_t numDisjointGraphs = 0;
       result.add("collections", VPackValue(VPackValueType::Array));
-
       DatabaseGuard guard(dbFeature, database);
       methods::Collections::enumerate(
           &guard.database(),
@@ -369,18 +373,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
             result.openObject();
             size_t numShards = coll->numberOfShards();
             result.add("numShards", VPackValue(numShards));
-
-            /*
-            if (!isSingleServer) {
-              auto shardMap = coll->shardIds();
-              for (auto const& shardInfo : *(shardMap.get())) {
-                LOG_DEVEL << "for " << shardInfo.first;
-                for (auto const& serverId : shardInfo.second) {
-                  LOG_DEVEL << serverId;
-                }
-              }
-            }
-             */
 
             auto ctx = transaction::StandaloneContext::Create(*vocbase);
 
@@ -515,7 +507,6 @@ void SupportInfoBuilder::buildDbServerInfo(velocypack::Builder& result,
     result.close();
 
   } catch (const std::exception& e) {
-    LOG_DEVEL << "ERROR " << e.what();
     // must ignore any errors here in case a database or collection
     // got deleted in the meantime
   }

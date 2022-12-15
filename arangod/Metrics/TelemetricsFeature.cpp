@@ -88,10 +88,9 @@ void TelemetricsFeature::collectOptions(
 }
 
 void TelemetricsFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions> /*options*/) {
-  // make it no les than an hour for sending telemetrics
-  if (_interval < 3600) {
-    _interval = 3600;
+    std::shared_ptr<options::ProgramOptions> options) {
+  if (_interval <= 3600) {
+    _rescheduleInterval = .1 * _interval + 1;
   }
 }
 
@@ -101,7 +100,6 @@ void LastUpdateHandler::sendTelemetrics() {
   SupportInfoBuilder::buildInfoMessage(result, StaticStrings::SystemDatabase,
                                        _server, false, true);
   _sender->send(result.slice());
-  TRI_IF_FAILURE("DisableTelemetricsSenderCoordinator") { return; }
 }
 
 void LastUpdateHandler::doLastUpdate(std::string_view oldRev,
@@ -296,7 +294,7 @@ void TelemetricsFeature::beginShutdown() {
 void TelemetricsFeature::start() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   bool isCoordinator = ServerState::instance()->isCoordinator(role);
-  if (!this->isEnabled() || ((!ServerState::instance()->isSingleServer() ||
+  if (!this->isEnabled() || ((!ServerState::instance()->isSingleServer() &&
                               !_updateHandler->server()
                                    .getFeature<ReplicationFeature>()
                                    .isActiveFailoverEnabled()) &&
@@ -317,6 +315,7 @@ void TelemetricsFeature::start() {
                                                       lastUpdate, _interval)) {
         TRI_ASSERT(_updateHandler != nullptr);
         // has reached the interval to send telemetrics again
+        TRI_IF_FAILURE("DisableTelemetricsSenderCoordinator") { return; }
         _updateHandler->sendTelemetrics();
         if (isCoordinator) {
           _updateHandler->doLastUpdate(oldRev, lastUpdate);

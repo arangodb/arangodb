@@ -85,7 +85,7 @@ class TelemetricsFeature : public ArangodFeature {
   explicit TelemetricsFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions> options) final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
   void start() final;
   void stop() final;
   void beginShutdown() final;
