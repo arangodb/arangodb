@@ -483,11 +483,11 @@ struct GetDocumentProcessor
 
     std::unordered_map<ErrorCode, size_t> countErrorCodes;
     if (!_value.isArray()) {
-      res = workForOneDocument(_value, false);
+      res = processValue(_value, false);
     } else {
       VPackArrayBuilder guard(&_resultBuilder);
       for (VPackSlice s : VPackArrayIterator(_value)) {
-        res = workForOneDocument(s, true);
+        res = processValue(s, true);
         if (res.fail()) {
           createBabiesError(&_resultBuilder, countErrorCodes, res);
         }
@@ -503,7 +503,7 @@ struct GetDocumentProcessor
   }
 
  private:
-  auto workForOneDocument(VPackSlice value, bool isMultiple) -> Result {
+  auto processValue(VPackSlice value, bool isMultiple) -> Result {
     Result res;
 
     std::string_view key(transaction::helpers::extractKeyPart(value));
@@ -554,9 +554,11 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   ReplicatedProcessorBase(Methods& methods, TransactionCollection& trxColl,
                           LogicalCollection& collection, VPackSlice value,
                           OperationOptions& options,
-                          std::string_view operationName)
+                          std::string_view operationName,
+                          TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
-        _replicationData(&methods) {
+        _replicationData(&methods),
+        _operationType(operationType) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
         this->_collection, operationName, this->_value, this->_options,
@@ -576,89 +578,86 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     return AccessMode::Type::WRITE;
   }
 
- protected:
-  std::shared_ptr<std::vector<ServerID> const> _followers;
-  Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
-
-  // all document data that are going to be replicated, append-only
-  transaction::BuilderLeaser _replicationData;
-  bool _excludeAllFromReplication;
-};
-
-struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
-  RemoveProcessor(Methods& methods, TransactionCollection& trxColl,
-                  LogicalCollection& collection, VPackSlice value,
-                  OperationOptions& options)
-      : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
-                                "remove"),
-        _keyBuilder(&_methods),
-        _previousDocumentBuilder(&_methods) {}
-
   Future<OperationResult> execute() {
     _replicationData->openArray(true);
     std::unordered_map<ErrorCode, size_t> errorCounter;
     Result res;
-    if (_value.isArray()) {
-      _resultBuilder.openArray();
+    if (this->_value.isArray()) {
+      this->_resultBuilder.openArray();
 
-      for (VPackSlice s : VPackArrayIterator(_value)) {
-        res = workForOneDocument(s, true);
+      for (VPackSlice s : VPackArrayIterator(this->_value)) {
+        res = this->self().processValue(s, true);
         if (res.fail()) {
           createBabiesError(
               _replicationType == Methods::ReplicationType::FOLLOWER
                   ? nullptr
-                  : &_resultBuilder,
+                  : &this->_resultBuilder,
               errorCounter, res);
           res.reset();
         }
       }
 
-      _resultBuilder.close();
+      this->_resultBuilder.close();
     } else {
-      res = workForOneDocument(_value, false);
+      res = this->self().processValue(this->_value, false);
 
       // on a follower, our result should always be an empty object
       if (_replicationType == Methods::ReplicationType::FOLLOWER) {
-        TRI_ASSERT(_resultBuilder.slice().isNone());
+        TRI_ASSERT(this->_resultBuilder.slice().isNone());
         // add an empty object here so that when sending things back in JSON
         // format, there is no "non-representable type 'none'" issue.
-        _resultBuilder.add(VPackSlice::emptyObjectSlice());
+        this->_resultBuilder.add(VPackSlice::emptyObjectSlice());
       }
     }
     _replicationData->close();
 
     // on a follower, our result should always be an empty array or object
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
-               (_value.isArray() && _resultBuilder.slice().isEmptyArray()) ||
-               (_value.isObject() && _resultBuilder.slice().isEmptyObject()));
+               (this->_value.isArray() &&
+                this->_resultBuilder.slice().isEmptyArray()) ||
+               (this->_value.isObject() &&
+                this->_resultBuilder.slice().isEmptyObject()));
     TRI_ASSERT(_replicationData->slice().isArray());
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
                _replicationData->slice().isEmptyArray());
-    TRI_ASSERT(!_value.isArray() || _options.silent ||
-               _resultBuilder.slice().length() == _value.length());
 
-    auto resDocs = _resultBuilder.steal();
+    TRI_ASSERT(res.ok() || !this->_value.isArray());
+
+    TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
+
+    TRI_ASSERT(!this->_value.isArray() || this->_options.silent ||
+               this->_resultBuilder.slice().length() == this->_value.length());
+
+    auto resDocs = this->_resultBuilder.steal();
     auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
-      auto replicationVersion = _collection.replicationVersion();
-      if (_replicationType == Methods::ReplicationType::LEADER &&
+      auto replicationVersion = this->_collection.replicationVersion();
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      StorageEngine& engine = this->_collection.vocbase()
+                                  .server()
+                                  .template getFeature<EngineSelectorFeature>()
+                                  .engine();
+
+      bool isMock = (engine.typeName() == "Mock");
+#else
+      constexpr bool isMock = false;
+#endif
+
+      if (!isMock && _replicationType == Methods::ReplicationType::LEADER &&
           (!_followers->empty() ||
            replicationVersion == replication::Version::TWO) &&
           !_replicationData->slice().isEmptyArray()) {
-        // Now replicate the same operation on all followers:
-
         // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
         // get here, in the single document case, we do not try to replicate
         // in case of an error.
 
         // Now replicate the good operations on all followers:
-        return _methods
-            .replicateOperations(_trxColl, _followers, _options,
-                                 *_replicationData,
-                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE)
+        return this->_methods
+            .replicateOperations(this->_trxColl, _followers, this->_options,
+                                 *this->_replicationData, _operationType)
             .thenValue([options = this->_options,
                         errs = std::move(errorCounter),
-                        resultData = std::move(resDocs)](Result res) mutable {
+                        resultData = std::move(resDocs)](Result&& res) mutable {
               if (!res.ok()) {
                 return OperationResult{std::move(res), options};
               }
@@ -672,11 +671,11 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       }
 
       // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          _methods.performIntermediateCommitIfRequired(_collection.id());
+      intermediateCommit = this->_methods.performIntermediateCommitIfRequired(
+          this->_collection.id());
     }
 
-    if (_options.silent && errorCounter.empty()) {
+    if (this->_options.silent && errorCounter.empty()) {
       // We needed the results, but do not want to report:
       resDocs->clear();
     }
@@ -690,8 +689,30 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
         });
   }
 
- private:
-  auto workForOneDocument(VPackSlice value, bool isArray) -> Result {
+ protected:
+  std::shared_ptr<std::vector<ServerID> const> _followers;
+  Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
+
+  // all document data that are going to be replicated, append-only
+  transaction::BuilderLeaser _replicationData;
+  TRI_voc_document_operation_e _operationType;
+  bool _excludeAllFromReplication;
+};
+
+struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
+  RemoveProcessor(Methods& methods, TransactionCollection& trxColl,
+                  LogicalCollection& collection, VPackSlice value,
+                  OperationOptions& options)
+      : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
+                                "remove"),
+        _keyBuilder(&_methods),
+        _previousDocumentBuilder(&_methods) {}
+
+  TRI_voc_document_operation_e operationType() {
+    return TRI_VOC_DOCUMENT_OPERATION_REMOVE;
+  }
+
+  auto processValue(VPackSlice value, bool isArray) -> Result {
     std::string_view key;
 
     if (value.isString()) {
@@ -788,6 +809,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     return res;
   }
 
+ private:
   Result removeLocalHelper(velocypack::Slice value,
                            LocalDocumentId previousDocumentId,
                            RevisionId previousRevisionId) {
@@ -833,10 +855,10 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
                          LogicalCollection& collection, VPackSlice value,
                          OperationOptions& options,
                          std::string_view operationName,
-                         TRI_voc_document_operation_e opType)
+                         TRI_voc_document_operation_e operationType)
       : ReplicatedProcessorBase<Derived>(methods, trxColl, collection, value,
-                                         options, operationName),
-        _batchOptions(::buildBatchOptions(options, collection, opType,
+                                         options, operationName, operationType),
+        _batchOptions(::buildBatchOptions(options, collection, operationType,
                                           methods.state()->isDBServer())) {}
 
  protected:
@@ -961,123 +983,12 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
                            ? options.overwriteMode
                            : OperationOptions::OverwriteMode::Conflict) {}
 
-  Future<OperationResult> execute() {
-    std::unordered_map<ErrorCode, size_t> errorCounter;
-
-    _replicationData->openArray(true);
-    Result res;
-    if (_value.isArray()) {
-      _resultBuilder.openArray();
-
-      for (VPackSlice s : VPackArrayIterator(_value)) {
-        TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
-          // Set an error *instead* of calling `workForOneDocument`
-          res.reset(TRI_ERROR_DEBUG);
-        }
-        else {
-          res = workForOneDocument(s, true);
-        }
-        if (res.fail()) {
-          createBabiesError(
-              _replicationType == Methods::ReplicationType::FOLLOWER
-                  ? nullptr
-                  : &_resultBuilder,
-              errorCounter, res);
-          res.reset();
-        }
-      }
-
-      _resultBuilder.close();
-    } else {
-      res = workForOneDocument(_value, false);
-
-      // on a follower, our result should always be an empty object
-      if (_replicationType == Methods::ReplicationType::FOLLOWER) {
-        TRI_ASSERT(_resultBuilder.slice().isNone());
-        // add an empty object here so that when sending things back in JSON
-        // format, there is no "non-representable type 'none'" issue.
-        _resultBuilder.add(VPackSlice::emptyObjectSlice());
-      }
-    }
-    _replicationData->close();
-
-    // on a follower, our result should always be an empty array or object
-    TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
-               (_value.isArray() && _resultBuilder.slice().isEmptyArray()) ||
-               (_value.isObject() && _resultBuilder.slice().isEmptyObject()));
-    TRI_ASSERT(_replicationData->slice().isArray());
-    TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
-               _replicationData->slice().isEmptyArray());
-
-    TRI_ASSERT(res.ok() || !_value.isArray());
-
-    TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
-
-    TRI_ASSERT(!_value.isArray() || _options.silent ||
-               _resultBuilder.slice().length() == _value.length());
-
-    std::shared_ptr<VPackBufferUInt8> resDocs = _resultBuilder.steal();
-    auto intermediateCommit = futures::makeFuture(res);
-    if (res.ok()) {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-      StorageEngine& engine = _collection.vocbase()
-                                  .server()
-                                  .getFeature<EngineSelectorFeature>()
-                                  .engine();
-
-      bool isMock = (engine.typeName() == "Mock");
-#else
-      constexpr bool isMock = false;
-#endif
-
-      if (!isMock && _replicationType == Methods::ReplicationType::LEADER &&
-          (!_followers->empty() ||
-           _collection.replicationVersion() == replication::Version::TWO) &&
-          !_replicationData->slice().isEmptyArray()) {
-        // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-        // get here, in the single document case, we do not try to replicate
-        // in case of an error.
-
-        // Now replicate the good operations on all followers:
-        return _methods
-            .replicateOperations(_trxColl, _followers, _options,
-                                 *_replicationData,
-                                 TRI_VOC_DOCUMENT_OPERATION_INSERT)
-            .thenValue([options = this->_options,
-                        errs = std::move(errorCounter),
-                        resultData = std::move(resDocs)](Result res) mutable {
-              if (!res.ok()) {
-                return OperationResult{std::move(res), options};
-              }
-              if (options.silent && errs.empty()) {
-                // We needed the results, but do not want to report:
-                resultData->clear();
-              }
-              return OperationResult(std::move(res), std::move(resultData),
-                                     options, std::move(errs));
-            });
-      }
-
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          _methods.performIntermediateCommitIfRequired(_collection.id());
+  auto processValue(VPackSlice value, bool isArray) -> Result {
+    TRI_IF_FAILURE("insertLocal::fakeResult1") {  //
+      // return an error *instead* of actually processing the value
+      return TRI_ERROR_DEBUG;
     }
 
-    if (_options.silent && errorCounter.empty()) {
-      // We needed the results, but do not want to report:
-      resDocs->clear();
-    }
-
-    return std::move(intermediateCommit)
-        .thenValue([options = this->_options,
-                    errorCounter = std::move(errorCounter),
-                    resDocs = std::move(resDocs)](auto&& res) mutable {
-          return OperationResult(res, std::move(resDocs), options,
-                                 std::move(errorCounter));
-        });
-  }
-
-  auto workForOneDocument(VPackSlice value, bool isArray) -> Result {
     _newDocumentBuilder->clear();
 
     if (!value.isObject()) {
@@ -1351,112 +1262,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
         _previousDocumentBuilder(&_methods),
         _isUpdate(isUpdate) {}
 
-  /// @brief replace one or multiple documents in a collection, local
-  /// the single-document variant of this operation will either succeed or,
-  /// if it fails, clean up after itself
-  Future<OperationResult> execute() {
-    std::unordered_map<ErrorCode, size_t> errorCounter;
-
-    _replicationData->openArray(true);
-    Result res;
-    if (_value.isArray()) {
-      _resultBuilder.openArray();
-
-      for (VPackSlice s : VPackArrayIterator(_value)) {
-        res = workForOneDocument(s, true);
-        if (res.fail()) {
-          createBabiesError(
-              _replicationType == Methods::ReplicationType::FOLLOWER
-                  ? nullptr
-                  : &_resultBuilder,
-              errorCounter, res);
-          res.reset();
-        }
-      }
-
-      _resultBuilder.close();
-    } else {
-      res = workForOneDocument(_value, false);
-
-      // on a follower, our result should always be an empty object
-      if (_replicationType == Methods::ReplicationType::FOLLOWER) {
-        TRI_ASSERT(_resultBuilder.slice().isNone());
-        // add an empty object here so that when sending things back in JSON
-        // format, there is no "non-representable type 'none'" issue.
-        _resultBuilder.add(VPackSlice::emptyObjectSlice());
-      }
-    }
-    _replicationData->close();
-
-    // on a follower, our result should always be an empty array or object
-    TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
-               (_value.isArray() && _resultBuilder.slice().isEmptyArray()) ||
-               (_value.isObject() && _resultBuilder.slice().isEmptyObject()));
-    TRI_ASSERT(_replicationData->slice().isArray());
-    TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
-               _replicationData->slice().isEmptyArray());
-    TRI_ASSERT(!_value.isArray() || _options.silent ||
-               _resultBuilder.slice().length() == _value.length());
-
-    auto resDocs = _resultBuilder.steal();
-    auto intermediateCommit = futures::makeFuture(res);
-    if (res.ok()) {
-      if (_replicationType == Methods::ReplicationType::LEADER &&
-          (!_followers->empty() ||
-           _collection.replicationVersion() == replication::Version::TWO) &&
-          !_replicationData->slice().isEmptyArray()) {
-        // We still hold a lock here, because this is update/replace and we're
-        // therefore not doing single document operations. But if we didn't hold
-        // it at the beginning of the method the followers may not be
-        // up-to-date.
-        TRI_ASSERT(_methods.isLocked(&_collection, AccessMode::Type::WRITE));
-
-        // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-        // get here, in the single document case, we do not try to replicate
-        // in case of an error.
-
-        // Now replicate the good operations on all followers:
-        return _methods
-            .replicateOperations(_trxColl, _followers, _options,
-                                 *_replicationData,
-                                 _isUpdate ? TRI_VOC_DOCUMENT_OPERATION_UPDATE
-                                           : TRI_VOC_DOCUMENT_OPERATION_REPLACE)
-            .thenValue([options = this->_options,
-                        errs = std::move(errorCounter),
-                        resultData = std::move(resDocs)](Result&& res) mutable {
-              if (!res.ok()) {
-                return OperationResult{std::move(res), options};
-              }
-              if (options.silent && errs.empty()) {
-                // We needed the results, but do not want to report:
-                resultData->clear();
-              }
-              return OperationResult(std::move(res), std::move(resultData),
-                                     std::move(options), std::move(errs));
-            });
-      }
-
-      // execute a deferred intermediate commit, if required.
-      intermediateCommit =
-          _methods.performIntermediateCommitIfRequired(_collection.id());
-    }
-
-    if (_options.silent && errorCounter.empty()) {
-      // We needed the results, but do not want to report:
-      resDocs->clear();
-    }
-
-    return std::move(intermediateCommit)
-        .thenValue([options = this->_options,
-                    errorCounter = std::move(errorCounter),
-                    resDocs = std::move(resDocs)](auto&& res) mutable {
-          return OperationResult(res, std::move(resDocs), options,
-                                 std::move(errorCounter));
-        });
-  }
-
- private:
-  auto workForOneDocument(VPackSlice newValue, bool isArray) -> Result {
+  auto processValue(VPackSlice newValue, bool isArray) -> Result {
     _newDocumentBuilder->clear();
     _previousDocumentBuilder->clear();
 
@@ -1568,6 +1374,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     return res;
   }
 
+ private:
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser _newDocumentBuilder;
   // builder for a single, old version of document (will be recycled for each
