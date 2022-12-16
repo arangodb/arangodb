@@ -111,13 +111,18 @@ function IResearchFeatureDDLTestSuite() {
     },
 
     testViewIsBuilding: function () {
-      if (isServer) {
-        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
-      } else {
-        for (const server of getCoordinators()) {
-          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+      if (isCluster) {
+        if (isServer) {
+          debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+        } else {
+          for (const server of getCoordinators()) {
+            debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+          }
         }
+      } else {
+        internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
       }
+
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._dropView("TestView");
@@ -135,12 +140,16 @@ function IResearchFeatureDDLTestSuite() {
         "code": 1240,
         "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
       }]);
-      if (isServer) {
-        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
-      } else {
-        for (const server of getCoordinators()) {
-          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+      if (isCluster) {
+        if (isServer) {
+          debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+        } else {
+          for (const server of getCoordinators()) {
+            debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+          }
         }
+      } else {
+        internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
       }
     },
 
@@ -160,8 +169,6 @@ function IResearchFeatureDDLTestSuite() {
           meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
         }
         db._createView("TestView", "arangosearch", meta);
-        // db.TestCollection0.save({name: i.toString()});
-        // db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 2);

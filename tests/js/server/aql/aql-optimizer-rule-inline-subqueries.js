@@ -34,6 +34,7 @@ var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 var ruleName = "inline-subqueries";
+const isEnterprise = require("internal").isEnterprise();
 
 function optimizerRuleTestSuite() {
   // various choices to control the optimizer: 
@@ -247,13 +248,22 @@ function optimizerRuleViewTestSuite(isSearchAlias) {
     setUpAll: function () {
       db._dropView(cn + "View");
       db._drop(cn);
-      db._create(cn);
+      let c = db._create(cn);
+      for (let i = 0; i < 10; ++i) {
+        c.save({ name_1: i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+      }
       if (isSearchAlias) {
         let c = db._collection(cn);
         let i = c.ensureIndex({type: "inverted", includeAllFields: true});
         db._createView(cn + "View", "search-alias", {indexes: [{collection: cn, index: i.name}]});
       } else {
-        db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+        let meta = {};
+        if (isEnterprise) {
+          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          meta = {links: {[cn]: {includeAllFields: true}}};
+        }
+        db._createView(cn + "View", "arangosearch", meta);
       }
     },
 

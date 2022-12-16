@@ -102,11 +102,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
-      for (let i = 0; i < 20; i += 2) {
+      for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-        docId = "TestDoc" + (i + 1).toString();
-        docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
       }
       docsCollection.save(docs);
 
@@ -124,11 +122,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       // testMultipleOparationTransaction (no index revert as PK will be violated)
       let docsNew = [];
-      for (let i = 11; i < 30; i += 2) {
+      for (let i = 11; i < 20; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-        docId = "TestDoc" + (i + 1).toString();
-        docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docsNew.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
       }
       docsNew.push(docs[5]); // this one will cause PK violation 
       docsCollection.save(docsNew);
@@ -159,11 +155,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       // testMultipleOparationTransaction  (arangosearch index revert will be needed)
       let docsNew2 = [];
-      for (let i = 21; i < 40; i += 2) {
+      for (let i = 21; i < 30; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-        docId = "TestDoc" + (i + 1).toString();
-        docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docsNew2.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
       }
       docsNew2.push({ _id: "docs/fail2", _key: "fail2", "indexField": 0 });// this one will cause hash unique violation 
       docsCollection.save(docsNew2);
@@ -234,11 +228,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
-      for (let i = 0; i < 20; i += 2) {
+      for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-        docId = "TestDoc" + (i + 1).toString();
-        docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
@@ -327,11 +319,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         docsView = db._createView(docsViewName, "arangosearch", meta);
       }
       let docs = [];
-      for (let i = 0; i < 20; i += 2) {
+      for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-        docId = "TestDoc" + (i + 1).toString();
-        docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
@@ -420,11 +410,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           }
           let docsView = db._createView(docsViewName, "arangosearch", meta);
           let docs = [];
-          for (let i = 0; i < 20; i += 2) {
+          for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-            docId = "TestDoc" + (i + 1).toString();
-            docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -493,11 +481,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           }
           let docsView = db._createView(docsViewName, "arangosearch", meta);
           let docs = [];
-          for (let i = 0; i < 20; i += 2) {
+          for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-            docId = "TestDoc" + (i + 1).toString();
-            docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -588,11 +574,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         }
         let docsView = db._createView(docsViewName, "arangosearch", meta);
         let docs = [];
-        for (let i = 0; i < 20; i += 2) {
+        for (let i = 0; i < 10; i++) {
           let docId = "TestDoc" + i.toString();
-          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
-          docId = "TestDoc" + (i + 1).toString();
-          docs.push({ _id: "docs/" + docId, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
         }
         docsCollection.save(docs);
         let properties = docsView.properties();

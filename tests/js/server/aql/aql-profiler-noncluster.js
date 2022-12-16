@@ -26,6 +26,7 @@
 
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
+const isEnterprise = require("internal").isEnterprise();
 
 const _ = require('lodash');
  const db = require('@arangodb').db;
@@ -576,11 +577,17 @@ const _ = require('lodash');
          let i = col.ensureIndex({type: "inverted", includeAllFields: true});
          view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
        } else {
-         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+        let meta = {};
+        if (isEnterprise) {
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          meta = {links: {[colName]: {includeAllFields: true}}};
+        }
+         view = db._createView(viewName, "arangosearch", meta);
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
@@ -620,11 +627,17 @@ const _ = require('lodash');
          let i = col.ensureIndex({type: "inverted", includeAllFields: true});
          view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
        } else {
-         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+        let meta = {};
+        if (isEnterprise) {
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          meta = {links: {[colName]: {includeAllFields: true}}};
+        }
+         view = db._createView(viewName, "arangosearch", meta);
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
@@ -665,11 +678,17 @@ const _ = require('lodash');
          let i = col.ensureIndex({type: "inverted", includeAllFields: true});
          view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
        } else {
-         view = db._createView(viewName, "arangosearch", {links: {[colName]: {includeAllFields: true}}});
+        let meta = {};
+        if (isEnterprise) {
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          meta = {links: {[colName]: {includeAllFields: true}}};
+        }
+         view = db._createView(viewName, "arangosearch", meta);
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
