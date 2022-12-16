@@ -57,25 +57,27 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
     if constexpr (std::is_same_v<typename Inspector::Context,
                                  InspectAgencyContext>) {
       // The agency requires the CollectionID
-      auto field =
-          f.field("distributeShardsLike", props.distributeShardsLikeCid)
-              .invariant(UtilityInvariants::isNonEmptyIfPresent);
+      auto field = f.field(StaticStrings::DistributeShardsLike,
+                           props.distributeShardsLikeCid)
+                       .invariant(UtilityInvariants::isNonEmptyIfPresent);
       return field;
     } else {
       // The user gives the CollectionName
-      return f.field("distributeShardsLike", props.distributeShardsLike)
+      return f
+          .field(StaticStrings::DistributeShardsLike,
+                 props.distributeShardsLike)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isNonEmptyIfPresent);
     }
   });
 
   return f.object(props).fields(
-      f.field("numberOfShards", props.numberOfShards)
+      f.field(StaticStrings::NumberOfShards, props.numberOfShards)
           .invariant(UtilityInvariants::isGreaterZeroIfPresent),
       std::move(distShardsLikeField),
-      f.field("shardingStrategy", props.shardingStrategy)
+      f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
           .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
-      f.field("shardKeys", props.shardKeys).fallback(f.keep())
+      f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep())
 
   );
 }
