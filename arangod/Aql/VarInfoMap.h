@@ -23,7 +23,10 @@
 
 #pragma once
 
-#include "Containers/FlatHashMap.h"
+#include <unordered_map>
+// TODO(MBkkt) Try to use FlatHashMap to achieve better
+//  lookup performance on query execution
+// #include "Containers/FlatHashMap.h"
 
 namespace arangodb::aql {
 
@@ -31,6 +34,6 @@ using VariableId = uint32_t;
 
 struct VarInfo;
 
-using VarInfoMap = containers::FlatHashMap<VariableId, VarInfo>;
+using VarInfoMap = std::unordered_map<VariableId, VarInfo>;
 
 }  // namespace arangodb::aql
