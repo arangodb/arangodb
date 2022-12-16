@@ -165,8 +165,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 
   options
       ->addOption("--agency.supervision-delay-failed-follower",
@@ -176,8 +175,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 
   options
       ->addOption("--agency.supervision-failed-leader-adds-follower",
@@ -187,8 +185,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
-      .setIntroducedIn(30907)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30907);
 
   options->addOption(
       "--agency.compaction-step-size",
