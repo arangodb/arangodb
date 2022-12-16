@@ -134,6 +134,8 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
+  [[nodiscard]] virtual bool isBuilding() const { return false; }
+
  protected:
   template<typename Impl, typename... Args>
   explicit LogicalView(Impl const& /*self*/, Args&&... args)
