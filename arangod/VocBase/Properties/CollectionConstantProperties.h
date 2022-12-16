@@ -29,10 +29,7 @@
 #include "VocBase/Properties/UtilityInvariants.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-
 #include <optional>
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -80,28 +77,33 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
   auto shadowCollectionsField = std::invoke([&]() {
     if constexpr (!Inspector::isLoading) {
       // Write out the shadowCollections
-      return f.field("shadowCollections", props.shadowCollections);
+      return f.field(StaticStrings::ShadowCollections, props.shadowCollections);
     } else {
       // Ignore the shadowCollections on input, this is not a user-modifyable
       // value
-      return f.ignoreField("shadowCollections");
+      return f.ignoreField(StaticStrings::ShadowCollections);
     }
   });
 
   return f.object(props)
       .fields(
-          f.field("isSystem", props.isSystem).fallback(f.keep()),
-          f.field("isSmart", props.isSmart).fallback(f.keep()),
-          f.field("isDisjoint", props.isDisjoint).fallback(f.keep()),
-          f.field("cacheEnabled", props.cacheEnabled).fallback(f.keep()),
-          f.field("smartGraphAttribute", props.smartGraphAttribute)
+          f.field(StaticStrings::DataSourceSystem, props.isSystem)
+              .fallback(f.keep()),
+          f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
+          f.field(StaticStrings::IsDisjoint, props.isDisjoint)
+              .fallback(f.keep()),
+          f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
+              .fallback(f.keep()),
+          f.field(StaticStrings::GraphSmartGraphAttribute,
+                  props.smartGraphAttribute)
               .invariant(UtilityInvariants::isNonEmptyIfPresent),
           f.field(StaticStrings::SmartJoinAttribute, props.smartJoinAttribute)
               .invariant(UtilityInvariants::isNonEmptyIfPresent),
-          f.field("type", props.type)
+          f.field(StaticStrings::DataSourceType, props.type)
               .fallback(f.keep())
               .invariant(UtilityInvariants::isValidCollectionType),
-          f.field("keyOptions", props.keyOptions).fallback(f.keep()),
+          f.field(StaticStrings::KeyOptions, props.keyOptions)
+              .fallback(f.keep()),
           /* Backwards compatibility, fields are allowed (MMFILES) but have no
              relevance anymore */
           f.ignoreField("doCompact"), f.ignoreField("isVolatile"),
