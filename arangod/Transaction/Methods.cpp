@@ -2281,6 +2281,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
 
   auto indexesSnapshot = collection->getPhysical()->getIndexesSnapshot();
 
+  bool needToFetchOldDocument =
+      indexesSnapshot.hasSecondaryIndex() || options.returnOld;
+
   // all document data that are going to be replicated, append-only
   transaction::BuilderLeaser replicationData(this);
   // builder for a single, old version of document (will be recycled for each
@@ -2347,7 +2350,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     previousDocumentBuilder->clear();
-    if (indexesSnapshot.hasSecondaryIndex()) {
+    if (needToFetchOldDocument) {
       // need to read the full document, so that we can remove all
       // secondary index entries for it
       res = collection->getPhysical()->lookupDocument(
@@ -2358,6 +2361,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
         return res;
       }
     } else {
+      TRI_ASSERT(!options.returnOld);
       // no need to read the full document, as we don't have secondary
       // index entries to remove. now build an artificial document with
       // just _key for our removal operation
