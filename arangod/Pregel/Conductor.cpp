@@ -64,14 +64,15 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-#define LOG_PREGEL(logId, level) \
-  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
+#define LOG_PREGEL(logId, level)          \
+  LOG_TOPIC(logId, level, Logger::PREGEL) \
+      << "[job " << _executionNumber.value << "] "
 
 const char* arangodb::pregel::ExecutionStateNames[9] = {
     "none", "loading", "running", "storing", "done", "canceled", "fatal error"};
 
 Conductor::Conductor(
-    uint64_t executionNumber, TRI_vocbase_t& vocbase,
+    ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
     std::vector<CollectionID> const& vertexCollections,
     std::vector<CollectionID> const& edgeCollections,
     std::unordered_map<std::string, std::vector<std::string>> const&
@@ -122,10 +123,6 @@ Conductor::Conductor(
     // set to "infinity"
     _maxSuperstep = std::numeric_limits<uint64_t>::max();
   }
-  // configure the async mode as off by default
-  VPackSlice async = _userParams.slice().get("async");
-  _asyncMode =
-      _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(
       _userParams.slice(), Utils::useMemoryMapsKey, _feature.useMemoryMaps());
 
@@ -143,7 +140,7 @@ Conductor::Conductor(
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
-      << ", async: " << (_asyncMode ? "yes" : "no") << ", parallelism: "
+      << ", parallelism: "
       << WorkerConfig::parallelism(_feature, _userParams.slice())
       << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
       << ", store: " << (_storeResults ? "yes" : "no")
@@ -192,7 +189,7 @@ bool Conductor::_startGlobalStep() {
   // send prepare GSS notice
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
@@ -204,64 +201,36 @@ bool Conductor::_startGlobalStep() {
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
 
-  VPackBuilder messagesFromWorkers;
+  // we are explicitly expecting an response containing the aggregated
+  // values as well as the count of active vertices
+  auto prepareRes = _sendToAllDBServers(
+      Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+        _aggregators->aggregateValues(payload);
 
-  {
-    VPackArrayBuilder guard(&messagesFromWorkers);
-    // we are explicitly expecting an response containing the aggregated
-    // values as well as the count of active vertices
-    auto res = _sendToAllDBServers(
-        Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
-          _aggregators->aggregateValues(payload);
+        _statistics.accumulateActiveCounts(payload);
+        _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
+        _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+      });
 
-          messagesFromWorkers.add(
-              payload.get(Utils::workerToMasterMessagesKey));
-          _statistics.accumulateActiveCounts(payload);
-          _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-          _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
-        });
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      updateState(ExecutionState::FATAL_ERROR);
-      LOG_PREGEL("04189", ERR)
-          << "Seems there is at least one worker out of order";
-      return false;
-    }
+  if (prepareRes != TRI_ERROR_NO_ERROR) {
+    updateState(ExecutionState::FATAL_ERROR);
+    LOG_PREGEL("04189", ERR)
+        << "Seems there is at least one worker out of order";
+    return false;
   }
 
   // workers are done if all messages were processed and no active vertices
   // are left to process
-  bool activateAll = false;
   bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
               _statistics.allMessagesProcessed();
   bool proceed = true;
   if (_masterContext &&
       _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
-    _masterContext->_enterNextGSS = false;
     _masterContext->_reports = &_reports;
-    _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
-    }
-    if (proceed) {
-      switch (_masterContext->postGlobalSuperstep(done)) {
-        case MasterContext::ContinuationResult::ACTIVATE_ALL:
-          activateAll = true;
-          [[fallthrough]];
-        case MasterContext::ContinuationResult::CONTINUE:
-          done = false;
-          break;
-        case MasterContext::ContinuationResult::ERROR_ABORT:
-          _inErrorAbort = true;
-          [[fallthrough]];
-        case MasterContext::ContinuationResult::ABORT:
-          proceed = false;
-          break;
-        case MasterContext::ContinuationResult::DONT_CARE:
-          break;
-      }
     }
   }
 
@@ -276,8 +245,7 @@ bool Conductor::_startGlobalStep() {
       _timing.storing.start();
       _finalizeWorkers();
     } else {  // just stop the timer
-      updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
-                                : ExecutionState::DONE);
+      updateState(ExecutionState::DONE);
       _timing.total.finish();
       LOG_PREGEL("9e82c", INFO)
           << "Done, execution took: " << _timing.total.elapsedSeconds().count()
@@ -296,16 +264,14 @@ bool Conductor::_startGlobalStep() {
       updateState(ExecutionState::FATAL_ERROR);
       return false;
     }
-    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
   b.clear();
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.add(Utils::activateAllKey, VPackValue(activateAll));
 
   if (!toWorkerMessages.slice().isNone()) {
     b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
@@ -319,8 +285,8 @@ bool Conductor::_startGlobalStep() {
                                     ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
-  auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto startRes = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  if (startRes != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::FATAL_ERROR);
     LOG_PREGEL("f34bb", ERR)
         << "Conductor could not start GSS " << _globalSuperstep;
@@ -328,7 +294,7 @@ bool Conductor::_startGlobalStep() {
     LOG_PREGEL("411a5", DEBUG)
         << "Conductor started new gss " << _globalSuperstep;
   }
-  return res == TRI_ERROR_NO_ERROR;
+  return startRes == TRI_ERROR_NO_ERROR;
 }
 
 // ============ Conductor callbacks ===============
@@ -388,12 +354,9 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
 }
 
 /// Will optionally send a response, to notify the worker of converging
-/// aggregator
-/// values which can be coninually updated (in async mode)
+/// aggregator values
 VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  // this method can be called multiple times in a superstep depending on
-  // whether we are in the async mode
   uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
   if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
                                    _state == ExecutionState::CANCELED)) {
@@ -407,33 +370,15 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   }
 
   // track message counts to decide when to halt or add global barriers.
-  // In normal mode this will wait for a response from each worker,
-  // in async mode this will wait until all messages were processed
+  // this will wait for a response from each worker
   _statistics.accumulateMessageStats(data);
-  if (_asyncMode == false) {  // in async mode we wait for all responded
-    _ensureUniqueResponse(data);
-    ServerID sender = data.get(Utils::senderKey).copyString();
-    LOG_PREGEL("faeb0", WARN)
-        << fmt::format("finishedWorkerStep, got response from {}.", sender);
-
-    // wait for the last worker to respond
-    if (_respondedServers.size() != _dbServers.size()) {
-      return VPackBuilder();
-    }
-  } else if (_statistics.clientCount() < _dbServers.size() ||  // no messages
-             !_statistics.allMessagesProcessed()) {  // haven't received msgs
-    VPackBuilder response;
-    _aggregators->aggregateValues(data);
-    if (_masterContext) {
-      _masterContext->postLocalSuperstep();
-    }
-    response.openObject();
-    _aggregators->serializeValues(response);
-    if (_masterContext && _masterContext->_enterNextGSS) {
-      response.add(Utils::enterNextGSSKey, VPackValue(true));
-    }
-    response.close();
-    return response;
+  _ensureUniqueResponse(data);
+  LOG_PREGEL("faeb0", WARN)
+      << fmt::format("finishedWorkerStep, got response from {}.",
+                     data.get(Utils::senderKey).copyString());
+  // wait for the last worker to respond
+  if (_respondedServers.size() != _dbServers.size()) {
+    return VPackBuilder();
   }
 
   _timing.gss.back().finish();
@@ -583,12 +528,11 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     VPackBuffer<uint8_t> buffer;
     VPackBuilder b(buffer);
     b.openObject();
-    b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+    b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
     b.add(Utils::algorithmKey, VPackValue(_algorithm->name()));
     b.add(Utils::userParametersKey, _userParams.slice());
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
-    b.add(Utils::asyncModeKey, VPackValue(_asyncMode));
     b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
       for (auto pair : VPackObjectIterator(additional)) {
@@ -708,7 +652,7 @@ ErrorCode Conductor::_finalizeWorkers() {
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
@@ -737,8 +681,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   // do not swap an error state to done
   bool didStore = false;
   if (_state == ExecutionState::STORING) {
-    updateState(_inErrorAbort ? ExecutionState::FATAL_ERROR
-                              : ExecutionState::DONE);
+    updateState(ExecutionState::DONE);
     didStore = true;
     _timing.storing.finish();
     _feature.metrics()->pregelConductorsStoringNumber->fetch_sub(1);
@@ -773,7 +716,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
     if (scheduler) {
-      uint64_t exe = _executionNumber;
+      auto exe = _executionNumber;
       scheduler->queue(RequestLane::CLUSTER_AQL,
                        [this, exe, self = shared_from_this()] {
                          _feature.cleanupConductor(exe);
@@ -814,7 +757,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
 
   VPackBuilder b;
   b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add("withId", VPackValue(withId));
   b.close();
 
@@ -836,7 +779,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   result.openObject();
-  result.add("id", VPackValue(std::to_string(_executionNumber)));
+  result.add("id", VPackValue(std::to_string(_executionNumber.value)));
   result.add("database", VPackValue(_vocbaseGuard.database().name()));
   if (_algorithm != nullptr) {
     result.add("algorithm", VPackValue(_algorithm->name()));

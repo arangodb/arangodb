@@ -27,6 +27,10 @@ operation raises an error, an error object is returned.
 
 You can use this option to save network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete existing entries from in-memory index caches and refill them
+if document removals affect the edge index or cache-enabled persistent indexes.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}

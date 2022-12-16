@@ -168,8 +168,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       auto snapshotCookie = _cookies.lazy_emplace(
           link.first.get(),
           [&](auto const& ctor) { ctor(link.first.get(), impl.snapshot()); });
-      if (impl.exists(snapshotCookie->second, docId, impl.meta().hasNested(),
-                      &tick)) {
+      if (impl.exists(snapshotCookie->second, docId, &tick)) {
         _skipExisted.emplace(link.first->id());
       } else {
         mustReplay = true;

@@ -1069,6 +1069,9 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
+      if (_scheduler->server().isStopping()) {
+        return;
+      }
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 
@@ -1588,14 +1591,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(
   return openExistingDatabase(std::move(info), true, isUpgrade);
 }
 
-// TODO -- should take info
-std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
-    arangodb::CreateDatabaseInfo&& info, ErrorCode& status) {
-  status = TRI_ERROR_NO_ERROR;
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL,
-                                         std::move(info));
-}
-
 Result RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                                 velocypack::Slice slice) {
   return writeDatabaseMarker(id, slice, RocksDBLogValue::DatabaseCreate(id));
@@ -1716,6 +1711,10 @@ void RocksDBEngine::processTreeRebuilds() {
     }
 
     if (candidate.first == 0 || candidate.second.empty()) {
+      return;
+    }
+
+    if (server().isStopping()) {
       return;
     }
 
@@ -2773,8 +2772,7 @@ void RocksDBEngine::addSystemDatabase() {
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown,
     bool isUpgrade) {
-  auto vocbase =
-      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
+  auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
 
   VPackBuilder builder;
   auto scanViews = [&](std::string_view type) {
