@@ -80,7 +80,7 @@ struct CollectionInternalProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionInternalProperties& props) {
   return f.object(props).fields(
-      f.field("id", props.id)
+      f.field(StaticStrings::Id, props.id)
           .transformWith(
               CollectionInternalProperties::Transformers::IdIdentifier{})
           .fallback(f.keep()),
@@ -91,7 +91,8 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmartChild, props.isSmartChild)
           .fallback(f.keep()),
-      f.field("deleted", props.deleted).fallback(f.keep()),
+      f.field(StaticStrings::DataSourceDeleted, props.deleted)
+          .fallback(f.keep()),
       f.field(StaticStrings::InternalValidatorTypes,
               props.internalValidatorType)
           .fallback(f.keep()),
@@ -103,7 +104,7 @@ auto inspect(Inspector& f, CollectionInternalProperties& props) {
       /* Backwards compatibility, field is documented but does not have an
        * effect
        */
-      f.ignoreField("globallyUniqueId"));
+      f.ignoreField(StaticStrings::DataSourceGuid));
 }
 
 }  // namespace arangodb

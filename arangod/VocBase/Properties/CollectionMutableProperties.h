@@ -46,11 +46,12 @@ struct CollectionMutableProperties {
 template<class Inspector>
 auto inspect(Inspector& f, CollectionMutableProperties& props) {
   return f.object(props).fields(
-      f.field("name", props.name)
+      f.field(StaticStrings::DataSourceName, props.name)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isNonEmpty),
-      f.field("schema", props.schema).fallback(f.keep()),
-      f.field("computedValues", props.computedValues).fallback(f.keep()));
+      f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
+      f.field(StaticStrings::ComputedValues, props.computedValues)
+          .fallback(f.keep()));
 }
 
 }  // namespace arangodb
