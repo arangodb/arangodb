@@ -579,7 +579,7 @@ const _ = require('lodash');
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -587,7 +587,7 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
@@ -629,7 +629,7 @@ const _ = require('lodash');
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -637,7 +637,7 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
@@ -680,7 +680,7 @@ const _ = require('lodash');
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -688,7 +688,7 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;

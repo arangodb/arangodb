@@ -412,7 +412,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let docs = [];
           for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -483,7 +483,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let docs = [];
           for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -576,7 +576,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let docs = [];
         for (let i = 0; i < 10; i++) {
           let docId = "TestDoc" + i.toString();
-          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
         }
         docsCollection.save(docs);
         let properties = docsView.properties();

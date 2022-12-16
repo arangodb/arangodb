@@ -75,42 +75,6 @@ function IResearchFeatureDDLTestSuite() {
     },
 
     testViewIsBuilding: function () {
-      internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
-      db._drop("TestCollection0");
-      db._drop("TestCollection1");
-      db._dropView("TestView");
-      db._create("TestCollection0");
-      db._create("TestCollection1");
-
-      db._createView("TestView", "arangosearch", {
-        links: {
-          "TestCollection0": {includeAllFields: true},
-          "TestCollection1": {includeAllFields: true},
-        }
-      });
-      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
-      assertEqual(r.getExtra().warnings, [{
-        "code": 1240,
-        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
-      }]);
-      internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief IResearchFeature tests
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testStressAddRemoveView: function () {
-      db._dropView("TestView");
-      for (let i = 0; i < 100; ++i) {
-        db._createView("TestView", "arangosearch", {});
-        assertTrue(null != db._view("TestView"));
-        db._dropView("TestView");
-        assertTrue(null == db._view("TestView"));
-      }
-    },
-
-    testViewIsBuilding: function () {
       if (isCluster) {
         if (isServer) {
           debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
@@ -150,6 +114,20 @@ function IResearchFeatureDDLTestSuite() {
         }
       } else {
         internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief IResearchFeature tests
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testStressAddRemoveView: function () {
+      db._dropView("TestView");
+      for (let i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {});
+        assertTrue(null != db._view("TestView"));
+        db._dropView("TestView");
+        assertTrue(null == db._view("TestView"));
       }
     },
 
