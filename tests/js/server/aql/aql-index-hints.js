@@ -35,8 +35,9 @@ const errors = internal.errors;
 
 function indexHintSuite() {
   const getIndexNames = function (query) {
-    return AQL_EXPLAIN(query, {}, {optimizer: {rules: ["-all", "+use-indexes"]}})
-      .plan.nodes.filter(node => (node.type === 'IndexNode'))
+    return AQL_EXPLAIN(query)
+      .plan.nodes.filter(node => (node.type === 'IndexNode' ||
+                                  node.type === 'SingleRemoteOperationNode'))
       .map(node => node.indexes.map(index => index.name));
   };
 
