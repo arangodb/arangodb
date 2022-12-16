@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue */
+/* global assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -99,7 +99,6 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRecreateDatabases: function () {
-      assertTrue(false);
       var i;
       for (i = 0; i < 5; ++i) {
         db._useDatabase('UnitTestsRecovery' + i);

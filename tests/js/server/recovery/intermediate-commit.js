@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue */
+/* global assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for intermediate commits
@@ -64,7 +64,7 @@ function recoverySuite () {
 
     testIntermediateCommits: function () {
       var c = db._collection('UnitTestsRecovery');
-      assertTrue(false);
+
       assertEqual(2000, c.count());
     }
 

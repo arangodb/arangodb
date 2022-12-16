@@ -85,7 +85,6 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testIResearchLinkPopulateTransactionAbort: function () {
-      assertTrue(false);
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
