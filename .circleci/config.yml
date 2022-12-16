@@ -10,6 +10,8 @@ jobs:
     steps:
       - restore_cache:
           keys:
+            - gitcache-v1-{{ .Branch }}-{{ .Revision }}
+            - gitcache-v1-{{ .Branch }}
             - gitcache-v1
       - checkout
       - run: git submodule sync
@@ -38,7 +40,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset community-developer --parallel 4 --target arangodbtests
+            cmake --build --preset community-developer --parallel 6 --target arangodbtests
       - run:
           name: CCache Statistics
           command: ccache -s
@@ -52,7 +54,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - build/bin
+            - build/community-developer/bin
             - scripts/
             - js/
             - etc/
