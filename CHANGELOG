@@ -1,4 +1,4 @@
-v3.10.2 (XXXX-XX-XX)
+v3.10.2 (2022-12-16)
 --------------------
 
 * Added experimental per-operation option `refillIndexCaches` to write
