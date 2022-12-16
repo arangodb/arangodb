@@ -57,9 +57,9 @@ function ArangoSearchOutOfSyncSuite () {
       internal.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
-      for (let i = 0; i < 1000; ++i) {
+      for (let i = 0; i < 10; ++i) {
         docs.push({});
-        docs.push({ name_1: i.toString(), "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        docs.push({"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       
       c1.insert(docs);
@@ -115,8 +115,7 @@ function ArangoSearchOutOfSyncSuite () {
       
       // query must not fail
       let result = db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
-      let expected_length = (isEnterprise ? 2000 : 1000); 
-      assertEqual(expected_length, result.length);
+      assertEqual(docs.length, result.length);
       
       // query should produce no results, but at least shouldn't fail
       result = db._query("FOR doc IN UnitTestsCollection2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc").toArray();
@@ -127,11 +126,10 @@ function ArangoSearchOutOfSyncSuite () {
 
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
-      expected_length = (isEnterprise ? 2000 : 1000); 
-      assertEqual(expected_length, result.length);
+      assertEqual(docs.length, result.length);
         
       result = db._query("FOR doc IN UnitTestsView2 OPTIONS {waitForSync: true} RETURN doc").toArray();
-      assertEqual(expected_length, result.length);
+      assertEqual(docs.length, result.length);
       
       // query should produce no results, but at least shouldn't fail
       result = db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc").toArray();
