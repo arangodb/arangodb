@@ -70,9 +70,6 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  // path to logical collection
-  virtual std::string const& path() const = 0;
-
   // creation happens atm in engine->createCollection
   virtual Result updateProperties(velocypack::Slice slice) = 0;
 

@@ -1265,12 +1265,6 @@ uint64_t PhysicalCollectionMock::numberDocuments(
   return _documents.size();
 }
 
-std::string const& PhysicalCollectionMock::path() const {
-  before();
-
-  return physicalPath;
-}
-
 bool PhysicalCollectionMock::addIndex(std::shared_ptr<arangodb::Index> idx) {
   auto const id = idx->id();
   for (auto const& it : _indexes) {
@@ -1713,17 +1707,6 @@ arangodb::Result StorageEngineMock::compactAll(bool changeLevels,
 
 TRI_voc_tick_t StorageEngineMock::currentTick() const {
   return TRI_CurrentTickServer();
-}
-
-std::string StorageEngineMock::dataPath() const {
-  before();
-  return "";  // no valid path filesystem persisted, return empty string
-}
-
-std::string StorageEngineMock::databasePath(
-    TRI_vocbase_t const* vocbase) const {
-  before();
-  return "";  // no valid path filesystem persisted, return empty string
 }
 
 arangodb::Result StorageEngineMock::dropCollection(

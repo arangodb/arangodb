@@ -61,8 +61,6 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
 
-  std::string const& path() const override;
-
   Result updateProperties(velocypack::Slice slice) override;
 
   /// @brief export properties
