@@ -395,7 +395,7 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
     // We have to lookup the vertex
     // 4x vertices, 3x edges
     // TODO: Implement check scanned
-    // EXPECT_EQ(stats.getScannedIndex(), 7U);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 
   {
@@ -447,7 +447,7 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F) {
     // We have to lookup the vertex
     // 4x vertices, 3x edges
     // TODO: Implement check scanned
-    // EXPECT_EQ(stats.getScannedIndex(), 7U);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 
   {
