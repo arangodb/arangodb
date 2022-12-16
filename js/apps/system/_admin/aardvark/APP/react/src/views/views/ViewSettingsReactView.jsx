@@ -2,11 +2,14 @@
 
 import { cloneDeep, isEqual, uniqueId, times } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
+import "./split-pane-styles.css";
+import SplitPane from "react-split-pane";
 import useSWR from 'swr';
 import Textarea from '../../components/pure-css/form/Textarea';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { HashRouter, Route, Switch } from 'react-router-dom';
+import ViewJSONReactView from './ViewJSONReactView';
 import LinkList from './Components/LinkList';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
@@ -169,7 +172,8 @@ const ViewSettingsReactView = ({ name }) => {
   console.log("name in ViewSettingsReactView: ", name);
   const initialState = useRef({
     formState: { name },
-    formCache: { name }
+    formCache: { name },
+    renderKey: uniqueId('force_re-render_')
   });
   const view = useView(name);
   console.log("view in ViewSettingsReactView: ", view);
@@ -192,10 +196,13 @@ const ViewSettingsReactView = ({ name }) => {
       type: 'initFormState',
       formState: view
     });
+    dispatch({
+      type: 'regenRenderKey'
+    });
   }, [view, name]);
 
   useNavbar(name, isAdminUser, changed, 'Settings');
-
+const [linkName, setLinkName] = useState('')
   const updateName = (event) => {
     dispatch({
       type: 'setField',
@@ -218,6 +225,7 @@ const ViewSettingsReactView = ({ name }) => {
     if (!isEqual(data.body.result, views)) {
       setViews(data.body.result);
     }
+    console.log("data in Settings-Tab: ", data);
   }
 
   let jsonFormState = '';
@@ -228,38 +236,124 @@ const ViewSettingsReactView = ({ name }) => {
   }
 
   return <>
-    <div style={{
-      color: '#717d90',
-      fontWeight: 600,
-      fontSize: '12.5pt',
-      padding: 10
-    }}>
-      {name}
-    </div>
-    <div>
-      Links
-    </div>
-    <ViewContext.Provider
-      value={{
-        formState,
-        dispatch,
-        isAdminUser,
-        changed,
-        setChanged
-      }}
-    >
-      <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
-        <Switch>
-          <Route path={'/:link'}>
-            <LinkPropertiesForm name={name}/>
-          </Route>
-          <Route exact path={'/'}>
-            <LinkList name={name}/>
-          </Route>
-        </Switch>
-      </HashRouter>
-    </ViewContext.Provider>
-    <div>
+      <div style={{
+        color: '#717d90',
+        fontWeight: 600,
+        fontSize: '12.5pt',
+        padding: 10
+      }}>
+        {name}
+      </div>
+      <SplitPane
+        defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
+        onChange={(size) => localStorage.setItem('splitPos', size)}>
+        <div style={{ marginLeft: '15px', marginRight: '15px' }}>
+          <AccordionView
+            allowMultipleOpen
+            accordionConfig={[
+              {
+                index: 0,
+                content: (
+                  <div>
+                    <GeneralContent />
+                  </div>
+                ),
+                label: "General",
+                testID: "accordionItem1"
+              },
+              {
+                index: 1,
+                content: (
+                  <div>
+                    <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                        disabled={!isAdminUser}/>
+                  </div>
+                ),
+                label: "Consolidation Policy",
+                testID: "accordionItem2"
+              },
+              {
+                index: 2,
+                content: <div>Accordion Item 3</div>,
+                label: "Primary Sort",
+                testID: "accordionItem3"
+              },
+              {
+                index: 3,
+                content: <div>Accordion Item 4</div>,
+                label: "Stored Values",
+                testID: "accordionItem4"
+              },
+              {
+                index: 4,
+                content: <div>Accordion Item 5</div>,
+                label: "Links",
+                testID: "accordionItem5",
+                defaultActive: true
+              }
+            ]}
+          />
+        </div>
+        <div style={{ marginLeft: '15px', marginRight: '15px' }}>
+          <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+                  aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+            marginLeft: 'auto',
+            marginRight: 'auto'
+          }}>
+            <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
+              <div className={'tab-content'} style={{ display: 'unset' }}>
+                <div className="tab-pane tab-pane-modal active" id="JSON">
+                  <Grid>
+                    {
+                      /*
+                      isAdminUser && views.length
+                        ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+                          <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+                        </Cell>
+                        : null
+                      */
+                    }
+
+                    <Cell size={'1'}>
+                      {
+                        isAdminUser
+                          ? <JsonForm formState={formState} dispatch={dispatch}
+                          renderKey={state.renderKey}/>
+                          : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                                      rows={jsonRows}
+                                      style={{ cursor: 'text' }}/>
+                      }
+                    </Cell>
+                  </Grid>
+                </div>
+              </div>
+              {
+                isAdminUser && changed
+                  ? <div className="tab-content" id="Save" style={{
+                    marginTop: 25,
+                    minHeight: 'unset',
+                    borderTop: '1px solid rgba(64, 74, 83, 0.2)',
+                    paddingLeft: 10
+                  }}>
+                    <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+                  </div>
+                  : null
+              }
+            </div>
+          </div>
+        </div>
+      </SplitPane>
+    
+    {
+      /*
+      <LinkList name={linkName} />
+      <LinkPropertiesForm name={linkName}/>
+      */
+    }
+
+    {
+      /*
+      <div>
       JSON-Editor
     </div>
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
@@ -284,7 +378,7 @@ const ViewSettingsReactView = ({ name }) => {
               {
                 isAdminUser
                   ? <JsonForm formState={formState} dispatch={dispatch}
-                              renderKey={state.renderKey}/>
+                  renderKey={state.renderKey}/>
                   : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
                               rows={jsonRows}
                               style={{ cursor: 'text' }}/>
@@ -306,52 +400,11 @@ const ViewSettingsReactView = ({ name }) => {
           : null
       }
     </div>
-  </div>;
-    <AccordionView
-        allowMultipleOpen
-        accordionConfig={[
-          {
-            index: 0,
-            content: (
-              <div>
-                <GeneralContent />
-              </div>
-            ),
-            label: "General",
-            testID: "accordionItem1"
-          },
-          {
-            index: 1,
-            content: (
-              <div>
-                <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                    disabled={!isAdminUser}/>
-              </div>
-            ),
-            label: "Consolidation Policy",
-            testID: "accordionItem2"
-          },
-          {
-            index: 2,
-            content: <div>Accordion Item 3</div>,
-            label: "Primary Sort",
-            testID: "accordionItem3"
-          },
-          {
-            index: 3,
-            content: <div>Accordion Item 4</div>,
-            label: "Stored Values",
-            testID: "accordionItem4"
-          },
-          {
-            index: 4,
-            content: <div>Accordion Item 5</div>,
-            label: "Links",
-            testID: "accordionItem5",
-            defaultActive: true
-          }
-        ]}
-      />
+  </div>
+      */
+    }
+    {
+    /*
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
                 aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
       width: 1024,
@@ -539,6 +592,8 @@ const ViewSettingsReactView = ({ name }) => {
         </div>
       </div>
     </div>
+    */
+    }
   </>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;
