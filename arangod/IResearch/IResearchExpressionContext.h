@@ -95,13 +95,11 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
-
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
                         aql::AqlFunctionsInternalCache& cache,
                         aql::Variable const& outVar,
-                        VarInfoMap const& varInfoMap, int nodeDepth)
+                        aql::VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
@@ -120,13 +118,13 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                  bool& mustDestroy) const override;
 
-  inline aql::Variable const& outVariable() const noexcept { return _outVar; }
-  inline VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
+  inline auto const& outVariable() const noexcept { return _outVar; }
+  inline auto const& varInfoMap() const noexcept { return _varInfoMap; }
   inline int nodeDepth() const noexcept { return _nodeDepth; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
   aql::Variable const& _outVar;
-  VarInfoMap const& _varInfoMap;
+  aql::VarInfoMap const& _varInfoMap;
   int const _nodeDepth;
 
   // variables only temporarily valid during execution

@@ -190,8 +190,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility,
-    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+    std::pair<bool, bool> volatility, aql::VarInfoMap const& varInfoMap,
+    int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
@@ -273,8 +273,7 @@ aql::AstNode const& IResearchViewExecutorInfos::filterCondition()
   return _filterCondition;
 }
 
-const IResearchViewExecutorInfos::VarInfoMap&
-IResearchViewExecutorInfos::varInfoMap() const noexcept {
+aql::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
   return _varInfoMap;
 }
 

@@ -24,21 +24,21 @@
 
 #pragma once
 
-#include "IResearchLink.h"
-
+#include "IResearch/IResearchLink.h"
 #include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
-}
+struct IndexTypeFactory;
 
-namespace arangodb {
 namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
                        uint64_t objectId);

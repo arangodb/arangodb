@@ -32,13 +32,14 @@
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
-}
+struct IndexTypeFactory;
 
-namespace arangodb {
 namespace iresearch {
 
-class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
+class IResearchLinkMock final : public Index, public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
 

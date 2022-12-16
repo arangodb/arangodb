@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
@@ -51,8 +51,11 @@ class IResearchRocksDBInvertedIndexFactory : public IndexTypeFactory {
   bool attributeOrderMatters() const override { return false; }
 };
 
-class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
-                                            public RocksDBIndex {
+class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
+                                            public IResearchInvertedIndex {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchRocksDBInvertedIndex(IndexId id, LogicalCollection& collection,
                                 uint64_t objectId, std::string const& name);
@@ -116,7 +119,7 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
-        monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
+        monitor, &collection(), trx, node, reference, opts,
         mutableConditionIdx);
   }
 
@@ -133,8 +136,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override {
     return IResearchInvertedIndex::supportsFilterCondition(
-        trx, IResearchDataStore::id(), RocksDBIndex::fields(), allIndexes, node,
-        reference, itemsInIndex);
+        trx, id(), RocksDBIndex::fields(), allIndexes, node, reference,
+        itemsInIndex);
   }
 
   aql::AstNode* specializeCondition(

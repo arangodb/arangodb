@@ -25,16 +25,15 @@
 
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearchLink.h"
+#include "IResearch/IResearchLink.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
+struct IndexTypeFactory;
 
-}  // namespace arangodb
-namespace arangodb::iresearch {
+namespace iresearch {
 
 class IResearchViewCoordinator;
 
@@ -42,14 +41,17 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
+class IResearchLinkCoordinator final : public ClusterIndex,
                                        public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
+  IResearchLinkCoordinator(IndexId id, LogicalCollection& collection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
@@ -59,7 +61,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
 
   bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
 
-  arangodb::Result drop() final { return IResearchLink::drop(); }
+  Result drop() final { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const final {
     return IResearchLink::hasSelectivityEstimate();
@@ -74,7 +76,7 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
 
   void load() final { IResearchLink::load(); }
 
-  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const final {
+  bool matchesDefinition(velocypack::Slice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
   }
 
@@ -88,8 +90,8 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
   void toVelocyPack(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::Index::Serialize>::type flags) const final;
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);
@@ -132,4 +134,5 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };
 
-}  // namespace arangodb::iresearch
+}  // namespace iresearch
+}  // namespace arangodb

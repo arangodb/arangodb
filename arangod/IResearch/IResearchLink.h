@@ -59,22 +59,6 @@ class IResearchLink : public IResearchDataStore {
 
   ~IResearchLink() override;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this IResearch Link reference the supplied view
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(LogicalView const& view) const noexcept;
-  bool operator!=(LogicalView const& view) const noexcept {
-    return !(*this == view);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link match the meta definition
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchLinkMeta const& meta) const noexcept;
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
-    return !(*this == meta);
-  }
-
   static bool canBeDropped() {
     // valid for a link to be dropped from an ArangoSearch view
     return true;
@@ -178,7 +162,7 @@ class IResearchLink : public IResearchDataStore {
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLink(IndexId iid, LogicalCollection& collection);
+  using IResearchDataStore::IResearchDataStore;
 
   void insertMetrics() final;
   void removeMetrics() final;

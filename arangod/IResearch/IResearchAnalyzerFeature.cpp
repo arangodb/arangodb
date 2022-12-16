@@ -714,15 +714,12 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
       for (auto const& index : collection->getIndexes()) {
         if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
                        Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
-          continue;  // not an IResearchLink
+          continue;  // not an IResearchDataStore
         }
 
-        // TODO FIXME find a better way to retrieve an iResearch Link
-        // cannot use static_cast/reinterpret_cast since Index is not related to
-        // IResearchLink
-        auto link =
-            std::dynamic_pointer_cast<arangodb::iresearch::IResearchDataStore>(
-                index);
+        // TODO(MBkkt) find a better way to retrieve an IResearchDataStore
+        //  cannot use downCast since Index is not related to IResearchDataStore
+        auto link = std::dynamic_pointer_cast<IResearchDataStore>(index);
 
         if (!link) {
           continue;

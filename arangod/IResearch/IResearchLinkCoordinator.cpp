@@ -22,7 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -46,9 +46,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
+namespace arangodb::iresearch {
 namespace {
-
-using namespace arangodb;
 
 ClusterEngineType getEngineType(ArangodServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -71,16 +70,13 @@ ClusterEngineType getEngineType(ArangodServer& server) {
 
 }  // namespace
 
-namespace arangodb::iresearch {
-
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     IndexId id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(
-          id, collection, ::getEngineType(collection.vocbase().server()),
-          arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-          IResearchLinkHelper::emptyIndexSlice(0)
-              .slice()),  // we don`t have objectId`s on coordinator
-      IResearchLink(id, collection) {
+    : ClusterIndex{id, collection, getEngineType(collection.vocbase().server()),
+                   arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
+                   // we don`t have objectId`s on coordinator
+                   IResearchLinkHelper::emptyIndexSlice(0).slice()},
+      IResearchLink{collection.vocbase().server()} {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -100,7 +96,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
 }
 
 IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
-  auto& cmf = Index::collection()
+  auto& cmf = collection()
                   .vocbase()
                   .server()
                   .getFeature<metrics::ClusterMetricsFeature>();
@@ -126,11 +122,11 @@ void IResearchLinkCoordinator::toVelocyPack(
     velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION(
+        Result(TRI_ERROR_BAD_PARAMETER,
+               absl::StrCat("failed to generate link definition for "
+                            "arangosearch view Cluster link '",
+                            id().id(), "'")));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -139,10 +135,9 @@ void IResearchLinkCoordinator::toVelocyPack(
 
   if (!properties(builder, forPersistence).ok()) {
     THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+        TRI_ERROR_INTERNAL, absl::StrCat("failed to generate link definition "
+                                         "for arangosearch view Cluster link '",
+                                         id().id(), "'")));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

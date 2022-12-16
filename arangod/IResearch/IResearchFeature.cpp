@@ -369,7 +369,7 @@ bool upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-          auto indexPtr = dynamic_cast<IResearchLink*>(index.get());
+          auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
           if (indexPtr) {
             LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
                 << "Checking collection name '" << clusterCollectionName

@@ -125,7 +125,7 @@ class IResearchDataStore {
     irs::directory_reader _reader;
   };
 
-  IResearchDataStore(IndexId iid, LogicalCollection& collection);
+  explicit IResearchDataStore(ArangodServer& server);
 
   virtual ~IResearchDataStore();
 
@@ -143,17 +143,9 @@ class IResearchDataStore {
   Snapshot snapshot() const;
   static irs::directory_reader reader(LinkLock const& linkLock);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the identifier for this link/index
-  //////////////////////////////////////////////////////////////////////////////
-  IndexId id() const noexcept { return _id; }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the associated collection
-  /// @note arangodb::Index override
-  //////////////////////////////////////////////////////////////////////////////
-  LogicalCollection& collection() const noexcept { return _collection; }
-  StorageEngine* engine() const noexcept { return _engine; }
+  [[nodiscard]] virtual Index& index() noexcept = 0;
+  [[nodiscard]] virtual Index const& index() const noexcept = 0;
+  [[nodiscard]] StorageEngine* engine() const noexcept { return _engine; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
 
@@ -450,9 +442,6 @@ class IResearchDataStore {
   // 'this' for the lifetime of the link (for use with asynchronous calls)
   AsyncLinkPtr _asyncSelf;
 
-  // the linked collection
-  LogicalCollection& _collection;
-
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
@@ -461,7 +450,6 @@ class IResearchDataStore {
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;
   bool _hasNestedFields{false};
 
   // protected by _commitMutex

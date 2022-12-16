@@ -47,6 +47,7 @@
 #include "index/index_writer.hpp"
 #include <index/heap_iterator.hpp>
 #include "store/directory.hpp"
+
 #include <filesystem>
 
 #include <absl/strings/str_cat.h>
@@ -55,9 +56,8 @@
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 
+namespace arangodb::iresearch {
 namespace {
-using namespace arangodb;
-using namespace arangodb::iresearch;
 
 struct EmptyAttributeProvider final : irs::attribute_provider {
   irs::attribute* get_mutable(irs::type_info::type_id) override {
@@ -128,7 +128,7 @@ bool supportsFilterNode(
 
   auto rv = FilterFactory::filter(nullptr, filterCtx, *node);
 
-  LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
+  LOG_TOPIC_IF("ee0f7", TRACE, iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
       << "' Skipping index " << id.id();
   return rv.ok();
@@ -317,7 +317,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
  protected:
   void resetFilter(aql::AstNode const* condition) {
     if (!_trx->state()) {
-      LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a9ccd", WARN, iresearch::TOPIC)
           << "failed to get transaction state while creating inverted index "
              "snapshot";
 
@@ -516,7 +516,7 @@ class IResearchInvertedIndexIterator final
         auto& segmentReader = (*_reader)[_readerOffset++];
         // always init all iterators as we do not know if it will be
         // skip-next-covering mixture of the calls
-        _pkDocItr = ::pkColumn(segmentReader);
+        _pkDocItr = pkColumn(segmentReader);
         if (_pkDocItr) {
           _pkValue = irs::get<irs::payload>(*_pkDocItr);
           if (ADB_UNLIKELY(!_pkValue)) {
@@ -673,7 +673,7 @@ class IResearchInvertedIndexMergeIterator final
       projections.reset(segment);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
-      pkDocItr = ::pkColumn(segment);
+      pkDocItr = pkColumn(segment);
       TRI_ASSERT(pkDocItr);
       if (ADB_LIKELY(pkDocItr)) {
         pkValue = irs::get<irs::payload>(*pkDocItr);
@@ -736,13 +736,6 @@ class IResearchInvertedIndexMergeIterator final
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
-
-IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
-                                               LogicalCollection& collection)
-    : IResearchDataStore(iid, collection) {}
-
 // Analyzer names storing
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and
 //  definitions are stored.
@@ -787,8 +780,8 @@ Result IResearchInvertedIndex::init(
     VPackSlice definition, bool& pathExists,
     IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
   std::string errField;
-  if (!_meta.init(_collection.vocbase().server(), definition, true, errField,
-                  _collection.vocbase().name())) {
+  if (!_meta.init(index().collection().vocbase().server(), definition, true,
+                  errField, index().collection().vocbase().name())) {
     LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
         << (errField.empty()
                 ? (std::string(
@@ -799,12 +792,15 @@ Result IResearchInvertedIndex::init(
                    errField + "': " + definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
-  auto& cf = _collection.vocbase().server().getFeature<ClusterFeature>();
+  auto& cf =
+      index().collection().vocbase().server().getFeature<ClusterFeature>();
   if (cf.isEnabled() && ServerState::instance()->isDBServer()) {
     bool const wide =
-        _collection.id() == _collection.planId() && _collection.isAStub();
-    clusterCollectionName(_collection, wide ? nullptr : &cf.clusterInfo(),
-                          id().id(), false /*TODO meta.willIndexIdAttribute()*/,
+        index().collection().id() == index().collection().planId() &&
+        index().collection().isAStub();
+    clusterCollectionName(index().collection(),
+                          wide ? nullptr : &cf.clusterInfo(), index().id().id(),
+                          false /*TODO meta.willIndexIdAttribute()*/,
                           _meta._collectionName);
   }
   if (ServerState::instance()->isSingleServer() ||
@@ -812,8 +808,8 @@ Result IResearchInvertedIndex::init(
     TRI_ASSERT(_meta._sort.sortCompression());
     irs::index_reader_options readerOptions;
 #ifdef USE_ENTERPRISE
-    setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
-                                _meta);
+    setupReaderEntepriseOptions(readerOptions,
+                                index().collection().vocbase().server(), _meta);
 #endif
     auto r = initDataStore(pathExists, initCallback,
                            static_cast<uint32_t>(_meta._version), isSorted(),
@@ -929,7 +925,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
   if (failQueriesOnOutOfSync() && isOutOfSync()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-        absl::StrCat("link ", std::to_string(id().id()),
+        absl::StrCat("link ", std::to_string(index().id().id()),
                      " has been marked as failed and needs to be recreated"));
   }
 
@@ -1055,7 +1051,7 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
 }
 
 void IResearchInvertedIndex::invalidateQueryCache(TRI_vocbase_t* vocbase) {
-  aql::QueryCache::instance()->invalidate(vocbase, collection().guid());
+  aql::QueryCache::instance()->invalidate(vocbase, index().collection().guid());
 }
 
 aql::AstNode* IResearchInvertedIndex::specializeCondition(
@@ -1065,14 +1061,14 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
 
   AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
-  if (!supportsFilterNode(trx, id(), indexedFields, node, reference,
+  if (!supportsFilterNode(trx, index().id(), indexedFields, node, reference,
                           _meta._fields, &analyzerProvider)) {
     TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
     std::vector<aql::AstNode const*> children;
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(trx, id(), indexedFields, part, reference,
+      if (supportsFilterNode(trx, index().id(), indexedFields, part, reference,
                              _meta._fields, &analyzerProvider)) {
         children.push_back(part);
       }
@@ -1095,7 +1091,7 @@ void IResearchInvertedClusterIndex::toVelocyPack(
       Index::hasFlag(flags, Index::Serialize::Internals);
   bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
-  auto& vocbase = IResearchDataStore::collection().vocbase();
+  auto& vocbase = collection().vocbase();
   IResearchInvertedIndex::toVelocyPack(vocbase.server(), &vocbase, builder,
                                        forPersistence || forInventory);
   // can't use Index::toVelocyPack as it will try to output 'fields'
@@ -1103,7 +1099,7 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   builder.add(arangodb::StaticStrings::IndexId,
               velocypack::Value(std::to_string(_iid.id())));
   builder.add(arangodb::StaticStrings::IndexType,
-              ::velocypack::Value(oldtypeName(type())));
+              velocypack::Value(oldtypeName(type())));
   builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
@@ -1140,18 +1136,18 @@ bool IResearchInvertedClusterIndex::matchesDefinition(
     }
     // Short circuit. If id is correct the index is identical.
     std::string_view idRef = value.stringView();
-    return idRef == std::to_string(IResearchDataStore::id().id());
+    return idRef == std::to_string(id().id());
   }
-  return IResearchInvertedIndex::matchesDefinition(
-      other, IResearchDataStore::_collection.vocbase());
+  return IResearchInvertedIndex::matchesDefinition(other,
+                                                   collection().vocbase());
 }
 
 std::string IResearchInvertedClusterIndex::getCollectionName() const {
-  return Index::_collection.name();
+  return collection().name();
 }
 
 IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
-  auto& cmf = Index::collection()
+  auto& cmf = collection()
                   .vocbase()
                   .server()
                   .getFeature<metrics::ClusterMetricsFeature>();
@@ -1173,5 +1169,12 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
   };
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+IResearchInvertedClusterIndex::IResearchInvertedClusterIndex(
+    IndexId iid, uint64_t, LogicalCollection& collection,
+    const std::string& name)
+    : Index{iid, collection, name, {}, false, true},
+      IResearchInvertedIndex{collection.vocbase().server()} {
+  initClusterMetrics();
+}
+
+}  // namespace arangodb::iresearch

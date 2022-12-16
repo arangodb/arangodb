@@ -27,9 +27,10 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexFactory.h"
-#include "IResearchCommon.h"
-#include "IResearchDataStore.h"
-#include "IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
+
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/score.hpp"
@@ -37,19 +38,18 @@
 #include "search/cost.hpp"
 #include <search/proxy_filter.hpp>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
+  using IResearchDataStore::IResearchDataStore;
 
   void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
                     velocypack::Builder& builder,
                     bool writeAnalyzerDefinition) const;
 
-  std::string const& getDbName() const noexcept {
-    return _collection.vocbase().name();
+  decltype(auto) getDbName() const noexcept {
+    return index().collection().vocbase().name();
   }
 
   bool isSorted() const { return !_meta._sort.empty(); }
@@ -105,8 +105,11 @@ class IResearchInvertedIndex : public IResearchDataStore {
   VPackComparer<IResearchInvertedIndexSort> _comparer;
 };
 
-class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
-                                            public Index {
+class IResearchInvertedClusterIndex final : public Index,
+                                            public IResearchInvertedIndex {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   Index::IndexType type() const final {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
@@ -164,7 +167,7 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
     TRI_ASSERT(readOwnWrites ==
                ReadOwnWrites::no);  // FIXME: check - should we ever care?
     return IResearchInvertedIndex::iteratorForCondition(
-        monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
+        monitor, &collection(), trx, node, reference, opts,
         mutableConditionIdx);
   }
 
@@ -181,8 +184,7 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const final {
     return IResearchInvertedIndex::supportsFilterCondition(
-        trx, IResearchDataStore::id(), Index::fields(), allIndexes, node,
-        reference, itemsInIndex);
+        trx, id(), Index::fields(), allIndexes, node, reference, itemsInIndex);
   }
 
   aql::AstNode* specializeCondition(
@@ -193,11 +195,7 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
 
   IResearchInvertedClusterIndex(IndexId iid, uint64_t /*objectId*/,
                                 LogicalCollection& collection,
-                                std::string const& name)
-      : IResearchInvertedIndex(iid, collection),
-        Index(iid, collection, name, {}, false, true) {
-    initClusterMetrics();
-  }
+                                std::string const& name);
 
   void initFields() {
     TRI_ASSERT(_fields.empty());
@@ -206,5 +204,4 @@ class IResearchInvertedClusterIndex final : public IResearchInvertedIndex,
   }
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
