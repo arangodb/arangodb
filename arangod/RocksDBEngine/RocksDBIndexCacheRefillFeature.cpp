@@ -189,7 +189,7 @@ takes to complete.)");
   options
       ->addOption(
           "--rocksdb.auto-refill-background-threads",
-          "Number of background threads for in-memory index cache refill "
+          "The number of background threads for in-memory index cache refill "
           "operations.",
           new options::SizeTParameter(&_numBackgroundThreads),
           options::makeFlags(options::Flags::DefaultNoComponents,
