@@ -414,9 +414,7 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30905)
-      .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30905);
 
   options
       ->addOption("--query.log-memory-usage-threshold",
@@ -428,9 +426,7 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30905)
-      .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30905);
 
   options
       ->addOption("--query.log-failed", "log failed AQL queries",
@@ -440,9 +436,7 @@ void QueryRegistryFeature::collectOptions(
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30905)
-      .setIntroducedIn(31002)
-      .setIntroducedIn(31100);
+      .setIntroducedIn(30905);
 }
 
 void QueryRegistryFeature::validateOptions(

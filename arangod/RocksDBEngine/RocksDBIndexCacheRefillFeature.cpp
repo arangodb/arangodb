@@ -97,8 +97,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Hidden, options::Flags::Experimental))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 
   options
       ->addOption("--rocksdb.auto-refill-index-caches-on-modify",
@@ -110,8 +109,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Hidden, options::Flags::Experimental))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 
   options
       ->addOption(
@@ -123,8 +121,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                              options::Flags::OnDBServer,
                              options::Flags::OnSingle, options::Flags::Hidden,
                              options::Flags::Experimental))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 
   options
       ->addOption("--rocksdb.max-concurrent-index-fill-tasks",
@@ -135,8 +132,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::DefaultNoComponents,
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Hidden, options::Flags::Experimental))
-      .setIntroducedIn(30906)
-      .setIntroducedIn(31002);
+      .setIntroducedIn(30906);
 }
 
 void RocksDBIndexCacheRefillFeature::validateOptions(
