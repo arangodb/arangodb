@@ -1591,11 +1591,8 @@ void RocksDBOptionFeature::start() {
       << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow
-<<<<<<< HEAD
       << ", block_cache_type: " << _blockCacheType
-=======
       << ", use_jemalloc_allocator: " << _useJemallocAllocator
->>>>>>> 3a5197ed04591da706251b8b1667720f7d086ef0
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_estimated_entry_charge: "
@@ -1824,32 +1821,11 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
-<<<<<<< HEAD
-    if (_blockCacheType == ::kBlockCacheTypeLRU) {
-      result.block_cache = rocksdb::NewLRUCache(
-          _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-          /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
-    } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
-      TRI_ASSERT(_blockCacheEstimatedEntryCharge > 0);
-
-      rocksdb::HyperClockCacheOptions cco(
-          _blockCacheSize, _blockCacheEstimatedEntryCharge,
-          static_cast<int>(_blockCacheShardBits), _enforceBlockCacheSizeLimit);
-      result.block_cache = cco.MakeSharedCache();
-    } else {
-      TRI_ASSERT(false);
-    }
-=======
-    rocksdb::LRUCacheOptions opts;
-
-    opts.capacity = _blockCacheSize;
-    opts.num_shard_bits = static_cast<int>(_blockCacheShardBits);
-    opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
+    std::shared_ptr<rocksdb::MemoryAllocator> allocator;
 
 #ifdef ARANGODB_HAVE_JEMALLOC
     if (_useJemallocAllocator) {
       rocksdb::JemallocAllocatorOptions jopts;
-      std::shared_ptr<rocksdb::MemoryAllocator> allocator;
       rocksdb::Status s =
           rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
       if (!s.ok()) {
@@ -1857,12 +1833,31 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
             << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
         FATAL_ERROR_EXIT();
       }
-      opts.memory_allocator = allocator;
     }
 #endif
 
-    result.block_cache = rocksdb::NewLRUCache(opts);
->>>>>>> 3a5197ed04591da706251b8b1667720f7d086ef0
+    if (_blockCacheType == ::kBlockCacheTypeLRU) {
+      rocksdb::LRUCacheOptions opts;
+
+      opts.capacity = _blockCacheSize;
+      opts.num_shard_bits = static_cast<int>(_blockCacheShardBits);
+      opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
+      opts.memory_allocator = allocator;
+
+      result.block_cache = rocksdb::NewLRUCache(opts);
+    } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
+      TRI_ASSERT(_blockCacheEstimatedEntryCharge > 0);
+
+      rocksdb::HyperClockCacheOptions opts(
+          _blockCacheSize, _blockCacheEstimatedEntryCharge,
+          static_cast<int>(_blockCacheShardBits), _enforceBlockCacheSizeLimit,
+          allocator);
+
+      result.block_cache = opts.MakeSharedCache();
+    } else {
+      TRI_ASSERT(false);
+    }
+
   } else {
     result.no_block_cache = true;
   }
