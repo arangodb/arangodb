@@ -205,13 +205,24 @@ bool LastUpdateHandler::handleLastUpdatePersistance(bool isCoordinator,
       if (!serverId.empty() &&
           prepareTimestamp != 0) {  // must send as the former server might have
                                     // gone down before sending telemetrics
+
+        TRI_IF_FAILURE("DecreaseCoordinatorRecoveryTime") {
+          _prepareDeadline = 2;
+        }
+
+        std::string currCoordinatorId = ServerState::instance()->getId();
+
         bool isSameCoordinator =
-            serverId.compare(ServerState::instance()->getId()) == 0 ? true
-                                                                    : false;
+            serverId.compare(currCoordinatorId) == 0 ? true : false;
         if (isSameCoordinator ||
             rightNowSecs - prepareTimestamp >= _prepareDeadline) {
           sendTelemetrics();
+
           doLastUpdate(revValue, rightNowSecs);
+          LOG_TOPIC("efd5f", TRACE, Logger::STATISTICS)
+              << "Coordinator " << currCoordinatorId << " sent telemetrics for "
+              << serverId << " at timestamp " << rightNowSecs
+              << " and updated doc";
         }
         return false;
       }
@@ -301,6 +312,7 @@ void TelemetricsFeature::start() {
                              !isCoordinator)) {
     return;
   }
+
   // server id prepare with timestamp, then remove it
   // last update after sending telemetrics
   _telemetricsEnqueue = [this, isCoordinator](bool cancelled) {
@@ -314,12 +326,17 @@ void TelemetricsFeature::start() {
       if (_updateHandler->handleLastUpdatePersistance(isCoordinator, oldRev,
                                                       lastUpdate, _interval)) {
         TRI_ASSERT(_updateHandler != nullptr);
+
         // has reached the interval to send telemetrics again
         TRI_IF_FAILURE("DisableTelemetricsSenderCoordinator") { return; }
         _updateHandler->sendTelemetrics();
         if (isCoordinator) {
           _updateHandler->doLastUpdate(oldRev, lastUpdate);
         }
+        LOG_TOPIC("435d9", TRACE, Logger::STATISTICS)
+            << "Server" << ServerState::instance()->getId()
+            << "sent telemetrics at timestamp " << lastUpdate
+            << " and updated doc";
       }
     } catch (...) {
       // it throws if can't add the collection, which would mean

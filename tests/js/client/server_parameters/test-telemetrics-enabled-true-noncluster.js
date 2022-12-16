@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNull, assertTrue */
+/* global getOptions, fail, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -51,26 +51,45 @@ function TelemetricsTestSuite() {
 
       const colName = "_statistics";
 
-      let prepareCoordId = null;
       let lastUpdateDocBefore = null;
       let lastUpdateDocAfter = "";
       let telemetricsDoc = null;
-      do {
-        wait(1);
-        telemetricsDoc = db[colName].document("telemetrics");
-        if (telemetricsDoc !== 'undefined') {
-          assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
-          lastUpdateDocBefore = telemetricsDoc["lastUpdate"];
-        }
-      } while (lastUpdateDocBefore === null);
 
-      do {
-        wait(1);
-        telemetricsDoc = db[colName].document("telemetrics");
-        assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
-        lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
-      } while (lastUpdateDocAfter === lastUpdateDocBefore) ;
-      assertEqual(lastUpdateDocAfter - lastUpdateDocBefore, intervalValue);
+      let numAttempts = 10;
+      while (numAttempts > 0) {
+        numAttempts--;
+        let startTime = Date.now();
+        do {
+          telemetricsDoc = db[colName].document("telemetrics");
+          const timeElapsed = (Date.now() - startTime) / 1000;
+          assertTrue(timeElapsed < 60, "Unable to get document update within time limit");
+          if (telemetricsDoc !== 'undefined') {
+            assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
+            lastUpdateDocBefore = telemetricsDoc["lastUpdate"];
+          } else {
+            wait(1);
+          }
+        } while (lastUpdateDocBefore === null);
+        startTime = Date.now();
+        do {
+          wait(1);
+          const timeElapsed = (Date.now() - startTime) / 1000;
+          assertTrue(timeElapsed < 60, "Unable to get document update past interval within time limit");
+          telemetricsDoc = db[colName].document("telemetrics");
+          assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
+          lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
+        } while (lastUpdateDocAfter === lastUpdateDocBefore) ; //until we have an update
+        // we must know that we were able to read the document exactly after the next update to it was made, otherwise, we might have passed it and would be reading from another update that was made afterwards, meaning the test wouldn't be useful
+        if (lastUpdateDocAfter - lastUpdateDocBefore !== intervalValue) {
+          if (numAttempts === 0) {
+            fail("Unable to read document right at the time the next update was made after 10 attempts, making the test invaluable");
+          } else {
+            continue;
+          }
+        } else {
+          break; // means we were able to read the document exactly after the next update and tested what was necessary
+        }
+      }
     },
   };
 }

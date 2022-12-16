@@ -70,7 +70,10 @@ struct LastUpdateHandler {
     _sender = std::move(sender);
   }
   ITelemetricsSender* getSender() { return _sender.get(); }
-  ArangodServer& server() { return _server; }
+  ArangodServer& server() const { return _server; }
+  void setPrepareDeadline(std::uint64_t newPrepareDeadline) {
+    _prepareDeadline = newPrepareDeadline;
+  }
 
  private:
   std::unique_ptr<ITelemetricsSender> _sender;
