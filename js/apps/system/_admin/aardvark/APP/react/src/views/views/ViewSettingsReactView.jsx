@@ -244,6 +244,13 @@ const [linkName, setLinkName] = useState('')
       }}>
         {name}
       </div>
+      {
+        isAdminUser && views.length
+          ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+            <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+          </Cell>
+          : null
+      }
       <SplitPane
         defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
         onChange={(size) => localStorage.setItem('splitPos', size)}>
