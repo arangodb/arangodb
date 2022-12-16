@@ -99,7 +99,7 @@ void RocksDBIndexCacheRefillFeature::collectOptions(
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020)
+      .setIntroducedIn(31002)
       .setLongDescription(R"(Enabling this option may cause additional CPU and
 I/O load. You can limit how many index filling operations can execute
 concurrently with the `--rocksdb.max-concurrent-index-fill-tasks` startup
@@ -116,7 +116,7 @@ option.)");
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020)
+      .setIntroducedIn(31002)
       .setLongDescription(R"(When documents are added, modified, or removed,
 these changes are tracked and a background thread tries to update the edge
 cache accordingly if the feature is enabled, by adding new, updating existing,
@@ -145,7 +145,7 @@ the cache.)");
                              options::Flags::OnSingle, options::Flags::Uncommon,
                              options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020)
+      .setIntroducedIn(31002)
       .setLongDescription(R"(This option restricts how many cache entries
 the background thread for (re-)filling the in-memory edge cache can queue at
 most. This limits the memory usage for the case of the background thread being
@@ -162,7 +162,7 @@ slower than other operations that invalidate cache entries of edge indexes.)");
                       options::Flags::OnDBServer, options::Flags::OnSingle,
                       options::Flags::Uncommon, options::Flags::Experimental))
       .setIntroducedIn(30906)
-      .setIntroducedIn(31020)
+      .setIntroducedIn(31002)
       .setLongDescription(R"(The lower this number, the lower the impact of the
 edge cache filling, but the longer it takes to complete.)");
 }
