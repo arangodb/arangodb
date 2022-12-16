@@ -11,4 +11,4 @@ target_include_directories(pregel_rest_options PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod)
 target_link_libraries(pregel_rest_options velocypack_utils fmt arango gtest_main)
 
-# add_subdirectory(Actor)
+add_subdirectory(Actor)
