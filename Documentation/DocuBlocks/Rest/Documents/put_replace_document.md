@@ -42,6 +42,10 @@ operation raises an error, an error object is returned.
 
 You can use this option to save network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to update an existing entry in the in-memory edge cache if an
+edge document is replaced.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}

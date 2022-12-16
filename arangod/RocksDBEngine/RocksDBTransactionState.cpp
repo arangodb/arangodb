@@ -206,6 +206,17 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     TRI_ASSERT(manager != nullptr);
     manager->endTransaction(_cacheTx);
     _cacheTx = nullptr;
+
+    for (auto& trxColl : _collections) {
+      auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
+      try {
+        rcoll->handleIndexCacheRefills();
+      } catch (...) {
+        // we have already successfully committed the transaction.
+        // caches refilling should be neutral, i.e. no exceptions should
+        // escape from here
+      }
+    }
   }
 }
 
@@ -325,41 +336,48 @@ RocksDBTransactionState::trackedOperations(DataSourceId cid) {
 
 void RocksDBTransactionState::trackInsert(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
-  } else {
-    TRI_ASSERT(false);
   }
 }
 
 void RocksDBTransactionState::trackRemove(DataSourceId cid, RevisionId rid) {
   auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);
-  } else {
-    TRI_ASSERT(false);
   }
 }
 
 void RocksDBTransactionState::trackIndexInsert(DataSourceId cid, IndexId idxId,
                                                uint64_t hash) {
   auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexInsert(idxId,
                                                                       hash);
-  } else {
-    TRI_ASSERT(false);
   }
 }
 
 void RocksDBTransactionState::trackIndexRemove(DataSourceId cid, IndexId idxId,
                                                uint64_t hash) {
   auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
   if (col != nullptr) {
     static_cast<RocksDBTransactionCollection*>(col)->trackIndexRemove(idxId,
                                                                       hash);
-  } else {
-    TRI_ASSERT(false);
+  }
+}
+
+void RocksDBTransactionState::trackIndexCacheRefill(DataSourceId cid,
+                                                    IndexId idxId,
+                                                    std::string_view key) {
+  auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackIndexCacheRefill(
+        idxId, key);
   }
 }
 
