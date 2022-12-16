@@ -1,6 +1,10 @@
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a remedy
+  for OOM kills during restarts.
+
 * Added a configuration option (for the agency):
     --agency.supervision-failed-leader-adds-follower
   with a default of `true` (behavior as before). If set to `false`, a
