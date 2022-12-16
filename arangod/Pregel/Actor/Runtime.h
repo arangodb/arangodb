@@ -61,8 +61,7 @@ struct Runtime {
     auto initialPayload =
         std::make_unique<MessagePayload<typename ActorConfig::Message>>(
             initialMessage);
-    (*dispatcher)(
-        std::make_unique<Message>(address, address, std::move(initialPayload)));
+    (*dispatcher)(address, address, std::move(initialPayload));
 
     return newId;
   }

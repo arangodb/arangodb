@@ -32,19 +32,19 @@ struct Dispatcher {
   Dispatcher(ServerID myServerID, ActorMap& actors)
       : myServerID(myServerID), actors(actors) {}
 
-  auto operator()(std::unique_ptr<Message> msg) -> void {
-    if (msg->receiver.server == myServerID) {
-      if (not actors.contains(msg->receiver.id)) {
-        // TODO
-      }
-      auto& actor = actors[msg->receiver.id];
-      actor->process(msg->sender, std::move(msg->payload));
-    } else {
-      // TODO  sending_mechanism.send(std::move(msg));
+  auto operator()(ActorPID sender, ActorPID receiver, std::unique_ptr<MessagePayloadBase> payload) -> void {
+    if (not actors.contains(receiver.id)) {
       std::abort();
+      // TODO
     }
+    auto& actor = actors[receiver.id];
+    actor->process(sender, std::move(payload));
   }
-
+  auto operator()(ActorPID sender, ActorPID receiver, std::unique_ptr<VPackBuilder> msg) -> void {
+    // TODO  sending_mechanism.send(std::move(msg));
+    std::cerr << "cannot send pointer over network to " << receiver.server << ":" << receiver.id.id << std::endl;
+    std::abort();
+  }
   ServerID myServerID;
   ActorMap& actors;
 };

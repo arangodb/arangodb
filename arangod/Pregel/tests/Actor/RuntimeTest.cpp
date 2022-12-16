@@ -92,11 +92,10 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage0{});
 
-  (*runtime.dispatcher)(std::make_unique<Message>(
-      ActorPID{.id = actor, .server = "Foo"},
-      ActorPID{.id = actor, .server = "PRMR-1234"},
-      std::make_unique<MessagePayload<TrivialActor::Message>>(
-          TrivialMessage1("baz"))));
+  (*runtime.dispatcher)(ActorPID{.id = actor, .server = "Foo"},
+                        ActorPID{.id = actor, .server = "PRMR-1234"},
+                        std::make_unique<MessagePayload<TrivialActor::Message>>(
+                            TrivialMessage1("baz")));
 
   auto state = runtime.getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));

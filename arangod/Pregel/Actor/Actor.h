@@ -102,7 +102,8 @@ struct Actor : ActorBase {
     auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
-      std::cout << "actor process found a nullptr payload" << std::endl;
+      std::cout << "actor " << pid.server << ":" << pid.id.id << " received a message it could not handle from " <<
+        sender.server << ":" << sender.id.id << std::endl;
       std::abort();
     }
     inbox.push(std::make_unique<InternalMessage>(

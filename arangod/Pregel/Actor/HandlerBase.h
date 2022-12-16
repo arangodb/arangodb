@@ -41,9 +41,17 @@ struct HandlerBase {
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage message) -> void {
-    (*messageDispatcher)(std::make_unique<Message>(
-        self, receiver,
-        std::make_unique<MessagePayload<ActorMessage>>(std::move(message))));
+    if (receiver.server == self.server) {
+      (*messageDispatcher)(
+          self, receiver,
+          std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
+    } else {
+//       auto payload = serialize(message);
+
+      std::cerr << "cannot send message between " << self.server << " and "
+                << receiver.server << std::endl;
+      std::abort();
+    }
   }
 
   ActorPID self;
