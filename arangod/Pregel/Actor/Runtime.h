@@ -95,6 +95,20 @@ struct Runtime {
     return std::nullopt;
   }
 
+  auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
+    if(receiver.server != myServerID) {
+      std::abort();
+    }
+
+    auto a = actors.find(receiver.id);
+    if(a == std::end(actors)) {
+      std::abort();
+    }
+
+    auto& [_, actor] = *a;
+    actor->process(sender, msg);
+  }
+
   ServerID myServerID;
   std::string const runtimeID;
 

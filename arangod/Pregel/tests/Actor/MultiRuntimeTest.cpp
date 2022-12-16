@@ -43,11 +43,8 @@ struct MockScheduler {
 TEST(MultiRuntimeTest, ping_pong_game) {
   std::unordered_map<std::string, std::unique_ptr<Runtime<MockScheduler>>> runtimes;
   auto const& msgHub = [&runtimes](ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
-    std::cerr << "processing message from: " << sender.server << ":" << sender.id.id << " to " << receiver.server << ":" << receiver.id.id << " " << msg.toJson() << std::endl;
     if(runtimes.contains(receiver.server)) {
-      std::cerr << "before";
-      runtimes[receiver.server]->actors.at(receiver.id)->process(sender, msg);
-      std::cerr << "after";
+      runtimes[receiver.server]->process(sender, receiver, msg);
     } else {
       std::cerr << "cannot find server " << receiver.server << std::endl;
       std::abort();
