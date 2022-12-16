@@ -34,7 +34,8 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset community-developer -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
+            # the -DUSE_LIBUNWIND=1 is a hack that I would like to avoid in the future
+            cmake --preset community-developer -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DUSE_LIBUNWIND=1
       - run:
           name: Build
           command: |
