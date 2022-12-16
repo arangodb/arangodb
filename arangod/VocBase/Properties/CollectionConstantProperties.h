@@ -67,7 +67,6 @@ struct CollectionConstantProperties {
   }
 
   bool operator==(CollectionConstantProperties const&) const;
-
 };
 
 template<class Inspector>
