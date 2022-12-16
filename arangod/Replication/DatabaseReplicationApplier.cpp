@@ -68,7 +68,7 @@ DatabaseReplicationApplier::~DatabaseReplicationApplier() {
 
 /// @brief execute the check condition
 bool DatabaseReplicationApplier::applies() const {
-  return (_vocbase.type() == TRI_VOCBASE_TYPE_NORMAL);
+  return !ServerState::instance()->isCoordinator();
 }
 
 /// @brief configure the replication applier
@@ -108,7 +108,7 @@ void DatabaseReplicationApplier::forget() {
     TRI_vocbase_t& vocbase) {
   std::unique_ptr<DatabaseReplicationApplier> applier;
 
-  if (vocbase.type() == TRI_VOCBASE_TYPE_NORMAL) {
+  if (!ServerState::instance()->isCoordinator()) {
     applier = std::make_unique<DatabaseReplicationApplier>(
         DatabaseReplicationApplier::loadConfiguration(vocbase), vocbase);
     applier->loadState();

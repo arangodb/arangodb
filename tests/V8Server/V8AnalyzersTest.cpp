@@ -220,8 +220,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   auto* userManager = authFeature.userManager();
 
   arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -543,8 +542,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1046,8 +1044,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        systemDBInfo(server.server()));
+  TRI_vocbase_t vocbase(systemDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1502,10 +1499,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                              testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1908,10 +1903,8 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
-  TRI_vocbase_t systemDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                systemDBInfo(server.server()));
-  TRI_vocbase_t testDBVocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                              testDBInfo(server.server()));
+  TRI_vocbase_t systemDBVocbase(systemDBInfo(server.server()));
+  TRI_vocbase_t testDBVocbase(testDBInfo(server.server()));
   v8::Isolate::CreateParams isolateParams;
   ArrayBufferAllocator arrayBufferAllocator;
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;

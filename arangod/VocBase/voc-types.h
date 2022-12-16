@@ -58,12 +58,6 @@ enum TRI_col_type_e : std::uint32_t {
   TRI_COL_TYPE_EDGE = 3
 };
 
-/// @brief database type
-enum TRI_vocbase_type_e {
-  TRI_VOCBASE_TYPE_NORMAL = 0,
-  TRI_VOCBASE_TYPE_COORDINATOR = 1
-};
-
 /// @brief status of a collection
 /// note: the following status existed before, but are now obosolete:
 /// - TRI_VOC_COL_STATUS_NEW_BORN = 1
