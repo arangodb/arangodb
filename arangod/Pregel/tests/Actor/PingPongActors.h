@@ -30,6 +30,7 @@
 
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Inspection/InspectorBase.h"
 
 namespace arangodb::pregel::actor::test {
 
@@ -37,12 +38,31 @@ namespace pong_actor {
 struct Actor;
 
 struct Start {};
+template<typename Inspector>
+auto inspect(Inspector& f, Start& x) {
+  return f.object(x).fields();
+}
 
 struct Ping {
   std::string text;
 };
 
-using PingMessage = std::variant<Start, Ping>;
+template<typename Inspector>
+auto inspect(Inspector& f, Ping& x) {
+  return f.object(x).fields(f.field("text", x.text));
+}
+
+struct PingMessage : std::variant<Start, Ping> {
+  using std::variant<Start, Ping>::variant;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, PingMessage& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<Start>("start"),
+      arangodb::inspection::type<Ping>("ping"));
+}
+
 }  // namespace pong_actor
 
 namespace ping_actor {
@@ -56,10 +76,28 @@ struct State {
 struct Start {
   ActorPID pongActor;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Start& x) {
+  return f.object(x).fields(f.field("pongActor", x.pongActor));
+}
 
 struct Pong {
   std::string text;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Pong& x) {
+  return f.object(x).fields(f.field("text", x.text));
+}
+
+struct PongMessage : std::variant<Start, Pong> {
+  using std::variant<Start, Pong>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PongMessage& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<Start>("start"),
+      arangodb::inspection::type<Pong>("pong"));
+}
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
@@ -79,7 +117,7 @@ struct Handler : HandlerBase<State> {
 struct Actor {
   using State = State;
   using Handler = Handler;
-  using Message = std::variant<Start, Pong>;
+  using Message = PongMessage;
   static constexpr auto typeName() -> std::string_view { return "PongActor"; };
 };
 

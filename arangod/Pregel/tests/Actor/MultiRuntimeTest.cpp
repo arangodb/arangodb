@@ -31,6 +31,8 @@
 #include "TrivialActor.h"
 #include "PingPongActors.h"
 
+using namespace arangodb;
+
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
 
@@ -39,33 +41,42 @@ struct MockScheduler {
 };
 
 TEST(MultiRuntimeTest, ping_pong_game) {
-
+  std::unordered_map<std::string, std::unique_ptr<Runtime<MockScheduler>>> runtimes;
+  auto const& msgHub = [&runtimes](ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
+    std::cerr << "processing message from: " << sender.server << ":" << sender.id.id << " to " << receiver.server << ":" << receiver.id.id << " " << msg.toJson() << std::endl;
+    if(runtimes.contains(receiver.server)) {
+      std::cerr << "before";
+      runtimes[receiver.server]->actors.at(receiver.id)->process(sender, msg);
+      std::cerr << "after";
+    } else {
+      std::cerr << "cannot find server " << receiver.server << std::endl;
+      std::abort();
+    }
+  };
 
   auto scheduler = std::make_shared<MockScheduler>();
 
   // Runtime 1
   auto serverID1 = ServerID{"A"};
-  Runtime runtime1(serverID1, "RuntimeTest-1", scheduler);
+  runtimes.emplace(serverID1, std::make_unique<Runtime<MockScheduler>>(serverID1, "RuntimeTest-1", scheduler, msgHub));
 
-  auto pong_actor = runtime1.spawn<pong_actor::Actor>(pong_actor::State{},
+  auto pong_actor = runtimes[serverID1]->spawn<pong_actor::Actor>(pong_actor::State{},
                                                      pong_actor::Start{});
-
-
 
   // Runtime 2
   auto serverID2 = ServerID{"B"};
-  Runtime runtime2(serverID2, "RuntimeTest-2", scheduler);
-  auto ping_actor = runtime2.spawn<ping_actor::Actor>(
+  runtimes.emplace(serverID2, std::make_unique<Runtime<MockScheduler>>(serverID2, "RuntimeTest-2", scheduler, msgHub));
+  auto ping_actor = runtimes[serverID2]->spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =
                             ActorPID{.id = pong_actor, .server = serverID1}});
 
 
   auto ping_actor_state =
-      runtime2.getActorStateByID<ping_actor::Actor>(ping_actor);
+      runtimes[serverID2]->getActorStateByID<ping_actor::Actor>(ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::State{.called = 2, .message = "hello world"}));
   auto pong_actor_state =
-      runtime1.getActorStateByID<pong_actor::Actor>(pong_actor);
+      runtimes[serverID1]->getActorStateByID<pong_actor::Actor>(pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 1}));
 }

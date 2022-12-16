@@ -26,12 +26,18 @@
 #include <cstddef>
 #include <string>
 
+#include <Inspection/InspectorBase.h>
+
 namespace arangodb::pregel::actor {
 struct ActorID {
   size_t id;
 
   auto operator<=>(ActorID const& other) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ActorID& x) {
+  return f.object(x).fields(f.field("id", x.id));
+}
 
 }  // namespace arangodb::pregel::actor
 
@@ -53,5 +59,9 @@ struct ActorPID {
   ActorID id;
   ServerID server;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ActorPID& x) {
+  return f.object(x).fields(f.field("id", x.id), f.field("server", x.server));
+}
 
 }  // namespace arangodb::pregel::actor

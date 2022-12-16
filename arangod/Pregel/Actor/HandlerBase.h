@@ -24,6 +24,10 @@
 
 #pragma once
 
+
+#include "Inspection/VPackWithErrorT.h"
+
+
 #include "Actor/Dispatcher.h"
 #include "Message.h"
 #include "ActorPID.h"
@@ -46,11 +50,13 @@ struct HandlerBase {
           self, receiver,
           std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
     } else {
-//       auto payload = serialize(message);
-
-      std::cerr << "cannot send message between " << self.server << " and "
-                << receiver.server << std::endl;
-      std::abort();
+      auto payload = inspection::serializeWithErrorT(message);
+      if(payload.ok()) {
+        (*messageDispatcher)(self, receiver, payload.get());
+      } else {
+        std::cerr << "HandlerBase error serializing message" << std::endl;
+        std::abort();
+      }
     }
   }
 

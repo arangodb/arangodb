@@ -37,12 +37,14 @@ namespace arangodb::pregel::actor {
 template<CallableOnFunction Scheduler>
 struct Runtime {
   Runtime() = delete;
+  Runtime(Runtime const&) = delete;
+  Runtime(Runtime&&) = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
-          std::shared_ptr<Scheduler> scheduler)
+          std::shared_ptr<Scheduler> scheduler, std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
-        dispatcher(std::make_shared<Dispatcher>(myServerID, actors)) {}
+        dispatcher(std::make_shared<Dispatcher>(myServerID, actors, sendingMechanism)) {}
 
   template<Actorable ActorConfig>
   auto spawn(typename ActorConfig::State initialState,

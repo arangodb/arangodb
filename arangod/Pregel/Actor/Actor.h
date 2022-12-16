@@ -112,6 +112,15 @@ struct Actor : ActorBase {
     delete m;
     kick();
   }
+  void process(ActorPID sender, velocypack::SharedSlice msg) override {
+    auto m = inspection::deserializeWithErrorT<typename Config::Message>(msg);
+
+    if(m.ok()) {
+      process(sender, std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
+    } else {
+      std::abort();
+    }
+  }
 
   void kick() {
     // Make sure that *someone* works here

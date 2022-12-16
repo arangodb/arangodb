@@ -25,12 +25,13 @@
 #pragma once
 
 #include "Actor/ActorBase.h"
+#include "velocypack/SharedSlice.h"
 
 namespace arangodb::pregel::actor {
 
 struct Dispatcher {
-  Dispatcher(ServerID myServerID, ActorMap& actors)
-      : myServerID(myServerID), actors(actors) {}
+  Dispatcher(ServerID myServerID, ActorMap& actors, std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism)
+      : myServerID(myServerID), actors(actors), sendingMechanism(sendingMechanism) {}
 
   auto operator()(ActorPID sender, ActorPID receiver, std::unique_ptr<MessagePayloadBase> payload) -> void {
     if (not actors.contains(receiver.id)) {
@@ -40,13 +41,17 @@ struct Dispatcher {
     auto& actor = actors[receiver.id];
     actor->process(sender, std::move(payload));
   }
-  auto operator()(ActorPID sender, ActorPID receiver, std::unique_ptr<VPackBuilder> msg) -> void {
-    // TODO  sending_mechanism.send(std::move(msg));
-    std::cerr << "cannot send pointer over network to " << receiver.server << ":" << receiver.id.id << std::endl;
-    std::abort();
+  auto operator()(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
+    if(receiver.server == myServerID) {
+      std::cerr << "called dispatcher recursively" << std::endl;
+      std::abort();
+    } else {
+      sendingMechanism(sender, receiver, msg);
+    }
   }
   ServerID myServerID;
   ActorMap& actors;
+  std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism;
 };
 
 }  // namespace arangodb::pregel::actor

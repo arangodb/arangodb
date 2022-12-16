@@ -30,6 +30,8 @@
 
 #include "Actor/Actor.h"
 
+#include "Inspection/InspectorBase.h"
+
 namespace arangodb::pregel::actor::test {
 
 struct TrivialState {
@@ -39,11 +41,30 @@ struct TrivialState {
 };
 
 struct TrivialMessage0 {};
+template<typename Inspector>
+auto inspect(Inspector& f, TrivialMessage0& x) {
+  return f.object(x).fields();
+}
 
 struct TrivialMessage1 {
+  TrivialMessage1() = default;
   TrivialMessage1(std::string value) : store(std::move(value)) {}
   std::string store;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, TrivialMessage1& x) {
+  return f.object(x).fields(f.field("store", x.store));
+}
+
+struct TrivialMessage : std::variant<TrivialMessage0, TrivialMessage1> {
+  using std::variant<TrivialMessage0, TrivialMessage1>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, TrivialMessage& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<TrivialMessage0>("msg0"),
+      arangodb::inspection::type<TrivialMessage1>("msg1"));
+}
 
 struct TrivialHandler : HandlerBase<TrivialState> {
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
@@ -60,7 +81,7 @@ struct TrivialHandler : HandlerBase<TrivialState> {
 
 struct TrivialActor {
   using State = TrivialState;
-  using Message = std::variant<TrivialMessage0, TrivialMessage1>;
+  using Message = TrivialMessage;
   using Handler = TrivialHandler;
   static constexpr auto typeName() -> std::string_view {
     return "TrivialActor";
