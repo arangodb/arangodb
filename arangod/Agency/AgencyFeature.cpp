@@ -69,7 +69,8 @@ AgencyFeature::AgencyFeature(Server& server)
       _supervisionGracePeriod(10.0),
       _supervisionOkThreshold(5.0),
       _supervisionDelayAddFollower(0),
-      _supervisionDelayFailedFollower(0) {
+      _supervisionDelayFailedFollower(0),
+      _failedLeaderAddsFollower(true) {
   setOptional(true);
   startsAfter<application_features::FoxxFeaturePhase>();
 }
@@ -187,6 +188,17 @@ regular cluster, which needs to handle only a part of the overall load.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnAgent))
       .setIntroducedIn(30906)
+      .setIntroducedIn(31002);
+
+  options
+      ->addOption("--agency.supervision-failed-leader-adds-follower",
+                  "Flag indicating whether or not the FailedLeader job adds a "
+                  "new follower.",
+                  new BooleanParameter(&_failedLeaderAddsFollower),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent))
+      .setIntroducedIn(30907)
       .setIntroducedIn(31002);
 
   options->addOption("--agency.compaction-step-size",
@@ -395,7 +407,8 @@ void AgencyFeature::prepare() {
                           _supervisionFrequency, _compactionStepSize,
                           _compactionKeepSize, _supervisionGracePeriod,
                           _supervisionOkThreshold, _supervisionDelayAddFollower,
-                          _supervisionDelayFailedFollower, _maxAppendSize));
+                          _supervisionDelayFailedFollower,
+                          _failedLeaderAddsFollower, _maxAppendSize));
 }
 
 void AgencyFeature::start() {

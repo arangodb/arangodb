@@ -1,8 +1,8 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertTrue, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for dump/reload
+// / @brief tests for crash handler
 // /
 // / @file
 // /
@@ -28,25 +28,16 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
-
-  db._drop('UnitTestsRecovery1');
-  let c = db._create('UnitTestsRecovery1');
-
-  let docs = [];
-  for (let i = 0; i < 1000; ++i) {
-    docs.push({ value: i });
-  }
-  c.insert(docs);
-
-  internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
-  c.ensureIndex({ type: "skiplist", fields: ["value"] });
+  // make log level more verbose, as by default we hide most messages from
+  // the test output
+  require("internal").logLevel("crash=info");
+  // produces a segfault in the server
+  internal.debugTerminate('CRASH-HANDLER-TEST-SEGFAULT');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -58,19 +49,43 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+    testLogOutput: function () {
+      // check if crash handler is turned off
+      let envVariable = internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"];
+      if (typeof envVariable === 'string') {
+        envVariable = envVariable.trim().toLowerCase();
+        if (!(envVariable === 'true' || envVariable === 'yes' || envVariable === 'on' || envVariable === 'y')) {
+          return;
+        }
+      }
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
+      let fs = require("fs");
+      let crashFile = internal.env["crash-log"];
 
-    testBrokenIndex: function () {
-      const c = db._collection('UnitTestsRecovery1');
-      const indexes = c.getIndexes();
-      assertEqual(indexes.length, 1);
-      assertEqual(indexes[0].type, 'primary');
-      assertEqual(indexes[0].id, 'UnitTestsRecovery1/0');
+      assertTrue(fs.isFile(crashFile), crashFile);
+
+      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
+        return line.match(/\{crash\}/);
+      });
+      assertTrue(lines.length > 0);
+
+      // check message
+      let line = lines.shift();
+      assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
+      
+      // check debug symbols
+      // it is a bit compiler- and optimization-level-dependent what
+      // symbols we get
+      let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
+      let matches = 0;
+      lines.forEach(function(line) {
+        expected.forEach(function(ex) {
+          if (line.match(/ frame /) && line.match(ex)) {
+            ++matches;
+          }
+        });
+      });
+      assertTrue(matches > 0, lines);
     }
 
   };

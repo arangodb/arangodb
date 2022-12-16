@@ -696,7 +696,7 @@ function endpointToURL (endpoint) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -735,12 +735,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     };
   }
 
-  let instanceInfo = {
-    rootDir: rootDir,
-    pid: 0,
-    exitStatus: {},
-    getStructure: function() { return {}; }
-  };
+  if (!instanceInfo.hasOwnProperty('rootDir')) {
+    instanceInfo = {
+      rootDir: rootDir,
+      pid: 0,
+      exitStatus: {},
+      getStructure: function() { return {}; }
+    };
+  }
 
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {

@@ -292,12 +292,15 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
 
   TRI_ASSERT((hasExpansion() && unique()) ? !mthd->isIndexingDisabled() : true);
 
-  Result res = remove(trx, mthd, oldDocumentId, oldDoc);
+  Result res = remove(trx, mthd, oldDocumentId, oldDoc, options);
   if (!res.ok()) {
     return res;
   }
   return insert(trx, mthd, newDocumentId, newDoc, options, performChecks);
 }
+
+void RocksDBIndex::refillCache(transaction::Methods& trx,
+                               std::vector<std::string> const& /*keys*/) {}
 
 /// @brief return the memory usage of the index
 size_t RocksDBIndex::memory() const {
@@ -320,6 +323,8 @@ void RocksDBIndex::compact() {
     _engine.compactRange(getBounds());
   }
 }
+
+bool RocksDBIndex::canWarmup() const noexcept { return hasCache(); }
 
 std::shared_ptr<cache::Cache> RocksDBIndex::makeCache() const {
   TRI_ASSERT(_cacheManager != nullptr);
