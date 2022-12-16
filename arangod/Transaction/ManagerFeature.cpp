@@ -81,20 +81,18 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("transaction", "transactions");
 
   options
-      ->addOption(
-          "--transaction.streaming-lock-timeout",
-          "lock timeout in seconds "
-          "in case of parallel access to the same streaming transaction",
-          new DoubleParameter(&_streamingLockTimeout),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+      ->addOption("--transaction.streaming-lock-timeout",
+                  "The lock timeout (in seconds) "
+                  "in case of parallel access to the same Stream Transaction.",
+                  new DoubleParameter(&_streamingLockTimeout),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30605)
       .setIntroducedIn(30701);
 
   options
       ->addOption("--transaction.streaming-idle-timeout",
-                  "idle timeout for streaming "
-                  "transactions in seconds",
+                  "The idle timeout (in seconds) for Stream Transactions.",
                   new DoubleParameter(&_streamingIdleTimeout, /*base*/ 1.0,
                                       /*minValue*/ 0.0,
                                       /*maxValue*/ maxStreamingIdleTimeout),
@@ -102,7 +100,11 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(Stream Transactions automatically expire after
+this period when no further operations are posted into them. Posting an
+operation into a non-expired Stream Transaction resets the transaction's
+timeout to the configured idle timeout.)");
 }
 
 void ManagerFeature::prepare() {
@@ -172,7 +174,7 @@ void ManagerFeature::queueGarbageCollection() {
   // all threads executing this might be blocking, waiting for a lock to be
   // released.
   auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
+      "transactions-gc", RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);

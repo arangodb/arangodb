@@ -41,7 +41,6 @@ class Cache;
 }
 
 class LogicalCollection;
-class ManagedDocumentResult;
 class Result;
 class LocalDocumentId;
 
@@ -50,8 +49,6 @@ class ClusterCollection final : public PhysicalCollection {
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
                              velocypack::Slice info);
-  ClusterCollection(LogicalCollection& collection,
-                    PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
 
@@ -68,18 +65,12 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result updateProperties(velocypack::Slice slice) override;
 
-  virtual PhysicalCollection* clone(
-      LogicalCollection& collection) const override;
-
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
   futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options) override;
-
-  /// @brief closes an open collection
-  ErrorCode close() override;
 
   RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
@@ -88,13 +79,9 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(velocypack::Slice indexesSlice) override;
-
   std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
                                      bool& created) override;
 
-  /// @brief Drop an index with the given iid.
-  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
@@ -117,6 +104,10 @@ class ClusterCollection final : public PhysicalCollection {
                    std::pair<LocalDocumentId, RevisionId>& result,
                    ReadOwnWrites) const override;
 
+  Result lookupKeyForUpdate(
+      transaction::Methods* trx, std::string_view key,
+      std::pair<LocalDocumentId, RevisionId>& result) const override;
+
   Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
@@ -124,10 +115,6 @@ class ClusterCollection final : public PhysicalCollection {
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites) const override;
 
   Result lookupDocument(transaction::Methods& trx, LocalDocumentId token,
                         velocypack::Builder& builder, bool readCache,
@@ -160,8 +147,6 @@ class ClusterCollection final : public PhysicalCollection {
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
  private:
-  void addIndex(std::shared_ptr<Index> idx);
-
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;

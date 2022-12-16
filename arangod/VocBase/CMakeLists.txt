@@ -4,7 +4,6 @@ add_library(arango_vocbase STATIC
   LogicalCollection.cpp
   LogicalDataSource.cpp
   LogicalView.cpp
-  ManagedDocumentResult.cpp
   Validators.cpp
   VocbaseInfo.cpp
   ticks.cpp
@@ -29,9 +28,6 @@ target_link_libraries(arango_vocbase
 target_include_directories(arango_vocbase PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_vocbase PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_subdirectory(Identifiers)
 add_subdirectory(Methods)

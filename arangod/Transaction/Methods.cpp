@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
 ///
 /// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -32,6 +34,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Basics/Exceptions.h"
+#include "Basics/DownCast.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
@@ -39,6 +42,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -59,6 +63,7 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -74,8 +79,9 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/ComputedValues.h"
+#include "VocBase/Identifiers/RevisionId.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
 #include <sstream>
@@ -88,6 +94,14 @@ template<typename T>
 using Future = futures::Future<T>;
 
 namespace {
+
+template<Methods::CallbacksTag tag>
+struct ToType;
+
+template<>
+struct ToType<Methods::CallbacksTag::StatusChange> {
+  using Type = Methods::StatusChangeCallback;
+};
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
@@ -263,22 +277,18 @@ getDataSourceRegistrationCallbacks() {
 
 /// @return the status change callbacks stored in state
 ///         or nullptr if none and !create
-std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>*
-getStatusChangeCallbacks(arangodb::TransactionState& state,
-                         bool create = false) {
-  struct CookieType : public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>
-        _callbacks;
+template<Methods::CallbacksTag tag>
+auto* getCallbacks(TransactionState& state, bool create = false) {
+  using Callback = typename ToType<tag>::Type;
+  struct CookieType : public TransactionState::Cookie {
+    std::vector<Callback const*> _callbacks;
   };
 
-  static const int key = 0;  // arbitrary location in memory, common for all
+  // arbitrary location in memory, common for all
+  static const auto key = tag;
 
-// TODO FIXME find a better way to look up a ViewState
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
-#else
-  auto* cookie = static_cast<CookieType*>(state.cookie(&key));
-#endif
+  // TODO FIXME find a better way to look up a ViewState
+  auto* cookie = basics::downCast<CookieType>(state.cookie(&key));
 
   if (!cookie && create) {
     auto ptr = std::make_unique<CookieType>();
@@ -296,8 +306,8 @@ getStatusChangeCallbacks(arangodb::TransactionState& state,
 arangodb::Result applyDataSourceRegistrationCallbacks(
     LogicalDataSource& dataSource, arangodb::transaction::Methods& trx) {
   for (auto& callback : getDataSourceRegistrationCallbacks()) {
-    TRI_ASSERT(
-        callback);  // addDataSourceRegistrationCallback(...) ensures valid
+    // addDataSourceRegistrationCallback(...) ensures valid
+    TRI_ASSERT(callback);
 
     try {
       auto res = callback(dataSource, trx);
@@ -316,22 +326,16 @@ arangodb::Result applyDataSourceRegistrationCallbacks(
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-Result applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
-                                  arangodb::transaction::Status status) noexcept
-    try {
-  TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
-             arangodb::transaction::Status::COMMITTED == status ||
-             arangodb::transaction::Status::RUNNING == status);
-
+Result applyStatusChangeCallbacks(Methods& trx, Status status) noexcept try {
+  TRI_ASSERT(Status::ABORTED == status || Status::COMMITTED == status ||
+             Status::RUNNING == status);
   auto* state = trx.state();
   if (!state) {
     return {};  // nothing to apply
   }
 
   TRI_ASSERT(trx.isMainTransaction());
-
-  auto* callbacks = getStatusChangeCallbacks(*state);
-
+  auto* callbacks = getCallbacks<Methods::CallbacksTag::StatusChange>(*state);
   if (!callbacks) {
     return {};  // no callbacks to apply
   }
@@ -414,15 +418,15 @@ OperationResult emptyResult(OperationOptions const& options) {
   }
 }
 
-bool transaction::Methods::addStatusChangeCallback(
-    StatusChangeCallback const* callback) {
+template<transaction::Methods::CallbacksTag tag, typename Callback>
+bool transaction::Methods::addCallbackImpl(Callback const* callback) {
   if (!callback || !*callback) {
     return true;  // nothing to call back
   } else if (!_state) {
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, true);
+  auto* statusChangeCallbacks = getCallbacks<tag>(*_state, true);
 
   TRI_ASSERT(nullptr != statusChangeCallbacks);  // 'create' was specified
 
@@ -430,6 +434,11 @@ bool transaction::Methods::addStatusChangeCallback(
   statusChangeCallbacks->emplace_back(callback);
 
   return true;
+}
+
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback) {
+  return addCallbackImpl<CallbacksTag::StatusChange>(callback);
 }
 
 bool transaction::Methods::removeStatusChangeCallback(
@@ -440,7 +449,8 @@ bool transaction::Methods::removeStatusChangeCallback(
     return false;  // nothing to add to
   }
 
-  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, false);
+  auto* statusChangeCallbacks =
+      getCallbacks<CallbacksTag::StatusChange>(*_state, false);
   if (statusChangeCallbacks) {
     auto it = std::find(statusChangeCallbacks->begin(),
                         statusChangeCallbacks->end(), callback);
@@ -648,8 +658,12 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
   // _rev
-  char ridBuffer[arangodb::basics::maxUInt64StringSize];
-  builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
+  if (rid.isSet()) {
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
+  } else {
+    builder.add(StaticStrings::RevString, std::string_view{});
+  }
 
   // _oldRev
   if (oldRid.isSet()) {
@@ -1375,6 +1389,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
   // total result that is going to be returned to the caller, append-only
   VPackBuilder resultBuilder;
 
+  // if no overwriteMode is specified we default to Conflict
+  auto overwriteMode = options.isOverwriteModeSet()
+                           ? options.overwriteMode
+                           : OperationOptions::OverwriteMode::Conflict;
+
   auto workForOneDocument = [&](VPackSlice value, bool isArray) -> Result {
     newDocumentBuilder->clear();
 
@@ -1382,32 +1401,84 @@ Future<OperationResult> transaction::Methods::insertLocal(
       return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
     }
 
+    std::string keyHolder;
     LocalDocumentId oldDocumentId;
     RevisionId oldRevisionId = RevisionId::none();
-    VPackSlice key;
+    std::string_view key;
+    {
+      VPackSlice keySlice = value.get(StaticStrings::KeyString);
+      if (keySlice.isNone()) {
+        TRI_ASSERT(!options.isRestore);  // need key in case of restore
+        keyHolder = collection->keyGenerator().generate(value);
 
-    Result res;
-
-    if (options.isOverwriteModeSet() &&
-        options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
-      key = value.get(StaticStrings::KeyString);
-      if (key.isString()) {
-        std::pair<LocalDocumentId, RevisionId> lookupResult;
-        // modifications always need to observe all changes in order to validate
-        // uniqueness constraints
-        res = collection->getPhysical()->lookupKey(
-            this, key.stringView(), lookupResult, ReadOwnWrites::yes);
-        if (res.ok()) {
-          TRI_ASSERT(lookupResult.first.isSet());
-          TRI_ASSERT(lookupResult.second.isSet());
-          oldDocumentId = lookupResult.first;
-          oldRevisionId = lookupResult.second;
+        if (keyHolder.empty()) {
+          return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
         }
+
+        key = keyHolder;
+      } else if (keySlice.isString()) {
+        key = keySlice.stringView();
+
+        // we have to validate the key here to prevent an error during the
+        // lookup
+        auto err =
+            collection->keyGenerator().validate(key, value, options.isRestore);
+        if (err != TRI_ERROR_NO_ERROR) {
+          return {err};
+        }
+      } else {
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
       }
     }
 
-    bool const isPrimaryKeyConstraintViolation = oldDocumentId.isSet();
-    TRI_ASSERT(!isPrimaryKeyConstraintViolation || !key.isNone());
+    std::pair<LocalDocumentId, RevisionId> lookupResult;
+    auto res =
+        collection->getPhysical()->lookupKeyForUpdate(this, key, lookupResult);
+    if (res.ok()) {
+      // primary key already exists!
+      if (overwriteMode == OperationOptions::OverwriteMode::Conflict) {
+        IndexOperationMode mode = options.indexOperationMode;
+        if (mode == IndexOperationMode::internal) {
+          // in this error mode, we return the conflicting document's key
+          // inside the error message string (and nothing else)!
+          return Result{TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, key};
+        }
+        // otherwise build a proper error message
+        Result result{TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED};
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(result, key);
+        }
+        return result;
+      } else {
+        TRI_ASSERT(lookupResult.first.isSet());
+        TRI_ASSERT(lookupResult.second.isSet());
+        std::tie(oldDocumentId, oldRevisionId) = lookupResult;
+      }
+    } else if (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
+          replicationType != ReplicationType::FOLLOWER) {
+        // if possible we want to provide information about the conflicting
+        // document, so we need another lookup. However, it is possible that the
+        // other transaction has not been committed yet, or that the document
+        // has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key, lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key);
+        }
+        return res;
+      }
+      return res;
+    }
+
+    std::ignore = this->state()->ensureSnapshot();
 
     // only populated for update/replace
     transaction::BuilderLeaser previousDocumentBuilder(this);
@@ -1416,37 +1487,34 @@ Future<OperationResult> transaction::Methods::insertLocal(
     bool didReplace = false;
     bool excludeFromReplication = excludeAllFromReplication;
 
-    if (!isPrimaryKeyConstraintViolation) {
+    if (not oldDocumentId.isSet()) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
-      res = insertLocalHelper(*collection, value, newRevisionId,
+      res = insertLocalHelper(*collection, key, value, newRevisionId,
                               *newDocumentBuilder, options, batchOptions);
 
       TRI_ASSERT(res.fail() || newDocumentBuilder->slice().isObject());
     } else {
       // RepSert Case - unique_constraint violated ->  try update, replace or
       // ignore!
-      TRI_ASSERT(options.isOverwriteModeSet());
-      TRI_ASSERT(options.overwriteMode !=
-                 OperationOptions::OverwriteMode::Conflict);
       TRI_ASSERT(res.ok());
       TRI_ASSERT(oldDocumentId.isSet());
+      TRI_ASSERT(overwriteMode != OperationOptions::OverwriteMode::Conflict);
 
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+      if (overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
         if (replicationType != ReplicationType::FOLLOWER) {
           // intentionally do not fill replicationData here
-          TRI_ASSERT(key.isString());
-          buildDocumentIdentity(*collection, resultBuilder, cid,
-                                key.stringView(), oldRevisionId,
-                                RevisionId::none(), nullptr, nullptr);
+          buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                                oldRevisionId, RevisionId::none(), nullptr,
+                                nullptr);
         }
         return res;
       }
 
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Update ||
-          options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+      if (overwriteMode == OperationOptions::OverwriteMode::Update ||
+          overwriteMode == OperationOptions::OverwriteMode::Replace) {
         // in case of unique constraint violation: (partially) update existing
         // document.
         previousDocumentBuilder->clear();
@@ -1461,14 +1529,14 @@ Future<OperationResult> transaction::Methods::insertLocal(
               *collection, value, oldDocumentId, oldRevisionId,
               previousDocumentBuilder->slice(), newRevisionId,
               *newDocumentBuilder, options, batchOptions,
-              /*isUpdate*/ options.overwriteMode ==
+              /*isUpdate*/ overwriteMode ==
                   OperationOptions::OverwriteMode::Update);
         }
 
         TRI_ASSERT(res.fail() || newDocumentBuilder->slice().isObject());
 
         if (res.ok() && oldRevisionId == newRevisionId &&
-            options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+            overwriteMode == OperationOptions::OverwriteMode::Update) {
           // did not actually update - intentionally do not fill replicationData
           excludeFromReplication |= true;
         }
@@ -1483,17 +1551,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
     }
 
     if (res.fail()) {
-      // Error reporting in the babies case is done outside of here.
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
-          oldRevisionId.isSet()) {
-        TRI_ASSERT(didReplace);
-
-        if (replicationType != ReplicationType::FOLLOWER) {
-          TRI_ASSERT(key.isString());
-          buildDocumentIdentity(*collection, resultBuilder, cid,
-                                key.stringView(), oldRevisionId,
-                                RevisionId::none(), nullptr, nullptr);
-        }
+          replicationType != ReplicationType::FOLLOWER) {
+        // this indicates a write-write conflict while updating some unique
+        // index
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              oldRevisionId, RevisionId::none(), nullptr,
+                              nullptr);
       }
       // intentionally do not fill replicationData here
       return res;
@@ -1509,11 +1573,9 @@ Future<OperationResult> transaction::Methods::insertLocal(
       TRI_ASSERT(!showReplaced || oldRevisionId.isSet());
       TRI_ASSERT(!showReplaced || previousDocumentBuilder->slice().isObject());
 
-      key = newDocumentBuilder->slice().get(StaticStrings::KeyString);
-
       buildDocumentIdentity(
-          *collection, resultBuilder, cid, key.stringView(), newRevisionId,
-          oldRevisionId, showReplaced ? previousDocumentBuilder.get() : nullptr,
+          *collection, resultBuilder, cid, key, newRevisionId, oldRevisionId,
+          showReplaced ? previousDocumentBuilder.get() : nullptr,
           options.returnNew ? newDocumentBuilder.get() : nullptr);
     }
 
@@ -1645,12 +1707,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
 }
 
 Result transaction::Methods::insertLocalHelper(
-    LogicalCollection& collection, velocypack::Slice value,
-    RevisionId& newRevisionId, velocypack::Builder& newDocumentBuilder,
-    OperationOptions& options, BatchOptions& batchOptions) {
+    LogicalCollection& collection, std::string_view key,
+    velocypack::Slice value, RevisionId& newRevisionId,
+    velocypack::Builder& newDocumentBuilder, OperationOptions& options,
+    BatchOptions& batchOptions) {
   TRI_IF_FAILURE("LogicalCollection::insert") { return {TRI_ERROR_DEBUG}; }
 
-  Result res = newObjectForInsert(*this, collection, value, newRevisionId,
+  Result res = newObjectForInsert(*this, collection, key, value, newRevisionId,
                                   newDocumentBuilder, options, batchOptions);
 
   if (res.ok()) {
@@ -1835,11 +1898,29 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    Result res = collection->getPhysical()->lookupKey(
-        this, key.stringView(), lookupResult, ReadOwnWrites::yes);
+    Result res = collection->getPhysical()->lookupKeyForUpdate(
+        this, key.stringView(), lookupResult);
     if (res.fail()) {
-      return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        // if possible we want to provide information about the conflicting
+        // document, so we need another lookup. However, it is possible that the
+        // other transaction has not been committed yet, or that the document
+        // has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key.stringView(), lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key.stringView(),
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key.stringView());
+        }
+      }
+      return res;
     }
+
+    std::ignore = this->state()->ensureSnapshot();
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
@@ -1864,6 +1945,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        // this indicates a write-write conflict while updating some unique
+        // index
         TRI_ASSERT(oldRevisionId.isSet());
         buildDocumentIdentity(
             *collection, resultBuilder, cid, key.stringView(), oldRevisionId,
@@ -1946,7 +2029,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
              replicationData->slice().isEmptyArray());
   TRI_ASSERT(!newValue.isArray() || options.silent ||
-             resultBuilder.slice().length() == newValue.length());
+             resultBuilder.slice().length() == newValue.length())
+      << "isUpdate: " << isUpdate << ", silent: " << options.silent
+      << ", leader: " << (replicationType == ReplicationType::LEADER)
+      << ", follower: " << (replicationType == ReplicationType::FOLLOWER)
+      << ", newValue: " << newValue.toJson()
+      << ", resultBuilder: " << resultBuilder.slice().toJson();
 
   auto resDocs = resultBuilder.steal();
   auto intermediateCommit = futures::makeFuture(res);
@@ -2205,11 +2293,30 @@ Future<OperationResult> transaction::Methods::removeLocal(
     }
 
     std::pair<LocalDocumentId, RevisionId> lookupResult;
-    Result res = collection->getPhysical()->lookupKey(this, key, lookupResult,
-                                                      ReadOwnWrites::yes);
+    Result res =
+        collection->getPhysical()->lookupKeyForUpdate(this, key, lookupResult);
     if (res.fail()) {
-      return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
+      // Error reporting in the babies case is done outside of here.
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
+          replicationType != ReplicationType::FOLLOWER) {
+        // if possible we want to provide information about the conflicting
+        // document, so we need another lookup. However, theoretically it is
+        // possible that the document has been deleted by now.
+        auto lookupRes = collection->getPhysical()->lookupKey(
+            this, key, lookupResult, ReadOwnWrites::yes);
+        TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
+        buildDocumentIdentity(*collection, resultBuilder, cid, key,
+                              lookupResult.second, RevisionId::none(), nullptr,
+                              nullptr);
+        auto index = collection->getPhysical()->primaryIndex();
+        if (index) {
+          return index->addErrorMsg(res, key);
+        }
+      }
+      return res;
     }
+
+    std::ignore = this->state()->ensureSnapshot();
 
     TRI_ASSERT(lookupResult.first.isSet());
     TRI_ASSERT(lookupResult.second.isSet());
@@ -2230,6 +2337,10 @@ Future<OperationResult> transaction::Methods::removeLocal(
     res = removeLocalHelper(*collection, value, oldDocumentId, oldRevisionId,
                             previousDocumentBuilder->slice(), options);
 
+    // we should never get a write-write conflict here since the key is already
+    // locked earlier, and in case of a remove there cannot be any conflicts on
+    // unique index entries. However, we can still have a conflict error due to
+    // a violated precondition when a specific _rev is provided.
     if ((res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) ||
         (res.ok() && !options.silent)) {
       TRI_ASSERT(oldRevisionId.isSet());
@@ -3017,10 +3128,19 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
+
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
 
-  char const* opName = "unknown";
+  std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
@@ -3308,7 +3428,6 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
               << "'";
           return res;
         }
-
         return _state->commitTransaction(this);
       })
       .thenValue([this](Result res) -> Result {

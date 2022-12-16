@@ -69,10 +69,20 @@ const testPaths = {
 
 function makeDataWrapper (options) {
   let stoppedDbServerInstance = {};
+  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+    if (!options.hasOwnProperty('makedata_args')) {
+      options['makedata_args'] = {};
+    }
+    options['makedata_args']['test'] = options.test;
+  }
+
   class rtaMakedataRunner extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runRtaInArangosh";
+    }
+    filter(te, filtered) {
+      return true;
     }
     runOneTest(file) {
       let res = {'total':0, 'duration':0.0, 'status':true};
@@ -148,7 +158,7 @@ function makeDataWrapper (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
   opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..','release-test-automation'));

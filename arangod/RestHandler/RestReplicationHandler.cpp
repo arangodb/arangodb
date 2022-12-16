@@ -43,6 +43,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -266,7 +267,7 @@ RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase.type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
@@ -1926,12 +1927,6 @@ Result RestReplicationHandler::processRestoreIndexes(
         idx = physical->createIndex(idxDef, /*restore*/ true, created);
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
-          continue;
-        }
-        if (auto const& message = e.message();
-            message.find("arangodb_search_num_failed_commits") !=
-            std::string::npos) {
-          // TODO(MBkkt) Fix it! Now it's single correct and simple way :(
           continue;
         }
 

@@ -54,6 +54,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -993,9 +994,9 @@ void handleConstrainedSortInView(Optimizer* opt,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  irs::Finally addPlan = [opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
-  });
+  };
 
   // cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
@@ -1033,9 +1034,9 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
 
   // ensure 'Optimizer::addPlan' will be called
   bool modified = false;
-  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() noexcept {
+  irs::Finally addPlan = [opt, &plan, &rule, &modified]() noexcept {
     opt->addPlan(std::move(plan), rule, modified);
-  });
+  };
 
   // cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
@@ -1066,9 +1067,17 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   std::vector<SearchFunc> scorers;
 
   for (auto* node : viewNodes) {
-    TRI_ASSERT(node &&
-               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    TRI_ASSERT(node);
+    TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+
+    if (viewNode.isBuilding()) {
+      query.warnings().registerWarning(
+          TRI_ERROR_ARANGO_INCOMPLETE_READ,
+          absl::StrCat(
+              "ArangoSearch view '", viewNode.view()->name(),
+              "' building is in progress. Results can be incomplete."));
+    }
 
     if (!viewNode.isInInnerLoop()) {
       // check if we can optimize away sort that follows the EnumerateView

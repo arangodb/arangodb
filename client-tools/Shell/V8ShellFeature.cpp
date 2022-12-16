@@ -28,7 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -39,9 +39,9 @@
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomFeature.h"
@@ -52,7 +52,6 @@
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/V8ClientConnection.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
-#include "Utilities/IsArangoExecutable.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-buffer.h"
@@ -73,7 +72,13 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
-static std::string const DEFAULT_CLIENT_MODULE = "client.js";
+namespace {
+// this variable's value can be changed by the exit or quit commands.
+// if it's set, the main REPL loop will be aborted
+bool exitRepl = false;
+
+std::string const DEFAULT_CLIENT_MODULE = "client.js";
+}  // namespace
 
 namespace arangodb {
 
@@ -101,38 +106,39 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--javascript.startup-directory",
-      "startup paths containing the JavaScript files",
+      "The startup paths containing the JavaScript files.",
       new StringParameter(&_startupDirectory),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--javascript.client-module", "client module to use at startup",
+      "--javascript.client-module", "The client module to use at startup.",
       new StringParameter(&_clientModule),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--javascript.copy-directory",
-      "target directory to copy files from 'javascript.startup-directory' into "
-      "(only used when `--javascript.copy-installation` is enabled)",
+      "The target directory to copy files from "
+      "`--javascript.startup-directory` "
+      "to (only used if `--javascript.copy-installation` is enabled).",
       new StringParameter(&_copyDirectory));
 
   options->addOption(
       "--javascript.module-directory",
-      "additional paths containing JavaScript modules",
+      "Additional paths containing JavaScript modules.",
       new VectorParameter<StringParameter>(&_moduleDirectories),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption("--javascript.current-module-directory",
-                     "add current directory to module path",
+                     "Add the current directory to the module path.",
                      new BooleanParameter(&_currentModuleDirectory));
 
   options->addOption("--javascript.copy-installation",
-                     "Copy contents of `--javascript.startup-directory`.",
+                     "Copy the contents of `--javascript.startup-directory`.",
                      new BooleanParameter(&_copyInstallation));
 
   options->addOption(
       "--javascript.gc-interval",
-      "request-based garbage collection interval (each n.th command)",
+      "Request-based garbage collection interval (each n-th command).",
       new UInt64Parameter(&_gcInterval));
 }
 
@@ -513,7 +519,7 @@ ErrorCode V8ShellFeature::runShell(
   bool lastEmpty = isBatch;
   double lastDuration = 0.0;
 
-  while (true) {
+  while (!::exitRepl) {
     console.setLastDuration(lastDuration);
     console.setPromptError(promptError);
     auto prompt = console.buildPrompt(client);
@@ -537,16 +543,6 @@ ErrorCode V8ShellFeature::runShell(
 
     console.log(prompt._plain + input + "\n");
 
-    std::string i = StringUtils::trim(input);
-
-    if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
-      break;
-    }
-
-    if (i == "help" || i == "help;") {
-      input = "help()";
-    }
-
     v8LineEditor.addHistory(input);
 
     v8::TryCatch tryCatch(isolate);
@@ -556,7 +552,7 @@ ErrorCode V8ShellFeature::runShell(
     // assume the command succeeds
     promptError = false;
 
-    // execute command and register its result in __LAST__
+    // execute command and register its result in _last
     v8LineEditor.setExecutingCommand(true);
     double t1 = TRI_microtime();
 
@@ -590,14 +586,6 @@ ErrorCode V8ShellFeature::runShell(
 
       console.printErrorLine(exception);
       console.log(exception);
-      i = extractShellExecutableName(i);
-      if (!i.empty()) {
-        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
-            << "This command must be executed in a system shell and cannot be "
-               "used inside of arangosh: '"
-            << i << "'";
-      }
-
       // this will change the prompt for the next round
       promptError = true;
     }
@@ -1116,7 +1104,7 @@ static void JS_VersionClient(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exit now
+/// @brief set the arangosh exit code
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1137,6 +1125,14 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
   isolate->TerminateExecution();
 
   TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interrupt arangosh repl loop
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ExitRepl(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ::exitRepl = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1293,6 +1289,9 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   TRI_AddGlobalVariableVocbase(_isolate,
                                TRI_V8_ASCII_STRING(_isolate, "ARANGOSH_PATH"),
                                TRI_V8_STD_STRING(_isolate, binaryPath));
+
+  TRI_AddGlobalFunctionVocbase(
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_EXIT_REPL"), JS_ExitRepl);
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(

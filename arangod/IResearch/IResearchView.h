@@ -155,6 +155,22 @@ class IResearchView final : public LogicalView {
     return _meta._storedValues;
   }
 
+  bool pkCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._pkCache;
+#else
+    return false;
+#endif
+  }
+
+  bool sortCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._sortCache;
+#else
+    return false;
+#endif
+  }
+
   auto linksReadLock() const noexcept {
     return std::shared_lock<boost::upgrade_mutex>{_mutex};
   }
@@ -182,6 +198,8 @@ class IResearchView final : public LogicalView {
   ///        including persistance of properties
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
+
+  bool isBuilding() const final;
 
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
   struct ViewFactory;

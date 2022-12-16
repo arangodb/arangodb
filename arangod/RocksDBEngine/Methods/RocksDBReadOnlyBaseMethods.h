@@ -33,10 +33,10 @@ namespace arangodb {
 
 class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
  public:
-  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState const* state,
+  explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
                                       rocksdb::TransactionDB* db);
 
-  ~RocksDBReadOnlyBaseMethods();
+  ~RocksDBReadOnlyBaseMethods() override;
 
   bool ensureSnapshot() override;
 

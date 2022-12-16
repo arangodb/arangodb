@@ -28,7 +28,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/RestHandlerMock.h"
@@ -82,7 +82,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "velocypack/Slice.h"
@@ -140,8 +139,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return nullptr;
-    PTR_NAMED(ReNormalizingAnalyzer, ptr);
-    return ptr;
+    return std::make_unique<ReNormalizingAnalyzer>();
   }
 
   // test implementation
@@ -187,8 +185,7 @@ class TestTokensTypedAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(std::string_view args) {
-    PTR_NAMED(TestTokensTypedAnalyzer, ptr, args);
-    return ptr;
+    return std::make_unique<TestTokensTypedAnalyzer>(args);
   }
 
   static bool normalize(std::string_view args, std::string& out) {
@@ -495,15 +492,13 @@ class IResearchAnalyzerFeatureTest
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RW));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -514,8 +509,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
 // no collection read access (vocbase read access, no user)
 TEST_F(IResearchAnalyzerFeatureTest,
        test_auth_vocbase_none_collection_read_no_user) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -525,8 +519,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
 
 // no collection read access (vocbase read access)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -540,8 +533,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -552,8 +544,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -564,8 +555,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -578,8 +568,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -787,9 +776,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
@@ -1590,10 +1579,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                       testDBInfo(server.server(), "active", 2));
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                       systemDBInfo(server.server()));
+  TRI_vocbase_t active(testDBInfo(server.server(), "active", 2));
+  TRI_vocbase_t system(systemDBInfo(server.server()));
 
   // normalize 'identity' (with prefix)
   {
@@ -1974,7 +1961,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
   {
     {
       arangodb::OperationOptions options;
-      arangodb::ManagedDocumentResult result;
       auto collection =
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       arangodb::transaction::Methods trx(
@@ -2505,9 +2491,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_FALSE(feature
                      .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2524,9 +2510,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     // create a new instance of an ApplicationServer and fill it with the
     // required features cannot use the existing server since its features
@@ -2608,9 +2594,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto beforeRole = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(
         arangodb::ServerState::ROLE_DBSERVER);
-    auto restoreRole = irs::make_finally([&beforeRole]() noexcept {
+    irs::Finally restoreRole = [&beforeRole]() noexcept {
       arangodb::ServerState::instance()->setRole(beforeRole);
-    });
+    };
 
     arangodb::ArangodServer newServer(nullptr, nullptr);
     newServer.addFeature<arangodb::metrics::MetricsFeature>();
@@ -2679,9 +2665,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
 
     EXPECT_TRUE(feature
                     .remove(arangodb::StaticStrings::SystemDatabase +
@@ -2784,9 +2770,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   auto before = StorageEngineMock::recoveryStateResult;
   StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() noexcept {
+  irs::Finally restore = [&before]() noexcept {
     StorageEngineMock::recoveryStateResult = before;
-  });
+  };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
   EXPECT_TRUE(feature.visit(
       [](auto) { return false; }));  // ensure feature is empty after creation
@@ -2846,9 +2832,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2923,9 +2909,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     feature.prepare();  // add static analyzers
     feature.start();    // doesn't load persisted analyzers

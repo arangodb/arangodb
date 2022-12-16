@@ -32,6 +32,8 @@
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
+#include "Logger/LogMacros.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
@@ -90,7 +92,7 @@ SingleServerProvider<Step>::SingleServerProvider(
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
-             _opts.getEdgeProjections()),
+             _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
@@ -138,8 +140,6 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Fetching...";
   std::vector<Step*> result{};
-  result.reserve(looseEnds.size());
-
   return futures::makeFuture(std::move(result));
 }
 

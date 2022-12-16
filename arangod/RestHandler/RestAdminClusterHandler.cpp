@@ -399,8 +399,8 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::retryTryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   if (++ctx->tries < 60) {
-    return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
-        [this, ctx = std::move(ctx)](auto) mutable {
+    return SchedulerFeature::SCHEDULER->delay("remove-server", 1s)
+        .thenValue([this, ctx = std::move(ctx)](auto) mutable {
           return tryDeleteServer(std::move(ctx));
         });
   } else {
@@ -664,6 +664,7 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
     auto fromServer = slice.get("fromServer");
     auto toServer = slice.get("toServer");
     auto remainsFollower = slice.get("remainsFollower");
+    auto tryUndo = slice.get("tryUndo");
 
     bool valid = collection.isString() && shard.isString() &&
                  fromServer.isString() && toServer.isString();
@@ -674,7 +675,8 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
       return std::make_unique<MoveShardContext>(
           std::move(databaseStr), collection.copyString(), shard.copyString(),
           fromServer.copyString(), toServer.copyString(), std::string{},
-          remainsFollower.isNone() || remainsFollower.isTrue());
+          remainsFollower.isNone() || remainsFollower.isTrue(),
+          tryUndo.isTrue());
     }
   }
 
@@ -713,7 +715,7 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
                          auth::Level::RW;
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "insufficent permissions on database to move shard");
+                    "insufficient permissions on database to move shard");
       return RestStatus::DONE;
     }
 
@@ -805,6 +807,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
                    builder.add("remainsFollower",
                                isLeader ? VPackValue(ctx->remainsFollower)
                                         : VPackValue(false));
+                   builder.add("tryUndo", VPackValue(ctx->tryUndo));
                    builder.add("creator",
                                VPackValue(ServerState::instance()->getId()));
                    builder.add("timeCreated",
@@ -1178,7 +1181,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
     VPackSlice server = body.get("server");
     if (server.isString()) {
       std::string serverId = resolveServerNameID(server.copyString());
-      return handleCreateSingleServerJob(job, serverId);
+      return handleCreateSingleServerJob(job, serverId, body);
     }
   }
 
@@ -1188,7 +1191,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(
 }
 
 RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
-    std::string const& job, std::string const& serverId) {
+    std::string const& job, std::string const& serverId, VPackSlice body) {
   std::string jobId = std::to_string(
       server().getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto jobToDoPath =
@@ -1201,6 +1204,11 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
     builder.add("server", VPackValue(serverId));
     builder.add("jobId", VPackValue(jobId));
     builder.add("creator", VPackValue(ServerState::instance()->getId()));
+    if (job == "resignLeadership") {
+      if (body.isObject() && body.hasKey("undoMoves")) {
+        builder.add("undoMoves", VPackValue(body.get("undoMoves").isTrue()));
+      }
+    }
     builder.add(
         "timeCreated",
         VPackValue(timepointToString(std::chrono::system_clock::now())));
@@ -1476,7 +1484,7 @@ RestAdminClusterHandler::FutureVoid
 RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
     clock::time_point startTime) {
-  return SchedulerFeature::SCHEDULER->delay(1s)
+  return SchedulerFeature::SCHEDULER->delay("wait-for-supervision", 1s)
       .thenValue([](auto) {
         return AsyncAgencyComm().getValues(arangodb::cluster::paths::root()
                                                ->arango()
@@ -2345,7 +2353,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficent permissions");
+                  "insufficient permissions");
     return RestStatus::DONE;
   }
 
@@ -2379,6 +2387,7 @@ struct RebalanceOptions {
   bool leaderChanges;
   bool moveLeaders;
   bool moveFollowers;
+  bool excludeSystemCollections;
   double piFactor;
   std::vector<DatabaseID> databasesExcluded;
 };
@@ -2392,6 +2401,8 @@ auto inspect(Inspector& f, RebalanceOptions& x) {
       f.field("leaderChanges", x.leaderChanges).fallback(true),
       f.field("moveLeaders", x.moveLeaders).fallback(false),
       f.field("moveFollowers", x.moveFollowers).fallback(false),
+      f.field("excludeSystemCollections", x.excludeSystemCollections)
+          .fallback(false),
       f.field("piFactor", x.piFactor).fallback(1.0),
       f.field("databasesExcluded", x.databasesExcluded)
           .fallback(std::vector<DatabaseID>{}));
@@ -2434,7 +2445,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   auto [todo, pending] = countAllMoveShardJobs();
 
   VPackBuilder builder;
-  auto p = collectRebalanceInformation({});
+  auto p = collectRebalanceInformation({}, false);
   auto leader = p.computeLeaderImbalance();
   auto shard = p.computeShardImbalance();
   {
@@ -2577,7 +2588,8 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
     return RestStatus::DONE;
   }
 
-  auto p = collectRebalanceInformation(options->databasesExcluded);
+  auto p = collectRebalanceInformation(options->databasesExcluded,
+                                       options->excludeSystemCollections);
   auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
   auto const imbalanceShardsBefore = p.computeShardImbalance();
 
@@ -2705,7 +2717,8 @@ RestStatus RestAdminClusterHandler::handleRebalance() {
 
 cluster::rebalance::AutoRebalanceProblem
 RestAdminClusterHandler::collectRebalanceInformation(
-    std::vector<std::string> const& excludedDatabases) {
+    std::vector<std::string> const& excludedDatabases,
+    bool excludeSystemCollections) {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   cluster::rebalance::AutoRebalanceProblem p;
@@ -2785,6 +2798,10 @@ RestAdminClusterHandler::collectRebalanceInformation(
         distributeShardsLikeCounter;
 
     for (auto const& collection : ci.getCollections(db)) {
+      bool isSystem = collection->name().starts_with("_");
+      if (excludeSystemCollections && isSystem) {
+        continue;
+      }
       if (auto const& like = collection->distributeShardsLike();
           !like.empty()) {
         distributeShardsLikeCounter[like].distributeShardsLikeCounter += 1;
@@ -2807,6 +2824,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;
+          shardRef.isSystem = isSystem;
           shardRef.replicationFactor =
               static_cast<decltype(shardRef.replicationFactor)>(
                   shard.second.size());

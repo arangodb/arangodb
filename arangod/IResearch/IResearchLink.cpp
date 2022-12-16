@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchLink.h"
+#include "IResearchLinkCoordinator.h"
 
 #include <index/column_info.hpp>
 #include <utils/singleton.hpp>
@@ -35,6 +36,7 @@
 #include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
@@ -45,6 +47,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -155,13 +158,19 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
+  irs::index_reader_options readerOptions;
+#ifdef USE_ENTERPRISE
+  setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
+                              _meta);
+#endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
 #ifdef USE_ENTERPRISE
                          _meta._hasNested,
 #else
                          false,
 #endif
-                         _meta._storedValues.columns(), _meta._sortCompression);
+                         _meta._storedValues.columns(), _meta._sortCompression,
+                         readerOptions);
   if (r.ok() && view) {
     r = view->link(_asyncSelf);
   }
@@ -185,7 +194,7 @@ Result IResearchLink::initCoordinator(InitCallback const& init) {
   if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !view) {
     return r;
   }
-  return view->link(*this);
+  return view->link(basics::downCast<IResearchLinkCoordinator>(*this));
 }
 
 Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {

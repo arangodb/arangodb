@@ -89,7 +89,7 @@ bool BootstrapFeature::isReady() const {
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
+      "--hund", "Make ArangoDB bark on startup.", new BooleanParameter(&_bark),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
@@ -407,11 +407,10 @@ void BootstrapFeature::unprepare() {
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
-      vocbase->release();
     }
   }
 }

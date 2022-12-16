@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -53,7 +54,6 @@
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "Geo/Utils.h"
-#include "Greenspun/Interpreter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchPDP.h"
@@ -61,6 +61,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Random/UniformCharacter.h"
@@ -118,6 +119,8 @@
 #else
 #include <arpa/inet.h>
 #endif
+
+#include <absl/crc/crc32c.h>
 
 using namespace arangodb;
 using namespace basics;
@@ -894,6 +897,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
     if (ignoreError) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ||
           res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD ||
           res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }
@@ -5439,8 +5444,8 @@ AqlValue functions::Crc32(ExpressionContext* exprCtx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   ::appendAsString(vopts, adapter, value);
-
-  uint32_t crc = TRI_Crc32HashPointer(buffer->data(), buffer->length());
+  auto const crc = static_cast<uint32_t>(
+      absl::ComputeCrc32c(std::string_view{buffer->data(), buffer->length()}));
   char out[9];
   size_t length = TRI_StringUInt32HexInPlace(crc, &out[0]);
   return AqlValue(&out[0], length);
@@ -5457,7 +5462,7 @@ AqlValue functions::Fnv64(ExpressionContext* exprCtx, AstNode const&,
 
   ::appendAsString(vopts, adapter, value);
 
-  uint64_t hashval = TRI_FnvHashPointer(buffer->data(), buffer->length());
+  uint64_t hashval = FnvHashPointer(buffer->data(), buffer->length());
   char out[17];
   size_t length = TRI_StringUInt64HexInPlace(hashval, &out[0]);
   return AqlValue(&out[0], length);
@@ -7014,7 +7019,7 @@ AqlValue functions::Document(ExpressionContext* expressionContext,
       AqlValueMaterializer materializer(vopts);
       VPackSlice idSlice = materializer.slice(id, false);
       builder->openArray();
-      for (auto const& next : VPackArrayIterator(idSlice)) {
+      for (auto next : VPackArrayIterator(idSlice)) {
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
@@ -8776,7 +8781,8 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
     withId = arg2.slice().getBool();
   }
 
-  uint64_t execNr = arg1.toInt64();
+  auto execNr =
+      arangodb::pregel::ExecutionNumber{static_cast<uint64_t>(arg1.toInt64())};
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
@@ -9155,34 +9161,6 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   builder->close();
   return AqlValue(builder->slice(), builder->size());
-}
-
-AqlValue functions::CallGreenspun(aql::ExpressionContext* expressionContext,
-                                  AstNode const&,
-                                  VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &expressionContext->trx();
-  greenspun::Machine m;
-  greenspun::InitMachine(m);
-
-  transaction::BuilderLeaser programBuilder(trx);
-  {
-    VPackArrayBuilder array(programBuilder.builder());
-    for (size_t p = 0; p < parameters.size(); p++) {
-      programBuilder->add(extractFunctionParameterValue(parameters, p).slice());
-    }
-  }
-
-  transaction::BuilderLeaser resultBuilder(trx);
-  auto result =
-      greenspun::Evaluate(m, programBuilder->slice(), *resultBuilder.builder());
-
-  if (result) {
-    return AqlValue(resultBuilder->slice(), resultBuilder->size());
-  } else {
-    auto msg = result.error().toString();
-    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
-    return AqlValue(AqlValueHintNull());
-  }
 }
 
 static void buildKeyObject(VPackBuilder& builder, std::string_view key,

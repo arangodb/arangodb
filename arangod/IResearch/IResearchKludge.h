@@ -35,6 +35,8 @@
 
 namespace arangodb::iresearch::kludge {
 
+inline constexpr char kTypeDelimiter = '\0';
+inline constexpr char kAnalyzerDelimiter = '\1';
 inline constexpr char kNestedDelimiter = '\2';
 
 #ifdef USE_ENTERPRISE
@@ -62,6 +64,8 @@ std::string_view demangleType(std::string_view name) noexcept;
                                                   std::string& buf) {
   return demangleNested(demangleType(name), buf);
 }
+
+std::string_view extractAnalyzerName(std::string_view fieldName);
 #endif
 
 }  // namespace arangodb::iresearch::kludge

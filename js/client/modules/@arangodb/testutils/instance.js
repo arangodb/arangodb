@@ -518,7 +518,7 @@ class instance {
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
 
-  readAssertLogLines () {
+  readAssertLogLines (expectAsserts) {
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
@@ -544,6 +544,9 @@ class instance {
               print("ERROR: " + line);
             }
             this.assertLines.push(line);
+            if (!expectAsserts) {
+              crashUtils.GDB_OUTPUT += line + '\n';
+            }
           }
         }
       }
@@ -627,7 +630,7 @@ class instance {
       argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      argv = [cmd].concat(args);
+      argv = [cmd].concat(toArgv(args));
       cmd = 'rr';
     } else {
       argv = toArgv(args);

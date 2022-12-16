@@ -30,7 +30,7 @@
 #include "common.h"
 
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -88,8 +88,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-              vocbase->type());
   }
 
   ~IResearchLinkCoordinatorTest() = default;

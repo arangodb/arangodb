@@ -39,11 +39,12 @@
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "IResearch/IResearchDataStore.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+}  // namespace application_features
 
 class DatabaseFeature;
 class RocksDBEngine;
@@ -57,27 +58,28 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   explicit IResearchRocksDBRecoveryHelper(
       ArangodServer&, std::span<std::string const> skipRecoveryItems);
 
-  virtual void prepare() override;
+  void prepare() final;
+  void unprepare() noexcept final {
+    _skipExisted = {};
+    _cookies = {};
+  }
 
-  virtual void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                     const rocksdb::Slice& value,
-                     rocksdb::SequenceNumber tick) override;
+  void PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+             const rocksdb::Slice& value, rocksdb::SequenceNumber tick) final;
 
-  virtual void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
-                        rocksdb::SequenceNumber tick) override {
+  void DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                rocksdb::SequenceNumber tick) final {
     handleDeleteCF(column_family_id, key, tick);
   }
 
-  virtual void SingleDeleteCF(uint32_t column_family_id,
-                              const rocksdb::Slice& key,
-                              rocksdb::SequenceNumber tick) override {
+  void SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key,
+                      rocksdb::SequenceNumber tick) final {
     handleDeleteCF(column_family_id, key, tick);
   }
 
-  virtual void LogData(const rocksdb::Slice& blob,
-                       rocksdb::SequenceNumber tick) override;
+  void LogData(const rocksdb::Slice& blob, rocksdb::SequenceNumber tick) final;
 
-  virtual bool wasSkipped(IndexId id) const noexcept override {
+  bool wasSkipped(IndexId id) const noexcept final {
     return _skippedIndexes.contains(id);
   }
 
@@ -92,7 +94,6 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
   bool lookupLinks(LinkContainer& result,
                    arangodb::LogicalCollection& coll) const;
 
- protected:
   ArangodServer& _server;
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};
@@ -107,7 +108,14 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
       _skipRecoveryItems;
 
   containers::FlatHashSet<IndexId> _skippedIndexes;
+
+  // It's field because we want to reuse it memory during recovery
+  containers::FlatHashSet<IndexId> _skipExisted;
+
+  // Snapshots for links at state prior to recovery.
+  // Used to decide if insert should be replayed
+  containers::FlatHashMap<void const*, IResearchDataStore::Snapshot> _cookies;
 };
 
-}  // end namespace iresearch
-}  // end namespace arangodb
+}  // namespace iresearch
+}  // namespace arangodb

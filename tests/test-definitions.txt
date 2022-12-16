@@ -16,13 +16,13 @@ replication_ongoing_frompresent parallelity=3 single -- --extraArgs:log.level re
 replication_ongoing_global priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_static priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-replication_sync priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 single 
 http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
 active_failover parallelity=3 single
-agency priority=350 parallelity=3 single -- --dumpAgencyOnError true
+agency priority=350 parallelity=4 single -- --dumpAgencyOnError true
 agency-restart priority=250 parallelity=3 single
 arangobench parallelity=2 priority=1000 single
 arangosh single
@@ -33,20 +33,35 @@ permissions priority=500 single
 recovery priority=2000 buckets=4 parallelity=5 single
 version single
 
-shell_api priority=500 single suffix=http -- $EncryptionAtRest
-shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+shell_v8 priority=500 single -- $EncryptionAtRest
+shell_server_v8 priority=500 single -- $EncryptionAtRest
+
+shell_api priority=500 single -- $EncryptionAtRest
+
+shell_api_multi priority=500 single suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+
 # Shell client tests Single Server; distribute evenly
-shell_client priority=250 parallelity=2 single suffix=http -- $EncryptionAtRest
-shell_client priority=1500 parallelity=2 single suffix=http2 -- --http2 true
-shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
+shell_client priority=250 parallelity=2 single -- $EncryptionAtRest
+shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
+shell_client_multi priority=1500 parallelity=2 single suffix=http
+shell_client_multi priority=2500 parallelity=2 single suffix=vst -- --vst true
+
+
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=http -- http true
+shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
+shell_client_traffic priority=250 parallelity=1 single suffix=vst -- --vst true
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
+shell_client_traffic priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
-shell_client_aql priority=500 single suffix=http
-shell_client_aql priority=500 single suffix=http2 -- --http2 true
-shell_client_aql priority=500 single suffix=vst -- --vst true
-shell_client_aql priority=500 single enterprise suffix=encrypt -- --encryptionAtRest true
+shell_client_aql priority=250  single suffix=http
+shell_client_aql priority=500  single suffix=http2 -- --http2 true
+shell_client_aql priority=750  single suffix=vst -- --vst true
+shell_client_aql priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 shell_server_aql priority=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster

@@ -154,6 +154,7 @@ function runArangodRecovery (params, useEncryption) {
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
+    params.instanceManager.nonfatalAssertSearch();
     if (!params.instanceManager.launchInstance()) {
       params.instanceManager.destructor(false);
       return {
@@ -369,7 +370,7 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_cluster'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

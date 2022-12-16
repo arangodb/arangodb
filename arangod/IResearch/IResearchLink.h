@@ -27,7 +27,6 @@
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
 #include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -39,6 +38,9 @@
 #include "Transaction/Status.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/IndexId.h"
+
+#include <atomic>
+#include <filesystem>
 
 namespace arangodb::iresearch {
 
@@ -164,6 +166,13 @@ class IResearchLink : public IResearchDataStore {
 
   auto const& meta() const noexcept { return _meta; }
 
+  void setBuilding(bool building) noexcept {
+    _isBuilding.store(building, std::memory_order_relaxed);
+  }
+  [[nodiscard]] bool isBuilding() const noexcept {
+    return _isBuilding.load(std::memory_order_relaxed);
+  }
+
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
@@ -196,6 +205,8 @@ class IResearchLink : public IResearchDataStore {
   std::string _viewGuid;
 
   VPackComparer<IResearchViewSort> _comparer;
+
+  std::atomic_bool _isBuilding{false};
 };
 
 }  // namespace arangodb::iresearch

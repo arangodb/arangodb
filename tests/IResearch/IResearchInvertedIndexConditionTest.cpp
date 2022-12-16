@@ -91,8 +91,7 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
-    auto scope = irs::make_finally(
-        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
     ASSERT_TRUE(index->covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
@@ -125,8 +124,7 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
-    auto scope = irs::make_finally(
-        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
     auto indexFields =
         arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
@@ -171,8 +169,12 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = index->supportsFilterCondition(
-          query->trxForOptimization(), id, indexFields, {}, filterNode, ref, 0);
+      // We use this noop transaction because query transaction is empty
+      // TODO(MBkkt) Needs ability to create empty transaction
+      //  with failed begin but correct in other
+      arangodb::transaction::Methods trx{ctx};
+      auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
+                                                  filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
@@ -202,8 +204,7 @@ class IResearchInvertedIndexConditionTest
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
         inverted.get());
     ASSERT_TRUE(index);
-    auto scope = irs::make_finally(
-        [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); });
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());

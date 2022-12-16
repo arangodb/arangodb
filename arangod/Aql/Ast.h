@@ -42,6 +42,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
@@ -473,7 +474,7 @@ class Ast {
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
       AstNode const*, Variable const*, std::string_view expectedAttribute,
-      std::unordered_set<arangodb::aql::AttributeNamePath>&);
+      containers::FlatHashSet<arangodb::aql::AttributeNamePath>&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(

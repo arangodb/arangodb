@@ -35,6 +35,7 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -62,6 +63,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <absl/cleanup/cleanup.h>
 #include <atomic>
 
 using namespace arangodb::application_features;
@@ -266,11 +268,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vocbase = df.useDatabase(dbColPair.first);
+    auto vocbase = df.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
     return static_cast<RocksDBCollection*>(
         vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
@@ -282,11 +283,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
-    TRI_vocbase_t* vb = df.useDatabase(std::get<0>(triple));
+    auto vb = df.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
-    auto sg = arangodb::scopeGuard([&]() noexcept { vb->release(); });
 
     auto coll = vb->lookupCollection(std::get<1>(triple));
 
@@ -640,6 +640,11 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
     }
+    auto helpersCleanup = absl::Cleanup{[&]() noexcept {
+      for (auto& helper : engine.recoveryHelpers()) {
+        helper->unprepare();
+      }
+    }};
 
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();

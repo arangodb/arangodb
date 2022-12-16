@@ -60,8 +60,8 @@ std::string const AdminAardvark("/_admin/aardvark/");
 std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
 
-TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
-                                         GeneralRequest& req) {
+VocbasePtr lookupDatabaseFromRequest(ArangodServer& server,
+                                     GeneralRequest& req) {
   // get database name from request
   if (req.databaseName().empty()) {
     // if no database name was specified in the request, use system database
@@ -75,7 +75,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
 
 /// Set the appropriate requestContext
 bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
-  TRI_vocbase_t* vocbase = lookupDatabaseFromRequest(server, req);
+  auto vocbase = lookupDatabaseFromRequest(server, req);
 
   // invalid database name specified, database not found etc.
   if (vocbase == nullptr) {
@@ -84,7 +84,9 @@ bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
 
   TRI_ASSERT(!vocbase->isDangling());
 
-  std::unique_ptr<VocbaseContext> guard(VocbaseContext::create(req, *vocbase));
+  // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
+  std::unique_ptr<VocbaseContext> guard(
+      VocbaseContext::create(req, *vocbase.release()));
   if (!guard) {
     return false;
   }
@@ -545,6 +547,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard guard{_statisticsMutex};
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();

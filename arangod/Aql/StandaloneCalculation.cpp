@@ -68,6 +68,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
                                                     // make ASSERTS happy
     }
   }
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] arangodb::Result beginTransaction(
       arangodb::transaction::Hints) override {
@@ -77,9 +80,11 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
+    applyBeforeCommitCallbacks();
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
+    applyAfterCommitCallbacks();
     return Result{};
   }
 

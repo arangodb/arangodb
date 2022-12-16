@@ -1,8 +1,4 @@
-# ----------------------------------------
-# Greenspun tests
-# ----------------------------------------
-
-add_subdirectory(Greenspun)
+add_compile_warnings_flags()
 
 # ----------------------------------------
 # Fuerte tests
@@ -14,11 +10,14 @@ add_subdirectory(Fuerte)
 # Error tests
 # ----------------------------------------
 
+add_subdirectory(Assertions)
+add_subdirectory(CrashHandler)
 add_subdirectory(Errors)
 
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Futures)
 
 # ----------------------------------------
 # Link directories
@@ -216,15 +215,11 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
-  Futures/FutureTest.cpp
-  Futures/PromiseTest.cpp
-  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
   Logger/LogContextTest.cpp
@@ -318,6 +313,7 @@ target_link_libraries(arangodbtests
   arango_tests_basics
   arango_tests_replication2
   arango_tests_graph
+  arango_tests_futures
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -330,6 +326,7 @@ target_link_libraries(arangodbtests
   gtest
   boost_boost
   fmt
+  velocypack_utils
 )
 
 if (USE_ENTERPRISE)
@@ -343,27 +340,11 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
 
-
-if(MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-    # There's a warning about /MP being unused if compiling only a single file
-    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
-  endif()
-endif()
-
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-endif()
-
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/${GOOGLETEST_ROOT}/include
-  ${CMAKE_SOURCE_DIR}/${GOOGLEMOCK_ROOT}/include
 )
 
 target_link_libraries(arangodbtests v8_interface)

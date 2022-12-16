@@ -28,7 +28,7 @@
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "utils/version_defines.hpp"
 #include "utils/file_utils.hpp"
 
@@ -106,9 +106,9 @@ class IResearchFeatureTest
   }
 
   // version 0 data-source path
-  irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
+  std::filesystem::path getPersistedPath0(arangodb::LogicalView const& view) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
+    std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
@@ -119,10 +119,10 @@ class IResearchFeatureTest
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(
+  std::filesystem::path getPersistedPath1(
       arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
+    std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
@@ -1763,8 +1763,7 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   auto& functions = server.addFeatureUntracked<aql::AqlFunctionFeature>();
   auto& iresearch = server.addFeatureUntracked<IResearchFeature>();
-  auto cleanup =
-      irs::make_finally([&functions]() noexcept { functions.unprepare(); });
+  irs::Finally cleanup = [&functions]() noexcept { functions.unprepare(); };
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1882,19 +1881,17 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // ensure test data is stored in a unique directory
   arangodb::tests::setDatabasePath(dbPathFeature);
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore =
-      irs::make_finally([&versionFilename]() noexcept {
-        StorageEngineMock::versionFilenameResult = versionFilename;
-      });
+  irs::Finally versionFilenameRestore = [&versionFilename]() noexcept {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  };
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
+      (std::filesystem::path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
-      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+      std::filesystem::path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -1991,19 +1988,17 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore =
-      irs::make_finally([&versionFilename]() noexcept {
-        StorageEngineMock::versionFilenameResult = versionFilename;
-      });
+  irs::Finally versionFilenameRestore = [&versionFilename]() noexcept {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  };
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
+      (std::filesystem::path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
-      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+      std::filesystem::path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -2684,9 +2679,9 @@ class IResearchFeatureTestDBServer
   }
 
   // version 0 data-source path
-  irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
+  std::filesystem::path getPersistedPath0(arangodb::LogicalView const& view) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
+    std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
@@ -2697,10 +2692,10 @@ class IResearchFeatureTestDBServer
   };
 
   // version 1 data-source path
-  irs::utf8_path getPersistedPath1(
+  std::filesystem::path getPersistedPath1(
       arangodb::iresearch::IResearchLink const& link) {
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
-    irs::utf8_path dataPath(dbPathFeature.directory());
+    std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
@@ -2717,7 +2712,6 @@ class IResearchFeatureTestDBServer
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ(name, vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
   }
 };
 
@@ -2741,14 +2735,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore =
-      irs::make_finally([&versionFilename]() noexcept {
-        StorageEngineMock::versionFilenameResult = versionFilename;
-      });
+  irs::Finally versionFilenameRestore = [&versionFilename]() noexcept {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  };
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
+      (std::filesystem::path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
-      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+      std::filesystem::path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2768,8 +2761,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -2837,14 +2829,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore =
-      irs::make_finally([&versionFilename]() noexcept {
-        StorageEngineMock::versionFilenameResult = versionFilename;
-      });
+  irs::Finally versionFilenameRestore = [&versionFilename]() noexcept {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  };
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
+      (std::filesystem::path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
-      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+      std::filesystem::path(dbPathFeature.directory()).c_str(), true));
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
@@ -2868,8 +2859,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -2945,14 +2935,13 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore =
-      irs::make_finally([&versionFilename]() noexcept {
-        StorageEngineMock::versionFilenameResult = versionFilename;
-      });
+  irs::Finally versionFilenameRestore = [&versionFilename]() noexcept {
+    StorageEngineMock::versionFilenameResult = versionFilename;
+  };
   StorageEngineMock::versionFilenameResult =
-      (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
+      (std::filesystem::path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
-      irs::utf8_path(dbPathFeature.directory()).c_str(), true));
+      std::filesystem::path(dbPathFeature.directory()).c_str(), true));
 
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());

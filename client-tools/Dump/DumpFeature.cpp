@@ -44,6 +44,7 @@
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -654,85 +655,89 @@ void DumpFeature::collectOptions(
 
   options->addOption(
       "--collection",
-      "restrict to collection name (can be specified multiple times)",
+      "Restrict the dump to this collection name (can be specified multiple "
+      "times).",
       new VectorParameter<StringParameter>(&_options.collections));
 
   options
-      ->addOption("--shard",
-                  "restrict dump to shard (can be specified multiple times)",
-                  new VectorParameter<StringParameter>(&_options.shards))
+      ->addOption(
+          "--shard",
+          "Restrict the dump to this shard (can be specified multiple times).",
+          new VectorParameter<StringParameter>(&_options.shards))
       .setIntroducedIn(30800);
 
   options->addOption("--initial-batch-size",
-                     "initial size for individual data batches (in bytes)",
+                     "The initial size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.initialChunkSize));
 
   options->addOption("--batch-size",
-                     "maximum size for individual data batches (in bytes)",
+                     "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.maxChunkSize));
 
   options
-      ->addOption("--threads",
-                  "maximum number of collections/shards to process in parallel",
-                  new UInt32Parameter(&_options.threadCount),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Dynamic))
+      ->addOption(
+          "--threads",
+          "The maximum number of collections/shards to process in parallel.",
+          new UInt32Parameter(&_options.threadCount),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Dynamic))
       .setIntroducedIn(30400);
 
-  options->addOption("--dump-data", "dump collection data",
+  options->addOption("--dump-data", "Whether to dump collection data.",
                      new BooleanParameter(&_options.dumpData));
 
   options
-      ->addOption("--all-databases", "dump data of all databases",
+      ->addOption("--all-databases", "Whether to dump all databases.",
                   new BooleanParameter(&_options.allDatabases))
       .setIntroducedIn(30500);
 
   options->addOption(
-      "--force", "continue dumping even in the face of some server-side errors",
+      "--force",
+      "Continue dumping even in the face of some server-side errors.",
       new BooleanParameter(&_options.force));
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
-      "continue dump even if sharding prototype collection is "
-      "not backed up along",
+      "Continue dumping even if a sharding prototype collection is "
+      "not backed up, too.",
       new BooleanParameter(&_options.ignoreDistributeShardsLikeErrors));
 
   options->addOption("--include-system-collections",
-                     "include system collections",
+                     "Include system collections.",
                      new BooleanParameter(&_options.includeSystemCollections));
 
-  options->addOption("--output-directory", "output directory",
+  options->addOption("--output-directory", "The output directory.",
                      new StringParameter(&_options.outputPath));
 
-  options->addOption("--overwrite", "overwrite data in output directory",
+  options->addOption("--overwrite", "Overwrite data in the output directory.",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_options.progress));
 
   options
       ->addOption("--envelope",
-                  "wrap each document into a {type, data} envelope "
-                  "(this is required from compatibility with v3.7 and before)",
+                  "Wrap each document into a {type, data} envelope "
+                  "(this is required for compatibility with v3.7 and before).",
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
 
-  options->addOption("--tick-start", "only include data after this tick",
+  options->addOption("--tick-start", "Only include data after this tick.",
                      new UInt64Parameter(&_options.tickStart));
 
-  options->addOption("--tick-end", "last tick to be included in data dump",
+  options->addOption("--tick-end", "Last tick to be included in data dump.",
                      new UInt64Parameter(&_options.tickEnd));
 
   options
-      ->addOption("--maskings", "file with maskings definition",
+      ->addOption("--maskings", "A path to a file with masking definitions.",
                   new StringParameter(&_options.maskingsFile))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
   options
       ->addOption("--compress-output",
-                  "compress files containing collection contents using gzip "
-                  "format (not compatible with encryption)",
+                  "Compress files containing collection contents using the "
+                  "gzip format (not compatible with encryption).",
                   new BooleanParameter(&_options.useGzip))
       .setIntroducedIn(30406);
 }

@@ -95,7 +95,7 @@ struct SingleServerBaseProviderOptions {
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap,
       aql::Projections const& vertexProjections,
-      aql::Projections const& edgeProjections);
+      aql::Projections const& edgeProjections, bool produceVertices);
 
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
       delete;
@@ -114,7 +114,9 @@ struct SingleServerBaseProviderOptions {
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
-  bool hasWeightMethod() const;
+  bool hasWeightMethod() const noexcept;
+
+  bool produceVertices() const noexcept;
 
   double weightEdge(double prefixWeight,
                     arangodb::velocypack::Slice edge) const;
@@ -160,6 +162,8 @@ struct SingleServerBaseProviderOptions {
   /// @brief Projections used on edge data.
   /// Ownership of this struct is at the BaseOptions
   aql::Projections const& _edgeProjections;
+
+  bool const _produceVertices;
 };
 
 struct ClusterBaseProviderOptions {
@@ -182,9 +186,9 @@ struct ClusterBaseProviderOptions {
 
   RefactoredClusterTraverserCache* getCache();
 
-  bool isBackward() const;
+  bool isBackward() const noexcept;
 
-  bool produceVertices() const;
+  bool produceVertices() const noexcept;
 
   [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines()
       const;
@@ -215,9 +219,9 @@ struct ClusterBaseProviderOptions {
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 
-  bool _backward;
+  bool const _backward;
 
-  bool _produceVertices;
+  bool const _produceVertices;
 
   // [GraphRefactor] Note: All vars below used in SingleServer && Cluster case
   aql::FixedVarExpressionContext* _expressionContext;

@@ -29,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/EnvironmentFeature.h"
@@ -124,7 +125,7 @@ void FileDescriptorsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.descriptors-minimum",
-      "minimum number of file descriptors needed to start (0 = no minimum)",
+      "The minimum number of file descriptors needed to start (0 = no minimum)",
       new UInt64Parameter(&_descriptorsMinimum),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsLinux,

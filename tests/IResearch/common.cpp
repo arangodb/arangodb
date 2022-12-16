@@ -67,7 +67,7 @@
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "utils/string.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -82,7 +82,7 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 // GTEST printers for IResearch filters
-namespace iresearch {
+namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
@@ -259,7 +259,7 @@ std::string to_string(irs::filter const& f) {
   ss << f;
   return ss.str();
 }
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -315,7 +315,7 @@ struct BoostScorer : public irs::sort {
   BoostScorer() : irs::sort(irs::type<BoostScorer>::get()) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>();
+    return std::make_unique<Prepared>();
   }
 };  // BoostScorer
 
@@ -402,7 +402,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(irs::type<CustomScorer>::get()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
+    return std::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
@@ -487,26 +487,26 @@ void init(bool withICU /*= false*/) {
   }
 }
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
+/// @note once V8 is initialized all 'CATCH' errors will result in SIGILL
 void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      auto uniquePlatform = v8::platform::NewDefaultPlatform();
-      platform = std::shared_ptr<v8::Platform>(uniquePlatform.get(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
-      uniquePlatform.release();
-      v8::V8::InitializePlatform(
-          platform.get());   // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
+  class V8Init {
+   public:
+    V8Init() {
+      _platform = v8::platform::NewDefaultPlatform();
+      // avoid SIGSEGV during v8::Isolate::New(...)
+      v8::V8::InitializePlatform(_platform.get());
+      // avoid error: "Check failed: thread_data_table_"
+      v8::V8::Initialize();
     }
+    ~V8Init() {
+      v8::V8::Dispose();
+      v8::V8::ShutdownPlatform();
+    }
+
+   private:
+    std::unique_ptr<v8::Platform> _platform;
   };
-  static const init_t init;
-  (void)(init);
+  [[maybe_unused]] static const V8Init init;
 }
 
 bool assertRules(
@@ -627,7 +627,7 @@ uint64_t getCurrentPlanVersion(arangodb::ArangodServer& server) {
 }
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature) {
-  irs::utf8_path path;
+  std::filesystem::path path;
 
   path /= TRI_GetTempPath();
   path /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());

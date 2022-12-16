@@ -86,6 +86,7 @@ std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
+std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 
 write_ret_t singleWriteTransaction(AgentInterface* _agent,
                                    velocypack::Builder const& transaction,
@@ -1168,7 +1169,7 @@ Job::readStateTarget(Node const& snap, std::string const& db,
   auto target = velocypack::deserialize<
       arangodb::replication2::replicated_state::agency::Target>(
       targetNode->get().toBuilder().slice());
-  return std::move(target);
+  return target;
 }
 
 std::optional<arangodb::replication2::replicated_state::agency::Plan>
@@ -1182,7 +1183,7 @@ Job::readStatePlan(Node const& snap, std::string const& db,
   auto plan = velocypack::deserialize<
       arangodb::replication2::replicated_state::agency::Plan>(
       planNode->get().toBuilder().slice());
-  return std::move(plan);
+  return plan;
 }
 
 std::optional<arangodb::replication2::agency::LogPlanSpecification>
@@ -1196,7 +1197,7 @@ Job::readLogPlan(Node const& snap, std::string const& db,
   auto plan = velocypack::deserialize<
       arangodb::replication2::agency::LogPlanSpecification>(
       planNode->get().toBuilder().slice());
-  return std::move(plan);
+  return plan;
 }
 
 std::string Job::findOtherHealthyParticipant(Node const& snap,

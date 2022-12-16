@@ -184,17 +184,17 @@ class UniqueHeapInstance {
                type  // prevent matching of copy/move constructor
            >
   explicit UniqueHeapInstance(Args&&... args)
-      : _instance(irs::memory::make_unique<T>(std::forward<Args>(args)...)) {}
+      : _instance(std::make_unique<T>(std::forward<Args>(args)...)) {}
 
   UniqueHeapInstance(UniqueHeapInstance const& other)
-      : _instance(irs::memory::make_unique<T>(*(other._instance))) {}
+      : _instance(std::make_unique<T>(*(other._instance))) {}
 
   UniqueHeapInstance(UniqueHeapInstance&& other) noexcept
       : _instance(std::move(other._instance)) {}
 
   UniqueHeapInstance& operator=(UniqueHeapInstance const& other) {
     if (this != &other) {
-      _instance = irs::memory::make_unique<T>(*(other._instance));
+      _instance = std::make_unique<T>(*(other._instance));
     }
 
     return *this;
@@ -257,7 +257,7 @@ struct UnorderedRefKeyMapBase {
   struct KeyGenerator {
     KeyType operator()(KeyType const& key,
                        typename MapType::mapped_type const& value) const {
-      return KeyType(key.hash(), value.first);
+      return KeyType(value.first, key.hash());
     }
   };
 };
@@ -282,6 +282,13 @@ class UnorderedRefKeyMap
 
   class ConstIterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const V;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = ptrdiff_t;
+    using const_pointer = const value_type*;
+
     bool operator==(ConstIterator const& other) const noexcept {
       return _itr == other._itr;
     }
@@ -311,6 +318,13 @@ class UnorderedRefKeyMap
 
   class Iterator {
    public:
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = V;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = ptrdiff_t;
+    using const_pointer = const value_type*;
+
     bool operator==(Iterator const& other) const noexcept {
       return _itr == other._itr;
     }
@@ -384,7 +398,7 @@ class UnorderedRefKeyMap
   }
 
   V& operator[](typename KeyType::base_t const& key) {
-    return (*this)[irs::make_hashed_ref(key, keyHasher())];
+    return (*this)[irs::hashed_basic_string_view{key, keyHasher()}];
   }
 
   Iterator begin() noexcept { return Iterator(_map.begin()); }
@@ -409,7 +423,7 @@ class UnorderedRefKeyMap
   template<typename... Args>
   std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
                                     Args&&... args) {
-    return emplace(irs::make_hashed_ref(key, keyHasher()),
+    return emplace(irs::hashed_basic_string_view{key, keyHasher()},
                    std::forward<Args>(args)...);
   }
 
@@ -423,7 +437,7 @@ class UnorderedRefKeyMap
   }
 
   Iterator find(typename KeyType::base_t const& key) noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   ConstIterator find(KeyType const& key) const noexcept {
@@ -431,7 +445,7 @@ class UnorderedRefKeyMap
   }
 
   ConstIterator find(typename KeyType::base_t const& key) const noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V* findPtr(KeyType const& key) noexcept {
@@ -441,7 +455,7 @@ class UnorderedRefKeyMap
   }
 
   V* findPtr(typename KeyType::base_t const& key) noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V const* findPtr(KeyType const& key) const noexcept {
@@ -451,7 +465,7 @@ class UnorderedRefKeyMap
   }
 
   V const* findPtr(typename KeyType::base_t const& key) const noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   size_t size() const noexcept { return _map.size(); }

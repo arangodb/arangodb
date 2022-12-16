@@ -32,6 +32,7 @@
 #include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -92,24 +93,24 @@ ExportFeature::ExportFeature(Server& server, int* result)
 
 void ExportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption(
-      "--collection",
-      "restrict to collection name (can be specified multiple times)",
-      new VectorParameter<StringParameter>(&_collections));
+  options->addOption("--collection",
+                     "Restrict the export to this collection name (can be "
+                     "specified multiple times).",
+                     new VectorParameter<StringParameter>(&_collections));
 
   options->addOldOption("--query", "custom-query");
-  options->addOption("--custom-query", "AQL query to run",
+  options->addOption("--custom-query", "An AQL query to run.",
                      new StringParameter(&_customQuery));
   options->addOldOption("--query-max-runtime", "custom-query-max-runtime");
   options
       ->addOption(
           "--custom-query-max-runtime",
-          "runtime threshold for AQL queries (in seconds, 0 = no limit)",
+          "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
           new DoubleParameter(&_customQueryMaxRuntime))
       .setIntroducedIn(30800);
   options
       ->addOption("--custom-query-file",
-                  "path to a file with the custom query to be used",
+                  "A path to a file with the custom query to be used.",
                   new StringParameter(&_customQueryFile))
       .setIntroducedIn(31000);
 
@@ -120,41 +121,43 @@ void ExportFeature::collectOptions(
                   new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
-  options->addOption("--graph-name", "name of a graph to export",
+  options->addOption("--graph-name", "The name of a graph to export.",
                      new StringParameter(&_graphName));
 
-  options->addOption("--xgmml-label-only", "export only xgmml label",
+  options->addOption("--xgmml-label-only", "Export XGMML label only.",
                      new BooleanParameter(&_xgmmlLabelOnly));
 
-  options->addOption("--xgmml-label-attribute",
-                     "Specify document attribute that will be the XGMML label.",
-                     new StringParameter(&_xgmmlLabelAttribute));
+  options->addOption(
+      "--xgmml-label-attribute",
+      "Specify the document attribute to use as the XGMML label.",
+      new StringParameter(&_xgmmlLabelAttribute));
 
-  options->addOption("--output-directory", "output directory",
+  options->addOption("--output-directory", "The output directory.",
                      new StringParameter(&_outputDirectory));
 
   options
       ->addOption("--documents-per-batch",
-                  "number of documents to return in each batch",
+                  "The number of documents to return in each batch.",
                   new UInt64Parameter(&_documentsPerBatch))
       .setIntroducedIn(30800);
 
   options
       ->addOption("--escape-csv-formulae",
-                  "prefix string cells in CSV output with extra single quote "
-                  "to prevent formula injection",
+                  "Prefix string cells in CSV output with extra single quote "
+                  "to prevent formula injection.",
                   new BooleanParameter(&_escapeCsvFormulae))
       .setIntroducedIn(30805);
 
-  options->addOption("--overwrite", "overwrite data in output directory",
+  options->addOption("--overwrite",
+                     "Overwrite the data in the output directory.",
                      new BooleanParameter(&_overwrite));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_progress));
 
-  options->addOption("--fields",
-                     "comma separated list of fields to export into a csv file",
-                     new StringParameter(&_csvFieldOptions));
+  options->addOption(
+      "--fields", "A comma-separated list of fields to export to a CSV file.",
+      new StringParameter(&_csvFieldOptions));
 
   std::unordered_set<std::string> exports = {"csv", "json", "jsonl", "xgmml",
                                              "xml"};
@@ -163,10 +166,10 @@ void ExportFeature::collectOptions(
       new DiscreteValuesParameter<StringParameter>(&_typeExport, exports));
 
   options
-      ->addOption(
-          "--compress-output",
-          "compress files containing collection contents using gzip format",
-          new BooleanParameter(&_useGzip))
+      ->addOption("--compress-output",
+                  "Compress files containing collection contents using the "
+                  "gzip format.",
+                  new BooleanParameter(&_useGzip))
       .setIntroducedIn(30408)
       .setIntroducedIn(30501);
 }

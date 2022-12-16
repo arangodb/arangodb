@@ -50,6 +50,9 @@ global.DEFINE_MODULE('internal', (function () {
         this.code = error.code;                  // int - http status code
         this.errorNum = error.errorNum;          // int - internal arangodb error code
         this.errorMessage = error.errorMessage;  // string - error message
+        if (error.error) {
+          this.original = error;
+        }
       }
     };
 
@@ -942,15 +945,10 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   function printIndent (context) {
-    var j;
-    var indent = '';
+    let indent = '';
 
     if (context.prettyPrint) {
-      indent += '\n';
-
-      for (j = 0; j < context.level; ++j) {
-        indent += '  ';
-      }
+      indent += '\n' + '  '.repeat(context.level);
     }
 
     context.output += indent;
@@ -1861,6 +1859,28 @@ global.DEFINE_MODULE('internal', (function () {
 
   global.stop_color_print = function stop_color_print () {
     require('internal').stopColorPrint();
+  };
+  
+  [ "arangobackup", "arangobench", "arangod", "arangodb", "arangodbtests",
+    "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
+    "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
+    global[executableName] = () => {
+      let console = require("console");
+      console.warn("This command must be executed in a system shell and cannot be used inside of arangosh: '" + executableName + "'");
+    };
+    global[executableName]._PRINT = function (context) {
+      global[executableName]();
+    };
+  });
+
+  global.exit = global.quit = () => {
+    global.SYS_EXIT_REPL();
+  };
+  global.exit._PRINT = (context) => {
+    global.exit();
+  };
+  global.quit._PRINT = (context) => {
+    global.quit();
   };
 
   if (global.EXPORTS_SLOW_BUFFER) {

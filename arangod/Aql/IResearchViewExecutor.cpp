@@ -36,6 +36,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -933,7 +934,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     // we should have written exactly all score registers by now
     TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
-    UNUSED(bufferEntry);
+    IRS_IGNORE(bufferEntry);
   }
   return true;
 }

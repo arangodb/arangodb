@@ -31,10 +31,13 @@
 #include "RestServer/arangod.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -107,7 +110,7 @@ class StorageEngine : public ArangodFeature {
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) = 0;
+      LogicalCollection& collection, velocypack::Slice info) = 0;
 
   // status functionality
   // --------------------
@@ -176,9 +179,9 @@ class StorageEngine : public ArangodFeature {
   // storage engine is required to fully clean up the creation and throw only
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
-  // "createDatabase" returns no way to acquire id within this function?!
+  // "createDatabase"
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&&, ErrorCode& status) = 0;
+      arangodb::CreateDatabaseInfo&&);
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
@@ -358,6 +361,12 @@ class StorageEngine : public ArangodFeature {
   virtual TRI_voc_tick_t currentTick() const = 0;
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
+
+  virtual void scheduleFullIndexRefill(std::string const& database,
+                                       std::string const& collection,
+                                       IndexId iid);
+
+  virtual void syncIndexCaches();
 
  protected:
   void registerCollection(

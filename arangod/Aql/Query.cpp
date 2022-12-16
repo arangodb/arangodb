@@ -1331,17 +1331,21 @@ void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
   if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
     // append prefix, e.g. "bind parameters: "
     out.append(prefix);
+    size_t const initialLength = out.size();
 
     // dump at most maxLength chars of bind parameters into our output string
-    velocypack::SizeConstrainedStringSink sink(&out, maxLength);
+    velocypack::SizeConstrainedStringSink sink(&out, maxLength + initialLength);
     velocypack::Dumper dumper(&sink);
     dumper.dump(bp->slice());
 
     if (sink.overflowed()) {
       // truncate value with "..."
-      TRI_ASSERT(maxLength >= 3);
-      out.resize(maxLength - 3);
-      out.append("...");
+      TRI_ASSERT(initialLength + maxLength >= 3);
+      out.resize(initialLength + maxLength - 3);
+      out.append("... (", 5);
+      basics::StringUtils::itoa(
+          sink.unconstrainedLength() - initialLength - maxLength, out);
+      out.append(")", 1);
     }
   }
 }
@@ -1499,6 +1503,7 @@ velocypack::Options const& Query::vpackOptions() const {
 
 transaction::Methods& Query::trxForOptimization() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   return *_trx;
 }
 

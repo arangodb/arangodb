@@ -50,7 +50,7 @@
 #include "Benchmark/BenchmarkStats.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
@@ -122,74 +122,79 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("histogram", "Benchmark statistics configuration");
   options->addOption(
       "--histogram.interval-size",
-      "bucket width, dynamically calculated by default: "
-      "(first measured time * 20) / num-intervals",
+      "The bucket width, dynamically calculated by default: "
+      "`(first measured time * 20) / num-intervals`.",
       new DoubleParameter(&_histogramIntervalSize),
       arangodb::options::makeDefaultFlags(options::Flags::Dynamic));
   options->addOption("--histogram.num-intervals",
-                     "number of buckets (resolution)",
+                     "The number of buckets (resolution).",
                      new UInt64Parameter(&_histogramNumIntervals));
   options->addOption(
-      "--histogram.percentiles", "which percentiles to calculate",
+      "--histogram.percentiles", "Which percentiles to calculate.",
       new VectorParameter<DoubleParameter>(&_percentiles),
       arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
   options
       ->addOption(
-          "--histogram.generate", "display histogram",
+          "--histogram.generate", "Display a histogram.",
           new BooleanParameter(&_generateHistogram),
           arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst))
       .setIntroducedIn(31000);
 
-  options->addOption("--async", "send asynchronous requests",
+  options->addOption("--async", "Send asynchronous requests.",
                      new BooleanParameter(&_async));
 
   options->addOldOption("--concurrency", "threads");
   options
-      ->addOption("--threads", "number of parallel threads and connections",
+      ->addOption("--threads",
+                  "The number of parallel threads and connections.",
                   new UInt64Parameter(&_threadCount))
       .setIntroducedIn(31000);
 
-  options->addOption("--requests", "total number of operations",
+  options->addOption("--requests", "The total number of operations.",
                      new UInt64Parameter(&_operations));
 
-  options->addOption("--batch-size",
-                     "number of operations in one batch (0 disables batching)",
-                     new UInt64Parameter(&_batchSize));
+  options->addOption(
+      "--batch-size",
+      "The number of operations in one batch (0 = disable batching)",
+      new UInt64Parameter(&_batchSize));
 
-  options->addOption("--keep-alive", "use HTTP keep-alive",
+  options->addOption("--keep-alive", "Use HTTP keep-alive.",
                      new BooleanParameter(&_keepAlive));
 
   options->addOption(
       "--collection",
-      "collection name to use in tests (if they involve collections)",
+      "The collection name to use in tests (if they involve collections).",
       new StringParameter(&_collection));
 
-  options->addOption("--replication-factor",
-                     "replication factor of created collections (cluster only)",
-                     new UInt64Parameter(&_replicationFactor));
+  options->addOption(
+      "--replication-factor",
+      "The replication factor of created collections (cluster only).",
+      new UInt64Parameter(&_replicationFactor));
 
-  options->addOption("--number-of-shards",
-                     "number of shards of created collections (cluster only)",
-                     new UInt64Parameter(&_numberOfShards));
+  options->addOption(
+      "--number-of-shards",
+      "The number of shards of created collections (cluster only).",
+      new UInt64Parameter(&_numberOfShards));
 
   options->addOption("--wait-for-sync",
-                     "use waitForSync for created collections",
+                     "Use waitForSync for created collections.",
                      new BooleanParameter(&_waitForSync));
 
   options->addOption("--create-database",
-                     "whether we should create the database specified via the "
-                     "server connection",
+                     "Whether to create the database specified via "
+                     "the `--server.database` option.",
                      new BooleanParameter(&_createDatabase));
 
   options
       ->addOption("--create-collection",
-                  "Whether we should create the collection specified via "
-                  "the `--collection` parameter",
+                  "Whether to create the collection specified via "
+                  "the `--collection` option.",
                   new BooleanParameter(&_createCollection))
       .setIntroducedIn(31000);
 
   options->addOption("--duration",
-                     "test for duration seconds instead of a fixed test count",
+                     "Test for a duration of this many seconds instead of a "
+                     "fixed test count.",
                      new UInt64Parameter(&_duration));
 
   std::unordered_set<std::string> cases;
@@ -197,52 +202,53 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
     cases.emplace(name);
   }
   options->addOption(
-      "--test-case", "test case to use",
+      "--test-case", "The test case to use.",
       new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
   options->addOption(
       "--complexity",
-      "complexity parameter for the test (meaning depends on test case)",
+      "The complexity parameter for the test (meaning depends on test case).",
       new UInt64Parameter(&_complexity));
 
   options->addOption("--delay",
-                     "use a startup delay (necessary only when run in series)",
+                     "Use a startup delay (necessary only when run in series).",
                      new BooleanParameter(&_delay));
 
   options->addOption("--junit-report-file",
-                     "filename to write junit style report to",
+                     "The filename to write junit-style report to.",
                      new StringParameter(&_junitReportFile));
 
   options->addOption("--json-report-file",
-                     "filename to write a report in JSON format to",
+                     "The filename to write a report in JSON format to.",
                      new StringParameter(&_jsonReportFile));
 
-  options->addOption(
-      "--runs", "run test n times (and calculate statistics based on median)",
-      new UInt64Parameter(&_runs));
+  options->addOption("--runs",
+                     "Run test this many times (and calculate statistics based "
+                     "on the median).",
+                     new UInt64Parameter(&_runs));
 
-  options->addOption("--progress", "log intermediate progress",
+  options->addOption("--progress", "Log intermediate progress.",
                      new BooleanParameter(&_progress));
 
   options
       ->addOption("--custom-query",
-                  "The query to be used in the \"custom-query\" testcase.",
+                  "The query to be used in the \"custom-query\" test case.",
                   new StringParameter(&_customQuery))
       .setIntroducedIn(30800);
 
   options
       ->addOption(
           "--custom-query-file",
-          "path to a file with the query to be used in the 'custom-query' "
-          "testcase. "
-          "If --custom-query is specified as well, it has higher priority.",
+          "A path to the file with the query to use in the \"custom-query\" "
+          "test case. "
+          "If `--custom-query` is specified as well, it has higher priority.",
           new StringParameter(&_customQueryFile))
       .setIntroducedIn(30800);
 
   options
       ->addOption(
           "--custom-query-bindvars",
-          "The bind parameters to be used in the `custom-query` testcase.",
+          "The bind parameters to be used in the \"custom-query\" test case.",
           new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
@@ -250,8 +256,8 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_quiet));
 
   options->addObsoleteOption(
-      "--verbose", "print out replies if the HTTP header indicates DB errors",
-      false);
+      "--verbose",
+      "Print out replies if the HTTP header indicates database errors.", false);
 }
 
 void BenchFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

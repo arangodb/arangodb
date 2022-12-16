@@ -92,13 +92,12 @@ target_link_libraries(arango_iresearch
   arango_cluster_engine
   arango_indexes
   arango_vocbase
-  boost_locale # required by iResearch
   boost_thread # required by IResearchView upgrade_mutex
 	iresearch-static
   s2 # needed for some includes
 )
 
-target_include_directories(arango_iresearch PUBLIC
+target_include_directories(arango_iresearch SYSTEM PUBLIC
   ${IRESEARCH_INCLUDE})
 target_include_directories(arango_iresearch PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
@@ -106,5 +105,3 @@ target_include_directories(arango_iresearch PRIVATE
 
 target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>")
-target_compile_options(arango_iresearch PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
