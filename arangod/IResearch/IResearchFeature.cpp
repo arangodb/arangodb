@@ -369,42 +369,48 @@ bool upgradeArangoSearchLinkCollectionName(
 #endif
       for (auto& index : indexes) {
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-          auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
-          if (indexPtr) {
-            LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
-                << "Checking collection name '" << clusterCollectionName
-                << "' for link " << indexPtr->id().id();
-            if (indexPtr->setCollectionName(clusterCollectionName)) {
-              LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
-                  << "Setting collection name '" << clusterCollectionName
-                  << "' for link " << indexPtr->id().id();
-              if (selector.engineName() == RocksDBEngine::kEngineName) {
-                auto& engine = selector.engine<RocksDBEngine>();
-                auto builder = collection->toVelocyPackIgnore(
-                    {"path", "statusString"}, LogicalDataSource::Serialization::
-                                                  PersistenceWithInProgress);
-                auto res = engine.writeCreateCollectionMarker(
-                    vocbase.id(), collection->id(), builder.slice(),
-                    RocksDBLogValue::Empty());
-                if (res.fail()) {
-                  LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
-                      << "Unable to store updated link information on upgrade "
-                         "for collection '"
-                      << clusterCollectionName << "' for link "
-                      << indexPtr->id().id() << ": " << res.errorMessage();
-                }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-              } else if (selector.engineName() !=
-                         "Mock") {  // for unit tests just ignore write to
-                                    // storage
+          auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
+          auto id = indexPtr->index().id().id();
 #else
-              } else {
+          auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
+          auto const id = indexPtr->id().id();
 #endif
-                TRI_ASSERT(false);
-                LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
-                    << "Unsupported engine '" << selector.engineName()
-                    << "' for link upgrade task";
+          if (!indexPtr) {
+            continue;
+          }
+          LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
+              << "Checking collection name '" << clusterCollectionName
+              << "' for link " << id;
+          if (indexPtr->setCollectionName(clusterCollectionName)) {
+            LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
+                << "Setting collection name '" << clusterCollectionName
+                << "' for link " << id;
+            if (selector.engineName() == RocksDBEngine::kEngineName) {
+              auto& engine = selector.engine<RocksDBEngine>();
+              auto builder = collection->toVelocyPackIgnore(
+                  {"path", "statusString"},
+                  LogicalDataSource::Serialization::PersistenceWithInProgress);
+              auto res = engine.writeCreateCollectionMarker(
+                  vocbase.id(), collection->id(), builder.slice(),
+                  RocksDBLogValue::Empty());
+              if (res.fail()) {
+                LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
+                    << "Unable to store updated link information on upgrade "
+                       "for collection '"
+                    << clusterCollectionName << "' for link " << id << ": "
+                    << res.errorMessage();
               }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+              // for unit tests just ignore write to storage
+            } else if (selector.engineName() != "Mock") {
+#else
+            } else {
+#endif
+              TRI_ASSERT(false);
+              LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
+                  << "Unsupported engine '" << selector.engineName()
+                  << "' for link upgrade task";
             }
           }
         }

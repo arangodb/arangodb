@@ -727,12 +727,16 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
     }
     // TODO(MBkkt) Can be simplified
     //  if IResearchInvertedIndex will has Index base
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    auto* inverted = dynamic_cast<IResearchInvertedIndex*>(index.get());
+#else
     auto* inverted =
         ServerState::instance()->isCoordinator()
             ? static_cast<IResearchInvertedIndex*>(
                   basics::downCast<IResearchInvertedClusterIndex>(index.get()))
             : static_cast<IResearchInvertedIndex*>(
                   basics::downCast<IResearchRocksDBInvertedIndex>(index.get()));
+#endif
     auto& indexes = _indexes[cid];
     if (operation != "del") {
       indexes.emplace_back(inverted->self());

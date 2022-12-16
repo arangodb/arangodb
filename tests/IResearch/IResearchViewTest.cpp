@@ -186,7 +186,7 @@ class IResearchViewTest
     auto json = VPackParser::fromJson(R"({ "view": "42" })");
     bool pathExists = false;
     EXPECT_TRUE(link.init(json->slice(), pathExists).ok());
-    EXPECT_FALSE(pathExists);
+    EXPECT_TRUE(pathExists);
   }
 
   ~IResearchViewTest() { TRI_RemoveDirectory(testFilesystemPath.c_str()); }

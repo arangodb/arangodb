@@ -142,8 +142,11 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
 
       if ((db.checkVersion() || db.upgrade()) &&
           link->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        auto* impl = dynamic_cast<IResearchLink*>(link.get());
+#else
         auto* impl = basics::downCast<IResearchRocksDBLink>(link.get());
-
+#endif
         if (impl) {
           return impl->commit();
         }
