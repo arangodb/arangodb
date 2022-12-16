@@ -85,9 +85,7 @@ bool IResearchInvertedIndexMock::hasSelectivityEstimate() const {
   return false;
 }
 
-bool IResearchInvertedIndexMock::inProgress() const {
-  return IResearchInvertedIndex::inProgress();
-}
+bool IResearchInvertedIndexMock::inProgress() const { return false; }
 
 bool IResearchInvertedIndexMock::covers(
     arangodb::aql::Projections& projections) const {
