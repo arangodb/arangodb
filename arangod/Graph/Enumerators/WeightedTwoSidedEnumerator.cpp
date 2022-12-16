@@ -252,11 +252,7 @@ auto WeightedTwoSidedEnumerator<
       // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match
       // as result, clear both sides. => This will give the shortest path.
       // TODO: Check if the GLOBAL holds true for weightedEdges
-
-      LOG_DEVEL << "Checking new method: ";
-
       // NEW comparison code
-      LOG_DEVEL << "=== NOW CHECKING FOR A MATCH";
       LOG_DEVEL << " - we're checking step: " << currentStep.toString();
 
       if (_direction == FORWARD) {
@@ -282,11 +278,9 @@ auto WeightedTwoSidedEnumerator<
                        "OTHER BALL";
         }
       }
-      LOG_DEVEL << "Match result in shell";
     }
     if (!res.isPruned()) {
       // Add the step to our shell
-      LOG_DEVEL << "adding step to our shell: " << currentStep.toString();
       _queue.append(std::move(currentStep));
     }
   };
@@ -295,7 +289,6 @@ auto WeightedTwoSidedEnumerator<
   _provider.expand(step, previous, [&](Step n) -> void {
     LOG_DEVEL << "Received from Provider: " << n.toString();
     LOG_DEVEL << "ZZZZZZ Weight of that STEP is " << n.getWeight();
-    // TODO: Check hasBeenVisited(!) - include weights
     if (!hasBeenVisited(n)) {
       verifyStep(std::move(n));
     } else {
@@ -303,23 +296,6 @@ auto WeightedTwoSidedEnumerator<
                 << " - has been visited already, therefore skipping!";
     }
   });
-
-  // (B, 3)
-  // (B, 5) <- DISCARD - hier bitte nicht weiter suchen
-  // (B, 2) müsste (B, 3) ersetzen
-
-  // -> Wir holen den besten (minimum weight) von der Queue (X)
-  // -> Expand(Step X)
-  //  => Neue Steps: A(1),B(2),C(3)
-  //    => FILTER && PRUNE muss erfolgen
-  //    => Auf die Queue, falls "valide"
-  //
-  // DONE, wenn:
-  // Links shortest path gefunden und rechts shortest path gefunden
-  // -> Knoten(Y) als Schnittpunkt gefunden (TRI_ASSERT == size(1))
-
-  // -> Bewiesen Links shortest path für Y gefunden
-  // -> Bewiesen REchts shortest path für Y gefunden
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
