@@ -44,8 +44,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                  velocypack::Slice info);
   virtual ~RocksDBMetaCollection() = default;
 
-  std::string const& path() const override final;
-
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override final;
 
