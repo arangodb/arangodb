@@ -1,5 +1,5 @@
 /*jshint strict: false */
-
+/* global print */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
 // /
@@ -379,6 +379,7 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   let start = internal.time();
   while (true) {
     if (internal.time() - start > timeout) {
+      print(Date() + " Shards were not getting in sync in time, giving up!");
       assertTrue(false, "Shards were not getting in sync in time, giving up!");
       return;
     }
