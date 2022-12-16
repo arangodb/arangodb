@@ -41,7 +41,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset community-developer --parallel 2 --target arangodbtests
+            cmake --build --preset community-developer --parallel 6 --target arangodbtests
       - run:
           name: CCache Statistics
           command: ccache -s
