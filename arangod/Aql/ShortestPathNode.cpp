@@ -373,7 +373,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   auto targetInput = ::prepareVertexInput(this, true);
   auto checkWeight = [&]<typename ProviderOptionsType>(
                          ProviderOptionsType& forwardProviderOptions,
-                         ProviderOptionsType& backwardProviderOptions) {
+                         ProviderOptionsType& backwardProviderOptions) -> bool {
     if (opts->useWeight()) {
       double defaultWeight = opts->getDefaultWeight();
       if (opts->getWeightAttribute().empty()) {
@@ -412,7 +412,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
               return previousWeight + weight;
             });
       }
+      return true;
     }
+    return false;
   };
 
 #ifdef USE_ENTERPRISE
@@ -447,36 +449,65 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections());
 
-    checkWeight(forwardProviderOptions, backwardProviderOptions);
+    auto usesWeight =
+        checkWeight(forwardProviderOptions, backwardProviderOptions);
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
         TraversalProfileLevel::None) {
       // SingleServer Default
-
-      auto [outputRegisters, outputRegisterMapping] =
-          _buildOutputRegisters<ShortestPath>();
-      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                               std::move(outputRegisters));
-      return _makeExecutionBlockImpl<ShortestPathEnumerator<Provider>, Provider,
-                                     SingleServerBaseProviderOptions>(
-          opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, std::move(outputRegisterMapping), engine,
-          sourceInput, targetInput, registerInfos);
+      if (usesWeight) {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<WeightedShortestPath>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<WeightedShortestPathEnumerator<Provider>,
+                                       Provider,
+                                       SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      } else {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<ShortestPath>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<ShortestPathEnumerator<Provider>,
+                                       Provider,
+                                       SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      }
     } else {
       // SingleServer Tracing enabled
-      auto [outputRegisters, outputRegisterMapping] =
-          _buildOutputRegisters<ShortestPathTracer>();
-      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                               std::move(outputRegisters));
-      return _makeExecutionBlockImpl<TracedShortestPathEnumerator<Provider>,
-                                     ProviderTracer<Provider>,
-                                     SingleServerBaseProviderOptions>(
-          opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, std::move(outputRegisterMapping), engine,
-          sourceInput, targetInput, registerInfos);
+      if (usesWeight) {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<WeightedShortestPathTracer>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<
+            TracedWeightedShortestPathEnumerator<Provider>,
+            ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      } else {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<ShortestPathTracer>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<TracedShortestPathEnumerator<Provider>,
+                                       ProviderTracer<Provider>,
+                                       SingleServerBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      }
     }
   } else {
     // Cluster
@@ -488,23 +519,37 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
                                                        opts->produceVertices());
 
-    checkWeight(forwardProviderOptions, backwardProviderOptions);
+    auto usesWeight =
+        checkWeight(forwardProviderOptions, backwardProviderOptions);
 
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
         TraversalProfileLevel::None) {
       // No tracing
-      auto [outputRegisters, outputRegisterMapping] =
-          _buildOutputRegisters<ShortestPathCluster>();
-      auto registerInfos = createRegisterInfos(std::move(inputRegisters),
-                                               std::move(outputRegisters));
-
-      return _makeExecutionBlockImpl<ShortestPathEnumerator<ClusterProvider>,
-                                     ClusterProvider,
-                                     ClusterBaseProviderOptions>(
-          opts, std::move(forwardProviderOptions),
-          std::move(backwardProviderOptions), enumeratorOptions,
-          validatorOptions, std::move(outputRegisterMapping), engine,
-          sourceInput, targetInput, registerInfos);
+      if (usesWeight) {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<WeightedShortestPathCluster>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<
+            WeightedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
+            ClusterBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      } else {
+        auto [outputRegisters, outputRegisterMapping] =
+            _buildOutputRegisters<ShortestPathCluster>();
+        auto registerInfos = createRegisterInfos(std::move(inputRegisters),
+                                                 std::move(outputRegisters));
+        return _makeExecutionBlockImpl<ShortestPathEnumerator<ClusterProvider>,
+                                       ClusterProvider,
+                                       ClusterBaseProviderOptions>(
+            opts, std::move(forwardProviderOptions),
+            std::move(backwardProviderOptions), enumeratorOptions,
+            validatorOptions, std::move(outputRegisterMapping), engine,
+            sourceInput, targetInput, registerInfos);
+      }
     } else {
       // Tracing // TODO CHECK TRACING in ClusterProvider Tracer(?enabled?)
       /*

@@ -125,6 +125,11 @@ class FifoQueue {
     }
   }
 
+  Step const& peek() const {
+    // Currently only implemented and used in WeightedQueue
+    TRI_ASSERT(false);
+  }
+
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());

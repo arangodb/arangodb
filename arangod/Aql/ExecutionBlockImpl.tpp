@@ -114,6 +114,14 @@ using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
+using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPathTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
 /* ClusterProvider Section */
 using KPathRefactoredCluster = arangodb::graph::KPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
@@ -131,6 +139,13 @@ using ShortestPathCluster = arangodb::graph::ShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedShortestPathCluster =
+    arangodb::graph::WeightedShortestPathEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+using WeightedShortestPathClusterTracer =
+    arangodb::graph::TracedWeightedShortestPathEnumerator<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -625,6 +640,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ShortestPathExecutor<ShortestPathTracer>,
                   ShortestPathExecutor<ShortestPathCluster>,
                   ShortestPathExecutor<ShortestPathClusterTracer>,
+                  ShortestPathExecutor<WeightedShortestPath>,
+                  ShortestPathExecutor<WeightedShortestPathTracer>,
+                  ShortestPathExecutor<WeightedShortestPathCluster>,
+                  ShortestPathExecutor<WeightedShortestPathClusterTracer>,
                   ReturnExecutor,
                   EnumeratePathsExecutor<graph::KShortestPathsFinderInterface>,
                   EnumeratePathsExecutor<KPathRefactored>,
