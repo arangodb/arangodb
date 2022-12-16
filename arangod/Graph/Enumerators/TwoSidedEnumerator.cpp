@@ -412,6 +412,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // the path type "ShortestPath", the algorithm is finished. We need
       // to store this information.
       if (_options.onlyProduceOnePath()) {
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
         setAlgorithmFinished();
       }
 

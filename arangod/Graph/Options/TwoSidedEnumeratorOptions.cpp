@@ -35,7 +35,6 @@ TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
     setStopAtFirstDepth(true);
   } else if (getPathType() == PathType::Type::ShortestPath) {
     setOnlyProduceOnePath(true);
-    setStopAtFirstDepth(false);
   }
 }
 

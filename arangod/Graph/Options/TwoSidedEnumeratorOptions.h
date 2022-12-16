@@ -51,8 +51,8 @@ struct TwoSidedEnumeratorOptions {
  private:
   size_t _minDepth;
   size_t _maxDepth;
-  bool _stopAtFirstDepth;
-  bool _onlyProduceOnePath;
+  bool _stopAtFirstDepth{false};
+  bool _onlyProduceOnePath{false};
   PathType::Type _pathType;
 };
 }  // namespace graph
