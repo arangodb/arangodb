@@ -68,8 +68,6 @@ struct CollectionConstantProperties {
 
   bool operator==(CollectionConstantProperties const&) const;
 
- private:
-  static std::string defaultShardingStrategy();
 };
 
 template<class Inspector>

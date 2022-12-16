@@ -75,9 +75,3 @@ bool CollectionConstantProperties::operator==(
   }
   return true;
 }
-
-std::string CollectionConstantProperties::defaultShardingStrategy() {
-  // NOTE: Only required until ShardingStrategy has it's own inspection
-  // NOTE: We may want to add some context here
-  return "hash";
-}
