@@ -41,8 +41,7 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final : public ClusterIndex,
-                                       public IResearchLink {
+class IResearchLinkCoordinator final : public Index, public IResearchLink {
   Index& index() noexcept final { return *this; }
   Index const& index() const noexcept final { return *this; }
 
@@ -53,28 +52,37 @@ class IResearchLinkCoordinator final : public ClusterIndex,
   ////////////////////////////////////////////////////////////////////////////////
   IResearchLinkCoordinator(IndexId id, LogicalCollection& collection);
 
+  ~IResearchLinkCoordinator() final {
+    // should be in final dtor, otherwise its vtable already destroyed
+    unload();
+  }
+
+  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice definition);
 
-  bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
+  bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
 
-  Result drop() final { return IResearchLink::drop(); }
+  Result drop() final {
+    unload();
+    return {};
+  }
 
   bool hasSelectivityEstimate() const final {
-    return IResearchLink::hasSelectivityEstimate();
+    return IResearchDataStore::hasSelectivityEstimate();
   }
 
   bool isHidden() const final {
     return true;  // always hide links
   }
 
-  // IResearch does not provide a fixed default sort order
   bool isSorted() const final { return IResearchLink::isSorted(); }
 
-  void load() final { IResearchLink::load(); }
+  void load() final {}
 
   bool matchesDefinition(velocypack::Slice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
@@ -97,17 +105,9 @@ class IResearchLinkCoordinator final : public ClusterIndex,
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  IndexType type() const final { return IResearchLink::type(); }
+  char const* typeName() const final { return oldtypeName(); }
 
-  char const* typeName() const final { return IResearchLink::typeName(); }
-
-  void unload() final {
-    auto res = IResearchLink::unload();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
+  void unload() final /*noexcept*/ { _asyncSelf->reset(); }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearchLinkCoordinator-specific implementation of an

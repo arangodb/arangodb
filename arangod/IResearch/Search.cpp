@@ -45,6 +45,7 @@
 #include "Indexes/Index.h"
 #include "IResearch/Search.h"
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedClusterIndex.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RestServer/ViewTypesFeature.h"

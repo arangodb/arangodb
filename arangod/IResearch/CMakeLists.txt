@@ -35,6 +35,8 @@ add_library(arango_iresearch STATIC
   IResearchFilterOptimization.h
   IResearchIdentityAnalyzer.cpp
   IResearchIdentityAnalyzer.h
+	IResearchInvertedClusterIndex.cpp
+	IResearchInvertedClusterIndex.h
   IResearchInvertedIndex.cpp
   IResearchInvertedIndex.h
   IResearchInvertedIndexMeta.cpp

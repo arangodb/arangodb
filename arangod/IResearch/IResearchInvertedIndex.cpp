@@ -39,7 +39,6 @@
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/ClusterMetricsFeature.h"
 #include "Transaction/Methods.h"
 
 #include "analysis/token_attributes.hpp"
@@ -1082,99 +1081,6 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
     }
   }
   return node;
-}
-
-void IResearchInvertedClusterIndex::toVelocyPack(
-    VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
-  bool const forPersistence =
-      Index::hasFlag(flags, Index::Serialize::Internals);
-  bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
-  VPackObjectBuilder objectBuilder(&builder);
-  auto& vocbase = collection().vocbase();
-  IResearchInvertedIndex::toVelocyPack(vocbase.server(), &vocbase, builder,
-                                       forPersistence || forInventory);
-  // can't use Index::toVelocyPack as it will try to output 'fields'
-  // but we have custom storage format
-  builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(std::to_string(_iid.id())));
-  builder.add(arangodb::StaticStrings::IndexType,
-              velocypack::Value(oldtypeName(type())));
-  builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
-  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
-  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
-
-  if (isOutOfSync()) {
-    // link is out of sync - we need to report that
-    builder.add(StaticStrings::LinkError,
-                VPackValue(StaticStrings::LinkErrorOutOfSync));
-  }
-
-  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
-    builder.add("figures", VPackValue(VPackValueType::Object));
-    toVelocyPackFigures(builder);
-    builder.close();
-  }
-}
-
-bool IResearchInvertedClusterIndex::matchesDefinition(
-    velocypack::Slice const& other) const {
-  TRI_ASSERT(other.isObject());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
-  TRI_ASSERT(typeSlice.isString());
-  auto typeStr = typeSlice.stringView();
-  TRI_ASSERT(typeStr == oldtypeName());
-#endif
-  auto value = other.get(arangodb::StaticStrings::IndexId);
-
-  if (!value.isNone()) {
-    // We already have an id.
-    if (!value.isString()) {
-      // Invalid ID
-      return false;
-    }
-    // Short circuit. If id is correct the index is identical.
-    std::string_view idRef = value.stringView();
-    return idRef == std::to_string(id().id());
-  }
-  return IResearchInvertedIndex::matchesDefinition(other,
-                                                   collection().vocbase());
-}
-
-std::string IResearchInvertedClusterIndex::getCollectionName() const {
-  return collection().name();
-}
-
-IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
-  auto& cmf = collection()
-                  .vocbase()
-                  .server()
-                  .getFeature<metrics::ClusterMetricsFeature>();
-  auto data = cmf.getData();
-  if (!data) {
-    return {};
-  }
-  auto& metrics = data->metrics;
-  auto labels = absl::StrCat(  // clang-format off
-      "db=\"", getDbName(), "\","
-      "index=\"", name(), "\","
-      "collection=\"", getCollectionName(), "\"");  // clang-format on
-  return {
-      metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
-      metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
-      metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
-      metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
-      metrics.get<std::uint64_t>("arangodb_search_index_size", labels),
-  };
-}
-
-IResearchInvertedClusterIndex::IResearchInvertedClusterIndex(
-    IndexId iid, uint64_t, LogicalCollection& collection,
-    const std::string& name)
-    : Index{iid, collection, name, {}, false, true},
-      IResearchInvertedIndex{collection.vocbase().server()} {
-  initClusterMetrics();
 }
 
 }  // namespace arangodb::iresearch

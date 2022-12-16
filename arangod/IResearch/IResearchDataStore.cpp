@@ -734,10 +734,8 @@ IResearchDataStore::~IResearchDataStore() {
     // count down the number of out of sync links
     _asyncFeature->untrackOutOfSyncLink();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // if triggered  - no unload was called prior to deleting index object
   TRI_ASSERT(!_dataStore);
-#endif
 }
 
 IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
@@ -1971,12 +1969,6 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   }
 }
 
-bool IResearchDataStore::hasSelectivityEstimate() {
-  // selectivity can only be determined per query since multiple fields are
-  // indexed
-  return false;
-}
-
 IResearchDataStore::Stats IResearchDataStore::stats() const {
   auto linkLock = _asyncSelf->lock();
   if (!linkLock) {
@@ -2025,6 +2017,8 @@ void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("indexSize", VPackValue(stats.indexSize));
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+
 std::tuple<uint64_t, uint64_t, uint64_t> IResearchDataStore::numFailed() const {
   return {_numFailedCommits ? _numFailedCommits->load(std::memory_order_relaxed)
                             : 0,
@@ -2045,6 +2039,8 @@ std::tuple<uint64_t, uint64_t, uint64_t> IResearchDataStore::avgTime() const {
           ? _avgConsolidationTimeMs->load(std::memory_order_relaxed)
           : 0};
 }
+
+#endif
 
 void IResearchDataStore::initClusterMetrics() const {
   TRI_ASSERT(ServerState::instance()->isCoordinator());

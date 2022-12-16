@@ -335,14 +335,6 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   }
 }
 
-Result IResearchRocksDBInvertedIndex::drop() /*noexcept*/ {
-  return deleteDataStore();
-}
-
-void IResearchRocksDBInvertedIndex::unload() /*noexcept*/ {
-  shutdownDataStore();
-}
-
 bool IResearchRocksDBInvertedIndex::matchesDefinition(
     velocypack::Slice const& other) const {
   TRI_ASSERT(other.isObject());

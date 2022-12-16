@@ -57,27 +57,16 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink& operator=(IResearchLink const&) = delete;
   IResearchLink& operator=(IResearchLink&&) = delete;
 
-  ~IResearchLink() override;
-
-  static bool canBeDropped() {
-    // valid for a link to be dropped from an ArangoSearch view
-    return true;
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result drop();
 
-  static bool isHidden();  // arangodb::Index override
-  static bool isSorted();  // arangodb::Index override
+  static bool isHidden();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called when the iResearch Link is loaded into memory
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  void load();
+  // IResearch does not provide a fixed default sort order
+  static constexpr bool isSorted() noexcept { return false; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the
@@ -93,18 +82,6 @@ class IResearchLink : public IResearchDataStore {
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type enum value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static Index::IndexType type();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type string value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static char const* typeName();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory

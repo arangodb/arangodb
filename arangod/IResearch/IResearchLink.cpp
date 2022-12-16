@@ -230,19 +230,6 @@ Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
   return initAndLink(pathExists, init, view.get());
 }
 
-IResearchLink::~IResearchLink() {
-  // disassociate from view if it has not been done yet
-  auto r = unload();
-  if (!r.ok()) {
-    try {
-      LOG_TOPIC("2b41f", ERR, TOPIC)
-          << "failed to unload arangodb_search link in link destructor: "
-          << r.errorNumber() << " " << r.errorMessage();
-    } catch (...) {
-    }
-  }
-}
-
 Result IResearchLink::drop() {
   // the lookup and unlink is valid for single-server only (that is the only
   // scenario where links are persisted) on coordinator and db-server the
@@ -339,14 +326,6 @@ bool IResearchLink::isHidden() {
   return !ServerState::instance()->isDBServer();
 }
 
-bool IResearchLink::isSorted() {
-  return false;  // IResearch does not provide a fixed default sort order
-}
-
-void IResearchLink::load() {
-  // Note: this function is only used by RocksDB
-}
-
 bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   if (!slice.isObject() || !slice.hasKey(StaticStrings::ViewIdField)) {
     return false;  // slice has no view identifier field
@@ -390,15 +369,6 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   }
 
   return {};
-}
-
-Index::IndexType IResearchLink::type() {
-  // TODO: don't use enum
-  return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
-}
-
-char const* IResearchLink::typeName() {
-  return StaticStrings::ViewArangoSearchType.data();
 }
 
 bool IResearchLink::setCollectionName(std::string_view name) noexcept {

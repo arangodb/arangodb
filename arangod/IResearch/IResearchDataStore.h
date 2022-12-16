@@ -147,12 +147,16 @@ class IResearchDataStore {
   [[nodiscard]] virtual Index const& index() const noexcept = 0;
   [[nodiscard]] StorageEngine* engine() const noexcept { return _engine; }
 
-  static bool hasSelectivityEstimate();  // arangodb::Index override
+  // valid for a link to be dropped from an ArangoSearch view
+  static constexpr bool canBeDropped() noexcept { return true; }
+
+  // selectivity can only be determined per query
+  // since multiple fields are indexed
+  static constexpr bool hasSelectivityEstimate() noexcept { return false; }
 
   bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx);  // arangodb::Index override
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief give derived class chance to fine-tune iresearch storage
@@ -389,8 +393,8 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result deleteDataStore() noexcept;
 
- public:  // TODO(MBkkt) public only for tests, make protected
-  // These methods only for tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get numbers of failed commit cleanup consolidation
   ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +404,7 @@ class IResearchDataStore {
   /// @brief get average time of commit cleanuo consolidation
   ////////////////////////////////////////////////////////////////////////////////
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
-
+#endif
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
