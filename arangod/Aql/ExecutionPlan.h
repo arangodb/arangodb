@@ -110,9 +110,7 @@ class ExecutionPlan {
   /// @brief check if a specific rule is disabled
   bool isDisabledRule(int rule) const;
 
-  bool hasForcedIndexHints() const noexcept {
-    return _hasForcedIndexHints;
-  }
+  bool hasForcedIndexHints() const noexcept { return _hasForcedIndexHints; }
 
   /// @brief enable a specific rule
   void enableRule(int rule);
