@@ -43,15 +43,4 @@ struct MessagePayload : MessagePayloadBase {
   Payload payload;
 };
 
-struct Message {
-  Message(ActorPID sender, ActorPID receiver,
-          std::unique_ptr<MessagePayloadBase> payload)
-      : sender(sender), receiver(receiver), payload(std::move(payload)) {}
-
-  ActorPID sender;
-  ActorPID receiver;
-
-  std::unique_ptr<MessagePayloadBase> payload;
-};
-
 }  // namespace arangodb::pregel::actor
