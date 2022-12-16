@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -36,11 +36,17 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  var replication = require("@arangodb/replication");
-  replication.applier.stop(); // should not be running anyway
-  replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
+  db._drop('UnitTestsRecovery1');
+  let c = db._create('UnitTestsRecovery1');
 
-  internal.debugTerminate('crashing server');
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
+  }
+  c.insert(docs);
+
+  internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
+  c.ensureIndex({ type: "skiplist", fields: ["value"] });
   return 0;
 }
 
@@ -56,12 +62,16 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    testReplicationRestarted: function () {
-      var replication = require("@arangodb/replication");
-      var state = replication.applier.state().state;
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test whether we can restore the trx data
+    // //////////////////////////////////////////////////////////////////////////////
 
-      // must be either still running or have some failed connections errors
-      assertTrue(state.running || state.totalFailedConnects > 0); 
+    testBrokenIndex: function () {
+      const c = db._collection('UnitTestsRecovery1');
+      const indexes = c.getIndexes();
+      assertEqual(indexes.length, 1);
+      assertEqual(indexes[0].type, 'primary');
+      assertEqual(indexes[0].id, 'UnitTestsRecovery1/0');
     }
 
   };
