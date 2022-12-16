@@ -1970,7 +1970,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
 std::string TRI_vocbase_t::path() const {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  return engine.databasePath(this);
+  return engine.databasePath();
 }
 
 std::string const& TRI_vocbase_t::sharding() const { return _info.sharding(); }
