@@ -23,6 +23,7 @@
 #pragma once
 
 #include <vector>
+#include "Basics/StaticStrings.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -41,7 +42,7 @@ struct CollectionIndexesProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, CollectionIndexesProperties& props) {
-  return f.object(props).fields(f.field("indexes", props.indexes));
+  return f.object(props).fields(f.field(StaticStrings::Indexes, props.indexes));
 }
 
 }  // namespace arangodb
