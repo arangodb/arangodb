@@ -439,15 +439,20 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
         reversedUsedIndexes{};
     reversedUsedIndexes.first = buildReverseUsedIndexes();
 
+    // TODO: [GraphRefactor] added as an optimization during development
+    // check this later. Check if this is being set in ShortestPath.
+    bool produceVertices = opts->produceVertices();
+
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections());
+        opts->getEdgeProjections(), produceVertices);
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
-        opts->getVertexProjections(), opts->getEdgeProjections());
+        opts->getVertexProjections(), opts->getEdgeProjections(),
+        produceVertices);
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
