@@ -46,7 +46,7 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
     fromSerialized(SerializedType const& b, MemoryType& result)
         -> arangodb::inspection::Status {
   auto v = b.slice();
-  if (v.isString() && v.isEqualString("satellite")) {
+  if (v.isString() && v.isEqualString(StaticStrings::Satellite)) {
     result = 0;
     return {};
   } else if (v.isNumber()) {

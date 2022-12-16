@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <optional>
 
+#include "Basics/StaticStrings.h"
 #include "Inspection/Access.h"
 #include "VocBase/Properties/UtilityInvariants.h"
 
@@ -69,21 +70,23 @@ struct ClusteringMutableProperties {
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
   return f.object(props).fields(
-      f.field("waitForSync", props.waitForSync).fallback(f.keep()),
+      f.field(StaticStrings::WaitForSyncString, props.waitForSync)
+          .fallback(f.keep()),
       // Deprecated, and not documented anymore
       // The ordering is important here, minReplicationFactor
       // has to be before writeConcern, this way we ensure that writeConcern
       // will overwrite the minReplicationFactor value if present
-      f.field("minReplicationFactor", props.writeConcern).fallback(f.keep()),
+      f.field(StaticStrings::MinReplicationFactor, props.writeConcern)
+          .fallback(f.keep()),
       // Now check the new attribute, if it is not there,
       // fallback to minReplicationFactor / default, whatever
       // is set already.
       // Then do the invariant check, this should now cover both
       // values.
-      f.field("writeConcern", props.writeConcern)
+      f.field(StaticStrings::WriteConcern, props.writeConcern)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isGreaterZeroIfPresent),
-      f.field("replicationFactor", props.replicationFactor)
+      f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
           .transformWith(ClusteringMutableProperties::Transformers::
                              ReplicationSatellite{}));
 }
