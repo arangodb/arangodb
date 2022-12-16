@@ -255,8 +255,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void createCollection(
       TRI_vocbase_t& vocbase,
       arangodb::LogicalCollection const& collection) override;
-  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&&, ErrorCode& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*,
                                              VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection>

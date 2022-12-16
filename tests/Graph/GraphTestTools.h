@@ -100,8 +100,7 @@ struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
 
   MockGraphDatabase(ArangodServer& server, std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                createInfo(server, name, 1)) {}
+      : vocbase(createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {}
 

@@ -39,6 +39,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <memory>
+#include <vector>
 
 struct TRI_vocbase_t;
 
