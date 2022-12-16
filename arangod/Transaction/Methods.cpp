@@ -620,13 +620,19 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_ASSERT(_replicationData->slice().isArray());
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
                _replicationData->slice().isEmptyArray());
+    TRI_ASSERT(!this->_value.isArray() || this->_options.silent ||
+               this->_resultBuilder.slice().length() == this->_value.length())
+        << "operation: " << _operationType
+        << ", silent: " << this->_options.silent << ", leader: "
+        << (this->_replicationType == Methods::ReplicationType::LEADER)
+        << ", follower: "
+        << (this->_replicationType == Methods::ReplicationType::FOLLOWER)
+        << ", value: " << this->_value.toJson()
+        << ", resultBuilder: " << this->_resultBuilder.slice().toJson();
 
     TRI_ASSERT(res.ok() || !this->_value.isArray());
 
     TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
-
-    TRI_ASSERT(!this->_value.isArray() || this->_options.silent ||
-               this->_resultBuilder.slice().length() == this->_value.length());
 
     auto resDocs = this->_resultBuilder.steal();
     auto intermediateCommit = futures::makeFuture(res);
@@ -704,13 +710,9 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
                   LogicalCollection& collection, VPackSlice value,
                   OperationOptions& options)
       : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
-                                "remove"),
+                                "remove", TRI_VOC_DOCUMENT_OPERATION_REMOVE),
         _keyBuilder(&_methods),
         _previousDocumentBuilder(&_methods) {}
-
-  TRI_voc_document_operation_e operationType() {
-    return TRI_VOC_DOCUMENT_OPERATION_REMOVE;
-  }
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
     std::string_view key;

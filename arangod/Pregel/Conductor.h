@@ -28,11 +28,12 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/Reports.h"
-#include "Pregel/Statistics.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/Reports.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 
@@ -70,7 +71,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _expires;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
-  const uint64_t _executionNumber;
+  ExecutionNumber const _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
   mutable Mutex
@@ -91,7 +92,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<AggregatorHandler> _aggregators;
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
-  /// an unique response, not necessarily during the async mode
+  /// an unique response
   std::set<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
@@ -104,11 +105,8 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   /// continue.
   uint64_t _maxSuperstep = 500;
 
-  /// determines whether we support async execution
-  bool _asyncMode = false;
   bool _useMemoryMaps = true;
   bool _storeResults = false;
-  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
@@ -147,7 +145,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
+  Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
             std::unordered_map<std::string, std::vector<std::string>> const&
@@ -164,7 +162,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool canBeGarbageCollected() const;
 
-  uint64_t executionNumber() const { return _executionNumber; }
+  ExecutionNumber executionNumber() const { return _executionNumber; }
 
  private:
   void cancelNoLock();

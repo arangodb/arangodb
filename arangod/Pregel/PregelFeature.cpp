@@ -44,6 +44,7 @@
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -95,7 +96,7 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
-std::pair<Result, uint64_t> PregelFeature::startExecution(
+ResultT<ExecutionNumber> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections,
@@ -103,8 +104,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
         edgeCollectionRestrictions,
     VPackSlice const& params) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
-    return std::make_pair(
-        Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"}, 0);
+    return Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"};
   }
 
   ServerState* ss = ServerState::instance();
@@ -119,14 +119,14 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
       bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
       bool canRead = exec.canUseCollection(vc, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+        return Result{TRI_ERROR_FORBIDDEN};
       }
     }
     for (std::string const& ec : edgeCollections) {
       bool canWrite = exec.canUseCollection(ec, auth::Level::RW);
       bool canRead = exec.canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        return std::make_pair(Result{TRI_ERROR_FORBIDDEN}, 0);
+        return Result{TRI_ERROR_FORBIDDEN};
       }
     }
   }
@@ -138,30 +138,25 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              0);
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "Cannot use pregel on system collection"};
         }
 
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
           coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+      return Result{TRI_ERROR_INTERNAL};
     }
   }
 
@@ -175,10 +170,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
         auto coll = ci.getCollection(vocbase.name(), name);
 
         if (coll->system()) {
-          return std::make_pair(
-              Result{TRI_ERROR_BAD_PARAMETER,
-                     "Cannot use pregel on system collection"},
-              0);
+          return Result{TRI_ERROR_BAD_PARAMETER,
+                        "Cannot use pregel on system collection"};
         }
 
         if (!coll->isSmart()) {
@@ -190,22 +183,20 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           }
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
-            return std::make_pair(
-                Result{TRI_ERROR_BAD_PARAMETER,
-                       "Edge collection needs to be sharded "
-                       "by shardKeyAttribute parameter ('" +
-                           shardKeyAttribute +
-                           "'), or use SmartGraphs. The current shardKey is: " +
-                           (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+            return Result{
+                TRI_ERROR_BAD_PARAMETER,
+                "Edge collection needs to be sharded "
+                "by shardKeyAttribute parameter ('" +
+                    shardKeyAttribute +
+                    "'), or use SmartGraphs. The current shardKey is: " +
+                    (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
 
-                },
-                0);
+            };
           }
         }
 
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          return std::make_pair(
-              Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+          return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
 
         // smart edge collections contain multiple actual collections
@@ -213,36 +204,33 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
-        return std::make_pair(
-            Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name}, 0);
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
       std::vector<std::string> actual = coll->realNamesForRead();
       edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
     } else {
-      return std::make_pair(Result{TRI_ERROR_INTERNAL}, 0);
+      return Result{TRI_ERROR_INTERNAL};
     }
   }
 
-  uint64_t en = createExecutionNumber();
+  auto en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
       algorithm, params, *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
-
-  return std::make_pair(Result{}, en);
+  return en;
 }
 
-uint64_t PregelFeature::createExecutionNumber() {
-  return TRI_NewServerSpecificTick();
+ExecutionNumber PregelFeature::createExecutionNumber() {
+  return ExecutionNumber{TRI_NewServerSpecificTick()};
 }
 
 PregelFeature::PregelFeature(Server& server)
@@ -277,8 +265,8 @@ void PregelFeature::scheduleGarbageCollection() {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  auto handle = scheduler->queueDelayed(RequestLane::INTERNAL_LOW, offset,
-                                        [this](bool canceled) {
+  auto handle = scheduler->queueDelayed("pregel-gc", RequestLane::INTERNAL_LOW,
+                                        offset, [this](bool canceled) {
                                           if (!canceled) {
                                             garbageCollectConductors();
                                             scheduleGarbageCollection();
@@ -593,7 +581,7 @@ size_t PregelFeature::maxParallelism() const noexcept {
 bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
-                                 uint64_t executionNumber) {
+                                 ExecutionNumber executionNumber) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -606,7 +594,8 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
                      std::move(c)});
 }
 
-std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
+std::shared_ptr<Conductor> PregelFeature::conductor(
+    ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _conductors.find(executionNumber);
   return (it != _conductors.end() && ::authorized(it->second.user))
@@ -640,7 +629,7 @@ void PregelFeature::garbageCollectConductors() try {
 
   MUTEX_LOCKER(guard, _mutex);
   for (auto& c : conductors) {
-    uint64_t executionNumber = c->executionNumber();
+    ExecutionNumber executionNumber = c->executionNumber();
 
     _conductors.erase(executionNumber);
     _workers.erase(executionNumber);
@@ -649,7 +638,7 @@ void PregelFeature::garbageCollectConductors() try {
 }
 
 void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
-                              uint64_t executionNumber) {
+                              ExecutionNumber executionNumber) {
   if (isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -659,7 +648,8 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
   _workers.try_emplace(executionNumber, std::move(user), std::move(w));
 }
 
-std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
+std::shared_ptr<IWorker> PregelFeature::worker(
+    ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   auto it = _workers.find(executionNumber);
   return (it != _workers.end() && ::authorized(it->second.first))
@@ -667,13 +657,13 @@ std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
              : nullptr;
 }
 
-void PregelFeature::cleanupConductor(uint64_t executionNumber) {
+void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);
   _workers.erase(executionNumber);
 }
 
-void PregelFeature::cleanupWorker(uint64_t executionNumber) {
+void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
   // unmapping etc might need a few seconds
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -695,11 +685,12 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
     LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
   }
-  uint64_t exeNum = 0;
+  auto exeNum = ExecutionNumber{0};
   if (sExecutionNum.isInteger()) {
-    exeNum = sExecutionNum.getUInt();
+    exeNum = ExecutionNumber{sExecutionNum.getUInt()};
   } else if (sExecutionNum.isString()) {
-    exeNum = basics::StringUtils::uint64(sExecutionNum.copyString());
+    exeNum = ExecutionNumber{
+        basics::StringUtils::uint64(sExecutionNum.copyString())};
   }
   std::shared_ptr<Conductor> co = conductor(exeNum);
   if (!co) {
@@ -709,8 +700,8 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CURSOR_NOT_FOUND,
-        "Conductor not found, invalid execution number: " +
-            std::to_string(exeNum));
+        fmt::format("Conductor not found, invalid execution number: {}",
+                    exeNum));
   }
 
   if (path == Utils::statusUpdatePath) {
@@ -739,7 +730,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
 
-  uint64_t exeNum = sExecutionNum.getUInt();
+  auto exeNum = ExecutionNumber{sExecutionNum.getUInt()};
 
   std::shared_ptr<IWorker> w = worker(exeNum);
 
