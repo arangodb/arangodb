@@ -199,6 +199,8 @@ class IResearchView final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
 
+  bool isBuilding() const final;
+
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
   struct ViewFactory;
 

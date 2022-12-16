@@ -28,11 +28,12 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Pregel/Reports.h"
-#include "Pregel/Statistics.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/Reports.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
 
@@ -70,7 +71,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _expires;
   std::chrono::seconds _ttl = std::chrono::seconds(300);
   const DatabaseGuard _vocbaseGuard;
-  const uint64_t _executionNumber;
+  ExecutionNumber const _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;
   mutable Mutex
@@ -144,7 +145,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
+  Conductor(ExecutionNumber executionNumber, TRI_vocbase_t& vocbase,
             std::vector<CollectionID> const& vertexCollections,
             std::vector<CollectionID> const& edgeCollections,
             std::unordered_map<std::string, std::vector<std::string>> const&
@@ -161,7 +162,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
 
   bool canBeGarbageCollected() const;
 
-  uint64_t executionNumber() const { return _executionNumber; }
+  ExecutionNumber executionNumber() const { return _executionNumber; }
 
  private:
   void cancelNoLock();

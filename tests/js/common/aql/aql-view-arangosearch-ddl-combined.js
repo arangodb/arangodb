@@ -33,7 +33,13 @@ const isServer = require("@arangodb").isServer;
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const request = require("@arangodb/request");
-const { triggerMetrics } = require("@arangodb/test-helper");
+const {
+  triggerMetrics,
+  debugSetFailAt,
+  debugRemoveFailAt,
+  getEndpointById,
+  getCoordinators,
+} = require('@arangodb/test-helper');
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const tasks = require('@arangodb/tasks');
 const fs = require('fs');
@@ -62,6 +68,32 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection1");
       db._drop("TestCollection2");
       db._drop("collection123");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
+    },
+
+    testViewIsBuilding: function () {
+      internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -75,6 +107,40 @@ function IResearchFeatureDDLTestSuite() {
         assertTrue(null != db._view("TestView"));
         db._dropView("TestView");
         assertTrue(null == db._view("TestView"));
+      }
+    },
+
+    testViewIsBuilding: function () {
+      if (isServer) {
+        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
+      }
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      if (isServer) {
+        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
       }
     },
 
@@ -94,6 +160,8 @@ function IResearchFeatureDDLTestSuite() {
           meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
         }
         db._createView("TestView", "arangosearch", meta);
+        // db.TestCollection0.save({name: i.toString()});
+        // db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 2);

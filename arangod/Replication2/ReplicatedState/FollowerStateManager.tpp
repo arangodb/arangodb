@@ -500,7 +500,7 @@ auto FollowerStateManager<S>::tryTransferSnapshot()
             LOG_CTX("44d58", DEBUG, ctx)
                 << "snapshot transfer successfully completed";
           } else {
-            LOG_CTX("9a68a", ERR, ctx)
+            LOG_CTX("9a68a", DEBUG, ctx)
                 << "failed to transfer snapshot: " << result.errorMessage()
                 << " - retry scheduled";
             errorCounter->operator++();

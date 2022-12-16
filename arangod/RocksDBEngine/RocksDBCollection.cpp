@@ -390,8 +390,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
   DatabaseGuard dbGuard(vocbase);
   CollectionGuard guard(&vocbase, _logicalCollection.id());
 
-  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
-
   RocksDBBuilderIndex::Locker locker(this);
   if (!locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
@@ -446,6 +444,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
       }
     }
   }
+
+  // TODO(MBkkt) it's probably needed here on step 2 before step 5,
+  //  because arangosearch links connected with views in prepareIndexFromSlice
+  READ_LOCKER(inventoryLocker, vocbase._inventoryLock);
 
   // Step 2. Create new index object
   std::shared_ptr<Index> newIdx;
@@ -541,6 +543,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
     // always (re-)lock to avoid inconsistencies
     locker.lock();
 
+    syncIndexOnCreate(*newIdx);
+
     inventoryLocker.lock();
 
     // Step 5. register in index list
@@ -552,8 +556,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
       }
       _indexes.emplace(newIdx);
     }
-
-    syncIndexOnCreate(*newIdx);
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
@@ -595,7 +597,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
 
 // callback that is called directly before the index is dropped.
 // the write-lock on all indexes is still held. this is not called
-// during recoverx.
+// during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
   auto& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();

@@ -31,6 +31,7 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Transaction/StandaloneContext.h"
 
@@ -186,13 +187,13 @@ void RestControlPregelHandler::startExecution() {
   auto res = _pregel.startExecution(_vocbase, algorithm, vertexCollections,
                                     edgeCollections, edgeCollectionRestrictions,
                                     parameters);
-  if (res.first.fail()) {
-    generateError(res.first);
+  if (res.fail()) {
+    generateError(res.result());
     return;
   }
 
   VPackBuilder builder;
-  builder.add(VPackValue(std::to_string(res.second)));
+  builder.add(VPackValue(std::to_string(res.get().value)));
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -217,7 +218,8 @@ void RestControlPregelHandler::getExecutionStatus() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      arangodb::basics::StringUtils::uint64(suffixes[0])};
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {
@@ -239,7 +241,8 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      arangodb::basics::StringUtils::uint64(suffixes[0])};
   auto c = _pregel.conductor(executionNumber);
 
   if (nullptr == c) {

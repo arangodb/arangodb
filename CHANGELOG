@@ -1,7 +1,17 @@
 devel
 -----
 
-* Remove async mode from pregel
+* Added experimental startup option `--rocksdb.block-cache-jemalloc-allocator`.
+  This option defaults to `false`. When set to `true`, a jemalloc-based memory 
+  allocator will be used to allocate memory for the RocksDB block cache. 
+  This allocator will also mark the memory of the block cache to be excluded 
+  from coredumps, potentially reducing coredump size a lot.
+
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a
+  remedy for OOM kills during restarts.
+
+* Remove async mode from pregel.
 
 * Added a configuration option (for the agency):
     --agency.supervision-failed-leader-adds-follower
