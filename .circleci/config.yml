@@ -10,7 +10,7 @@ jobs:
     steps:
       - run:
           name: Print environment
-          run: bash -c "echo $(nproc)"
+          command: bash -c "echo $(nproc)"
       - restore_cache:
           keys:
             - gitcache-v1
