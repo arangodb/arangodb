@@ -67,7 +67,7 @@ function ArangoSearchOutOfSyncSuite () {
       } else {
         viewMeta = { links: { UnitTestsRecovery1: { includeAllFields: true } } };
       }
-      v.properties();
+      v.properties(viewMeta);
       
       let servers = getDBServers();
       let shardInfo = c.shards(true);

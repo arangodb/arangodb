@@ -264,7 +264,7 @@ function testSuite() {
               includeAllFields : true,
               storeValues : "id",
               fields : {
-                text : { analyzers : [name] }
+                text : { analyzers : [name], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
               }
             }
           }

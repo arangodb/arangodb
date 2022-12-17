@@ -233,7 +233,7 @@ function clusterInventorySuite () {
           "UnitTestsDumpEmpty" : {
             includeAllFields: true,
             fields: {
-              text: { analyzers: [ "text_en", analyzer.name ] }
+              text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
             }
           }
         }

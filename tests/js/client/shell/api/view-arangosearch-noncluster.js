@@ -421,7 +421,7 @@ function add_with_link_to_non_existing_collectionSuite () {
 
     test_creating_a_view_with_link_to_non_existing_collection: function() {
       let cmd = api;
-      let body = { "name": "abc", "type": "arangosearch", "links": { "wrong" : {} } };
+      let body = { "name": "abc", "type": "arangosearch", "links": { "wrong" : {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}} } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -452,7 +452,7 @@ function add_with_link_to_existing_collectionSuite () {
       let body = {
         "name": "abc",
         "type": "arangosearch",
-        "links": { "right" : { "includeAllFields": true } }
+        "links": { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }
       };
       let doc = arango.POST_RAW(cmd, body);
 
@@ -468,7 +468,7 @@ function add_with_link_to_existing_collectionSuite () {
       let body ={
         "name": "abc",
         "type": "arangosearch",
-        "links": { "right" : { "includeAllFields": true } }
+        "links": { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }
       };
       let doc = arango.POST_RAW(cmd, body);
 
