@@ -251,9 +251,11 @@ const [linkName, setLinkName] = useState('')
           </Cell>
           : null
       }
+      <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
       <SplitPane
         defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
-        onChange={(size) => localStorage.setItem('splitPos', size)}>
+        onChange={(size) => localStorage.setItem('splitPos', size)}
+        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
         <div style={{ marginLeft: '15px', marginRight: '15px' }}>
           <AccordionView
             allowMultipleOpen
@@ -342,7 +344,7 @@ const [linkName, setLinkName] = useState('')
                     borderTop: '1px solid rgba(64, 74, 83, 0.2)',
                     paddingLeft: 10
                   }}>
-                    <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+                    {/*<SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>*/}
                   </div>
                   : null
               }
