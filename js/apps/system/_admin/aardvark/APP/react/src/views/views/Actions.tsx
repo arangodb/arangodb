@@ -31,12 +31,14 @@ export const NavButton = ({ disabled, arrow = 'up', text = 'Up' }: NavButtonProp
 };
 
 type SaveButtonProps = ButtonProps & {
+  disabled?: boolean;
   oldName?: string;
   menu?: string;
   setChanged: (changed: boolean) => void;
 };
 
 export const SaveButton = ({
+                             disabled,
                              view,
                              oldName,
                              menu,
@@ -117,7 +119,7 @@ export const SaveButton = ({
   };
 
 
-  return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
+  return <IconButton disabled={disabled} icon={"save"} onClick={handleSave} type={"success"} style={{
     marginTop: 10,
     marginBottom: 10,
     marginLeft: 0,
