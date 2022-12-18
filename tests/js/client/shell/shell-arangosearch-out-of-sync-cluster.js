@@ -88,8 +88,7 @@ function ArangoSearchOutOfSyncSuite () {
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        docs.push({});
-        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        docs.push({ "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       
       c.insert(docs);
