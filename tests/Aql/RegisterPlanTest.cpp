@@ -44,17 +44,13 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+struct ExecutionNodeMock;
+
 struct PlanMiniMock {
   PlanMiniMock(ExecutionNode::NodeType expectedType)
       : _expectedType(expectedType) {}
 
-  auto increaseCounter(ExecutionNode::NodeType type) {
-    // This is no longer true for subqueries because reasons, i.e. subqueries
-    // are planned multiple times
-    // TODO: refactor subquery planning?
-    // EXPECT_FALSE(_called) << "Only count every node once per run";
-    EXPECT_EQ(_expectedType, type) << "Count the correct type";
-  }
+  auto increaseCounter(ExecutionNodeMock const& type);
 
   ExecutionNode::NodeType _expectedType;
 };
@@ -85,7 +81,7 @@ struct ExecutionNodeMock {
     return ExecutionNode::alwaysCopiesRows(getType());
   }
 
-  auto getType() -> ExecutionNode::NodeType { return _type; }
+  auto getType() const noexcept -> ExecutionNode::NodeType { return _type; }
 
   auto getVarsUsedLater() -> VarSet const& { return _usedLaterStack.back(); }
 
@@ -194,6 +190,14 @@ struct ExecutionNodeMock {
   std::vector<ExecutionNodeMock>* _subquery;
   ExecutionNodeMock* _dependency = nullptr;
 };
+
+auto PlanMiniMock::increaseCounter(ExecutionNodeMock const& type) {
+  // This is no longer true for subqueries because reasons, i.e. subqueries
+  // are planned multiple times
+  // TODO: refactor subquery planning?
+  // EXPECT_FALSE(_called) << "Only count every node once per run";
+  EXPECT_EQ(_expectedType, type.getType()) << "Count the correct type";
+}
 
 auto ExecutionNodeMock::getVarsValid() const -> VarSet const& {
   return _varsValidStack.back();
