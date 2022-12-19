@@ -26,8 +26,11 @@ description: |
   affect correctness.
 troubleshoot: |
   If this metric keeps increasing, it indicates that the index refill background 
-  thread can't keep up with the incoming data modification requests. 
-  In this case, consider increasing the background thread's queueing capacity via
-  the `--rocksdb.auto-refill-index-cache-queue-capacity` startup option.
-  Increasing the capacity helps to handle bursts of request, but does not help
-  if the background thread is overwhelmed by a continuous high load.
+  threads can't keep up with the incoming data modification requests. 
+  In this case, consider increasing the background threads' queueing capacity via
+  the `--rocksdb.auto-refill-index-cache-queue-capacity` startup option, or the
+  number of background threads via the `--rocksdb.auto-refill-background-threads`
+  startup options.
+  Increasing the capacity or number of threads helps to handle bursts of requests, 
+  but does not help if the background threads are overwhelmed by a continuous high
+  load.

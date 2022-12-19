@@ -330,8 +330,9 @@ Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
   return insert(trx, mthd, newDocumentId, newDoc, options, performChecks);
 }
 
-void RocksDBIndex::refillCache(transaction::Methods& trx,
-                               std::vector<std::string> const& /*keys*/) {}
+void RocksDBIndex::refillCache(
+    transaction::Methods& trx,
+    containers::FlatHashSet<std::string> const& /*keys*/) {}
 
 /// @brief return the memory usage of the index
 size_t RocksDBIndex::memory() const {

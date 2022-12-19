@@ -560,8 +560,9 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   return res;
 }
 
-void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
-                                   std::vector<std::string> const& keys) {
+void RocksDBEdgeIndex::refillCache(
+    transaction::Methods& trx,
+    containers::FlatHashSet<std::string> const& keys) {
   if (_cache == nullptr || keys.empty()) {
     return;
   }
@@ -667,8 +668,11 @@ Result RocksDBEdgeIndex::warmup() {
   auto rocksColl = toRocksDBCollection(_collection);
 
   // Prepare the cache to be resized for this amount of objects to be inserted.
+  // We don't know exactly how much distinct entries there will be. When in
+  // doubt, try to use as little memory as possible.
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
-  expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
+  expectedCount =
+      static_cast<uint64_t>(expectedCount * selectivityEstimate() * 0.75);
 
   _cache->sizeHint(expectedCount);
 

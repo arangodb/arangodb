@@ -41,6 +41,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -294,7 +296,7 @@ void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
 
 void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
                                                          std::string_view key) {
-  _trackedCacheRefills[iid].emplace_back(key.data(), key.size());
+  _trackedCacheRefills[iid].emplace(key.data(), key.size());
 }
 
 void RocksDBTransactionCollection::handleIndexCacheRefills() {
@@ -306,9 +308,50 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
                        .server()
                        .getFeature<RocksDBIndexCacheRefillFeature>();
 
-  for (auto const& it : _trackedCacheRefills) {
-    refiller.trackRefill(_collection, it.first, std::move(it.second));
+  bool haveLeftOvers = false;
+  for (auto& it : _trackedCacheRefills) {
+    TRI_ASSERT(!it.second.empty());
+
+    if (refiller.trackRefill(_collection, it.first, std::move(it.second))) {
+      it.second.clear();
+    } else if (!refiller.refillInForegroundIfQueueFull()) {
+      // background thread could not take over. but we are configured to not
+      // refill in foreground
+      it.second.clear();
+    } else {
+      // now it's our turn to do the inserts in foreground.
+      haveLeftOvers = true;
+    }
   }
+
+  if (haveLeftOvers) {
+    // process index cache refilling in foreground
+    try {
+      auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+      SingleCollectionTransaction trx(
+          ctx, std::to_string(_collection->id().id()), AccessMode::Type::READ);
+      Result res = trx.begin();
+      if (res.ok()) {
+        for (auto& it : _trackedCacheRefills) {
+          if (it.second.empty()) {
+            continue;
+          }
+          auto idx = trx.documentCollection()->lookupIndex(it.first);
+          if (idx == nullptr) {
+            // index doesn't exist anymore
+            continue;
+          }
+          static_cast<RocksDBIndex*>(idx.get())->refillCache(trx, it.second);
+          refiller.increaseTotalNumForeground(it.second.size());
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("b9bbd", INFO, Logger::FIXME)
+          << "unable to process index refill operations in foreground: "
+          << ex.what();
+    }
+  }
+
   _trackedCacheRefills.clear();
 }
 

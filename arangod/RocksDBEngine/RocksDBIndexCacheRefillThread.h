@@ -27,14 +27,14 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "RestServer/MetricsFeature.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 struct TRI_vocbase_t;
@@ -42,18 +42,20 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class DatabaseFeature;
 class LogicalCollection;
+class RocksDBIndexCacheRefillFeature;
 
 class RocksDBIndexCacheRefillThread final : public Thread {
  public:
   explicit RocksDBIndexCacheRefillThread(
-      application_features::ApplicationServer& server, size_t maxCapacity);
+      application_features::ApplicationServer& server, size_t id,
+      size_t maxCapacity);
 
   ~RocksDBIndexCacheRefillThread();
 
   void beginShutdown() override;
 
-  void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, std::vector<std::string> keys);
+  bool trackRefill(std::shared_ptr<LogicalCollection> const& collection,
+                   IndexId iid, containers::FlatHashSet<std::string> keys);
 
   void waitForCatchup();
 
@@ -61,17 +63,22 @@ class RocksDBIndexCacheRefillThread final : public Thread {
   void run() override;
 
  private:
-  DatabaseFeature& _databaseFeature;
-
-  using IndexValues = std::unordered_map<IndexId, std::vector<std::string>>;
-  using CollectionValues = std::unordered_map<DataSourceId, IndexValues>;
-  using DatabaseValues = std::unordered_map<TRI_voc_tick_t, CollectionValues>;
+  using IndexValues =
+      containers::FlatHashMap<IndexId, containers::FlatHashSet<std::string>>;
+  using CollectionValues = containers::FlatHashMap<DataSourceId, IndexValues>;
+  using DatabaseValues =
+      containers::FlatHashMap<TRI_voc_tick_t, CollectionValues>;
 
   void refill(TRI_vocbase_t& vocbase, DataSourceId cid,
               IndexValues const& data);
   void refill(TRI_vocbase_t& vocbase, CollectionValues const& data);
   void refill(DatabaseValues const& data);
 
+  DatabaseFeature& _databaseFeature;
+
+  RocksDBIndexCacheRefillFeature& _refillFeature;
+
+  // maximum queue capacity for thread
   size_t const _maxCapacity;
 
   // protects _operations and _numQueued
@@ -79,14 +86,11 @@ class RocksDBIndexCacheRefillThread final : public Thread {
 
   // queued operations
   DatabaseValues _operations;
+
   // current number of operations queued
   size_t _numQueued;
+
   // current number of in-process operations
   size_t _proceeding;
-
-  // total number of items ever queued
-  Counter& _totalNumQueued;
-  // total number of items ever dropped (because of queue full)
-  Counter& _totalNumDropped;
 };
 }  // namespace arangodb

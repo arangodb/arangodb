@@ -2611,10 +2611,11 @@ Future<Result> Methods::replicateOperations(
 
   // path and requestType are different for insert/remove/modify.
 
+  // path and requestType are different for insert/remove/modify.
+
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-
   if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"

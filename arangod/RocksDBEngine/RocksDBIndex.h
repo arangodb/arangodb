@@ -27,6 +27,7 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -133,7 +134,7 @@ class RocksDBIndex : public Index {
                         OperationOptions const& options, bool performChecks);
 
   virtual void refillCache(transaction::Methods& trx,
-                           std::vector<std::string> const& keys);
+                           containers::FlatHashSet<std::string> const& keys);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
