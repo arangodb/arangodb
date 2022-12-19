@@ -62,7 +62,8 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
             type: "inverted",
             includeAllFields: true,
             primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            fields: [{"name": "value_nested"}]
+            // UNCOMMENT THIS AFTER BUGFIX: https://arangodb.atlassian.net/browse/SEARCH-443
+            // fields: [{"name": "value_nested"}]
           };
         }
         let i = c.ensureIndex(indexMeta);
@@ -94,7 +95,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
                 fields: {
                   value: {analyzers: ["identity"]},
                   group: {analyzers: ["identity"]},
-                  "value_nested": {}
+                 "value_nested": {}
                 }
               }
             }
@@ -290,33 +291,64 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       c = db._create("UnitTestsCollection", {numberOfShards: 1});
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
-        let i = c.ensureIndex({
-          type: "inverted",
-          includeAllFields: true,
-          primarySort: {fields: [{"field": "value", "direction": "asc"}]}
-        });
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]}
+          };
+        } else {
+          indexMeta = {
+            type: "inverted",
+            includeAllFields: true,
+            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
+            // UNCOMMENT THIS AFTER BUGFIX: https://arangodb.atlassian.net/browse/SEARCH-443
+            // fields: [{"name": "value_nested"}],
+          };
+        }
+        let i = c.ensureIndex(indexMeta);
         v = db._createView("UnitTestViewSorted", "search-alias", {
           indexes: [{collection: "UnitTestsCollection", index: i.name}]
         });
       } else {
-        v = db._createView("UnitTestViewSorted", "arangosearch",
-          {
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {
             primarySort: [{"field": "value", "direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
                 fields: {
                   value: {analyzers: ["identity"]},
-                  group: {analyzers: ["identity"]}
+                  group: {analyzers: ["identity"]},
+                  "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
                 }
               }
             }
-          });
+          };
+        } else {
+          viewMeta = {
+            primarySort: [{"field": "value", "direction": "asc"}],
+            links: {
+              UnitTestsCollection: {
+                includeAllFields: false,
+                fields: {
+                  value: {analyzers: ["identity"]},
+                  group: {analyzers: ["identity"]},
+                  "value_nested": {}
+                }
+              }
+            }
+          };
+        }
+        v = db._createView("UnitTestViewSorted", "arangosearch", viewMeta);
       }
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        docs.push({group: "test" + (i % 10), value: i});
+        docs.push({group: "test" + (i % 10), value: i, "value_nested": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       c.insert(docs);
 
@@ -619,7 +651,6 @@ function optimizerCollectInClusterSuiteSmartGraph() {
 
   };
 }
-
 
 function optimizerCollectInClusterArangoSearchSuite() {
   let suite = {};
