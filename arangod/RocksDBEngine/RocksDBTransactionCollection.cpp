@@ -314,7 +314,7 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
   for (auto& it : _trackedCacheRefills) {
     TRI_ASSERT(!it.second.empty());
 
-    if (refiller.trackRefill(_collection, it.first, std::move(it.second))) {
+    if (refiller.trackRefill(_collection, it.first, it.second)) {
       it.second.clear();
     } else if (!refiller.refillInForegroundIfQueueFull()) {
       // background thread could not take over. but we are configured to not
@@ -345,6 +345,8 @@ void RocksDBTransactionCollection::handleIndexCacheRefills() {
           }
           static_cast<RocksDBIndex*>(idx.get())->refillCache(trx, it.second);
           refiller.increaseTotalNumForeground(it.second.size());
+          refiller.increaseTotalNumLoaded(it.second.size());
+          it.second.clear();
         }
       }
     } catch (std::exception const& ex) {

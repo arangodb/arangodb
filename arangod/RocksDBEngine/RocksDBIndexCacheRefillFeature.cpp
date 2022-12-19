@@ -70,13 +70,15 @@ size_t defaultConcurrentIndexFillTasks() {
 
 DECLARE_COUNTER(rocksdb_cache_full_index_refills_total,
                 "Total number of completed full index cache refills");
-DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
-                "Total number of auto-refilled in-memory cache items");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_queued_total,
+                "Total number of cache items queued for auto-refilling");
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
 DECLARE_COUNTER(rocksdb_cache_auto_refill_foreground_total,
                 "Total number of items processed in foreground for in-memory "
                 "cache refilling");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
+                "Total number of cache items auto-refilled");
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -92,11 +94,13 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
       _totalNumQueued(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_auto_refill_loaded_total{})),
+          rocksdb_cache_auto_refill_queued_total{})),
       _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_auto_refill_dropped_total{})),
       _totalNumForeground(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_auto_refill_foreground_total{})),
+      _totalNumLoaded(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_loaded_total{})),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -286,6 +290,11 @@ void RocksDBIndexCacheRefillFeature::increaseTotalNumForeground(
   _totalNumForeground += value;
 }
 
+void RocksDBIndexCacheRefillFeature::increaseTotalNumLoaded(
+    uint64_t value) noexcept {
+  _totalNumLoaded += value;
+}
+
 void RocksDBIndexCacheRefillFeature::stop() { stopThreads(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
@@ -311,7 +320,7 @@ bool RocksDBIndexCacheRefillFeature::fillOnStartup() const noexcept {
 
 bool RocksDBIndexCacheRefillFeature::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-    containers::FlatHashSet<std::string> keys) {
+    containers::FlatHashSet<std::string>& keys) {
   if (_backgroundThreads.empty()) {
     return false;
   }
@@ -332,7 +341,7 @@ bool RocksDBIndexCacheRefillFeature::trackRefill(
     size_t i = idx % _numBackgroundThreads;
     TRI_ASSERT(i < _backgroundThreads.size());
     auto& t = _backgroundThreads[i];
-    bool result = t->trackRefill(collection, iid, std::move(keys));
+    bool result = t->trackRefill(collection, iid, keys);
     if (result) {
       return true;
     }

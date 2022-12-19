@@ -1,0 +1,17 @@
+name: rocksdb_cache_auto_refill_queued_total
+introducedIn: "3.9.7"
+help: |
+  Total number of cache entries queued for automatical refilling.
+unit: number
+type: counter
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric shows the total number of in-memory cache entries that we queued
+  for automatic refilling. 
+  On Agents and Coordinators, the values reported by this metric are always zero.

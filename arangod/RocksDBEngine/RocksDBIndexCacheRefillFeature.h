@@ -60,7 +60,7 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // track the refill of the specified keys. returns true if the keys
   // were taken, false otherwise
   bool trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, containers::FlatHashSet<std::string> keys);
+                   IndexId iid, containers::FlatHashSet<std::string>& keys);
 
   // schedule the refill of the full index
   void scheduleFullIndexRefill(std::string const& database,
@@ -87,6 +87,7 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   void increaseTotalNumQueued(uint64_t value) noexcept;
   void increaseTotalNumDropped(uint64_t value) noexcept;
   void increaseTotalNumForeground(uint64_t value) noexcept;
+  void increaseTotalNumLoaded(uint64_t value) noexcept;
 
  private:
   void stopThreads();
@@ -153,6 +154,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   // total number of items processed in foreground (because of queue full)
   metrics::Counter& _totalNumForeground;
+
+  // total number of items reloaded
+  metrics::Counter& _totalNumLoaded;
 
   // protects _indexFillTasks and _currentlyRunningIndexFillTasks
   std::mutex _indexFillTasksMutex;

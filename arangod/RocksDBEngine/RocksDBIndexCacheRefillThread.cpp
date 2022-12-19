@@ -63,7 +63,7 @@ void RocksDBIndexCacheRefillThread::beginShutdown() {
 
 bool RocksDBIndexCacheRefillThread::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
-    containers::FlatHashSet<std::string> keys) {
+    containers::FlatHashSet<std::string>& keys) {
   size_t const n = keys.size();
 
   if (n == 0) {
@@ -116,6 +116,7 @@ bool RocksDBIndexCacheRefillThread::trackRefill(
   _condition.signal();
   // increase metric
   _refillFeature.increaseTotalNumQueued(n);
+  keys.clear();
 
   return true;
 }
@@ -159,6 +160,7 @@ void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
       continue;
     }
     static_cast<RocksDBIndex*>(idx.get())->refillCache(trx, it.second);
+    _refillFeature.increaseTotalNumLoaded(it.second.size());
   }
 }
 

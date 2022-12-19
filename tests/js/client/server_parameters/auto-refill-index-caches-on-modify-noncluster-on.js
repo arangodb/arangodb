@@ -106,9 +106,9 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testInsertEdgeEnabled: function() {
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -116,9 +116,9 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testInsertEdgeDisabled: function() {
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -128,9 +128,9 @@ function AutoRefillIndexCachesEdge() {
     
     testUpdateEdgeEabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -139,9 +139,9 @@ function AutoRefillIndexCachesEdge() {
     
     testUpdateEdgeDisbled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -151,9 +151,9 @@ function AutoRefillIndexCachesEdge() {
     
     testReplaceEdgeEnabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -162,9 +162,9 @@ function AutoRefillIndexCachesEdge() {
     
     testReplaceEdgeDisabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -174,9 +174,9 @@ function AutoRefillIndexCachesEdge() {
     
     testRemoveEdgeEnabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), _from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
       waitForMetrics();
@@ -185,9 +185,9 @@ function AutoRefillIndexCachesEdge() {
     
     testRemoveEdgeDisabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), _from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -238,9 +238,9 @@ function AutoRefillIndexCachesVPack() {
     },
     
     testInsertNoIndex: function() {
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -250,9 +250,9 @@ function AutoRefillIndexCachesVPack() {
     
     testInsertVPackNoCache: function() {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -262,9 +262,9 @@ function AutoRefillIndexCachesVPack() {
     
     testInsertVPackDisabled: function() {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
       waitForMetrics();
@@ -273,9 +273,9 @@ function AutoRefillIndexCachesVPack() {
     
     testInsertVPackEnabled: function() {
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -285,9 +285,9 @@ function AutoRefillIndexCachesVPack() {
     testUpdateVPackNoCache: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -298,9 +298,9 @@ function AutoRefillIndexCachesVPack() {
     testUpdateVPackDisabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -311,9 +311,9 @@ function AutoRefillIndexCachesVPack() {
     testUpdateVPackEnabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -323,9 +323,9 @@ function AutoRefillIndexCachesVPack() {
     testReplaceVPackNoCache: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -337,9 +337,9 @@ function AutoRefillIndexCachesVPack() {
     testReplaceVPackDisabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -351,9 +351,9 @@ function AutoRefillIndexCachesVPack() {
     testReplaceVPackEnabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n, { oldValue, newValue });
       waitForMetrics();
@@ -363,9 +363,9 @@ function AutoRefillIndexCachesVPack() {
     testRemoveVPackNoCache: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"] });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -377,9 +377,9 @@ function AutoRefillIndexCachesVPack() {
     testRemoveVPackDisabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: false }`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
@@ -391,9 +391,9 @@ function AutoRefillIndexCachesVPack() {
     testRemoveVPackEnabled: function() {
       db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), value: i} INTO ${cn}`);
       db[cn].ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const oldValue = getMetric("rocksdb_cache_auto_refill_queued_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      const newValue = getMetric("rocksdb_cache_auto_refill_queued_total");
 
       assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
       waitForMetrics();
