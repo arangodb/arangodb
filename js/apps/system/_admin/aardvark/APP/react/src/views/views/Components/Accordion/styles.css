@@ -111,7 +111,8 @@
 }
 
 .ui.styled.accordion {
-  width: 600px;
+  /*width: 600px;*/
+  width: 100%;
 }
 
 .ui.styled.accordion,
