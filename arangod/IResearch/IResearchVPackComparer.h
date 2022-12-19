@@ -50,7 +50,7 @@ class VPackComparer final : public irs::comparer {
   bool empty() const noexcept { return 0 == _size; }
 
  private:
-  bool less(irs::bytes_view lhs, irs::bytes_view rhs) const final;
+  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final;
 
   Sort const* _sort;
   size_t _size;  // number of buckets to compare

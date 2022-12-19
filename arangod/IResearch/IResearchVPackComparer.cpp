@@ -35,6 +35,9 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 constexpr int kMultiplier[]{-1, 1};
 
+// TODO(MBkkt) Make stable sort in iresearch
+constexpr bool kIsStable = false;
+
 }  // namespace
 
 namespace arangodb::iresearch {
@@ -43,30 +46,53 @@ template<typename Sort>
 VPackComparer<Sort>::VPackComparer() : _sort{nullptr}, _size{0} {}
 
 template<typename Sort>
-bool VPackComparer<Sort>::less(irs::bytes_view lhs, irs::bytes_view rhs) const {
+int VPackComparer<Sort>::compare(irs::bytes_view lhs,
+                                 irs::bytes_view rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
 
-  VPackSlice lhsSlice{lhs.data()};
-  VPackSlice rhsSlice{rhs.data()};
-
+  auto const* lhsStart = lhs.data();
+  auto const* rhsStart = rhs.data();
   for (size_t i = 0; i < _size; ++i) {
+    velocypack::Slice lhsSlice{lhsStart};
+    velocypack::Slice rhsSlice{rhsStart};
     TRI_ASSERT(!lhsSlice.isNone());
     TRI_ASSERT(!rhsSlice.isNone());
 
     auto const r = basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
     if (r) {
-      return (kMultiplier[size_t{_sort->direction(i)}] * r) < 0;
+      return kMultiplier[size_t{_sort->direction(i)}] * r;
     }
 
     // move to the next value
-    lhsSlice = VPackSlice{lhsSlice.start() + lhsSlice.byteSize()};
-    rhsSlice = VPackSlice{rhsSlice.start() + rhsSlice.byteSize()};
+    lhsStart += lhsSlice.byteSize();
+    rhsStart += rhsSlice.byteSize();
   }
-
-  return false;
+  if constexpr (kIsStable) {
+    // stable comparator for different memory
+    auto const lhsSize = static_cast<size_t>(lhsStart - lhs.data());
+    auto const rhsSize = static_cast<size_t>(rhsStart - rhs.data());
+    // we don't show rest part, so just make it stable
+    // if we want needs to compare rest with VelocyPackHelper::compare
+    if (lhsSize < rhsSize) {
+      return -1;
+    } else if (lhsSize > rhsSize) {
+      return 1;
+    }
+    irs::bytes_view lhsRest{lhsStart, lhsSize};
+    irs::bytes_view rhsRest{rhsStart, rhsSize};
+    return lhsRest.compare(rhsRest);
+  } else {
+    // just valid comparator for same memory
+    if (lhsStart < rhsStart) {
+      return -1;
+    } else if (lhsStart > rhsStart) {
+      return 1;
+    }
+    return 0;
+  }
 }
 
 template class VPackComparer<IResearchSortBase>;
