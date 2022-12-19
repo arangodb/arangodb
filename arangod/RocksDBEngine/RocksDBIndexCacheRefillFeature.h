@@ -75,6 +75,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // auto-refill in-memory cache after every insert/update/replace operation
   bool autoRefill() const noexcept;
 
+  // auto-refill in-memory cache also on followers
+  bool autoRefillOnFollowers() const noexcept;
+
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
 
@@ -123,6 +126,10 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // whether or not in-memory cache values for indexes are automatically
   // refilled upon insert/update/replace
   bool _autoRefill;
+
+  // whether or not in-memory cache values for indexes are automatically
+  // refilled on followers
+  bool _autoRefillOnFollowers;
 
   // whether or not in-memory cache values for indexes are automatically
   // populated on server start

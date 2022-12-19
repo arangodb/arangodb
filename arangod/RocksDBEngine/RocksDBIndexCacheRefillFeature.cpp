@@ -79,10 +79,11 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _currentBackgroundThreadIdx(0),
-      _maxCapacity(128 * 1024),
+      _maxCapacity(256 * 1024),
       _numBackgroundThreads(::defaultBackgroundRefillThreads()),
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
+      _autoRefillOnFollowers(true),
       _fillOnStartup(false),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
@@ -97,7 +98,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
   startsAfter<DatabaseFeature>();
   startsAfter<RocksDBEngine>();
 
-  // default value must be at least 1, as the minimum allowed value is also 1.
+  // default value must be at least 1
   TRI_ASSERT(_numBackgroundThreads >= 1);
   TRI_ASSERT(_maxConcurrentIndexFillTasks >= 1);
 }
@@ -152,6 +153,17 @@ or during cache grow/shrink operations. A background thread is used so that
 foreground write operations are not slowed down by a lot. It may still cause
 additional I/O activity to look up data from the storage engine to repopulate
 the cache.)");
+
+  options
+      ->addOption("--rocksdb.auto-refill-index-caches-on-followers",
+                  "Whether to automatically (re-)fill the in-memory index "
+                  "caches on followers as well.",
+                  new options::BooleanParameter(&_autoRefillOnFollowers),
+                  arangodb::options::makeFlags(
+                      options::Flags::DefaultNoComponents,
+                      options::Flags::OnDBServer, options::Flags::OnSingle))
+      .setIntroducedIn(30907)
+      .setIntroducedIn(31003);
 
   options
       ->addOption(
@@ -226,7 +238,6 @@ void RocksDBIndexCacheRefillFeature::start() {
           server(), i, _maxCapacity);
 
       if (!_backgroundThreads[i]->start()) {
-        //        stopThreads();
         LOG_TOPIC("836a6", FATAL, Logger::ENGINES)
             << "could not start rocksdb index cache refill thread";
         FATAL_ERROR_EXIT();
@@ -256,6 +267,10 @@ void RocksDBIndexCacheRefillFeature::stop() { stopThreads(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
   return _autoRefill;
+}
+
+bool RocksDBIndexCacheRefillFeature::autoRefillOnFollowers() const noexcept {
+  return _autoRefillOnFollowers;
 }
 
 size_t RocksDBIndexCacheRefillFeature::maxCapacity() const noexcept {

@@ -30,6 +30,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -45,24 +46,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-RefillIndexCaches readFillIndexCachesValue(GeneralRequest const& request) {
-  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
-
-  bool found = false;
-  // this attribute can have 3 values: default, true and false. only
-  // pick it up when it is set to true or false
-  std::string const& value =
-      request.value(StaticStrings::RefillIndexCachesString, found);
-  if (found) {
-    refillIndexCaches = StringUtils::boolean(value)
-                            ? RefillIndexCaches::kRefill
-                            : RefillIndexCaches::kDontRefill;
-  }
-  return refillIndexCaches;
-}
-}  // namespace
 
 RestDocumentHandler::RestDocumentHandler(ArangodServer& server,
                                          GeneralRequest* request,
@@ -199,6 +182,8 @@ RestStatus RestDocumentHandler::insertDocument() {
   }
 
   arangodb::OperationOptions opOptions(_context);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync =
@@ -208,7 +193,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew =
       _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
+  handleFillIndexCachesValue(opOptions);
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
@@ -235,8 +220,6 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
       opOptions.isOverwriteModeUpdateReplace();
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -543,6 +526,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs =
@@ -556,9 +541,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  handleFillIndexCachesValue(opOptions);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -727,6 +710,8 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   OperationOptions opOptions(_context);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs =
@@ -734,9 +719,7 @@ RestStatus RestDocumentHandler::removeDocument() {
   opOptions.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.refillIndexCaches = ::readFillIndexCachesValue(*_request);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  handleFillIndexCachesValue(opOptions);
 
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
@@ -920,4 +903,29 @@ RestStatus RestDocumentHandler::readManyDocuments() {
                       _activeTrx->transactionContextPtr()->getVPackOptions());
                 });
           }));
+}
+
+void RestDocumentHandler::handleFillIndexCachesValue(
+    OperationOptions& options) {
+  RefillIndexCaches ric = RefillIndexCaches::kDefault;
+
+  if (!options.isSynchronousReplicationFrom.empty() &&
+      !_vocbase.server()
+           .getFeature<RocksDBIndexCacheRefillFeature>()
+           .autoRefillOnFollowers()) {
+    // do not refill caches on followers if this is intentionally turned off
+    ric = RefillIndexCaches::kDontRefill;
+  } else {
+    bool found = false;
+    std::string const& value =
+        _request->value(StaticStrings::RefillIndexCachesString, found);
+    if (found) {
+      // this attribute can have 3 values: default, true and false. only
+      // pick it up when it is set to true or false
+      ric = StringUtils::boolean(value) ? RefillIndexCaches::kRefill
+                                        : RefillIndexCaches::kDontRefill;
+    }
+  }
+
+  options.refillIndexCaches = ric;
 }

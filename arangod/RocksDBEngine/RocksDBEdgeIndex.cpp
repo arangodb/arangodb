@@ -725,8 +725,11 @@ Result RocksDBEdgeIndex::warmup() {
 
   auto rocksColl = toRocksDBCollection(_collection);
   // Prepare the cache to be resized for this amount of objects to be inserted.
+  // We don't know exactly how much distinct entries there will be. When in
+  // doubt, try to use as little memory as possible.
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
-  expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
+  expectedCount =
+      static_cast<uint64_t>(expectedCount * selectivityEstimate() * 0.75);
   _cache->sizeHint(expectedCount);
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());

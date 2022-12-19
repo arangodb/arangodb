@@ -27,6 +27,8 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
+struct OperationOptions;
+
 namespace transaction {
 class Methods;
 }
@@ -70,6 +72,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // removes a document
   RestStatus removeDocument();
+
+  void handleFillIndexCachesValue(OperationOptions& options);
 
  private:
   std::unique_ptr<transaction::Methods> _activeTrx;

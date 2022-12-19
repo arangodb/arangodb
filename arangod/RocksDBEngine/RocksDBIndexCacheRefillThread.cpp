@@ -42,7 +42,7 @@ using namespace arangodb;
 RocksDBIndexCacheRefillThread::RocksDBIndexCacheRefillThread(
     ArangodServer& server, size_t id, size_t maxCapacity)
     : ServerThread<ArangodServer>(
-          server, std::string("RocksDBCacheRefiller") + std::to_string(id)),
+          server, std::string("CacheRefill") + std::to_string(id)),
       _databaseFeature(server.getFeature<DatabaseFeature>()),
       _refillFeature(server.getFeature<RocksDBIndexCacheRefillFeature>()),
       _maxCapacity(maxCapacity),
