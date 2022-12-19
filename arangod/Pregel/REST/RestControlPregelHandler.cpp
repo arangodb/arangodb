@@ -36,8 +36,12 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "velocypack/SharedSlice.h"
 
+#include "Network/NetworkFeature.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+
+#include <Pregel/Actor/ActorPID.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -140,6 +144,34 @@ void RestControlPregelHandler::startExecution() {
 
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  {
+    auto& transport = _pregel.actorNetworkTransport();
+
+    if(!transport.connectionPool) {
+      LOG_DEVEL << "setting connection pool";
+      transport.connectionPool = _vocbase.server().getFeature<NetworkFeature>().pool();
+      if(!transport.connectionPool) {
+        LOG_DEVEL << "it's still null";
+      }
+    }
+    //
+    //
+    // TODO: THIS IS TESTING CODE AND NEEDS TO BE REMOVED AGAIN
+    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    auto sender = pregel::actor::ActorPID{ .id = { 0 }, .server = ServerState::instance()->getId(), .databaseName = "_system"};
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      auto receiver = pregel::actor::ActorPID{ .id = { 0 }, .server = coordinator, .databaseName = "_system"};
+      auto msg = VPackBuilder();
+      transport(sender, receiver, msg.sharedSlice());
+    }
+  }
 
   if (suffixes.empty()) {
     bool const allDatabases = _request->parsedValue("all", false);

@@ -33,6 +33,28 @@
 
 #include <string>                                               \
 
+namespace {
+  // TODO: this function is stolen from Networkconnection.cpp
+  // and we should not have duplicates
+  auto errorHandling(arangodb::network::Response const& message)
+    -> arangodb::ResultT<VPackSlice> {
+  if (message.fail()) {
+    return {arangodb::Result{
+        TRI_ERROR_INTERNAL,
+        fmt::format("REST request to worker failed: {}",
+                    arangodb::fuerte::to_string(message.error))}};
+  }
+  if (message.statusCode() >= 400) {
+    return {arangodb::Result{
+        TRI_ERROR_FAILED,
+        fmt::format("REST request to worker returned an error code {}: {}",
+                    message.statusCode(), message.slice().toJson())}};
+  }
+  return message.slice();
+}
+
+}
+
 namespace arangodb::pregel::actor {
 
 struct NetworkTransport {
@@ -40,18 +62,30 @@ struct NetworkTransport {
       : connectionPool(connectionPool) {}
 
   auto operator()(ActorPID sender, ActorPID receiver,
-                  velocypack::SharedSlice msg) -> void {
+                  velocypack::SharedSlice msg) const -> void {
 
-    auto requestOptions = network::RequestOptions{.timeout = timeout, .database = receiver.dabaseName};
+    auto requestOptions = network::RequestOptions{.database = receiver.databaseName, .timeout = timeout };
+    auto builder = velocypack::Builder(msg.slice());
+
+    LOG_DEVEL << "trying to send a message " << sender.server << ":" << sender.id.id << "/" << sender.databaseName
+      << " to " <<
+receiver.server << ":" << receiver.id.id << "/" << receiver.databaseName;
+
+    if(this->connectionPool == nullptr) {
+      LOG_DEVEL << " connection pool is null";
+      return;
+    }
+
     auto request =
-        network::sendRequestRetry(connectionPool,
+        network::sendRequestRetry(this->connectionPool,
                                   // TODO: what about "shard:"?
-                                  "server:"s + receiver.server,
+                                  std::string{"server:"} + receiver.server,
                                   fuerte::RestVerb::Post,
                                   baseURL,
-                                  msg.buffer(), requestOptions);
+                                  builder.bufferRef(), requestOptions);
 
-    std::move(request).thenValue([](auto&& result) -> Result {
+    LOG_DEVEL << "send";
+    std::move(request).thenValue([](auto&& result) -> void {
       auto out = errorHandling(result);
       if (out.fail()) {
         std::cerr << "oops" << out.errorNumber() << " " << out.errorMessage();

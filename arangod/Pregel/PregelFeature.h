@@ -110,6 +110,9 @@ class PregelFeature final : public ArangodFeature {
   bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+  auto actorNetworkTransport() ->actor::NetworkTransport& {
+    return _actorNetworkTransport;
+  }
 
  private:
   void scheduleGarbageCollection();
