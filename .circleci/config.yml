@@ -13,7 +13,7 @@ jobs:
       #      - gitcache-v1-{{ .Branch }}-{{ .Revision }}
       #      - gitcache-v1-{{ .Branch }}
       #      - gitcache-v1
-      - run: git clone --depth 1 "$CIRCLE_REPOSITORY_URL" -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8
+      - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8
       - save_cache:
           when: always
           key: gitcache-v1
