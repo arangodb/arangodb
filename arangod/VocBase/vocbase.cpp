@@ -945,6 +945,7 @@ void TRI_vocbase_t::stop() {
     // this is needed to clear all ongoing snapshots and release collection
     // locks
     _logManager->resignStates();
+    _logManager->resignAll();
 
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
@@ -955,9 +956,6 @@ void TRI_vocbase_t::stop() {
   } catch (...) {
     // we are calling this on shutdown, and always want to go on from here
   }
-
-  _logManager->resignStates();
-  _logManager->resignAll();
 }
 
 /// @brief closes a database and all collections
@@ -1951,8 +1949,6 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
-  shutdown();
-
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design
