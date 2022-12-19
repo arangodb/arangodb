@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const SkipDocumentValidation;
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
+  static std::string const RefillIndexCachesString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;

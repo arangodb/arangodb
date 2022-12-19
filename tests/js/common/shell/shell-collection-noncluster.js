@@ -234,7 +234,7 @@ function CollectionSuite () {
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
             let diff = Math.abs(initial[i].cacheSize - idx.figures.cacheSize);
-            assertTrue(diff <= Math.pow(2, 23), idx);
+            assertTrue(diff <= Math.pow(2, 23), {idx, initial: initial[i]});
             // this assumption is simply not safe
             //assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
             initial[i] = idx.figures;
@@ -248,7 +248,6 @@ function CollectionSuite () {
         // cache was filled with same queries, hit rate must be higher
         idxs.forEach(function(idx, i) {
           if (idx.figures.cacheInUse) {
-            assertTrue(Math.abs(initial[i].cacheSize - idx.figures.cacheSize) < 1024);
             assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, idx, { idx, initial });
           }
         });

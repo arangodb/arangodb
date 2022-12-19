@@ -167,7 +167,8 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice) override {
+                LocalDocumentId const& documentId, VPackSlice,
+                OperationOptions const& /*options*/) override {
     return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
                                       nullptr);
   }

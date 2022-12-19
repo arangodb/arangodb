@@ -27,6 +27,10 @@ operation raises an error, an error object is returned.
 
 You can use this option to save network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete an existing entry from the in-memory edge cache and refill it
+with another edge if an edge document is removed.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}

@@ -120,6 +120,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "Scheduler/SchedulerFeature.h"
