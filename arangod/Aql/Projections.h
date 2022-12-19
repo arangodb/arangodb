@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
-#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
@@ -33,6 +32,8 @@
 #include <string_view>
 #include <unordered_set>
 #include <vector>
+
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 

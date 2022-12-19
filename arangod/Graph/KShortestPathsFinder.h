@@ -25,7 +25,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Containers/HashSet.h"
-#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
@@ -37,6 +36,8 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 struct ResourceMonitor;

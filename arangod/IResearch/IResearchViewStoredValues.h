@@ -25,12 +25,13 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-#include "Containers/FlatHashSet.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include "VelocyPackHelper.h"
 #include "IResearchCompression.h"
 #include <unordered_set>
+
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 

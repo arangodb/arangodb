@@ -40,13 +40,13 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include <absl/strings/numbers.h>
-#include <absl/strings/str_cat.h>
-
 #include <limits.h>
 
 #include <regex>
 #include <string_view>
+
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_cat.h>
 
 namespace {
 

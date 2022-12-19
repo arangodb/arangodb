@@ -56,11 +56,12 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
-#include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include "Containers/FlatHashMap.h"
 
 struct TRI_vocbase_t;  // forward declaration
 

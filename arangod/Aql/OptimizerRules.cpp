@@ -62,7 +62,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
-#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
@@ -78,6 +77,8 @@
 #include "VocBase/Methods/Collections.h"
 
 #include <tuple>
+
+#include "Containers/FlatHashSet.h"
 
 namespace {
 

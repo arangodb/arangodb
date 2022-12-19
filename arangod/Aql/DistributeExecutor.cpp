@@ -31,10 +31,11 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
-#include "Containers/FlatHashMap.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
+
+#include "Containers/FlatHashMap.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

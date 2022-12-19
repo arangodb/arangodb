@@ -26,9 +26,10 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/arangod.h"
+
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "RestServer/arangod.h"
 
 namespace arangodb {
 

@@ -28,7 +28,6 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/QueryContext.h"
-#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 
 // Note: only used for NonConstExpressionContainer
@@ -39,6 +38,8 @@
 #include "Aql/InAndOutRowExpressionContext.h"
 
 #include <vector>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

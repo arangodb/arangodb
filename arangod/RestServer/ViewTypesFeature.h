@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 #include "VocBase/LogicalView.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

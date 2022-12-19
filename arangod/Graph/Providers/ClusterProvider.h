@@ -32,11 +32,12 @@
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
-#include "Containers/FlatHashMap.h"
 
 #include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

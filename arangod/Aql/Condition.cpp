@@ -37,13 +37,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+
+#include "Containers/FlatHashSet.h"
 
 #ifdef _WIN32
 // turn off warnings about too long type name for debug symbols blabla in MSVC

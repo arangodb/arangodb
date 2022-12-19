@@ -45,7 +45,6 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -62,9 +61,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
-#include <absl/strings/str_cat.h>
 #include <frozen/map.h>
 #include <velocypack/Iterator.h>
+
+#include "Containers/FlatHashSet.h"
+#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 namespace {

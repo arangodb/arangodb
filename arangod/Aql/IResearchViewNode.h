@@ -29,8 +29,6 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
-#include "Containers/FlatHashSet.h"
-#include "Containers/FlatHashMap.h"
 #include "Containers/SmallVector.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
@@ -44,6 +42,9 @@
 #include "utils/bit_utils.hpp"
 
 #include <unordered_map>
+
+#include "Containers/FlatHashSet.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 class LogicalView;

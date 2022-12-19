@@ -25,7 +25,6 @@
 
 #include "Aql/AttributeNamePath.h"
 #include "Aql/types.h"
-#include "Containers/FlatHashSet.h"
 
 #include <cstdint>
 #include <memory>
@@ -33,6 +32,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 class Index;

@@ -23,13 +23,14 @@
 #pragma once
 
 #include "Basics/debugging.h"
-#include "Containers/NodeHashMap.h"
 #include "Metrics/IBatch.h"
 #include "Metrics/Metric.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <vector>
+
+#include "Containers/NodeHashMap.h"
 
 namespace arangodb::metrics {
 

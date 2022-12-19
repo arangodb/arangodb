@@ -25,10 +25,11 @@
 
 #include "Graph/Helpers/TraceEntry.h"
 #include "Basics/ResourceUsage.h"
-#include "Containers/FlatHashMap.h"
 
 #include <unordered_map>
 #include <vector>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace graph {

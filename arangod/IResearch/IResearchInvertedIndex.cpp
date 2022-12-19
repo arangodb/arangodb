@@ -45,15 +45,15 @@
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-#include <index/heap_iterator.hpp>
+#include "index/heap_iterator.hpp"
 #include "store/directory.hpp"
-#include <filesystem>
-
-#include <absl/strings/str_cat.h>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
+
+#include <filesystem>
+#include <absl/strings/str_cat.h>
 
 namespace {
 using namespace arangodb;

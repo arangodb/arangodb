@@ -41,7 +41,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Containers/FlatHashSet.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -58,6 +57,8 @@
 #include <v8.h>
 
 #include <limits>
+
+#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

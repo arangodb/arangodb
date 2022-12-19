@@ -29,9 +29,10 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
-#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

@@ -50,7 +50,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashSet.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -85,6 +84,8 @@
 #include "VocBase/ticks.h"
 
 #include <sstream>
+
+#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::transaction;

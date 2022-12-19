@@ -24,10 +24,11 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Indexes/Index.h"
+
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace aql {

@@ -32,10 +32,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
-#include "Containers/FlatHashMap.h"
 
 #include <map>
 #include <shared_mutex>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb::metrics {
 

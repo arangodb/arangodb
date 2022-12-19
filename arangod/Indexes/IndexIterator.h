@@ -46,7 +46,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-#include "Containers/FlatHashMap.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -56,6 +55,8 @@
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 class Index;

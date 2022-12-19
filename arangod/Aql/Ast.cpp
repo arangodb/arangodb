@@ -48,7 +48,6 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
@@ -58,6 +57,8 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+
+#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

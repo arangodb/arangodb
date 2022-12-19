@@ -26,13 +26,14 @@
 
 #include "Aql/types.h"
 #include "Basics/StringHeap.h"
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/Providers/TypeAliases.h"
 
 #include <map>
 #include <velocypack/Slice.h>
+
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 struct ResourceMonitor;

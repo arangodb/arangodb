@@ -38,8 +38,6 @@
 #include "Enterprise/RocksDBEngine/RocksDBEncryptionUtilsEE.h"
 #endif
 
-#include <absl/strings/str_cat.h>
-
 #include <rocksdb/cache.h>
 #include <rocksdb/comparator.h>
 #include <rocksdb/db.h>
@@ -47,6 +45,8 @@
 #include <rocksdb/env_encryption.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 

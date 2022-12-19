@@ -28,11 +28,12 @@
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/Version.h"
+
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 

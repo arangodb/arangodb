@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchDataStore.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
@@ -34,6 +33,8 @@
 #include <cstdint>
 #include <cstddef>
 #include <memory>
+
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace transaction {

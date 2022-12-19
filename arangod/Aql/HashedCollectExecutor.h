@@ -35,10 +35,10 @@
 #include "Aql/types.h"
 #include "Aql/AqlValueGroup.h"
 
-#include "Containers/FlatHashMap.h"
-
 #include <memory>
 #include <string>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 struct ResourceMonitor;

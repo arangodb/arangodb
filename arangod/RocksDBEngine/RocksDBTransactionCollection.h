@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Containers/FlatHashMap.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -34,6 +33,8 @@
 
 #include <rocksdb/types.h>
 #include <unordered_map>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 struct RocksDBDocumentOperation;

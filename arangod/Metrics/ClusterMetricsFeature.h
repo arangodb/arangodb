@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/DownCast.h"
-#include "Containers/FlatHashMap.h"
 #include "Metrics/Batch.h"
 #include "Metrics/Builder.h"
 #include "Metrics/CollectMode.h"
@@ -44,6 +43,8 @@
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ServerStatistics.h"
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb::metrics {
 

@@ -28,9 +28,10 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Containers/FlatHashMap.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Transaction/Methods.h"
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace aql {

@@ -32,7 +32,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
@@ -42,6 +41,8 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb::metrics {
 

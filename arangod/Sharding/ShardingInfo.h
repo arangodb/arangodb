@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
@@ -35,6 +34,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 class LogicalCollection;

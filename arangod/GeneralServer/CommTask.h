@@ -26,7 +26,6 @@
 
 #include "Auth/TokenCache.h"
 #include "Cluster/ServerState.h"
-#include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -37,6 +36,8 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 class AuthenticationFeature;
