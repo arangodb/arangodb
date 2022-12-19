@@ -35,9 +35,6 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 constexpr int kMultiplier[]{-1, 1};
 
-// TODO(MBkkt) Make stable sort in iresearch
-constexpr bool kIsStable = false;
-
 }  // namespace
 
 namespace arangodb::iresearch {
@@ -70,29 +67,7 @@ int VPackComparer<Sort>::compare(irs::bytes_view lhs,
     lhsStart += lhsSlice.byteSize();
     rhsStart += rhsSlice.byteSize();
   }
-  if constexpr (kIsStable) {
-    // stable comparator for different memory
-    auto const lhsSize = static_cast<size_t>(lhsStart - lhs.data());
-    auto const rhsSize = static_cast<size_t>(rhsStart - rhs.data());
-    // we don't show rest part, so just make it stable
-    // if we want needs to compare rest with VelocyPackHelper::compare
-    if (lhsSize < rhsSize) {
-      return -1;
-    } else if (lhsSize > rhsSize) {
-      return 1;
-    }
-    irs::bytes_view lhsRest{lhsStart, lhsSize};
-    irs::bytes_view rhsRest{rhsStart, rhsSize};
-    return lhsRest.compare(rhsRest);
-  } else {
-    // just valid comparator for same memory
-    if (lhsStart < rhsStart) {
-      return -1;
-    } else if (lhsStart > rhsStart) {
-      return 1;
-    }
-    return 0;
-  }
+  return 0;
 }
 
 template class VPackComparer<IResearchSortBase>;

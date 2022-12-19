@@ -642,18 +642,6 @@ void registerFunctions(aql::AqlFunctionFeature& functions) {
        &offsetInfoFunc});
 }
 
-void registerIndexFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
-    ArangodServer& server) {
-  m.emplace(
-      std::type_index(typeid(ClusterEngine)),
-      arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
-  registerSingleFactory<ClusterEngine>(m, server);
-  m.emplace(std::type_index(typeid(RocksDBEngine)),
-            arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
-  registerSingleFactory<RocksDBEngine>(m, server);
-}
-
 void registerScorers(aql::AqlFunctionFeature& functions) {
   // positional arguments (attribute [<scorer-specific properties>...]);
   std::string_view constexpr args(".|+");
@@ -1134,7 +1122,7 @@ void IResearchFeature::prepare() {
   ::irs::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory(_factories, server());
+  registerIndexFactory();
 
   // register 'arangosearch' view
   registerViewFactory(server());
@@ -1373,6 +1361,11 @@ void IResearchFeature::registerRecoveryHelper() {
   }
 }
 
+void IResearchFeature::registerIndexFactory() {
+  _clusterFactory = IResearchLinkCoordinator::createFactory(server());
+  _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
+}
+
 #ifdef USE_ENTERPRISE
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
@@ -1395,12 +1388,14 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
 }
 #endif
 
-template<typename Engine, typename std::enable_if_t<
-                              std::is_base_of_v<StorageEngine, Engine>, int>>
+template<typename Engine>
 IndexTypeFactory& IResearchFeature::factory() {
-  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) !=
-             _factories.end());
-  return *_factories.find(std::type_index(typeid(Engine)))->second;
+  if constexpr (std::is_same_v<Engine, ClusterEngine>) {
+    return *_clusterFactory;
+  } else {
+    static_assert(std::is_same_v<Engine, RocksDBEngine>);
+    return *_rocksDBFactory;
+  }
 }
 template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
 template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();

@@ -37,7 +37,6 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <typeindex>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -152,6 +151,7 @@ class IResearchFeature final : public ArangodFeature {
 
  private:
   void registerRecoveryHelper();
+  void registerIndexFactory();
 
   struct State {
     std::mutex mtx;
@@ -179,7 +179,9 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
-  std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
+
+  std::shared_ptr<IndexTypeFactory> _clusterFactory;
+  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // number of links/indexes currently out of sync
   metrics::Gauge<uint64_t>& _outOfSyncLinks;
