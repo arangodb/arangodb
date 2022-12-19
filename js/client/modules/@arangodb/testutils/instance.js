@@ -370,7 +370,7 @@ class instance {
       let splitkey = key.split('.');
       if (splitkey.length !== 2) {
         if (splitkey[0] === this.instanceRole) {
-          this.args[splitkey[1] + '.' + splitkey[2]] = value;
+          this.args[splitkey.slice(1).join('.')] = value;
         }
       } else {
         this.args[key] = value;
