@@ -8,17 +8,7 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
-      #      - restore_cache:
-      #    keys:
-      #      - gitcache-v1-{{ .Branch }}-{{ .Revision }}
-      #      - gitcache-v1-{{ .Branch }}
-      #      - gitcache-v1
       - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
-      - save_cache:
-          when: always
-          key: gitcache-v1
-          paths:
-            - .git
       - run:
           name: Print CCache Settings
           command: ccache -p
@@ -34,11 +24,11 @@ jobs:
           name: Configure
           command: |
             # the -DUSE_LIBUNWIND=1 is a hack that I would like to avoid in the future
-            cmake --preset community-developer -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DUSE_LIBUNWIND=1
+            cmake --preset community-pr -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DUSE_LIBUNWIND=1
       - run:
           name: Build
           command: |
-            cmake --build --preset community-developer --parallel 8 --target arangodbtests
+            cmake --build --preset community-pr --parallel 8 --target arangodbtests
       - run:
           name: CCache Statistics
           command: ccache -s
