@@ -1747,11 +1747,6 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
-    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
-    delete global.ENCRYPTION_KEY_RELOAD;
-  }
-
   let testsBasePaths = {};
   let testsBasePathsEnterprise = {};
   exports.pathForTesting = function (path, prefix = 'js', enterprise = false) {
