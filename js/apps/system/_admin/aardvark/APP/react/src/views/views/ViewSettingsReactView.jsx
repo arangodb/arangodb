@@ -9,7 +9,6 @@ import Textarea from '../../components/pure-css/form/Textarea';
 import { Cell, Grid } from '../../components/pure-css/grid';
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { HashRouter, Route, Switch } from 'react-router-dom';
-import ViewJSONReactView from './ViewJSONReactView';
 import LinkList from './Components/LinkList';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
@@ -295,7 +294,26 @@ const [linkName, setLinkName] = useState('')
               },
               {
                 index: 4,
-                content: <div>Accordion Item 5</div>,
+                content: <div><ViewContext.Provider
+                value={{
+                  formState,
+                  dispatch,
+                  isAdminUser,
+                  changed,
+                  setChanged
+                }}
+              >
+                <HashRouter basename={`view/${name}`} hashType={'noslash'}>
+                  <Switch>
+                    <Route path={'/:link'}>
+                      <LinkPropertiesForm name={name}/>
+                    </Route>
+                    <Route exact path={'/'}>
+                      <LinkList name={'andreasview'}/>
+                    </Route>
+                  </Switch>
+                </HashRouter>
+              </ViewContext.Provider></div>,
                 label: "Links",
                 testID: "accordionItem5",
                 defaultActive: true
