@@ -36,6 +36,8 @@
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
 
+#include <absl/strings/numbers.h>
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #if (__GNUC__ >= 7)
