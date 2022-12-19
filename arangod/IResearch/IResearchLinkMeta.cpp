@@ -47,6 +47,7 @@
 #include "velocypack/Iterator.h"
 
 #include "Containers/FlatHashSet.h"
+#include <absl/strings/str_cat.h>
 
 namespace {
 
