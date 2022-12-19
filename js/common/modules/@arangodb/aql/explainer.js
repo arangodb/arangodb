@@ -392,8 +392,8 @@ function printIndexes(indexes) {
         maxFieldsLen = l;
       }
       var storedValuesFields = index.storedValues || [];
-      if (index.type == 'inverted') {
-          storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+      if (index.type === 'inverted') {
+        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
       }
       l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxStoredValuesLen) {
@@ -425,7 +425,7 @@ function printIndexes(indexes) {
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var storedValuesFields = indexes[i].storedValues || [];
-      if (indexes[i].type == 'inverted') {
+      if (indexes[i].type === 'inverted') {
         storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
       }
       var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
