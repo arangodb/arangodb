@@ -117,6 +117,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
+  bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;

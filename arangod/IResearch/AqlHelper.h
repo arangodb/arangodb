@@ -353,7 +353,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _type = AqlValueTraits::type(_value);
   }
 
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _value.destroy();
     }

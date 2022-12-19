@@ -139,7 +139,7 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
-namespace iresearch {
+namespace irs {
 std::string to_string(irs::filter const& f);
 }
 

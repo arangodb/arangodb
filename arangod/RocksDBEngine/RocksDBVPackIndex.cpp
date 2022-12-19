@@ -1682,7 +1682,6 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
                                  velocypack::Slice doc,
                                  OperationOptions const& options,
                                  bool performChecks) {
-  Result res;
   containers::SmallVector<RocksDBKey, 4> elements;
   containers::SmallVector<uint64_t, 4> hashes;
 
@@ -1692,155 +1691,192 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
     auto r = fillElement(*leased, documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
-      return addErrorMsg(res, r);
+      Result res{r};
+      return addErrorMsg(res);
     }
+  }
+
+  // now we are going to construct the value to insert into rocksdb
+  if (_unique) {
+    return insertUnique(trx, mthds, documentId, doc, elements, hashes, options,
+                        performChecks);
+  } else {
+    return insertNonUnique(trx, mthds, documentId, doc, elements, hashes,
+                           options);
+  }
+}
+
+Result RocksDBVPackIndex::insertUnique(
+    transaction::Methods& trx, RocksDBMethods* mthds,
+    LocalDocumentId const& documentId, velocypack::Slice doc,
+    containers::SmallVector<RocksDBKey, 4> const& elements,
+    containers::SmallVector<uint64_t, 4> hashes,
+    OperationOptions const& options, bool performChecks) {
+  // build index value (storedValues array will be stored in value if
+  // storedValues are used)
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::Placeholder);
+  if (_storedValuesPaths.empty()) {
+    value = RocksDBValue::UniqueVPackIndexValue(documentId);
+  } else {
+    transaction::BuilderLeaser leased(&trx);
+    leased->openArray(true);
+    for (auto const& it : _storedValuesPaths) {
+      VPackSlice s = doc.get(it);
+      if (s.isNone()) {
+        s = VPackSlice::nullSlice();
+      }
+      leased->add(s);
+    }
+    leased->close();
+    value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
+  }
+  TRI_ASSERT(value.type() != RocksDBEntryType::Placeholder);
+
+  transaction::StringLeaser leased(&trx);
+  rocksdb::PinnableSlice existing(leased.get());
+  bool const isIndexCreation =
+      trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION);
+
+  Result res;
+
+  RocksDBKey const* failedKey = nullptr;
+  // unique indexes have a different key structure
+  for (RocksDBKey const& key : elements) {
+    rocksdb::Status s;
+    if (performChecks) {
+      s = mthds->GetForUpdate(_cf, key.string(), &existing);
+      if (s.ok()) {  // detected conflicting index entry
+        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        break;
+      } else if (!s.IsNotFound()) {
+        failedKey = &key;
+        res.reset(rocksutils::convertStatus(s));
+        break;
+      }
+    }
+    s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/ true);
+    if (!s.ok()) {
+      res = rocksutils::convertStatus(s, rocksutils::index);
+      break;
+    }
+    if (!isIndexCreation) {
+      // banish key in in-memory cache and optionally schedule
+      // an index entry reload.
+      // not necessary during index creation, because nothing
+      // will be in the in-memory cache.
+      handleCacheInvalidation(trx, options, key.string());
+    }
+  }
+
+  if (res.fail()) {
+    if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+      // find conflicting document's key
+      LocalDocumentId docId = RocksDBValue::documentId(existing);
+      auto readResult = _collection.getPhysical()->read(
+          &trx, docId,
+          [&](LocalDocumentId const&, VPackSlice doc) {
+            IndexOperationMode mode = options.indexOperationMode;
+            VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+            if (mode == IndexOperationMode::internal) {
+              // in this error mode, we return the conflicting document's key
+              // inside the error message string (and nothing else)!
+              res = Result{res.errorNumber(), key.copyString()};
+            } else {
+              // normal mode: build a proper error message
+              addErrorMsg(res, key.copyString());
+            }
+            return true;  // return value does not matter here
+          },
+          ReadOwnWrites::yes);  // modifications always need to observe all
+                                // changes in order to validate uniqueness
+                                // constraints
+      if (readResult.fail()) {
+        addErrorMsg(readResult);
+        THROW_ARANGO_EXCEPTION(readResult);
+      }
+    } else {
+      addErrorMsg(res);
+      res.withError([&doc, failedKey](result::Error& err) {
+        auto documentKey = doc.get(StaticStrings::KeyString).stringView();
+        if (!documentKey.empty()) {
+          err.appendErrorMessage("; document key: ");
+          err.appendErrorMessage(documentKey);
+        }
+        if (failedKey) {
+          auto slice = ::lookupValueFromSlice(failedKey->string());
+          err.appendErrorMessage("; indexed values: ");
+          err.appendErrorMessage(
+              VPackSlice{reinterpret_cast<uint8_t const*>(slice.data())}
+                  .toJson());
+        }
+      });
+    }
+  }
+  return res;
+}
+
+Result RocksDBVPackIndex::insertNonUnique(
+    transaction::Methods& trx, RocksDBMethods* mthds,
+    LocalDocumentId const& documentId, velocypack::Slice doc,
+    containers::SmallVector<RocksDBKey, 4> const& elements,
+    containers::SmallVector<uint64_t, 4> hashes,
+    OperationOptions const& options) {
+  // AQL queries never read from the same collection, after writing into it
+  IndexingDisabler guard(
+      mthds,
+      trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) &&
+          options.canDisableIndexing);
+
+  // build index value (storedValues array will be stored in value if
+  // storedValues are used)
+  RocksDBValue value = RocksDBValue::VPackIndexValue();
+  if (!_storedValuesPaths.empty()) {
+    transaction::BuilderLeaser leased(&trx);
+    leased->openArray(true);
+    for (auto const& it : _storedValuesPaths) {
+      VPackSlice s = doc.get(it);
+      if (s.isNone()) {
+        s = VPackSlice::nullSlice();
+      }
+      leased->add(s);
+    }
+    leased->close();
+    value = RocksDBValue::VPackIndexValue(leased->slice());
   }
 
   bool const isIndexCreation =
       trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION);
 
-  // now we are going to construct the value to insert into rocksdb
-  if (_unique) {
-    // build index value (storedValues array will be stored in value if
-    // storedValues are used)
-    RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::Placeholder);
-    if (_storedValuesPaths.empty()) {
-      value = RocksDBValue::UniqueVPackIndexValue(documentId);
-    } else {
-      transaction::BuilderLeaser leased(&trx);
-      leased->openArray(true);
-      for (auto const& it : _storedValuesPaths) {
-        VPackSlice s = doc.get(it);
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        leased->add(s);
-      }
-      leased->close();
-      value = RocksDBValue::UniqueVPackIndexValue(documentId, leased->slice());
-    }
+  rocksdb::Status s;
+  for (RocksDBKey const& key : elements) {
     TRI_ASSERT(value.type() != RocksDBEntryType::Placeholder);
 
-    transaction::StringLeaser leased(&trx);
-    rocksdb::PinnableSlice existing(leased.get());
-
-    rocksdb::Status s;
-    // unique indexes have a different key structure
-    for (RocksDBKey const& key : elements) {
-      if (performChecks) {
-        s = mthds->GetForUpdate(_cf, key.string(), &existing);
-        if (s.ok()) {  // detected conflicting index entry
-          res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-          break;
-        } else if (!s.IsNotFound()) {
-          res.reset(rocksutils::convertStatus(s));
-          break;
-        }
-      }
-      s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/ true);
-      if (!s.ok()) {
-        res = rocksutils::convertStatus(s, rocksutils::index);
-        break;
-      }
-      if (!isIndexCreation) {
-        // banish key in in-memory cache and optionally schedule
-        // an index entry reload.
-        // not necessary during index creation, because nothing
-        // will be in the in-memory cache.
-        handleCacheInvalidation(trx, options, key.string());
-      }
+    TRI_ASSERT(key.containsLocalDocumentId(documentId));
+    s = mthds->PutUntracked(_cf, key, value.string());
+    if (!s.ok()) {
+      Result res = rocksutils::convertStatus(s, rocksutils::index);
+      return addErrorMsg(res, doc.get(StaticStrings::KeyString).stringView());
     }
 
-    if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        // find conflicting document's key
-        LocalDocumentId docId = RocksDBValue::documentId(existing);
-        auto readResult = _collection.getPhysical()->read(
-            &trx, docId,
-            [&](LocalDocumentId const&, VPackSlice doc) {
-              IndexOperationMode mode = options.indexOperationMode;
-              VPackSlice key =
-                  transaction::helpers::extractKeyFromDocument(doc);
-              if (mode == IndexOperationMode::internal) {
-                // in this error mode, we return the conflicting document's key
-                // inside the error message string (and nothing else)!
-                res = Result{res.errorNumber(), key.copyString()};
-              } else {
-                // normal mode: build a proper error message
-                addErrorMsg(res, key.copyString());
-              }
-              return true;  // return value does not matter here
-            },
-            ReadOwnWrites::yes);  // modifications always need to observe all
-                                  // changes in order to validate uniqueness
-                                  // constraints
-        if (readResult.fail()) {
-          addErrorMsg(readResult);
-          THROW_ARANGO_EXCEPTION(readResult);
-        }
-      } else {
-        addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
-      }
-    }
-
-  } else {
-    // non-unique index
-
-    // AQL queries never read from the same collection, after writing into it
-    IndexingDisabler guard(
-        mthds,
-        trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL) &&
-            options.canDisableIndexing);
-
-    // build index value (storedValues array will be stored in value if
-    // storedValues are used)
-    RocksDBValue value = RocksDBValue::VPackIndexValue();
-    if (!_storedValuesPaths.empty()) {
-      transaction::BuilderLeaser leased(&trx);
-      leased->openArray(true);
-      for (auto const& it : _storedValuesPaths) {
-        VPackSlice s = doc.get(it);
-        if (s.isNone()) {
-          s = VPackSlice::nullSlice();
-        }
-        leased->add(s);
-      }
-      leased->close();
-      value = RocksDBValue::VPackIndexValue(leased->slice());
-    }
-
-    rocksdb::Status s;
-    for (RocksDBKey const& key : elements) {
-      TRI_ASSERT(key.containsLocalDocumentId(documentId));
-      s = mthds->PutUntracked(_cf, key, value.string());
-      if (!s.ok()) {
-        res = rocksutils::convertStatus(s, rocksutils::index);
-        break;
-      }
-
-      if (!isIndexCreation) {
-        // banish key in in-memory cache and optionally schedule
-        // an index entry reload.
-        // not necessary during index creation, because nothing
-        // will be in the in-memory cache.
-        handleCacheInvalidation(trx, options, key.string());
-      }
-    }
-
-    if (res.fail()) {
-      addErrorMsg(res, doc.get(StaticStrings::KeyString).copyString());
-    } else if (_estimates) {
-      auto* state = RocksDBTransactionState::toState(&trx);
-      auto* trxc = static_cast<RocksDBTransactionCollection*>(
-          state->findCollection(_collection.id()));
-      TRI_ASSERT(trxc != nullptr);
-      for (uint64_t hash : hashes) {
-        trxc->trackIndexInsert(id(), hash);
-      }
+    if (!isIndexCreation) {
+      // banish key in in-memory cache and optionally schedule
+      // an index entry reload.
+      // not necessary during index creation, because nothing
+      // will be in the in-memory cache.
+      handleCacheInvalidation(trx, options, key.string());
     }
   }
 
-  return res;
+  if (_estimates) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(
+        state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    for (uint64_t hash : hashes) {
+      trxc->trackIndexInsert(id(), hash);
+    }
+  }
+  return {};
 }
 
 void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,

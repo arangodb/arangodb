@@ -185,9 +185,10 @@ class RestAnalyzerHandlerTest
 
     std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::OperationOptions options(arangodb::ExecContext::current());
+    auto vocbase = dbFeature.useDatabase(name);
     arangodb::Result res = arangodb::methods::Collections::createSystem(
-        *dbFeature.useDatabase(name), options,
-        arangodb::tests::AnalyzerCollectionName, false, ignored);
+        *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
+        ignored);
 
     ASSERT_TRUE(res.ok());
 
@@ -686,8 +687,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
        {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
   {
-    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
-    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto vocbase = dbFeature.useDatabase("FooDb2");
+    auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
@@ -702,8 +703,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   }
   {
-    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
-    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto vocbase = dbFeature.useDatabase("FooDb2");
+    auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
@@ -718,8 +719,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get_custom) {
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   }
   {
-    TRI_vocbase_t& vocbase = *dbFeature.useDatabase("FooDb2");
-    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto vocbase = dbFeature.useDatabase("FooDb2");
+    auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
     auto& responce = *responcePtr;
@@ -839,8 +840,7 @@ TEST_F(RestAnalyzerHandlerTest,
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -877,8 +877,7 @@ TEST_F(RestAnalyzerHandlerTest,
             arangodb::auth::Level::NONE);
 
   // TODO
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        unknownDBInfo(server.server()));
+  TRI_vocbase_t vocbase(unknownDBInfo(server.server()));
   auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1030,9 +1029,9 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_authorized) {
       {{"testVocbase"s, arangodb::auth::Level::RW},
        {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RO}});
 
-  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
+  auto vocbase = dbFeature.useDatabase("testVocbase");
 
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1101,8 +1100,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list_non_system_database_not_authorized) {
 
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto vocbase = dbFeature.useDatabase("testVocbase");
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1170,8 +1169,8 @@ TEST_F(RestAnalyzerHandlerTest,
        test_list_non_system_database_system_not_authorized) {
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto vocbase = dbFeature.useDatabase("testVocbase");
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;
@@ -1237,9 +1236,9 @@ TEST_F(RestAnalyzerHandlerTest,
        test_list_non_system_database_system_not_authorized_not_authorized) {
   createDatabase("testVocbase"s);
 
-  TRI_vocbase_t& vocbase = *dbFeature.useDatabase("testVocbase");
+  auto vocbase = dbFeature.useDatabase("testVocbase");
 
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+  auto requestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& request = *requestPtr;
   auto responcePtr = std::make_unique<GeneralResponseMock>();
   auto& responce = *responcePtr;

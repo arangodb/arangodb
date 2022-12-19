@@ -302,10 +302,12 @@ uint64_t ReplicatedRocksDBTransactionState::numPrimitiveOperations()
 }
 
 bool ReplicatedRocksDBTransactionState::ensureSnapshot() {
-  return std::any_of(_collections.begin(), _collections.end(), [](auto& col) {
-    return static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
-        .ensureSnapshot();
-  });
+  bool result = false;
+  for (auto& col : _collections) {
+    result |= static_cast<ReplicatedRocksDBTransactionCollection&>(*col)
+                  .ensureSnapshot();
+  };
+  return result;
 }
 
 std::unique_ptr<TransactionCollection>

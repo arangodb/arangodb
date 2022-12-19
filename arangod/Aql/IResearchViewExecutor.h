@@ -44,10 +44,9 @@
 #include <utility>
 #include <variant>
 
-namespace iresearch {
+namespace irs {
 struct score;
-struct document;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 class LogicalCollection;

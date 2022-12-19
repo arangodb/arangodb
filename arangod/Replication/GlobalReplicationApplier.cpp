@@ -118,9 +118,9 @@ std::string GlobalReplicationApplier::getStateFilename() const {
       _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
-  std::string const path = _engine.databasePath(vocbase.get());
+  std::string const path = _engine.databasePath();
   if (path.empty()) {
-    return std::string();
+    return path;
   }
 
   return arangodb::basics::FileUtils::buildFilename(
