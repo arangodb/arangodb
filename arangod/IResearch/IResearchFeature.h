@@ -126,9 +126,7 @@ class IResearchFeature final : public ArangodFeature {
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template<typename Engine,
-           typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>,
-                                     int> = 0>
+  template<typename Engine>
   IndexTypeFactory& factory();
 
   bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
