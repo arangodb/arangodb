@@ -181,9 +181,9 @@ std::string DatabaseReplicationApplier::getStateFilename() const {
   StorageEngine& engine =
       _vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string const path = engine.databasePath(&_vocbase);
+  std::string const path = engine.databasePath();
   if (path.empty()) {
-    return std::string();
+    return path;
   }
   return arangodb::basics::FileUtils::buildFilename(
       path, "REPLICATION-APPLIER-STATE-" + std::to_string(_vocbase.id()));

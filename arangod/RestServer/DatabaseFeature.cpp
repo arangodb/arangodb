@@ -135,9 +135,13 @@ void DatabaseManagerThread::run() {
         for (auto it = dropped.begin(), end = dropped.end(); it != end; ++it) {
           TRI_ASSERT(*it != nullptr);
           if ((*it)->isDangling()) {
-            database.reset(*it);
+            // found a database to delete
+            // now move the to-be-deleted database from _droppedDatabases
+            // into the unique_ptr
+            auto* p = *it;
             dropped.erase(it);
-            break;  // found a database to delete
+            database.reset(p);
+            break;
           }
         }
       }
@@ -770,19 +774,20 @@ void DatabaseFeature::recoveryDone() {
 
   _pendingRecoveryCallbacks.clear();
 
-  if (!ServerState::instance()->isCoordinator()) {
-    auto databases = _databases.load();
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
 
-    for (auto& p : *databases) {
-      TRI_vocbase_t* vocbase = p.second;
-      // iterate over all databases
-      TRI_ASSERT(vocbase != nullptr);
+  auto databases = _databases.load();
 
-      if (vocbase->replicationApplier()) {
-        if (server().hasFeature<ReplicationFeature>()) {
-          server().getFeature<ReplicationFeature>().startApplier(vocbase);
-        }
-      }
+  for (auto& p : *databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+
+    if (vocbase->replicationApplier() &&
+        server().hasFeature<ReplicationFeature>()) {
+      server().getFeature<ReplicationFeature>().startApplier(vocbase);
     }
   }
 }

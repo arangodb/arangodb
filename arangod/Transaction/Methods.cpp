@@ -623,12 +623,9 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_ASSERT(!this->_value.isArray() || this->_options.silent ||
                this->_resultBuilder.slice().length() == this->_value.length())
         << "operation: " << _operationType
-        << ", silent: " << this->_options.silent << ", leader: "
-        << (this->_replicationType == Methods::ReplicationType::LEADER)
-        << ", follower: "
-        << (this->_replicationType == Methods::ReplicationType::FOLLOWER)
-        << ", value: " << this->_value.toJson()
-        << ", resultBuilder: " << this->_resultBuilder.slice().toJson();
+        << ", silent: " << this->_options.silent
+        << ", replicationType: " << static_cast<int>(this->_replicationType)
+        << ", isArray: " << this->_value.isArray();
 
     TRI_ASSERT(res.ok() || !this->_value.isArray());
 
@@ -744,8 +741,8 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
                                                                lookupResult);
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here.
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
-          _replicationType != Methods::ReplicationType::FOLLOWER) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, theoretically it is
         // possible that the document has been deleted by now.
@@ -1053,8 +1050,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
     } else if (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
       // Error reporting in the babies case is done outside of here.
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray &&
-          _replicationType != Methods::ReplicationType::FOLLOWER) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, it is possible that
         // the other transaction has not been committed yet, or that the
@@ -1287,7 +1284,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     Result res = _collection.getPhysical()->lookupKeyForUpdate(
         &_methods, key.stringView(), lookupResult);
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
+        TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
         // if possible we want to provide information about the conflicting
         // document, so we need another lookup. However, it is possible that
         // the other transaction has not been committed yet, or that the
