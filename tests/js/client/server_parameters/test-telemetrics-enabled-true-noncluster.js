@@ -33,7 +33,6 @@ const db = arangodb.db;
 
 const wait = require("internal").wait;
 
-//const intervalValue = 6;
 
 const failurePoint1 = 'DisableTelemetricsSender';
 const failurePoint2 = 'DecreaseTelemetricsInterval';
@@ -41,10 +40,8 @@ const failurePoint2 = 'DecreaseTelemetricsInterval';
 if (getOptions === true) {
 
   return {
-
     'server.send-telemetrics': "true",
     'server.failure-point': failurePoint2,
-    //   'server.telemetrics-interval': intervalValue,
   };
 
 
@@ -67,7 +64,6 @@ function TelemetricsTestSuite() {
       const originalEndpoint = arango.getEndpoint();
 
       assertTrue(debugSetFailAt(originalEndpoint, failurePoint1), "Failed to run telemetrics with failure point " + failurePoint1);
-      //  assertTrue(debugSetFailAt(originalEndpoint, failurePoint2), "Failed to run telemetrics with failure point " + failurePoint2);
       try {
         let startTime = Date.now();
         do {

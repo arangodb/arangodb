@@ -58,12 +58,7 @@ struct LastUpdateHandler {
   LastUpdateHandler(ArangodServer& server, std::uint64_t prepareDeadline = 30)
       : _sender(std::make_unique<TelemetricsSender>()),
         _prepareDeadline(prepareDeadline),
-        _server(server) {
-    TRI_IF_FAILURE("DecreaseCoordinatorRecoveryTime") {
-      LOG_DEVEL << "FAILURE POINT";
-      _prepareDeadline = 2;
-    }
-  }
+        _server(server) {}
   virtual ~LastUpdateHandler() = default;
   virtual bool handleLastUpdatePersistance(bool isCoordinator,
                                            std::string& oldRev,

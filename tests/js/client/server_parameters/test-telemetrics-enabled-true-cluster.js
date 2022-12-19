@@ -39,7 +39,6 @@ const failurePoint1 = 'DisableTelemetricsSender';
 const failurePoint2 = 'DecreaseCoordinatorRecoveryTime';
 const failurePoint3 = 'DecreaseTelemetricsInterval';
 
-//const intervalValue = 15;
 const numCoords = 3;
 
 if (getOptions === true) {
@@ -47,10 +46,7 @@ if (getOptions === true) {
   return {
     options: {coordinators: numCoords},
     'server.send-telemetrics': "true",
-    'server.failure-point': failurePoint3,
-
-
-//    'server.telemetrics-interval': intervalValue,
+    'server.failure-point': [failurePoint2, failurePoint3],
   };
 }
 
@@ -70,19 +66,7 @@ function TelemetricsTestSuite() {
     },
 
     testGetTelemetricsWithFailover: function() {
-      let endpoint = 'none';
-      do {
-        print("endpoint " + arango.getEndpoint());
-      } while (endpoint === 'none');
 
-      /*
-    }
-      let numAttempts = 6;
-      while (numAttempts > 0) {
-        let tryAgain = false;
-        numAttempts--;
-
-       */
       if (!isServer) {
         const originalEndpoint = arango.getEndpoint();
 
@@ -114,8 +98,6 @@ function TelemetricsTestSuite() {
         }
         const coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
         assertEqual(coordinators.length, numCoords);
-        // let tryAgain = false;
-        internal.debugSetFailAt(failurePoint2); // failure point for all coordinators
         try {
           for (let i = 0; i < coordinators.length; ++i) {
             const coordinator = coordinators[i];
@@ -129,12 +111,7 @@ function TelemetricsTestSuite() {
                 }
                 arango.reconnect(newEndpoint, db._name(), "root", "");
                 if (arango.getEndpoint() !== newEndpoint) {
-                  //     if (numAttempts === 0) {
-                  fail("Unable to connect to coordinator after 6 attempts");
-                  //       } else {
-                  //         tryAgain = true;
-                  //         break;
-                  //       }
+                  fail("Unable to connect to coordinator");
                 }
               }
               assertTrue(suspendExternal(coordinator.pid));
@@ -149,24 +126,7 @@ function TelemetricsTestSuite() {
                 assertNotNull(serverHealth);
                 const timeElapsed = (Date.now() - startTime) / 1000;
                 assertTrue(timeElapsed < 60, "Unable to stop server within time limit");
-
-                /*
-                if (timeElapsed >= intervalValue) {
-                  if (numAttempts === 0) {
-                    fail("Unable to stop server within time limit necessary for the test to be valuable");
-                  } else {
-                    tryAgain = true;
-                    break;
-                  }
-                }
-                */
               } while (serverHealth !== "FAILED");
-              /*
-              if (tryAgain) {
-                break;
-              }
-
-               */
               coordinator.suspended = true;
               assertEqual(serverHealth, "FAILED");
 
@@ -177,51 +137,14 @@ function TelemetricsTestSuite() {
                 telemetricsDoc = db[colName].document("telemetrics");
                 const timeElapsed = (Date.now() - startTime) / 1000;
                 assertTrue(timeElapsed < 60, "Unable to get document update within time limit");
-
-                /*
-                if (timeElapsed >= intervalValue) {
-                  if (numAttempts === 0) {
-                    fail("Unable to get document update within interval after 6 attempts, making test invaluable");
-                  } else {
-                    tryAgain = true;
-                    break;
-                  }
-                }
-
-                 */
                 wait(1);
               } while (telemetricsDoc["serverId"] !== null);
               assertTrue(telemetricsDoc.hasOwnProperty("prepareTimestamp"));
               assertTrue(telemetricsDoc.hasOwnProperty("serverId"));
               assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
               assertNull(telemetricsDoc["prepareTimestamp"]);
-              /*
-              if (telemetricsDoc["prepareTimestamp"] !== null) {
-                if (numAttempts === 0) {
-                  fail("Failed to get full document update after 6 attempts, making test invaluable");
-                } else {
-                  tryAgain = true;
-                  break;
-                }
-              }
-
-               */
               const lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
               assertNotEqual(lastUpdateDocBefore, lastUpdateDocAfter);
-
-              /*
-              if (lastUpdateDocAfter - lastUpdateDocBefore >= intervalValue) {
-                if (numAttempts === 0) {
-                  fail("Failed to read document exactly after the coordinator covers up for the coordinator that went down after 6 attempts, making test invaluable");
-                } else {
-                  tryAgain = true;
-                  break;
-                }
-              } else {
-                numAttempts = 0; // means we were able to read the document exactly after the coordinator covers up for the coordinator that went down and tested what was necessary
-              }
-
-               */
 
               assertTrue(continueExternal(coordinator.pid));
 
@@ -246,12 +169,6 @@ function TelemetricsTestSuite() {
           internal.debugClearFailAt(failurePoint3);
         }
       }
-      /*
-      if (tryAgain) {
-        continue;
-      }
-    }
-    */
     },
   };
 }

@@ -206,8 +206,11 @@ bool LastUpdateHandler::handleLastUpdatePersistance(bool isCoordinator,
           prepareTimestamp != 0) {  // must send as the former server might have
                                     // gone down before sending telemetrics
 
-        std::string currCoordinatorId = ServerState::instance()->getId();
+        TRI_IF_FAILURE("DecreaseCoordinatorRecoveryTime") {
+          _prepareDeadline = 2;
+        }
 
+        std::string currCoordinatorId = ServerState::instance()->getId();
         bool isSameCoordinator =
             serverId.compare(currCoordinatorId) == 0 ? true : false;
         if (isSameCoordinator ||
