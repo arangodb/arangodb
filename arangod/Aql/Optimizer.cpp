@@ -393,10 +393,10 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   // Best plan should not have forced hints left.
   // There might be other plans that has, but we don't care
-  if (_plans.list.front().first->hasForcedIndexHints()) {
+  if (auto& bestPlan = _plans.list.front().first;
+      bestPlan->hasForcedIndexHints()) {
     containers::SmallVector<ExecutionNode*, 8> nodes;
-    _plans.list.front().first->findNodesOfType(
-        nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+    bestPlan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
     for (auto n : nodes) {
       TRI_ASSERT(n);
       TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION);

@@ -529,6 +529,11 @@ bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
 void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
   auto const type = node.getType();
   ++_typeCounts[type];
+
+  // Tracking forced index hints left to use.
+  // This could be only collection nodes. IndexNodes
+  // are created by optimizer as a result of applying index
+  // and corresponding hint if any.
   if (type == ExecutionNode::ENUMERATE_COLLECTION) {
     EnumerateCollectionNode const* en =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
