@@ -169,20 +169,16 @@ const ViewSettingsReactView = ({ name }) => {
     title: `General`,
     content: GeneralContent
   }));
-  console.log("name in ViewSettingsReactView: ", name);
   const initialState = useRef({
     formState: { name },
     formCache: { name },
     renderKey: uniqueId('force_re-render_')
   });
   const view = useView(name);
-  console.log("view in ViewSettingsReactView: ", view);
   const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
   const [state, dispatch] = useReducer(
     getReducer(initialState.current, postProcessor, setChanged, name),
     initialState.current);
-    console.log("state in ViewSettingsReactView: ", state);
-    console.log("dispatch in ViewSettingsReactView: ", dispatch);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
   const { data } = useSWR(isAdminUser ? '/view' : null,
@@ -225,7 +221,6 @@ const [linkName, setLinkName] = useState('')
     if (!isEqual(data.body.result, views)) {
       setViews(data.body.result);
     }
-    console.log("data in Settings-Tab: ", data);
   }
 
   let jsonFormState = '';
@@ -248,15 +243,20 @@ const [linkName, setLinkName] = useState('')
         isAdminUser && views.length
           ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
             <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+            {
+              isAdminUser && changed
+              ?
+                <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+              : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
+            }
           </Cell>
           : null
       }
-      <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
       <SplitPane
         defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
         onChange={(size) => localStorage.setItem('splitPos', size)}
         style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
-        <div style={{ marginLeft: '15px', marginRight: '15px' }}>
+        <div style={{ marginRight: '15px' }}>
           <AccordionView
             allowMultipleOpen
             accordionConfig={[
@@ -303,7 +303,7 @@ const [linkName, setLinkName] = useState('')
             ]}
           />
         </div>
-        <div style={{ marginLeft: '15px', marginRight: '15px' }}>
+        <div style={{ marginLeft: '15px' }}>
           <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
                   aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
             marginLeft: 'auto',
@@ -336,18 +336,6 @@ const [linkName, setLinkName] = useState('')
                   </Grid>
                 </div>
               </div>
-              {
-                isAdminUser && changed
-                  ? <div className="tab-content" id="Save" style={{
-                    marginTop: 25,
-                    minHeight: 'unset',
-                    borderTop: '1px solid rgba(64, 74, 83, 0.2)',
-                    paddingLeft: 10
-                  }}>
-                    {/*<SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>*/}
-                  </div>
-                  : null
-              }
             </div>
           </div>
         </div>
@@ -357,59 +345,6 @@ const [linkName, setLinkName] = useState('')
       /*
       <LinkList name={linkName} />
       <LinkPropertiesForm name={linkName}/>
-      */
-    }
-
-    {
-      /*
-      <div>
-      JSON-Editor
-    </div>
-    <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-              aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
-    width: 1024,
-    marginLeft: 'auto',
-    marginRight: 'auto'
-  }}>
-    <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
-      <div className={'tab-content'} style={{ display: 'unset' }}>
-        <div className="tab-pane tab-pane-modal active" id="JSON">
-          <Grid>
-            {
-              isAdminUser && views.length
-                ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                  <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-                </Cell>
-                : null
-            }
-
-            <Cell size={'1'}>
-              {
-                isAdminUser
-                  ? <JsonForm formState={formState} dispatch={dispatch}
-                  renderKey={state.renderKey}/>
-                  : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
-                              rows={jsonRows}
-                              style={{ cursor: 'text' }}/>
-              }
-            </Cell>
-          </Grid>
-        </div>
-      </div>
-      {
-        isAdminUser && changed
-          ? <div className="tab-content" id="Save" style={{
-            marginTop: 25,
-            minHeight: 'unset',
-            borderTop: '1px solid rgba(64, 74, 83, 0.2)',
-            paddingLeft: 10
-          }}>
-            <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-          </div>
-          : null
-      }
-    </div>
-  </div>
       */
     }
     {
