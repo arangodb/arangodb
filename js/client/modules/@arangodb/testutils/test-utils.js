@@ -291,7 +291,7 @@ function scanTestPaths (paths, options) {
 }
 
 
-function getTestCode(file, options, instanceManager) {
+function getTestCode(file, options, instanceManager, passInstanceManagerInstance) {
   let filter;
   if (options.testCase) {
     filter = JSON.stringify(options.testCase);
@@ -309,8 +309,14 @@ function getTestCode(file, options, instanceManager) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
-         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
+  let testCode = '';
+  if (passInstanceManagerInstance) {
+    global.instanceManager = instanceManager;
+  } else {
+    testCode =  'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+  }
+  return testCode + runTest +
+    'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a remote unittest file using /_admin/execute
@@ -323,7 +329,7 @@ class runOnArangodRunner extends testRunnerBase{
   }
   runOneTest(file) {
     try {
-      let testCode = getTestCode(file, this.options, this.instanceManager);
+      let testCode = getTestCode(file, this.options, this.instanceManager, false);
       let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
       httpOptions.method = 'POST';
 
@@ -494,7 +500,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
       }
     }
 
-    let testCode = getTestCode(file, this.options, this.instanceManager);
+    let testCode = getTestCode(file, this.options, this.instanceManager, true);
     require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let testFunc;
     try {

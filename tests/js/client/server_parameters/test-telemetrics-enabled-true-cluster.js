@@ -65,6 +65,10 @@ function TelemetricsTestSuite() {
 
   return {
 
+    setUpAll: function() {
+      global.instanceManager.reconnect();
+    },
+
     testGetTelemetricsWithFailover: function() {
       let endpoint = 'none';
       do {
