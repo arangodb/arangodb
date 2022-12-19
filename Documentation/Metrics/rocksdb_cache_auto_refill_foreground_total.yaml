@@ -1,0 +1,33 @@
+name: rocksdb_cache_auto_refill_foreground_total
+introducedIn: "3.10.3"
+help: |
+  Total number of entries in automatic in-memory index cache refilling that were
+  processed in foreground.
+unit: number
+type: counter
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric shows the total number of entries for no automatic background 
+  refilling happened in the in-memory index caches.
+  This counter increases only for insert, update, replace, and remove operations
+  affecting edge indexes and cache-enabled persistent indexes and with requested
+  automatic refilling, if no refill operation could be queued due to capacity 
+  constraints and the system is configured to handle the refilling in foreground
+  instead.
+troubleshoot: |
+  If this metric keeps increasing, it indicates that the index refill background 
+  threads can't keep up with the incoming data modification requests. This is not
+  necessarily a problem, because index cache refilling is still happening, but as
+  part of the foreground data modification operations.
+  If cache refilling happens in foreground, this may slow down data modification
+  operations. In case this is undesired, and caches should rather be refilled in
+  background, consider increasing the background threads' queueing capacity via
+  the `--rocksdb.auto-refill-index-cache-queue-capacity` startup option, or the
+  number of background threads via the `--rocksdb.auto-refill-background-threads`
+  startup options.

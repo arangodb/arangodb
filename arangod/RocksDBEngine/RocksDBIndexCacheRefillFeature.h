@@ -78,11 +78,15 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // auto-refill in-memory cache also on followers
   bool autoRefillOnFollowers() const noexcept;
 
+  // refill in foreground if background threads' queues are full
+  bool refillInForegroundIfQueueFull() const noexcept;
+
   // auto-fill in-memory caches on startup
   bool fillOnStartup() const noexcept;
 
   void increaseTotalNumQueued(uint64_t value) noexcept;
   void increaseTotalNumDropped(uint64_t value) noexcept;
+  void increaseTotalNumForeground(uint64_t value) noexcept;
 
  private:
   void stopThreads();
@@ -131,6 +135,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
   // refilled on followers
   bool _autoRefillOnFollowers;
 
+  // move refilling to foreground if background threads' queues are full.
+  bool _refillInForegroundIfQueueFull;
+
   // whether or not in-memory cache values for indexes are automatically
   // populated on server start
   bool _fillOnStartup;
@@ -143,6 +150,9 @@ class RocksDBIndexCacheRefillFeature final : public ArangodFeature {
 
   // total number of items ever dropped (because of queue full)
   metrics::Counter& _totalNumDropped;
+
+  // total number of items processed in foreground (because of queue full)
+  metrics::Counter& _totalNumForeground;
 
   // protects _indexFillTasks and _currentlyRunningIndexFillTasks
   std::mutex _indexFillTasksMutex;

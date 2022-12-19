@@ -74,6 +74,9 @@ DECLARE_COUNTER(rocksdb_cache_auto_refill_loaded_total,
                 "Total number of auto-refilled in-memory cache items");
 DECLARE_COUNTER(rocksdb_cache_auto_refill_dropped_total,
                 "Total number of dropped items for in-memory cache refilling");
+DECLARE_COUNTER(rocksdb_cache_auto_refill_foreground_total,
+                "Total number of items processed in foreground for in-memory "
+                "cache refilling");
 
 RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -84,6 +87,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
       _maxConcurrentIndexFillTasks(::defaultConcurrentIndexFillTasks()),
       _autoRefill(false),
       _autoRefillOnFollowers(true),
+      _refillInForegroundIfQueueFull(false),
       _fillOnStartup(false),
       _totalFullIndexRefills(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_full_index_refills_total{})),
@@ -91,6 +95,8 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(Server& server)
           rocksdb_cache_auto_refill_loaded_total{})),
       _totalNumDropped(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_cache_auto_refill_dropped_total{})),
+      _totalNumForeground(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_cache_auto_refill_foreground_total{})),
       _currentlyRunningIndexFillTasks(0) {
   setOptional(true);
   // we want to be late in the startup sequence
@@ -138,9 +144,9 @@ option.)");
       .setIntroducedIn(30906)
       .setIntroducedIn(31002)
       .setLongDescription(R"(When documents are added, modified, or removed,
-these changes are tracked and a background thread tries to update the index
-caches accordingly if the feature is enabled, by adding new, updating existing,
-or deleting and refilling cache entries.
+these changes are tracked and one or multiple background threads try to update 
+the index caches accordingly if the feature is enabled, by adding new, updating 
+existing, or deleting and refilling cache entries.
 
 You can enable the feature for individual `INSERT`, `UPDATE`, `REPLACE`,  and
 `REMOVE` operations in AQL queries, for individual document API requests that
@@ -149,10 +155,10 @@ as enable it by default using this startup option.
 
 The background refilling is done on a best-effort basis and not guaranteed to
 succeed, for example, if there is no memory available for the cache subsystem,
-or during cache grow/shrink operations. A background thread is used so that
-foreground write operations are not slowed down by a lot. It may still cause
-additional I/O activity to look up data from the storage engine to repopulate
-the cache.)");
+or during cache grow/shrink operations. A configurable number of background 
+threads is used so that foreground write operations are not slowed down by a 
+lot. It may still cause additional I/O activity to look up data from the 
+storage engine to repopulate the cache.)");
 
   options
       ->addOption("--rocksdb.auto-refill-index-caches-on-followers",
@@ -177,10 +183,22 @@ the cache.)");
       .setIntroducedIn(30906)
       .setIntroducedIn(31002)
       .setLongDescription(R"(This option restricts how many cache entries
-the background thread for (re-)filling the in-memory index caches can queue at
-most. This limits the memory usage for the case of the background thread being
+each background thread for (re-)filling the in-memory index caches can queue at
+most. This limits the memory usage for the case of the background threads being
 slower than other operations that invalidate cache entries of edge indexes
 or cache-enabled persistent indexes.)");
+
+  options
+      ->addOption(
+          "--rocksdb.auto-refill-in-foreground-if-queue-full",
+          "Whether to automatically (re-)fill the in-memory index "
+          "caches in foreground if background thread queues are full.",
+          new options::BooleanParameter(&_refillInForegroundIfQueueFull),
+          arangodb::options::makeFlags(options::Flags::DefaultNoComponents,
+                                       options::Flags::OnDBServer,
+                                       options::Flags::OnSingle))
+      .setIntroducedIn(30907)
+      .setIntroducedIn(31003);
 
   options
       ->addOption(
@@ -195,7 +213,7 @@ or cache-enabled persistent indexes.)");
       .setIntroducedIn(30906)
       .setIntroducedIn(31002)
       .setLongDescription(R"(The lower this number, the lower the impact of the
-index cache filling when loading an entire index tin memory, but the longer it 
+index cache filling when loading an entire index in memory, but the longer it 
 takes to complete.)");
 
   options
@@ -263,6 +281,11 @@ void RocksDBIndexCacheRefillFeature::increaseTotalNumDropped(
   _totalNumDropped += value;
 }
 
+void RocksDBIndexCacheRefillFeature::increaseTotalNumForeground(
+    uint64_t value) noexcept {
+  _totalNumForeground += value;
+}
+
 void RocksDBIndexCacheRefillFeature::stop() { stopThreads(); }
 
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
@@ -271,6 +294,11 @@ bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
 
 bool RocksDBIndexCacheRefillFeature::autoRefillOnFollowers() const noexcept {
   return _autoRefillOnFollowers;
+}
+
+bool RocksDBIndexCacheRefillFeature::refillInForegroundIfQueueFull()
+    const noexcept {
+  return _refillInForegroundIfQueueFull;
 }
 
 size_t RocksDBIndexCacheRefillFeature::maxCapacity() const noexcept {
@@ -289,14 +317,29 @@ bool RocksDBIndexCacheRefillFeature::trackRefill(
   }
   TRI_ASSERT(_numBackgroundThreads > 0);
 
-  // it is ok to increase this value forever and even overflow it to 0.
+  // loop up to _numBackgroundThreads times and try to find a background
+  // thread that doesn't have a full queue. this function will start at one
+  // of the background threads, and will iterate over all available background
+  // threads until one with spare queue capacity is found.
+  // if there is no background thread with capacity, we will return false.
   uint64_t idx =
-      _currentBackgroundThreadIdx.fetch_add(1, std::memory_order_relaxed) %
-      _numBackgroundThreads;
-  TRI_ASSERT(idx < _backgroundThreads.size());
-  auto& t = _backgroundThreads[idx];
-  t->trackRefill(collection, iid, std::move(keys));
-  return true;
+      _currentBackgroundThreadIdx.fetch_add(1, std::memory_order_relaxed);
+
+  size_t tries = _numBackgroundThreads;
+  TRI_ASSERT(tries > 0);
+  do {
+    // it is ok to increase this value forever and even overflow it to 0.
+    size_t i = idx % _numBackgroundThreads;
+    TRI_ASSERT(i < _backgroundThreads.size());
+    auto& t = _backgroundThreads[i];
+    bool result = t->trackRefill(collection, iid, std::move(keys));
+    if (result) {
+      return true;
+    }
+    ++idx;
+    TRI_ASSERT(tries > 0);
+  } while (--tries > 0);
+  return false;
 }
 
 void RocksDBIndexCacheRefillFeature::scheduleFullIndexRefill(

@@ -61,11 +61,15 @@ void RocksDBIndexCacheRefillThread::beginShutdown() {
   guard.broadcast();
 }
 
-void RocksDBIndexCacheRefillThread::trackRefill(
+bool RocksDBIndexCacheRefillThread::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
     containers::FlatHashSet<std::string> keys) {
-  TRI_ASSERT(!keys.empty());
   size_t const n = keys.size();
+
+  if (n == 0) {
+    // nothing to do
+    return true;
+  }
 
   {
     CONDITION_LOCKER(guard, _condition);
@@ -75,7 +79,7 @@ void RocksDBIndexCacheRefillThread::trackRefill(
       // keys we received just now.
       // increase metric and return
       _refillFeature.increaseTotalNumDropped(n);
-      return;
+      return false;
     }
 
     // the map entries for the database/collection will be created if they don't
@@ -112,6 +116,8 @@ void RocksDBIndexCacheRefillThread::trackRefill(
   _condition.signal();
   // increase metric
   _refillFeature.increaseTotalNumQueued(n);
+
+  return true;
 }
 
 void RocksDBIndexCacheRefillThread::waitForCatchup() {

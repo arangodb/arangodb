@@ -52,7 +52,7 @@ class RocksDBIndexCacheRefillThread final : public ServerThread<ArangodServer> {
 
   void beginShutdown() override;
 
-  void trackRefill(std::shared_ptr<LogicalCollection> const& collection,
+  bool trackRefill(std::shared_ptr<LogicalCollection> const& collection,
                    IndexId iid, containers::FlatHashSet<std::string> keys);
 
   void waitForCatchup();
