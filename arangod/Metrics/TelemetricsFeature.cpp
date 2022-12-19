@@ -206,10 +206,6 @@ bool LastUpdateHandler::handleLastUpdatePersistance(bool isCoordinator,
           prepareTimestamp != 0) {  // must send as the former server might have
                                     // gone down before sending telemetrics
 
-        TRI_IF_FAILURE("DecreaseCoordinatorRecoveryTime") {
-          _prepareDeadline = 2;
-        }
-
         std::string currCoordinatorId = ServerState::instance()->getId();
 
         bool isSameCoordinator =
@@ -312,13 +308,17 @@ void TelemetricsFeature::start() {
                              !isCoordinator)) {
     return;
   }
-
+  TRI_IF_FAILURE("DecreaseTelemetricsInterval") {
+    _interval = 6;
+    _rescheduleInterval = 2;
+  }
   // server id prepare with timestamp, then remove it
   // last update after sending telemetrics
   _telemetricsEnqueue = [this, isCoordinator](bool cancelled) {
     if (cancelled) {
       return;
     }
+
     Scheduler::WorkHandle workItem;
     std::string oldRev;
     std::uint64_t lastUpdate = 0;
@@ -328,7 +328,7 @@ void TelemetricsFeature::start() {
         TRI_ASSERT(_updateHandler != nullptr);
 
         // has reached the interval to send telemetrics again
-        TRI_IF_FAILURE("DisableTelemetricsSenderCoordinator") { return; }
+        TRI_IF_FAILURE("DisableTelemetricsSender") { return; }
         _updateHandler->sendTelemetrics();
         if (isCoordinator) {
           _updateHandler->doLastUpdate(oldRev, lastUpdate);

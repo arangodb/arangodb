@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, fail, assertTrue */
+/* global getOptions, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -27,18 +27,27 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const internal = require("internal");
+let {debugRemoveFailAt, debugSetFailAt} = require('@arangodb/test-helper');
 const db = arangodb.db;
 
 const wait = require("internal").wait;
 
-const intervalValue = 6;
+//const intervalValue = 6;
+
+const failurePoint1 = 'DisableTelemetricsSender';
+const failurePoint2 = 'DecreaseTelemetricsInterval';
 
 if (getOptions === true) {
 
   return {
+
     'server.send-telemetrics': "true",
-    'server.telemetrics-interval': intervalValue,
+    'server.failure-point': failurePoint2,
+    //   'server.telemetrics-interval': intervalValue,
   };
+
+
 }
 
 
@@ -55,9 +64,11 @@ function TelemetricsTestSuite() {
       let lastUpdateDocAfter = "";
       let telemetricsDoc = null;
 
-      let numAttempts = 10;
-      while (numAttempts > 0) {
-        numAttempts--;
+      const originalEndpoint = arango.getEndpoint();
+
+      assertTrue(debugSetFailAt(originalEndpoint, failurePoint1), "Failed to run telemetrics with failure point " + failurePoint1);
+      //  assertTrue(debugSetFailAt(originalEndpoint, failurePoint2), "Failed to run telemetrics with failure point " + failurePoint2);
+      try {
         let startTime = Date.now();
         do {
           telemetricsDoc = db[colName].document("telemetrics");
@@ -79,21 +90,15 @@ function TelemetricsTestSuite() {
           assertTrue(telemetricsDoc.hasOwnProperty("lastUpdate"));
           lastUpdateDocAfter = telemetricsDoc["lastUpdate"];
         } while (lastUpdateDocAfter === lastUpdateDocBefore) ; //until we have an update
-        // we must know that we were able to read the document exactly after the next update to it was made, otherwise, we might have passed it and would be reading from another update that was made afterwards, meaning the test wouldn't be useful
-        if (lastUpdateDocAfter - lastUpdateDocBefore !== intervalValue) {
-          if (numAttempts === 0) {
-            fail("Unable to read document right at the time the next update was made after 10 attempts, making the test invaluable");
-          } else {
-            continue;
-          }
-        } else {
-          break; // means we were able to read the document exactly after the next update and tested what was necessary
-        }
+      } finally {
+        debugRemoveFailAt(originalEndpoint, failurePoint1);
+        debugRemoveFailAt(originalEndpoint, failurePoint2);
       }
     },
   };
 }
 
-jsunity.run(TelemetricsTestSuite);
-
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(TelemetricsTestSuite);
+}
 return jsunity.done();
