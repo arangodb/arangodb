@@ -90,7 +90,7 @@ void TelemetricsFeature::collectOptions(
 void TelemetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   if (_interval <= 3600) {
-    _rescheduleInterval = .1 * _interval + 1;
+    _rescheduleInterval = static_cast<std::uint64_t>(.1 * _interval + 1);
   }
 }
 
