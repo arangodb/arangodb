@@ -8,14 +8,12 @@ jobs:
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
-      - restore_cache:
-          keys:
-            - gitcache-v1-{{ .Branch }}-{{ .Revision }}
-            - gitcache-v1-{{ .Branch }}
-            - gitcache-v1
-      - checkout
-      - run: git submodule sync
-      - run: git submodule update --init
+      #      - restore_cache:
+      #    keys:
+      #      - gitcache-v1-{{ .Branch }}-{{ .Revision }}
+      #      - gitcache-v1-{{ .Branch }}
+      #      - gitcache-v1
+      - run: git clone --depth 1 "$CIRCLE_REPOSITORY_URL" -b "$CIRCLE_BRANCH" --recurse-submodules --shallo-submodules -j 8
       - save_cache:
           when: always
           key: gitcache-v1
@@ -40,7 +38,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset community-developer --parallel 6 --target arangodbtests
+            cmake --build --preset community-developer --parallel 8 --target arangodbtests
       - run:
           name: CCache Statistics
           command: ccache -s
