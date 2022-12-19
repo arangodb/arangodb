@@ -55,7 +55,7 @@ class RocksDBIndexCacheRefillThread final : public Thread {
   void beginShutdown() override;
 
   bool trackRefill(std::shared_ptr<LogicalCollection> const& collection,
-                   IndexId iid, containers::FlatHashSet<std::string> keys);
+                   IndexId iid, containers::FlatHashSet<std::string>& keys);
 
   void waitForCatchup();
 
