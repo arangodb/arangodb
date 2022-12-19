@@ -166,7 +166,8 @@ PregelFeature::PregelFeature(Server& server)
       _useMemoryMaps(true),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
-          server.getFeature<metrics::MetricsFeature>())) {
+          server.getFeature<metrics::MetricsFeature>())),
+      _actorNetworkTransport(vocbase.server().getFeature<NetworkFeature>().pool()) {
   static_assert(
       Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
   setOptional(true);

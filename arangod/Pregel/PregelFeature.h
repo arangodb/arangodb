@@ -46,6 +46,8 @@
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
+#include "Pregel/Actor/NetworkTransport.h"
+
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
@@ -157,6 +159,8 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+  actor::NetworkTransport _actorNetworkTransport;
 };
 
 }  // namespace arangodb::pregel
