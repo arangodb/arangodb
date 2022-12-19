@@ -36,8 +36,9 @@ IndexesSnapshot::IndexesSnapshot(PhysicalCollection& collection)
   for (auto const& idx : collection._indexes) {
     _indexes.emplace_back(idx);
   }
-  TRI_ASSERT(!_indexes.empty());
-  TRI_ASSERT(_indexes[0]->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+  // in unit tests, there can be 0 indexes in a snapshot...
+  TRI_ASSERT(_indexes.empty() ||
+             _indexes[0]->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX);
 }
 
 IndexesSnapshot::~IndexesSnapshot() = default;
