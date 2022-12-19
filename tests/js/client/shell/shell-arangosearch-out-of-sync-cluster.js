@@ -58,7 +58,7 @@ function ArangoSearchOutOfSyncSuite () {
 
     testMarkLinksAsOutOfSync : function () {
       let c = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
+      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value[*]', analyzer: 'identity'}] });
       
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
       let viewMeta = {};
@@ -98,9 +98,9 @@ function ArangoSearchOutOfSyncSuite () {
       
       clearFailurePoints();
       
-      c = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
-      c.insert(docs);
+      let c2 = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
+      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value[*]', analyzer: 'identity'}] });
+      c2.insert(docs);
       
       v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
       if (isEnterprise) {

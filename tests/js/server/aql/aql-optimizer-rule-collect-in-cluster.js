@@ -62,8 +62,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
             type: "inverted",
             includeAllFields: true,
             primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            // UNCOMMENT THIS AFTER BUGFIX: https://arangodb.atlassian.net/browse/SEARCH-443
-            // fields: [{"name": "value_nested"}]
+            fields: [{"name": "value_nested[*]"}]
           };
         }
         let i = c.ensureIndex(indexMeta);
@@ -304,8 +303,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
             type: "inverted",
             includeAllFields: true,
             primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            // UNCOMMENT THIS AFTER BUGFIX: https://arangodb.atlassian.net/browse/SEARCH-443
-            // fields: [{"name": "value_nested"}],
+            fields: [{"name": "value_nested[*]"}],
           };
         }
         let i = c.ensureIndex(indexMeta);
