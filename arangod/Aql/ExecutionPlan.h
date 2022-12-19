@@ -436,7 +436,7 @@ class ExecutionPlan {
   bool _isAsyncPrefetchEnabled{false};
 
   // Flag there are collection nodes with forceIndexHint:true
-bool _hasForcedIndexHints{false};
+  bool _hasForcedIndexHints{false};
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;
