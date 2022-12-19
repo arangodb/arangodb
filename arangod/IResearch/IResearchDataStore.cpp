@@ -66,6 +66,11 @@
 using namespace std::literals;
 
 namespace arangodb::iresearch {
+
+#ifdef USE_ENTERPRISE
+size_t getPrimaryDocsCount(irs::directory_reader const& reader);
+#endif
+
 namespace {
 
 class IResearchFlushSubscription final : public FlushSubscription {
@@ -1991,9 +1996,14 @@ IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
+#ifdef USE_ENTERPRISE
+  stats.numPrimaryDocs = getPrimaryDocsCount(reader);
+#else
+  stats.numPrimaryDocs = stats.numDocs;
+#endif
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
-  auto visitor = [&stats](std::string const& /*name*/,
+  auto visitor = [&stats](std::string_view /*name*/,
                           irs::segment_meta const& segment) noexcept {
     stats.indexSize += segment.size;
     stats.numFiles += segment.files.size();
@@ -2012,6 +2022,7 @@ void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   auto const stats = this->stats();
 
   builder.add("numDocs", VPackValue(stats.numDocs));
+  builder.add("numPrimaryDocs", VPackValue(stats.numPrimaryDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
