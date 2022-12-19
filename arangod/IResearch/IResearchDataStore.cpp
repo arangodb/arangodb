@@ -1647,7 +1647,6 @@ void IResearchDataStore::properties(LinkLock linkLock,
 Result IResearchDataStore::remove(transaction::Methods& trx,
                                   LocalDocumentId documentId, bool nested,
                                   uint64_t const* recoveryTick) {
-  TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
@@ -1708,7 +1707,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   // all all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(*_engine, documentId, nested);
+    ctx->remove(documentId, nested);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {
@@ -1733,7 +1732,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
 }
 
 bool IResearchDataStore::exists(IResearchDataStore::Snapshot const& snapshot,
-                                LocalDocumentId documentId, bool nested,
+                                LocalDocumentId documentId,
                                 TRI_voc_tick_t const* recoveryTick) const {
   if (recoveryTick == nullptr) {
     // skip recovery check
@@ -1750,15 +1749,26 @@ bool IResearchDataStore::exists(IResearchDataStore::Snapshot const& snapshot,
     return false;
   }
 
-  PrimaryKeyFilter filter{PrimaryKeyFilter::ExistsTag{}, documentId, nested};
-  auto prepared = filter.prepare(snapshot.getDirectoryReader());
-  TRI_ASSERT(prepared);
+  auto const encoded = DocumentPrimaryKey::encode(documentId);
+
+  auto const pk =
+      irs::numeric_utils::numeric_traits<LocalDocumentId::BaseType>::raw_ref(
+          encoded);
+
   for (auto const& segment : snapshot.getDirectoryReader()) {
-    auto executed = prepared->execute(segment);
-    if (executed->next()) {
+    auto const* pkField = segment.field(DocumentPrimaryKey::PK());
+
+    if (ADB_UNLIKELY(!pkField)) {
+      continue;
+    }
+
+    auto const meta = pkField->term(pk);
+
+    if (meta.docs_count) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -1767,7 +1777,6 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc, MetaType const& meta,
                                   uint64_t const* recoveryTick) {
-  TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());

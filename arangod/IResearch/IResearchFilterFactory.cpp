@@ -329,6 +329,14 @@ Result byTerm(irs::by_term* filter, NormalizedCmpNode const& node,
   if (!value.isConstant()) {
     if (!filter) {
       // can't evaluate non constant filter before the execution
+      if (!filterCtx.query.isSearchQuery) {
+        // but at least we must validate attribute name
+        std::string fieldName{filterCtx.query.namePrefix};
+        if (!nameFromAttributeAccess(fieldName, *node.attribute,
+                                     filterCtx.query, false)) {
+          return error::failedToGenerateName("byTerm", 1);
+        }
+      }
       return {};
     }
 
@@ -1500,6 +1508,12 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     return fromExpression(filter, filterCtx, node);
   }
 
+  std::string fieldName{ctx.namePrefix};
+  if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
+                               filter != nullptr)) {
+    return error::failedToGenerateName("fromArrayComparison", 1);
+  }
+
   if (!filter) {
     // can't evaluate non constant filter before the execution
     return {};
@@ -1535,13 +1549,6 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
           .fieldAnalyzerProvider = filterCtx.fieldAnalyzerProvider,
           .boost = irs::kNoBoost};  // reset boost
 
-      std::string fieldName{ctx.namePrefix};
-      if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx,
-                                   filter != nullptr)) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Failed to generate field name from node " +
-                    aql::AstNode::toString(attributeNode)};
-      }
       for (size_t i = 0; i < n; ++i) {
         auto rv = SubFilterFactory::byValueSubFilter(
             filter, fieldName, value.at(i), arrayExpansionNodeType,
@@ -1596,6 +1603,14 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
 
     if (!attributeAccessFound) {
       return fromExpression(filter, filterCtx, node);
+    }
+  }
+
+  if (!filter && !ctx.isSearchQuery) {
+    // but at least we must validate attribute name
+    std::string fieldName{ctx.namePrefix};
+    if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx, false)) {
+      return error::failedToGenerateName("fromInArray", 1);
     }
   }
 
@@ -1721,6 +1736,13 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
 
   if (!filter) {
     // can't evaluate non constant filter before the execution
+    if (!ctx.isSearchQuery) {
+      // but at least we must validate attribute name
+      std::string fieldName{ctx.namePrefix};
+      if (!nameFromAttributeAccess(fieldName, *attributeNode, ctx, false)) {
+        return error::failedToGenerateName("fromIn", 1);
+      }
+    }
     return {};
   }
 

@@ -902,7 +902,12 @@ bool Index::covers(aql::Projections& projections) const {
   return true;
 }
 
-Result Index::scheduleWarmup() {
+bool Index::canWarmup() const noexcept { return false; }
+
+Result Index::warmup() {
+  // we should never be called in the base class.
+  TRI_ASSERT(!canWarmup());
+  TRI_ASSERT(false);
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
   return {};
@@ -910,12 +915,12 @@ Result Index::scheduleWarmup() {
 
 /// @brief generate error message
 /// @param key the conflicting key
-Result& Index::addErrorMsg(Result& r, std::string const& key) const {
+Result& Index::addErrorMsg(Result& r, std::string_view key) const {
   return r.withError(
       [this, &key](result::Error& err) { addErrorMsg(err, key); });
 }
 
-void Index::addErrorMsg(result::Error& r, std::string const& key) const {
+void Index::addErrorMsg(result::Error& r, std::string_view key) const {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());

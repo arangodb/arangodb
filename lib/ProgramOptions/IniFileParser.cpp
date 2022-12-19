@@ -24,7 +24,6 @@
 #include <cstddef>
 #include <map>
 #include <sstream>
-#include <vector>
 
 #include <unicode/unistr.h>
 
@@ -39,6 +38,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb::options {

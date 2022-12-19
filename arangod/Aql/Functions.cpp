@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -60,6 +61,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Random/UniformCharacter.h"
@@ -8779,7 +8781,8 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
     withId = arg2.slice().getBool();
   }
 
-  uint64_t execNr = arg1.toInt64();
+  auto execNr =
+      arangodb::pregel::ExecutionNumber{static_cast<uint64_t>(arg1.toInt64())};
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);

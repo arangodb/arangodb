@@ -59,7 +59,9 @@ class ViewSnapshot : public irs::index_reader {
   [[nodiscard]] virtual StorageEngine::StorageSnapshot const& snapshot(
       std::size_t i) const noexcept = 0;
 
-  bool hasNestedFields() const noexcept { return _hasNestedFields; }
+  [[nodiscard]] bool hasNestedFields() const noexcept {
+    return _hasNestedFields;
+  }
 
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
     return _live_docs_count;

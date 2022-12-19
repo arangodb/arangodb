@@ -217,8 +217,8 @@ ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server)
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
-std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases()
-    const {
+std::vector<std::pair<std::string_view, std::string_view>>
+ClusterIndexFactory::indexAliases() const {
   auto& ce =
       _server.getFeature<EngineSelectorFeature>().engine<ClusterEngine>();
   auto* ae = ce.actualEngine();
@@ -337,7 +337,10 @@ void ClusterIndexFactory::prepareIndexes(
     }
 
     if (basics::VelocyPackHelper::getBooleanValue(
-            v, StaticStrings::IndexIsBuilding, false)) {
+            v, StaticStrings::IndexIsBuilding, false) &&
+        !(basics::VelocyPackHelper::getStringView(v, StaticStrings::IndexType,
+                                                  {}) ==
+          iresearch::StaticStrings::ViewArangoSearchType)) {
       // This index is still being built. Do not add.
       continue;
     }

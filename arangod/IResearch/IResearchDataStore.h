@@ -79,9 +79,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     TRI_ASSERT(_removals.empty());
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value,
-              bool nested) {
-    _ctx.remove(_removals.emplace(engine, value, nested));
+  void remove(LocalDocumentId value, bool nested) {
+    _ctx.remove(_removals.emplace(value, nested));
   }
 };
 
@@ -202,7 +201,7 @@ class IResearchDataStore {
     return _dataStore._recoveryTickHigh;
   }
 
-  bool exists(Snapshot const& snapshot, LocalDocumentId documentId, bool nested,
+  bool exists(Snapshot const& snapshot, LocalDocumentId documentId,
               uint64_t const* recoveryTick) const;
 
   ////////////////////////////////////////////////////////////////////////////////

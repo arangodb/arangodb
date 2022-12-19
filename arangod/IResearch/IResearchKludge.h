@@ -64,6 +64,8 @@ std::string_view demangleType(std::string_view name) noexcept;
                                                   std::string& buf) {
   return demangleNested(demangleType(name), buf);
 }
+
+std::string_view extractAnalyzerName(std::string_view fieldName);
 #endif
 
 }  // namespace arangodb::iresearch::kludge

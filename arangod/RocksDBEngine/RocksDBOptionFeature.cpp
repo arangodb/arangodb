@@ -48,6 +48,7 @@
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>
 #include <rocksdb/filter_policy.h>
+#include <rocksdb/memory_allocator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
@@ -250,12 +251,13 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _formatVersion(5),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
+      _useJemallocAllocator(false),
       _prepopulateBlockCache(false),
       _reserveTableBuilderMemory(false),
       _reserveTableReaderMemory(false),
       _reserveFileMetadataMemory(false),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
-      _enforceBlockCacheSizeLimit(true),
+      _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
           rocksDBTableOptionsDefaults
@@ -1069,6 +1071,25 @@ version.)");
       .setIntroducedIn(31000);
 
   options
+      ->addOption(
+          "--rocksdb.block-cache-jemalloc-allocator",
+          "Use jemalloc-based memory allocator for RocksDB block cache.",
+          new BooleanParameter(&_useJemallocAllocator),
+          arangodb::options::makeFlags(arangodb::options::Flags::Experimental,
+                                       arangodb::options::Flags::Uncommon,
+                                       arangodb::options::Flags::OsLinux,
+                                       arangodb::options::Flags::OnAgent,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(
+          R"(The jemalloc-based memory allocator for the RocksDB block cache
+will also exclude the block cache contents from coredumps, potentially making generated 
+coredumps a lot smaller.
+In order to use this option, the executable needs to be compiled with jemalloc
+support (which is the default on Linux).)");
+
+  options
       ->addOption("--rocksdb.prepopulate-block-cache",
                   "Pre-populate block cache on flushes.",
                   new BooleanParameter(&_prepopulateBlockCache),
@@ -1227,6 +1248,17 @@ void RocksDBOptionFeature::validateOptions(
 
     // TODO: hyper clock cache probably doesn't need as many shards. check this.
   }
+
+#ifndef ARANGODB_HAVE_JEMALLOC
+  // on some platforms, jemalloc is not available, because it is not compiled
+  // in by default. to make the startup of the server not fail in such
+  // environment, turn off the option automatically
+  if (_useJemallocAllocator) {
+    _useJemallocAllocator = false;
+    LOG_TOPIC("b3164", INFO, Logger::STARTUP)
+        << "disabling jemalloc allocator for RocksDB - jemalloc not compiled";
+  }
+#endif
 }
 
 void RocksDBOptionFeature::prepare() {
@@ -1303,6 +1335,7 @@ void RocksDBOptionFeature::start() {
       << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow
+      << ", use_jemalloc_allocator: " << _useJemallocAllocator
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_strict_capacity_limit: " << std::boolalpha
@@ -1328,7 +1361,7 @@ void RocksDBOptionFeature::start() {
       << _prepopulateBlockCache
       << ", reserve_table_builder_memory: " << std::boolalpha
       << _reserveTableBuilderMemory
-      << ", reserve_reader_builder_memory: " << std::boolalpha
+      << ", reserve_table_reader_memory: " << std::boolalpha
       << _reserveTableReaderMemory
       << ", enable_pipelined_write: " << std::boolalpha << _enablePipelinedWrite
       << ", optimize_filters_for_hits: " << std::boolalpha
@@ -1515,9 +1548,28 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
-    result.block_cache = rocksdb::NewLRUCache(
-        _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-        /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
+    rocksdb::LRUCacheOptions opts;
+
+    opts.capacity = _blockCacheSize;
+    opts.num_shard_bits = static_cast<int>(_blockCacheShardBits);
+    opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
+
+#ifdef ARANGODB_HAVE_JEMALLOC
+    if (_useJemallocAllocator) {
+      rocksdb::JemallocAllocatorOptions jopts;
+      std::shared_ptr<rocksdb::MemoryAllocator> allocator;
+      rocksdb::Status s =
+          rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
+      if (!s.ok()) {
+        LOG_TOPIC("004e6", FATAL, Logger::STARTUP)
+            << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
+        FATAL_ERROR_EXIT();
+      }
+      opts.memory_allocator = allocator;
+    }
+#endif
+
+    result.block_cache = rocksdb::NewLRUCache(opts);
   } else {
     result.no_block_cache = true;
   }
