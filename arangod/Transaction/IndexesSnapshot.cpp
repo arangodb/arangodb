@@ -31,14 +31,12 @@ namespace arangodb {
 IndexesSnapshot::IndexesSnapshot(
     RecursiveReadLocker<basics::ReadWriteLock>&& locker,
     std::vector<std::shared_ptr<Index>> indexes)
-    : _locker(std::move(locker)), _indexes(std::move(indexes)), _valid(true) {
-  // in unit tests, there can be 0 indexes in a snapshot...
-  TRI_ASSERT(_indexes.empty() ||
-             _indexes[0]->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX);
-}
+    : _locker(std::move(locker)), _indexes(std::move(indexes)), _valid(true) {}
 
 IndexesSnapshot::~IndexesSnapshot() = default;
 
+// note: in unit tests, there can be whatever indexes (even no indexes)
+// in an index snapshot
 std::vector<std::shared_ptr<Index>> const& IndexesSnapshot::getIndexes()
     const noexcept {
   TRI_ASSERT(_valid);
