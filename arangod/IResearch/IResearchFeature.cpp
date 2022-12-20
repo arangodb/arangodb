@@ -604,31 +604,23 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-namespace {
 template<typename T>
-void registerSingleFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> const& m,
-    ArangodServer& server) {
-  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
-  IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
-  if (server.hasFeature<T>()) {
-    auto& engine = server.getFeature<T>();
-    auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-    Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
-        factory);
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          basics::StringUtils::concatT(
-              "failure registering IResearch link factory with index "
-              "factory from feature '",
-              engine.name(), "': ", res.errorMessage()));
-    }
+void registerSingleFactory(IndexTypeFactory& factory, ArangodServer& server) {
+  if (!server.hasFeature<T>()) {
+    return;
+  }
+  auto& engine = server.getFeature<T>();
+  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
+  auto r = engineFactory.emplace(
+      std::string{StaticStrings::ViewArangoSearchType}, factory);
+  if (!r.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(),
+        absl::StrCat("failure registering IResearch link factory with index "
+                     "factory from feature '",
+                     engine.name(), "': ", r.errorMessage()));
   }
 }
-
-}  // namespace
 
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
@@ -1363,7 +1355,9 @@ void IResearchFeature::registerRecoveryHelper() {
 
 void IResearchFeature::registerIndexFactory() {
   _clusterFactory = IResearchLinkCoordinator::createFactory(server());
+  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
   _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
+  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
 }
 
 #ifdef USE_ENTERPRISE
