@@ -1145,7 +1145,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
     bool didReplace = false;
     bool excludeFromReplication = _excludeAllFromReplication;
 
-    if (not oldDocumentId.isSet()) {
+    if (!oldDocumentId.isSet()) {
       // regular insert without overwrite option. the insert itself will check
       // if the primary key already exists
       res = insertLocalHelper(key, value, newRevisionId);
