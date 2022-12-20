@@ -257,7 +257,7 @@ struct UnorderedRefKeyMapBase {
   struct KeyGenerator {
     KeyType operator()(KeyType const& key,
                        typename MapType::mapped_type const& value) const {
-      return KeyType(key.hash(), value.first);
+      return KeyType(value.first, key.hash());
     }
   };
 };
@@ -398,7 +398,7 @@ class UnorderedRefKeyMap
   }
 
   V& operator[](typename KeyType::base_t const& key) {
-    return (*this)[irs::make_hashed_ref(key, keyHasher())];
+    return (*this)[irs::hashed_basic_string_view{key, keyHasher()}];
   }
 
   Iterator begin() noexcept { return Iterator(_map.begin()); }
@@ -423,7 +423,7 @@ class UnorderedRefKeyMap
   template<typename... Args>
   std::pair<Iterator, bool> emplace(typename KeyType::base_t const& key,
                                     Args&&... args) {
-    return emplace(irs::make_hashed_ref(key, keyHasher()),
+    return emplace(irs::hashed_basic_string_view{key, keyHasher()},
                    std::forward<Args>(args)...);
   }
 
@@ -437,7 +437,7 @@ class UnorderedRefKeyMap
   }
 
   Iterator find(typename KeyType::base_t const& key) noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   ConstIterator find(KeyType const& key) const noexcept {
@@ -445,7 +445,7 @@ class UnorderedRefKeyMap
   }
 
   ConstIterator find(typename KeyType::base_t const& key) const noexcept {
-    return find(irs::make_hashed_ref(key, keyHasher()));
+    return find(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V* findPtr(KeyType const& key) noexcept {
@@ -455,7 +455,7 @@ class UnorderedRefKeyMap
   }
 
   V* findPtr(typename KeyType::base_t const& key) noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   V const* findPtr(KeyType const& key) const noexcept {
@@ -465,7 +465,7 @@ class UnorderedRefKeyMap
   }
 
   V const* findPtr(typename KeyType::base_t const& key) const noexcept {
-    return findPtr(irs::make_hashed_ref(key, keyHasher()));
+    return findPtr(irs::hashed_basic_string_view{key, keyHasher()});
   }
 
   size_t size() const noexcept { return _map.size(); }

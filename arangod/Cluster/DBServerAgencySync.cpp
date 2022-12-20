@@ -85,12 +85,11 @@ Result DBServerAgencySync::getLocalCollections(
   DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   for (auto const& dbname : dirty) {
-    TRI_vocbase_t* tmp = dbfeature.useDatabase(dbname);
+    auto tmp = dbfeature.useDatabase(dbname);
     if (tmp == nullptr) {
       continue;
     }
     TRI_vocbase_t& vocbase = *tmp;
-    auto unuse = scopeGuard([&vocbase]() noexcept { vocbase.release(); });
 
     auto [it, created] =
         databases.try_emplace(dbname, std::make_shared<VPackBuilder>());

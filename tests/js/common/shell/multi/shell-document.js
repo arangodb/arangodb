@@ -295,8 +295,18 @@ function CollectionDocumentSuite () {
         try {
           collection.save({ _key: key });
           fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
         }
-        catch (err) {
+      });
+    },
+
+    testSaveInvalidDocumentKeyValueWithOverwriteMode : function () {
+      [ "", " ", "  ", " a", "a ", "/", "|", "#", "a/a", "\0", "\r", "\n", "\t", "\"", "[", "]", "{", "}", "\\" ].forEach(function (key) {
+        try {
+          collection.save({ _key: key }, { overwriteMode: "update" });
+          fail();
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
         }
       });

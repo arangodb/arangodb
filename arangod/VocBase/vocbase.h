@@ -117,7 +117,7 @@ constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
+  TRI_vocbase_t(arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -141,7 +141,6 @@ struct TRI_vocbase_t {
 
   arangodb::CreateDatabaseInfo _info;
 
-  TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   bool _isOwnAppsDirectory;
 
@@ -235,7 +234,6 @@ struct TRI_vocbase_t {
   arangodb::replication::Version replicationVersion() const;
   std::string const& sharding() const;
   bool isOneShard() const;
-  TRI_vocbase_type_e type() const { return _type; }
 
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
@@ -280,6 +278,9 @@ struct TRI_vocbase_t {
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up
   void stop();
+
+  /// @brief closes a database and all collections
+  void shutdown();
 
   /// @brief sets prototype collection for sharding (_users or _graphs)
   void setShardingPrototype(ShardingPrototype type);
@@ -437,9 +438,6 @@ struct TRI_vocbase_t {
       arangodb::velocypack::Slice parameters);
 
  private:
-  /// @brief closes a database and all collections
-  void shutdown();
-
   /// @brief adds further SmartGraph-specific sub-collections to the vector of
   /// collections if collection is a SmartGraph edge collection that requires
   /// it. otherwise does nothing.

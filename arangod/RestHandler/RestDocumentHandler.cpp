@@ -33,6 +33,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
+#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
@@ -244,9 +245,14 @@ RestStatus RestDocumentHandler::insertDocument() {
     }
   }
 
-  // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
   bool const isMultiple = body.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
+  // find and load collection given by name or identifier
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isMultiple && !opOptions.isOverwriteModeUpdateReplace()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -604,8 +610,14 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     }
   }
 
+  bool const isMultiple = body.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
   // find and load collection given by name or identifier
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
 
   if (!isArrayCase) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -765,7 +777,13 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
-  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions);
+  bool const isMultiple = search.isArray();
+  transaction::Options trxOpts;
+  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+                                        // single document operations
+
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE, opOptions,
+                                 std::move(trxOpts));
   if (suffixes.size() == 2 || !search.isArray()) {
     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -795,8 +813,6 @@ RestStatus RestDocumentHandler::removeDocument() {
             "' does not contain collection '" + cname +
             "' with the required access mode.");
   }
-
-  bool const isMultiple = search.isArray();
 
   return waitForFuture(
       _activeTrx->removeAsync(cname, search, opOptions)

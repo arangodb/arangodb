@@ -60,7 +60,7 @@ namespace arangodb {
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
                                      ClusterEngineType engineType,
                                      velocypack::Slice info)
-    : PhysicalCollection(collection, info),
+    : PhysicalCollection(collection),
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
@@ -83,13 +83,6 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
 }
 
-ClusterCollection::ClusterCollection(LogicalCollection& collection,
-                                     PhysicalCollection const* physical)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _engineType(static_cast<ClusterCollection const*>(physical)->_engineType),
-      _info(static_cast<ClusterCollection const*>(physical)->_info),
-      _selectivityEstimates(collection) {}
-
 ClusterCollection::~ClusterCollection() = default;
 
 /// @brief fetches current index selectivity estimates
@@ -103,10 +96,6 @@ IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating,
 /// @brief flushes the current index selectivity estimates
 void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();
-}
-
-std::string const& ClusterCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
 }
 
 Result ClusterCollection::updateProperties(velocypack::Slice slice) {
@@ -167,10 +156,6 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   return {};
 }
 
-PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
-  return new ClusterCollection(logical, this);
-}
-
 /// @brief used for updating properties
 void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
@@ -208,67 +193,12 @@ void ClusterCollection::figuresSpecific(bool /*details*/,
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
-/// @brief closes an open collection
-ErrorCode ClusterCollection::close() {
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    it->unload();
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
 RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-void ClusterCollection::prepareIndexes(velocypack::Slice indexesSlice) {
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  TRI_ASSERT(indexesSlice.isArray());
-
-  StorageEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
-  std::vector<std::shared_ptr<Index>> indexes;
-
-  if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
-
-  } else {
-    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice,
-                                         indexes);
-  }
-
-  for (std::shared_ptr<Index>& idx : indexes) {
-    addIndex(std::move(idx));
-  }
-
-  auto it = _indexes.cbegin();
-  if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
-      (_logicalCollection.type() == TRI_COL_TYPE_EDGE &&
-       ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
-        (_indexes.size() >= 3 &&
-         _engineType == ClusterEngineType::RocksDBEngine &&
-         (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
-    std::string msg = "got invalid indexes for collection '" +
-                      _logicalCollection.name() + "'";
-
-    LOG_TOPIC("f71d2", ERR, arangodb::Logger::FIXME) << msg;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    for (auto it : _indexes) {
-      LOG_TOPIC("f83f5", ERR, arangodb::Logger::FIXME) << "- " << it->context();
-    }
-#endif
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
-
-  TRI_ASSERT(!_indexes.empty());
 }
 
 std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
@@ -300,34 +230,10 @@ std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
 
   // In the coordinator case we do not fill the index
   // We only inform the others.
-  addIndex(idx);
+  _indexes.emplace(idx);
+
   created = true;
   return idx;
-}
-
-/// @brief Drop an index with the given iid.
-bool ClusterCollection::dropIndex(IndexId iid) {
-  // usually always called when _exclusiveLock is held
-  if (iid.empty() || iid.isPrimary()) {
-    return true;
-  }
-
-  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto it : _indexes) {
-    if (iid == it->id()) {
-      _indexes.erase(it);
-      events::DropIndex(_logicalCollection.vocbase().name(),
-                        _logicalCollection.name(), std::to_string(iid.id()),
-                        TRI_ERROR_NO_ERROR);
-      return true;
-    }
-  }
-
-  // We tried to remove an index that does not exist
-  events::DropIndex(_logicalCollection.vocbase().name(),
-                    _logicalCollection.name(), std::to_string(iid.id()),
-                    TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-  return false;
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(
@@ -343,20 +249,26 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(
 Result ClusterCollection::truncate(transaction::Methods& /*trx*/,
                                    OperationOptions& /*options*/,
                                    bool& usedRangeDelete) {
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::lookupKey(
     transaction::Methods* /*trx*/, std::string_view /*key*/,
     std::pair<LocalDocumentId, RevisionId>& /*result*/, ReadOwnWrites) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
+}
+
+Result ClusterCollection::lookupKeyForUpdate(
+    transaction::Methods* /*trx*/, std::string_view /*key*/,
+    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites /*readOwnWrites*/) const {
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 // read using a token!
@@ -364,55 +276,43 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                LocalDocumentId const& /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites /*readOwnWrites*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::lookupDocument(
     transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
     velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
     ReadOwnWrites /*readOwnWrites*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::insert(transaction::Methods&, RevisionId,
                                  velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::update(transaction::Methods&, LocalDocumentId,
                                  RevisionId, velocypack::Slice, RevisionId,
                                  velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::replace(transaction::Methods&, LocalDocumentId,
                                   RevisionId, velocypack::Slice, RevisionId,
                                   velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::remove(transaction::Methods&, LocalDocumentId,
                                  RevisionId, velocypack::Slice,
                                  OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 void ClusterCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& /*callback*/
 ) {
   // nothing to do here
-}
-
-void ClusterCollection::addIndex(std::shared_ptr<Index> idx) {
-  // LOCKED from the outside
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
-  _indexes.emplace(idx);
 }
 
 }  // namespace arangodb

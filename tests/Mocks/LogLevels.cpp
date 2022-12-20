@@ -29,7 +29,7 @@ namespace arangodb {
 namespace tests {
 
 IResearchLogSuppressor::IResearchLogSuppressor() {
-  irs::logger::output_le(::iresearch::logger::IRL_FATAL, stderr);
+  irs::logger::output_le(::irs::logger::IRL_FATAL, stderr);
 }
 
 }  // namespace tests

@@ -60,9 +60,6 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void receivedMessages(VPackSlice const& data) = 0;
   virtual void finalizeExecution(VPackSlice const& data,
                                  std::function<void()> cb) = 0;
-  virtual void startRecovery(VPackSlice const& data) = 0;
-  virtual void compensateStep(VPackSlice const& data) = 0;
-  virtual void finalizeRecovery(VPackSlice const& data) = 0;
   virtual void aqlResult(VPackBuilder&, bool withId) const = 0;
 };
 
@@ -86,12 +83,11 @@ class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
 
   enum WorkerState {
-    DEFAULT,     // only initial
-    IDLE,        // do nothing
-    PREPARING,   // before starting GSS
-    COMPUTING,   // during a superstep
-    RECOVERING,  // during recovery
-    DONE         // after calling finished
+    DEFAULT,    // only initial
+    IDLE,       // do nothing
+    PREPARING,  // before starting GSS
+    COMPUTING,  // during a superstep
+    DONE        // after calling finished
   };
 
   PregelFeature& _feature;
@@ -107,10 +103,6 @@ class Worker : public IWorker {
   mutable Mutex _threadMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
-
-  // only valid while recovering to determine the offset
-  // where new vertices were inserted
-  size_t _preRecoveryTotal = 0;
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
@@ -139,10 +131,6 @@ class Worker : public IWorker {
   uint64_t _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
-  /// During async mode this should keep track of the send messages
-  std::atomic<uint64_t> _nextGSSSendMessageCount;
-  /// if the worker has started sendng messages to the next GSS
-  std::atomic<bool> _requestedNextGSS;
   Scheduler::WorkHandle _workHandle;
 
   void _initializeMessageCaches();
@@ -151,11 +139,7 @@ class Worker : public IWorker {
   bool _processVertices(size_t threadId,
                         RangeIterator<Vertex<V, E>>& vertexIterator);
   void _finishedProcessing();
-  void _continueAsync();
   void _callConductor(std::string const& path, VPackBuilder const& message);
-  void _callConductorWithResponse(std::string const& path,
-                                  VPackBuilder const& message,
-                                  std::function<void(VPackSlice slice)> handle);
   [[nodiscard]] auto _observeStatus() -> Status const;
   [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
 
@@ -172,9 +156,6 @@ class Worker : public IWorker {
   void receivedMessages(VPackSlice const& data) override;
   void finalizeExecution(VPackSlice const& data,
                          std::function<void()> cb) override;
-  void startRecovery(VPackSlice const& data) override;
-  void compensateStep(VPackSlice const& data) override;
-  void finalizeRecovery(VPackSlice const& data) override;
 
   void aqlResult(VPackBuilder&, bool withId) const override;
 };

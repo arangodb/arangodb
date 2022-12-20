@@ -380,9 +380,12 @@ bool Task::queue(std::chrono::microseconds offset) {
     return false;
   }
 
+  if (server.isStopping()) {
+    return false;
+  }
   MUTEX_LOCKER(lock, _taskHandleMutex);
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::INTERNAL_LOW, offset, callbackFunction());
+      "v8-task", RequestLane::INTERNAL_LOW, offset, callbackFunction());
   return true;
 }
 

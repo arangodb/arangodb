@@ -40,6 +40,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -34,6 +34,7 @@
 #endif
 
 #include "search/scorers.hpp"
+#include "utils/assert.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/file_utils.hpp"
@@ -57,6 +58,7 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Containers/SmallVector.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -814,6 +816,25 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
   Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(),
               msg);
 }
+
+class AssertionCallbackSetter {
+ public:
+  AssertionCallbackSetter() noexcept {
+    irs::SetAssertCallback(&assertCallback);
+  }
+
+ private:
+  [[noreturn]] static void assertCallback(std::string_view file,
+                                          std::size_t line,
+                                          std::string_view function,
+                                          std::string_view condition,
+                                          std::string_view message) noexcept {
+    CrashHandler::assertionFailure(file.data(), static_cast<int>(line),
+                                   function.data(), condition.data(),
+                                   message.data());
+  }
+
+};  // FIXME(gnusi): instantiate when assertions are fixed
 
 }  // namespace
 

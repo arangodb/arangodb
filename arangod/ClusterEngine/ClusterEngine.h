@@ -74,7 +74,7 @@ class ClusterEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) override;
+      LogicalCollection& collection, velocypack::Slice info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -97,14 +97,6 @@ class ClusterEngine final : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
-    return std::string();
-  }
-  std::string dataPath() const override {
-    // the cluster engine does not have any data path
-    return std::string();
-  }
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
-    // the cluster engine does not have any database path
     return std::string();
   }
 
@@ -169,8 +161,6 @@ class ClusterEngine final : public StorageEngine {
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&& info, ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
