@@ -125,6 +125,6 @@ workflows:
       - compile-linux-community
       - run-gtest-executable-linux:
           name: arangodbtests linux
-          executable: 'build/community-developer/bin/arangodbtests'
+          executable: 'build/community-pr/bin/arangodbtests'
           requires:
             - compile-linux-community
