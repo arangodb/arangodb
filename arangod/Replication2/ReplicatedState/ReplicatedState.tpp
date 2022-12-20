@@ -490,7 +490,8 @@ FollowerStateManager<S>::FollowerStateManager(
       _guardedData{std::move(followerState), std::move(stream)} {}
 
 namespace {
-inline auto delayedFuture(std::string_view name, std::chrono::steady_clock::duration duration)
+inline auto delayedFuture(std::string_view name,
+                          std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
   if (SchedulerFeature::SCHEDULER) {
     return SchedulerFeature::SCHEDULER->delay(name, duration);
@@ -593,51 +594,49 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
                                                       snapshotCounter),
                                                   leader = std::move(leader),
                                                   index]() mutable {
-    std::move(fut).thenFinal(
-        [weak = std::move(weak), rttGuard = std::move(rttGuard),
-         snapshotCounter = std::move(snapshotCounter),
-         leader = std::move(leader),
-         index](futures::Try<Result>&& tryResult) mutable noexcept {
-          rttGuard.fire();
-          snapshotCounter.fire();
-          if (auto self = weak.lock(); self != nullptr) {
-            LOG_CTX("13f07", TRACE, self->_loggerContext)
-                << "acquire snapshot returned";
-            auto result =
-                basics::catchToResult([&] { return tryResult.get(); });
-            if (result.ok()) {
-              LOG_CTX("44d58", DEBUG, self->_loggerContext)
-                  << "snapshot transfer successfully completed, informing "
-                     "replicated log";
-              auto guard = self->_guardedData.getLockedGuard();
-              guard->clearSnapshotErrors();
-              auto res =
-                  basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
-                      guard->_stream->methods())
-                      .snapshotCompleted();
-              // TODO (How) can we handle this more gracefully?
-              ADB_PROD_ASSERT(res.ok());
-            } else {
-              LOG_CTX("9a68a", INFO, self->_loggerContext)
-                  << "failed to transfer snapshot: " << result
-                  << " - retry scheduled";
-              self->registerSnapshotError(std::move(result));
-              self->backOffSnapshotRetry().thenFinal(
-                  [weak = std::move(weak), leader = std::move(leader),
-                   index](futures::Try<futures::Unit>&& x) mutable noexcept
-                  -> void {
-                    auto const result =
-                        basics::catchVoidToResult([&] { x.get(); });
-                    ADB_PROD_ASSERT(result.ok())
-                        << "Unexpected error when backing off snapshot retry: "
-                        << result;
-                    if (auto self = weak.lock(); self != nullptr) {
-                      self->acquireSnapshot(std::move(leader), index);
-                    }
-                  });
-            }
-          }
-        });
+    std::move(fut).thenFinal([weak = std::move(weak),
+                              rttGuard = std::move(rttGuard),
+                              snapshotCounter = std::move(snapshotCounter),
+                              leader = std::move(leader),
+                              index](futures::Try<Result>&&
+                                         tryResult) mutable noexcept {
+      rttGuard.fire();
+      snapshotCounter.fire();
+      if (auto self = weak.lock(); self != nullptr) {
+        LOG_CTX("13f07", TRACE, self->_loggerContext)
+            << "acquire snapshot returned";
+        auto result = basics::catchToResult([&] { return tryResult.get(); });
+        if (result.ok()) {
+          LOG_CTX("44d58", DEBUG, self->_loggerContext)
+              << "snapshot transfer successfully completed, informing "
+                 "replicated log";
+          auto guard = self->_guardedData.getLockedGuard();
+          guard->clearSnapshotErrors();
+          auto res =
+              basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
+                  guard->_stream->methods())
+                  .snapshotCompleted();
+          // TODO (How) can we handle this more gracefully?
+          ADB_PROD_ASSERT(res.ok());
+        } else {
+          LOG_CTX("9a68a", INFO, self->_loggerContext)
+              << "failed to transfer snapshot: " << result
+              << " - retry scheduled";
+          self->registerSnapshotError(std::move(result));
+          self->backOffSnapshotRetry().thenFinal(
+              [weak = std::move(weak), leader = std::move(leader), index](
+                  futures::Try<futures::Unit>&& x) mutable noexcept -> void {
+                auto const result = basics::catchVoidToResult([&] { x.get(); });
+                ADB_PROD_ASSERT(result.ok())
+                    << "Unexpected error when backing off snapshot retry: "
+                    << result;
+                if (auto self = weak.lock(); self != nullptr) {
+                  self->acquireSnapshot(std::move(leader), index);
+                }
+              });
+        }
+      }
+    });
   });
 }
 

@@ -95,7 +95,8 @@ RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
   auto const& suffixes = _request->suffixes();
   auto maybeLogId = LogId::fromString(suffixes[0]);
   if (!maybeLogId.has_value()) {
-    generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER, absl::StrCat("Not a log id: ", suffixes[0])));
+    generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                         absl::StrCat("Not a log id: ", suffixes[0])));
     return RestStatus::DONE;
   }
   auto logId = *maybeLogId;

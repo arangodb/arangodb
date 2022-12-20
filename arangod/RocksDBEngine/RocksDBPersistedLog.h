@@ -46,9 +46,8 @@ struct AsyncLogWriteContext {
   void waitForCompletion();
 
  private:
-// There are currently bugs in the libstdc++ implementation of atomic wait/notify,
-// e.g.
-// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106183
+// There are currently bugs in the libstdc++ implementation of atomic
+// wait/notify, e.g. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106183
 // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=101037
 // . Using the following types should make sure we're not running into them.
 #if !defined(_LIBCPP_VERSION) || defined(__linux__) || \

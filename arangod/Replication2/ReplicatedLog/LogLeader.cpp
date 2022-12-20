@@ -216,29 +216,26 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
           return;
         }
 
-            auto [request, lastIndex] =
-                logLeader->_guardedLeaderData.doUnderLock(
-                    [&](auto const& self) {
-                      auto lastAvailableIndex =
-                          self._inMemoryLog.getLastTermIndexPair();
-                      LOG_CTX("71801", TRACE, follower->logContext)
-                          << "last matched index = "
-                          << follower->nextPrevLogIndex
-                          << ", current index = " << lastAvailableIndex
-                          << ", last acked commit index = "
-                          << follower->lastAckedCommitIndex
-                          << ", current commit index = " << self._commitIndex
-                          << ", last acked litk = "
-                          << follower->lastAckedLowestIndexToKeep
-                          << ", current litk = " << self._lowestIndexToKeep;
-                      // We can only get here if there is some new information
-                      // for this follower
-                      TRI_ASSERT(follower->nextPrevLogIndex !=
-                                     lastAvailableIndex.index ||
-                                 self._commitIndex !=
-                                     follower->lastAckedCommitIndex ||
-                                 self._lowestIndexToKeep !=
-                                     follower->lastAckedLowestIndexToKeep);
+        auto [request, lastIndex] =
+            logLeader->_guardedLeaderData.doUnderLock([&](auto const& self) {
+              auto lastAvailableIndex =
+                  self._inMemoryLog.getLastTermIndexPair();
+              LOG_CTX("71801", TRACE, follower->logContext)
+                  << "last matched index = " << follower->nextPrevLogIndex
+                  << ", current index = " << lastAvailableIndex
+                  << ", last acked commit index = "
+                  << follower->lastAckedCommitIndex
+                  << ", current commit index = " << self._commitIndex
+                  << ", last acked litk = "
+                  << follower->lastAckedLowestIndexToKeep
+                  << ", current litk = " << self._lowestIndexToKeep;
+              // We can only get here if there is some new information
+              // for this follower
+              TRI_ASSERT(follower->nextPrevLogIndex !=
+                             lastAvailableIndex.index ||
+                         self._commitIndex != follower->lastAckedCommitIndex ||
+                         self._lowestIndexToKeep !=
+                             follower->lastAckedLowestIndexToKeep);
 
               return self.createAppendEntriesRequest(*follower,
                                                      lastAvailableIndex);
