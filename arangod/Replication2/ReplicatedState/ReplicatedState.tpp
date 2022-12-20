@@ -489,10 +489,10 @@ FollowerStateManager<S>::FollowerStateManager(
       _guardedData{std::move(followerState), std::move(stream)} {}
 
 namespace {
-inline auto delayedFuture(std::chrono::steady_clock::duration duration)
+inline auto delayedFuture(std::string_view name, std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
   if (SchedulerFeature::SCHEDULER) {
-    return SchedulerFeature::SCHEDULER->delay(duration);
+    return SchedulerFeature::SCHEDULER->delay(name, duration);
   }
 
   std::this_thread::sleep_for(duration);
@@ -547,7 +547,7 @@ auto FollowerStateManager<S>::backOffSnapshotRetry()
   LOG_CTX("2ea59", TRACE, _loggerContext)
       << "retry snapshot transfer after " << fmtTime(duration) << ", "
       << retryCount << countSuffix(retryCount) << " retry";
-  return delayedFuture(duration);
+  return delayedFuture("r2 retry snapshot transfer", duration);
 }
 
 template<typename S>
