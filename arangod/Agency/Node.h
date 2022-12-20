@@ -24,6 +24,7 @@
 #pragma once
 
 #include "AgencyCommon.h"
+#include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
@@ -189,6 +190,10 @@ class Node final {
   /// @brief Get node specified by path vector
   std::optional<std::reference_wrapper<Node const>> get(
       std::vector<std::string> const& pv) const;
+
+  /// @brief Get node specified by path
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::shared_ptr<cluster::paths::Path const> const& path) const;
 
   /// @brief Get root node
   Node const& root() const;

@@ -366,6 +366,11 @@ std::optional<std::reference_wrapper<Node const>> Node::get(
   return *current;
 }
 
+std::optional<std::reference_wrapper<Node const>> Node::get(
+    std::shared_ptr<cluster::paths::Path const> const& path) const {
+  return get(path->vec(cluster::paths::SkipComponents{1}));
+}
+
 /// @brief lh-value at path
 Node& Node::getOrCreate(std::string const& path) {
   return getOrCreate(Store::split(path));

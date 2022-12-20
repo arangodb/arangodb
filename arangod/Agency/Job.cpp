@@ -31,6 +31,7 @@
 
 #include "Job.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
@@ -1156,8 +1157,9 @@ bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
 }
 
 std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
-    Node const& snap, std::string const& db, replication2::LogId stateId) {
-  auto targetPath = "/Target/ReplicatedLogs/" + db + "/" + to_string(stateId);
+    Node const& snap, std::string_view db, replication2::LogId stateId) {
+  using namespace arangodb::cluster::paths::aliases;
+  auto targetPath = target()->replicatedLogs()->database(db)->log(stateId);
   auto targetNode = snap.get(targetPath);
   if (not targetNode.has_value()) {
     return std::nullopt;
