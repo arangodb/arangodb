@@ -33,6 +33,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "IResearch/IResearchMetricStats.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb {
 namespace iresearch {
 

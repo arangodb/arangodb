@@ -23,13 +23,14 @@
 
 #pragma once
 
+#include <deque>
+#include <vector>
+#include <unordered_set>
+
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
-
-#include <deque>
-#include <vector>
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
