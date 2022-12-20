@@ -1,0 +1,13 @@
+name: arangodb_search_primary_docs
+introducedIn: "3.10.2"
+help: |
+  Number of primary documents for current snapshot.
+unit: number
+type: gauge
+category: ArangoSearch
+complexity: advanced
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of primary documents for current snapshot.

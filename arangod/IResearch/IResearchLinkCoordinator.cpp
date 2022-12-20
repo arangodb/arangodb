@@ -116,6 +116,7 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_primary_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
       metrics.get<std::uint64_t>("arangodb_search_index_size", labels),
@@ -128,9 +129,9 @@ void IResearchLinkCoordinator::toVelocyPack(
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+        absl::StrCat("failed to generate link definition for arangosearch view "
+                     "Cluster link '",
+                     Index::id().id(), "'")));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -140,9 +141,9 @@ void IResearchLinkCoordinator::toVelocyPack(
   if (!properties(builder, forPersistence).ok()) {
     THROW_ARANGO_EXCEPTION(Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+        absl::StrCat("failed to generate link definition for arangosearch view "
+                     "Cluster link '",
+                     Index::id().id(), "'")));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

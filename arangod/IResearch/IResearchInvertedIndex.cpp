@@ -1167,6 +1167,7 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
+      metrics.get<std::uint64_t>("arangodb_search_num_primary_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_segments", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_files", labels),
       metrics.get<std::uint64_t>("arangodb_search_index_size", labels),

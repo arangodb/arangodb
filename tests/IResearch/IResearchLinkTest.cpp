@@ -248,6 +248,9 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -321,6 +324,9 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -391,6 +397,9 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -419,6 +428,9 @@ TEST_F(IResearchLinkTest, test_defaults) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -2175,6 +2187,7 @@ using arangodb::iresearch::MetricStats;
 
 bool operator==(const LinkStats& lhs, const LinkStats& rhs) noexcept {
   return lhs.numDocs == rhs.numDocs && lhs.numLiveDocs == rhs.numLiveDocs &&
+         lhs.numPrimaryDocs == rhs.numPrimaryDocs &&
          lhs.numSegments == rhs.numSegments && lhs.numFiles == rhs.numFiles &&
          lhs.indexSize == rhs.indexSize;
 }
@@ -2475,12 +2488,15 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
     insert(1, 2, 0);
     ++expectedStats.numDocs;
     ++expectedStats.numLiveDocs;
+    ++expectedStats.numPrimaryDocs;
     insert(2, 3, 1);
     ++expectedStats.numDocs;
     ++expectedStats.numLiveDocs;
+    ++expectedStats.numPrimaryDocs;
     insert(3, 4, 2);
     ++expectedStats.numDocs;
     ++expectedStats.numLiveDocs;
+    ++expectedStats.numPrimaryDocs;
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
@@ -2492,6 +2508,9 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
       "# HELP arangodb_search_num_live_docs Number of live documents\n"
       "# TYPE arangodb_search_num_live_docs gauge\n"
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
+      "# TYPE arangodb_search_num_primary_docs gauge\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
@@ -2534,6 +2553,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     // check link metrics
     LinkStats expectedStats;
     expectedStats.numDocs = 2;
+    expectedStats.numPrimaryDocs = 2;
     expectedStats.numLiveDocs = 2;
     getStatsFromFolder(dataPath, expectedStats.indexSize,
                        expectedStats.numFiles);
@@ -2547,6 +2567,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     // check link metrics
     LinkStats expectedStats;
     expectedStats.numDocs = 3;
+    expectedStats.numPrimaryDocs = 3;
     expectedStats.numLiveDocs = 3;
     getStatsFromFolder(dataPath, expectedStats.indexSize,
                        expectedStats.numFiles);
@@ -2566,6 +2587,9 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_num_live_docs Number of live documents\n"
       "# TYPE arangodb_search_num_live_docs gauge\n"
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
+      "# TYPE arangodb_search_num_primary_docs gauge\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
@@ -2586,6 +2610,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     // check link metrics
     LinkStats expectedStats;
     expectedStats.numDocs = 3;
+    expectedStats.numPrimaryDocs = 2;
     expectedStats.numLiveDocs = 2;
     expectedStats.numFiles = 12;
     expectedStats.numSegments = 2;  // we have 2 segments
@@ -2604,6 +2629,9 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_num_live_docs Number of live documents\n"
       "# TYPE arangodb_search_num_live_docs gauge\n"
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
+      "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
+      "# TYPE arangodb_search_num_primary_docs gauge\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
@@ -2642,6 +2670,9 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_num_live_docs Number of live documents\n"
       "# TYPE arangodb_search_num_live_docs gauge\n"
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
+      "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
+      "# TYPE arangodb_search_num_primary_docs gauge\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
@@ -2669,6 +2700,9 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_num_live_docs Number of live documents\n"
       "# TYPE arangodb_search_num_live_docs gauge\n"
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
+      "# TYPE arangodb_search_num_primary_docs gauge\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2\n"
