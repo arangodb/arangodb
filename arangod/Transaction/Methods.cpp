@@ -801,7 +801,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
   // whether or not we need to read the previous document version
-  bool const _needToFetchOldDocument;
+  bool _needToFetchOldDocument;
 };
 
 struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
@@ -967,7 +967,15 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       : ReplicatedProcessorBase<Derived>(methods, trxColl, collection, value,
                                          options, operationName, operationType),
         _batchOptions(::buildBatchOptions(options, collection, operationType,
-                                          methods.state()->isDBServer())) {}
+                                          methods.state()->isDBServer())) {
+    // in UPDATE operations we always have to fetch the previous version
+    // of the document. in REPLACE operations we don't need to fetch it under
+    // some circumstances, but if we do have a schema, we need to fetch the
+    // old version anyway if the schema validation is configured to accept
+    // invalid documents if the old document didn't pass as well ("level"
+    // attribute of a schema).
+    this->_needToFetchOldDocument |= (_batchOptions.schema != nullptr);
+  }
 
  protected:
   Result modifyLocalHelper(velocypack::Slice value,
