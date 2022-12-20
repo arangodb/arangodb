@@ -113,8 +113,6 @@ class IResearchInvertedIndexMock final : public Index,
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) final;
 
-  irs::Comparer const* getComparator() const noexcept final;
-
   static std::function<irs::directory_attributes()> InitCallback;
 };
 
