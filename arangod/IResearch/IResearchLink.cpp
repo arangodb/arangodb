@@ -2516,7 +2516,7 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                 IResearchLink const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
+  irs::utf8_path dataPath(dbPathFeature.searchDirectory());
 
   dataPath /= "databases";
   dataPath /= "database-";

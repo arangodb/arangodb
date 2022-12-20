@@ -40,6 +40,9 @@ class DatabasePathFeature final
   void start() override final;
 
   std::string const& directory() const { return _directory; }
+  std::string const& searchDirectory() const {
+    return _searchStoragePath.empty()? _directory : _searchStoragePath;
+  }
   std::string subdirectoryName(std::string const& subDirectory) const;
   void setDirectory(std::string const& path) {
     // This is only needed in the catch tests, where we initialize the
@@ -51,6 +54,7 @@ class DatabasePathFeature final
  private:
   std::string _directory;
   std::string _requiredDirectoryState;
+  std::string _searchStoragePath;
 };
 
 }  // namespace arangodb

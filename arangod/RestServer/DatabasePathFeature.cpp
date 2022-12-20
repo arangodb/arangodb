@@ -44,6 +44,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+std::string const IRESEARCH_STORE_PATH("--arangosearch.store-path");
+}
+
 namespace arangodb {
 
 DatabasePathFeature::DatabasePathFeature(
@@ -78,6 +82,16 @@ void DatabasePathFeature::collectOptions(
           &_requiredDirectoryState,
           std::unordered_set<std::string>{"any", "non-existing", "existing",
                                           "empty", "populated"}));
+
+    options
+      ->addOption(IRESEARCH_STORE_PATH, "ArangoSearch index root folder",
+                  new options::StringParameter(&_searchStoragePath),
+                  arangodb::options::makeDefaultFlags(
+                      // Set all as our testing system cannot provide extraArgs
+                      // based on server role.
+                      arangodb::options::Flags::Default,
+                      arangodb::options::Flags::Hidden))
+      .setIntroducedIn(30907);
 }
 
 void DatabasePathFeature::validateOptions(
