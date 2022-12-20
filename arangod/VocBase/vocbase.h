@@ -276,6 +276,9 @@ struct TRI_vocbase_t {
   /// shutdown to clean things up
   void stop();
 
+  /// @brief closes a database and all collections
+  void shutdown();
+
   /// @brief sets prototype collection for sharding (_users or _graphs)
   void setShardingPrototype(ShardingPrototype type);
 
@@ -432,9 +435,6 @@ struct TRI_vocbase_t {
       arangodb::velocypack::Slice parameters);
 
  private:
-  /// @brief closes a database and all collections
-  void shutdown();
-
   /// @brief adds further SmartGraph-specific sub-collections to the vector of
   /// collections if collection is a SmartGraph edge collection that requires
   /// it. otherwise does nothing.
