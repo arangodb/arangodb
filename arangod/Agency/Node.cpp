@@ -25,6 +25,7 @@
 #include "Store.h"
 
 #include "AgencyStrings.h"
+#include "Agency/PathComponent.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

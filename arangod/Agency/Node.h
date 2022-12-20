@@ -24,7 +24,6 @@
 #pragma once
 
 #include "AgencyCommon.h"
-#include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
@@ -32,6 +31,10 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
+
+namespace arangodb::cluster::paths {
+class Path;
+}
 
 namespace arangodb::consensus {
 
