@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -683,6 +684,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     }
     _replicationData->close();
 
+    // we are done with indexes. release the lock on the list of indexes as
+    // early as possible
+    _indexesSnapshot.release();
+
     // on a follower, our result should always be an empty array or object
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
                (this->_value.isArray() &&
@@ -776,7 +781,12 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   }
 
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  // indexes snapshot held for operation
+  // indexes snapshot held for operation. note that this will not only contain
+  // the list of indexes for the collection, but also protect the list of
+  // indexes of the collection from being modified. this is to ensure that while
+  // a data modification operation is ongoing, the collection's list of indexes
+  // is static and cannot differ between performing the modification and a
+  // potential rollback of the modification.
   IndexesSnapshot _indexesSnapshot;
 
   // all document data that are going to be replicated, append-only
@@ -1352,7 +1362,10 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
                                         : TRI_VOC_DOCUMENT_OPERATION_REPLACE),
         _newDocumentBuilder(&_methods),
         _previousDocumentBuilder(&_methods),
-        _isUpdate(isUpdate) {}
+        _isUpdate(isUpdate),
+        _needToFetchOldDocument(isUpdate ||
+                                _indexesSnapshot.hasSecondaryIndex() ||
+                                _options.returnOld) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {
     _newDocumentBuilder->clear();
@@ -1403,15 +1416,25 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     _previousDocumentBuilder->clear();
-    res = _collection.getPhysical()->lookupDocument(
-        _methods, oldDocumentId, *_previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+    if (_needToFetchOldDocument) {
+      // need to read the full document, so that we can remove all
+      // secondary index entries for it
+      res = _collection.getPhysical()->lookupDocument(
+          _methods, oldDocumentId, *_previousDocumentBuilder,
+          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
 
-    if (res.fail()) {
-      return res;
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      TRI_ASSERT(!_options.returnOld);
+      TRI_ASSERT(!_isUpdate);
+      // no need to read the full document, as we don't have secondary
+      // index entries to remove. now build an artificial document with
+      // just _key for our removal operation
+      buildDocumentIdentityCustom(key.stringView(), oldRevisionId);
     }
 
-    bool excludeFromReplication = _excludeAllFromReplication;
     TRI_ASSERT(_previousDocumentBuilder->slice().isObject());
     RevisionId newRevisionId;
     res = modifyLocalHelper(newValue, oldDocumentId, oldRevisionId,
@@ -1435,6 +1458,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     TRI_ASSERT(newRevisionId.isSet());
     TRI_ASSERT(_newDocumentBuilder->slice().isObject());
 
+    bool excludeFromReplication = _excludeAllFromReplication;
+
     if (!_options.silent) {
       TRI_ASSERT(newRevisionId.isSet() && oldRevisionId.isSet());
 
@@ -1443,7 +1468,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
           _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
           _options.returnNew ? _newDocumentBuilder.get() : nullptr);
       if (newRevisionId == oldRevisionId && _isUpdate) {
-        excludeFromReplication |= true;
+        excludeFromReplication = true;
       }
     }
 
@@ -1465,6 +1490,44 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   }
 
  private:
+  void buildDocumentIdentityCustom(std::string_view key, RevisionId rid) {
+    _previousDocumentBuilder->openObject();
+
+    // _id
+    uint8_t* p = _previousDocumentBuilder->add(
+        StaticStrings::IdString, VPackValuePair(9ULL, VPackValueType::Custom));
+
+    *p++ = 0xf3;  // custom type for _id
+
+    if (_methods.state()->isDBServer() && !_collection.system()) {
+      // db server in cluster, note: the local collections _statistics,
+      // _statisticsRaw and _statistics15 (which are the only system
+      // collections)
+      // must not be treated as shards but as local collections
+      encoding::storeNumber<uint64_t>(p, _collection.planId().id(),
+                                      sizeof(uint64_t));
+    } else {
+      // local server
+      encoding::storeNumber<uint64_t>(p, _collection.id().id(),
+                                      sizeof(uint64_t));
+    }
+
+    // _key
+    _previousDocumentBuilder->add(StaticStrings::KeyString, VPackValue(key));
+
+    // _rev
+    if (rid.isSet()) {
+      char ridBuffer[arangodb::basics::maxUInt64StringSize];
+      _previousDocumentBuilder->add(StaticStrings::RevString,
+                                    rid.toValuePair(ridBuffer));
+    } else {
+      _previousDocumentBuilder->add(StaticStrings::RevString,
+                                    std::string_view{});
+    }
+
+    _previousDocumentBuilder->close();
+  }
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser _newDocumentBuilder;
   // builder for a single, old version of document (will be recycled for each
@@ -1472,6 +1535,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   transaction::BuilderLeaser _previousDocumentBuilder;
 
   bool const _isUpdate;
+  // whether or not we need to read the previous document version
+  bool const _needToFetchOldDocument;
 };
 
 }  // namespace
