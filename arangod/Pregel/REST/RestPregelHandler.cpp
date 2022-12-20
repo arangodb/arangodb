@@ -48,8 +48,6 @@ RestStatus RestPregelHandler::execute() {
     bool parseSuccess = true;
     VPackSlice body = parseVPackBody(parseSuccess);
 
-    LOG_DEVEL << "received pregel stuff: " << body.toJson();
-
     if (!parseSuccess || !body.isObject()) {
       // error message generated in parseVPackBody
       return RestStatus::DONE;

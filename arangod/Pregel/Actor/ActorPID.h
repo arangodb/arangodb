@@ -68,7 +68,7 @@ struct ActorPID {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.embedFields("server", x.server), f.embedFields(x.id), 
+  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id),
                             f.field("databaseName", x.databaseName));
 }
 

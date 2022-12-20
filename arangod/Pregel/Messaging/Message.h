@@ -24,6 +24,7 @@
 
 #include <variant>
 
+#include "Pregel/Actor/Message.h"
 #include "Pregel/Messaging/ConductorMessages.h"
 #include "Pregel/Messaging/WorkerMessages.h"
 
@@ -41,7 +42,8 @@ using MessagePayload =
                  ResultT<GlobalSuperStepPrepared>, RunGlobalSuperStep,
                  ResultT<GlobalSuperStepFinished>, Store, ResultT<Stored>,
                  Cleanup, ResultT<CleanupFinished>, CollectPregelResults,
-                 ResultT<PregelResults>, StatusUpdated, PregelMessage>;
+                 ResultT<PregelResults>, StatusUpdated, PregelMessage,
+                 actor::NetworkMessage>;
 
 struct MessagePayloadSerializer : MessagePayload {};
 template<class Inspector>
@@ -66,7 +68,8 @@ auto inspect(Inspector& f, MessagePayloadSerializer& x) {
       arangodb::inspection::type<CollectPregelResults>("collectPregelResults"),
       arangodb::inspection::type<ResultT<PregelResults>>("pregelResults"),
       arangodb::inspection::type<PregelMessage>("pregelMessage"),
-      arangodb::inspection::type<StatusUpdated>("statusUpdated"));
+      arangodb::inspection::type<StatusUpdated>("statusUpdated"),
+      arangodb::inspection::type<actor::NetworkMessage>("actorNetworkMessage"));
 }
 template<typename Inspector>
 auto inspect(Inspector& f, MessagePayload& x) {

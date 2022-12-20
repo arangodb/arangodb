@@ -101,11 +101,13 @@ struct Runtime {
   auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server != myServerID) {
+      fmt::print(stderr, "received message for receiver {}, this is not me: {}", receiver, myServerID);
       std::abort();
     }
 
     auto a = actors.find(receiver.id);
     if (a == std::end(actors)) {
+      fmt::print(stderr, "received message for receiver {}, but the actor could not be found.", receiver);
       std::abort();
     }
 

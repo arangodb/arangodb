@@ -159,7 +159,7 @@ void RestControlPregelHandler::getExecutionStatus() {
     //
     // TODO: THIS IS TESTING CODE AND NEEDS TO BE REMOVED AGAIN
     auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
-    auto sender = pregel::actor::ActorPID{ .id = { 0 }, .server = ServerState::instance()->getId(), .databaseName = "_system"};
+    auto sender = pregel::actor::ActorPID{ .server = ServerState::instance()->getId(), .id = { 0 }, .databaseName = "_system"};
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
@@ -167,8 +167,9 @@ void RestControlPregelHandler::getExecutionStatus() {
         continue;
       }
 
-      auto receiver = pregel::actor::ActorPID{ .id = { 0 }, .server = coordinator, .databaseName = "_system"};
+      auto receiver = pregel::actor::ActorPID{ .server = coordinator, .id = { 0 }, .databaseName = "_system"};
       auto msg = VPackBuilder();
+      msg.add(VPackValue("Hello World"));
       transport(sender, receiver, msg.sharedSlice());
     }
   }

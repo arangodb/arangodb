@@ -24,8 +24,8 @@
 
 #pragma once
 
-#include "Actor/ActorPID.h"
-#include "Actor/Message.h"
+#include "ActorPID.h"
+#include "Message.h"
 
 namespace arangodb::pregel::actor {
 

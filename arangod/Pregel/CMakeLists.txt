@@ -17,6 +17,7 @@ target_link_libraries(arango_pregel
 
 target_include_directories(arango_pregel PRIVATE ${PROJECT_SOURCE_DIR}/arangod)
 target_include_directories(arango_pregel PRIVATE "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+target_include_directories(arango_pregel PRIVATE ${PROJECT_SOURCE_DIR}/arangod/Pregel/Actor)
 
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
@@ -32,6 +33,7 @@ endif ()
 
 add_subdirectory(REST)
 add_subdirectory(Algos)
+add_subdirectory(Actor)
 add_subdirectory(Collections)
 add_subdirectory(Conductor)
 add_subdirectory(Worker)

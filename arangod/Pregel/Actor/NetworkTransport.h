@@ -31,12 +31,14 @@
 #include "Network/Methods.h"
 #include "fuerte/types.h"
 
-#include <string>                                               \
+#include "Pregel/Messaging/Message.h"
+
+#include <string>
 
 namespace {
-  // TODO: this function is stolen from Networkconnection.cpp
-  // and we should not have duplicates
-  auto errorHandling(arangodb::network::Response const& message)
+// TODO: this function is stolen from Networkconnection.cpp
+// and we should not have duplicates
+auto errorHandling(arangodb::network::Response const& message)
     -> arangodb::ResultT<VPackSlice> {
   if (message.fail()) {
     return {arangodb::Result{
@@ -53,7 +55,7 @@ namespace {
   return message.slice();
 }
 
-}
+}  // namespace
 
 namespace arangodb::pregel::actor {
 
@@ -63,33 +65,41 @@ struct NetworkTransport {
 
   auto operator()(ActorPID sender, ActorPID receiver,
                   velocypack::SharedSlice msg) const -> void {
+    auto requestOptions = network::RequestOptions{
+        .database = receiver.databaseName, .timeout = timeout};
+    auto networkMessage = ModernMessage{
+        .executionNumber = ExecutionNumber{0},
+        .payload = NetworkMessage{.sender = sender,
+                                  .receiver = receiver,
+                                  .payload = velocypack::Builder(msg.slice())}};
+    auto serialized = inspection::serializeWithErrorT(networkMessage);
 
-    auto requestOptions = network::RequestOptions{.database = receiver.databaseName, .timeout = timeout };
-    auto builder = velocypack::Builder(msg.slice());
+    if (not serialized.ok()) {
+      LOG_DEVEL << "error serializing message";
+      return;
+    }
 
-    LOG_DEVEL << "trying to send a message " << sender.server << ":" << sender.id.id << "/" << sender.databaseName
-      << " to " <<
-receiver.server << ":" << receiver.id.id << "/" << receiver.databaseName;
+    auto builder = velocypack::Builder(serialized.get().slice());
+    LOG_DEVEL << fmt::format("trying to send a message from {} to {} ({})",
+                             sender, receiver, builder.slice().toJson());
 
-    if(this->connectionPool == nullptr) {
+    if (this->connectionPool == nullptr) {
       LOG_DEVEL << " connection pool is null";
       return;
     }
 
-    auto request =
-        network::sendRequestRetry(this->connectionPool,
-                                  // TODO: what about "shard:"?
-                                  std::string{"server:"} + receiver.server,
-                                  fuerte::RestVerb::Post,
-                                  baseURL,
-                                  builder.bufferRef(), requestOptions);
+    auto request = network::sendRequestRetry(
+        this->connectionPool,
+        // TODO: what about "shard:"?
+        std::string{"server:"} + receiver.server, fuerte::RestVerb::Post,
+        baseURL, builder.bufferRef(), requestOptions);
 
     LOG_DEVEL << "send";
     std::move(request).thenValue([](auto&& result) -> void {
       auto out = errorHandling(result);
       if (out.fail()) {
         std::cerr << "oops" << out.errorNumber() << " " << out.errorMessage();
-        std::abort();
+        //        std::abort();
       }
     });
   }

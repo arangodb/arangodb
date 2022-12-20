@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "Actor/ActorBase.h"
+#include "ActorBase.h"
 #include "velocypack/SharedSlice.h"
 
 namespace arangodb::pregel::actor {
