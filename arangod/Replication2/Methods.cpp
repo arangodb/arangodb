@@ -622,8 +622,8 @@ struct ReplicatedLogMethodsCoordinator final
                   waitResult.get("quorum"));
           auto commitIndex = waitResult.get("commitIndex").extract<LogIndex>();
           auto index = result.get("index").extract<LogIndex>();
-          return std::make_pair(index, replicated_log::WaitForResult(
-                                           commitIndex, std::move(quorum)));
+          return std::pair(index, replicated_log::WaitForResult(
+                                      commitIndex, std::move(quorum)));
         });
   }
 
