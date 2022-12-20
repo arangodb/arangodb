@@ -85,15 +85,16 @@ jobs:
     parameters:
       suite:
         type: string
-      bucketCount:
+      size:
+        type: string
+        default: small
+      buckets:
         type: integer
         default: 1
-      bucketIndex:
-        type: integer
-        default: 0
     machine:
       image: ubuntu-2004:202201-02
-    resource_class: medium
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
     steps:
       - attach_workspace:
           at: .
@@ -103,10 +104,10 @@ jobs:
       - run:
           name: Run << parameters.suite >> suite
           command: |
-            scripts/unittest << parameters.suite >> --cluster true --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets << parameters.bucketCount >>/<< parameters.bucketIndex >>
-      - store_artifacts:
-          destination: << parameters.suite >>
-          path: out/*
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_INDEX/$CIRCLE_NODE_TOTAL
+      # - store_artifacts:
+      #     destination: << parameters.suite >>
+      #     path: out/*
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -114,10 +115,10 @@ jobs:
           when: on_fail
       - store_artifacts:
           path: /tmp/core_dumps
-      - store_artifacts:
-          destination: << parameters.suite >>
-          path: /tmp/*
-
+          when: on_fail
+      # - store_artifacts:
+      #     destination: << parameters.suite >>
+      #     path: /tmp/*
 
 workflows:
   devel-pr:
@@ -131,14 +132,19 @@ workflows:
           preset: community-pr
       - run-gtest-executable-linux:
           name: arangodbtests linux
-          executable: 'build/community-pr/bin/arangodbtests'
-          filter: '-*_LongRunning' 
+          executable: "build/community-pr/bin/arangodbtests"
+          filter: "-*_LongRunning"
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
           name: iresearch arangodbtests linux
-          executable: 'build/community-pr/bin/arangodbtests'
-          filter: 'IResearch*' 
+          executable: "build/community-pr/bin/arangodbtests"
+          filter: "IResearch*"
           requires:
             - build-community-pr
- 
+      - testing-js-run-test-suite:
+          name: shell_api single server
+          suite: shell_api
+          size: small
+          requires:
+            - build-community-pr
