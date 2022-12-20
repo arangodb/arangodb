@@ -135,7 +135,7 @@ workflows:
           filter: '-*_LongRunning' 
           requires:
             - build-community-pr
-      - run-gtest-iresearch:
+      - run-gtest-executable-linux:
           name: iresearch arangodbtests linux
           executable: 'build/community-pr/bin/arangodbtests'
           filter: 'IResearch*' 
