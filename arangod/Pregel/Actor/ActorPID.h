@@ -25,6 +25,7 @@
 
 #include <cstddef>
 #include <string>
+#include "Inspection/Format.h"
 
 #include <Inspection/InspectorBase.h>
 
@@ -41,6 +42,10 @@ auto inspect(Inspector& f, ActorID& x) {
 
 }  // namespace arangodb::pregel::actor
 
+template<>
+struct fmt::formatter<arangodb::pregel::actor::ActorID>
+    : arangodb::inspection::inspection_formatter {};
+
 namespace std {
 template<>
 struct hash<arangodb::pregel::actor::ActorID> {
@@ -56,12 +61,16 @@ namespace arangodb::pregel::actor {
 using ServerID = std::string;
 
 struct ActorPID {
-  ActorID id;
   ServerID server;
+  ActorID id;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("id", x.id), f.field("server", x.server));
+  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id));
 }
 
 }  // namespace arangodb::pregel::actor
+
+template<>
+struct fmt::formatter<arangodb::pregel::actor::ActorPID>
+    : arangodb::inspection::inspection_formatter {};

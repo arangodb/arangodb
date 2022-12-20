@@ -42,5 +42,13 @@ struct MessagePayload : MessagePayloadBase {
 
   Payload payload;
 };
+template<typename Payload, typename Inspector>
+auto inspect(Inspector& f, MessagePayload<Payload>& x) {
+  return f.object(x).fields(f.field("payload", x.payload));
+}
 
 }  // namespace arangodb::pregel::actor
+
+template<typename Payload>
+struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
+    : arangodb::inspection::inspection_formatter {};

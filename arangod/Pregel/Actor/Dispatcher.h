@@ -30,10 +30,15 @@
 namespace arangodb::pregel::actor {
 
 struct Dispatcher {
-  Dispatcher(ServerID myServerID, ActorMap& actors, std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism)
-      : myServerID(myServerID), actors(actors), sendingMechanism(sendingMechanism) {}
+  Dispatcher(ServerID myServerID, ActorMap& actors,
+             std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
+                 sendingMechanism)
+      : myServerID(myServerID),
+        actors(actors),
+        sendingMechanism(sendingMechanism) {}
 
-  auto operator()(ActorPID sender, ActorPID receiver, std::unique_ptr<MessagePayloadBase> payload) -> void {
+  auto operator()(ActorPID sender, ActorPID receiver,
+                  std::unique_ptr<MessagePayloadBase> payload) -> void {
     if (not actors.contains(receiver.id)) {
       std::abort();
       // TODO
@@ -41,9 +46,10 @@ struct Dispatcher {
     auto& actor = actors[receiver.id];
     actor->process(sender, std::move(payload));
   }
-  auto operator()(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
-    if(receiver.server == myServerID) {
-      std::cerr << "called dispatcher recursively" << std::endl;
+  auto operator()(ActorPID sender, ActorPID receiver,
+                  velocypack::SharedSlice msg) -> void {
+    if (receiver.server == myServerID) {
+      fmt::print("Called dispatcher recursively");
       std::abort();
     } else {
       sendingMechanism(sender, receiver, msg);
@@ -51,7 +57,8 @@ struct Dispatcher {
   }
   ServerID myServerID;
   ActorMap& actors;
-  std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism;
+  std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
+      sendingMechanism;
 };
 
 }  // namespace arangodb::pregel::actor
