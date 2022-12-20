@@ -1,5 +1,5 @@
-name: arangodb_search_primary_docs
-introducedIn: "3.10.2"
+name: arangodb_search_num_primary_docs
+introducedIn: "3.11.0"
 help: |
   Number of primary documents for current snapshot.
 unit: number
