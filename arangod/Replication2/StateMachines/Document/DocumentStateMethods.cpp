@@ -23,18 +23,15 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMethods.h"
 
-#include <Basics/Exceptions.h>
-#include <Basics/Exceptions.tpp>
 #include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <Basics/Exceptions.h>
+#include <Basics/Exceptions.tpp>
 
 #include <memory>
 
@@ -45,49 +42,41 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
   explicit DocumentStateMethodsDBServer(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase) {}
 
-  [[nodiscard]] auto getSnapshot(LogId logId, LogIndex waitForIndex) const
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override {
+  [[nodiscard]] auto processSnapshotRequest(
+      LogId logId, replicated_state::document::SnapshotParams params) const
+      -> ResultT<velocypack::SharedSlice> override {
+    using namespace replicated_state;
+
     auto leaderResult = getDocumentStateLeaderById(logId);
     if (leaderResult.fail()) {
       return leaderResult.result();
     }
     auto leader = leaderResult.get();
 
-    auto logicalCollection = _vocbase.lookupCollection(leader->shardId);
-    if (logicalCollection == nullptr) {
-      return ResultT<velocypack::SharedSlice>::error(
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format("Collection {} not found", leader->shardId));
-    }
-
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    auto singleCollectionTrx = SingleCollectionTransaction(
-        ctx, *logicalCollection, AccessMode::Type::READ);
-
-    // We call begin here so rocksMethods are initialized
-    if (auto res = singleCollectionTrx.begin(); res.fail()) {
-      return ResultT<velocypack::SharedSlice>::error(res.errorNumber(),
-                                                     res.errorMessage());
-    }
-
-    auto* physicalCollection = logicalCollection->getPhysical();
-    TRI_ASSERT(physicalCollection != nullptr);
-    auto iterator = physicalCollection->getReplicationIterator(
-        ReplicationIterator::Ordering::Revision, singleCollectionTrx);
-
-    VPackBuilder builder;
-    builder.openArray();
-    for (auto& revIterator =
-             dynamic_cast<RevisionReplicationIterator&>(*iterator);
-         revIterator.hasMore(); revIterator.next()) {
-      auto slice = revIterator.document();
-      builder.add(slice);
-    }
-    builder.close();
-
-    auto snapshot = replicated_state::document::Snapshot{builder.sharedSlice()};
-    return futures::Future<ResultT<velocypack::SharedSlice>>{
-        velocypack::serialize(snapshot)};
+    return std::visit(
+        overload{
+            [&](document::SnapshotParams::Start& params) {
+              return processResult(leader->snapshotStart(params));
+            },
+            [&](document::SnapshotParams::Next& params) {
+              return processResult(leader->snapshotNext(params));
+            },
+            [&](document::SnapshotParams::Finish& params) {
+              auto result = leader->snapshotFinish(params);
+              if (result.fail()) {
+                return ResultT<velocypack::SharedSlice>::error(result);
+              }
+              return ResultT<velocypack::SharedSlice>::success(
+                  velocypack::SharedSlice{});
+            },
+            [&](document::SnapshotParams::Status& params) {
+              if (params.id.has_value()) {
+                return processResult(leader->snapshotStatus(*params.id));
+              }
+              return processResult(leader->allSnapshotsStatus());
+            },
+        },
+        params.params);
   }
 
  private:
@@ -114,6 +103,16 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
                       logId));
     }
     return leader;
+  }
+
+  template<typename T>
+  [[nodiscard]] auto processResult(ResultT<T> result) const
+      -> ResultT<velocypack::SharedSlice> {
+    if (result.fail()) {
+      return ResultT<velocypack::SharedSlice>::error(result.result());
+    }
+    return ResultT<velocypack::SharedSlice>::success(
+        velocypack::serialize(result.get()));
   }
 
  private:

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -53,7 +54,6 @@
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "Geo/Utils.h"
-#include "Greenspun/Interpreter.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchPDP.h"
@@ -61,6 +61,7 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Random/UniformCharacter.h"
@@ -8780,7 +8781,8 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
     withId = arg2.slice().getBool();
   }
 
-  uint64_t execNr = arg1.toInt64();
+  auto execNr =
+      arangodb::pregel::ExecutionNumber{static_cast<uint64_t>(arg1.toInt64())};
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
@@ -9159,34 +9161,6 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   builder->close();
   return AqlValue(builder->slice(), builder->size());
-}
-
-AqlValue functions::CallGreenspun(aql::ExpressionContext* expressionContext,
-                                  AstNode const&,
-                                  VPackFunctionParametersView parameters) {
-  transaction::Methods* trx = &expressionContext->trx();
-  greenspun::Machine m;
-  greenspun::InitMachine(m);
-
-  transaction::BuilderLeaser programBuilder(trx);
-  {
-    VPackArrayBuilder array(programBuilder.builder());
-    for (size_t p = 0; p < parameters.size(); p++) {
-      programBuilder->add(extractFunctionParameterValue(parameters, p).slice());
-    }
-  }
-
-  transaction::BuilderLeaser resultBuilder(trx);
-  auto result =
-      greenspun::Evaluate(m, programBuilder->slice(), *resultBuilder.builder());
-
-  if (result) {
-    return AqlValue(resultBuilder->slice(), resultBuilder->size());
-  } else {
-    auto msg = result.error().toString();
-    expressionContext->registerError(TRI_ERROR_AIR_EXECUTION_ERROR, msg.data());
-    return AqlValue(AqlValueHintNull());
-  }
 }
 
 static void buildKeyObject(VPackBuilder& builder, std::string_view key,

@@ -28,6 +28,7 @@
 #include "Agency/JobContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <vector>
@@ -38,12 +39,14 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& database,
                            std::string const& collection,
-                           std::string const& shard, std::string const& from)
+                           std::string const& shard, std::string const& from,
+                           bool addsFollower)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from) {}
+      _from(from),
+      _addsFollower(addsFollower) {}
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
@@ -53,11 +56,15 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   auto tmp_database = _snapshot.hasAsString(path + "database");
   auto tmp_collection = _snapshot.hasAsString(path + "collection");
   auto tmp_from = _snapshot.hasAsString(path + "fromServer");
+  auto tmp_addsFollower = _snapshot.hasAsBool(path + "addsFollower");
 
   // set only if already started (test to prevent warning)
   if (_snapshot.has(path + "toServer")) {
     auto tmp_to = _snapshot.hasAsString(path + "toServer");
     _to = tmp_to.value();
+  }
+  if (tmp_addsFollower) {
+    _addsFollower = tmp_addsFollower.value();
   }
 
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
@@ -162,6 +169,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+    _jb->add("addsFollower", VPackValue(_addsFollower));
   }
 
   if (b == nullptr) {
@@ -266,9 +274,11 @@ bool FailedLeader::start(bool& aborts) {
   }
 
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
-  if (!additionalFollower.empty()) {
-    planv.push_back(additionalFollower);
+  if (_addsFollower) {
+    auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
+    if (!additionalFollower.empty()) {
+      planv.push_back(additionalFollower);
+    }
   }
 
   // Transactions

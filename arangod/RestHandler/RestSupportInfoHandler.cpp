@@ -84,14 +84,14 @@ RestStatus RestSupportInfoHandler::execute() {
   if (apiPolicy == "jwt") {
     if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "insufficent permissions");
+                    "insufficient permissions");
       return RestStatus::DONE;
     }
   }
 
   if (apiPolicy == "admin" && !ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "insufficent permissions");
+                  "insufficient permissions");
     return RestStatus::DONE;
   }
 

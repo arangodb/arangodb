@@ -25,8 +25,6 @@
 
 #pragma once
 
-#include <rocksdb/comparator.h>
-#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
@@ -46,14 +44,20 @@
 
 #include <span>
 
+namespace rocksdb {
+class Slice;
+}
+
 namespace arangodb {
 namespace aql {
 class SortCondition;
 struct Variable;
 }  // namespace aql
+
 class LogicalCollection;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
+
 namespace transaction {
 class Methods;
 }
@@ -103,6 +107,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief whether or not the index has estimates
   bool hasEstimates() const noexcept { return _estimates; }
+
+  // warm up the index cache
+  Result warmup() override;
 
   Index::FilterCosts supportsFilterCondition(
       transaction::Methods& trx,
@@ -159,15 +166,31 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options, bool performChecks) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
                 LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& options, bool performChecks) override;
 
+  void refillCache(transaction::Methods& trx,
+                   std::vector<std::string> const& keys) override;
+
  private:
+  Result insertUnique(transaction::Methods& trx, RocksDBMethods* mthds,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      containers::SmallVector<RocksDBKey, 4> const& elements,
+                      containers::SmallVector<uint64_t, 4> hashes,
+                      OperationOptions const& options, bool performChecks);
+
+  Result insertNonUnique(transaction::Methods& trx, RocksDBMethods* mthds,
+                         LocalDocumentId const& documentId,
+                         velocypack::Slice doc,
+                         containers::SmallVector<RocksDBKey, 4> const& elements,
+                         containers::SmallVector<uint64_t, 4> hashes,
+                         OperationOptions const& options);
+
   void expandInSearchValues(ResourceMonitor& monitor, velocypack::Slice base,
                             velocypack::Builder& result,
                             IndexIteratorOptions const& opts) const;
@@ -245,6 +268,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         containers::SmallVector<uint64_t, 4>& hashes,
                         containers::SmallVector<VPackSlice, 4>& sliceStack);
 
+  void warmupInternal(transaction::Methods* trx);
+
+  void handleCacheInvalidation(transaction::Methods& trx,
+                               OperationOptions const& options,
+                               rocksdb::Slice key);
+
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;
   /// @brief the attribute paths (for stored values)
@@ -260,6 +289,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// effectively in use. for example, for system collections and on the
   /// coordinator, no cache will actually be used although this flag may be true
   bool const _cacheEnabled;
+
+  // if true, force a refill of the in-memory cache after each
+  // insert/update/replace operation
+  bool const _forceCacheRefill;
 
   /// @brief whether or not array indexes will de-duplicate their input values
   bool const _deduplicate;

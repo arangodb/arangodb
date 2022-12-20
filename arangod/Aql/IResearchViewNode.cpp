@@ -2160,4 +2160,8 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
   return uniqueVariables;
 }
 
+bool IResearchViewNode::isBuilding() const {
+  return _view && _view->isBuilding();
+}
+
 }  // namespace arangodb::iresearch

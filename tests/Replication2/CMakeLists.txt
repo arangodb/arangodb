@@ -5,6 +5,7 @@ add_library(arango_tests_replication2 OBJECT
   Mocks/AsyncFollower.cpp
   Mocks/AsyncFollower.h
   Mocks/AsyncLeader.cpp
+  Mocks/DocumentStateMocks.cpp
   Mocks/FakeAbstractFollower.h
   Mocks/FakeFailureOracle.cpp
   Mocks/FakeFailureOracle.h
@@ -91,6 +92,7 @@ target_link_libraries(arango_tests_replication2
     gtest
     gmock
     arango
+    arango_futures
     arango_replication2
     velocypack
     fmt)

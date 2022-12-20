@@ -22,6 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchLink.h"
+#include "IResearchLinkCoordinator.h"
 
 #include <index/column_info.hpp>
 #include <utils/singleton.hpp>
@@ -46,6 +47,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -192,7 +194,7 @@ Result IResearchLink::initCoordinator(InitCallback const& init) {
   if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !view) {
     return r;
   }
-  return view->link(*this);
+  return view->link(basics::downCast<IResearchLinkCoordinator>(*this));
 }
 
 Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {

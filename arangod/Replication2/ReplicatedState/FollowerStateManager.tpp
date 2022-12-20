@@ -59,7 +59,7 @@ namespace {
 inline auto delayedFuture(std::chrono::steady_clock::duration duration)
     -> futures::Future<futures::Unit> {
   if (SchedulerFeature::SCHEDULER) {
-    return SchedulerFeature::SCHEDULER->delay(duration);
+    return SchedulerFeature::SCHEDULER->delay("r2 snapshot transfer", duration);
   }
 
   std::this_thread::sleep_for(duration);
@@ -500,7 +500,7 @@ auto FollowerStateManager<S>::tryTransferSnapshot()
             LOG_CTX("44d58", DEBUG, ctx)
                 << "snapshot transfer successfully completed";
           } else {
-            LOG_CTX("9a68a", ERR, ctx)
+            LOG_CTX("9a68a", DEBUG, ctx)
                 << "failed to transfer snapshot: " << result.errorMessage()
                 << " - retry scheduled";
             errorCounter->operator++();

@@ -1,5 +1,4 @@
 target_sources(arango_pregel PRIVATE
-  AsyncSCC.cpp
   ConnectedComponents.cpp
   HITS.cpp
   HITSKleinberg.cpp
@@ -21,4 +20,3 @@ endif()
 
 add_subdirectory(DMID)
 add_subdirectory(EffectiveCloseness)
-add_subdirectory(AIR)

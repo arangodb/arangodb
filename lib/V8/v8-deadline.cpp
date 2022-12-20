@@ -116,11 +116,12 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
   milliseconds durationWhen(static_cast<int64_t>(epochDoubleWhen * 1000));
   time_point<system_clock> timepointWhen(durationWhen);
 
-  milliseconds delta = duration_cast<milliseconds>(now - timepointWhen);
-  if (delta > timeout) {
-    return timeout;
+  if (timepointWhen < now) {
+    return std::chrono::milliseconds(0);
   }
-  return delta;
+
+  milliseconds delta = duration_cast<milliseconds>(timepointWhen - now);
+  return std::min(delta, timeout);
 }
 
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {

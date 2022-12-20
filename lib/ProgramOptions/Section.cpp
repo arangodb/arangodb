@@ -24,10 +24,28 @@
 #include "Section.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 
 #include <iostream>
 
 using namespace arangodb::options;
+
+Section::Section(std::string const& name, std::string const& description,
+                 std::string const& link, std::string const& alias, bool hidden,
+                 bool obsolete)
+    : name(name),
+      description(description),
+      link(link),
+      alias(alias),
+      hidden(hidden),
+      obsolete(obsolete),
+      enterpriseOnly(false) {}
+
+Section::~Section() = default;
+
+std::string Section::displayName() const {
+  return alias.empty() ? name : alias;
+}
 
 // whether or not the section has (displayable) options
 bool Section::hasOptions() const {

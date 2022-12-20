@@ -37,8 +37,13 @@ using namespace arangodb::consensus;
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
-                           std::string const& server)
-    : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(server) {}
+                           std::string const& server,
+                           std::string const& notBefore,
+                           bool failedLeaderAddsFollower)
+    : Job(NOTFOUND, snapshot, agent, jobId, creator),
+      _server(server),
+      _notBefore(notBefore),
+      _failedLeaderAddsFollower(failedLeaderAddsFollower) {}
 
 FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
@@ -47,6 +52,15 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+  if (tmp_notBefore) {
+    _notBefore = tmp_notBefore.value();
+  }
+  auto tmp_failedLeaderAddsFollower =
+      _snapshot.hasAsBool(path + "failedLeaderAddsFollower");
+  if (tmp_failedLeaderAddsFollower) {
+    _failedLeaderAddsFollower = tmp_failedLeaderAddsFollower.value();
+  }
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
@@ -216,14 +230,14 @@ bool FailedServer::start(bool& aborts) {
                     FailedLeader(_snapshot, _agent,
                                  _jobId + "-" + std::to_string(sub++), _jobId,
                                  database.first, collptr.first, shard.first,
-                                 _server)
+                                 _server, _failedLeaderAddsFollower)
                         .create(transactions);
                   } else {
                     if (!isSatellite) {
                       FailedFollower(_snapshot, _agent,
                                      _jobId + "-" + std::to_string(sub++),
                                      _jobId, database.first, collptr.first,
-                                     shard.first, _server)
+                                     shard.first, _server, _notBefore)
                           .create(transactions);
                     } else {
                       LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION)
@@ -312,6 +326,11 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
         _jb->add("creator", VPackValue(_creator));
         _jb->add("timeCreated",
                  VPackValue(timepointToString(system_clock::now())));
+        if (!_notBefore.empty()) {
+          _jb->add("notBefore", VPackValue(_notBefore));
+        }
+        _jb->add("failedLeaderAddsFollower",
+                 VPackValue(_failedLeaderAddsFollower));
       }
       // FailedServers entry []
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));

@@ -36,6 +36,7 @@
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -670,6 +671,18 @@ bool IResearchView::visitCollections(
     }
   }
   return true;
+}
+
+bool IResearchView::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _links) {
+    auto linkLock = entry.second->lock();
+    if (linkLock &&
+        basics::downCast<IResearchLink>(linkLock.get())->isBuilding()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 LinkLock IResearchView::linkLock(

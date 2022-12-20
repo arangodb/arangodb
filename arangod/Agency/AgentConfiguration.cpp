@@ -49,6 +49,12 @@ std::string const config_t::supervisionGracePeriodStr =
     "supervision grace period";
 std::string const config_t::supervisionOkThresholdStr =
     "supervision ok threshold";
+std::string const config_t::supervisionDelayAddFollowerStr =
+    "supervision delay add follower job time";
+std::string const config_t::supervisionDelayFailedFollowerStr =
+    "supervision delay failed follower job time";
+std::string const config_t::supervisionFailedLeaderAddsFollowerStr =
+    "supervision FailedLeader job adds a new follower";
 std::string const config_t::compactionStepSizeStr = "compaction step size";
 std::string const config_t::compactionKeepSizeStr = "compaction keep size";
 std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
@@ -69,6 +75,9 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
+      _supervisionDelayAddFollower(0),
+      _supervisionDelayFailedFollower(0),
+      _supervisionFailedLeaderAddsFollower(true),
       _version(0),
       _startup("origin"),
       _maxAppendSize(250),
@@ -77,7 +86,7 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
                    bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
-                   double p, double o, size_t a)
+                   double p, double o, uint64_t q, uint64_t r, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _minPing(minp),
@@ -93,6 +102,9 @@ config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
       _supervisionOkThreshold(o),
+      _supervisionDelayAddFollower(q),
+      _supervisionDelayFailedFollower(r),
+      _supervisionFailedLeaderAddsFollower(t),
       _version(0),
       _startup("origin"),
       _maxAppendSize(a),
@@ -124,6 +136,10 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _supervisionOkThreshold = other._supervisionOkThreshold;
+  _supervisionDelayAddFollower = other._supervisionDelayAddFollower;
+  _supervisionDelayFailedFollower = other._supervisionDelayFailedFollower;
+  _supervisionFailedLeaderAddsFollower =
+      other._supervisionFailedLeaderAddsFollower;
   _version = other._version;
   _startup = other._startup;
   _maxAppendSize = other._maxAppendSize;
@@ -150,6 +166,11 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
+  _supervisionDelayAddFollower = std::move(other._supervisionDelayAddFollower);
+  _supervisionDelayFailedFollower =
+      std::move(other._supervisionDelayFailedFollower);
+  _supervisionFailedLeaderAddsFollower =
+      std::move(other._supervisionFailedLeaderAddsFollower);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
   _maxAppendSize = std::move(other._maxAppendSize);
@@ -169,6 +190,21 @@ double config_t::supervisionGracePeriod() const {
 double config_t::supervisionOkThreshold() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionOkThreshold;
+}
+
+uint64_t config_t::supervisionDelayAddFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionDelayAddFollower;
+}
+
+uint64_t config_t::supervisionDelayFailedFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionDelayFailedFollower;
+}
+
+bool config_t::supervisionFailedLeaderAddsFollower() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionFailedLeaderAddsFollower;
 }
 
 double config_t::minPing() const {
@@ -452,6 +488,12 @@ void config_t::toBuilder(VPackBuilder& builder) const {
     builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
     builder.add(supervisionOkThresholdStr, VPackValue(_supervisionOkThreshold));
+    builder.add(supervisionDelayAddFollowerStr,
+                VPackValue(_supervisionDelayAddFollower));
+    builder.add(supervisionDelayFailedFollowerStr,
+                VPackValue(_supervisionDelayFailedFollower));
+    builder.add(supervisionFailedLeaderAddsFollowerStr,
+                VPackValue(_supervisionFailedLeaderAddsFollower));
     builder.add(versionStr, VPackValue(_version));
     builder.add(startupStr, VPackValue(_startup));
   }
@@ -699,6 +741,18 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   if (other.hasKey(supervisionOkThresholdStr)) {
     _supervisionOkThreshold =
         other.get(supervisionOkThresholdStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionDelayAddFollowerStr)) {
+    _supervisionDelayAddFollower =
+        other.get(supervisionDelayAddFollowerStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(supervisionDelayFailedFollowerStr)) {
+    _supervisionDelayFailedFollower =
+        other.get(supervisionDelayFailedFollowerStr).getNumber<uint64_t>();
+  }
+  if (other.hasKey(supervisionFailedLeaderAddsFollowerStr)) {
+    _supervisionFailedLeaderAddsFollower =
+        other.get(supervisionFailedLeaderAddsFollowerStr).getBoolean();
   }
   if (other.hasKey(compactionStepSizeStr)) {
     _compactionStepSize =

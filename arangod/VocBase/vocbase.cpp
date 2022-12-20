@@ -941,6 +941,12 @@ void TRI_vocbase_t::stop() {
       _replicationApplier->stopAndJoin();
     }
 
+    // resign replicated states
+    // this is needed to clear all ongoing snapshots and release collection
+    // locks
+    _logManager->resignStates();
+    _logManager->resignAll();
+
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
 
@@ -956,7 +962,6 @@ void TRI_vocbase_t::stop() {
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
-  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
@@ -991,7 +996,6 @@ void TRI_vocbase_t::shutdown() {
   }
 
   _collections.clear();
-  _logManager->resignAll();
 }
 
 /// @brief returns names of all known (document) collections
@@ -1918,11 +1922,9 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-                             arangodb::CreateDatabaseInfo&& info)
+TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
     : _server(info.server()),
       _info(std::move(info)),
-      _type(type),
       _refCount(0),
       _isOwnAppsDirectory(true),
       _deadlockDetector(false) {
@@ -1971,7 +1973,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
 std::string TRI_vocbase_t::path() const {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  return engine.databasePath(this);
+  return engine.databasePath();
 }
 
 std::string const& TRI_vocbase_t::sharding() const { return _info.sharding(); }
@@ -1993,7 +1995,7 @@ replication::Version TRI_vocbase_t::replicationVersion() const {
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
-  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto* applier = DatabaseReplicationApplier::create(*this);
   _replicationApplier.reset(applier);
 }

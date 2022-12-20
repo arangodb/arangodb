@@ -3789,8 +3789,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
-    // Wait for Callbacks to be triggered, it is sufficent to wait for the first
-    // non, done
+    // Wait for Callbacks to be triggered, it is sufficient to wait for the
+    // first non, done
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationState::INIT) {
@@ -4939,8 +4939,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         ob->add(e.value);
       }
     }
-    if (numberOfShards > 0 &&
-        !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
+    if (numberOfShards > 0) {
       ob->add(StaticStrings::IndexIsBuilding, VPackValue(true));
       // add our coordinator id and reboot id
       ob->add(StaticStrings::AttrCoordinator,

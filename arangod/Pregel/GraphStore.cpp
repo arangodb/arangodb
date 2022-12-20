@@ -34,7 +34,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Metrics/Gauge.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
@@ -98,7 +97,7 @@ size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft,
 
 template<typename V, typename E>
 GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-                             uint64_t executionNumber,
+                             ExecutionNumber executionNumber,
                              GraphFormat<V, E>* graphFormat)
     : _feature(feature),
       _vocbaseGuard(vocbase),
@@ -322,8 +321,7 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
                                              size_t cap) {
   if (config.useMemoryMaps()) {
     // prefix used for logging in TypedBuffer.h
-    std::string logPrefix =
-        "[job " + std::to_string(config.executionNumber()) + "] ";
+    std::string logPrefix = fmt::format("[job {}] ", config.executionNumber());
 
     auto ptr = std::make_unique<MappedFileBuffer<M>>(feature.tempPath(), cap,
                                                      logPrefix);
@@ -726,17 +724,14 @@ void GraphStore<V, E>::storeVertices(
     }
 
     std::string_view const key = it->key();
-    V const& data = it->data();
 
     builder.openObject(true);
     builder.add(StaticStrings::KeyString,
                 VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    {
-      auto result = _graphFormat->buildVertexDocumentWithResult(builder, &data);
-      if (result.fail()) {
-        _reports->report(ReportLevel::ERR)
-            << "building vertex document failed: " << result.error().toString();
-      }
+    V const& data = it->data();
+    if (auto result = _graphFormat->buildVertexDocument(builder, &data);
+        !result) {
+      _reports->report(ReportLevel::ERR) << "Failed to build vertex document";
     }
     builder.close();
     ++numDocs;
@@ -824,6 +819,3 @@ template class arangodb::pregel::GraphStore<DMIDValue, float>;
 template class arangodb::pregel::GraphStore<LPValue, int8_t>;
 template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
 template class arangodb::pregel::GraphStore<ColorPropagationValue, int8_t>;
-
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::GraphStore<VertexData, EdgeData>;

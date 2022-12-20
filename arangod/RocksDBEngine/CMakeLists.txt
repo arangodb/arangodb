@@ -14,6 +14,8 @@ add_library(arango_rocksdb STATIC
   RocksDBGeoIndex.cpp
   RocksDBIncrementalSync.cpp
   RocksDBIndex.cpp
+  RocksDBIndexCacheRefillFeature.cpp
+  RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
@@ -118,9 +120,6 @@ endif()
 target_include_directories(arango_rocksdb PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_rocksdb PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_subdirectory(Listeners)
 add_subdirectory(Methods)

@@ -38,6 +38,7 @@
 #include "IResearch/IResearchMetricStats.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricKey.h"
@@ -87,6 +88,11 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(
 }
 
 Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
+  TRI_IF_FAILURE("search::AlwaysIsBuildingCluster") { setBuilding(true); }
+  else {
+    setBuilding(basics::VelocyPackHelper::getBooleanValue(
+        definition, arangodb::StaticStrings::IndexIsBuilding, false));
+  }
   bool pathExists = false;
   auto r = IResearchLink::init(definition, pathExists);
   TRI_ASSERT(!pathExists);

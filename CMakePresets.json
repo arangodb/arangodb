@@ -127,6 +127,10 @@
     {
       "name": "enterprise-developer",
       "configurePreset": "enterprise-developer"
+    },
+    {
+      "name": "community-developer",
+      "configurePreset": "community-developer"
     }
   ]
 }
