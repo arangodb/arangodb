@@ -403,12 +403,6 @@ std::string const StaticStrings::ReleaseIndex("releaseIndex");
 std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
 std::string const StaticStrings::Outcome("outcome");
 
-// Replication 2.0 API Strings
-std::string_view const StaticStrings::ApiLogInternal("/_api/log-internal");
-std::string_view const StaticStrings::ApiLogExternal("/_api/log");
-std::string_view const StaticStrings::ApiDocumentStateExternal(
-    "/_api/document-state");
-
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
 std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");

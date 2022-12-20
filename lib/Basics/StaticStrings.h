@@ -381,9 +381,10 @@ class StaticStrings {
   constexpr static std::string_view MessageId = "messageId";
 
   // Replication 2.0 API Strings
-  static std::string_view const ApiLogInternal;
-  static std::string_view const ApiLogExternal;
-  static std::string_view const ApiDocumentStateExternal;
+  constexpr static std::string_view ApiLogInternal = "/_api/log-internal";
+  constexpr static std::string_view ApiLogExternal = "/_api/log";
+  constexpr static std::string_view ApiDocumentStateExternal =
+      "/_api/document-state";
   constexpr static std::string_view ApiUpdateSnapshotStatus =
       "update-snapshot-status";
 
