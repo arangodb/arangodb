@@ -46,7 +46,18 @@ struct AsyncLogWriteContext {
   void waitForCompletion();
 
  private:
-  std::atomic<std::size_t> _pendingAsyncOperations{0};
+// There are currently bugs in the libstdc++ implementation of atomic wait/notify,
+// e.g.
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=106183
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=101037
+// . Using the following types should make sure we're not running into them.
+#if !defined(_LIBCPP_VERSION) || defined(__linux__) || \
+    (defined(_AIX) && !defined(__64BIT__))
+  using wait_t = std::int32_t;
+#else
+  using wait_t = std::int64_t;
+#endif
+  std::atomic<wait_t> _pendingAsyncOperations{0};
 };
 
 struct AsyncLogOperationGuard {
