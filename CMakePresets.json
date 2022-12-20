@@ -27,6 +27,7 @@
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "USE_MINIMAL_DEBUGINFO": "On",
+	"USE_LIBUNWIND": "On",
         "STATIC_EXECUTABLES": "On",
         "TARGET_ARCHITECTURE": "sandy-bridge"
  }

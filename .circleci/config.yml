@@ -24,7 +24,7 @@ jobs:
           name: Configure
           command: |
             # the -DUSE_LIBUNWIND=1 is a hack that I would like to avoid in the future
-            cmake --preset community-pr -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DUSE_LIBUNWIND=1
+            cmake --preset community-pr -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
       - run:
           name: Build
           command: |
@@ -66,7 +66,7 @@ jobs:
       - run:
           name: Run GTest
           command: |
-            << parameters.executable >> --gtest_output=xml
+            << parameters.executable >> --gtest-filter=-*_LongRunning --gtest_output=xml
       - run:
           command: |
             mkdir -p /tmp/core_dumps
