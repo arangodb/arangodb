@@ -447,6 +447,67 @@ struct GenericProcessor {
  protected:
   Derived& self() { return static_cast<Derived&>(*this); }
 
+  /// @brief build a VPack object with _id, _key and _rev, the result is
+  /// added to the builder in the argument as a single object.
+  void buildDocumentIdentity(std::string_view key, RevisionId rid,
+                             RevisionId oldRid,
+                             velocypack::Builder const* oldDoc,
+                             velocypack::Builder const* newDoc) {
+    _resultBuilder.openObject();
+
+    // _id
+    StringLeaser leased(_methods.transactionContext().get());
+    std::string& temp(*leased.get());
+    temp.reserve(64);
+
+    if (_methods.state()->isRunningInCluster()) {
+      std::string resolved =
+          _methods.resolver()->getCollectionNameCluster(_trxColl.id());
+#ifdef USE_ENTERPRISE
+      ClusterMethods::realNameFromSmartName(resolved);
+#endif
+      // build collection name
+      temp.append(resolved);
+    } else {
+      // build collection name
+      temp.append(_collection.name());
+    }
+
+    // append / and key part
+    temp.push_back('/');
+    temp.append(key.data(), key.size());
+
+    _resultBuilder.add(StaticStrings::IdString, VPackValue(temp));
+
+    // _key
+    _resultBuilder.add(StaticStrings::KeyString, VPackValue(key));
+
+    // _rev
+    if (rid.isSet()) {
+      char ridBuffer[arangodb::basics::maxUInt64StringSize];
+      _resultBuilder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
+    } else {
+      _resultBuilder.add(StaticStrings::RevString, std::string_view{});
+    }
+
+    // _oldRev
+    if (oldRid.isSet()) {
+      _resultBuilder.add("_oldRev", VPackValue(oldRid.toString()));
+    }
+
+    // old
+    if (oldDoc != nullptr) {
+      _resultBuilder.add(StaticStrings::Old, oldDoc->slice());
+    }
+
+    // new
+    if (newDoc != nullptr) {
+      _resultBuilder.add(StaticStrings::New, newDoc->slice());
+    }
+
+    _resultBuilder.close();
+  }
+
   Methods& _methods;
   TransactionCollection& _trxColl;
   LogicalCollection& _collection;
@@ -522,9 +583,8 @@ struct GetDocumentProcessor
                 if (expectedRevision != foundRevision) {
                   if (!isMultiple) {
                     // still return
-                    _methods.buildDocumentIdentity(
-                        _collection, _resultBuilder, _trxColl.id(), key,
-                        foundRevision, RevisionId::none(), nullptr, nullptr);
+                    buildDocumentIdentity(key, foundRevision,
+                                          RevisionId::none(), nullptr, nullptr);
                   }
                   conflict = true;
                   return false;
@@ -674,8 +734,9 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       }
 
       // execute a deferred intermediate commit, if required.
-      intermediateCommit = this->_methods.performIntermediateCommitIfRequired(
-          this->_collection.id());
+      intermediateCommit =
+          this->_methods.state()->performIntermediateCommitIfRequired(
+              this->_collection.id());
     }
 
     if (this->_options.silent && errorCounter.empty()) {
@@ -693,6 +754,15 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   }
 
  protected:
+  void trackWaitForSync() {
+    if (this->_collection.waitForSync() && !this->_options.isRestore) {
+      this->_options.waitForSync = true;
+    }
+    if (this->_options.waitForSync) {
+      this->_methods.state()->waitForSync(true);
+    }
+  }
+
   std::shared_ptr<std::vector<ServerID> const> _followers;
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
 
@@ -749,9 +819,8 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
         auto lookupRes = _collection.getPhysical()->lookupKey(
             &_methods, key, lookupResult, ReadOwnWrites::yes);
         TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
-        _methods.buildDocumentIdentity(_collection, _resultBuilder,
-                                       _trxColl.id(), key, lookupResult.second,
-                                       RevisionId::none(), nullptr, nullptr);
+        buildDocumentIdentity(key, lookupResult.second, RevisionId::none(),
+                              nullptr, nullptr);
         auto index = _collection.getPhysical()->primaryIndex();
         if (index) {
           return index->addErrorMsg(res, key);
@@ -775,7 +844,6 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       return res;
     }
 
-    bool excludeFromReplication = _excludeAllFromReplication;
     TRI_ASSERT(_previousDocumentBuilder->slice().isObject());
 
     res = removeLocalHelper(value, oldDocumentId, oldRevisionId);
@@ -788,14 +856,13 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     if ((res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) ||
         (res.ok() && !_options.silent)) {
       TRI_ASSERT(oldRevisionId.isSet());
-      _methods.buildDocumentIdentity(
-          _collection, _resultBuilder, _trxColl.id(), key, oldRevisionId,
-          RevisionId::none(),
+      buildDocumentIdentity(
+          key, oldRevisionId, RevisionId::none(),
           _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
           nullptr);
     }
 
-    if (res.ok() && !excludeFromReplication) {
+    if (res.ok() && !_excludeAllFromReplication) {
       _replicationData->openObject(/*unindexed*/ true);
       _replicationData->add(StaticStrings::KeyString, VPackValue(key));
 
@@ -835,7 +902,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
         _previousDocumentBuilder->slice(), _options);
 
     if (res.ok()) {
-      _methods.trackWaitForSync(_collection, _options);
+      trackWaitForSync();
     }
 
     return res;
@@ -919,7 +986,7 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
         // shortcut. no need to do anything
         TRI_ASSERT(_batchOptions.computedValues == nullptr);
         TRI_ASSERT(previousRevisionId == newRevisionId);
-        this->_methods.trackWaitForSync(this->_collection, this->_options);
+        this->trackWaitForSync();
         return {};
       }
 
@@ -960,7 +1027,7 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       }
 
       if (res.ok()) {
-        this->_methods.trackWaitForSync(this->_collection, this->_options);
+        this->trackWaitForSync();
       }
     }
 
@@ -1048,7 +1115,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         TRI_ASSERT(lookupResult.second.isSet());
         std::tie(oldDocumentId, oldRevisionId) = lookupResult;
       }
-    } else if (res.errorNumber() != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Error reporting in the babies case is done outside of here.
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isArray) {
         TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER);
@@ -1059,14 +1126,12 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         auto lookupRes = _collection.getPhysical()->lookupKey(
             &_methods, key, lookupResult, ReadOwnWrites::yes);
         TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
-        _methods.buildDocumentIdentity(_collection, _resultBuilder,
-                                       _trxColl.id(), key, lookupResult.second,
-                                       RevisionId::none(), nullptr, nullptr);
+        buildDocumentIdentity(key, lookupResult.second, RevisionId::none(),
+                              nullptr, nullptr);
         auto index = _collection.getPhysical()->primaryIndex();
         if (index) {
           return index->addErrorMsg(res, key);
         }
-        return res;
       }
       return res;
     }
@@ -1098,9 +1163,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         // write!)
         if (_replicationType != Methods::ReplicationType::FOLLOWER) {
           // intentionally do not fill replicationData here
-          _methods.buildDocumentIdentity(_collection, _resultBuilder,
-                                         _trxColl.id(), key, oldRevisionId,
-                                         RevisionId::none(), nullptr, nullptr);
+          buildDocumentIdentity(key, oldRevisionId, RevisionId::none(), nullptr,
+                                nullptr);
         }
         return res;
       }
@@ -1147,9 +1211,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
           _replicationType != Methods::ReplicationType::FOLLOWER) {
         // this indicates a write-write conflict while updating some unique
         // index
-        _methods.buildDocumentIdentity(_collection, _resultBuilder,
-                                       _trxColl.id(), key, oldRevisionId,
-                                       RevisionId::none(), nullptr, nullptr);
+        buildDocumentIdentity(key, oldRevisionId, RevisionId::none(), nullptr,
+                              nullptr);
       }
       // intentionally do not fill replicationData here
       return res;
@@ -1165,9 +1228,9 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       TRI_ASSERT(!showReplaced || oldRevisionId.isSet());
       TRI_ASSERT(!showReplaced || previousDocumentBuilder->slice().isObject());
 
-      _methods.buildDocumentIdentity(
-          _collection, _resultBuilder, _trxColl.id(), key, newRevisionId,
-          oldRevisionId, showReplaced ? previousDocumentBuilder.get() : nullptr,
+      buildDocumentIdentity(
+          key, newRevisionId, oldRevisionId,
+          showReplaced ? previousDocumentBuilder.get() : nullptr,
           _options.returnNew ? _newDocumentBuilder.get() : nullptr);
     }
 
@@ -1236,7 +1299,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
           _methods, newRevisionId, _newDocumentBuilder->slice(), _options);
 
       if (res.ok()) {
-        _methods.trackWaitForSync(_collection, _options);
+        trackWaitForSync();
       }
     }
 
@@ -1293,9 +1356,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
         auto lookupRes = _collection.getPhysical()->lookupKey(
             &_methods, key.stringView(), lookupResult, ReadOwnWrites::yes);
         TRI_ASSERT(!lookupRes.ok() || lookupResult.second.isSet());
-        _methods.buildDocumentIdentity(
-            _collection, _resultBuilder, _trxColl.id(), key.stringView(),
-            lookupResult.second, RevisionId::none(), nullptr, nullptr);
+        buildDocumentIdentity(key.stringView(), lookupResult.second,
+                              RevisionId::none(), nullptr, nullptr);
         auto index = _collection.getPhysical()->primaryIndex();
         if (index) {
           return index->addErrorMsg(res, key.stringView());
@@ -1331,9 +1393,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
         // this indicates a write-write conflict while updating some unique
         // index
         TRI_ASSERT(oldRevisionId.isSet());
-        _methods.buildDocumentIdentity(
-            _collection, _resultBuilder, _trxColl.id(), key.stringView(),
-            oldRevisionId, RevisionId::none(),
+        buildDocumentIdentity(
+            key.stringView(), oldRevisionId, RevisionId::none(),
             _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
             nullptr);
       }
@@ -1347,9 +1408,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     if (!_options.silent) {
       TRI_ASSERT(newRevisionId.isSet() && oldRevisionId.isSet());
 
-      _methods.buildDocumentIdentity(
-          _collection, _resultBuilder, _trxColl.id(), key.stringView(),
-          newRevisionId, oldRevisionId,
+      buildDocumentIdentity(
+          key.stringView(), newRevisionId, oldRevisionId,
           _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
           _options.returnNew ? _newDocumentBuilder.get() : nullptr);
       if (newRevisionId == oldRevisionId && _isUpdate) {
@@ -1467,8 +1527,7 @@ static bool findRefusal(
         it.get().statusCode() == fuerte::StatusNotAcceptable) {
       auto r = it.get().combinedResult();
       bool followerRefused =
-          (r.errorNumber() ==
-           TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+          r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       if (followerRefused) {
         return true;
       }
@@ -1595,66 +1654,6 @@ TransactionCollection* transaction::Methods::trxCollection(
 /// string
 std::string transaction::Methods::extractIdString(VPackSlice slice) {
   return transaction::helpers::extractIdString(resolver(), slice, VPackSlice());
-}
-
-/// @brief build a VPack object with _id, _key and _rev, the result is
-/// added to the builder in the argument as a single object.
-void transaction::Methods::buildDocumentIdentity(
-    LogicalCollection& collection, velocypack::Builder& builder,
-    DataSourceId cid, std::string_view key, RevisionId rid, RevisionId oldRid,
-    velocypack::Builder const* oldDoc, velocypack::Builder const* newDoc) {
-  builder.openObject();
-
-  // _id
-  StringLeaser leased(_transactionContext.get());
-  std::string& temp(*leased.get());
-  temp.reserve(64);
-
-  if (_state->isRunningInCluster()) {
-    std::string resolved = resolver()->getCollectionNameCluster(cid);
-#ifdef USE_ENTERPRISE
-    ClusterMethods::realNameFromSmartName(resolved);
-#endif
-    // build collection name
-    temp.append(resolved);
-  } else {
-    // build collection name
-    temp.append(collection.name());
-  }
-
-  // append / and key part
-  temp.push_back('/');
-  temp.append(key.data(), key.size());
-
-  builder.add(StaticStrings::IdString, VPackValue(temp));
-
-  // _key
-  builder.add(StaticStrings::KeyString, VPackValue(key));
-
-  // _rev
-  if (rid.isSet()) {
-    char ridBuffer[arangodb::basics::maxUInt64StringSize];
-    builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
-  } else {
-    builder.add(StaticStrings::RevString, std::string_view{});
-  }
-
-  // _oldRev
-  if (oldRid.isSet()) {
-    builder.add("_oldRev", VPackValue(oldRid.toString()));
-  }
-
-  // old
-  if (oldDoc != nullptr) {
-    builder.add(StaticStrings::Old, oldDoc->slice());
-  }
-
-  // new
-  if (newDoc != nullptr) {
-    builder.add(StaticStrings::New, newDoc->slice());
-  }
-
-  builder.close();
 }
 
 /// @brief begin the transaction
@@ -2072,16 +2071,6 @@ Future<OperationResult> transaction::Methods::insertCoordinator(
                                                api);
 }
 #endif
-
-void transaction::Methods::trackWaitForSync(LogicalCollection& collection,
-                                            OperationOptions& options) {
-  if (collection.waitForSync() && !options.isRestore) {
-    options.waitForSync = true;
-  }
-  if (options.waitForSync) {
-    state()->waitForSync(true);
-  }
-}
 
 /// @brief Determine the replication type and the followers for a transaction.
 /// The replication type indicates whether this server is the leader or a

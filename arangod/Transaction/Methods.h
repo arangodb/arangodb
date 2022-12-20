@@ -413,22 +413,22 @@ class Methods {
 
   Result triggerIntermediateCommit();
 
-  // private:
   enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
+  Result determineReplicationTypeAndFollowers(
+      LogicalCollection& collection, std::string_view operationName,
+      velocypack::Slice value, OperationOptions& options,
+      ReplicationType& replicationType,
+      std::shared_ptr<std::vector<ServerID> const>& followers);
+
+  /// @brief return the transaction collection for a document collection
+  TransactionCollection* trxCollection(
+      DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
+
+ private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId);
-
-  /// @brief build a VPack object with _id, _key and _rev and possibly
-  /// oldRef (if given), the result is added to the builder in the
-  /// argument as a single object.
-  void buildDocumentIdentity(arangodb::LogicalCollection& collection,
-                             velocypack::Builder& builder, DataSourceId cid,
-                             std::string_view key, RevisionId rid,
-                             RevisionId oldRid,
-                             velocypack::Builder const* oldDoc,
-                             velocypack::Builder const* newDoc);
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
@@ -447,12 +447,6 @@ class Methods {
                                       VPackSlice value,
                                       OperationOptions& options);
 
-  Result determineReplicationTypeAndFollowers(
-      LogicalCollection& collection, std::string_view operationName,
-      velocypack::Slice value, OperationOptions& options,
-      ReplicationType& replicationType,
-      std::shared_ptr<std::vector<ServerID> const>& followers);
-
   Result determineReplication1TypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
       velocypack::Slice value, OperationOptions& options,
@@ -464,9 +458,6 @@ class Methods {
       velocypack::Slice value, OperationOptions& options,
       ReplicationType& replicationType,
       std::shared_ptr<std::vector<ServerID> const>& followers);
-
-  void trackWaitForSync(LogicalCollection& collection,
-                        OperationOptions& options);
 
   Future<OperationResult> modifyCoordinator(
       std::string const& collectionName, VPackSlice newValue,
@@ -506,7 +497,7 @@ class Methods {
   Future<OperationResult> truncateLocal(std::string const& collectionName,
                                         OperationOptions& options);
 
-  // protected:
+ protected:
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
@@ -541,10 +532,6 @@ class Methods {
                                      OperationOptions const& options,
                                      MethodsApi api)
       -> futures::Future<OperationResult>;
-
-  /// @brief return the transaction collection for a document collection
-  TransactionCollection* trxCollection(
-      DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
 
   TransactionCollection* trxCollection(
       std::string const& name,
