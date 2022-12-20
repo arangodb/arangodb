@@ -72,6 +72,11 @@ struct State {
   std::string message;
   bool operator==(const State&) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, State& x) {
+  return f.object(x).fields(f.field("called", x.called),
+                            f.field("message", x.message));
+}
 
 struct Start {
   ActorPID pongActor;
@@ -118,7 +123,7 @@ struct Actor {
   using State = State;
   using Handler = Handler;
   using Message = PongMessage;
-  static constexpr auto typeName() -> std::string_view { return "PongActor"; };
+  static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
 
 }  // namespace ping_actor
@@ -129,6 +134,10 @@ struct State {
   std::size_t called;
   bool operator==(const State&) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, State& x) {
+  return f.object(x).fields(f.field("called", x.called));
+}
 
 struct Handler : HandlerBase<State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
@@ -147,9 +156,22 @@ struct Actor {
   using State = State;
   using Handler = Handler;
   using Message = PingMessage;
-  static constexpr auto typeName() -> std::string_view { return "PingActor"; };
+  static constexpr auto typeName() -> std::string_view { return "PongActor"; };
 };
 
 }  // namespace pong_actor
 
 }  // namespace arangodb::pregel::actor::test
+
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::pong_actor::PingMessage>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::ping_actor::State>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::ping_actor::PongMessage>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::pong_actor::State>
+    : arangodb::inspection::inspection_formatter {};

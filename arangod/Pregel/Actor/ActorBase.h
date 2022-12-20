@@ -33,11 +33,35 @@ struct ActorBase {
   virtual ~ActorBase() = default;
   virtual auto process(ActorPID sender,
                        std::unique_ptr<MessagePayloadBase> payload) -> void = 0;
-  virtual auto process(ActorPID sender, velocypack::SharedSlice msg) -> void = 0;
+  virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
+      -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
   // state: initialised, running, finished
 };
 
-using ActorMap = std::unordered_map<ActorID, std::unique_ptr<ActorBase>>;
+namespace {
+struct ActorInfo {
+  ActorID id;
+  std::string_view type;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ActorInfo& x) {
+  return f.object(x).fields(f.embedFields(x.id), f.field("type", x.type));
+}
+}  // namespace
+
+struct ActorMap : std::unordered_map<ActorID, std::unique_ptr<ActorBase>> {};
+template<typename Inspector>
+auto inspect(Inspector& f, ActorMap& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status{};
+  } else {
+    auto actorInfos = std::vector<ActorInfo>{};
+    for (auto const& [id, actor] : x) {
+      actorInfos.emplace_back(ActorInfo{.id = id, .type = actor->typeName()});
+    }
+    return f.apply(actorInfos);
+  }
+}
 
 };  // namespace arangodb::pregel::actor

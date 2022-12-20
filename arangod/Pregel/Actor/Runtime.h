@@ -40,19 +40,22 @@ struct Runtime {
   Runtime(Runtime const&) = delete;
   Runtime(Runtime&&) = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
-          std::shared_ptr<Scheduler> scheduler, std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> sendingMechanism)
+          std::shared_ptr<Scheduler> scheduler,
+          std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
+              sendingMechanism)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
-        dispatcher(std::make_shared<Dispatcher>(myServerID, actors, sendingMechanism)) {}
+        dispatcher(std::make_shared<Dispatcher>(myServerID, actors,
+                                                sendingMechanism)) {}
 
   template<Actorable ActorConfig>
   auto spawn(typename ActorConfig::State initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{
-        uniqueActorIdCounter++};  // TODO: check whether this is what we want
+        uniqueActorIDCounter++};  // TODO: check whether this is what we want
 
-    auto address = ActorPID{.id = newId, .server = myServerID};
+    auto address = ActorPID{.server = myServerID, .id = newId};
 
     auto newActor = std::make_unique<Actor<Scheduler, ActorConfig>>(
         address, scheduler, dispatcher,
@@ -95,13 +98,14 @@ struct Runtime {
     return std::nullopt;
   }
 
-  auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
-    if(receiver.server != myServerID) {
+  auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
+      -> void {
+    if (receiver.server != myServerID) {
       std::abort();
     }
 
     auto a = actors.find(receiver.id);
-    if(a == std::end(actors)) {
+    if (a == std::end(actors)) {
       std::abort();
     }
 
@@ -115,9 +119,20 @@ struct Runtime {
   std::shared_ptr<Scheduler> scheduler;
   std::shared_ptr<Dispatcher> dispatcher;
 
-  std::atomic<size_t> uniqueActorIdCounter{0};
+  std::atomic<size_t> uniqueActorIDCounter{0};
 
   ActorMap actors;
 };
+template<CallableOnFunction Scheduler, typename Inspector>
+auto inspect(Inspector& f, Runtime<Scheduler>& x) {
+  return f.object(x).fields(
+      f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
+      f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),
+      f.field("actors", x.actors));
+}
 
 };  // namespace arangodb::pregel::actor
+
+template<arangodb::pregel::actor::CallableOnFunction Scheduler>
+struct fmt::formatter<arangodb::pregel::actor::Runtime<Scheduler>>
+    : arangodb::inspection::inspection_formatter {};

@@ -24,9 +24,7 @@
 
 #pragma once
 
-
 #include "Inspection/VPackWithErrorT.h"
-
 
 #include "Actor/Dispatcher.h"
 #include "Message.h"
@@ -51,10 +49,10 @@ struct HandlerBase {
           std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
     } else {
       auto payload = inspection::serializeWithErrorT(message);
-      if(payload.ok()) {
+      if (payload.ok()) {
         (*messageDispatcher)(self, receiver, payload.get());
       } else {
-        std::cerr << "HandlerBase error serializing message" << std::endl;
+        fmt::print("HandlerBase error serializing message");
         std::abort();
       }
     }

@@ -62,10 +62,17 @@ concept MessageIsVariant =
            messageDispatcher}},
       message)};
 };
+template<typename A>
+concept IsInspectable = requires(typename A::Message message,
+                                 typename A::State state) {
+  {fmt::format("{}", message)};
+  {fmt::format("{}", state)};
+};
 };  // namespace
 template<typename A>
 concept Actorable = IncludesAllActorRelevantTypes<A> && IncludesName<A> &&
-    HandlerInheritsFromBaseHandler<A> && MessageIsVariant<A>;
+    HandlerInheritsFromBaseHandler<A> && MessageIsVariant<A> &&
+    IsInspectable<A>;
 
 template<typename S>
 concept CallableOnFunction = requires(S s) {
@@ -77,20 +84,20 @@ struct Actor : ActorBase {
   Actor(ActorPID pid, std::shared_ptr<Scheduler> schedule,
         std::shared_ptr<Dispatcher> dispatcher,
         std::unique_ptr<typename Config::State> initialState)
-      : schedule(schedule),
+      : pid(pid),
+        schedule(schedule),
         messageDispatcher(dispatcher),
-        state(std::move(initialState)),
-        pid(pid) {}
+        state(std::move(initialState)) {}
 
   Actor(ActorPID pid, std::shared_ptr<Scheduler> schedule,
         std::shared_ptr<Dispatcher> dispatcher,
         std::unique_ptr<typename Config::State> initialState,
         std::size_t batchSize)
-      : batchSize(batchSize),
+      : pid(pid),
         schedule(schedule),
         messageDispatcher(dispatcher),
         state(std::move(initialState)),
-        pid(pid) {}
+        batchSize(batchSize) {}
 
   ~Actor() = default;
 
@@ -102,8 +109,8 @@ struct Actor : ActorBase {
     auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
-      std::cout << "actor " << pid.server << ":" << pid.id.id << " received a message it could not handle from " <<
-        sender.server << ":" << sender.id.id << std::endl;
+      fmt::print("Actor {} recieved a message it could not handle from {}", pid,
+                 sender);
       std::abort();
     }
     inbox.push(std::make_unique<InternalMessage>(
@@ -115,8 +122,10 @@ struct Actor : ActorBase {
   void process(ActorPID sender, velocypack::SharedSlice msg) override {
     auto m = inspection::deserializeWithErrorT<typename Config::Message>(msg);
 
-    if(m.ok()) {
-      process(sender, std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
+    if (m.ok()) {
+      process(
+          sender,
+          std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
     } else {
       std::abort();
     }
@@ -158,14 +167,31 @@ struct Actor : ActorBase {
     ActorPID sender;
     std::unique_ptr<typename Config::Message> payload;
   };
+  template<typename Inspector>
+  auto inspect(Inspector& f, InternalMessage& x) {
+    return f.object(x).fiels(f.field("sender", x.sender),
+                             f.field("payload", x.payload));
+  }
 
-  std::size_t batchSize{16};
+  ActorPID pid;
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
   std::shared_ptr<Scheduler> schedule;
   std::shared_ptr<Dispatcher> messageDispatcher;
   std::unique_ptr<typename Config::State> state;
-  ActorPID pid;
+  std::size_t batchSize{16};
 };
 
+// TODO make queue inspectable
+template<CallableOnFunction Scheduler, Actorable Config, typename Inspector>
+auto inspect(Inspector& f, Actor<Scheduler, Config>& x) {
+  return f.object(x).fields(f.field("pid", x.pid), f.field("state", x.state),
+                            f.field("batchsize", x.batchSize));
+}
+
 }  // namespace arangodb::pregel::actor
+
+template<arangodb::pregel::actor::CallableOnFunction Scheduler,
+         arangodb::pregel::actor::Actorable Config>
+struct fmt::formatter<arangodb::pregel::actor::Actor<Scheduler, Config>>
+    : arangodb::inspection::inspection_formatter {};

@@ -41,9 +41,11 @@ struct MockScheduler {
 };
 
 TEST(MultiRuntimeTest, ping_pong_game) {
-  std::unordered_map<std::string, std::unique_ptr<Runtime<MockScheduler>>> runtimes;
-  auto const& msgHub = [&runtimes](ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg) -> void {
-    if(runtimes.contains(receiver.server)) {
+  std::unordered_map<ServerID, std::unique_ptr<Runtime<MockScheduler>>>
+      runtimes;
+  auto const& msgHub = [&runtimes](ActorPID sender, ActorPID receiver,
+                                   velocypack::SharedSlice msg) -> void {
+    if (runtimes.contains(receiver.server)) {
       runtimes[receiver.server]->process(sender, receiver, msg);
     } else {
       std::cerr << "cannot find server " << receiver.server << std::endl;
@@ -55,19 +57,22 @@ TEST(MultiRuntimeTest, ping_pong_game) {
 
   // Runtime 1
   auto serverID1 = ServerID{"A"};
-  runtimes.emplace(serverID1, std::make_unique<Runtime<MockScheduler>>(serverID1, "RuntimeTest-1", scheduler, msgHub));
+  runtimes.emplace(serverID1,
+                   std::make_unique<Runtime<MockScheduler>>(
+                       serverID1, "RuntimeTest-1", scheduler, msgHub));
 
-  auto pong_actor = runtimes[serverID1]->spawn<pong_actor::Actor>(pong_actor::State{},
-                                                     pong_actor::Start{});
+  auto pong_actor = runtimes[serverID1]->spawn<pong_actor::Actor>(
+      pong_actor::State{}, pong_actor::Start{});
 
   // Runtime 2
   auto serverID2 = ServerID{"B"};
-  runtimes.emplace(serverID2, std::make_unique<Runtime<MockScheduler>>(serverID2, "RuntimeTest-2", scheduler, msgHub));
+  runtimes.emplace(serverID2,
+                   std::make_unique<Runtime<MockScheduler>>(
+                       serverID2, "RuntimeTest-2", scheduler, msgHub));
   auto ping_actor = runtimes[serverID2]->spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =
-                            ActorPID{.id = pong_actor, .server = serverID1}});
-
+                            ActorPID{.server = serverID1, .id = pong_actor}});
 
   auto ping_actor_state =
       runtimes[serverID2]->getActorStateByID<ping_actor::Actor>(ping_actor);
@@ -76,4 +81,17 @@ TEST(MultiRuntimeTest, ping_pong_game) {
   auto pong_actor_state =
       runtimes[serverID1]->getActorStateByID<pong_actor::Actor>(pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 1}));
+}
+
+TEST(MultiRuntimeTest, formats_runtime_and_actor_state) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  Runtime runtime(ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, nullptr);
+  auto actorID = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
+                                                  pong_actor::Start{});
+  ASSERT_EQ(
+      fmt::format("{}", runtime),
+      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
+  auto actor = runtime.getActorStateByID<pong_actor::Actor>(actorID).value();
+  ASSERT_EQ(fmt::format("{}", actor), R"({"called":0})");
+  // TODO create actor and check its format
 }
