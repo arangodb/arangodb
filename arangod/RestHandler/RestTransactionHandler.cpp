@@ -155,8 +155,11 @@ void RestTransactionHandler::executeBegin() {
 
   if (found) {
     if (!ServerState::isDBServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
+      // it is not expected that the user sends a transaction ID to begin
+      // a transaction
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          "unexpected transaction ID received in begin transaction request");
       return;
     }
     // figure out the transaction ID
@@ -180,8 +183,9 @@ void RestTransactionHandler::executeBegin() {
   } else {
     if (!ServerState::isCoordinator(role) &&
         !ServerState::isSingleServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          "missing transaction ID in internal transaction begin request");
       return;
     }
 
