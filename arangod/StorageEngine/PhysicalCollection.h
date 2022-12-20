@@ -61,8 +61,6 @@ struct OperationOptions;
 class Result;
 
 class PhysicalCollection {
-  friend class IndexesSnapshot;
-
  public:
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 

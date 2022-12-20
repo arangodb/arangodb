@@ -31,11 +31,11 @@
 
 namespace arangodb {
 class Index;
-class PhysicalCollection;
 
 class IndexesSnapshot {
  public:
-  explicit IndexesSnapshot(PhysicalCollection& collection);
+  explicit IndexesSnapshot(RecursiveReadLocker<basics::ReadWriteLock>&& locker,
+                           std::vector<std::shared_ptr<Index>> indexes);
   ~IndexesSnapshot();
 
   IndexesSnapshot(IndexesSnapshot const& other) = delete;
@@ -49,8 +49,8 @@ class IndexesSnapshot {
   bool hasSecondaryIndex() const noexcept;
 
  private:
-  std::vector<std::shared_ptr<Index>> _indexes;
   RecursiveReadLocker<basics::ReadWriteLock> _locker;
+  std::vector<std::shared_ptr<Index>> _indexes;
   bool _valid;
 };
 

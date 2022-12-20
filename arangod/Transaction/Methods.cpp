@@ -634,7 +634,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
         _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
         _replicationData(&methods),
-        _operationType(operationType) {
+        _operationType(operationType),
+        _needToFetchOldDocument(
+            operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            _indexesSnapshot.hasSecondaryIndex() || options.returnOld) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
         this->_collection, operationName, this->_value, this->_options,
@@ -797,6 +800,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
+  // whether or not we need to read the previous document version
+  bool const _needToFetchOldDocument;
 };
 
 struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
@@ -806,9 +811,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       : ReplicatedProcessorBase(methods, trxColl, collection, value, options,
                                 "remove", TRI_VOC_DOCUMENT_OPERATION_REMOVE),
         _keyBuilder(&_methods),
-        _previousDocumentBuilder(&_methods),
-        _needToFetchOldDocument(_indexesSnapshot.hasSecondaryIndex() ||
-                                _options.returnOld) {}
+        _previousDocumentBuilder(&_methods) {}
 
   auto processValue(VPackSlice value, bool isArray) -> Result {
     std::string_view key;
@@ -952,8 +955,6 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
   // builder for a single, old version of document (will be recycled for each
   // document)
   transaction::BuilderLeaser _previousDocumentBuilder;
-  // whether or not we need to read the previous document version
-  bool const _needToFetchOldDocument;
 };
 
 template<class Derived>
@@ -1365,10 +1366,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
                                         : TRI_VOC_DOCUMENT_OPERATION_REPLACE),
         _newDocumentBuilder(&_methods),
         _previousDocumentBuilder(&_methods),
-        _isUpdate(isUpdate),
-        _needToFetchOldDocument(isUpdate ||
-                                _indexesSnapshot.hasSecondaryIndex() ||
-                                _options.returnOld) {}
+        _isUpdate(isUpdate) {}
 
   auto processValue(VPackSlice newValue, bool isArray) -> Result {
     _newDocumentBuilder->clear();
@@ -1540,8 +1538,6 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   transaction::BuilderLeaser _previousDocumentBuilder;
 
   bool const _isUpdate;
-  // whether or not we need to read the previous document version
-  bool const _needToFetchOldDocument;
 };
 
 }  // namespace
