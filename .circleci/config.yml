@@ -33,7 +33,7 @@ jobs:
           name: CCache Statistics
           command: ccache -s
       - store_artifacts:
-          path: build/community-developer/bin/arango*
+          path: build/community-pr/bin/arango*
       - save_cache:
           when: always
           key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
@@ -42,7 +42,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - build/community-developer/bin
+            - build/community-pr/bin
             - scripts/
             - js/
             - etc/
