@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Basics/DownCast.h"
 #include "Logger/LogContextKeys.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
@@ -611,7 +612,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
               auto guard = self->_guardedData.getLockedGuard();
               guard->clearSnapshotErrors();
               auto res =
-                  static_cast<replicated_log::IReplicatedLogFollowerMethods&>(
+                  basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
                       guard->_stream->methods())
                       .snapshotCompleted();
               // TODO (How) can we handle this more gracefully?
