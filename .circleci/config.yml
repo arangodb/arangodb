@@ -91,8 +91,8 @@ jobs:
       buckets:
         type: integer
         default: 1
-    machine:
-      image: ubuntu-2004:202201-02
+    docker:
+      - image: cimg/base:2022.12
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
