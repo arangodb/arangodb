@@ -92,7 +92,7 @@ RestStatus RestLogInternalHandler::handleAppendEntries() {
 }
 
 RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  auto const& suffixes = _request->suffixes();
   auto maybeLogId = LogId::fromString(suffixes[0]);
   if (!maybeLogId.has_value()) {
     generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER, absl::StrCat("Not a log id: ", suffixes[0])));
