@@ -786,11 +786,11 @@ struct ReplicatedLogMethodsCoordinator final
                          network::Response&& resp) noexcept -> ResultPair {
             auto result = resp.deserialize<CompactionResultMap>();
             if (result.fail()) {
-              return std::make_pair(
-                  participant, CompactionResponse::fromResult(result.result()));
+              return std::pair(participant,
+                               CompactionResponse::fromResult(result.result()));
             }
             TRI_ASSERT(result->size() == 1 && result->contains(participant));
-            return std::make_pair(participant, result->at(participant));
+            return std::pair(participant, result->at(participant));
           });
     };
 
