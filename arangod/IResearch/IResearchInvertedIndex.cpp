@@ -700,7 +700,7 @@ class IResearchInvertedIndexMergeIterator final
    public:
     MinHeapContext(IResearchInvertedIndexSort const& sort, size_t sortBuckets,
                    std::vector<Segment>& segments) noexcept
-        : _comparer(sort, sortBuckets), _segments(&segments) {}
+        : _less(sort, sortBuckets), _segments(&segments) {}
 
     // advance
     bool operator()(size_t i) const {
@@ -721,11 +721,11 @@ class IResearchInvertedIndexMergeIterator final
     bool operator()(size_t lhs, size_t rhs) const {
       assert(lhs < _segments->size());
       assert(rhs < _segments->size());
-      return _comparer.Compare(refFromSlice((*_segments)[rhs].sortValue),
-                               refFromSlice((*_segments)[lhs].sortValue)) < 0;
+      return _less.Compare(refFromSlice((*_segments)[rhs].sortValue),
+                           refFromSlice((*_segments)[lhs].sortValue)) < 0;
     }
 
-    VPackComparer<IResearchInvertedIndexSort> _comparer;
+    VPackComparer<IResearchInvertedIndexSort> _less;
     std::vector<Segment>* _segments;
   };
 
