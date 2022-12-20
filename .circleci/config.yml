@@ -51,6 +51,7 @@ jobs:
             - tests/js
             - utils
             - UnitTests
+            - 3rdParty/iresearch/tests/resources
 
   run-gtest-executable-linux:
     parameters:
