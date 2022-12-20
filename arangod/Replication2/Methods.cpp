@@ -789,7 +789,8 @@ struct ReplicatedLogMethodsCoordinator final
               return std::pair(participant,
                                CompactionResponse::fromResult(result.result()));
             }
-            TRI_ASSERT(result->size() == 1 && result->contains(participant));
+            TRI_ASSERT(result->contains(participant));
+            TRI_ASSERT(result->size() == 1);
             return std::pair(participant, result->at(participant));
           });
     };
