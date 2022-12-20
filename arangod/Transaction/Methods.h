@@ -82,7 +82,6 @@ class IndexIterator;
 class LocalDocumentId;
 class LogicalDataSource;
 struct IndexIteratorOptions;
-class IndexesSnapshot;
 struct OperationOptions;
 struct OperationResult;
 struct ResourceMonitor;

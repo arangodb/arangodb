@@ -105,11 +105,14 @@ struct ToType<Methods::CallbacksTag::StatusChange> {
   using Type = Methods::StatusChangeCallback;
 };
 
+// builds a document object with just _key and _rev
 void buildDocumentStub(velocypack::Builder& builder, std::string_view key,
                        RevisionId revisionId) {
   builder.openObject(/*unindexed*/ true);
+  // _key
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
+  // _rev
   char ridBuffer[basics::maxUInt64StringSize];
   builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   builder.close();
@@ -1490,6 +1493,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   }
 
  private:
+  // builds a document stub with _id, _key and _rev. _id is of velocypack
+  // type Custom here.
   void buildDocumentIdentityCustom(std::string_view key, RevisionId rid) {
     _previousDocumentBuilder->openObject();
 
