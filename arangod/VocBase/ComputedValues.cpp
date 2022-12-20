@@ -42,6 +42,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -49,7 +51,6 @@
 #include <span>
 #include <string_view>
 #include <type_traits>
-#include <absl/strings/str_cat.h>
 
 namespace {
 // name of bind parameter variable that contains the current document

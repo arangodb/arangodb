@@ -24,12 +24,12 @@
 #pragma once
 
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
 #include <deque>
 #include <memory>
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 struct ResourceMonitor;

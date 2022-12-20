@@ -30,9 +30,9 @@
 
 #include "Basics/ResourceUsage.h"
 
-#include <vector>
-
 #include "Containers/FlatHashMap.h"
+
+#include <vector>
 
 namespace arangodb {
 

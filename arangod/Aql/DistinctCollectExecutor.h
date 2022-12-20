@@ -34,10 +34,10 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
+#include "Containers/FlatHashSet.h"
+
 #include <memory>
 #include <unordered_set>
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 struct ResourceMonitor;

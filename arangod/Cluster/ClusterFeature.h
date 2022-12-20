@@ -30,10 +30,9 @@
 #include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
-#include "Metrics/Fwd.h"
-
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 namespace application_features {

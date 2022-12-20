@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
 #include "Containers/Enumerate.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Helpers.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -36,8 +37,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
-
-#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 

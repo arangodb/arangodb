@@ -33,12 +33,11 @@
 #include "Aql/types.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Projections.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace transaction {

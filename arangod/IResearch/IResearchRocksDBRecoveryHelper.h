@@ -31,6 +31,8 @@
 #include <rocksdb/slice.h>
 #include <rocksdb/types.h>
 
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
@@ -38,9 +40,6 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "IResearch/IResearchDataStore.h"
-
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace application_features {

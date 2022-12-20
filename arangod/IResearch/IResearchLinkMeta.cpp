@@ -32,6 +32,7 @@
 #include "utils/hash_utils.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
@@ -46,7 +47,6 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
-#include "Containers/FlatHashSet.h"
 #include <absl/strings/str_cat.h>
 
 namespace {

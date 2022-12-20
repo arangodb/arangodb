@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -36,8 +37,6 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

@@ -25,6 +25,7 @@
 
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 
 #include <string>
 #include <function2.hpp>
@@ -32,8 +33,6 @@
 #include <memory>
 #include <type_traits>
 #include <mutex>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

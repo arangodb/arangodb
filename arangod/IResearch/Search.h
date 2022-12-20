@@ -29,11 +29,10 @@
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/ViewSnapshot.h"
+#include "Containers/FlatHashMap.h"
 
 #include <shared_mutex>
 #include <atomic>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

@@ -25,12 +25,11 @@
 
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Containers/FlatHashMap.h"
 
 #include <Containers/Enumerate.h>
 
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb::aql {
 

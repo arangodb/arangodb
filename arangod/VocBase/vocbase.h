@@ -39,6 +39,7 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/voc-errors.h"
+#include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -47,7 +48,6 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace application_features {

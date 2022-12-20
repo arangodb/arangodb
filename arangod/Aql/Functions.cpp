@@ -49,6 +49,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
@@ -119,7 +120,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include "Containers/FlatHashSet.h"
 #include <absl/crc/crc32c.h>
 
 using namespace arangodb;

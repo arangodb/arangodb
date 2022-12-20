@@ -28,11 +28,10 @@
 #include "IResearch/IResearchViewStoredValues.h"
 #include "IResearch/IResearchViewSort.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <unicode/locid.h>
-
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+
+#include <unicode/locid.h>
 
 namespace arangodb::iresearch {
 enum class Consistency { kEventual, kImmediate };

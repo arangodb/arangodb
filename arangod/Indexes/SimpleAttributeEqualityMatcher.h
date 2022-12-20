@@ -25,10 +25,9 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
-
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Indexes/Index.h"
 
 namespace arangodb {
 namespace aql {

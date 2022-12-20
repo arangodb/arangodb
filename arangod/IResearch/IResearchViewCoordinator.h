@@ -27,11 +27,10 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

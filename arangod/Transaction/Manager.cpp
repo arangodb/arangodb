@@ -56,11 +56,11 @@
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
 #include <thread>
-#include <absl/strings/str_cat.h>
 
 namespace {
 bool authorized(std::string const& user) {

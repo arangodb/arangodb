@@ -26,13 +26,12 @@
 #include "Agency/Store.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
 
 #include <map>
 #include <shared_mutex>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

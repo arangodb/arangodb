@@ -30,9 +30,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <absl/strings/str_cat.h>
 #include <algorithm>
 #include <vector>
-#include <absl/strings/str_cat.h>
 
 namespace arangodb::cluster {
 namespace {

@@ -27,9 +27,8 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
-#include "IResearch/AqlHelper.h"
-
 #include "Containers/FlatHashMap.h"
+#include "IResearch/AqlHelper.h"
 
 namespace arangodb::iresearch {
 

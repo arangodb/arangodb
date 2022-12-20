@@ -27,12 +27,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
+#include <absl/strings/str_cat.h>
+
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
 
 #include "utils/math_utils.hpp"
-
-#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 namespace {

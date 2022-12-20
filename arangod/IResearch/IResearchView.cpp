@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/ViewSnapshot.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchCommon.h"
@@ -46,8 +47,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb::iresearch {
 

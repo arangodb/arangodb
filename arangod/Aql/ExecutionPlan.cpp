@@ -61,8 +61,8 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
 
-#include <velocypack/Iterator.h>
 #include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

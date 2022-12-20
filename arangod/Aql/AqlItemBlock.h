@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 
 #include "Containers/SmallVector.h"
 
@@ -34,8 +35,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace aql {

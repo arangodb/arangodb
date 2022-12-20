@@ -25,12 +25,11 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 
 #include <shared_mutex>
-
-#include "Containers/FlatHashMap.h"
 
 enum TRI_col_type_e : uint32_t;
 

@@ -63,8 +63,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
-#include <atomic>
 #include <absl/cleanup/cleanup.h>
+#include <atomic>
 
 using namespace arangodb::application_features;
 

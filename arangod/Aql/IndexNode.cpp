@@ -43,6 +43,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -50,7 +51,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
-#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -32,12 +32,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 class IndexIterator;

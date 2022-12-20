@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Thread.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
@@ -39,9 +41,6 @@
 #include <mutex>
 #include <memory>
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 struct TRI_vocbase_t;
 

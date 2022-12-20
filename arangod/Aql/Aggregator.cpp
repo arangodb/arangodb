@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Functions.h"
+#include "Containers/FlatHashSet.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -36,7 +37,6 @@
 #include <velocypack/Slice.h>
 
 #include <set>
-#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

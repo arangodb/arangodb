@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "IResearch/IResearchLink.h"
 #include "Containers/FlatHashSet.h"
+#include "IResearch/IResearchLink.h"
 
 namespace arangodb::iresearch {
 

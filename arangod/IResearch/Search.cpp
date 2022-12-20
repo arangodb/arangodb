@@ -54,6 +54,9 @@
 #include "Utils/ExecContext.h"
 #include "frozen/unordered_set.h"
 
+#include <absl/strings/numbers.h>
+#include <absl/strings/str_cat.h>
+
 #ifdef __GNUC__
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-compare"
@@ -91,9 +94,6 @@ inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
 
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_matcher.hpp"
-
-#include <absl/strings/numbers.h>
-#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 namespace {

@@ -27,6 +27,8 @@
 #include "Basics/Result.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
 #include "Transaction/Hints.h"
@@ -39,9 +41,6 @@
 
 #include <string_view>
 #include <variant>
-
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

@@ -42,11 +42,10 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 class CollectionNameResolver;

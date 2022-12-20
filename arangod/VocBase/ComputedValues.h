@@ -29,15 +29,14 @@
 #include "Basics/ErrorCode.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 #include <cstdint>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 struct TRI_vocbase_t;
 

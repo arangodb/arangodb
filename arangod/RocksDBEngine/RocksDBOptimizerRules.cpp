@@ -41,10 +41,9 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

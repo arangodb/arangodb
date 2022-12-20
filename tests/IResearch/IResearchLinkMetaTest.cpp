@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -64,8 +65,6 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
-
-#include "Containers/FlatHashSet.h"
 
 namespace {
 

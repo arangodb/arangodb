@@ -32,6 +32,7 @@
 #include "Enterprise/IResearch/IResearchDocumentEE.h"
 #endif
 
+#include "Containers/FlatHashMap.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchInvertedIndexMeta.h"
@@ -44,8 +45,6 @@
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
 #include "index/norm.hpp"
-
-#include "Containers/FlatHashMap.h"
 
 namespace iresearch {
 

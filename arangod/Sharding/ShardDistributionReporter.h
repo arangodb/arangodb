@@ -24,14 +24,13 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Network/Methods.h"
 
 #include <queue>
 #include <string_view>
 #include <string>
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

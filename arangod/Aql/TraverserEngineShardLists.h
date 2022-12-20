@@ -24,12 +24,11 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 
 #include <set>
 #include <unordered_map>
 #include <vector>
-
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace aql {

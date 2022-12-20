@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <absl/strings/str_cat.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "IResearch/AqlHelper.h"
@@ -37,8 +39,6 @@
 
 #include "search/all_filter.hpp"
 #include "search/column_existence_filter.hpp"
-
-#include <absl/strings/str_cat.h>
 
 using namespace std::string_literals;
 

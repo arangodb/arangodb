@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
@@ -37,8 +38,6 @@
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-
-#include "Containers/FlatHashSet.h"
 
 namespace arangodb::metrics {
 

@@ -26,11 +26,11 @@
 #include "ExpressionContext.h"
 #include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
 
 #include <string_view>
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 struct ValidatorBase;

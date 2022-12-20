@@ -36,6 +36,8 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -70,9 +72,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-
-#include "Containers/FlatHashMap.h"
-#include "Containers/FlatHashSet.h"
 
 using namespace arangodb;
 

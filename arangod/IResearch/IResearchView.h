@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Containers/FlatHashSet.h"
+#include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/ViewSnapshot.h"
@@ -36,9 +38,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-
-#include "Containers/FlatHashSet.h"
-#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 

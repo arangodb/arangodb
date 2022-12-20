@@ -24,10 +24,10 @@
 #include "IResearch/ViewSnapshot.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
+#include "Containers/FlatHashMap.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 
-#include "Containers/FlatHashMap.h"
 #include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
