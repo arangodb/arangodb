@@ -98,10 +98,6 @@ void ClusterCollection::flushClusterIndexEstimates() {
   _selectivityEstimates.flush();
 }
 
-std::string const& ClusterCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
-}
-
 Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   VPackBuilder merge;
   merge.openObject();
@@ -253,26 +249,26 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(
 Result ClusterCollection::truncate(transaction::Methods& /*trx*/,
                                    OperationOptions& /*options*/,
                                    bool& usedRangeDelete) {
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::lookupKey(
     transaction::Methods* /*trx*/, std::string_view /*key*/,
     std::pair<LocalDocumentId, RevisionId>& /*result*/, ReadOwnWrites) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::lookupKeyForUpdate(
     transaction::Methods* /*trx*/, std::string_view /*key*/,
     std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites /*readOwnWrites*/) const {
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 // read using a token!
@@ -280,37 +276,37 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                LocalDocumentId const& /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
                                ReadOwnWrites /*readOwnWrites*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::lookupDocument(
     transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
     velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
     ReadOwnWrites /*readOwnWrites*/) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::insert(transaction::Methods&, RevisionId,
                                  velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::update(transaction::Methods&, LocalDocumentId,
                                  RevisionId, velocypack::Slice, RevisionId,
                                  velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::replace(transaction::Methods&, LocalDocumentId,
                                   RevisionId, velocypack::Slice, RevisionId,
                                   velocypack::Slice, OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 Result ClusterCollection::remove(transaction::Methods&, LocalDocumentId,
                                  RevisionId, velocypack::Slice,
                                  OperationOptions const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
 void ClusterCollection::deferDropCollection(
