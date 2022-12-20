@@ -1,3 +1,12 @@
+v3.10.3 (XXXX-XX-XX)
+--------------------
+
+* Improve performance of RocksDB's transaction lock manager by using different
+  container types for the locked keys maps.
+  This can improve performance of write-heavy operations that are not I/O-bound
+  by up to 10%.
+
+
 v3.10.2 (XXXX-XX-XX)
 --------------------
 
