@@ -32,6 +32,9 @@ jobs:
           command: |
             cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench
       - run:
+          command: |
+            rm build/<< parameters.preset >>/bin/*.a
+      - run:
           name: CCache Statistics
           command: ccache -s
       - store_artifacts:
@@ -148,7 +151,7 @@ workflows:
       #     requires:
       #       - build-community-pr
       - testing-js-run-test-suite:
-          name: single server
+          #name: single server
           size: small
           matrix:
             parameters:
@@ -160,5 +163,6 @@ workflows:
                 - arangosh
                 - authentication
                 - shell_api
+                - version
           requires:
             - build-community-pr
