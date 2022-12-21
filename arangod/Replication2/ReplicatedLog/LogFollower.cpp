@@ -353,8 +353,6 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, action] = res.get();
-        // It is okay to fire here, because commitToMemoryAndResolve has
-        // released the guard already.
         action.fire();
 
         return std::move(result);
