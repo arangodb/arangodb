@@ -196,6 +196,7 @@ workflows:
       #     filter: "IResearch*"
       #     requires:
       #       - build-community-pr
+
       - test-single-server-only:
           requires:
             - build-community-pr
@@ -214,6 +215,7 @@ workflows:
                 - replication_ongoing_global_spec
                 - replication_static
                 - replication_ongoing_global
+                - replication_sync
                 - shell_replication
                 - http_replication
           requires:
@@ -228,6 +230,27 @@ workflows:
       # replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
       #  parallelity=3 single
       #  priority=500 parallelity=3 single
+
+      # Shell client tests Single Server; distribute evenly
+      - test-single-server:
+          name: shell_client
+          suite: shell_client
+          requires:
+            - build-community-pr
+
+      - test-single-server:
+          matrix:
+            parameters:
+              suite:
+                [
+                  shell_client_multi,
+                  shell_client_transaction,
+                  shell_client_traffic,
+                  shell_client_aql,
+                ]
+              extraArgs: ["", "--http2 true", "--vst true"]
+          requires:
+            - build-community-pr
 
       - test-single-server:
           matrix:
