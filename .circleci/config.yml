@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests --target arangod --target arangosh --target arango 
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench
       - run:
           name: CCache Statistics
           command: ccache -s
@@ -86,15 +86,16 @@ jobs:
     parameters:
       suite:
         type: string
-      bucketCount:
+      size:
+        type: string
+        default: small
+      buckets:
         type: integer
         default: 1
-      bucketIndex:
-        type: integer
-        default: 0
-    machine:
-      image: ubuntu-2004:202201-02
-    resource_class: medium
+    docker:
+      - image: cimg/base:2022.12
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
     steps:
       - attach_workspace:
           at: .
@@ -104,21 +105,26 @@ jobs:
       - run:
           name: Run << parameters.suite >> suite
           command: |
-            scripts/unittest << parameters.suite >> --cluster true --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets << parameters.bucketCount >>/<< parameters.bucketIndex >>
-      - store_artifacts:
-          destination: << parameters.suite >>
-          path: out/*
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_INDEX/$CIRCLE_NODE_TOTAL
+      # - store_artifacts:
+      #     destination: << parameters.suite >>
+      #     path: out/*
+      - run:
+          command: |
+            mkdir test-results && cp ./out/*.xml test-results
       - run:
           command: |
             mkdir -p /tmp/core_dumps
             cp core.* /tmp/core_dumps
           when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-      - store_artifacts:
-          destination: << parameters.suite >>
-          path: /tmp/*
-
+      - store_test_results:
+          path: ./test-results/
+      # - store_artifacts:
+      #     path: /tmp/core_dumps
+      #     when: on_fail
+      # - store_artifacts:
+      #     destination: << parameters.suite >>
+      #     path: /tmp/*
 
 workflows:
   devel-pr:
@@ -131,7 +137,7 @@ workflows:
           name: build-community-pr
           preset: community-pr
       - run-gtest-executable-linux:
-          name: arangodbtests linux
+          name: arangodbtests
           executable: 'build/community-pr/bin/arangodbtests'
           filter: '-*_LongRunning:-IResearch*:-*Replication2*' 
           requires:
@@ -148,4 +154,9 @@ workflows:
           filter: '*Replication2*' 
           requires:
             - build-community-pr
- 
+      - testing-js-run-test-suite:
+          name: shell_api single server
+          suite: shell_api
+          size: small
+          requires:
+            - build-community-pr
