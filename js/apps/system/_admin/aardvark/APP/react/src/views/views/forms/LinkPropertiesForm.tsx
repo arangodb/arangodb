@@ -21,7 +21,6 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
     aria-labelledby={'myModalLabel'}
     aria-hidden={'true'}
     style={{
-      width: 1024,
       marginLeft: 'auto',
       marginRight: 'auto'
     }}
