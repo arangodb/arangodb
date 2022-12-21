@@ -227,11 +227,21 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
   appendNullTerminatedString("]", p);
 #endif
 
+  bool printed = false;
   appendNullTerminatedString(" caught unexpected signal ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
-  appendNullTerminatedString(")", p);
+#ifndef _WIN32
+  if (info != nullptr) {
+    appendNullTerminatedString(") from pid ", p);
+    p += arangodb::basics::StringUtils::itoa(uint64_t(info->si_pid), p);
+    printed = true;
+  }
+#endif
+  if (!printed) {
+    appendNullTerminatedString(")", p);
+  }
 
 #ifndef _WIN32
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
@@ -739,7 +749,7 @@ void CrashHandler::crash(std::string_view context) {
 [[noreturn]] void CrashHandler::assertionFailure(char const* file, int line,
                                                  char const* func,
                                                  char const* context,
-                                                 const char* message) {
+                                                 char const* message) {
   // assemble an "assertion failured in file:line: message" string
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));

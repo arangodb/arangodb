@@ -33,6 +33,10 @@ If set to `true`, ignore any `_rev` attribute in the selectors. No
 revision check is performed. If set to `false` then revisions are checked.
 The default is `true`.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete existing entries from in-memory index caches and refill them
+if document removals affect the edge index or cache-enabled persistent indexes.
+
 @RESTDESCRIPTION
 The body of the request is an array consisting of selectors for
 documents. A selector can either be a string with a key or a string

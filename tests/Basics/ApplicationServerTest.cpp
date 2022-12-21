@@ -37,7 +37,8 @@ using namespace arangodb;
 class TestFeatureA;
 class TestFeatureB;
 
-using TestFeatures = TypeList<TestFeatureA, TestFeatureB>;
+using TestFeaturesList = TypeList<TestFeatureA, TestFeatureB>;
+struct TestFeatures : TestFeaturesList {};
 using TestApplicationServer = ApplicationServerT<TestFeatures>;
 using TestApplicationFeature = ApplicationFeatureT<TestApplicationServer>;
 

@@ -18,31 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "ExecutionNumber.h"
 
-#include "Basics/Result.h"
-#include "RestServer/arangod.h"
+#include <ostream>
+namespace arangodb::pregel {
 
-namespace arangodb {
-namespace application_features {
-class ApplicationServer;
+auto operator<<(std::ostream& os,
+                arangodb::pregel::ExecutionNumber const& executionNumber)
+    -> std::ostream& {
+  return os << "ExecutionNumber(" << executionNumber.value << ")";
 }
-namespace rocksdb {
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recalculate collection count on all DBServers
-////////////////////////////////////////////////////////////////////////////////
 
-Result recalculateCountsOnAllDBServers(ArangodServer& server,
-                                       std::string const& dbname,
-                                       std::string const& collname);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for estimator sync on all DBServers
-////////////////////////////////////////////////////////////////////////////////
-
-Result waitForEstimatorSync();
-}  // namespace rocksdb
-}  // namespace arangodb
+}  // namespace arangodb::pregel

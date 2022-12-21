@@ -27,6 +27,7 @@
 
 #include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
+#include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -208,7 +209,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    */
   std::unique_ptr<transaction::Methods> createTransaction(
       std::string const& cname, AccessMode::Type mode,
-      OperationOptions const& opOptions) const;
+      OperationOptions const& opOptions,
+      transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
   std::shared_ptr<transaction::Context> createTransactionContext(
