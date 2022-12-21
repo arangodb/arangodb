@@ -1,6 +1,64 @@
 version: 2.1
 
 jobs:
+  compile-arm-community:
+    parameters:
+      preset:
+        type: string
+    machine:
+      image: ubuntu-2204:current
+    resource_class: arm.medium
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run:
+          name: install required software
+          command: |
+            sudo apt-get update
+            sudo apt-get install libssl-dev gcc-11 g++-11 snapd ccache flex bison
+      - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
+      - run:
+          name: Print CCache Settings
+          command: ccache -p
+      - restore_cache:
+          keys:
+            - ccache-v1-arm-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-arm-{{ .Branch }}-
+            - ccache-v1-arm
+      - run:
+          name: Zero CCache Statistics
+          command: ccache -z
+      - run:
+          name: Configure
+          command: |
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+      - run:
+          name: Build
+          command: |
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench
+      - run:
+          name: CCache Statistics
+          command: ccache -s
+      - store_artifacts:
+          path: build/<< parameters.preset >>/bin/arango*
+      - save_cache:
+          when: always
+          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /root/.cache/ccache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/<< parameters.preset >>/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+            - 3rdParty/iresearch/tests/resources
+
+
   compile-linux-community:
     parameters:
       preset:
@@ -139,6 +197,9 @@ workflows:
         pattern: /^(bug-fix|feature|chore)\/.*$/
         value: << pipeline.git.branch >>
     jobs:
+      - compile-arm-community:
+          name: build-community-pr-arm
+          preset: community-pr
       - compile-linux-community:
           name: build-community-pr
           preset: community-pr
