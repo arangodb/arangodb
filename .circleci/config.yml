@@ -148,8 +148,17 @@ workflows:
       #     requires:
       #       - build-community-pr
       - testing-js-run-test-suite:
-          name: shell_api single server
-          suite: shell_api
+          name: single server
           size: small
+          matrix:
+            parameters:
+              suite:
+                - BackupAuthNoSysTests
+                - BackupAuthSysTests
+                - BackupNoAuthNoSysTests
+                - BackupNoAuthSysTests
+                - arangosh
+                - authentication
+                - shell_api
           requires:
             - build-community-pr
