@@ -36,11 +36,11 @@ jobs:
           command: ccache -s
       - store_artifacts:
           path: build/<< parameters.preset >>/bin/arango*
-      - save_cache:
-          when: always
-          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /root/.cache/ccache
+      # - save_cache:
+      #     when: always
+      #     key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+      #     paths:
+      #       - /root/.cache/ccache
       - persist_to_workspace:
           root: .
           paths:
@@ -135,18 +135,18 @@ workflows:
       - compile-linux-community:
           name: build-community-pr
           preset: community-pr
-      - run-gtest-executable-linux:
-          name: arangodbtests linux
-          executable: "build/community-pr/bin/arangodbtests"
-          filter: "-*_LongRunning"
-          requires:
-            - build-community-pr
-      - run-gtest-executable-linux:
-          name: iresearch arangodbtests linux
-          executable: "build/community-pr/bin/arangodbtests"
-          filter: "IResearch*"
-          requires:
-            - build-community-pr
+      # - run-gtest-executable-linux:
+      #     name: arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "-*_LongRunning"
+      #     requires:
+      #       - build-community-pr
+      # - run-gtest-executable-linux:
+      #     name: iresearch arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "IResearch*"
+      #     requires:
+      #       - build-community-pr
       - testing-js-run-test-suite:
           name: shell_api single server
           suite: shell_api
