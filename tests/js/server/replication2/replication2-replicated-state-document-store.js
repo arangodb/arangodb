@@ -364,7 +364,6 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       for (let i = 0; i < 33 * numberOfShards; ++i) {
         collection.insert(docs);
       }
-      print("insert done");
       collection.truncate();
 
       let found = [];
@@ -439,10 +438,8 @@ const replicatedStateIntermediateCommitsSuite = function() {
         keys.push(`test${i}`);
       }
 
-      print("keys prepared");
       // Wait for the last key to be applied on all servers
       checkFollowersValue(servers, shardId, `test2000`, 2000, true);
-      print("checkFollowersValue done");
       // Check that all keys are applied on all servers
       for (let server of Object.values(servers)) {
         let bulk = sh.getBulkDocuments(server, database, shardId, keys);
