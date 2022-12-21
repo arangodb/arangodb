@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
 import { FormState, ViewContext, ViewProps } from "../constants";
-import { SaveButton } from "../Actions";
 import { chain, difference, isNull, map, without } from "lodash";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
@@ -9,7 +8,7 @@ import { Cell, Grid } from "../../../components/pure-css/grid";
 import { Link, useRouteMatch } from "react-router-dom";
 
 const LinkList = ({ name }: ViewProps) => {
-  const { dispatch, formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
+  const { dispatch, formState: fs, isAdminUser } = useContext(ViewContext);
   const formState = fs as FormState;
   const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) =>
     getApiRouteForCurrentDB().get(path, qs)
@@ -52,6 +51,9 @@ const LinkList = ({ name }: ViewProps) => {
     setOptions(options.concat([link as string]).sort());
   };
 
+  console.log("formState.links: ", formState.links);
+  console.log("match: ", match);
+  console.log("match.url: ", match.url);
   const validLinks = chain(formState.links).toPairs().filter(pair => pair[1] !== null).map(pair => ({
     key: pair[0],
     value: <Link to={`${match.url}${pair[0]}`}>{pair[0]}</Link>
@@ -80,13 +82,6 @@ const LinkList = ({ name }: ViewProps) => {
             placeholder={'Enter a collection name'}
           />
         </Cell>
-        {
-          isAdminUser && changed
-            ? <Cell size={"1"}>
-              <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-            </Cell>
-            : null
-        }
       </Grid>
     </div>
   </div>;
