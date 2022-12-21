@@ -76,7 +76,6 @@ const LinkList = ({ name }: ViewProps) => {
             onRemove={removeLink}
             onSelect={addLink}
             options={options}
-            label={'Links'}
             disabled={!isAdminUser}
             errorMsg={'Collection does not exist'}
             placeholder={'Enter a collection name'}
