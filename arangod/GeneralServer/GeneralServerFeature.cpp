@@ -50,6 +50,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
+#include "Pregel/REST/RestActorHandler.h"
 #include "Pregel/REST/RestControlPregelHandler.h"
 #include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
@@ -722,6 +723,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/pregel",
                      RestHandlerCreator<RestPregelHandler>::createNoData);
+
+  f.addPrefixHandler("/_api/actor",
+                     RestHandlerCreator<RestActorHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);
