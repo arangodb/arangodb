@@ -1,5 +1,34 @@
 version: 2.1
 
+run-js-test-suite: &run-js-test-suite
+  docker:
+    - image: cimg/base:2022.12
+  resource_class: << parameters.size >>
+  parallelism: << parameters.buckets >>
+  steps:
+    - attach_workspace:
+        at: .
+    - run:
+        name: Enabled coredumps
+        command: ulimit -c unlimited
+    - run:
+        name: Run << parameters.suite >> suite
+        command: |
+          scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX << parameters.cluster >> << parameters.extraArgs >>
+    # - run:
+    #     command: |
+    #       mkdir test-results && cp ./out/*.xml test-results
+    - run:
+        command: |
+          mkdir -p /tmp/core_dumps
+          cp core.* /tmp/core_dumps
+        when: on_fail
+    - store_artifacts:
+        destination: << parameters.suite >>
+        path: ./out/
+    - store_test_results:
+        path: ./out/
+
 jobs:
   compile-linux-community:
     parameters:
@@ -84,52 +113,41 @@ jobs:
       - store_test_results:
           path: test_detail.xml
 
-  testing-js-run-test-suite:
+  test-single-server:
     parameters:
       suite:
         type: string
       size:
         type: string
         default: small
+      extraArgs:
+        type: string
+        default: ""
       buckets:
         type: integer
         default: 1
-    docker:
-      - image: cimg/base:2022.12
-    resource_class: << parameters.size >>
-    parallelism: << parameters.buckets >>
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
-      - run:
-          command: |
-            echo $CIRCLE_NODE_INDEX $CIRCLE_NODE_TOTAL
-      - run:
-          name: Run << parameters.suite >> suite
-          command: |
-            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX
-      # - store_artifacts:
-      #     destination: << parameters.suite >>
-      #     path: out/*
-      - run:
-          command: |
-            mkdir test-results && cp ./out/*.xml test-results
-      - run:
-          command: |
-            mkdir -p /tmp/core_dumps
-            cp core.* /tmp/core_dumps
-          when: on_fail
-      - store_test_results:
-          path: ./test-results/
-      # - store_artifacts:
-      #     path: /tmp/core_dumps
-      #     when: on_fail
-      # - store_artifacts:
-      #     destination: << parameters.suite >>
-      #     path: /tmp/*
+      cluster:
+        type: string
+        default: ""
+    <<: *run-js-test-suite
+
+  test-cluster:
+    parameters:
+      suite:
+        type: string
+      size:
+        type: string
+        default: medium
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: string
+        default: "--cluster true"
+    <<: *run-js-test-suite
 
 workflows:
   devel-pr:
@@ -153,9 +171,7 @@ workflows:
       #     filter: "IResearch*"
       #     requires:
       #       - build-community-pr
-      - testing-js-run-test-suite:
-          #name: single server
-          size: small
+      - test-single-server:
           matrix:
             parameters:
               suite:
@@ -167,5 +183,18 @@ workflows:
                 - authentication
                 - shell_api
                 - version
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          matrix:
+            parameters:
+              suite:
+                - arangobench
+                - load_balancing
+                - load_balancing_auth
+                - replication2_client
+                - replication2_server
+                - shell_api
           requires:
             - build-community-pr
