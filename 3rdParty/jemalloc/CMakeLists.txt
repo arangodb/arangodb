@@ -28,7 +28,7 @@ if (LINUX OR DARWIN)
   else ()
     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
-    set(JEMALLOC_CONFIG "background_thread:true")
+    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
   endif ()
 
   if (USE_JEMALLOC_PROF)
