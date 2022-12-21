@@ -60,7 +60,7 @@ replicated_log::ReplicatedLog::ReplicatedLog(
 
 replicated_log::ReplicatedLog::~ReplicatedLog() {
   ADB_PROD_ASSERT(_guarded.getLockedGuard()->stateHandle == nullptr)
-      << "replicated log is destroyed before it was disconnected";
+      << "replicated log " << _id << " is destroyed before it was disconnected";
 }
 
 auto replicated_log::ReplicatedLog::connect(
@@ -100,8 +100,9 @@ auto replicated_log::ReplicatedLog::updateConfig(
                    guard->latest->config.generation < config.generation))
         << "While we may see outdated updates here, it must not happen that we "
            "see a new term with an old generation, or the other way round. "
-           "current configuration: "
-        << guard->latest->config << ", new configuration: " << config
+        << "log " << _id
+        << ", current configuration: " << guard->latest->config
+        << ", new configuration: " << config
         << ", current term: " << guard->latest->term << ", new term: " << term;
   }
 
