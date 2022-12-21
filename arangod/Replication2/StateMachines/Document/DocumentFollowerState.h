@@ -46,6 +46,7 @@ struct DocumentFollowerState
   ~DocumentFollowerState() override;
 
   ShardID const shardId;
+  LoggerContext const loggerContext;
 
  protected:
   [[nodiscard]] auto resign() && noexcept
