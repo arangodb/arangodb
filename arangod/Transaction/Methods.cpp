@@ -970,11 +970,16 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
                                           methods.state()->isDBServer())) {
     // in UPDATE operations we always have to fetch the previous version
     // of the document. in REPLACE operations we don't need to fetch it under
-    // some circumstances, but if we do have a schema, we need to fetch the
+    // some circumstances. but if we do have a schema, we need to fetch the
     // old version anyway if the schema validation is configured to accept
     // invalid documents if the old document didn't pass as well ("level"
     // attribute of a schema).
-    this->_needToFetchOldDocument |= (_batchOptions.schema != nullptr);
+    // in addition, on a REPLACE operation, if a collection uses non-default
+    // shard-keys, we also need to fetch the old document to check if shard
+    // keys changed.
+    this->_needToFetchOldDocument |=
+        operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE &&
+        (_batchOptions.schema != nullptr || !collection.usesDefaultShardKeys());
   }
 
  protected:
