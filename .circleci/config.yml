@@ -113,9 +113,11 @@ jobs:
             mkdir -p /tmp/core_dumps
             cp core.* /tmp/core_dumps
           when: on_fail
-      - store_artifacts:
-          path: /tmp/core_dumps
-          when: on_fail
+      - store_test_results:
+          path: out/UNITTEST_RESULT_*.xml
+      # - store_artifacts:
+      #     path: /tmp/core_dumps
+      #     when: on_fail
       # - store_artifacts:
       #     destination: << parameters.suite >>
       #     path: /tmp/*
