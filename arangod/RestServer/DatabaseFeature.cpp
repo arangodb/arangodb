@@ -181,6 +181,13 @@ void DatabaseManagerThread::run() {
             }
           }
 
+          auto shutdownRes = basics::catchVoidToResult([&database]() {database->shutdown();});
+          if (shutdownRes.fail()) {
+            LOG_TOPIC("b3db4", ERR, Logger::FIXME)
+                << "failed to shutdown database '" << database->name() << "': "
+                << shutdownRes.errorMessage();
+          }
+
           // destroy all items in the QueryRegistry for this database
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
@@ -1311,6 +1318,8 @@ void DatabaseFeature::closeOpenDatabases() {
   for (auto& p : *databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
+    vocbase->shutdown();
+
     delete vocbase;
   }
 }
