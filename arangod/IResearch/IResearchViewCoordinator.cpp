@@ -48,6 +48,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::iresearch {
 namespace {
 

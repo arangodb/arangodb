@@ -1562,12 +1562,11 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
       v8g->server().getFeature<EngineSelectorFeature>().engine();
 
-  TRI_V8_RETURN_STD_STRING(engine.databasePath(&vocbase));
+  TRI_V8_RETURN_STD_STRING(engine.databasePath());
   TRI_V8_TRY_CATCH_END
 }
 

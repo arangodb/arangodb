@@ -526,8 +526,21 @@ bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
 }
 
 /// @brief increase the node counter for the type
-void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
+void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
+  auto const type = node.getType();
   ++_typeCounts[type];
+
+  // Tracking forced index hints left to use.
+  // This could be only collection nodes. IndexNodes
+  // are created by optimizer as a result of applying index
+  // and corresponding hint if any.
+  if (type == ExecutionNode::ENUMERATE_COLLECTION) {
+    EnumerateCollectionNode const* en =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |=
+        hint.type() == aql::IndexHint::HintType::Simple && hint.isForced();
+  }
 }
 
 /// @brief process the list of collections in a VelocyPack
@@ -2406,6 +2419,7 @@ void ExecutionPlan::findEndNodes(
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
+/// and if there are any forced index hints left in the plan on collection nodes
 void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
@@ -2415,7 +2429,7 @@ void ExecutionPlan::findVarUsage() {
   for (auto& counter : _typeCounts) {
     counter = 0;
   }
-
+  _hasForcedIndexHints = false;
   _varSetBy.clear();
   ::VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
@@ -2483,7 +2497,6 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
     TRI_ASSERT(x != nullptr);
     node->removeDependency(x);
   }
-
   clearVarUsageComputed();
 }
 
@@ -2613,7 +2626,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // we have to count all nodes by their type here, because our caller
     // will set the _varUsageComputed flag to true manually, bypassing the
     // regular counting!
-    increaseCounter(ret->getType());
+    increaseCounter(*ret);
 
     TRI_ASSERT(ret != nullptr);
 
