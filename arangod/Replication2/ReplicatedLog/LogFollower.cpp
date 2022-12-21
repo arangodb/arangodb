@@ -271,6 +271,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto* core = dataGuard->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
 
+  auto const waitForSync = req.waitForSync;
+  auto const prevLogEntry = req.prevLogEntry;
   auto checkResultAndCommitIndex =
       [self = shared_from_this(), inFlightGuard = std::move(inFlightScopeGuard),
        req = std::move(req), newInMemoryLog = std::move(newInMemoryLog),
@@ -336,14 +338,14 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
                 decltype(checkResultAndCommitIndex)>);
 
   // Action
-  auto f = core->insertAsync(std::move(iter), req.waitForSync);
+  auto f = core->insertAsync(std::move(iter), waitForSync);
   // Release mutex here, otherwise we might deadlock in
   // checkResultAndCommitIndex if another request arrives before the previous
   // one was processed.
   if (acquireNewSnapshot) {
     dataGuard->_snapshotProgress =
         GuardedFollowerData::SnapshotProgress::kInProgress;
-    _stateHandle->acquireSnapshot(*_leaderId, req.prevLogEntry.index + 1);
+    _stateHandle->acquireSnapshot(*_leaderId, prevLogEntry.index + 1);
   }
   dataGuard.unlock();
   return std::move(f)
