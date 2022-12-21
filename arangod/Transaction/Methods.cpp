@@ -979,7 +979,9 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
     // keys changed.
     this->_needToFetchOldDocument |=
         operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE &&
-        (_batchOptions.schema != nullptr || !collection.usesDefaultShardKeys());
+        (_batchOptions.schema != nullptr ||
+         !collection.usesDefaultShardKeys() ||
+         collection.hasSmartJoinAttribute());
   }
 
  protected:
