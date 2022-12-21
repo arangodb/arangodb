@@ -68,11 +68,11 @@ jobs:
           command: ccache -s
       - store_artifacts:
           path: build/<< parameters.preset >>/bin/arango*
-      # - save_cache:
-      #     when: always
-      #     key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
-      #     paths:
-      #       - /root/.cache/ccache
+      - save_cache:
+          when: always
+          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /root/.cache/ccache
       - persist_to_workspace:
           root: .
           paths:
