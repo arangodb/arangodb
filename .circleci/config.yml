@@ -110,7 +110,7 @@ jobs:
       - run:
           name: Run << parameters.suite >> suite
           command: |
-            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_INDEX/$CIRCLE_NODE_TOTAL
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX
       # - store_artifacts:
       #     destination: << parameters.suite >>
       #     path: out/*
