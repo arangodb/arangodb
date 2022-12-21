@@ -3511,8 +3511,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       if (isReplication2(*database)) {
         auto stateId = LogicalCollection::shardIdToStateId(shard);
         auto target = Job::readStateTarget(snapshot(), *database, stateId);
-        if (not target.has_value() or
-            not target->participants.contains(*server)) {
+        if (!target.has_value() || !target->participants.contains(*server)) {
           return true;
         }
       } else {
