@@ -113,6 +113,31 @@ jobs:
       - store_test_results:
           path: test_detail.xml
 
+  test-single-server-only:
+    docker:
+      - image: cimg/base:2022.12
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run single server only tests
+          command: |
+            scripts/unittest BackupAuthNoSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupAuthSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupNoAuthNoSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupNoAuthSysTests --cleanup false --writeXmlReport true
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_test_results:
+          path: ./out/
+
   test-single-server:
     parameters:
       suite:
@@ -171,14 +196,43 @@ workflows:
       #     filter: "IResearch*"
       #     requires:
       #       - build-community-pr
+      - test-single-server-only:
+          requires:
+            - build-community-pr
+
+      # Single Server Replication Tests
+      - test-single-server:
+          size: medium
+          extraArgs: "--extraArgs:log.level replication=trace"
+          matrix:
+            parameters:
+              suite:
+                - replication_fuzz
+                - replication_ongoing
+                - replication_ongoing_frompresent
+                - replication_ongoing_global
+                - replication_ongoing_global_spec
+                - replication_static
+                - replication_ongoing_global
+                - shell_replication
+                - http_replication
+          requires:
+            - build-community-pr
+      #  priority=500 parallelity=3 single --
+      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+      #  p             arallelity=3 single -- --extraArgs:log.level replication=trace
+      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+      #               parallelity=3 single -- --extraArgs:log.level replication=trace
+      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+
+      # replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
+      #  parallelity=3 single
+      #  priority=500 parallelity=3 single
+
       - test-single-server:
           matrix:
             parameters:
               suite:
-                - BackupAuthNoSysTests
-                - BackupAuthSysTests
-                - BackupNoAuthNoSysTests
-                - BackupNoAuthSysTests
                 - arangosh
                 - authentication
                 - shell_api
