@@ -142,7 +142,7 @@ workflows:
       - run-gtest-executable-linux:
           name: arangodbtests
           executable: 'build/community-pr/bin/arangodbtests'
-          filter: '-*_LongRunning:-IResearch*:-*Replication2*' 
+          filter: '-*_LongRunning:IResearch*:*Aql*'
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
@@ -152,9 +152,9 @@ workflows:
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
-          name: arangodbtests replication
+          name: arangodbtests AQL
           executable: 'build/community-pr/bin/arangodbtests'
-          filter: '*Replication2*' 
+          filter: '*Aql*'
           requires:
             - build-community-pr
       - testing-js-run-test-suite:
