@@ -1311,6 +1311,8 @@ void DatabaseFeature::closeOpenDatabases() {
   for (auto& p : *databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
+    vocbase->shutdown();
+
     delete vocbase;
   }
 }
