@@ -50,9 +50,44 @@ const fs = require('fs');
 
 function IResearchFeatureDDLTestSuite() {
   let docCount = 0;
+  let indexMetaGlobal = {}
   return {
     setUpAll: function () {
-      db._create("collection123");
+      let c = db._create("collection123");
+      if (isEnterprise) {
+        indexMetaGlobal = {
+          name: "inverted",
+          type: "inverted",
+          fields: [
+            {
+              "name": "value",
+              "nested": [
+                {
+                  "name": "nested_1",
+                  "nested": [
+                    {
+                      "name": "nested_2"
+                    }
+                  ]
+                }
+              ]
+            },
+            "name_1"
+          ]
+        };
+      } else {
+        indexMetaGlobal = {
+          name: "inverted",
+          type: "inverted",
+          "includeAllFields": true,
+          fields: [
+            "name_1",
+            "value[*]"
+          ]
+        };
+      }
+
+      c.ensureIndex(indexMetaGlobal);
     },
 
     tearDownAll: function () {
@@ -134,11 +169,12 @@ function IResearchFeatureDDLTestSuite() {
     testStressAddRemoveViewWithDirectLinks: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
-      db._create("TestCollection0");
+      let c = db._create("TestCollection0");
+      c.ensureIndex(indexMetaGlobal);
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo" + i.toString() }] }] });
-        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123" }] }] });
+        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
+        db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
         docCount += 1;
         let meta = {};
         if (isEnterprise) {
@@ -158,7 +194,8 @@ function IResearchFeatureDDLTestSuite() {
     testStressAddRemoveViewWithLink: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
-      db._create("TestCollection0");
+      let c = db._create("TestCollection0");
+      c.ensureIndex(indexMetaGlobal);
 
       let meta = {};
       if (isEnterprise) {
@@ -177,24 +214,29 @@ function IResearchFeatureDDLTestSuite() {
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes(false);
-        assertEqual(1, indexes.length);
+        assertEqual(2, indexes.length);
         assertEqual("primary", indexes[0].type);
         indexes = db.TestCollection0.getIndexes(false, true);
-        assertEqual(2, indexes.length);
-        var link = indexes[1];
+        assertEqual(3, indexes.length);
+        var ii = indexes[1];
+        assertEqual("primary", indexes[0].type);
+        assertNotEqual(null, link);
+        assertEqual("inverted", ii.type);
+        var link = indexes[2];
         assertEqual("primary", indexes[0].type);
         assertNotEqual(null, link);
         assertEqual("arangosearch", link.type);
         db._dropView("TestView");
         assertEqual(null, db._view("TestView"));
-        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
+        assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
       }
     },
 
     testStressAddRemoveLink: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
-      db._create("TestCollection0");
+      let c = db._create("TestCollection0");
+      c.ensureIndex(indexMetaGlobal);
       var view = db._createView("TestView", "arangosearch", {});
 
       let meta = {};
@@ -214,8 +256,11 @@ function IResearchFeatureDDLTestSuite() {
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
         var indexes = db.TestCollection0.getIndexes(false, true);
-        assertEqual(2, indexes.length);
-        var link = indexes[1];
+        assertEqual(3, indexes.length);
+        var ii = indexes[1];
+        assertNotEqual(null, ii);
+        assertEqual("inverted", ii.type);
+        var link = indexes[2];
         assertEqual("primary", indexes[0].type);
         assertNotEqual(null, link);
         assertEqual("arangosearch", link.type);
@@ -223,7 +268,7 @@ function IResearchFeatureDDLTestSuite() {
         properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(0, Object.keys(properties.links).length);
-        assertEqual(1, db.TestCollection0.getIndexes(false, true).length);
+        assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
       }
     },
 
@@ -232,7 +277,8 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
 
       var view = db._createView("TestView", "arangosearch", {});
-      db._create("TestCollection0");
+      let c = db._create("TestCollection0");
+      c.ensureIndex(indexMetaGlobal);
       db.TestCollection0.save({ name: 'foo' });
       let meta = {};
       if (isEnterprise) {
@@ -304,15 +350,19 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection1");
       db._drop("TestCollection2");
       db._dropView("TestView");
-      db._create("TestCollection0");
-      db._create("TestCollection1");
-      db._create("TestCollection2");
+      let c0 = db._create("TestCollection0");
+      let c1 = db._create("TestCollection1");
+      let c2 = db._create("TestCollection2");
+      c0.ensureIndex(indexMetaGlobal);
+      c1.ensureIndex(indexMetaGlobal);
+      c2.ensureIndex(indexMetaGlobal);
+
       var view = db._createView("TestView", "arangosearch", {});
 
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name: i.toString() });
-        db.TestCollection1.save({ name: i.toString() });
-        db.TestCollection2.save({ name: i.toString() });
+        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
+        db.TestCollection1.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
+        db.TestCollection2.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
         db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
         docCount += 1;
       }
@@ -412,15 +462,18 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection1");
       db._drop("TestCollection2");
       db._dropView("TestView");
-      db._create("TestCollection0");
-      db._create("TestCollection1");
-      db._create("TestCollection2");
+      let c0 = db._create("TestCollection0");
+      let c1 = db._create("TestCollection1");
+      let c2 = db._create("TestCollection2");
+      c0.ensureIndex(indexMetaGlobal);
+      c1.ensureIndex(indexMetaGlobal);
+      c2.ensureIndex(indexMetaGlobal);
       var view = db._createView("TestView", "arangosearch", {});
 
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name: i.toString() });
-        db.TestCollection1.save({ name: i.toString() });
-        db.TestCollection2.save({ name: i.toString() });
+        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
+        db.TestCollection1.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
+        db.TestCollection2.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
         db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
         docCount += 1;
       }
@@ -612,6 +665,7 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
+      col0.ensureIndex(indexMetaGlobal);
       var view = db._createView("TestView", "arangosearch", {});
 
       let meta = {};
@@ -625,12 +679,16 @@ function IResearchFeatureDDLTestSuite() {
       var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual((isEnterprise ? docCount : 0), result.length); // In CE in view there is no docs 
 
-      col0.save({ name: "quarter", text: "quick over" });
+      col0.save({ name: "quarter", text: "quick over", name_1: "quarter" });
       let id = db.collection123.save({ name_1: "quarter", text: "quick over" })["_id"];
       docCount += 1;
       result = db._query('FOR doc IN TestView SEARCH ANALYZER(doc.name == "quarter", "identity") OPTIONS { waitForSync: true } SORT doc.name RETURN doc').toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
+
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "quarter" SORT doc.name_1 RETURN doc').toArray();
+      assertEqual(1, result.length);
+      assertEqual("quarter", result[0].name_1);
 
       // 1 non-empty collection
       db._dropView("TestView");
@@ -682,13 +740,15 @@ function IResearchFeatureDDLTestSuite() {
       docCount -= 4;
       db._drop("TestCollection1");
       col0 = db._create("TestCollection0");
+      col0.ensureIndex(indexMetaGlobal);
       var col1 = db._create("TestCollection1");
+      col1.ensureIndex(indexMetaGlobal);
       view = db._createView("TestView", "arangosearch", {});
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ name: "half", text: "quick fox over lazy" });
-      col1.save({ name: "other half", text: "the brown jumps the dog" });
-      col1.save({ name: "quarter", text: "quick over" });
+      col0.save({ name_1: "half", name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      col0.save({ name_1: "half", name: "half", text: "quick fox over lazy" });
+      col1.save({ name_1: "other half", name: "other half", text: "the brown jumps the dog" });
+      col1.save({ name_1: "other half", name: "quarter", text: "quick over" });
       key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "over" }] }] });
@@ -724,6 +784,16 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
 
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "half" SORT doc.name RETURN doc').toArray();
+      assertEqual(2, result.length);
+      assertEqual("full", result[0].name);
+      assertEqual("half", result[1].name);
+
+      result = db._query('FOR doc IN TestCollection1 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "other half" SORT doc.name RETURN doc').toArray();
+      assertEqual(2, result.length);
+      assertEqual("other half", result[0].name);
+      assertEqual("quarter", result[1].name);
+
       // 1 empty collection + 2 non-empty collections
       db._dropView("TestView");
       db._drop("TestCollection0");
@@ -738,11 +808,13 @@ function IResearchFeatureDDLTestSuite() {
       col1 = db._create("TestCollection1");
       var col2 = db._create("TestCollection2");
       view = db._createView("TestView", "arangosearch", {});
+      col0.ensureIndex(indexMetaGlobal);
+      col2.ensureIndex(indexMetaGlobal);
 
-      col2.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col2.save({ name: "half", text: "quick fox over lazy" });
-      col0.save({ name: "other half", text: "the brown jumps the dog" });
-      col0.save({ name: "quarter", text: "quick over" });
+      col0.save({ name_1: "other half", name: "other half", text: "the brown jumps the dog" });
+      col0.save({ name_1: "other half", name: "quarter", text: "quick over" });
+      col2.save({ name_1: "full", name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      col2.save({ name_1: "full", name: "half", text: "quick fox over lazy" });
       key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "a" }] }] });
       key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
       key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "are" }] }] });
@@ -780,6 +852,16 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("half", result[1].name);
       assertEqual("other half", result[2].name);
       assertEqual("quarter", result[3].name);
+
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "other half" SORT doc.name RETURN doc').toArray();
+      assertEqual(2, result.length);
+      assertEqual("other half", result[0].name);
+      assertEqual("quarter", result[1].name);
+
+      result = db._query('FOR doc IN TestCollection2 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "full" SORT doc.name RETURN doc').toArray();
+      assertEqual(2, result.length);
+      assertEqual("full", result[0].name);
+      assertEqual("half", result[1].name);
 
       db.collection123.remove(key1);
       db.collection123.remove(key2);
@@ -854,12 +936,13 @@ function IResearchFeatureDDLTestSuite() {
       db.collection123.remove(key);
       docCount -= 1;
       col0 = db._create("TestCollection0");
+      col0.ensureIndex(indexMetaGlobal);
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col0.save({ nameX: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ nameX: "half", text: "quick fox over lazy" });
-      col0.save({ nameX: "other half", text: "the brown jumps the dog" });
-      col0.save({ nameX: "quarter", text: "quick over" });
+      col0.save({ name_1: "full", nameX: "full", text: "the quick brown fox jumps over the lazy dog" });
+      col0.save({ name_1: "half", nameX: "half", text: "quick fox over lazy" });
+      col0.save({ name_1: "other half", nameX: "other half", text: "the brown jumps the dog" });
+      col0.save({ name_1: "quarter", nameX: "quarter", text: "quick over" });
       let key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       let key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       let key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
@@ -890,6 +973,14 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("half", result[1].nameX);
       assertEqual("other half", result[2].nameX);
       assertEqual("quarter", result[3].nameX);
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'empty' SORT doc.nameX RETURN doc").toArray();
+      assertEqual(4, result.length);
+      assertEqual("full", result[0].nameX);
+      assertEqual("half", result[1].nameX);
+      assertEqual("other half", result[2].nameX);
+      assertEqual("quarter", result[3].nameX);
+
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
@@ -912,10 +1003,10 @@ function IResearchFeatureDDLTestSuite() {
       var col1 = db._create("TestCollection1");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col0.save({ nameY: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col0.save({ nameY: "half", text: "quick fox over lazy" });
-      col1.save({ nameY: "other half", text: "the brown jumps the dog" });
-      col1.save({ nameY: "quarter", text: "quick over" });
+      col0.save({ name_1: "full", nameY: "full", text: "the quick brown fox jumps over the lazy dog" });
+      col0.save({ name_1: "half", nameY: "half", text: "quick fox over lazy" });
+      col1.save({ name_1: "other half", nameY: "other half", text: "the brown jumps the dog" });
+      col1.save({ name_1: "quarter", nameY: "quarter", text: "quick over" });
       key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
@@ -941,6 +1032,8 @@ function IResearchFeatureDDLTestSuite() {
       }
 
       view.properties(meta, true); // partial update
+      col0.ensureIndex(indexMetaGlobal);
+      col1.ensureIndex(indexMetaGlobal);
 
       meta = {
         commitIntervalMsec: 12345,
@@ -957,6 +1050,15 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("half", result[1].nameY);
       assertEqual("other half", result[2].nameY);
       assertEqual("quarter", result[3].nameY);
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'empty' SORT doc.nameY RETURN doc").toArray();
+      assertEqual("full", result[0].nameY);
+      assertEqual("half", result[1].nameY);
+
+      result = db._query("FOR doc IN TestCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'empty' SORT doc.nameY RETURN doc").toArray();
+      assertEqual("other half", result[0].nameY);
+      assertEqual("quarter", result[1].nameY);
+
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
@@ -980,12 +1082,13 @@ function IResearchFeatureDDLTestSuite() {
       col0 = db._create("TestCollection0");
       col1 = db._create("TestCollection1");
       var col2 = db._create("TestCollection2");
+      col2.ensureIndex(indexMetaGlobal);
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
 
-      col2.save({ nameE: "full", text: "the quick brown fox jumps over the lazy dog" });
-      col2.save({ nameE: "half", text: "quick fox over lazy" });
-      col0.save({ nameE: "other half", text: "the brown jumps the dog" });
-      col0.save({ nameE: "quarter", text: "quick over" });
+      col0.save({ name_1: "quarter", nameE: "other half", text: "the brown jumps the dog" });
+      col0.save({ name_1: "quarter", nameE: "quarter", text: "quick over" });
+      col2.save({ name_1: "quarter", nameE: "full", text: "the quick brown fox jumps over the lazy dog" });
+      col2.save({ name_1: "quarter", nameE: "half", text: "quick fox over lazy" });
       key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
@@ -1013,6 +1116,8 @@ function IResearchFeatureDDLTestSuite() {
       }
 
       view.properties(meta, true); // partial update
+      col0.ensureIndex(indexMetaGlobal);
+      col1.ensureIndex(indexMetaGlobal);
 
       meta = {
         commitIntervalMsec: 12345,
@@ -1020,6 +1125,8 @@ function IResearchFeatureDDLTestSuite() {
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
       view.properties(meta, true); // partial update
+      col0.ensureIndex(indexMetaGlobal);
+      col2.ensureIndex(indexMetaGlobal);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
@@ -1030,6 +1137,15 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("half", result[1].nameE);
       assertEqual("other half", result[2].nameE);
       assertEqual("quarter", result[3].nameE);
+
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "quarter" SORT doc.nameE RETURN doc').toArray();
+      assertEqual("other half", result[0].nameE);
+      assertEqual("quarter", result[1].nameE);
+
+      result = db._query('FOR doc IN TestCollection2 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == "quarter" SORT doc.nameE RETURN doc').toArray();
+      assertEqual("full", result[0].nameE);
+      assertEqual("half", result[1].nameE);
+
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
@@ -1196,10 +1312,11 @@ function IResearchFeatureDDLTestSuite() {
       var col0 = db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      col0.save({ a: "foo", c: "bar", z: 0 });
-      col0.save({ a: "foz", d: "baz", z: 1 });
-      col0.save({ b: "bar", c: "foo", z: 2 });
-      col0.save({ b: "baz", d: "foz", z: 3 });
+      col0.save({ a: "foo", c: "bar", z: 0, name_1: 0 });
+      col0.save({ a: "foz", d: "baz", z: 1, name_1: 1 });
+      col0.save({ b: "bar", c: "foo", z: 2, name_1: 2 });
+      col0.save({ b: "baz", d: "foz", z: 3, name_1: 3 });
+      col0.ensureIndex(indexMetaGlobal);
       let key1 = db.collection123.save({ a: "foo", c: "bar", "value": [{ "nested_1": [{ "nested_2": "dog0" }] }] });
       let key2 = db.collection123.save({ a: "foz", d: "baz", "value": [{ "nested_1": [{ "nested_2": "dog10" }] }] });
       let key3 = db.collection123.save({ b: "bar", c: "foo", "value": [{ "nested_1": [{ "nested_2": "dog100" }] }] });
@@ -1232,6 +1349,13 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
+
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.name_1 >= 0 SORT doc.z RETURN doc').toArray();
+      assertEqual(4, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+      assertEqual(2, result[2].z);
+      assertEqual(3, result[3].z);
 
       // b
       meta = {};
@@ -1281,10 +1405,10 @@ function IResearchFeatureDDLTestSuite() {
       var view1 = db._createView("TestView1", "arangosearch", {});
       var view2 = db._createView("TestView2", "arangosearch", {});
 
-      col0.save({ a: "foo", c: "bar", z: 0 });
-      col0.save({ a: "foz", d: "baz", z: 1 });
-      col0.save({ b: "bar", c: "foo", z: 2 });
-      col0.save({ b: "baz", d: "foz", z: 3 });
+      col0.save({ a: "foo", c: "bar", z: 0, name_1: 0 });
+      col0.save({ a: "foz", d: "baz", z: 1, name_1: 1 });
+      col0.save({ b: "bar", c: "foo", z: 2, name_1: 2 });
+      col0.save({ b: "baz", d: "foz", z: 3, name_1: 3 });
       let key1 = db.collection123.save({ a: "foo", c: "bar", z: 0, "value": [{ "nested_1": [{ "nested_2": "dog10" }] }] });
       let key2 = db.collection123.save({ a: "foz", d: "baz", z: 1, "value": [{ "nested_1": [{ "nested_2": "dog110" }] }] });
       let key3 = db.collection123.save({ b: "bar", c: "foo", z: 2, "value": [{ "nested_1": [{ "nested_2": "dog1100" }] }] });
@@ -1302,10 +1426,24 @@ function IResearchFeatureDDLTestSuite() {
       }
 
       view1.properties(meta1, true); // partial update
+      col0.ensureIndex(indexMetaGlobal);
+
       var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
+
+      var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      assertEqual(2, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+
+      var result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER EXISTS(doc.name_1) SORT doc.z RETURN doc').toArray();
+      assertEqual(4, result.length);
+      assertEqual(0, result[0].z);
+      assertEqual(1, result[1].z);
+      assertEqual(2, result[2].z);
+      assertEqual(3, result[3].z);
 
       view2.properties(meta2, true); // partial update
 
