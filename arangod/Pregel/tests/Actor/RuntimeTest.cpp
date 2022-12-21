@@ -28,8 +28,8 @@
 #include "Actor/ActorPID.h"
 #include "Actor/Runtime.h"
 
-#include "TrivialActor.h"
-#include "PingPongActors.h"
+#include "Actor/Actors/TrivialActor.h"
+#include "Actor/Actors/PingPongActors.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;

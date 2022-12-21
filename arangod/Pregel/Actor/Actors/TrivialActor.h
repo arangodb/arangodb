@@ -28,7 +28,7 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/Actor.h"
+#include "Pregel/Actor/Actor.h"
 
 #include "Inspection/InspectorBase.h"
 
@@ -39,6 +39,11 @@ struct TrivialState {
   std::size_t called{};
   bool operator==(const TrivialState&) const = default;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, TrivialState& x) {
+  return f.object(x).fields(f.field("state", x.state),
+                            f.field("called", x.called));
+}
 
 struct TrivialMessage0 {};
 template<typename Inspector>
@@ -88,3 +93,10 @@ struct TrivialActor {
   };
 };
 }  // namespace arangodb::pregel::actor::test
+
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessage>
+    : arangodb::inspection::inspection_formatter {};

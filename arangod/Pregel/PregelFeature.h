@@ -117,6 +117,8 @@ class PregelFeature final : public ArangodFeature {
   auto actorNetworkTransport() -> actor::NetworkTransport& {
     return _actorNetworkTransport;
   }
+
+  auto actorRuntime() -> std::shared_ptr<actor::Runtime<MockScheduler>> { ADB_PROD_ASSERT(_actorRuntime != nullptr); return _actorRuntime; }
   auto ensureActorRuntime() -> void;
 
  private:
