@@ -47,6 +47,8 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 using namespace arangodb;

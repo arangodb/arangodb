@@ -22,6 +22,7 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <map>
 #include <stack>
 #include <utility>
 #include <vector>
