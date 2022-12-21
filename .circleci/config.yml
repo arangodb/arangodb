@@ -30,7 +30,7 @@ jobs:
       - run:
           name: Build
           command: |
-            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests --target arangod --target arangosh --target arango 
       - run:
           name: CCache Statistics
           command: ccache -s
@@ -133,13 +133,19 @@ workflows:
       - run-gtest-executable-linux:
           name: arangodbtests linux
           executable: 'build/community-pr/bin/arangodbtests'
-          filter: '-*_LongRunning' 
+          filter: '-*_LongRunning:-IResearch*:-*Replication2*' 
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
           name: iresearch arangodbtests linux
           executable: 'build/community-pr/bin/arangodbtests'
           filter: 'IResearch*' 
+          requires:
+            - build-community-pr
+       - run-gtest-executable-linux:
+          name: iresearch arangodbtests linux
+          executable: 'build/community-pr/bin/arangodbtests'
+          filter: '*Replication2*' 
           requires:
             - build-community-pr
  
