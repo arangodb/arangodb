@@ -138,7 +138,7 @@ jobs:
       - store_test_results:
           path: ./out/
 
-  test-single-server:
+  test-single:
     parameters:
       suite:
         type: string
@@ -202,7 +202,7 @@ workflows:
             - build-community-pr
 
       # Single Server Replication Tests
-      - test-single-server:
+      - test-single:
           size: medium
           extraArgs: "--extraArgs:log.level replication=trace"
           matrix:
@@ -232,13 +232,13 @@ workflows:
       #  priority=500 parallelity=3 single
 
       # Shell client tests Single Server; distribute evenly
-      - test-single-server:
+      - test-single:
           name: shell_client
           suite: shell_client
           requires:
             - build-community-pr
 
-      - test-single-server:
+      - test-single:
           matrix:
             parameters:
               suite:
@@ -252,7 +252,7 @@ workflows:
           requires:
             - build-community-pr
 
-      - test-single-server:
+      - test-single:
           matrix:
             parameters:
               suite:
@@ -272,6 +272,42 @@ workflows:
                 - load_balancing_auth
                 - replication2_client
                 - replication2_server
+                - resilience_analyzers
+                - resilience_failover
+                - resilience_move
+                - resilience_sharddist
                 - shell_api
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-shell_server_aql
+          suite: shell_server_aql
+          buckets: 16
+          requires:
+            - build-community-pr
+      - test-cluster:
+          name: test-cluster-shell_client
+          suite: shell_client
+          buckets: 5
+          requires:
+            - build-community-pr
+      - test-cluster:
+          name: test-cluster-shell_client_replication2_recovery
+          suite: shell_client_replication2_recovery
+          buckets: 5
+          requires:
+            - build-community-pr
+      - test-cluster:
+          name: test-cluster-shell_client_transaction
+          suite: shell_client_transaction
+          #size: large
+          buckets: 5
+          requires:
+            - build-community-pr
+      - test-cluster:
+          name: test-cluster-shell_server
+          suite: shell_server
+          buckets: 5
           requires:
             - build-community-pr
