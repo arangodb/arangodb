@@ -16,7 +16,7 @@ jobs:
           command: |
             sudo apt-get update
             sudo apt-get install libssl-dev gcc-11 g++-11 snapd ccache flex bison
-      - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /home/circleci/project 
+      - run: git clone --depth 1 "$CIRCLE_REPOSITORY_URL" -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 "$CIRCLE_WORKING_DIRECTORY" 
       - run:
           name: Print CCache Settings
           command: ccache -p
