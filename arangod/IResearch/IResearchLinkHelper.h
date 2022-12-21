@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <utils/type_id.hpp>
+#include <unordered_set>
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
