@@ -110,14 +110,14 @@ jobs:
       #     path: out/*
       - run:
           command: |
-            ls -la . && ls -la ./out/
+            mkdir test-results && cp ./out/*.xml test-results
       - run:
           command: |
             mkdir -p /tmp/core_dumps
             cp core.* /tmp/core_dumps
           when: on_fail
       - store_test_results:
-          path: out/UNITTEST_RESULT_*.xml
+          path: ./test-results/
       # - store_artifacts:
       #     path: /tmp/core_dumps
       #     when: on_fail
