@@ -131,7 +131,11 @@ jobs:
             scripts/unittest BackupNoAuthNoSysTests --cleanup false --writeXmlReport true
             scripts/unittest BackupNoAuthSysTests --cleanup false --writeXmlReport true
             scripts/unittest arangosh --cleanup false --writeXmlReport true
+            scripts/unittest arangobench --cleanup false --writeXmlReport true
+            scripts/unittest permissions --cleanup false --writeXmlReport true
+            scripts/unittest paths_server --cleanup false --writeXmlReport true
             scripts/unittest version --cleanup false --writeXmlReport true
+            scripts/unittest active_failover --cleanup false --writeXmlReport true
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -278,7 +282,6 @@ workflows:
                 - replication2_client
                 - replication2_server
                 - resilience_analyzers
-                - resilience_failover
                 - resilience_move
                 - resilience_sharddist
                 - shell_api
@@ -286,33 +289,53 @@ workflows:
             - build-community-pr
 
       - test-cluster:
+          name: test-cluster-resilience_failover
+          suite: resilience_failover
+          buckets: 4
+          requires:
+            - build-community-pr
+
+      - test-cluster:
           name: test-cluster-shell_server_aql
           suite: shell_server_aql
+          size: medium+
           buckets: 16
           requires:
             - build-community-pr
+
       - test-cluster:
           name: test-cluster-shell_client
           suite: shell_client
+          size: medium+
           buckets: 5
           requires:
             - build-community-pr
+
       - test-cluster:
           name: test-cluster-shell_client_replication2_recovery
           suite: shell_client_replication2_recovery
-          buckets: 5
+          buckets: 4
           requires:
             - build-community-pr
+
       - test-cluster:
           name: test-cluster-shell_client_transaction
           suite: shell_client_transaction
-          #size: large
           buckets: 5
           requires:
             - build-community-pr
+
       - test-cluster:
           name: test-cluster-shell_server
           suite: shell_server
-          buckets: 5
+          size: large
+          buckets: 6
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-recovery_cluster
+          suite: recovery_cluster
+          buckets: 8
           requires:
             - build-community-pr
