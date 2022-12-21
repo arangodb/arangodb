@@ -48,6 +48,8 @@
 #include "utils/log.hpp"
 #include "Basics/DownCast.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 // ----------------------------------------------------------------------------

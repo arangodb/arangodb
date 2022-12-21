@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include <unordered_set>
 #include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"

@@ -871,12 +871,14 @@ using valgrind could look like this. Options are passed as regular long values
 in the syntax --option value --sub:option value. Using Valgrind could look like
 this:
 
-    ./scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js \
+    ./scripts/unittest shell_client --test tests/js/server/aql/aql-escaping.js \
+      --cluster true \
       --extraArgs:server.threads 1 \
       --extraArgs:scheduler.threads 1 \
       --extraArgs:javascript.gc-frequency 1000000 \
       --extraArgs:javascript.gc-interval 65536 \
-      --extraArgs:log.level debug \
+      --extraArgs:agent.log.level trace \
+      --extraArgs:log.level request=debug \
       --extraArgs:log.force-direct true \
       --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
@@ -886,9 +888,18 @@ this:
 - We specify some arangod arguments via --extraArgs which increase the server performance
 - We specify to run using valgrind (this is supported by all facilities)
 - We specify some valgrind commandline arguments
-- We set the log level to debug
+- We set the log levels for agents to `trace` (the Instance type can be specified by:
+  - `single`
+  - `agent`
+  - `dbserver`
+  - `coordinator`
+  - `activefailover`
+  )
+- We set the `requests` log level to debug on all instances
 - We force the logging not to happen asynchronous
 - Eventually you may still add temporary `console.log()` statements to tests you debug.
+
+
 
 #### Running a Single Unittest Suite
 

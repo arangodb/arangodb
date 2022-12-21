@@ -439,7 +439,7 @@ class IResearchDataStore {
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
-  virtual irs::comparer const* getComparator() const noexcept = 0;
+  virtual irs::Comparer const* getComparator() const noexcept = 0;
 
   StorageEngine* _engine{nullptr};
 
