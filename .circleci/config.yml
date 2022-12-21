@@ -130,6 +130,8 @@ jobs:
             scripts/unittest BackupAuthSysTests --cleanup false --writeXmlReport true
             scripts/unittest BackupNoAuthNoSysTests --cleanup false --writeXmlReport true
             scripts/unittest BackupNoAuthSysTests --cleanup false --writeXmlReport true
+            scripts/unittest arangosh --cleanup false --writeXmlReport true
+            scripts/unittest version --cleanup false --writeXmlReport true
       - run:
           command: |
             mkdir -p /tmp/core_dumps
@@ -220,27 +222,33 @@ workflows:
                 - http_replication
           requires:
             - build-community-pr
-      #  priority=500 parallelity=3 single --
-      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-      #  p             arallelity=3 single -- --extraArgs:log.level replication=trace
-      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-      #               parallelity=3 single -- --extraArgs:log.level replication=trace
-      #  priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-
-      # replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
-      #  parallelity=3 single
-      #  priority=500 parallelity=3 single
 
       # Shell client tests Single Server; distribute evenly
       - test-single:
-          name: shell_client
-          suite: shell_client
+          matrix:
+            parameters:
+              suite: [shell_client, shell_api_multi, shell_v8, shell_server_v8]
+          requires:
+            - build-community-pr
+
+      - test-single:
+          name: test-single-shell_server_aql
+          suite: shell_server_aql
+          buckets: 5
+          requires:
+            - build-community-pr
+
+      - test-single:
+          name: test-single-shell_server
+          suite: shell_server
+          buckets: 2
           requires:
             - build-community-pr
 
       - test-single:
           matrix:
             parameters:
+              extraArgs: ["", "--http2 true", "--vst true"]
               suite:
                 [
                   shell_client_multi,
@@ -248,7 +256,6 @@ workflows:
                   shell_client_traffic,
                   shell_client_aql,
                 ]
-              extraArgs: ["", "--http2 true", "--vst true"]
           requires:
             - build-community-pr
 
@@ -256,10 +263,8 @@ workflows:
           matrix:
             parameters:
               suite:
-                - arangosh
                 - authentication
                 - shell_api
-                - version
           requires:
             - build-community-pr
 
