@@ -137,13 +137,13 @@ workflows:
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
-          name: iresearch arangodbtests linux
+          name: arangodbtests iresearch
           executable: 'build/community-pr/bin/arangodbtests'
           filter: 'IResearch*' 
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
-          name: iresearch arangodbtests linux
+          name: arangodbtests replication
           executable: 'build/community-pr/bin/arangodbtests'
           filter: '*Replication2*' 
           requires:
