@@ -31,7 +31,7 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc-11 -DCMAKE_CXX_COMPILER=g++-11 -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
       - run:
           name: Build
           command: |
