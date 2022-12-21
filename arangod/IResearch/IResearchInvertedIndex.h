@@ -94,7 +94,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const* getComparator() const noexcept override {
+  irs::Comparer const* getComparator() const noexcept final {
     return &_comparer;
   }
 

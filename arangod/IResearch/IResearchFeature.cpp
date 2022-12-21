@@ -610,31 +610,23 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-namespace {
 template<typename T>
-void registerSingleFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> const& m,
-    ArangodServer& server) {
-  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
-  IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
-  if (server.hasFeature<T>()) {
-    auto& engine = server.getFeature<T>();
-    auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-    Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
-        factory);
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          basics::StringUtils::concatT(
-              "failure registering IResearch link factory with index "
-              "factory from feature '",
-              engine.name(), "': ", res.errorMessage()));
-    }
+void registerSingleFactory(IndexTypeFactory& factory, ArangodServer& server) {
+  if (!server.hasFeature<T>()) {
+    return;
+  }
+  auto& engine = server.getFeature<T>();
+  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
+  auto r = engineFactory.emplace(
+      std::string{StaticStrings::ViewArangoSearchType}, factory);
+  if (!r.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(),
+        absl::StrCat("failure registering IResearch link factory with index "
+                     "factory from feature '",
+                     engine.name(), "': ", r.errorMessage()));
   }
 }
-
-}  // namespace
 
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
@@ -646,18 +638,6 @@ void registerFunctions(aql::AqlFunctionFeature& functions) {
                                 aql::Function::Flags::CanRunOnDBServerOneShard,
                                 aql::Function::Flags::NoEval),
        &offsetInfoFunc});
-}
-
-void registerIndexFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
-    ArangodServer& server) {
-  m.emplace(
-      std::type_index(typeid(ClusterEngine)),
-      arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
-  registerSingleFactory<ClusterEngine>(m, server);
-  m.emplace(std::type_index(typeid(RocksDBEngine)),
-            arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
-  registerSingleFactory<RocksDBEngine>(m, server);
 }
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
@@ -1140,7 +1120,7 @@ void IResearchFeature::prepare() {
   ::irs::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory(_factories, server());
+  registerIndexFactory();
 
   // register 'arangosearch' view
   registerViewFactory(server());
@@ -1379,6 +1359,13 @@ void IResearchFeature::registerRecoveryHelper() {
   }
 }
 
+void IResearchFeature::registerIndexFactory() {
+  _clusterFactory = IResearchLinkCoordinator::createFactory(server());
+  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
+  _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
+  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+}
+
 #ifdef USE_ENTERPRISE
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
@@ -1401,12 +1388,14 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
 }
 #endif
 
-template<typename Engine, typename std::enable_if_t<
-                              std::is_base_of_v<StorageEngine, Engine>, int>>
+template<typename Engine>
 IndexTypeFactory& IResearchFeature::factory() {
-  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) !=
-             _factories.end());
-  return *_factories.find(std::type_index(typeid(Engine)))->second;
+  if constexpr (std::is_same_v<Engine, ClusterEngine>) {
+    return *_clusterFactory;
+  } else {
+    static_assert(std::is_same_v<Engine, RocksDBEngine>);
+    return *_rocksDBFactory;
+  }
 }
 template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
 template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
