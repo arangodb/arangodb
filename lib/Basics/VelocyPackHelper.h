@@ -456,7 +456,7 @@ constexpr bool HasToVelocyPack_v = HasToVelocyPack<T>::value;
 /// constraint (or HasToVelocyPack an equivalent concept), but AppleClang
 /// doesn't like C++20.
 template<typename T>
-auto toJson(T const& thing) -> std::string {
+std::string toJson(T const& thing) {
   if constexpr (HasToVelocyPack_v<T>) {
     auto builder = velocypack::Builder();
     thing.toVelocyPack(builder);
