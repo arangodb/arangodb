@@ -105,6 +105,9 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          command: |
+            echo $CIRCLE_NODE_INDEX $CIRCLE_NODE_TOTAL
+      - run:
           name: Run << parameters.suite >> suite
           command: |
             scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_INDEX/$CIRCLE_NODE_TOTAL
