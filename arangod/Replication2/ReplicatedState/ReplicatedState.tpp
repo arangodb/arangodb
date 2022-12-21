@@ -217,7 +217,7 @@ auto ReplicatedStateManager<S>::getFollower() const
   return std::visit(
       overload{
           [](std::shared_ptr<FollowerStateManager<S>> const& manager) {
-            return std::dynamic_pointer_cast<IReplicatedFollowerStateBase>(
+            return basics::downCast<IReplicatedFollowerStateBase>(
                 manager->getStateMachine());
           },
           [](auto const&) -> std::shared_ptr<IReplicatedFollowerStateBase> {
@@ -232,7 +232,7 @@ auto ReplicatedStateManager<S>::getLeader() const
   auto guard = _guarded.getLockedGuard();
   return std::visit(
       overload{[](std::shared_ptr<LeaderStateManager<S>> const& manager) {
-                 return std::dynamic_pointer_cast<IReplicatedLeaderStateBase>(
+                 return basics::downCast<IReplicatedLeaderStateBase>(
                      manager->getStateMachine());
                },
                [](auto const&) -> std::shared_ptr<IReplicatedLeaderStateBase> {
@@ -767,13 +767,13 @@ ReplicatedState<S>::ReplicatedState(
 template<typename S>
 auto ReplicatedState<S>::getFollower() const -> std::shared_ptr<FollowerType> {
   auto followerState = log->getFollowerState();
-  return std::dynamic_pointer_cast<FollowerType>(followerState);
+  return basics::downCast<FollowerType>(followerState);
 }
 
 template<typename S>
 auto ReplicatedState<S>::getLeader() const -> std::shared_ptr<LeaderType> {
   auto leaderState = log->getLeaderState();
-  return std::dynamic_pointer_cast<LeaderType>(leaderState);
+  return basics::downCast<LeaderType>(leaderState);
 }
 
 template<typename S>
@@ -814,8 +814,7 @@ void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
 
-  auto stateManager =
-      std::dynamic_pointer_cast<ReplicatedStateManager<S>>(stateHandle);
+  auto stateManager = basics::downCast<ReplicatedStateManager<S>>(stateHandle);
   ADB_PROD_ASSERT(stateManager != nullptr);
   auto core = std::move(*stateManager).resign();
   ADB_PROD_ASSERT(core != nullptr);
