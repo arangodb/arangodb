@@ -230,31 +230,33 @@ const [linkName, setLinkName] = useState('')
   }
 
   return <>
-      <div style={{
-        color: '#717d90',
-        fontWeight: 600,
-        fontSize: '12.5pt',
-        padding: 10
-      }}>
-        {name}
+      <div id="viewsheader">
+        <div style={{
+          color: '#717d90',
+          fontWeight: 600,
+          fontSize: '12.5pt',
+          padding: 10
+        }}>
+          {name}
+        </div>
+        {
+          isAdminUser && views.length
+            ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+              <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+              {
+                isAdminUser && changed
+                ?
+                  <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+                : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
+              }
+            </Cell>
+            : null
+        }
       </div>
-      {
-        isAdminUser && views.length
-          ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-            <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-            {
-              isAdminUser && changed
-              ?
-                <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-              : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
-            }
-          </Cell>
-          : null
-      }
       <SplitPane
         defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
         onChange={(size) => localStorage.setItem('splitPos', size)}
-        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
+        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px', overflow: 'scroll' }}>
         <div style={{ marginRight: '15px' }}>
           <AccordionView
             allowMultipleOpen
