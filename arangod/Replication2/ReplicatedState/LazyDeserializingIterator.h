@@ -44,8 +44,8 @@ struct LazyDeserializingIterator
       auto value = std::invoke(
           Deserializer{}, streams::serializer_tag<std::decay_t<To>>, slice);
       //_current.emplace(velocypack::deserialize<To>(current->logPayload()));
-      _current.emplace(current->logIndex(), std::move(value));
-      return {{_current->first, std::cref(_current->second)}};
+      _current.emplace(std::move(value));
+      return {{current->logIndex(), std::cref(*_current)}};
     } else {
       _current.reset();
       return std::nullopt;
@@ -58,7 +58,7 @@ struct LazyDeserializingIterator
 
  private:
   std::unique_ptr<TypedLogRangeIterator<From>> _iterator;
-  std::optional<std::pair<LogIndex, std::remove_reference_t<To>>> _current;
+  std::optional<std::remove_reference_t<To>> _current;
 };
 
 }  // namespace arangodb::replication2
