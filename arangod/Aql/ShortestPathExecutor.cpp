@@ -248,19 +248,23 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
   _finder.clear();
 
   while (input.hasDataRow()) {
+    LOG_DEVEL << "New output row";
     auto source = VPackSlice{};
     auto target = VPackSlice{};
     std::tie(std::ignore, _inputRow) =
         input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    TRI_ASSERT(_inputRow.isInitialized());
 
     // Ordering important here.
     // Read source and target vertex, then try to find a shortest path (if both
     // worked).
+    LOG_DEVEL << "Source: " << _infos.getSourceVertex().value;
+    LOG_DEVEL << "Target: " << _infos.getTargetVertex().value;
     if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder,
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
+      LOG_DEVEL << "S: " << source.toJson();
+      LOG_DEVEL << "T: " << target.toJson();
       _finder.reset(arangodb::velocypack::HashedStringRef(source),
                     arangodb::velocypack::HashedStringRef(target));
       return true;

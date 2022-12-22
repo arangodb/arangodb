@@ -78,6 +78,7 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::Ball::reset(VertexRef center,
                                                     size_t depth) {
   clear();
+  LOG_DEVEL << "CALLING RESET IN TWOSIEDEDENUMERATOR";
   auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
 }
@@ -332,6 +333,9 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
   _right.clear();
+
+  // 3.) Remove finished state
+  setAlgorithmUnfinished();
 }
 
 /**
@@ -458,6 +462,13 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::setAlgorithmFinished() {
   _algorithmFinished = true;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmUnfinished() {
+  _algorithmFinished = false;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,

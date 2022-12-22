@@ -556,6 +556,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             sourceInput, targetInput, registerInfos);
       }
     } else {
+      LOG_DEVEL << "TRACING TODO IMPLEMENT";
       // Tracing // TODO CHECK TRACING in ClusterProvider Tracer(?enabled?)
       /*
       auto [outputRegisters, outputRegisterMapping] =
@@ -701,6 +702,10 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
   // TODO [GraphRefactor]: Re-used functionality here. Move this method to a
   // dedicated place where it can be re-used.
   size_t numEdgeColls = _edgeColls.size();
+  LOG_DEVEL << "X COLLETIONS EDGES : X";
+  for (auto const& peter : _edgeColls) {
+    LOG_DEVEL << peter->name();
+  }
   constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;

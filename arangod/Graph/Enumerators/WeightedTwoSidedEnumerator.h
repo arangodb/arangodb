@@ -59,6 +59,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 class WeightedTwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
+  using CandidatesMap = std::unordered_map<double, std::pair<Step, Step>>;
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -82,15 +83,15 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
-    auto testDepthZero(Ball& other, ResultList& results) -> void;
+    auto testDepthZero(Ball& other, CandidatesMap& results) -> void;
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results,
+    auto matchResultsInShell(Step const& match, CandidatesMap& results,
                              PathValidatorType const& otherSideValidator)
         -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesMap& results)
         -> void;
 
     auto hasBeenVisited(Step const& step) -> bool;
@@ -107,12 +108,6 @@ class WeightedTwoSidedEnumerator {
     auto clearProvider() -> void;
 
    private:
-    // Fast path, to test if we find a connecting vertex between left and right.
-    Shell _shell{};
-
-    // TODO: Memory tracking
-    // std::unordered_map<Step> _visitedVertices{};
-
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
 
@@ -125,7 +120,7 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    // TODO: HashedStringRef (getID)
+    // TODO: HashedStringRef instead of string copy here (getID)
     std::unordered_map<std::string, size_t> _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
@@ -222,6 +217,10 @@ class WeightedTwoSidedEnumerator {
   // and will provide a quick exit. Currently, this is only being used for
   // graph searches of type "Shortest Path".
   auto setAlgorithmFinished() -> void;
+  auto setAlgorithmUnfinished() -> void;
+
+  auto setInitialFetchVerified() -> void;
+  auto getInitialFetchVerified() -> bool;
   [[nodiscard]] auto isAlgorithmFinished() const -> bool;
 
  private:
@@ -234,7 +233,19 @@ class WeightedTwoSidedEnumerator {
   // initial results, where to continue our search.
   bool _leftInitialFetch{false};
   bool _rightInitialFetch{false};
+  // Bool to check whether we've verified our initial fetched steps
+  // or not. This is an optimization. Only during our initial _left and
+  // _right fetch it may be possible that we find matches, which are valid
+  // paths - but not the shortest one. Therefore, we need to compare with both
+  // queues. After that check - we always pull the minStep from both queues.
+  // After init, this check is no longer required as we will always have the
+  // smallest (in terms of path-weight) step in our hands.
+  bool _handledInitialFetch{false};
+
+  // Templated result list, where only valid result(s) are stored in
   ResultList _results{};
+  CandidatesMap _candidates;
+
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
 

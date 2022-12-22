@@ -145,7 +145,7 @@ class WeightedTwoSidedFinderTest
     return GetParam();
   }
 
-  auto pathFinder() -> WeightedFinder {
+  auto pathFinder(bool reverse = false) -> WeightedFinder {
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::ShortestPath;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
@@ -406,9 +406,61 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
   }
 }
 
-TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F) {
+TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_outbound) {
   VPackBuilder result;
   auto finder = pathFinder();
+
+  // Source and target identical
+  auto source = vId(Vertices::A);
+  auto target = vId(Vertices::F);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    bool hasPath = false;
+    while (!finder.isDone()) {
+      finder.getNextPath(result);
+    }
+
+    EXPECT_FALSE(hasPath);
+    LOG_DEVEL << " ===== My final Result =====";
+    LOG_DEVEL << result.slice().toJson();
+    pathStructureValid(result.slice(), 4);
+    pathEquals(result.slice(), {Vertices::A, Vertices::C, Vertices::E,
+                                Vertices::D, Vertices::F});
+    EXPECT_TRUE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup the vertex
+    // 4x vertices, 3x edges
+    // TODO: Implement check scanned
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
+  }
+
+  {
+    // Make sure stats are stolen and resettet
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup the vertex
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
+  }
+}
+
+TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_inbound) {
+  VPackBuilder result;
+  auto finder = pathFinder(true);
 
   // Source and target identical
   auto source = vId(Vertices::A);

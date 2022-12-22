@@ -211,6 +211,7 @@ class TwoSidedEnumerator {
   // and will provide a quick exit. Currently, this is only being used for
   // graph searches of type "Shortest Path".
   auto setAlgorithmFinished() -> void;
+  auto setAlgorithmUnfinished() -> void;
   auto isAlgorithmFinished() const -> bool;
 
  private:

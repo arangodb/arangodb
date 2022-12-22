@@ -1228,6 +1228,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
       query = `FOR v IN OUTBOUND SHORTEST_PATH "${vertexIds.Caesar}" TO "${vertexIds.Anton}" GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 80} RETURN v._id`;
       actual = getQueryResults(query);
+      print("This fails: ");
+      print(actual);
       assertEqual(actual.length, 3);
 
       query = `FOR v IN OUTBOUND SHORTEST_PATH "${vertexIds.Caesar}" TO "${vertexIds.Anton}" GRAPH "${graphName}" RETURN v._id`;
@@ -1447,6 +1449,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
             SORT source, target
             RETURN {vertices, distance}`;
       actual = getQueryResults(query);
+      print(actual);
       assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -1799,6 +1802,7 @@ function ahuacatlQueryShortestPathTestSuite() {
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
       var actual = getQueryResults(query);
+      print(actual);
       assertEqual(actual.length, 4);
       assertEqual(actual[0].v._key, "A");
       assertEqual(actual[0].e, null);
@@ -1811,12 +1815,23 @@ function ahuacatlQueryShortestPathTestSuite() {
     },
     
     testShortestPathAtoFinboundWeightEdgeCollectionRestriction: function () {
+      //const v1 = "UnitTestsAhuacatlVertex1";
+      //const v2 = "UnitTestsAhuacatlVertex2";
+      // const v3 = "UnitTestsAhuacatlVertex3";
+
+      /*
+      const e1 = "UnitTestsAhuacatlEdge1";
+  const e2 = "UnitTestsAhuacatlEdge2"; <-- !!!!!!!!!!!!!
+  const e3 = "UnitTestsAhuacatlEdge3";
+       */
+
       var query = `
         WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e3} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
       var actual = getQueryResults(query);
+      print(actual);
       assertEqual(actual.length, 3);
       assertEqual(actual[0].v._key, "A");
       assertEqual(actual[0].e, null);
