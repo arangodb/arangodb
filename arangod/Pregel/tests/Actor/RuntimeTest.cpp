@@ -28,9 +28,9 @@
 #include "Actor/ActorPID.h"
 #include "Actor/Dispatcher.h"
 #include "Actor/Runtime.h"
+#include "Actor/Actors/TrivialActor.h"
+#include "Actor/Actors/PingPongActors.h"
 
-#include "TrivialActor.h"
-#include "PingPongActors.h"
 #include "fmt/format.h"
 
 using namespace arangodb::pregel::actor;

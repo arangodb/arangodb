@@ -166,10 +166,12 @@ PregelFeature::PregelFeature(Server& server)
       _useMemoryMaps(true),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
-          server.getFeature<metrics::MetricsFeature>())) {
+                 server.getFeature<metrics::MetricsFeature>())),
+      _actorNetworkTransport(nullptr) {
   static_assert(
       Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
   setOptional(true);
+  startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeature>();
   startsAfter<application_features::V8FeaturePhase>();
 }
@@ -437,6 +439,8 @@ void PregelFeature::start() {
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
   }
+
+  ensureActorRuntime();
 }
 
 void PregelFeature::beginShutdown() {
@@ -756,6 +760,12 @@ auto PregelFeature::apply(ExecutionNumber const& executionNumber,
             c->receive(x);
             return {Ok{}};
           },
+          [&](actor::NetworkMessage const& x) -> ResultT<MessagePayload> {
+            LOG_DEVEL << fmt::format("received an actor message from {} {}",
+                                     x.sender, x.payload.toJson());
+            _actorRuntime->process(x.sender, x.receiver, x.payload.sharedSlice());
+            return {Ok{}};
+          },
           [&](auto const& x) -> ResultT<MessagePayload> {
             return Result{TRI_ERROR_INTERNAL, "Cannot handle received message"};
           }},
@@ -903,4 +913,12 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
   result.close();
 
   return res;
+}
+
+auto PregelFeature::ensureActorRuntime() -> void {
+  if(_actorNetworkTransport.connectionPool == nullptr) {
+    _actorNetworkTransport.connectionPool = server().getFeature<NetworkFeature>().pool();
+    _actorRuntime = std::make_shared<actor::Runtime<MockScheduler>>(ServerState::instance()->getId(), "PregelFeature",
+                    std::make_shared<MockScheduler>(), _actorNetworkTransport);
+  }
 }

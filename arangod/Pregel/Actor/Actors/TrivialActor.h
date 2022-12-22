@@ -28,7 +28,7 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/Actor.h"
+#include "Pregel/Actor/Actor.h"
 
 #include "Inspection/InspectorBase.h"
 
@@ -93,3 +93,10 @@ struct TrivialActor {
   };
 };
 }  // namespace arangodb::pregel::actor::test
+
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessage>
+    : arangodb::inspection::inspection_formatter {};

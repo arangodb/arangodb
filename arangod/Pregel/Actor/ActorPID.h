@@ -59,14 +59,17 @@ namespace arangodb::pregel::actor {
 
 // TODO: at some point this needs to be ArangoDB's ServerID or compatible
 using ServerID = std::string;
+using DatabaseName = std::string;
 
 struct ActorPID {
   ServerID server;
   ActorID id;
+  DatabaseName databaseName;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id));
+  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id),
+                            f.field("databaseName", x.databaseName));
 }
 
 }  // namespace arangodb::pregel::actor

@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Pregel/Actor/Actors/TrivialActor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
@@ -36,8 +37,12 @@
 #include "Inspection/VPackWithErrorT.h"
 #include "velocypack/SharedSlice.h"
 
+#include "Network/NetworkFeature.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+
+#include <Pregel/Actor/ActorPID.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -53,12 +58,15 @@ RestControlPregelHandler::RestControlPregelHandler(ArangodServer& server,
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
 
+  LOG_DEVEL << "execute handler";
+
   switch (type) {
     case rest::RequestType::POST: {
       startExecution();
       break;
     }
     case rest::RequestType::GET: {
+      LOG_DEVEL << "get exec status";
       getExecutionStatus();
       break;
     }
@@ -77,6 +85,7 @@ RestStatus RestControlPregelHandler::execute() {
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>>
 RestControlPregelHandler::forwardingTarget() {
+  LOG_DEVEL << "forwarding foo";
   auto base = RestVocbaseBaseHandler::forwardingTarget();
   if (base.ok() && !std::get<0>(base.get()).empty()) {
     return base;
@@ -90,6 +99,13 @@ RestControlPregelHandler::forwardingTarget() {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
+  if (suffixes[0] == "startActor" or suffixes[0] == "messageActor") {
+    // TODO: I only put this code here to try something out; this has to be
+    // removed again
+    LOG_DEVEL << "YOU HIT DEBUGGING CODE, REMOVE IT YOU LAZY GIT";
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -140,6 +156,45 @@ void RestControlPregelHandler::startExecution() {
 
 void RestControlPregelHandler::getExecutionStatus() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  LOG_DEVEL << "in getExecutionSTatus";
+  if (suffixes.size() == 1) {
+    if (suffixes[0] == "startActor") {
+      LOG_DEVEL << " handling startActor";
+      auto actor =
+          _pregel.actorRuntime()->spawn<pregel::actor::test::TrivialActor>(
+              pregel::actor::test::TrivialState{.state = "foo"},
+              pregel::actor::test::TrivialMessage1{"bar"});
+      auto state =
+          _pregel.actorRuntime()
+              ->getActorStateByID<pregel::actor::test::TrivialActor>(actor);
+      LOG_DEVEL << fmt::format("spawned actor: {} with state {} ", actor,
+                               *state);
+      return;
+    }
+    if (suffixes[0] == "messageActor") {
+      auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+      auto sender =
+          pregel::actor::ActorPID{.server = ServerState::instance()->getId(),
+                                  .id = {0},
+                                  .databaseName = "_system"};
+
+      for (auto const& coordinator : ci.getCurrentCoordinators()) {
+        //   if (coordinator == ServerState::instance()->getId()) {
+        //     // ourselves!
+        //     continue;
+        //   }
+
+        auto receiver = pregel::actor::ActorPID{
+            .server = coordinator, .id = {0}, .databaseName = "_system"};
+
+        auto msg = pregel::actor::test::TrivialMessage{
+            pregel::actor::test::TrivialMessage1("hello")};
+        auto slice = inspection::serializeWithErrorT(msg);
+        _pregel.actorNetworkTransport()(sender, receiver, slice.get());
+      }
+    }
+  }
 
   if (suffixes.empty()) {
     bool const allDatabases = _request->parsedValue("all", false);

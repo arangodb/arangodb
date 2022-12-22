@@ -97,14 +97,26 @@ struct Runtime {
     return std::nullopt;
   }
 
+  auto getSerializedActorByID(ActorID id) -> std::optional<velocypack::SharedSlice> {
+     if (actors.contains(id)) {
+      auto& actor = actors[id];
+      if (actor != nullptr) {
+        return actor->serialize();
+      }
+    }
+    return std::nullopt;
+  }
+
   auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server != myServerID) {
+      fmt::print(stderr, "received message for receiver {}, this is not me: {}", receiver, myServerID);
       std::abort();
     }
 
     auto a = actors.find(receiver.id);
     if (a == std::end(actors)) {
+      fmt::print(stderr, "received message for receiver {}, but the actor could not be found.", receiver);
       std::abort();
     }
 

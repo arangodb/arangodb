@@ -26,6 +26,8 @@
 #include <Inspection/VPackWithErrorT.h>
 #include <memory>
 
+#include <velocypack/Builder.h>
+
 #include "ActorPID.h"
 #include "MPSCQueue.h"
 
@@ -45,6 +47,18 @@ struct MessagePayload : MessagePayloadBase {
 template<typename Payload, typename Inspector>
 auto inspect(Inspector& f, MessagePayload<Payload>& x) {
   return f.object(x).fields(f.field("payload", x.payload));
+}
+
+struct NetworkMessage {
+  ActorPID sender;
+  ActorPID receiver;
+  VPackBuilder payload;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, NetworkMessage& x) {
+  return f.object(x).fields(f.field("sender", x.sender),
+                            f.field("receiver", x.receiver),
+                            f.field("payload", x.payload));
 }
 
 }  // namespace arangodb::pregel::actor

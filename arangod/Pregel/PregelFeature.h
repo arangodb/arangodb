@@ -46,12 +46,18 @@
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
+#include "Pregel/Actor/NetworkTransport.h"
+#include "Pregel/Actor/Runtime.h"
+
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
-
 class Conductor;
 class IWorker;
+
+struct MockScheduler {
+  auto operator()(auto fn) { fn(); };
+};
 
 class PregelFeature final : public ArangodFeature {
  public:
@@ -108,6 +114,12 @@ class PregelFeature final : public ArangodFeature {
   bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+  auto actorNetworkTransport() -> actor::NetworkTransport& {
+    return _actorNetworkTransport;
+  }
+
+  auto actorRuntime() -> std::shared_ptr<actor::Runtime<MockScheduler>> { ADB_PROD_ASSERT(_actorRuntime != nullptr); return _actorRuntime; }
+  auto ensureActorRuntime() -> void;
 
  private:
   void scheduleGarbageCollection();
@@ -132,8 +144,8 @@ class PregelFeature final : public ArangodFeature {
   // "database-directory")
   std::string _tempLocationType;
 
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
+  // custom path for temporary directory. only populated if _tempLocationType
+  // == "custom"
   std::string _tempLocationCustomPath;
 
   // default "useMemoryMaps" value per Pregel job
@@ -157,6 +169,9 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+  actor::NetworkTransport _actorNetworkTransport;
+  std::shared_ptr<actor::Runtime<MockScheduler>> _actorRuntime;
 };
 
 }  // namespace arangodb::pregel
