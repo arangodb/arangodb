@@ -53,6 +53,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -113,6 +114,8 @@ arangodb::Result removeRevisions(
   if (!toRemove.empty()) {
     PhysicalCollection* physical = collection.getPhysical();
 
+    auto indexesSnapshot = physical->getIndexesSnapshot();
+
     arangodb::OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
@@ -131,8 +134,8 @@ arangodb::Result removeRevisions(
                                         arangodb::ReadOwnWrites::yes);
 
       if (r.ok()) {
-        r = physical->remove(trx, documentId, rid, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, rid,
+                             tempBuilder->slice(), options);
       }
 
       if (r.ok()) {
@@ -179,6 +182,7 @@ arangodb::Result fetchRevisions(
   }
 
   PhysicalCollection* physical = collection.getPhysical();
+  auto indexesSnapshot = physical->getIndexesSnapshot();
 
   std::string path = arangodb::replutils::ReplicationUrl + "/" +
                      RestReplicationHandler::Revisions + "/" +
@@ -207,8 +211,8 @@ arangodb::Result fetchRevisions(
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
-        r = physical->remove(trx, documentId, revisionId, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, revisionId,
+                             tempBuilder->slice(), options);
       }
     }
 

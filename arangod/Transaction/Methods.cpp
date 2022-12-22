@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -72,6 +73,7 @@
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -102,6 +104,19 @@ template<>
 struct ToType<Methods::CallbacksTag::StatusChange> {
   using Type = Methods::StatusChangeCallback;
 };
+
+// builds a document object with just _key and _rev
+void buildDocumentStub(velocypack::Builder& builder, std::string_view key,
+                       RevisionId revisionId) {
+  builder.openObject(/*unindexed*/ true);
+  // _key
+  builder.add(StaticStrings::KeyString, VPackValue(key));
+
+  // _rev
+  char ridBuffer[basics::maxUInt64StringSize];
+  builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
+  builder.close();
+}
 
 BatchOptions buildBatchOptions(OperationOptions const& options,
                                LogicalCollection& collection,
@@ -617,8 +632,12 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                           std::string_view operationName,
                           TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
+        _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
         _replicationData(&methods),
-        _operationType(operationType) {
+        _operationType(operationType),
+        _needToFetchOldDocument(
+            operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
+            _indexesSnapshot.hasSecondaryIndex() || options.returnOld) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
         this->_collection, operationName, this->_value, this->_options,
@@ -670,6 +689,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
       }
     }
     _replicationData->close();
+
+    // we are done with indexes. release the lock on the list of indexes as
+    // early as possible
+    _indexesSnapshot.release();
 
     // on a follower, our result should always be an empty array or object
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
@@ -764,12 +787,21 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   }
 
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
+  // indexes snapshot held for operation. note that this will not only contain
+  // the list of indexes for the collection, but also protect the list of
+  // indexes of the collection from being modified. this is to ensure that while
+  // a data modification operation is ongoing, the collection's list of indexes
+  // is static and cannot differ between performing the modification and a
+  // potential rollback of the modification.
+  IndexesSnapshot _indexesSnapshot;
 
   // all document data that are going to be replicated, append-only
   transaction::BuilderLeaser _replicationData;
+  Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
   TRI_voc_document_operation_e _operationType;
   bool _excludeAllFromReplication;
+  // whether or not we need to read the previous document version
+  bool _needToFetchOldDocument;
 };
 
 struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
@@ -836,12 +868,22 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     _previousDocumentBuilder->clear();
-    res = _collection.getPhysical()->lookupDocument(
-        _methods, oldDocumentId, *_previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+    if (_needToFetchOldDocument) {
+      // need to read the full document, so that we can remove all
+      // secondary index entries for it
+      res = _collection.getPhysical()->lookupDocument(
+          _methods, oldDocumentId, *_previousDocumentBuilder,
+          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
 
-    if (res.fail()) {
-      return res;
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      TRI_ASSERT(!_options.returnOld);
+      // no need to read the full document, as we don't have secondary
+      // index entries to remove. now build an artificial document with
+      // just _key for our removal operation
+      buildDocumentStub(*_previousDocumentBuilder, key, oldRevisionId);
     }
 
     TRI_ASSERT(_previousDocumentBuilder->slice().isObject());
@@ -898,7 +940,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
     }
 
     Result res = _collection.getPhysical()->remove(
-        _methods, previousDocumentId, previousRevisionId,
+        _methods, _indexesSnapshot, previousDocumentId, previousRevisionId,
         _previousDocumentBuilder->slice(), _options);
 
     if (res.ok()) {
@@ -925,7 +967,22 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       : ReplicatedProcessorBase<Derived>(methods, trxColl, collection, value,
                                          options, operationName, operationType),
         _batchOptions(::buildBatchOptions(options, collection, operationType,
-                                          methods.state()->isDBServer())) {}
+                                          methods.state()->isDBServer())) {
+    // in UPDATE operations we always have to fetch the previous version
+    // of the document. in REPLACE operations we don't need to fetch it under
+    // some circumstances. but if we do have a schema, we need to fetch the
+    // old version anyway if the schema validation is configured to accept
+    // invalid documents if the old document didn't pass as well ("level"
+    // attribute of a schema).
+    // in addition, on a REPLACE operation, if a collection uses non-default
+    // shard-keys, we also need to fetch the old document to check if shard
+    // keys changed.
+    this->_needToFetchOldDocument |=
+        operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE &&
+        (_batchOptions.schema != nullptr ||
+         !collection.usesDefaultShardKeys() ||
+         collection.hasSmartJoinAttribute());
+  }
 
  protected:
   Result modifyLocalHelper(velocypack::Slice value,
@@ -1015,14 +1072,14 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       if (res.ok()) {
         if (isUpdate) {
           res = this->_collection.getPhysical()->update(
-              this->_methods, previousDocumentId, previousRevisionId,
-              previousDocument, newRevisionId, newDocumentBuilder.slice(),
-              this->_options);
+              this->_methods, this->_indexesSnapshot, previousDocumentId,
+              previousRevisionId, previousDocument, newRevisionId,
+              newDocumentBuilder.slice(), this->_options);
         } else {
           res = this->_collection.getPhysical()->replace(
-              this->_methods, previousDocumentId, previousRevisionId,
-              previousDocument, newRevisionId, newDocumentBuilder.slice(),
-              this->_options);
+              this->_methods, this->_indexesSnapshot, previousDocumentId,
+              previousRevisionId, previousDocument, newRevisionId,
+              newDocumentBuilder.slice(), this->_options);
         }
       }
 
@@ -1296,7 +1353,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
 
     if (res.ok()) {
       res = _collection.getPhysical()->insert(
-          _methods, newRevisionId, _newDocumentBuilder->slice(), _options);
+          _methods, _indexesSnapshot, newRevisionId,
+          _newDocumentBuilder->slice(), _options);
 
       if (res.ok()) {
         trackWaitForSync();
@@ -1312,6 +1370,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
 
   OperationOptions::OverwriteMode _overwriteMode;
 };
+
 struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   ModifyProcessor(Methods& methods, TransactionCollection& trxColl,
                   LogicalCollection& collection, VPackSlice value,
@@ -1373,15 +1432,25 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     auto [oldDocumentId, oldRevisionId] = lookupResult;
 
     _previousDocumentBuilder->clear();
-    res = _collection.getPhysical()->lookupDocument(
-        _methods, oldDocumentId, *_previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+    if (_needToFetchOldDocument) {
+      // need to read the full document, so that we can remove all
+      // secondary index entries for it
+      res = _collection.getPhysical()->lookupDocument(
+          _methods, oldDocumentId, *_previousDocumentBuilder,
+          /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
 
-    if (res.fail()) {
-      return res;
+      if (res.fail()) {
+        return res;
+      }
+    } else {
+      TRI_ASSERT(!_options.returnOld);
+      TRI_ASSERT(!_isUpdate);
+      // no need to read the full document, as we don't have secondary
+      // index entries to remove. now build an artificial document with
+      // just _key for our removal operation
+      buildDocumentIdentityCustom(key.stringView(), oldRevisionId);
     }
 
-    bool excludeFromReplication = _excludeAllFromReplication;
     TRI_ASSERT(_previousDocumentBuilder->slice().isObject());
     RevisionId newRevisionId;
     res = modifyLocalHelper(newValue, oldDocumentId, oldRevisionId,
@@ -1405,6 +1474,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
     TRI_ASSERT(newRevisionId.isSet());
     TRI_ASSERT(_newDocumentBuilder->slice().isObject());
 
+    bool excludeFromReplication = _excludeAllFromReplication;
+
     if (!_options.silent) {
       TRI_ASSERT(newRevisionId.isSet() && oldRevisionId.isSet());
 
@@ -1413,7 +1484,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
           _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
           _options.returnNew ? _newDocumentBuilder.get() : nullptr);
       if (newRevisionId == oldRevisionId && _isUpdate) {
-        excludeFromReplication |= true;
+        excludeFromReplication = true;
       }
     }
 
@@ -1435,14 +1506,55 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
   }
 
  private:
+  // builds a document stub with _id, _key and _rev. _id is of velocypack
+  // type Custom here.
+  void buildDocumentIdentityCustom(std::string_view key, RevisionId rid) {
+    _previousDocumentBuilder->openObject();
+
+    // _id
+    uint8_t* p = _previousDocumentBuilder->add(
+        StaticStrings::IdString, VPackValuePair(9ULL, VPackValueType::Custom));
+
+    *p++ = 0xf3;  // custom type for _id
+
+    if (_methods.state()->isDBServer() && !_collection.system()) {
+      // db server in cluster, note: the local collections _statistics,
+      // _statisticsRaw and _statistics15 (which are the only system
+      // collections)
+      // must not be treated as shards but as local collections
+      encoding::storeNumber<uint64_t>(p, _collection.planId().id(),
+                                      sizeof(uint64_t));
+    } else {
+      // local server
+      encoding::storeNumber<uint64_t>(p, _collection.id().id(),
+                                      sizeof(uint64_t));
+    }
+
+    // _key
+    _previousDocumentBuilder->add(StaticStrings::KeyString, VPackValue(key));
+
+    // _rev
+    if (rid.isSet()) {
+      char ridBuffer[arangodb::basics::maxUInt64StringSize];
+      _previousDocumentBuilder->add(StaticStrings::RevString,
+                                    rid.toValuePair(ridBuffer));
+    } else {
+      _previousDocumentBuilder->add(StaticStrings::RevString,
+                                    std::string_view{});
+    }
+
+    _previousDocumentBuilder->close();
+  }
+
   // builder for a single document (will be recycled for each document)
   transaction::BuilderLeaser _newDocumentBuilder;
   // builder for a single, old version of document (will be recycled for each
   // document)
   transaction::BuilderLeaser _previousDocumentBuilder;
 
-  bool _isUpdate;
+  bool const _isUpdate;
 };
+
 }  // namespace
 
 /*static*/ void transaction::Methods::addDataSourceRegistrationCallback(

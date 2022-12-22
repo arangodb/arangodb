@@ -106,7 +106,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
-      std::unordered_set<DataSourceId> collections;
+      containers::FlatHashSet<DataSourceId> collections;
       r = IResearchLinkHelper::updateLinks(collections, *impl, links,
                                            getDefaultVersion(isUserRequest));
       if (!r.ok()) {
@@ -245,7 +245,7 @@ ViewFactory const& IResearchViewCoordinator::factory() {
 }
 
 Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
-  auto& collection = static_cast<IResearchLink const&>(link).collection();
+  auto& collection = link.collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
     return {TRI_ERROR_NO_ERROR};
@@ -395,14 +395,14 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     // rollback is not possible as a result it's also possible for links to be
     // simultaneously modified via a different call-flow (e.g. from collections)
     // .........................................................................
-    std::unordered_set<DataSourceId> currentCids;
+    containers::FlatHashSet<DataSourceId> currentCids;
     if (!partialUpdate) {
       std::shared_lock lock{_mutex};
       for (auto& entry : _collections) {
         currentCids.emplace(entry.first);
       }
     }
-    std::unordered_set<DataSourceId> collections;
+    containers::FlatHashSet<DataSourceId> collections;
     return IResearchLinkHelper::updateLinks(collections, *this, links,
                                             getDefaultVersion(isUserRequest),
                                             currentCids);
@@ -441,7 +441,7 @@ Result IResearchViewCoordinator::dropImpl() {
   }
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
-  std::unordered_set<DataSourceId> currentCids;
+  containers::FlatHashSet<DataSourceId> currentCids;
   visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
     currentCids.emplace(cid);
     return true;
@@ -458,7 +458,7 @@ Result IResearchViewCoordinator::dropImpl() {
       }
     }
   }
-  std::unordered_set<DataSourceId> collections;
+  containers::FlatHashSet<DataSourceId> collections;
   auto r = IResearchLinkHelper::updateLinks(
       collections, *this, velocypack::Slice::emptyObjectSlice(),
       LinkVersion::MAX,

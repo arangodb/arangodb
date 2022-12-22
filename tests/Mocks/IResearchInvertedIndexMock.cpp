@@ -31,8 +31,8 @@ IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     const std::string& idxName,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse)
-    : Index(iid, collection, idxName, attributes, unique, sparse),
-      IResearchInvertedIndex(iid, collection) {}
+    : Index{iid, collection, idxName, attributes, unique, sparse},
+      IResearchInvertedIndex{collection.vocbase().server()} {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
     velocypack::Builder& builder,
@@ -40,9 +40,9 @@ void IResearchInvertedIndexMock::toVelocyPack(
   auto const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
   VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(
-      IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+  IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
+                                       &collection().vocbase(), builder,
+                                       forPersistence);
 
   builder.add(arangodb::StaticStrings::IndexId,
               arangodb::velocypack::Value(std::to_string(_iid.id())));
@@ -85,9 +85,7 @@ bool IResearchInvertedIndexMock::hasSelectivityEstimate() const {
   return false;
 }
 
-bool IResearchInvertedIndexMock::inProgress() const {
-  return IResearchInvertedIndex::inProgress();
-}
+bool IResearchInvertedIndexMock::inProgress() const { return false; }
 
 bool IResearchInvertedIndexMock::covers(
     arangodb::aql::Projections& projections) const {
@@ -109,8 +107,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
     int mutableConditionIdx) {
   return IResearchInvertedIndex::iteratorForCondition(
-      monitor, &IResearchDataStore::collection(), trx, node, reference, opts,
-      mutableConditionIdx);
+      monitor, &collection(), trx, node, reference, opts, mutableConditionIdx);
 }
 
 Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
@@ -126,8 +123,7 @@ Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return IResearchInvertedIndex::supportsFilterCondition(
-      trx, IResearchDataStore::id(), _fields, allIndexes, node, reference,
-      itemsInIndex);
+      trx, id(), _fields, allIndexes, node, reference, itemsInIndex);
 }
 
 aql::AstNode* IResearchInvertedIndexMock::specializeCondition(

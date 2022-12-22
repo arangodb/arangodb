@@ -24,8 +24,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
-#include "IResearchLinkHelper.h"
-#include "IResearchView.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBEncryption.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,17 +37,14 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "IResearch/IResearchFeature.h"
 
-#include "IResearchRocksDBLink.h"
-#include "IResearchRocksDBEncryption.h"
-
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                                            LogicalCollection& collection,
                                            uint64_t objectId)
-    : RocksDBIndex(iid, collection,
+    : RocksDBIndex{iid, collection,
                    IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
@@ -55,8 +54,8 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                    collection.vocbase()
                        .server()
                        .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
-      IResearchLink(iid, collection) {
+                       .engine<RocksDBEngine>()},
+      IResearchLink{collection.vocbase().server()} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -162,5 +161,4 @@ IResearchRocksDBLink::createFactory(ArangodServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
