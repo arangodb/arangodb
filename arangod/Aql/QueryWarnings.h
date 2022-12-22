@@ -53,6 +53,12 @@ class QueryWarnings final {
   // register a warning
   void registerWarning(ErrorCode code, std::string_view details = {});
 
+  void resetCurrentWarning() { _currWarning.second.clear(); }
+
+  std::pair<ErrorCode, std::string> const& getCurrentWarning() {
+    return _currWarning;
+  }
+
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
 
   bool empty() const;
@@ -66,6 +72,7 @@ class QueryWarnings final {
 
   // warnings collected during execution
   std::vector<std::pair<ErrorCode, std::string>> _list;
+  std::pair<ErrorCode, std::string> _currWarning;
 
   size_t _maxWarningCount;
   bool _failOnWarning;

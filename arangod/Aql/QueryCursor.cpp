@@ -463,6 +463,12 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     _query.reset();
     this->setDeleted();
     return ExecutionState::DONE;
+  } else {
+    VPackBuilder warning;
+    _query->retrieveBatchExtras(warning);
+    if (auto warnSlice = warning.slice(); !warnSlice.isNone()) {
+      builder.add("extra", warnSlice);
+    }
   }
 
   return ExecutionState::HASMORE;

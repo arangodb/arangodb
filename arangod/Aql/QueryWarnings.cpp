@@ -23,7 +23,6 @@
 
 #include "QueryWarnings.h"
 
-#include "Aql/ExecutionNodeId.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
@@ -34,7 +33,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryWarnings::QueryWarnings()
-    : _maxWarningCount(std::numeric_limits<size_t>::max()),
+    : _currWarning(0, ""),
+      _maxWarningCount(std::numeric_limits<size_t>::max()),
       _failOnWarning(false) {}
 
 // register an error
@@ -63,11 +63,20 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
     return;
   }
 
+  _currWarning.first = code;
+
   if (details.empty()) {
+    _currWarning.second = TRI_errno_string(code);
     _list.emplace_back(code, TRI_errno_string(code));
   } else {
+    _currWarning.second = details;
     _list.emplace_back(code, details);
   }
+  /*
+  LOG_TOPIC("42223", WARN, Logger::QUERIES)
+      << "query generated warning on this batch: " << details
+      << TRI_errno_string(code) << " code " << code;
+      */
 }
 
 void QueryWarnings::toVelocyPack(arangodb::velocypack::Builder& b) const {

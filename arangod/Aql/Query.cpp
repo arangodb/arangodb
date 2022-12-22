@@ -960,6 +960,22 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   return ExecutionState::DONE;
 }
 
+void Query::retrieveBatchExtras(velocypack::Builder& warnings) {
+  auto& currWarning = _warnings.getCurrentWarning();
+  if (!currWarning.second.empty()) {
+    warnings.openObject();
+    warnings.add("warnings", VPackValue(VPackValueType::Array));
+
+    warnings.openObject();
+    warnings.add("code", VPackValue(currWarning.first));
+    warnings.add("message", VPackValue(currWarning.second));
+    warnings.close();
+    warnings.close();
+    warnings.close();
+    _warnings.resetCurrentWarning();
+  }
+}
+
 /// @brief parse an AQL query
 QueryResult Query::parse() {
   // only used in case case of failure

@@ -149,6 +149,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// Only use directly for a streaming query, rather use `execute(...)`
   ExecutionState finalize(velocypack::Builder& extras);
 
+  void retrieveBatchExtras(velocypack::Builder& extras);
+
   /// @brief parse an AQL query
   QueryResult parse();
 

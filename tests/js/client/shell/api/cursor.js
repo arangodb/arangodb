@@ -1212,9 +1212,111 @@ function dealing_with_cursorsSuite_fetching_floating_point_valuesSuite () {
   };
 }
 
+function dealing_with_cursorsSuite_handling_singleWarning_cursorSuite() {
+  let cn = "users";
+
+  return {
+    setUpAll: function () {
+      db._drop(cn);
+      db._create(cn);
+    },
+
+    tearDownAll: function () {
+      db._drop(cn);
+    },
+
+    test_creates_cursor_expects_2_single_warnings: function () {
+      let cmd = api;
+      let body = {"query": `FOR i IN 1..9 INSERT {_key:TO_STRING(i),value:i} INTO ${cn}`};
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+
+      body = {
+        "query": `INSERT
+        {_key:TO_STRING(10),value: "foo"} INTO
+        ${cn}`
+      };
+      doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+
+      body = {"query": `FOR i IN 11..19 INSERT {_key:TO_STRING(i),value:i} INTO ${cn}`};
+      doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+
+      body = {
+        "query": `INSERT
+        {_key:TO_STRING(20),value:\"foo\"} INTO
+        ${cn}`
+      };
+      doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+
+      body = {"query": `FOR i IN 21..30 INSERT {_key:TO_STRING(i),value:i} INTO ${cn}`};
+      doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+
+      body = {
+        "query": `FOR d IN ${cn} RETURN DATE_TIMESTAMP(d.value)`,
+        "batchSize": 1,
+        "options": {"stream": true, "failOnWarning": false}
+      };
+      doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(typeof doc.parsedBody['id'], "string");
+      assertMatch(reId, doc.parsedBody['id']);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertFalse(doc.parsedBody['cached']);
+
+
+      for (let i = 2; i <= 30; ++i) {
+        let id = doc.parsedBody['id'];
+
+        cmd = api + `/${id}`;
+        doc = arango.PUT_RAW(cmd, "");
+        assertEqual(doc.code, 200);
+
+        assertFalse(doc.parsedBody['error']);
+        assertEqual(doc.parsedBody['code'], 200);
+
+
+        if (i !== 30) {
+          assertTrue(doc.parsedBody['hasMore']);
+        } else {
+          assertFalse(doc.parsedBody['hasMore']);
+        }
+        if (i === 9 || i === 19 || i === 30) {
+          assertTrue(doc.parsedBody.hasOwnProperty("extra"));
+          const extra = doc.parsedBody['extra'];
+          assertTrue(extra.hasOwnProperty("warnings"));
+          extra['warnings'].forEach(warning => {
+            assertTrue(warning.hasOwnProperty("code"));
+            assertTrue(warning.hasOwnProperty("message"));
+            assertEqual(internal.errors.ERROR_QUERY_INVALID_DATE_VALUE.code, warning['code']);
+            assertTrue(warning['message'].indexOf("invalid date value") !== -1);
+          });
+
+        }
+        if (i < 30) {
+          assertEqual(typeof doc.parsedBody['id'], "string");
+          assertMatch(reId, doc.parsedBody['id']);
+          assertEqual(doc.parsedBody['id'], id);
+        }
+      }
+
+    }
+  };
+}
+
+
 jsunity.run(dealing_with_cursorsSuite_error_handlingSuite);
 jsunity.run(dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite);
 jsunity.run(dealing_with_cursorsSuite_handling_a_cursorSuite);
 jsunity.run(dealing_with_cursorsSuite_checking_a_querySuite);
 jsunity.run(dealing_with_cursorsSuite_fetching_floating_point_valuesSuite);
+jsunity.run(dealing_with_cursorsSuite_handling_singleWarning_cursorSuite);
 return jsunity.done();
