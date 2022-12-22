@@ -254,9 +254,10 @@ const [linkName, setLinkName] = useState('')
         }
       </div>
       <SplitPane
+        paneStyle={{ overflow: 'scroll' }}
         defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
         onChange={(size) => localStorage.setItem('splitPos', size)}
-        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px', overflow: 'scroll' }}>
+        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
         <div style={{ marginRight: '15px' }}>
           <AccordionView
             allowMultipleOpen
