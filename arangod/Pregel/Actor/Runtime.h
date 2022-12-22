@@ -41,13 +41,12 @@ struct Runtime {
   Runtime(Runtime&&) = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
           std::shared_ptr<Scheduler> scheduler,
-          std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
-              sendingMechanism)
+          ExternalDispatcher externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
         dispatcher(std::make_shared<Dispatcher>(myServerID, actors,
-                                                sendingMechanism)) {}
+                                                externalDispatcher)) {}
 
   template<Actorable ActorConfig>
   auto spawn(typename ActorConfig::State initialState,

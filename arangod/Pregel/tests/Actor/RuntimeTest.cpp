@@ -26,10 +26,12 @@
 #include <unordered_set>
 
 #include "Actor/ActorPID.h"
+#include "Actor/Dispatcher.h"
 #include "Actor/Runtime.h"
 
 #include "TrivialActor.h"
 #include "PingPongActors.h"
+#include "fmt/format.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
@@ -37,18 +39,28 @@ using namespace arangodb::pregel::actor::test;
 struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
+// struct NonTrivialScheduler {
+//   NonTrivialScheduler() {}
+//   auto operator()(auto fn) { threads.emplace(fn); }
+//   ThreadGuard threads;
+// };
 
-// TODO make dispatcher generic to be able to mock it when creating an actor
-// TEST(ActorTest, has_a_type_name) {
-//   auto scheduler = std::make_shared<MockScheduler>();
-//   auto actor = Actor<MockScheduler, TrivialActor>(
-//       scheduler, std::make_unique<TrivialState>());
-//   ASSERT_EQ(actor.typeName(), "TrivialActor");
-// }
+TEST(RuntimeTest, formats_runtime_and_actor_state) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  Runtime runtime(ServerID{"PRMR-1234"}, "RuntimeTest", scheduler,
+                  ExternalDispatcher{});
+  auto actorID = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
+                                                  pong_actor::Start{});
+  ASSERT_EQ(
+      fmt::format("{}", runtime),
+      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
+  auto actor = runtime.getActorStateByID<pong_actor::Actor>(actorID).value();
+  ASSERT_EQ(fmt::format("{}", actor), R"({"called":0})");
+}
 
 TEST(RuntimeTest, spawns_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, ExternalDispatcher{});
 
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage0());
@@ -59,7 +71,7 @@ TEST(RuntimeTest, spawns_actor) {
 
 TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, ExternalDispatcher{});
 
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage1("bar"));
@@ -70,7 +82,7 @@ TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
 
 TEST(RuntimeTest, gives_all_existing_actor_ids) {
   auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, ExternalDispatcher{});
 
   ASSERT_TRUE(runtime.getActorIDs().empty());
 
@@ -88,12 +100,12 @@ TEST(RuntimeTest, gives_all_existing_actor_ids) {
 
 TEST(RuntimeTest, sends_message_to_an_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler);
+  Runtime runtime("PRMR-1234", "RuntimeTest", scheduler, ExternalDispatcher{});
   auto actor = runtime.spawn<TrivialActor>(TrivialState{.state = "foo"},
                                            TrivialMessage0{});
 
-  (*runtime.dispatcher)(ActorPID{.id = actor, .server = "Foo"},
-                        ActorPID{.id = actor, .server = "PRMR-1234"},
+  (*runtime.dispatcher)(ActorPID{.server = "Foo", .id = actor},
+                        ActorPID{.server = "PRMR-1234", .id = actor},
                         std::make_unique<MessagePayload<TrivialActor::Message>>(
                             TrivialMessage1("baz")));
 
@@ -108,14 +120,14 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime(serverID, "RuntimeTest", scheduler);
+  Runtime runtime(serverID, "RuntimeTest", scheduler, ExternalDispatcher{});
 
   auto pong_actor = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
                                                      pong_actor::Start{});
   auto ping_actor = runtime.spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =
-                            ActorPID{.id = pong_actor, .server = serverID}});
+                            ActorPID{.server = serverID, .id = pong_actor}});
 
   auto ping_actor_state =
       runtime.getActorStateByID<ping_actor::Actor>(ping_actor);

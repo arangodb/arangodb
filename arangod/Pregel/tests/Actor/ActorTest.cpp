@@ -21,109 +21,63 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
-#include <thread>
-#include <string>
-#include <memory>
-
+#include "Actor/Message.h"
 #include "gtest/gtest.h"
 #include "Actor/Actor.h"
+#include "Actor/ActorPID.h"
+#include "TrivialActor.h"
 
 #include "fmt/core.h"
+#include <Inspection/VPackWithErrorT.h>
 
-#include "Basics/ThreadGuard.h"
-
-using namespace arangodb;
 using namespace arangodb::pregel::actor;
-using namespace arangodb::pregel::mpscqueue;
+using namespace arangodb::pregel::actor::test;
 
-// This scheduler just runs any function synchronously as soon as it comes in.
-struct TrivialScheduler {
+struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
 
-struct TrivialState {
-  TrivialState(std::string state) : state(std::move(state)) {}
-  std::string state;
-  std::size_t called{};
-};
-
-struct SpecificMessage {
-  SpecificMessage(std::string value) : store(std::move(value)) {}
-  std::string store;
-};
-
-struct ActorMessage : public std::variant<SpecificMessage>,
-                      public MPSCQueue<ActorMessage>::Node {
-  using std::variant<SpecificMessage>::variant;
-};
-
-struct TrivialHandler {
-  TrivialHandler(std::unique_ptr<TrivialState> state)
-      : state{std::move(state)} {};
-  std::unique_ptr<TrivialState> state;
-  auto operator()(SpecificMessage msg) -> std::unique_ptr<TrivialState> {
-    state->called++;
-    state->state += msg.store;
-    return std::move(state);
-  }
-};
-
-using MyActor =
-    Actor<TrivialScheduler, TrivialHandler, TrivialState, ActorMessage>;
-
-TEST(Actor, processes_message) {
-  auto scheduler = TrivialScheduler{};
-
-  auto actor = MyActor(scheduler, std::make_unique<TrivialState>("Hello"));
-
-  send(actor, std::make_unique<ActorMessage>(SpecificMessage{"hello"}));
-  send(actor, std::make_unique<ActorMessage>(SpecificMessage{"world"}));
-  send(actor, std::make_unique<ActorMessage>(SpecificMessage{"!"}));
-
-  ASSERT_EQ(actor.state->called, 3u);
-  ASSERT_EQ(actor.state->state, "Hellohelloworld!");
+TEST(ActorTest, has_a_type_name) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto actor = Actor<MockScheduler, TrivialActor>(
+      ActorPID{}, scheduler, nullptr, std::make_unique<TrivialState>());
+  ASSERT_EQ(actor.typeName(), "TrivialActor");
 }
 
-struct NonTrivialScheduler {
-  NonTrivialScheduler() {}
-
-  auto operator()(auto fn) { threads.emplace(fn); }
-
-  ThreadGuard threads;
-};
-
-struct NonTrivialState {
-  NonTrivialState(std::string state) : state(std::move(state)) {}
-  std::string state;
-  std::size_t called{};
-};
-
-struct NonTrivialHandler {
-  NonTrivialHandler(std::unique_ptr<NonTrivialState> state)
-      : state{std::move(state)} {};
-  std::unique_ptr<NonTrivialState> state;
-  auto operator()(SpecificMessage msg) -> std::unique_ptr<NonTrivialState> {
-    state->called++;
-    state->state += msg.store;
-    return std::move(state);
-  }
-};
-
-using MyActor2 = Actor<NonTrivialScheduler, NonTrivialHandler, NonTrivialState,
-                       ActorMessage>;
-
-TEST(Actor, trivial_thread_scheduler) {
-  auto scheduler = NonTrivialScheduler();
-  auto actor = MyActor2(scheduler, std::make_unique<NonTrivialState>("Hello"));
-
-  for (std::size_t i = 0; i < 100; i++) {
-    send(actor, std::make_unique<ActorMessage>(SpecificMessage{"hello"}));
-    send(actor, std::make_unique<ActorMessage>(SpecificMessage{"world"}));
-    send(actor, std::make_unique<ActorMessage>(SpecificMessage{"!"}));
-  }
-  // joinen.
-  scheduler.threads.joinAll();
-  ASSERT_EQ(actor.state->called, 300);
-  ASSERT_EQ(actor.state->state.length(), 5 + 100 * (5 + 5 + 1));
+TEST(ActorTest, formats_actor) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto actor = Actor<MockScheduler, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+      std::make_unique<TrivialState>());
+  ASSERT_EQ(
+      fmt::format("{}", actor),
+      R"({"pid":{"server":"A","id":1},"state":{"state":"","called":0},"batchsize":16})");
 }
+
+TEST(ActorTest, changes_its_state_after_processing_a_message) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto actor = Actor<MockScheduler, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+      std::make_unique<TrivialState>());
+  ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
+  auto message = std::make_unique<MessagePayload<TrivialMessage>>(
+      TrivialMessage1{"Hello"});
+  actor.process(ActorPID{.server = "A", .id = {5}}, std::move(message));
+  ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
+}
+
+// TODO error handling when actor receives unknown message
+
+TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto actor = Actor<MockScheduler, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+      std::make_unique<TrivialState>());
+  ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
+  auto message = TrivialMessage{TrivialMessage1{"Hello"}};
+  actor.process(ActorPID{.server = "A", .id = {5}},
+                arangodb::inspection::serializeWithErrorT(message).get());
+  ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
+}
+
+// TODO error handling when actor received unknown velocypack message
