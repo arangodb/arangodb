@@ -285,7 +285,8 @@ function saveToJunitXML(options, results) {
         failures: testSuite.failed,
         tests: total,
         name: state.xmlName,
-        time: 0 + testSuite.duration
+        // time is in seconds
+        time: testSuite.duration / 1000
       });
       
     },
@@ -294,7 +295,8 @@ function saveToJunitXML(options, results) {
 
       state.xml.elem('testcase', {
         name: prefix + testCaseName,
-        time: 0 + testCase.duration
+        // time is in seconds
+        time: testCase.duration / 1000
       }, success);      
 
       state.seenTestCases = true;
