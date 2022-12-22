@@ -51,6 +51,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace std::literals;
 
 namespace arangodb::iresearch {

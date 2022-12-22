@@ -25,6 +25,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Metrics/ClusterMetricsFeature.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::iresearch {
 
 void IResearchInvertedClusterIndex::toVelocyPack(
