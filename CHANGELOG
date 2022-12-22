@@ -1,5 +1,97 @@
-v3.10.2 (XXXX-XX-XX)
+v3.10.3 (XXXX-XX-XX)
 --------------------
+
+* Improve performance of RocksDB's transaction lock manager by using different
+  container types for the locked keys maps.
+  This can improve performance of write-heavy operations that are not I/O-bound
+  by up to 10%.
+
+
+v3.10.2 (2022-12-16)
+--------------------
+
+* Added experimental per-operation option `refillIndexCaches` to write
+  operations, namely:
+
+  - AQL INSERT/UPDATE/REPLACE/REMOVE modification operations
+  - single-document insert, update, replace and remove operations
+  - multi-document insert, update, replace and remove operations
+
+  If the option is set to `true` every currently running transaction will keep
+  track of which in-memory edge index cache entries were invalidated by the
+  transaction, and will try to (re-)fill them later.
+  Currently only edge indexes are supported. ArangoDB 3.11 will add support for
+  velocypack-based indexes (persistent, hash, sklipist index).
+
+  Example usages:
+  - `db.<collection>.insert({ _from: ..., _to: ..., ... },
+    { refillIndexCaches: true });`
+  - `db.<collection>.update(key, { _from: ..., _to: ..., ... },
+    { refillIndexCaches: true });`
+  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... },
+    { refillIndexCaches: true });`
+  - `db.<collection>.remove(key, { refillIndexCaches: true });`
+  - `INSERT { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `UPDATE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches:
+    true }`
+  - `REPLACE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches:
+    true }`
+  - `REMOVE { ... } IN <collection> OPTIONS { refillIndexCaches: true }`
+
+  The refilling of the in-memory caches for indexes is performed by a background
+  thread, so that the foreground write operation shouldn't be slowed down a lot.
+  The background thread may however cause additional I/O for looking up the data
+  in RocksDB and for repopulating the caches.
+
+  The background refilling is done in a best-effort way and is not guaranteed to
+  always succeed, e.g. if there is no memory available for the cache subsystem,
+  or when an in-memory cache table is currently in a migration phase(grow/shrink
+  operation).
+
+  There is a new experimental startup option 
+  `--rocksdb.auto-refill-index-caches-on-modify` for DB-Servers and single
+  servers, which currently defaults to `false`. If it is set to `true`, the
+  cache refilling will be turned on automatically for all
+  insert/update/replace/remove operations, so that it doesn't need to be
+  specified on the per-operation/per-query level.
+
+  The experimental option `--rocksdb.auto-refill-index-caches-queue-capacity`
+  can be used to limit the number of index cache entries that the background
+  thread will queue. This is a safeguard to keep the memory usage at bay in case
+  the background thread is slower than concurrent threads that perform
+  ingestions.
+
+  There are also new experimental startup options to control whether or not the
+  in-memory caches should automatically be seeded upon server restart.
+  The option `--rocksdb.auto-fill-index-caches-on-startup` for DB-Servers and
+  single servers enables this functionality. It currently defaults to `false`.
+  If it is set to `true`, the in-memory caches of all eligible indexes will be
+  automatically pre-seeded after the server startup. Note that this may cause
+  additional CPU and I/O load.
+  The option `--rocksdb.max-concurrent-index-fill-tasks` is available to limit
+  the impact of the automatic index filling at startup. It controls how many
+  full index filling operations can execute concurrently. The lower this number
+  is, the lower the impact of cache filling, but the longer it will take.
+  The default value for this option depends on the number of available cores,
+  and is at least `1`. A value of `0` cannot be used.
+  This option is only relevant if `--rocksdb.auto-fill-index-caches-on-startup`
+  is set to `true`.
+
+  The PR also adds the following metrics:
+  - `rocksdb_cache_auto_refill_loaded_total`: Total number of queued items for
+    in-memory index caches refilling. It will always report a value of zero on
+    coordinators.
+  - `rocksdb_cache_auto_refill_dropped_total`: Total number of dropped items for
+    in-memory index caches refilling (because number of queued items would
+    exceed the value of `--rocksdb.auto-refill-index-caches-queue-capacity`).
+    It will always report a value of zero on coordinators.
+  - `rocksdb_cache_full_index_refills_total`: Total number of in-memory index
+    caches refill operations for entire indexes. The counter gets increased for
+    every index automatically loaded (because startup option
+    `--rocksdb.auto-fill-index-caches-on-startup` is set to `true`) or when full
+    indexes are loaded into memory manually.
+    In cluster deployments the counter will be increased once per eligible index
+    per shard. It will always report a value of zero on coordinators.
 
 * Use intermediate commits in old shard synchronization protocol. This avoids
   overly large RocksDB transactions when syncing large shards, which is a remedy

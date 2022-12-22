@@ -41,6 +41,10 @@ operation raises an error, an array with the error object(s) is returned.
 You can use this option to save network traffic but you cannot map any errors
 to the inputs of your request.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to update existing entries in the in-memory edge cache if
+edge documents are replaced.
+
 @RESTDESCRIPTION
 Replaces multiple documents in the specified collection with the
 ones in the body, the replaced documents are specified by the `_key`

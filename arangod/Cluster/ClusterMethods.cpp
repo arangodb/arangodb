@@ -1587,6 +1587,16 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
                (options.mergeObjects ? "true" : "false"))
         .param(StaticStrings::SkipDocumentValidation,
                (options.validate ? "false" : "true"));
+
+    if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+      // this attribute can have 3 values: default, true and false. only
+      // expose it when it is not set to "default"
+      reqOpts.param(StaticStrings::RefillIndexCachesString,
+                    (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                        ? "true"
+                        : "false");
+    }
+
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
@@ -1725,7 +1735,16 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
       .param(StaticStrings::IgnoreRevsString,
              (options.ignoreRevs ? "true" : "false"));
 
-  const bool isManaged =
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
+
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
@@ -2555,6 +2574,15 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
              (options.validate ? "false" : "true"))
       .param(StaticStrings::IsRestoreString,
              (options.isRestore ? "true" : "false"));
+
+  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    reqOpts.param(StaticStrings::RefillIndexCachesString,
+                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
+                      ? "true"
+                      : "false");
+  }
 
   fuerte::RestVerb restVerb;
   if (isPatch) {

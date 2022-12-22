@@ -48,11 +48,11 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId, velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   FilterCosts supportsFilterCondition(
       transaction::Methods& /*trx*/,
@@ -78,11 +78,11 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
   using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId, velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       transaction::Methods* trx, const aql::AstNode* node,
