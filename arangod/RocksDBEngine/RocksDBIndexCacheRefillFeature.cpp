@@ -45,6 +45,8 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <thread>
+
 using namespace arangodb;
 
 namespace {
@@ -114,6 +116,7 @@ RocksDBIndexCacheRefillFeature::RocksDBIndexCacheRefillFeature(
 
 RocksDBIndexCacheRefillFeature::~RocksDBIndexCacheRefillFeature() {
   stopThreads();
+  removeThreads();
 }
 
 void RocksDBIndexCacheRefillFeature::collectOptions(
@@ -269,6 +272,8 @@ void RocksDBIndexCacheRefillFeature::increaseTotalNumLoaded(
 
 void RocksDBIndexCacheRefillFeature::stop() { stopThreads(); }
 
+void RocksDBIndexCacheRefillFeature::unprepare() { removeThreads(); }
+
 bool RocksDBIndexCacheRefillFeature::autoRefill() const noexcept {
   return _autoRefill;
 }
@@ -293,7 +298,7 @@ bool RocksDBIndexCacheRefillFeature::fillOnStartup() const noexcept {
 bool RocksDBIndexCacheRefillFeature::trackRefill(
     std::shared_ptr<LogicalCollection> const& collection, IndexId iid,
     containers::FlatHashSet<std::string>& keys) {
-  if (_backgroundThreads.empty()) {
+  if (_backgroundThreads.empty() || server().isStopping()) {
     return false;
   }
   TRI_ASSERT(_numBackgroundThreads > 0);
@@ -345,8 +350,15 @@ void RocksDBIndexCacheRefillFeature::waitForCatchup() {
 
 void RocksDBIndexCacheRefillFeature::stopThreads() {
   for (auto& t : _backgroundThreads) {
+    t->shutdown();
+  }
+}
+
+void RocksDBIndexCacheRefillFeature::removeThreads() {
+  for (auto& t : _backgroundThreads) {
     t.reset();
   }
+  _backgroundThreads.clear();
 }
 
 void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {

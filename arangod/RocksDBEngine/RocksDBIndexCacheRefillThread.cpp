@@ -146,6 +146,11 @@ void RocksDBIndexCacheRefillThread::refill(TRI_vocbase_t& vocbase,
 
   // loop over all the indexes in the given collection
   for (auto const& it : data) {
+    if (isStopping()) {
+      // we are in shutdown, abort quickly
+      return;
+    }
+
     auto idx = trx.documentCollection()->lookupIndex(it.first);
     if (idx == nullptr) {
       // index doesn't exist anymore

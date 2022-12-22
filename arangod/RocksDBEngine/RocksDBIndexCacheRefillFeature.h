@@ -55,6 +55,7 @@ class RocksDBIndexCacheRefillFeature final
   void beginShutdown() override;
   void start() override;
   void stop() override;
+  void unprepare() override;
 
   // track the refill of the specified keys. returns true if the keys
   // were taken, false otherwise
@@ -90,6 +91,7 @@ class RocksDBIndexCacheRefillFeature final
 
  private:
   void stopThreads();
+  void removeThreads();
 
   // build the initial data in _indexFillTasks
   void buildStartupIndexRefillTasks();
