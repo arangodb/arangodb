@@ -21,21 +21,38 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "IndexesSnapshot.h"
 
-#include "Basics/Common.h"
+#include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 
-namespace arangodb::basics {
+namespace arangodb {
 
-enum class LockerType {
-  BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
-  EVENTUAL,  // always lock, sleeping while the lock is not acquired
-  TRY  // try to acquire the lock and give up instantly if it cannot be acquired
-};
+IndexesSnapshot::IndexesSnapshot(
+    RecursiveReadLocker<basics::ReadWriteLock>&& locker,
+    std::vector<std::shared_ptr<Index>> indexes)
+    : _locker(std::move(locker)), _indexes(std::move(indexes)), _valid(true) {}
 
-namespace ConditionalLocking {
-static constexpr bool DoLock = true;
-static constexpr bool DoNotLock = false;
-}  // namespace ConditionalLocking
+IndexesSnapshot::~IndexesSnapshot() = default;
 
-}  // namespace arangodb::basics
+// note: in unit tests, there can be whatever indexes (even no indexes)
+// in an index snapshot
+std::vector<std::shared_ptr<Index>> const& IndexesSnapshot::getIndexes()
+    const noexcept {
+  TRI_ASSERT(_valid);
+  return _indexes;
+}
+
+void IndexesSnapshot::release() {
+  // once we call this function, we give up all our locks, and we shouldn't
+  // access the list of indexes anymore
+  _valid = false;
+  _locker.unlock();
+}
+
+bool IndexesSnapshot::hasSecondaryIndex() const noexcept {
+  TRI_ASSERT(_valid);
+  return _indexes.size() > 1;
+}
+
+}  // namespace arangodb
