@@ -109,7 +109,8 @@ struct Actor : ActorBase {
     auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
-      fmt::print("Actor {} recieved a message it could not handle from {}", pid,
+      fmt::print(stderr,
+                 "Actor {} recieved a message it could not handle from {}", pid,
                  sender);
       std::abort();
     }
@@ -127,6 +128,8 @@ struct Actor : ActorBase {
           sender,
           std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
     } else {
+      fmt::print(stderr, "Actor {} cannot deserialize message {}", pid,
+                 msg.toJson());
       std::abort();
     }
   }

@@ -82,16 +82,3 @@ TEST(MultiRuntimeTest, ping_pong_game) {
       runtimes[serverID1]->getActorStateByID<pong_actor::Actor>(pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 1}));
 }
-
-TEST(MultiRuntimeTest, formats_runtime_and_actor_state) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  Runtime runtime(ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, nullptr);
-  auto actorID = runtime.spawn<pong_actor::Actor>(pong_actor::State{},
-                                                  pong_actor::Start{});
-  ASSERT_EQ(
-      fmt::format("{}", runtime),
-      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
-  auto actor = runtime.getActorStateByID<pong_actor::Actor>(actorID).value();
-  ASSERT_EQ(fmt::format("{}", actor), R"({"called":0})");
-  // TODO create actor and check its format
-}
