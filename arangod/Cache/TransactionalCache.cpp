@@ -64,7 +64,6 @@ Finding TransactionalCache::find(void const* key, std::uint32_t keySize) {
     status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     result.reportError(status);
   }
-  recordStat(result.found() ? Stat::findHit : Stat::findMiss);
 
   return result;
 }
