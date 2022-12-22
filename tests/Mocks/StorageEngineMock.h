@@ -77,7 +77,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   };
 
   static std::function<void()> before;
-  std::string physicalPath;
 
   PhysicalCollectionMock(arangodb::LogicalCollection& collection);
   virtual std::shared_ptr<arangodb::Index> createIndex(
@@ -98,7 +97,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void getPropertiesVPack(
       arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(
-      arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
+      arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
+      arangodb::RevisionId newRevisionId,
       arangodb::velocypack::Slice newDocument,
       arangodb::OperationOptions const& options) override;
 
@@ -112,7 +113,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       const override;
   virtual uint64_t numberDocuments(
       arangodb::transaction::Methods* trx) const override;
-  virtual std::string const& path() const override;
   virtual void prepareIndexes(
       arangodb::velocypack::Slice indexesSlice) override;
 
@@ -134,12 +134,14 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::ReadOwnWrites readOwnWrites) const override;
   virtual arangodb::Result remove(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId previousDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
       arangodb::OperationOptions const& options) override;
   virtual arangodb::Result replace(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId newDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
@@ -154,6 +156,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void compact() override {}
   virtual arangodb::Result update(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId newDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
@@ -272,8 +275,6 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::Result compactAll(bool changeLevels,
                                       bool compactBottomMostLevel) override;
   virtual TRI_voc_tick_t currentTick() const override;
-  virtual std::string dataPath() const override;
-  virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual arangodb::Result dropCollection(
       TRI_vocbase_t& vocbase, arangodb::LogicalCollection& collection) override;
   virtual arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;

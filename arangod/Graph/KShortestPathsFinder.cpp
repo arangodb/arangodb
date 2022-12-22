@@ -146,7 +146,8 @@ void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertexCache(
   // usage.
   ResourceUsageScope guard(_resourceMonitor, vertexCacheEntryMemoryUsage());
 
-  auto result = _vertexCache.try_emplace(vertex, FoundVertex(vertex));
+  auto result =
+      _vertexCache.try_emplace(vertex, std::make_unique<FoundVertex>(vertex));
 
   if (result.second) {
     // successful insert - now _vertexCache has taken over responsibility
@@ -159,18 +160,18 @@ void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertexCache(
 
   switch (direction) {
     case BACKWARD:
-      if (!cache._hasCachedInNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
-        cache._hasCachedInNeighbours = true;
+      if (!cache->_hasCachedInNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache->_inNeighbours);
+        cache->_hasCachedInNeighbours = true;
       }
-      res = &cache._inNeighbours;
+      res = &cache->_inNeighbours;
       break;
     case FORWARD:
-      if (!cache._hasCachedOutNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours);
-        cache._hasCachedOutNeighbours = true;
+      if (!cache->_hasCachedOutNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache->_outNeighbours);
+        cache->_hasCachedOutNeighbours = true;
       }
-      res = &cache._outNeighbours;
+      res = &cache->_outNeighbours;
       break;
     default:
       TRI_ASSERT(false);

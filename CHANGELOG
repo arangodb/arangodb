@@ -1,6 +1,18 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.6-preview-1.
+
+* Acquire a snapshot of the (list of) indexes when starting document insert, 
+  update/replace and remove operations, and use that snapshot throughout the 
+  operation. Previously, the list of indexes was acquired multiple times during
+  a write operation, and it was (at least in theory) possible that the list of
+  indexes changed between the individual acquistions.
+  The PR also contains an optimization to not fetch the full document from the 
+  storage engine for remove and replace operations in case the full document is
+  not needed to process the operation. This is the case when the collection 
+  does not contain any secondary indexes and `returnOld` is not used.
+
 * Added experimental startup option `--rocksdb.block-cache-jemalloc-allocator`.
   This option defaults to `false`. When set to `true`, a jemalloc-based memory 
   allocator will be used to allocate memory for the RocksDB block cache. 

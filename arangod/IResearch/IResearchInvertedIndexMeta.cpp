@@ -37,6 +37,8 @@
 #include "velocypack/Iterator.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;

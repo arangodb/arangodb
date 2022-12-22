@@ -366,7 +366,16 @@ class instance {
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
     }
 
-    this.args = Object.assign(this.args, this.options.extraArgs);
+    for (const [key, value] of Object.entries(this.options.extraArgs)) {
+      let splitkey = key.split('.');
+      if (splitkey.length !== 2) {
+        if (splitkey[0] === this.instanceRole) {
+          this.args[splitkey.slice(1).join('.')] = value;
+        }
+      } else {
+        this.args[key] = value;
+      }
+    }
 
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
