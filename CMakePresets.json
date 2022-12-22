@@ -159,6 +159,10 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-arm",
+      "configurePreset": "community-pr"
+    },
+    {
       "name": "community-developer-tsan",
       "configurePreset": "community-developer-tsan"
     },
