@@ -350,10 +350,7 @@ void RocksDBIndexCacheRefillFeature::waitForCatchup() {
 
 void RocksDBIndexCacheRefillFeature::stopThreads() {
   for (auto& t : _backgroundThreads) {
-    t->beginShutdown();
-    while (t->isRunning()) {
-      std::this_thread::yield();
-    }
+    t->shutdown();
   }
 }
 
