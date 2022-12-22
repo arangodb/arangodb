@@ -26,6 +26,7 @@
 #include <unordered_set>
 
 #include "Actor/ActorPID.h"
+#include "Actor/Dispatcher.h"
 #include "Actor/Runtime.h"
 
 #include "TrivialActor.h"
@@ -43,32 +44,33 @@ struct MockScheduler {
 TEST(MultiRuntimeTest, ping_pong_game) {
   std::unordered_map<ServerID, std::unique_ptr<Runtime<MockScheduler>>>
       runtimes;
-  auto const& msgHub = [&runtimes](ActorPID sender, ActorPID receiver,
-                                   velocypack::SharedSlice msg) -> void {
-    if (runtimes.contains(receiver.server)) {
-      runtimes[receiver.server]->process(sender, receiver, msg);
-    } else {
-      std::cerr << "cannot find server " << receiver.server << std::endl;
-      std::abort();
-    }
-  };
+  auto externalDispatcher = ExternalDispatcher{
+      .send = [&runtimes](ActorPID sender, ActorPID receiver,
+                          velocypack::SharedSlice msg) -> void {
+        if (runtimes.contains(receiver.server)) {
+          runtimes[receiver.server]->process(sender, receiver, msg);
+        } else {
+          std::cerr << "cannot find server " << receiver.server << std::endl;
+          std::abort();
+        }
+      }};
 
   auto scheduler = std::make_shared<MockScheduler>();
 
   // Runtime 1
   auto serverID1 = ServerID{"A"};
-  runtimes.emplace(serverID1,
-                   std::make_unique<Runtime<MockScheduler>>(
-                       serverID1, "RuntimeTest-1", scheduler, msgHub));
+  runtimes.emplace(serverID1, std::make_unique<Runtime<MockScheduler>>(
+                                  serverID1, "RuntimeTest-1", scheduler,
+                                  externalDispatcher));
 
   auto pong_actor = runtimes[serverID1]->spawn<pong_actor::Actor>(
       pong_actor::State{}, pong_actor::Start{});
 
   // Runtime 2
   auto serverID2 = ServerID{"B"};
-  runtimes.emplace(serverID2,
-                   std::make_unique<Runtime<MockScheduler>>(
-                       serverID2, "RuntimeTest-2", scheduler, msgHub));
+  runtimes.emplace(serverID2, std::make_unique<Runtime<MockScheduler>>(
+                                  serverID2, "RuntimeTest-2", scheduler,
+                                  externalDispatcher));
   auto ping_actor = runtimes[serverID2]->spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =

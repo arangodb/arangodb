@@ -29,13 +29,16 @@
 
 namespace arangodb::pregel::actor {
 
+struct ExternalDispatcher {
+  std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)> send;
+};
+
 struct Dispatcher {
   Dispatcher(ServerID myServerID, ActorMap& actors,
-             std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
-                 sendingMechanism)
+             ExternalDispatcher externalDispatcher)
       : myServerID(myServerID),
         actors(actors),
-        sendingMechanism(sendingMechanism) {}
+        externalDispatcher(externalDispatcher) {}
 
   auto operator()(ActorPID sender, ActorPID receiver,
                   std::unique_ptr<MessagePayloadBase> payload) -> void {
@@ -52,13 +55,12 @@ struct Dispatcher {
       fmt::print("Called dispatcher recursively");
       std::abort();
     } else {
-      sendingMechanism(sender, receiver, msg);
+      externalDispatcher.send(sender, receiver, msg);
     }
   }
   ServerID myServerID;
   ActorMap& actors;
-  std::function<void(ActorPID, ActorPID, velocypack::SharedSlice)>
-      sendingMechanism;
+  ExternalDispatcher externalDispatcher;
 };
 
 }  // namespace arangodb::pregel::actor
