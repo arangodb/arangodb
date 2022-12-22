@@ -26,7 +26,7 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DSTATIC_EXECUTABLES=On
       - run:
           name: Build
           command: |
@@ -35,7 +35,7 @@ jobs:
           name: CCache Statistics
           command: ccache -s
       - store_artifacts:
-          path: build/<< parameters.preset >>/bin/arango*
+          path: build/<< parameters.preset >>/bin/arangodbtests_replication2_pure
       - save_cache:
           when: always
           key: ccache-v1-docker-r2-{{ .Branch }}-{{ .Revision }}
@@ -45,6 +45,13 @@ jobs:
           root: .
           paths:
             - build/<< parameters.preset >>/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+            - 3rdParty/iresearch/tests/resources
 
   run-gtest-executable-linux:
     parameters:
@@ -93,7 +100,7 @@ workflows:
           preset: community-developer
       - run-gtest-executable-linux:
           name: unit tests
-          executable: 'build/community-pr/bin/arangodbtests_replication2_pure'
-          filter: '-*_LongRunning:IResearch*:*Aql*'
+          executable: 'build/community-developer/bin/arangodbtests_replication2_pure'
+          filter: '-ReplicatedLogSupervisionSimulationTest.*'
           requires:
             - build-community-replication2-test-pure
