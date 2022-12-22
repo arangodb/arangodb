@@ -30,7 +30,21 @@
 	"USE_LIBUNWIND": "On",
         "STATIC_EXECUTABLES": "On",
         "TARGET_ARCHITECTURE": "sandy-bridge"
- }
+      }
+    },
+    {
+      "name": "pr-arm",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_FLAGS": "-fno-stack-protector",
+        "CMAKE_CXX_FLAGS": "-fno-stack-protector",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id",
+        "USE_IPO": "Off",
+        "USE_STRICT_OPENSSL_VERSION": "Off",
+        "USE_MINIMAL_DEBUGINFO": "On",
+	"USE_LIBUNWIND": "On",
+        "STATIC_EXECUTABLES": "On"
+      }
     },
     {
       "name": "maintainer",
@@ -74,6 +88,15 @@
         "community"
       ],
       "displayName": "PR Build ArangoDB Community Edition"
+    },
+    {
+      "name": "community-pr-arm",
+      "inherits": [
+        "pr-arm",
+        "maintainer",
+        "community"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition (ARM)"
     },
     {
       "name": "community-developer-tsan",

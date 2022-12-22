@@ -201,7 +201,7 @@ workflows:
     jobs:
       - compile-arm-community:
           name: build-community-pr-arm
-          preset: community-pr
+          preset: community-pr-arm
       - compile-linux-community:
           name: build-community-pr
           preset: community-pr
