@@ -35,6 +35,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -249,6 +250,25 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
 std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return {_indexes.begin(), _indexes.end()};
+}
+
+/// @brief get a snapshot of all indexes of the collection, with the read
+/// lock on the list of indexes being held while the snapshot is active
+IndexesSnapshot PhysicalCollection::getIndexesSnapshot() {
+  std::vector<std::shared_ptr<Index>> indexes;
+
+  // lock list of indexes in collection
+  RecursiveReadLocker<basics::ReadWriteLock> locker(
+      _indexesLock, _indexesLockWriteOwner, __FILE__, __LINE__);
+
+  // copy indexes from std::set into flat std::vector
+  indexes.reserve(_indexes.size());
+  for (auto const& it : _indexes) {
+    indexes.emplace_back(it);
+  }
+
+  // pass ownership for lock and list of indexes to IndexesSnapshot
+  return IndexesSnapshot(std::move(locker), std::move(indexes));
 }
 
 Index* PhysicalCollection::primaryIndex() const {
