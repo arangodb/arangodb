@@ -1,6 +1,11 @@
 devel
 -----
 
+* APM-570: Added single warning messages for batched query results, as, when
+  there's a warning and `failOnWarning` is false, the warning would only 
+  appear in the last batch, and not in the batch where it's actually been
+  generated. 
+
 * Updated ArangoDB Starter to 0.15.6-preview-1.
 
 * Acquire a snapshot of the (list of) indexes when starting document insert, 
