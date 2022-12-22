@@ -224,14 +224,14 @@ workflows:
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
-          name: arangodbtests iresearch shuffled
+          name: arangodbtests shuffled
           executable: 'build/community-pr/bin/arangodbtests'
           filter: '-*_LongRunning:IResearch*'
           shuffle: '--gtest_shuffle'
           requires:
             - build-community-pr
       - run-gtest-executable-linux:
-          name: arangodbtests shuffled
+          name: arangodbtests iresearch shuffled
           executable: 'build/community-pr/bin/arangodbtests'
           filter: 'IResearch*:-*_LongRunning'
           shuffle: '--gtest_shuffle'
