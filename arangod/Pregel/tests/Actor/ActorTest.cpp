@@ -21,11 +21,11 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Actor/Message.h"
+#include "Pregel/Actor/Message.h"
 #include "gtest/gtest.h"
-#include "Actor/Actor.h"
-#include "Actor/ActorPID.h"
-#include "TrivialActor.h"
+#include "Pregel/Actor/Actor.h"
+#include "Pregel/Actor/ActorPID.h"
+#include "Pregel/Actor/Actors/TrivialActor.h"
 
 #include "fmt/core.h"
 #include <Inspection/VPackWithErrorT.h>
@@ -51,7 +51,7 @@ TEST(ActorTest, formats_actor) {
       std::make_unique<TrivialState>());
   ASSERT_EQ(
       fmt::format("{}", actor),
-      R"({"pid":{"server":"A","id":1},"state":{"state":"","called":0},"batchsize":16})");
+      R"({"pid":{"server":"A","id":1,"databaseName":""},"state":{"state":"","called":0},"batchsize":16})");
 }
 
 TEST(ActorTest, changes_its_state_after_processing_a_message) {

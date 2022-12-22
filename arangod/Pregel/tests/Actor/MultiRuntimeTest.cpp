@@ -25,12 +25,12 @@
 #include <gtest/gtest.h>
 #include <unordered_set>
 
-#include "Actor/ActorPID.h"
-#include "Actor/Dispatcher.h"
-#include "Actor/Runtime.h"
+#include "Pregel/Actor/ActorPID.h"
+#include "Pregel/Actor/Dispatcher.h"
+#include "Pregel/Actor/Runtime.h"
 
-#include "Actor/Actors/TrivialActor.h"
-#include "Actor/Actors/PingPongActors.h"
+#include "Pregel/Actor/Actors/TrivialActor.h"
+#include "Pregel/Actor/Actors/PingPongActors.h"
 
 using namespace arangodb;
 

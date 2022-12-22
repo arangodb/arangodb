@@ -26,7 +26,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "Actor/SimpleQueue.h"
+#include "Pregel/Actor/SimpleQueue.h"
 #include "Basics/ThreadGuard.h"
 
 #include "fmt/core.h"

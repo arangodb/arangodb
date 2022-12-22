@@ -28,8 +28,8 @@
 #include <memory>
 #include <variant>
 
-#include "Actor/ActorPID.h"
-#include "Actor/HandlerBase.h"
+#include "Pregel/Actor/ActorPID.h"
+#include "Pregel/Actor/HandlerBase.h"
 #include "Inspection/InspectorBase.h"
 
 namespace arangodb::pregel::actor::test {
