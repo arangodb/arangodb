@@ -35,6 +35,8 @@ add_library(arango_iresearch STATIC
   IResearchFilterOptimization.h
   IResearchIdentityAnalyzer.cpp
   IResearchIdentityAnalyzer.h
+  IResearchInvertedClusterIndex.cpp
+  IResearchInvertedClusterIndex.h
   IResearchInvertedIndex.cpp
   IResearchInvertedIndex.h
   IResearchInvertedIndexMeta.cpp
@@ -93,7 +95,7 @@ target_link_libraries(arango_iresearch
   arango_indexes
   arango_vocbase
   boost_thread # required by IResearchView upgrade_mutex
-	iresearch-static
+  iresearch-static
   s2 # needed for some includes
 )
 
