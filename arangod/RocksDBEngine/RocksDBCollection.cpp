@@ -1401,9 +1401,10 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
-        if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
           res.reset(TRI_ERROR_DEBUG);
-          reverse(it);
+          // reverse(it); TODO(MBkkt) remove first part of condition
           break;
         }
       }
@@ -1504,9 +1505,10 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
-        if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
           res.reset(TRI_ERROR_DEBUG);
-          reverse(it);
+          // reverse(it); TODO(MBkkt) remove first part of condition
           break;
         }
       }
@@ -1653,9 +1655,10 @@ Result RocksDBCollection::modifyDocument(
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
-        if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
           res.reset(TRI_ERROR_DEBUG);
-          reverse(it);
+          // reverse(it); TODO(MBkkt) remove first part of condition
           break;
         }
       }
