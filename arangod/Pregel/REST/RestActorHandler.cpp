@@ -59,6 +59,16 @@ auto RestActorHandler::handleGetRequest() -> void {
 
   velocypack::Builder responseBody;
 
+  {
+    VPackArrayBuilder array(&responseBody);
+
+    for(auto id : _pregel.actorRuntime()->getActorIDs()) {
+      auto r = _pregel.actorRuntime()->getSerializedActorByID(id);
+      if(r.has_value()) {
+        responseBody.add(r->slice());
+      }
+    }
+  }
   responseBody.add(VPackValue(fmt::format("runtime: {}", *_pregel.actorRuntime())));
 
   generateResult(rest::ResponseCode::OK, responseBody.slice());

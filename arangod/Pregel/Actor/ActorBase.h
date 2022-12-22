@@ -36,6 +36,7 @@ struct ActorBase {
   virtual auto process(ActorPID sender, velocypack::SharedSlice msg)
       -> void = 0;
   virtual auto typeName() -> std::string_view = 0;
+  virtual auto serialize() -> velocypack::SharedSlice = 0;
   // state: initialised, running, finished
 };
 

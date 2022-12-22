@@ -98,6 +98,16 @@ struct Runtime {
     return std::nullopt;
   }
 
+  auto getSerializedActorByID(ActorID id) -> std::optional<velocypack::SharedSlice> {
+     if (actors.contains(id)) {
+      auto& actor = actors[id];
+      if (actor != nullptr) {
+        return actor->serialize();
+      }
+    }
+    return std::nullopt;
+  }
+
   auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server != myServerID) {

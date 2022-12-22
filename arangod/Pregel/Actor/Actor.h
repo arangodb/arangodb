@@ -131,6 +131,14 @@ struct Actor : ActorBase {
     }
   }
 
+  auto serialize() -> velocypack::SharedSlice override {
+    auto res = inspection::serializeWithErrorT(*this);
+    if(not res.ok()) {
+      std::abort();
+    }
+    return res.get();
+  }
+
   void kick() {
     // Make sure that *someone* works here
     (*schedule)([this]() { this->work(); });
