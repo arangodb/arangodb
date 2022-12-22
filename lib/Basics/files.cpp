@@ -64,7 +64,6 @@
 #include <unistd.h>
 #endif
 
-#include <zlib.h>
 
 #include "files.h"
 
@@ -75,7 +74,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"

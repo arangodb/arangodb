@@ -31,7 +31,6 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Zip/zip.h"
 
 /// @brief append a character without check
 static inline void AppendChar(TRI_string_buffer_t* self, char chr) {
