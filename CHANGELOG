@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.6-preview-1.
+
 * Acquire a snapshot of the (list of) indexes when starting document insert, 
   update/replace and remove operations, and use that snapshot throughout the 
   operation. Previously, the list of indexes was acquired multiple times during
