@@ -48,6 +48,7 @@
 struct Vocbase : public TRI_vocbase_t {
   template<typename... Args>
   Vocbase(Args&&... args) : TRI_vocbase_t(std::forward<Args>(args)...) {}
+  ~Vocbase() { shutdown(); }
 };
 
 namespace v8 {
@@ -139,7 +140,7 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
-namespace iresearch {
+namespace irs {
 std::string to_string(irs::filter const& f);
 }
 

@@ -417,7 +417,22 @@ struct arangodb::VocBaseLogManager {
       struct MyScheduler : replicated_log::IScheduler {
         auto delayedFuture(std::chrono::steady_clock::duration duration)
             -> futures::Future<futures::Unit> override {
-          return SchedulerFeature::SCHEDULER->delay(duration);
+          return SchedulerFeature::SCHEDULER->delay("replication-2", duration);
+        }
+
+        auto queueDelayed(
+            std::string_view name, std::chrono::steady_clock::duration delay,
+            fu2::unique_function<void(bool canceled)> handler) noexcept
+            -> WorkItemHandle override {
+          auto handle = SchedulerFeature::SCHEDULER->queueDelayed(
+              name, RequestLane::CLUSTER_INTERNAL, delay,
+              std::move(handler));
+          struct MyWorkItem : WorkItem {
+            explicit MyWorkItem(Scheduler::WorkHandle handle)
+                : handle(handle) {}
+            Scheduler::WorkHandle handle;
+          };
+          return std::make_shared<MyWorkItem>(std::move(handle));
         }
       };
 
@@ -1935,11 +1950,9 @@ arangodb::Result TRI_vocbase_t::dropView(DataSourceId cid,
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-                             arangodb::CreateDatabaseInfo&& info)
+TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
     : _server(info.server()),
       _info(std::move(info)),
-      _type(type),
       _refCount(0),
       _isOwnAppsDirectory(true),
       _deadlockDetector(false) {
@@ -1964,8 +1977,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
-  shutdown();
-
   // do a final cleanup of collections
   for (std::shared_ptr<arangodb::LogicalCollection>& coll : _collections) {
     try {  // simon: this status lock is terrible software design
@@ -1990,7 +2001,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
 std::string TRI_vocbase_t::path() const {
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  return engine.databasePath(this);
+  return engine.databasePath();
 }
 
 std::string const& TRI_vocbase_t::sharding() const { return _info.sharding(); }
@@ -2012,7 +2023,7 @@ replication::Version TRI_vocbase_t::replicationVersion() const {
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
-  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto* applier = DatabaseReplicationApplier::create(*this);
   _replicationApplier.reset(applier);
 }

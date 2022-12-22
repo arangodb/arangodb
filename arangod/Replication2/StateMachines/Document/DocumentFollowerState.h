@@ -46,6 +46,7 @@ struct DocumentFollowerState
   ~DocumentFollowerState() override;
 
   ShardID const shardId;
+  LoggerContext const loggerContext;
 
   // unprotected for gtests. TODO think about whether there's a better way
   // protected:

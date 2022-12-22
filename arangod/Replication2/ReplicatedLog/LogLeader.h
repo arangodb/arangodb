@@ -47,6 +47,7 @@
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 struct DeferredAction;
@@ -208,6 +209,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     bool snapshotAvailable{true};
     MessageId snapshotAvailableMessageId;
     LoggerContext const logContext;
+    IScheduler::WorkItemHandle lastRequestHandle;
 
     enum class State {
       IDLE,

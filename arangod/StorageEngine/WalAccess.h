@@ -187,7 +187,7 @@ struct WalAccessContext {
   velocypack::Builder _builder;
 
   /// @brief cache the vocbases
-  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
+  std::map<TRI_voc_tick_t, VocbasePtr> _vocbases;
 
   // @brief collection replication UUID cache
   std::map<DataSourceId, CollectionGuard> _collectionCache;

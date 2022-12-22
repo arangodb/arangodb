@@ -127,6 +127,7 @@ target_link_libraries(arango_tests_replication2_pure PUBLIC
         gmock
         immer
         rocksdb_interface
+        boost_boost
         )
 
 target_include_directories(arango_tests_replication2_pure PRIVATE "${PROJECT_SOURCE_DIR}/tests")

@@ -222,6 +222,15 @@ class IResearchIndexTest
         result, "testVocbase::test_B", "TestInsertAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 
+#ifdef USE_ENTERPRISE
+    analyzers.emplace(
+        result, "testVocbase::geojson", "geojson",
+        arangodb::velocypack::Parser::fromJson(
+            " { \"type\": \"shape\", \"options\":{\"maxCells\":20,\
+                              \"minLevel\":4, \"maxLevel\":23}}")
+            ->slice());
+#endif
+
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
     arangodb::tests::setDatabasePath(
         dbPathFeature);  // ensure test data is stored in a unique directory
@@ -518,8 +527,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -872,8 +880,7 @@ TEST_F(IResearchIndexTest, test_fields) {
       "{ \"name\": \"testCollection1\" }");
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -972,8 +979,7 @@ TEST_F(IResearchIndexTest, test_pkCached) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1035,8 +1041,7 @@ TEST_F(IResearchIndexTest, test_pkCached) {
 TEST_F(IResearchIndexTest, test_pkCachedInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1095,8 +1100,7 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
       "\"primaryKeyCache\":true }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1167,8 +1171,7 @@ TEST_F(IResearchIndexTest, test_sortCached) {
         \"primarySort\":[{\"field\":\"X\", \"direction\":\"asc\" }]}");
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -1228,8 +1231,7 @@ TEST_F(IResearchIndexTest, test_sortCached) {
 TEST_F(IResearchIndexTest, test_sortCachedInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10000000);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1292,8 +1294,7 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
         \"primarySort\":[{\"field\":\"X\", \"direction\":\"asc\" }]}");
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   feature.setCacheUsageLimit(10);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_NE(nullptr, collection0);
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -1349,5 +1350,131 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
   }
   ASSERT_GT(feature.columnsCacheUsage(), 0);
   ASSERT_LE(feature.columnsCacheUsage(), 10);
+}
+
+TEST_F(IResearchIndexTest, test_geoCached) {
+  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection0\" }");
+  auto createView = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
+      "\"primaryKeyCache\":false }");
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
+  feature.setCacheUsageLimit(10000000);
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  ASSERT_NE(nullptr, collection0);
+  auto viewImpl = vocbase.createView(createView->slice(), true);
+  ASSERT_NE(nullptr, viewImpl);
+
+  // populate collections
+  {
+    auto doc0 = arangodb::velocypack::Parser::fromJson(
+        "{\
+       \"geofield\" : {\
+        \"type\" : \"Polygon\",\
+        \"coordinates\" : [[\
+          [ 100.318391, 13.535502 ], [ 100.318391, 14.214848 ],\
+          [ 101.407575, 14.214848 ], [ 101.407575, 13.535502 ],\
+          [ 100.318391, 13.535502 ]\
+        ]]\
+      }\
+    }");
+    static std::vector<std::string> const EMPTY;
+    std::vector<std::string> collections{collection0->name()};
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        collections, EMPTY, arangodb::transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
+                           arangodb::OperationOptions())
+                    .ok());
+    EXPECT_TRUE(trx.commit().ok());
+  }
+
+  // link collection with view
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{\"links\": { \
+      \"testCollection0\": { \"fields\": { \
+        \"geofield\": { \"cache\":true, \"analyzers\":[\"geojson\"] }, \
+        \"Y\": { } \
+      } }\
+    } }");
+
+    EXPECT_TRUE(viewImpl->properties(updateJson->slice(), true, false).ok());
+  }
+  // running query to force sync
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH d.X == 'abc' OPTIONS { waitForSync: true } "
+        "SORT d.seq RETURN d",
+        nullptr);
+    ASSERT_TRUE(result.result.ok());
+  }
+  ASSERT_GT(feature.columnsCacheUsage(), 0);
+}
+
+TEST_F(IResearchIndexTest, test_geoCachedInverted) {
+  auto createCollection0 = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testCollection0\" }");
+  auto createView = arangodb::velocypack::Parser::fromJson(
+      "{ \"name\": \"testView\", \"type\": \"arangosearch\", "
+      "\"primaryKeyCache\":false }");
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
+  feature.setCacheUsageLimit(10000000);
+  auto collection0 = vocbase.createCollection(createCollection0->slice());
+  ASSERT_NE(nullptr, collection0);
+  auto viewImpl = vocbase.createView(createView->slice(), true);
+  ASSERT_NE(nullptr, viewImpl);
+
+  // populate collections
+  {
+    auto doc0 = arangodb::velocypack::Parser::fromJson(
+        "{\
+       \"geofield\" : {\
+        \"type\" : \"Polygon\",\
+        \"coordinates\" : [[\
+          [ 100.318391, 13.535502 ], [ 100.318391, 14.214848 ],\
+          [ 101.407575, 14.214848 ], [ 101.407575, 13.535502 ],\
+          [ 100.318391, 13.535502 ]\
+        ]]\
+      }\
+    }");
+    static std::vector<std::string> const EMPTY;
+    std::vector<std::string> collections{collection0->name()};
+    arangodb::transaction::Methods trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+        collections, EMPTY, arangodb::transaction::Options());
+    EXPECT_TRUE(trx.begin().ok());
+    EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
+                           arangodb::OperationOptions())
+                    .ok());
+    EXPECT_TRUE(trx.commit().ok());
+  }
+
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(R"({
+      "name": "inverted",
+      "type": "inverted",
+      "primaryKeyCache": false,
+      "fields": ["X", {"name":"geofield", "cache":true, "analyzer":"geojson"}]})");
+
+    bool created{false};
+    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(created);
+  }
+  // running query to force sync
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
+        "SORT d.seq RETURN d",
+        nullptr);
+    ASSERT_TRUE(result.result.ok());
+  }
+  ASSERT_GT(feature.columnsCacheUsage(), 0);
 }
 #endif

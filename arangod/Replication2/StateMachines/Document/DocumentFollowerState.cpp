@@ -30,6 +30,7 @@
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
+#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -37,6 +38,8 @@ DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : shardId(core->getShardId()),
+      loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
+          "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
@@ -78,51 +81,77 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  return _guardedData.doUnderLock([self = shared_from_this(),
-                                   ptr = std::move(ptr)](
-                                      auto& data) -> futures::Future<Result> {
-    if (data.didResign()) {
-      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-    }
-
-    if (self->_transactionHandler == nullptr) {
-      return Result{
-          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-          fmt::format("Transaction handler is missing from "
-                      "DocumentFollowerState during applyEntries "
-                      "{}! This happens if the vocbase cannot be found during "
-                      "DocumentState construction.",
-                      to_string(data.core->getGid()))};
-    }
-
-    return basics::catchToResult([&]() -> Result {
-      while (auto entry = ptr->next()) {
-        auto doc = entry->second;
-        auto res = self->_transactionHandler->applyEntry(doc);
-        if (res.fail()) {
-          LOG_TOPIC("d82d4", FATAL, Logger::REPLICATION2)
-              << "Failed to apply entry " << entry->first << " to local shard "
-              << self->shardId << " with error: " << res;
-          FATAL_ERROR_EXIT();
+  auto result = _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
+        if (data.didResign()) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-          self->_activeTransactions.clear();
-          self->getStream()->release(
-              self->_activeTransactions.getReleaseIndex(entry->first));
-        } else if (doc.operation == OperationType::kCommit ||
-                   doc.operation == OperationType::kAbort) {
-          self->_activeTransactions.erase(doc.tid);
-          self->getStream()->release(
-              self->_activeTransactions.getReleaseIndex(entry->first));
-        } else {
-          self->_activeTransactions.emplace(doc.tid, entry->first);
+        if (self->_transactionHandler == nullptr) {
+          return Result{
+              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              fmt::format(
+                  "Transaction handler is missing from "
+                  "DocumentFollowerState during applyEntries "
+                  "{}! This happens if the vocbase cannot be found during "
+                  "DocumentState construction.",
+                  to_string(data.core->getGid()))};
         }
-      }
 
-      return {TRI_ERROR_NO_ERROR};
+        return basics::catchToResultT([&]() -> std::optional<LogIndex> {
+          auto releaseIndex = std::make_optional<LogIndex>();
+
+          while (auto entry = ptr->next()) {
+            auto doc = entry->second;
+            auto res = self->_transactionHandler->applyEntry(doc);
+            if (res.fail()) {
+              LOG_CTX("d82d4", FATAL, self->loggerContext)
+                  << "Failed to apply entry " << entry->first
+                  << " to local shard " << self->shardId
+                  << " with error: " << res;
+              FATAL_ERROR_EXIT();
+            }
+
+            if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+              self->_activeTransactions.clear();
+              if (!releaseIndex.has_value() ||
+                  releaseIndex.value() < entry->first) {
+                releaseIndex = entry->first;
+              }
+            } else if (doc.operation == OperationType::kCommit ||
+                       doc.operation == OperationType::kAbort) {
+              self->_activeTransactions.erase(doc.tid);
+              if (!releaseIndex.has_value() ||
+                  releaseIndex.value() < entry->first) {
+                releaseIndex = entry->first;
+              }
+            } else {
+              self->_activeTransactions.emplace(doc.tid, entry->first);
+            }
+          }
+
+          return releaseIndex;
+        });
+      });
+
+  if (result.fail()) {
+    return result.result();
+  }
+  if (result->has_value()) {
+    // The follower might have resigned, so we need to be careful when accessing
+    // the stream.
+    auto releaseRes = basics::catchVoidToResult([&] {
+      auto const& stream = getStream();
+      stream->release(result->value());
     });
-  });
+    if (releaseRes.fail()) {
+      LOG_CTX("10f07", ERR, loggerContext)
+          << "Failed to get stream! " << releaseRes;
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /**

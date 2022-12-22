@@ -217,6 +217,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
 
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
+  [[nodiscard]] virtual bool ensureSnapshot() = 0;
+
   /// @brief begin a transaction
   virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
 

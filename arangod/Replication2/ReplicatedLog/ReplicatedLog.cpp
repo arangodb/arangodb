@@ -104,8 +104,8 @@ auto replicated_log::ReplicatedLog::updateConfig(
                    guard->latest->config.generation < config.generation))
         << "While we may see outdated updates here, it must not happen that we "
            "see a new term with an old generation, or the other way round. "
-           "current configuration: "
-        << guard->latest->config << ", new configuration: " << config
+        << "log, current configuration: " << guard->latest->config
+        << ", new configuration: " << config
         << ", current term: " << guard->latest->term << ", new term: " << term;
   }
 

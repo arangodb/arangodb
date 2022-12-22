@@ -27,6 +27,10 @@ operation raises an error, an error object is returned.
 
 You can use this option to save network traffic.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to delete existing entries from in-memory index caches and refill them
+if document removals affect the edge index or cache-enabled persistent indexes.
+
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}
@@ -63,6 +67,13 @@ is returned if the document was removed successfully and
 @RESTRETURNCODE{404}
 is returned if the collection or the document was not found.
 The response body contains an error document in this case.
+
+@RESTRETURNCODE{409}
+is returned if we fail to lock the document key due to some
+concurrent operation that is operating on the same document.
+This also also referred to as a write-write conflict.
+The response body contains an error document in this case with the
+errorNum set to 1200 (`ERROR_ARANGO_CONFLICT`).
 
 @RESTRETURNCODE{412}
 is returned if a "If-Match" header or `rev` is given and the found

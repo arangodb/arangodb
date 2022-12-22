@@ -248,6 +248,17 @@ struct IScheduler {
   virtual ~IScheduler() = default;
   virtual auto delayedFuture(std::chrono::steady_clock::duration duration)
       -> futures::Future<futures::Unit> = 0;
+
+  struct WorkItem {
+    virtual ~WorkItem() = default;
+  };
+
+  using WorkItemHandle = std::shared_ptr<WorkItem>;
+
+  virtual auto queueDelayed(
+      std::string_view name, std::chrono::steady_clock::duration delay,
+      fu2::unique_function<void(bool canceled)> handler) noexcept
+      -> WorkItemHandle = 0;
 };
 
 struct DefaultParticipantsFactory : IParticipantsFactory {

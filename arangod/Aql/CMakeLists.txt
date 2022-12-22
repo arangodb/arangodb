@@ -187,9 +187,6 @@ target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arango_aql PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
-
 ################################################################################
 ## BISON/FLEX
 ################################################################################

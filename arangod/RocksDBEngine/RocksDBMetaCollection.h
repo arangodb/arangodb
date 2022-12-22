@@ -41,10 +41,8 @@ class RevisionReplicationIterator;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 arangodb::velocypack::Slice const& info);
+                                 velocypack::Slice info);
   virtual ~RocksDBMetaCollection() = default;
-
-  std::string const& path() const override final;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override final;

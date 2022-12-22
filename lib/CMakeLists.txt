@@ -164,7 +164,6 @@ add_library(arango STATIC
   Assertions/AssertionLogger.cpp
   Basics/AttributeNameParser.cpp
   Basics/CpuUsageSnapshot.cpp
-  Basics/DataProtector.cpp
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/FeatureFlags.cpp
@@ -246,8 +245,17 @@ target_link_libraries(arango PUBLIC
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
   absl::crc32c
+<<<<<<< HEAD
   arango_lightweight
   arango_crashhandler
+=======
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+  absl::synchronization
+  absl::strings
+>>>>>>> origin/feature/merge-replicated-logs-into-replicated-states
 )
 
 target_link_libraries(arango PUBLIC fmt::fmt)

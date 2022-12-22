@@ -648,6 +648,9 @@ struct TRI_v8_global_t {
   /// @brief "errorNum" key name
   v8::Persistent<v8::String> ErrorNumKey;
 
+  /// @brief "original" key name
+  v8::Persistent<v8::String> OriginalKey;
+
   /// @brief "headers" key name
   v8::Persistent<v8::String> HeadersKey;
 
