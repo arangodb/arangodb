@@ -24,6 +24,8 @@
 #pragma once
 
 #include <s2/s2region_term_indexer.h>
+#include <s2/s2latlng.h>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 
@@ -172,8 +174,9 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
  private:
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
+  std::vector<S2Point> _cache;
   Type _type;
-};  // GeoJSONAnalyzer
+};
 
 // FIXME remove kludge
 inline bool isGeoAnalyzer(irs::string_ref const& type) noexcept {

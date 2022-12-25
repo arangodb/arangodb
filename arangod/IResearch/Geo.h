@@ -26,16 +26,17 @@
 #include <s2/s2region_term_indexer.h>
 
 namespace arangodb {
-
 namespace velocypack {
+
 class Slice;
 class Builder;
+
 }  // namespace velocypack
-
 namespace geo {
-class ShapeContainer;
-}
 
+class ShapeContainer;
+
+}  // namespace geo
 namespace iresearch {
 
 struct GeoOptions {
@@ -62,10 +63,15 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
   return s2opts;
 }
 
+enum class Parsing {
+  FromIndex,
+  OnlyPoint,
+  GeoJson,
+};
+
+template<Parsing p>
 bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
-                bool onlyPoint);
-bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice,
-                S2LatLng& out);
+                std::vector<S2Point>& cache);
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 

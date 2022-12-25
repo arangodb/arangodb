@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,58 +23,51 @@
 
 #pragma once
 
-#include <s2/s2polyline.h>
 #include <s2/s2region.h>
+#include <s2/s2polyline.h>
+
 #include <vector>
 
-/// Represents a range of multiple independent polylines
-/// Added to complete the GeoJson support
-class S2MultiPolyline : public S2Region {
+namespace arangodb::geo {
+namespace rect {
+
+bool intersects(S2LatLngRect const& rect, S2Polyline const& polyline);
+
+}  // namespace rect
+
+class S2MultiPolyline final : public S2Region {
  public:
-  // Creates an empty S2Polyline that should be initialized by calling Init()
-  // or Decode().
-  S2MultiPolyline();
+  ~S2MultiPolyline() final = default;
 
-  // Convenience constructors that call Init() with the given vertices.
-  explicit S2MultiPolyline(std::vector<S2Polyline>&& lines);
+  // The result is not unit length, so you may want to normalize it.
+  S2Point GetCentroid() const noexcept;
 
-  // Initialize a polyline that connects the given vertices. Empty polylines are
-  // allowed.  Adjacent vertices should not be identical or antipodal.  All
-  // vertices should be unit length.
-  void Init(std::vector<S2Polyline>&& lines);
-
-  ~S2MultiPolyline() = default;
-
-  size_t num_lines() const { return lines_.size(); }
-  S2Polyline const& line(size_t k) const {
-    assert(k < lines_.size());
-    // DCHECK_LT(k, lines_.size());
-    return lines_[k];
+  template<typename Region>
+  bool Intersects(Region const& other) const noexcept {
+    for (auto const& line : _impl) {
+      if constexpr (std::is_same_v<Region, S2LatLngRect>) {
+        if (rect::intersects(other, line)) {
+          return true;
+        }
+      } else if (other.Intersects(line)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  ////////////////////////////////////////////////////////////////////////
-  // S2Region interface (see s2region.h for details):
+  S2Region* Clone() const final;
+  S2Cap GetCapBound() const final;
+  S2LatLngRect GetRectBound() const final;
+  bool Contains(S2Cell const& cell) const final;
+  bool MayIntersect(S2Cell const& cell) const final;
+  bool Contains(S2Point const& p) const final;
 
-  S2MultiPolyline* Clone() const override;
-  S2Cap GetCapBound() const override;
-  S2LatLngRect GetRectBound() const override;
-  bool Contains(S2Cell const& cell) const override { return false; }
-  bool MayIntersect(S2Cell const& cell) const override;
-
-  // Polylines do not have a Contains(S2Point) method, because "containment"
-  // is not numerically well-defined except at the polyline vertices.
-  bool Contains(S2Point const& p) const override { return false; }
-
-  /*void Encode(Encoder* const encoder) const override;
-  bool Decode(Decoder* const decoder) override;*/
+  auto& Impl() noexcept { return _impl; }
+  auto const& Impl() const noexcept { return _impl; }
 
  private:
-  // Internal constructor used only by Clone() that makes a deep copy of
-  // its argument.
-  explicit S2MultiPolyline(S2MultiPolyline const* src);
-
-  // We store the vertices in an array rather than a vector because we don't
-  // need any STL methods, and computing the number of vertices using size()
-  // would be relatively expensive (due to division by sizeof(S2Point) == 24).
-  std::vector<S2Polyline> lines_;
+  std::vector<S2Polyline> _impl;
 };
+
+}  // namespace arangodb::geo

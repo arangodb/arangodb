@@ -279,11 +279,9 @@ target_link_libraries(arango_greenspun arango)
 ################################################################################
 
 add_library(arango_geo STATIC
-  Geo/Ellipsoid.cpp
   Geo/GeoJson.cpp
   Geo/GeoParams.cpp
   Geo/ShapeContainer.cpp
-  Geo/Shapes.cpp
   Geo/Utils.cpp
   Geo/karney/geodesic.c
   Geo/S2/S2MultiPointRegion.cpp

@@ -180,7 +180,8 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromArray) {
   auto json = VPackParser::fromJson(R"([ 63.57789956676574, 53.72314453125 ])");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(shape.parseCoordinates(json->slice(), false).ok());
+  ASSERT_TRUE(
+      geo::json::parseCoordinates<true>(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize point
@@ -257,7 +258,8 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObject) {
       R"({ "lat": 63.57789956676574, "lon": 53.72314453125 })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(shape.parseCoordinates(json->slice(), false).ok());
+  ASSERT_TRUE(
+      geo::json::parseCoordinates<true>(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize point
@@ -338,7 +340,8 @@ TEST(GeoPointAnalyzerTest, tokenizePointFromObjectComplexPath) {
       R"({ "subObj": { "lat": 63.57789956676574, "lon": 53.72314453125 } })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(shape.parseCoordinates(json->slice(), false).ok());
+  ASSERT_TRUE(
+      geo::json::parseCoordinates<true>(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize point
@@ -692,8 +695,8 @@ TEST(GeoJSONAnalyzerTest, tokenizeLatLngRect) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
-  ASSERT_EQ(geo::ShapeContainer::Type::S2_LATLNGRECT, shape.type());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
+  ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
   {
@@ -851,7 +854,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parsePolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1012,7 +1015,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeLineString) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYLINE, shape.type());
 
   // tokenize shape
@@ -1181,7 +1184,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolygon) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseMultiPolygon(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POLYGON, shape.type());
 
   // tokenize shape
@@ -1259,7 +1262,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPoint) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseMultiPoint(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_MULTIPOINT, shape.type());
 
   // tokenize shape
@@ -1460,7 +1463,7 @@ TEST(GeoJSONAnalyzerTest, tokenizeMultiPolyLine) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_MULTIPOLYLINE, shape.type());
 
   // tokenize shape
@@ -1583,7 +1586,7 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
   })");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape).ok());
+  ASSERT_TRUE(geo::json::parseRegion(json->slice(), shape, false).ok());
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape
@@ -1790,7 +1793,9 @@ TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
   auto json = VPackParser::fromJson(R"([ 53.72314453125, 63.57789956676574 ])");
 
   geo::ShapeContainer shape;
-  ASSERT_TRUE(parseShape(json->slice(), shape, true));
+  std::vector<S2Point> cache;
+  ASSERT_TRUE(parseShape<arangodb::iresearch::Parsing::OnlyPoint>(
+      json->slice(), shape, cache));
   ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
   // tokenize shape

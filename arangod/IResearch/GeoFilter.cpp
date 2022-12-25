@@ -44,13 +44,11 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 
+namespace arangodb::iresearch {
 namespace {
 
-// assume up to 2x machine epsilon in precision errors for signleton caps
+// assume up to 2x machine epsilon in precision errors for singleton caps
 constexpr auto SIGNLETON_CAP_EPS = 2 * std::numeric_limits<double_t>::epsilon();
-
-using namespace arangodb;
-using namespace arangodb::iresearch;
 
 using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 
@@ -155,19 +153,12 @@ class GeoIterator : public irs::doc_iterator {
           << "failed to find stored geo value, doc='" << _doc->value << "'";
       return false;
     }
-
-    if (!parseShape(slice(_storedValue->value), _shape, false)) {
-      LOG_TOPIC("62a65", DEBUG, arangodb::iresearch::TOPIC)
-          << "failed to parse stored geo value, value='"
-          << slice(_storedValue->value).toHex() << ", doc='" << _doc->value
-          << "'";
-      return false;
-    }
-
+    parseShape<Parsing::FromIndex>(slice(_storedValue->value), _shape, _cache);
     return _acceptor(_shape);
   }
 
   geo::ShapeContainer _shape;
+  std::vector<S2Point> _cache;
   irs::doc_iterator::ptr _approx;
   irs::doc_iterator::ptr _columnIt;
   irs::payload const* _storedValue;
@@ -196,15 +187,11 @@ irs::doc_iterator::ptr make_iterator(
 struct GeoState {
   using TermState = irs::seek_cookie::ptr;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief corresponding stored field
-  //////////////////////////////////////////////////////////////////////////////
-  const irs::column_reader* storedField;
+  // Corresponding stored field
+  irs::column_reader const* storedField{};
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reader using for iterate over the terms
-  //////////////////////////////////////////////////////////////////////////////
-  const irs::term_reader* reader;
+  // Reader using for iterate over the terms
+  irs::term_reader const* reader{};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief geo term states
@@ -304,7 +291,8 @@ template<typename Acceptor>
 irs::filter::prepared::ptr make_query(GeoStates&& states, irs::bstring&& stats,
                                       irs::boost_t boost, Acceptor&& acceptor) {
   return irs::memory::make_managed<GeoQuery<Acceptor>>(
-      std::move(states), std::move(stats), std::move(acceptor), boost);
+      std::move(states), std::move(stats), std::forward<Acceptor>(acceptor),
+      boost);
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
@@ -418,8 +406,8 @@ irs::filter::prepared::ptr prepareOpenInterval(
           // a full cap without a center
           irs::And root;
           {
-            auto& incl = root.add<irs::by_column_existence>();
-            *incl.mutable_field() = field;
+            auto& column = root.add<irs::by_column_existence>();
+            *column.mutable_field() = field;
           }
           {
             auto& excl = root.add<irs::Not>().filter<GeoDistanceFilter>();
@@ -475,11 +463,11 @@ irs::filter::prepared::ptr prepareOpenInterval(
   auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
   if (incl) {
-    return ::make_query(std::move(states), std::move(stats), boost,
-                        GeoDistanceAcceptor<true>{bound});
+    return make_query(std::move(states), std::move(stats), boost,
+                      GeoDistanceAcceptor<true>{bound});
   } else {
-    return ::make_query(std::move(states), std::move(stats), boost,
-                        GeoDistanceAcceptor<false>{bound});
+    return make_query(std::move(states), std::move(stats), boost,
+                      GeoDistanceAcceptor<false>{bound});
   }
 }
 
@@ -494,7 +482,7 @@ irs::filter::prepared::ptr prepareInterval(
   if (range.max < 0.) {
     return irs::filter::prepared::empty();
   } else if (range.min < 0.) {
-    return ::prepareOpenInterval(index, order, boost, field, opts, false);
+    return prepareOpenInterval(index, order, boost, field, opts, false);
   }
 
   if (irs::math::approx_equals(range.min, range.max)) {
@@ -519,7 +507,7 @@ irs::filter::prepared::ptr prepareInterval(
 
     auto [states, stats] = prepareStates(index, order, geoTerms, field);
 
-    return ::make_query(
+    return make_query(
         std::move(states), std::move(stats), boost,
         [bound = fromPoint(origin)](geo::ShapeContainer const& shape) {
           return bound.InteriorContains(shape.centroid());
@@ -560,19 +548,19 @@ irs::filter::prepared::ptr prepareInterval(
 
   switch (size_t(minIncl) + 2 * size_t(maxIncl)) {
     case 0:
-      return ::make_query(
+      return make_query(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<false, false>{minBound, maxBound});
     case 1:
-      return ::make_query(
+      return make_query(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<true, false>{minBound, maxBound});
     case 2:
-      return ::make_query(
+      return make_query(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<false, true>{minBound, maxBound});
     case 3:
-      return ::make_query(
+      return make_query(
           std::move(states), std::move(stats), boost,
           GeoDistanceRangeAcceptor<true, true>{minBound, maxBound});
     default:
@@ -582,13 +570,6 @@ irs::filter::prepared::ptr prepareInterval(
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                        GeoFilter
-// ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr GeoFilter::prepare(
     const irs::index_reader& index, const irs::order::prepared& order,
@@ -617,24 +598,24 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 
   switch (options().type) {
     case GeoFilterType::INTERSECTS: {
-      return ::make_query(
-          std::move(states), std::move(stats), boost,
-          [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
-            return filterShape.intersects(&shape);
-          });
+      return make_query(std::move(states), std::move(stats), boost,
+                        [filterShape = std::move(shape)](
+                            geo::ShapeContainer const& indexedShape) {
+                          return filterShape.intersects(indexedShape);
+                        });
     }
     case GeoFilterType::CONTAINS:
-      return ::make_query(
-          std::move(states), std::move(stats), boost,
-          [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
-            return filterShape.contains(&shape);
-          });
+      return make_query(std::move(states), std::move(stats), boost,
+                        [filterShape = std::move(shape)](
+                            geo::ShapeContainer const& indexedShape) {
+                          return filterShape.contains(indexedShape);
+                        });
     case GeoFilterType::IS_CONTAINED:
-      return ::make_query(
-          std::move(states), std::move(stats), boost,
-          [filterShape = std::move(shape)](geo::ShapeContainer const& shape) {
-            return shape.contains(&filterShape);
-          });
+      return make_query(std::move(states), std::move(stats), boost,
+                        [filterShape = std::move(shape)](
+                            geo::ShapeContainer const& indexedShape) {
+                          return indexedShape.contains(filterShape);
+                        });
     default:
       TRI_ASSERT(false);
       return prepared::empty();
@@ -660,14 +641,13 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
     return match_all(index, order, field(), boost);
   }
   if (lowerBound && upperBound) {
-    return ::prepareInterval(index, order, boost, field(), options());
+    return prepareInterval(index, order, boost, field(), options());
   } else {
-    return ::prepareOpenInterval(index, order, boost, field(), options(),
-                                 lowerBound);
+    return prepareOpenInterval(index, order, boost, field(), options(),
+                               lowerBound);
   }
 }
 
 DEFINE_FACTORY_DEFAULT(GeoDistanceFilter)
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

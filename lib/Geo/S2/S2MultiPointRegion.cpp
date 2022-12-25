@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,31 +20,35 @@
 ///
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
-#include "S2MultiPointRegion.h"
+
+#include "Geo/S2/S2MultiPointRegion.h"
+#include "Basics/Exceptions.h"
+
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
+#include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
-#include <s2/util/coding/coder.h>
 
-S2MultiPointRegion::S2MultiPointRegion(std::vector<S2Point>* points)
-    : num_points_(points->size()), points_(nullptr) {
-  if (num_points_ > 0) {
-    points_ = new S2Point[num_points_];
-    memcpy(points_, points->data(), num_points_ * sizeof(S2Point));
+namespace arangodb::geo {
+
+S2Point S2MultiPointRegion::GetCentroid() const noexcept {
+  // TODO(MBkkt) was comment "probably broken"
+  //  It's not really broken, it's mathematically correct,
+  //  but I think it can be incorrect because of limited double precision
+  //  For example maybe Kahan summation algorithm for each coordinate
+  //  and then divide on points.size()
+  auto c = S2LatLng::FromDegrees(0.0, 0.0);
+  auto const invNumPoints = 1.0 / static_cast<double>(_impl.size());
+  for (auto const& point : _impl) {
+    c = c + invNumPoints * S2LatLng{point};
   }
+  TRI_ASSERT(c.is_valid());
+  return c.ToPoint();
 }
 
-S2MultiPointRegion::S2MultiPointRegion(S2MultiPointRegion const* other)
-    : num_points_(other->num_points_), points_(nullptr) {
-  if (num_points_ > 0) {
-    points_ = new S2Point[num_points_];
-    memcpy(points_, other->points_, num_points_ * sizeof(S2Point));
-  }
-}
-
-S2MultiPointRegion* S2MultiPointRegion::Clone() const {
-  return new S2MultiPointRegion(this);
+S2Region* S2MultiPointRegion::Clone() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 S2Cap S2MultiPointRegion::GetCapBound() const {
@@ -53,60 +57,30 @@ S2Cap S2MultiPointRegion::GetCapBound() const {
 
 S2LatLngRect S2MultiPointRegion::GetRectBound() const {
   S2LatLngRectBounder bounder;
-  for (int i = 0; i < num_points_; ++i) {
-    bounder.AddPoint(points_[i]);
+  for (auto const& point : _impl) {
+    bounder.AddPoint(point);
   }
   return bounder.GetBound();
 }
 
-bool S2MultiPointRegion::Contains(S2Point const& p) const {
-  for (int k = 0; k < num_points_; k++) {
-    if (points_[k] == p) {
-      return true;
-    }
-  }
-  return false;
-}
+bool S2MultiPointRegion::Contains(S2Cell const& cell) const { return false; }
 
 bool S2MultiPointRegion::MayIntersect(S2Cell const& cell) const {
-  for (int k = 0; k < num_points_; k++) {
-    if (cell.Contains(points_[k])) {
+  for (auto const& point : _impl) {
+    if (cell.Contains(point)) {
       return true;
     }
   }
   return false;
 }
-/*
-static const unsigned char kCurrentEncodingVersionNumber = 1;
 
-void S2MultiPointRegion::Encode(Encoder* encoder) const {
-  encoder->Ensure(10 + 30 * num_points_);  // sufficient
-
-  encoder->put8(kCurrentEncodingVersionNumber);
-  encoder->put32(num_points_);
-  for (int k = 0; k < num_points_; k++) {
-    for (int i = 0; i < 3; ++i) {
-      encoder->putdouble(points_[k][i]);
+bool S2MultiPointRegion::Contains(S2Point const& p) const {
+  for (auto const& point : _impl) {
+    if (point == p) {
+      return true;
     }
   }
-  assert(encoder->avail() >= 0);
+  return false;
 }
 
-bool S2MultiPointRegion::Decode(Decoder* decoder) {
-  unsigned char version = decoder->get8();
-  if (version > kCurrentEncodingVersionNumber) return false;
-
-  num_points_ = decoder->get32();
-  delete[] points_;
-  points_ = new S2Point[num_points_];
-  for (int k = 0; k < num_points_; k++) {
-    for (int i = 0; i < 3; ++i) {
-      points_[k][i] = decoder->getdouble();
-    }
-  }
-
-  assert(S2::IsUnitLength(point_));
-
-  return decoder->avail() >= 0;
-}
-*/
+}  // namespace arangodb::geo
