@@ -21,8 +21,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Geo.h"
-
+#include "IResearch/Geo.h"
+#include "IResearch/IResearchCommon.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
 #include "Logger/LogMacros.h"
@@ -31,82 +31,57 @@
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
-namespace arangodb {
-namespace iresearch {
+#include <s2/s2latlng.h>
 
-bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
-  Result res;
-  if (slice.isObject()) {
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+namespace arangodb::iresearch {
+
+template<bool Validation>
+bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
+                bool onlyPoint) {
+  Result r;
+  if (vpack.isObject()) {
     if (onlyPoint) {
-      S2LatLng ll;
-      res = geo::geojson::parsePoint(slice, ll);
-
-      if (res.ok()) {
-        shape.resetCoordinates(ll);
+      S2LatLng latLng;
+      r = geo::json::parsePoint<Validation>(vpack, latLng);
+      if (!Validation || r.ok()) {
+        region.reset(latLng.ToPoint());
       }
     } else {
-      res = geo::geojson::parseRegion(slice, shape);
+      r = geo::json::parseRegion<Validation>(vpack, region,
+                                             /*legacy=*/false);
     }
-  } else if (slice.isArray() && slice.length() >= 2) {
-    res = shape.parseCoordinates(slice, /*geoJson*/ true);
+  } else if (vpack.isArray()) {
+    r = geo::json::parseCoordinates<Validation>(vpack, region,
+                                                /*geoJson=*/true);
   } else {
-    LOG_TOPIC("4449c", DEBUG, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("4449c", DEBUG, TOPIC)
         << "Geo JSON or array of coordinates expected, got '"
-        << slice.typeName() << "'";
-
+        << vpack.typeName() << "'";
     return false;
   }
-
-  if (res.fail()) {
-    LOG_TOPIC("4549c", DEBUG, arangodb::iresearch::TOPIC)
+  if (Validation && r.fail()) {
+    LOG_TOPIC("4549c", DEBUG, TOPIC)
         << "Failed to parse value as GEO JSON or array of coordinates, error '"
-        << res.errorMessage() << "'";
+        << r.errorMessage() << "'";
 
     return false;
   }
-
   return true;
 }
 
-bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
-  if (!latSlice.isNumber() || !lngSlice.isNumber()) {
-    LOG_TOPIC("4579a", DEBUG, arangodb::iresearch::TOPIC)
-        << "Failed to parse value as GEO POINT, error 'Invalid "
-           "latitude/longitude pair type'.";
+template bool parseShape<true>(velocypack::Slice vpack,
+                               geo::ShapeContainer& region, bool onlyPoint);
+template bool parseShape<false>(velocypack::Slice vpack,
+                                geo::ShapeContainer& region, bool onlyPoint);
 
-    return false;
-  }
-
-  double_t lat, lng;
-  try {
-    lat = latSlice.getNumber<double_t>();
-    lng = lngSlice.getNumber<double_t>();
-  } catch (...) {
-    LOG_TOPIC("4579c", DEBUG, arangodb::iresearch::TOPIC)
-        << "Failed to parse value as GEO POINT, error 'Failed to parse "
-           "latitude/longitude pair' as double.";
-    return false;
-  }
-
-  // FIXME Normalized()?
-  out = S2LatLng::FromDegrees(lat, lng);
-
-  if (!out.is_valid()) {
-    LOG_TOPIC("4279c", DEBUG, arangodb::iresearch::TOPIC)
-        << "Failed to parse value as GEO POINT, error 'Invalid "
-           "latitude/longitude pair'.";
-    return false;
-  }
-
-  return true;
-}
-
-void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point) {
+void toVelocyPack(velocypack::Builder& builder, S2LatLng const& latLng) {
   builder.openArray();
-  builder.add(VPackValue(point.lng().degrees()));
-  builder.add(VPackValue(point.lat().degrees()));
+  builder.add(velocypack::Value(latLng.lng().degrees()));
+  builder.add(velocypack::Value(latLng.lat().degrees()));
   builder.close();
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

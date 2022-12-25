@@ -21,23 +21,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeoParams.h"
+#include "Geo/GeoParams.h"
 
-#include <s2/s1angle.h>
-#include <s2/s2cap.h>
 #include <s2/s2earth.h>
 #include <s2/s2metrics.h>
-#include <s2/s2region_coverer.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
+#include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-using namespace arangodb::geo;
+namespace arangodb::geo {
 
 RegionCoverParams::RegionCoverParams()
     : maxNumCoverCells(kMaxNumCoverCellsDefault),
@@ -48,27 +43,27 @@ RegionCoverParams::RegionCoverParams()
   // optimize levels for buildings, points are converted without S2RegionCoverer
 }
 
-/// @brief read the options from a vpack slice
-void RegionCoverParams::fromVelocyPack(VPackSlice const& params) {
-  TRI_ASSERT(params.isObject());
-  VPackSlice v;
-  if ((v = params.get("maxNumCoverCells")).isInteger()) {
+/// @brief read the options from a velocypack::Slice
+void RegionCoverParams::fromVelocyPack(velocypack::Slice slice) {
+  TRI_ASSERT(slice.isObject());
+  velocypack::Slice v;
+  if ((v = slice.get("maxNumCoverCells")).isNumber<int>()) {
     maxNumCoverCells = v.getNumber<int>();
   }
-  if ((v = params.get("worstIndexedLevel")).isInteger()) {
+  if ((v = slice.get("worstIndexedLevel")).isNumber<int>()) {
     worstIndexedLevel = v.getNumber<int>();
   }
-  if ((v = params.get("bestIndexedLevel")).isInteger()) {
+  if ((v = slice.get("bestIndexedLevel")).isNumber<int>()) {
     bestIndexedLevel = v.getNumber<int>();
   }
 }
 
-/// @brief add the options to an opened vpack builder
-void RegionCoverParams::toVelocyPack(VPackBuilder& builder) const {
+/// @brief add the options to an opened velocypack:: builder
+void RegionCoverParams::toVelocyPack(velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add("maxNumCoverCells", VPackValue(maxNumCoverCells));
-  builder.add("worstIndexedLevel", VPackValue(worstIndexedLevel));
-  builder.add("bestIndexedLevel", VPackValue(bestIndexedLevel));
+  builder.add("maxNumCoverCells", velocypack::Value(maxNumCoverCells));
+  builder.add("worstIndexedLevel", velocypack::Value(worstIndexedLevel));
+  builder.add("bestIndexedLevel", velocypack::Value(bestIndexedLevel));
 }
 
 S2RegionCoverer::Options RegionCoverParams::regionCovererOpts() const {
@@ -79,10 +74,29 @@ S2RegionCoverer::Options RegionCoverParams::regionCovererOpts() const {
   return opts;
 }
 
-double geo::QueryParams::minDistanceRad() const noexcept {
+double QueryParams::minDistanceRad() const noexcept {
   return metersToRadians(minDistance);
 }
 
-double geo::QueryParams::maxDistanceRad() const noexcept {
+double QueryParams::maxDistanceRad() const noexcept {
   return metersToRadians(maxDistance);
 }
+
+std::string QueryParams::toString() const {
+  auto t = [](bool x) -> std::string_view { return x ? "true" : "false"; };
+  return absl::StrCat(  // clang-format off
+     "minDistance: ", minDistance,
+    " incl: ", t(minInclusive),
+    " maxDistance: ", maxDistance,
+    " incl: ", t(maxInclusive),
+    " sorted: ", t(sorted),
+    " ascending: ", t(ascending),
+    " origin: ", origin.lng().degrees(), " , ", origin.lat().degrees(),
+    " pointsOnly: ", t(pointsOnly),
+    " limit: ", limit,
+    " filterType: ", static_cast<int>(filterType),
+    " filterShape: ", static_cast<int>(filterShape.type())
+  );  // clang-format on
+}
+
+}  // namespace arangodb::geo

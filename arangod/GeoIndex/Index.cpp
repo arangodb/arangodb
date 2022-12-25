@@ -82,7 +82,7 @@ Index::Index(VPackSlice const& info,
 }
 
 /// @brief Parse document and return cells for indexing
-Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
+Result Index::indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
@@ -91,10 +91,10 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                                           centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::geojson::parseRegion(loc, shape);
+    Result r = geo::json::parseRegion<true>(loc, shape, _legacyPolygons);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
-      cells = shape.covering(&coverer);
+      cells = shape.covering(coverer);
       centroid = shape.centroid();
       if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
@@ -115,12 +115,8 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       return TRI_ERROR_BAD_PARAMETER;
     }
     S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
-                                        lon.getNumericValue<double>());
-    if (!ll.is_valid()) {
-      LOG_TOPIC("8173c", DEBUG, arangodb::Logger::FIXME)
-          << "illegal geo-coordinates, ignoring entry";
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+                                        lon.getNumericValue<double>())
+                      .Normalized();
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
     return TRI_ERROR_NO_ERROR;
@@ -128,27 +124,28 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
   return TRI_ERROR_INTERNAL;
 }
 
-Result Index::shape(velocypack::Slice const& doc,
-                    geo::ShapeContainer& shape) const {
+Result Index::shape(velocypack::Slice doc, geo::ShapeContainer& shape) const {
   if (_variant == Variant::GEOJSON) {
-    VPackSlice loc = doc.get(_location);
-    if (loc.isArray() && loc.length() >= 2) {
-      return shape.parseCoordinates(loc, /*geoJson*/ true);
+    auto loc = doc.get(_location);
+    if (loc.isArray()) {
+      return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/true);
     } else if (loc.isObject()) {
-      return geo::geojson::parseRegion(loc, shape);
+      return geo::json::parseRegion<true>(loc, shape, _legacyPolygons);
     }
     return TRI_ERROR_BAD_PARAMETER;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    return shape.parseCoordinates(loc, /*geoJson*/ false);
+    auto loc = doc.get(_location);
+    return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/false);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
+    auto lon = doc.get(_longitude);
+    auto lat = doc.get(_latitude);
+    if (!lon.isNumber<double>() || !lat.isNumber<double>()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    shape.resetCoordinates(lat.getNumericValue<double>(),
-                           lon.getNumericValue<double>());
+    shape.reset(
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .Normalized()
+            .ToPoint());
     return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
@@ -177,17 +174,18 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
   if (cc->type == aql::NODE_TYPE_ARRAY) {  // [lng, lat] is valid input
     TRI_ASSERT(cc->numMembers() == 2);
     return S2LatLng::FromDegrees(/*lat*/ cc->getMember(1)->getDoubleValue(),
-                                 /*lon*/ cc->getMember(0)->getDoubleValue());
+                                 /*lon*/ cc->getMember(0)->getDoubleValue())
+        .Normalized();
   } else {
     VPackBuilder jsonB;
     cc->toVelocyPackValue(jsonB);
     VPackSlice json = jsonB.slice();
     geo::ShapeContainer shape;
     Result res;
-    if (json.isArray() && json.length() >= 2) {
-      res = shape.parseCoordinates(json, /*GeoJson*/ true);
+    if (json.isArray()) {
+      res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
     } else {
-      res = geo::geojson::parseRegion(json, shape);
+      res = geo::json::parseRegion<true>(json, shape, legacy);
     }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -242,7 +240,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
-      Result res = geo::geojson::parseRegion(bb.slice(), qp.filterShape);
+      auto res =
+          geo::json::parseRegion<true>(bb.slice(), qp.filterShape, legacy);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }

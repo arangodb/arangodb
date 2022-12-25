@@ -346,7 +346,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
                   char const* funcName, size_t argIdx) {
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {  // [lng, lat] is valid input
-      if (value.size() < 2) {
+      if (value.size() != 2) {
         return error::failedToEvaluate(funcName, argIdx);
       }
 
@@ -357,28 +357,29 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      double_t lat, lon;
+      double lat, lon;
 
       if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      point = S2LatLng::FromDegrees(lat, lon);
+      point = S2LatLng::FromDegrees(lat, lon).Normalized();
       return {};
     }
     case SCOPED_VALUE_TYPE_OBJECT: {
       VPackSlice const json = value.slice();
       geo::ShapeContainer shape;
       Result res;
-      if (json.isArray() && json.length() >= 2) {
-        res = shape.parseCoordinates(json, /*GeoJson*/ true);
+      if (json.isArray()) {
+        res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
       } else {
-        res = geo::geojson::parseRegion(json, shape);
+        res = geo::json::parseRegion<true>(json, shape, /*legacy=*/false);
       }
       if (res.fail()) {
         return res;
       }
       point = S2LatLng(shape.centroid());
+      TRI_ASSERT(point.is_valid());
       return {};
     }
     default: {
@@ -3874,14 +3875,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
 
     Result res;
-    if (shapeValue.isObject()) {
-      res = geo::geojson::parseRegion(shapeValue.slice(), shape);
-    } else if (shapeValue.isArray()) {
-      auto const slice = shapeValue.slice();
-
-      if (slice.isArray() && slice.length() >= 2) {
-        res = shape.parseCoordinates(slice, /*geoJson*/ true);
-      }
+    if (auto const slice = shapeValue.slice(); slice.isObject()) {
+      res = geo::json::parseRegion<true>(slice, shape, /*legacy=*/false);
+    } else if (slice.isArray()) {
+      res = geo::json::parseCoordinates<true>(slice, shape, /*geoJson=*/true);
     } else {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName)

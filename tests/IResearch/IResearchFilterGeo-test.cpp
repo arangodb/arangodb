@@ -71,6 +71,7 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Geo/GeoJson.h"
 #endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -150,6 +151,7 @@ class IResearchFilterGeoFunctionsTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+using arangodb::geo::json::parseCoordinates;
 
 TEST_F(IResearchFilterGeoFunctionsTest, GeoIntersects) {
   {
@@ -161,7 +163,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoIntersects) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::INTERSECTS;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
 
     assertFilterSuccess(
         vocbase(),
@@ -195,7 +197,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoIntersects) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::INTERSECTS;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(
@@ -290,7 +292,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(
@@ -329,7 +331,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::CONTAINS;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
 
     assertFilterSuccess(
         vocbase(),
@@ -351,7 +353,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::IS_CONTAINED;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
 
     assertFilterSuccess(
         vocbase(),
@@ -373,7 +375,7 @@ TEST_F(IResearchFilterGeoFunctionsTest, GeoContains) {
     auto* opts = filter.mutable_options();
     opts->type = arangodb::iresearch::GeoFilterType::CONTAINS;
     opts->prefix = "";
-    ASSERT_TRUE(opts->shape.parseCoordinates(json->slice(), true).ok());
+    ASSERT_TRUE(parseCoordinates<true>(json->slice(), opts->shape, true).ok());
     assertFilterSuccess(
         vocbase(),
         R"(FOR d IN myView FILTER BOOST(GEO_CONTAINS({ "type": "Point", "coordinates": [ 1, 2 ] }, d.name), 1.5) RETURN d)",
