@@ -363,10 +363,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      point = S2LatLng::FromDegrees(lat, lon);
-      if (!point.is_valid()) {
-        return {TRI_ERROR_BAD_PARAMETER};
-      }
+      point = S2LatLng::FromDegrees(lat, lon).Normalized();
       return {};
     }
     case SCOPED_VALUE_TYPE_OBJECT: {

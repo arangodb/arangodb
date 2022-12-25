@@ -115,10 +115,8 @@ Result Index::indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
       return TRI_ERROR_BAD_PARAMETER;
     }
     S2LatLng ll =
-        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>());
-    if (!ll.is_valid()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .Normalized();
     centroid = ll.ToPoint();
     cells.emplace_back(centroid);
     return TRI_ERROR_NO_ERROR;
@@ -144,12 +142,10 @@ Result Index::shape(velocypack::Slice doc, geo::ShapeContainer& shape) const {
     if (!lon.isNumber<double>() || !lat.isNumber<double>()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    auto point =
-        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>());
-    if (!point.is_valid()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    shape.reset(point.ToPoint());
+    shape.reset(
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .Normalized()
+            .ToPoint());
     return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
@@ -177,13 +173,10 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
 
   if (cc->type == aql::NODE_TYPE_ARRAY) {  // [lng, lat] is valid input
     TRI_ASSERT(cc->numMembers() == 2);
-    auto point = S2LatLng::FromDegrees(
-        /*lat_degrees=*/cc->getMember(1)->getDoubleValue(),
-        /*lng_degrees=*/cc->getMember(0)->getDoubleValue());
-    if (!point.is_valid()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-    }
-    return point;
+    return S2LatLng::FromDegrees(
+               /*lat_degrees=*/cc->getMember(1)->getDoubleValue(),
+               /*lng_degrees=*/cc->getMember(0)->getDoubleValue())
+        .Normalized();
   } else {
     VPackBuilder jsonB;
     cc->toVelocyPackValue(jsonB);

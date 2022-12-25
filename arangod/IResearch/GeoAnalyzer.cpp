@@ -419,10 +419,8 @@ bool GeoPointAnalyzer::parsePoint(velocypack::Slice json,
     return false;
   }
   point =
-      S2LatLng::FromDegrees(lat.getNumber<double>(), lng.getNumber<double>());
-  if (ADB_UNLIKELY(!point.is_valid())) {
-    return false;
-  }
+      S2LatLng::FromDegrees(lat.getNumber<double>(), lng.getNumber<double>())
+          .Normalized();
   return true;
 }
 
