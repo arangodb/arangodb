@@ -542,6 +542,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       return true;
     }
   }
+  return false;
 }
 
 double ShapeContainer::distanceFromCentroid(S2Point const& other,
