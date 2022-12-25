@@ -63,10 +63,7 @@ Result indexCellsLatLng(velocypack::Slice data, bool geoJson,
     lat = first.getNumber<double>();
     lon = second.getNumber<double>();
   }
-  auto ll = S2LatLng::FromDegrees(lat, lon);
-  if (ADB_UNLIKELY(!ll.is_valid())) {
-    return {TRI_ERROR_BAD_PARAMETER};
-  }
+  auto ll = S2LatLng::FromDegrees(lat, lon).Normalized();
   centroid = ll.ToPoint();
   cells.emplace_back(centroid);
   return {};
