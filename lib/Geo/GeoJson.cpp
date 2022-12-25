@@ -163,7 +163,10 @@ bool parseImpl(velocypack::Slice vpack, S2LatLng& vertex) noexcept {
   }
   // We should Normalize all S2LatLng
   // because otherwise their converting to S2Point is invalid!
-  vertex = S2LatLng::FromDegrees(lat, lon).Normalized();
+  vertex = S2LatLng::FromDegrees(lat, lon);
+  if (ADB_UNLIKELY(!vertex.is_valid())) {
+    return false;
+  }
   return true;
 }
 

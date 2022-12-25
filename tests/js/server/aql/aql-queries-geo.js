@@ -101,7 +101,7 @@ function ahuacatlLegacyGeoTestSuite () {
     },
 
     testLegacyNearInvalidCoordinate : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN NEAR(" + locations.name() + ", 1000, 1000, 10)");
+      assertQueryError(errors.ERROR_BAD_PARAMETER.code, "RETURN NEAR(" + locations.name() + ", 1000, 1000, 10)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +170,7 @@ function ahuacatlLegacyGeoTestSuite () {
     },
     
     testLegacyWithinInvalidCoordinate : function () {
-      assertQueryError(errors.ERROR_QUERY_INVALID_GEO_VALUE.code, "RETURN WITHIN(" + locations.name() + ", 1000, 1000, 100000)");
+      assertQueryError(errors.ERROR_BAD_PARAMETER.code, "RETURN WITHIN(" + locations.name() + ", 1000, 1000, 100000)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
