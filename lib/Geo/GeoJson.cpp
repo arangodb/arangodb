@@ -402,6 +402,16 @@ Result parseLoopImpl(velocypack::Slice vpack,
   return {};
 }
 
+S2Polygon createPolygon(std::vector<std::unique_ptr<S2Loop>>&& loops) {
+  if (loops.size() != 1 || !loops[0]->is_empty()) {
+    return S2Polygon{std::move(loops), S2Debug::DISABLE};
+  }
+  // Handle creation of empty polygon otherwise will be error in validation
+  S2Polygon polygon;
+  polygon.set_s2debug_override(S2Debug::DISABLE);
+  return polygon;
+}
+
 template<bool Validation, bool Legacy>
 Result parsePolygonImpl(velocypack::ArrayIterator it, S2Polygon& region,
                         std::vector<S2Point>& vertices) {
@@ -415,7 +425,7 @@ Result parsePolygonImpl(velocypack::ArrayIterator it, S2Polygon& region,
       return r;
     }
   }
-  region = S2Polygon{std::move(loops), S2Debug::DISABLE};
+  region = createPolygon(std::move(loops));
   if constexpr (Validation) {
     S2Error error;
     if (ADB_UNLIKELY(region.FindValidationError(&error))) {
@@ -508,8 +518,7 @@ Result parseMultiPolygonImpl(velocypack::Slice vpack, S2Polygon& region,
     }
     first = nullptr;
   }
-
-  region = S2Polygon{std::move(loops), S2Debug::DISABLE};
+  region = createPolygon(std::move(loops));
   if constexpr (Validation) {
     S2Error error;
     if (ADB_UNLIKELY(region.FindValidationError(&error))) {
