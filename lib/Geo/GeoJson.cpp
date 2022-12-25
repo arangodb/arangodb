@@ -118,6 +118,7 @@ consteval ShapeContainer::Type toShapeType(Type t) noexcept {
     case Type::MULTI_LINESTRING:
       return ShapeContainer::Type::S2_POLYLINES;
   }
+  return ShapeContainer::Type::EMPTY;
 }
 
 bool sameIgnoringCase(std::string_view s1, std::string_view s2) noexcept {
