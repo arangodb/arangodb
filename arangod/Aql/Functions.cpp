@@ -6110,7 +6110,11 @@ AqlValue Functions::IsInPolygon(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude).Normalized();
+  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
+  if (!latLng.is_valid()) {
+    registerWarning(expressionContext, "IS_IN_POLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
   return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
