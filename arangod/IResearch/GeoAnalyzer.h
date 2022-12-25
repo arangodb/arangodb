@@ -24,6 +24,8 @@
 #pragma once
 
 #include <s2/s2region_term_indexer.h>
+#include <s2/s2latlng.h>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 
@@ -177,7 +179,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
   Type _type;
-};  // GeoJSONAnalyzer
+};
 
 // FIXME remove kludge
 inline bool isGeoAnalyzer(std::string_view type) noexcept {

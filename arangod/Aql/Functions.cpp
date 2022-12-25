@@ -97,6 +97,7 @@
 #include <date/iso_week.h>
 #include <date/tz.h>
 #include <s2/s2loop.h>
+#include <s2/s2polygon.h>
 
 #include <unicode/schriter.h>
 #include <unicode/stsearch.h>
@@ -1200,7 +1201,8 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer, false);
+  auto res = geo::json::parseRegion<true>(mat1.slice(p1, true), outer,
+                                          /*legacy=*/false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1215,10 +1217,12 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer mat2(vopts);
-  if (p2.isArray() && p2.length() >= 2) {
-    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
+  if (p2.isArray()) {
+    res = geo::json::parseCoordinates<true>(mat2.slice(p2, true), inner,
+                                            /*geoJson=*/true);
   } else if (p2.isObject()) {
-    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner, false);
+    res = geo::json::parseRegion<true>(mat2.slice(p2, true), inner,
+                                       /*legacy=*/false);
   } else {
     res.reset(TRI_ERROR_BAD_PARAMETER,
               "Second arg requires coordinate pair or GeoJSON");
@@ -1230,7 +1234,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   bool result;
   try {
-    result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+    result = contains ? outer.contains(inner) : outer.intersects(inner);
     return AqlValue(AqlValueHintBool(result));
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
@@ -1339,10 +1343,12 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   auto* vopts = &exprCtx->trx().vpackOptions();
   AqlValueMaterializer mat(vopts);
 
-  if (value.isArray() && value.length() >= 2) {
-    return shape.parseCoordinates(mat.slice(value, true), /*geoJson*/ true);
+  if (value.isArray()) {
+    return geo::json::parseCoordinates<true>(mat.slice(value, true), shape,
+                                             /*geoJson=*/true);
   } else if (value.isObject()) {
-    return geo::geojson::parseRegion(mat.slice(value, true), shape, false);
+    return geo::json::parseRegion<true>(mat.slice(value, true), shape,
+                                        /*legacy=*/false);
   } else {
     return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
   }
@@ -6016,12 +6022,12 @@ AqlValue functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  if (parameters.size() > 2 && parameters[2].isString()) {
-    VPackValueLength len;
-    const char* ptr = parameters[2].slice().getStringUnchecked(len);
-    geo::Ellipsoid const& e = geo::utils::ellipsoidFromString(ptr, len);
-    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e),
-                         true);
+  if (parameters.size() > 2) {
+    if (auto slice = parameters[2].slice(); slice.isString()) {
+      auto const& e = geo::utils::ellipsoidFromString(slice.stringView());
+      return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e),
+                           true);
+    }
   }
   return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
@@ -6107,10 +6113,8 @@ AqlValue functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
 
     if (argc > 6) {
       auto const& value = extractFunctionParameterValue(args, 6);
-      if (value.isString()) {
-        VPackValueLength len;
-        char const* ptr = value.slice().getStringUnchecked(len);
-        ellipsoid = &geo::utils::ellipsoidFromString(ptr, len);
+      if (auto slice = value.slice(); slice.isString()) {
+        ellipsoid = &geo::utils::ellipsoidFromString(slice.stringView());
       }
     }
   }
@@ -6163,8 +6167,10 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first, false);
-  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second, false);
+  auto res1 = geo::json::parseRegion<true>(mat1.slice(p1, true), first,
+                                           /*legacy=*/false);
+  auto res2 = geo::json::parseRegion<true>(mat2.slice(p2, true), second,
+                                           /*legacy=*/false);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6175,7 +6181,7 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  bool result = first.equals(&second);
+  bool result = first.equals(second);
   return AqlValue(AqlValueHintBool(result));
 }
 
@@ -6191,7 +6197,8 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape, false);
+  auto res = geo::json::parseRegion<true>(mat.slice(p1, true), shape,
+                                          /*legacy=*/false);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);
@@ -6199,10 +6206,8 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   }
 
   auto detEllipsoid = [](AqlValue const& p) {
-    if (p.isString()) {
-      VPackValueLength len;
-      const char* ptr = p.slice().getStringUnchecked(len);
-      return geo::utils::ellipsoidFromString(ptr, len);
+    if (auto slice = p.slice(); slice.isString()) {
+      return geo::utils::ellipsoidFromString(slice.stringView());
     }
     return geo::SPHERE;
   };
@@ -6259,13 +6264,13 @@ AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
 
   S2Loop loop;
   loop.set_s2debug_override(S2Debug::DISABLE);
-  Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
+  auto res = geo::json::parseLoop(coords.slice(), loop, geoJson);
   if (res.fail() || !loop.IsValid()) {
     registerWarning(expressionContext, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());
   }
 
-  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
+  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude).Normalized();
   return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
@@ -6421,8 +6426,8 @@ AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // object
 
   // Now actually parse the result with S2:
-  geo::ShapeContainer container;
-  res = geo::geojson::parsePolygon(builder->slice(), container, false);
+  S2Polygon polygon;
+  res = geo::json::parsePolygon(builder->slice(), polygon);
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_POLYGON", res);
     return AqlValue(AqlValueHintNull());
@@ -6504,9 +6509,8 @@ AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   builder->close();
 
   // Now actually parse the result with S2:
-  geo::ShapeContainer container;
-  Result res =
-      geo::geojson::parseMultiPolygon(builder->slice(), container, false);
+  S2Polygon polygon;
+  auto res = geo::json::parseMultiPolygon(builder->slice(), polygon);
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
     return AqlValue(AqlValueHintNull());
@@ -7374,7 +7378,7 @@ std::optional<T> bitOperationValue(VPackSlice input) {
   return {};
 }
 
-AqlValue handleBitOperation(
+static AqlValue handleBitOperation(
     ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters,
     std::function<uint64_t(uint64_t, uint64_t)> const& cb) {
