@@ -68,10 +68,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
+#include "Geo/GeoJson.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
-#include "Geo/GeoJson.h"
 #endif
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();

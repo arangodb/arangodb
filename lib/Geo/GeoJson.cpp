@@ -279,7 +279,7 @@ template<bool Validation>
 Result makeLoopValid(std::vector<S2Point>& vertices) noexcept(!Validation) {
   if (Validation && ADB_UNLIKELY(vertices.size() < 4)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Invalid loop in polygon, must have at least 4 vertices"};
+            "Invalid GeoJson Loop, must have at least 4 vertices"};
   }
   // S2Loop doesn't like duplicates
   removeAdjacentDuplicates(vertices);
@@ -288,6 +288,8 @@ Result makeLoopValid(std::vector<S2Point>& vertices) noexcept(!Validation) {
   }
   // S2Loop automatically add last edge
   if (ADB_LIKELY(vertices.size() != 1)) {
+    TRI_ASSERT(vertices.size() >= 3);
+    // 3 is incorrect but it will be handled by S2Loop::FindValidationError
     vertices.pop_back();
   }
   return {};
@@ -767,17 +769,27 @@ template Result parseCoordinates<false>(velocypack::Slice vpack,
 Result parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson) {
   static constexpr bool Validation = true;
   if (!vpack.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing.");
+    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing."};
   }
   auto r = geoJson ? parseImpl<Validation, true>(vpack, cache.vertices)
                    : parseImpl<Validation, false>(vpack, cache.vertices);
   if (ADB_UNLIKELY(!r.ok())) {
     return r;
   }
-  r = makeLoopValid<Validation>(cache.vertices);
-  if (ADB_UNLIKELY(!r.ok())) {
-    return r;
+  removeAdjacentDuplicates(cache.vertices);
+  switch (cache.vertices.size()) {
+    case 0:
+      return {TRI_ERROR_BAD_PARAMETER,
+              "Loop should be 3 different vertices or be empty or full."};
+    case 1:
+      break;
+    default:
+      if (cache.vertices.front() == cache.vertices.back()) {
+        cache.vertices.pop_back();
+      }
+      break;
   }
+  // size() 2 here is incorrect but it will be handled by FindValidationError
   loop = S2Loop{cache.vertices, S2Debug::DISABLE};
   S2Error error;
   if (ADB_UNLIKELY(loop.FindValidationError(&error))) {
