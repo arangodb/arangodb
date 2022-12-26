@@ -504,7 +504,8 @@ Result parseMultiPolygonImpl(velocypack::Slice vpack, S2Polygon& region,
     if (capacity >= minNeededSize) {
       return;
     }
-    loops.reserve(std::max(capacity * 2, minNeededSize));
+    loops.reserve(std::max(static_cast<size_t>(capacity * 2),
+                           static_cast<size_t>(minNeededSize)));
   };
   for (S2Loop* first = nullptr; it.valid(); it.next()) {
     velocypack::ArrayIterator jt{*it};
