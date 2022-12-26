@@ -89,6 +89,16 @@ bool pointsEqual(S2LatLng const& a, S2LatLng const& b) {
 namespace arangodb {
 namespace geo {
 
+#define NOT_IMPL_EXC(expr)                              \
+  do {                                                  \
+    try {                                               \
+      expr;                                             \
+      ASSERT_TRUE(false);                               \
+    } catch (arangodb::basics::Exception const& exc) {  \
+      ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
+    }                                                   \
+  } while (false)
+
 class ShapeContainerTest : public ::testing::Test {
  protected:
   using ShapeType = arangodb::geo::ShapeContainer::Type;
@@ -223,9 +233,9 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
   coord.reset(S2LatLng::FromDegrees(0.5, 0.5).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  ASSERT_FALSE(shape.intersects(coord));
   coord.reset(S2LatLng::FromDegrees(2.0, 2.0).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  ASSERT_FALSE(shape.intersects(coord));
 
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
@@ -292,11 +302,11 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
   coord.reset(S2LatLng::FromDegrees(0.0, 0.5).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  NOT_IMPL_EXC(shape.intersects(coord));
   coord.reset(S2LatLng::FromDegrees(0.5, 0.5).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  NOT_IMPL_EXC(shape.intersects(coord));
   coord.reset(S2LatLng::FromDegrees(2.0, 2.0).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  NOT_IMPL_EXC(shape.intersects(coord));
 
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
@@ -388,9 +398,9 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
   coord.reset(S2LatLng::FromDegrees(0.5, 0.5).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  NOT_IMPL_EXC(shape.intersects(coord));
   coord.reset(S2LatLng::FromDegrees(3.0, 3.0).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  NOT_IMPL_EXC(shape.intersects(coord));
 
   ASSERT_EQ(shape.area(geo::WGS84_ELLIPSOID), 0);
   ASSERT_EQ(shape.area(geo::SPHERE), 0);
@@ -468,7 +478,7 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   // doesn't contain what it shouldn't
   ASSERT_FALSE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   coord.reset(S2LatLng::FromDegrees(1.0, 1.0).ToPoint());
-  ASSERT_TRUE(shape.intersects(coord));
+  ASSERT_FALSE(shape.intersects(coord));
 
   ASSERT_NEAR(shape.area(geo::SPHERE), 6182469722.73085, 1000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 6154854786.72143, 1000);
@@ -645,16 +655,6 @@ class ShapeContainerTest2 : public ::testing::Test {
   }
 };
 
-#define NOT_IMPL_EXC(expr)                              \
-  do {                                                  \
-    try {                                               \
-      expr;                                             \
-      ASSERT_TRUE(false);                               \
-    } catch (arangodb::basics::Exception const& exc) {  \
-      ASSERT_EQ(exc.code(), TRI_ERROR_NOT_IMPLEMENTED); \
-    }                                                   \
-  } while (false)
-
 // point      TT--TTT
 // multipoint TT----T
 // line       --TTTTT
@@ -666,23 +666,23 @@ class ShapeContainerTest2 : public ::testing::Test {
 TEST_F(ShapeContainerTest2, intersections_point) {
   // All 7 with each other:
   // The ones which are commented out run into assertion failures right now:
-  ASSERT_TRUE(point.intersects(point));
-  ASSERT_TRUE(point.intersects(multipoint));
   NOT_IMPL_EXC(point.intersects(line));
   NOT_IMPL_EXC(point.intersects(multiline));
+  ASSERT_TRUE(point.intersects(point));
+  ASSERT_TRUE(point.intersects(multipoint));
   ASSERT_TRUE(point.intersects(poly));
   ASSERT_TRUE(point.intersects(multipoly));
   ASSERT_TRUE(point.intersects(rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_multipoint) {
+  NOT_IMPL_EXC(multipoint.intersects(line));
+  NOT_IMPL_EXC(multipoint.intersects(multiline));
   ASSERT_TRUE(multipoint.intersects(point));
   ASSERT_TRUE(multipoint.intersects(multipoint));
-  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(line)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(multiline)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(poly)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(multipoly)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multipoint.intersects(rect)));
+  ASSERT_TRUE(multipoint.intersects(poly));
+  ASSERT_TRUE(multipoint.intersects(multipoly));
+  ASSERT_TRUE(multipoint.intersects(rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_line) {
@@ -702,11 +702,11 @@ TEST_F(ShapeContainerTest2, intersections_multiline) {
   // will always return false, since they are not well-defined numerically!
   NOT_IMPL_EXC(multiline.intersects(point));
   NOT_IMPL_EXC(multiline.intersects(multipoint));
-  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(line)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(multiline)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(poly)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(multipoly)));
-  NOT_IMPL_EXC(ASSERT_TRUE(multiline.intersects(rect)));
+  ASSERT_TRUE(multiline.intersects(line));
+  ASSERT_TRUE(multiline.intersects(multiline));
+  ASSERT_TRUE(multiline.intersects(poly));
+  ASSERT_TRUE(multiline.intersects(multipoly));
+  ASSERT_TRUE(multiline.intersects(rect));
 }
 
 TEST_F(ShapeContainerTest2, intersections_poly) {
