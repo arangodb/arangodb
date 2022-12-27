@@ -400,7 +400,13 @@ function iResearchFeatureAqlTestSuite () {
           db._create("test_coll"); 
           db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
           db.test_coll.save({field: "value1"});
+          let indexMeta = {};
+          db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": `::${analyzerName}`}]})
+          
           var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
+          assertEqual(1, res.toArray().length);
+
+          res = db._query('FOR doc IN test_coll OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field == "value1" RETURN doc');
           assertEqual(1, res.toArray().length);
         } finally {
           db._useDatabase("_system");
@@ -586,6 +592,7 @@ function iResearchFeatureAqlTestSuite () {
         db._useDatabase(dbName);
         let analyzer = analyzers.save(analyzerName, "identity", {});
         db._create("test_coll");
+        db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": analyzerName}]});
         db._createView("tv", "arangosearch", 
                        {links: { test_coll: { includeAllFields:true,
                                               analyzers:[ "" + analyzerName ] } } });
@@ -593,6 +600,10 @@ function iResearchFeatureAqlTestSuite () {
         var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName + 
                             "') OPTIONS {waitForSync:true}  RETURN d");
         assertEqual(1, res.toArray().length);
+
+        res = db._query('FOR doc IN test_coll OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field == "value1" RETURN doc');
+        assertEqual(1, res.toArray().length);
+        
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2197,35 +2208,64 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "collationUnderTest";
       let collectionName = "testBTS712";
       let viewName = "viewTestBTS712";
+      let searchAliasViewName = "searchAliasView";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       try { db._drop(collectionName); } catch(e) {}
       try { db._dropView(viewName); } catch(e) {}
       try { 
-        analyzers.save(analyzerName,"collation", {locale:"sv.utf-8"}, []);
+        analyzers.save(analyzerName, "collation", {locale:"sv.utf-8"}, []);
         let col = db._create(collectionName);
         col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" },  ]);
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {
             links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true,
             "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": `${analyzerName}`},
+            {"name": "text", "analyzer": `${analyzerName}`},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
         } else {
           viewMeta = {
-            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true}}};
+            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true}}
+          };
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": `::${analyzerName}`},
+            {"name": "text", "analyzer": `::${analyzerName}`}, 
+            {"name": "value[*]"}]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        db._collection(collectionName).ensureIndex(indexMeta);
+        db._createView(searchAliasViewName, "search-alias", {indexes:[{collection: collectionName, index: "inverted"}]});
       } catch (e) { }
       {
         try {
           let result = db._query(
-            "FOR d IN " + viewName + " SEARCH ANALYZER(d.text <  TOKENS('Z', '" + analyzerName +
+            "FOR d IN " + viewName + " SEARCH ANALYZER(d.text < TOKENS('Z', '" + analyzerName +
             "' )[0], '" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d",
             null,
             { }).toArray();
           assertEqual(3, result.length);
+
+          result = db._query(
+            "FOR d IN searchAliasView SEARCH ANALYZER(d.text < TOKENS('Z', '" + analyzerName +
+            "' )[0], '" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d",
+            null,
+            { }).toArray();
+          assertEqual(3, result.length);
+
+          result = db._query(
+            `FOR d IN ${collectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER d.text != null AND d.text < TOKENS('Z', '${analyzerName}')[0] RETURN d`,
+            null,
+            { }).toArray();
+          assertEqual(3, result.length);
+
         } finally {
           db._dropView(viewName);
+          db._dropView(searchAliasViewName);
           analyzers.remove(analyzerName, true);
           db._drop(collectionName);
         }
@@ -2266,6 +2306,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
             {[colName]: 
@@ -2273,20 +2314,40 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true, 
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};     
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true,
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};     
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
+
         assertEqual(3, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
                                  "OPTIONS { waitForSync: true } RETURN d ",
                                 { '@v':viewName }).toArray().length);
         assertEqual(1, db._query("FOR d IN @@v  " + 
                                  "SEARCH ANALYZER(d.field == SOUNDEX('andrei'), 'calcUnderTest') OPTIONS { waitForSync: true } RETURN d ",
                                 { '@v':viewName }).toArray().length);
+
+        assertEqual(3, db._query(`
+        FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
+          FILTER d.field != SOUNDEX('andrei') RETURN d`, {}).toArray().length);
+
+       assertEqual(1, db._query(`
+       FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
+        FILTER d.field == SOUNDEX('andrei') RETURN d`, {}).toArray().length);                        
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2311,6 +2372,7 @@ function iResearchFeatureAqlTestSuite () {
                                               returnType:"number"});
         
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
             {[colName]: 
@@ -2318,15 +2380,26 @@ function iResearchFeatureAqlTestSuite () {
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};     
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};          
         }
-                                                                                    
+        col.ensureIndex(indexMeta);                                                                            
         db._createView(viewName, "arangosearch", viewMeta);
+
         let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2343,6 +2416,27 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field < 2 and d.field != null RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("1", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == 3 RETURN d`).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("3", res3[0].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2366,6 +2460,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_STRING(@param)",
                                               returnType:"number"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
             {[colName]: 
@@ -2373,14 +2468,25 @@ function iResearchFeatureAqlTestSuite () {
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+                {"name": "field", "analyzer": "calcUnderTest"},
+                {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};          
         }                                     
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2397,6 +2503,27 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field < 2 and d.field != null RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("1", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == 3 RETURN d`).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("3", res3[0].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2420,6 +2547,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
                                               returnType:"number"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {   
           viewMeta = {links: 
             {[colName]: 
@@ -2427,6 +2555,11 @@ function iResearchFeatureAqlTestSuite () {
               "fields": { field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                includeAllFields:false, 
                analyzers:['calcUnderTest']}}};      
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+                {"name": "field", "analyzer": "calcUnderTest"},
+                {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta =  {links: 
             {[colName]: 
@@ -2434,7 +2567,13 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
-        }                             
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};          
+        }               
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
@@ -2453,6 +2592,28 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > 2 RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == 2 RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+    
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2476,6 +2637,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_STRING(a)",
                                               returnType:"number"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {        
           viewMeta = {links: 
             {[colName]: 
@@ -2483,6 +2645,10 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
@@ -2490,8 +2656,14 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2509,6 +2681,28 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > 2 RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == 2 RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2532,6 +2726,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN @param",
                                               returnType:"string"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) { 
           viewMeta = {links: 
             {[colName]: 
@@ -2539,14 +2734,23 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true,
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2564,6 +2768,27 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > '2' RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == '2' RETURN d`).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("2", res3[0].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2587,6 +2812,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
                                               returnType:"string"});
         let viewMeta = {};
+        let indexMeta = {}
         if (isEnterprise) { 
           viewMeta = {links: 
             {[colName]: 
@@ -2594,14 +2820,23 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true,
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2616,6 +2851,26 @@ function iResearchFeatureAqlTestSuite () {
         let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
                               ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > '2' RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == '2' RETURN d`).toArray();
+        assertEqual(1, res3.length);
+        assertEqual("2", res3[0].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2642,6 +2897,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
                                               returnType:"string"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) { 
           viewMeta = {links: 
             {[colName]: 
@@ -2649,6 +2905,11 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
@@ -2656,8 +2917,14 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2676,6 +2943,28 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > '2' RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == '2' RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+        
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2699,6 +2988,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_NUMBER(a)",
                                               returnType:"string"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) { 
           viewMeta = {links: 
             {[colName]: 
@@ -2706,6 +2996,11 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
@@ -2713,8 +3008,15 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
+
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2733,6 +3035,28 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > '2' RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == '2' RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2755,6 +3079,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ",
                                               returnType:"bool"});
+        let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) { 
           viewMeta = {links: 
@@ -2763,13 +3088,24 @@ function iResearchFeatureAqlTestSuite () {
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true, 
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};     
         }
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
@@ -2780,6 +3116,20 @@ function iResearchFeatureAqlTestSuite () {
                              "SEARCH d.field == false " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field == true RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("2", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == false RETURN d`).toArray();
         assertEqual(2, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("3", res3[1].field);
@@ -2805,6 +3155,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ? 1 : 0 ",
                                               returnType:"bool"});
+        let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
@@ -2813,13 +3164,22 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true,
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
@@ -2830,6 +3190,20 @@ function iResearchFeatureAqlTestSuite () {
                              "SEARCH d.field == false " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field == true RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("2", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == false RETURN d`).toArray();
         assertEqual(2, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("3", res3[1].field);
@@ -2855,6 +3229,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2",
                                               returnType:"bool"});
+        let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
@@ -2863,6 +3238,11 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
@@ -2870,7 +3250,13 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false,
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
@@ -2886,6 +3272,23 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual("1", res3[0].field);
         assertEqual("2", res3[1].field);
         assertEqual("3", res3[2].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field == true RETURN d`
+        ).toArray();
+        assertEqual(2, res1.length);
+        assertEqual("2", res1[0].field);
+        assertEqual("3", res1[1].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == false RETURN d`).toArray();
+        assertEqual(3, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("2", res3[1].field);
+        assertEqual("3", res3[2].field);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -2909,6 +3312,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2 ? 1 : 0",
                                               returnType:"bool"});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
             {[colName]: 
@@ -2916,6 +3320,11 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['calcUnderTest']}}};
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+    
         } else {
           viewMeta = {links: 
             {[colName]: 
@@ -2923,8 +3332,15 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:false, 
                fields:{field:{}},
                analyzers:['calcUnderTest']}}};
+          
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
+
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
                              { '@v':viewName }).toArray();
@@ -2935,6 +3351,22 @@ function iResearchFeatureAqlTestSuite () {
                              "SEARCH d.field == false OPTIONS " +
                              "{ waitForSync: true } SORT d.field ASC RETURN d ",
                              { '@v':viewName }).toArray();
+        assertEqual(3, res3.length);
+        assertEqual("1", res3[0].field);
+        assertEqual("2", res3[1].field);
+        assertEqual("3", res3[2].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field == true RETURN d`
+        ).toArray();
+        assertEqual(2, res1.length);
+        assertEqual("2", res1[0].field);
+        assertEqual("3", res1[1].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == false RETURN d`).toArray();
         assertEqual(3, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("2", res3[1].field);
@@ -2979,6 +3411,7 @@ function iResearchFeatureAqlTestSuite () {
         col.save({field:"value"});
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {links: 
             {[colName]: 
@@ -2986,14 +3419,26 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true, 
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['identity']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "identity"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {links: 
             {[colName]: 
               {storeValues: 'id', 
                includeAllFields:true, 
                analyzers:['identity']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "identity"},
+            {"name": "value[*]"}
+          ]};
         }
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
+
         assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " + 
                                  "OPTIONS { waitForSync: true } RETURN d ",
                                 { '@v':viewName }).toArray().length);
@@ -3007,6 +3452,25 @@ function iResearchFeatureAqlTestSuite () {
         let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' "+ 
                                                      " OR (EXISTS(s.field) && true == false), 'identity') RETURN s.field" });
         assertEqual(2, actual2.execute().toArray().length);
+
+
+        
+        assertEqual(2, db._query(`FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d.field != 'nothing' OR true == false RETURN d`).toArray().length);
+
+        assertEqual(2, db._query(`FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d.field != 'nothing' OR EXISTS(d.field) && true == false RETURN d`).toArray().length);
+
+        actual1 = db._createStatement({ 
+          "query": `FOR s IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER
+          s.field != 'nothing' OR  true == false RETURN s.field` });
+        assertEqual(2, actual1.execute().toArray().length);
+
+        actual2 = db._createStatement({ 
+          "query": `FOR s IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER
+          s.field != 'nothing' OR EXISTS(s.field) && true == false RETURN s.field` });
+        assertEqual(2, actual2.execute().toArray().length);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
@@ -3023,6 +3487,7 @@ function iResearchFeatureAqlTestSuite () {
         db._useDatabase(dbName);
         let col = db._create(colName);
         col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) { 
           viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
@@ -3031,18 +3496,29 @@ function iResearchFeatureAqlTestSuite () {
                includeAllFields:true, 
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
                analyzers:['identity']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "identity"},
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
             {[colName]: 
               {storeValues: 'id',
                includeAllFields:true, 
                analyzers:['identity']}}};
+
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            {"name": "field", "analyzer": "identity"},
+            {"name": "value[*]"}
+          ]};
         }
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({field: i});
-          col.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+          docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
         }
         col.insert(docs);
         db._view(viewName).properties({commitIntervalMsec: 10});
@@ -3051,6 +3527,12 @@ function iResearchFeatureAqlTestSuite () {
                             + " length RETURN length").toArray();
         assertEqual(1, res1.length);
         assertEqual(1000, res1[0]);
+
+        res1 = db._query(`FOR doc IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field >= 0
+          COLLECT WITH COUNT INTO length RETURN length`).toArray();
+        assertEqual(1, res1.length);
+        assertEqual(1000, res1[0]);
+
         db._view(viewName).properties({commitIntervalMsec: 0});
 
         docs = [];
@@ -3064,6 +3546,12 @@ function iResearchFeatureAqlTestSuite () {
                             + " length RETURN length").toArray();
         assertEqual(1, res2.length);
         assertEqual(2000, res2[0]);
+
+        res2 = db._query(`FOR doc IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field >= 0
+        COLLECT WITH COUNT INTO length RETURN length`).toArray();
+        assertEqual(1, res2.length);
+        assertEqual(2000, res2[0]);
+
         db._view(viewName).properties({commitIntervalMsec: 0});
         db._query("FOR t IN " + colName + " FILTER t.field < 1500 REMOVE t._key IN " + colName);
         db._view(viewName).properties({consolidationIntervalMsec: 10});
@@ -3077,6 +3565,12 @@ function iResearchFeatureAqlTestSuite () {
                             + " length RETURN length").toArray();
         assertEqual(1, res.length);
         assertEqual(0, res[0]);
+
+        res = db._query(`FOR doc IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field >= 0
+        COLLECT WITH COUNT INTO length RETURN length`).toArray();
+        assertEqual(1, res.length);
+        assertEqual(0, res[0]);
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);

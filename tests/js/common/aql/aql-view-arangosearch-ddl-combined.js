@@ -44,50 +44,53 @@ const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const tasks = require('@arangodb/tasks');
 const fs = require('fs');
 
+// define global collection which will be used across all testSuites. It will be dropped later
+const collection123 = db._create("collection123");
+
+// define global inverted index which will be used across all testSuites
+let indexMetaGlobal = {};
+if (isEnterprise) {
+  indexMetaGlobal = {
+    name: "inverted",
+    type: "inverted",
+    fields: [
+      {
+        "name": "value",
+        "nested": [
+          {
+            "name": "nested_1",
+            "nested": [
+              {
+                "name": "nested_2"
+              }
+            ]
+          }
+        ]
+      },
+      "name_1"
+    ]
+  };
+} else {
+  indexMetaGlobal = {
+    name: "inverted",
+    type: "inverted",
+    "includeAllFields": true,
+    fields: [
+      "name_1",
+      "value[*]"
+    ]
+  };
+}
+collection123.ensureIndex(indexMetaGlobal);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function IResearchFeatureDDLTestSuite() {
+function IResearchFeatureDDLTestSuite1() {
   let docCount = 0;
-  let indexMetaGlobal = {}
   return {
     setUpAll: function () {
-      let c = db._create("collection123");
-      if (isEnterprise) {
-        indexMetaGlobal = {
-          name: "inverted",
-          type: "inverted",
-          fields: [
-            {
-              "name": "value",
-              "nested": [
-                {
-                  "name": "nested_1",
-                  "nested": [
-                    {
-                      "name": "nested_2"
-                    }
-                  ]
-                }
-              ]
-            },
-            "name_1"
-          ]
-        };
-      } else {
-        indexMetaGlobal = {
-          name: "inverted",
-          type: "inverted",
-          "includeAllFields": true,
-          fields: [
-            "name_1",
-            "value[*]"
-          ]
-        };
-      }
-
-      c.ensureIndex(indexMetaGlobal);
     },
 
     tearDownAll: function () {
@@ -130,8 +133,8 @@ function IResearchFeatureDDLTestSuite() {
 
       db._createView("TestView", "arangosearch", {
         links: {
-          "TestCollection0": {includeAllFields: true},
-          "TestCollection1": {includeAllFields: true},
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
         }
       });
       let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
@@ -180,7 +183,7 @@ function IResearchFeatureDDLTestSuite() {
         if (isEnterprise) {
           meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
         } else {
-          meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+          meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
         }
         db._createView("TestView", "arangosearch", meta);
         var view = db._view("TestView");
@@ -189,6 +192,9 @@ function IResearchFeatureDDLTestSuite() {
         db._dropView("TestView");
         assertTrue(null == db._view("TestView"));
       }
+
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(100, result.length);
     },
 
     testStressAddRemoveViewWithLink: function () {
@@ -201,7 +207,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta ={ links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
 
       for (let i = 0; i < 100; ++i) {
@@ -230,6 +236,8 @@ function IResearchFeatureDDLTestSuite() {
         assertEqual(null, db._view("TestView"));
         assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
       }
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(100, result.length);
     },
 
     testStressAddRemoveLink: function () {
@@ -243,7 +251,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {  } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
       var removeLink = { links: { "TestCollection0": null, "collection123": null } };
 
@@ -270,6 +278,8 @@ function IResearchFeatureDDLTestSuite() {
         assertEqual(0, Object.keys(properties.links).length);
         assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
       }
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(100, result.length);
     },
 
     testRemoveLinkViaCollection: function () {
@@ -284,7 +294,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
       let properties = view.properties();
@@ -353,9 +363,7 @@ function IResearchFeatureDDLTestSuite() {
       let c0 = db._create("TestCollection0");
       let c1 = db._create("TestCollection1");
       let c2 = db._create("TestCollection2");
-      c0.ensureIndex(indexMetaGlobal);
-      c1.ensureIndex(indexMetaGlobal);
-      c2.ensureIndex(indexMetaGlobal);
+      [c0,c1,c2].forEach(c => c.ensureIndex(indexMetaGlobal));
 
       var view = db._createView("TestView", "arangosearch", {});
 
@@ -366,6 +374,14 @@ function IResearchFeatureDDLTestSuite() {
         db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}` }] }] });
         docCount += 1;
       }
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
+      
+      result = db._query("FOR doc IN TestCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
+      
+      result = db._query("FOR doc IN TestCollection2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
 
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -387,7 +403,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
       properties = view.properties();
@@ -465,18 +481,25 @@ function IResearchFeatureDDLTestSuite() {
       let c0 = db._create("TestCollection0");
       let c1 = db._create("TestCollection1");
       let c2 = db._create("TestCollection2");
-      c0.ensureIndex(indexMetaGlobal);
-      c1.ensureIndex(indexMetaGlobal);
-      c2.ensureIndex(indexMetaGlobal);
+      [c0,c1,c2].forEach(c => c.ensureIndex(indexMetaGlobal));
       var view = db._createView("TestView", "arangosearch", {});
 
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
-        db.TestCollection1.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
-        db.TestCollection2.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }]  });
+        db.TestCollection0.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
+        db.TestCollection1.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
+        db.TestCollection2.save({ name: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
         db.collection123.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `fo${i}` }] }] });
         docCount += 1;
       }
+
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
+
+      result = db._query("FOR doc IN TestCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
+
+      result = db._query("FOR doc IN TestCollection2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
+      assertEqual(1000, result.length);
 
       let meta = {};
       if (isEnterprise) {
@@ -508,7 +531,7 @@ function IResearchFeatureDDLTestSuite() {
                 "e": { analyzers: ["text_de"] }
               }
             },
-            "collection123": { "fields": { "value": { } } }
+            "collection123": { "fields": { "value": {} } }
           }
         };
       }
@@ -672,7 +695,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -680,6 +703,10 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual((isEnterprise ? docCount : 0), result.length); // In CE in view there is no docs 
 
       col0.save({ name: "quarter", text: "quick over", name_1: "quarter" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+      assertEqual(1, result.length);
+
       let id = db.collection123.save({ name_1: "quarter", text: "quick over" })["_id"];
       docCount += 1;
       result = db._query('FOR doc IN TestView SEARCH ANALYZER(doc.name == "quarter", "identity") OPTIONS { waitForSync: true } SORT doc.name RETURN doc').toArray();
@@ -698,10 +725,15 @@ function IResearchFeatureDDLTestSuite() {
       db.collection123.remove(id);
       docCount -= 1;
 
-      col0.save({ name: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
-      col0.save({ name: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
-      col0.save({ name: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
-      col0.save({ name: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      col0.save({name_1: 'full', name: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
+      col0.save({name_1: 'half', name: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
+      col0.save({name_1: 'other half', name: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
+      col0.save({name_1: 'quarter', name: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+
+      col0.ensureIndex(indexMetaGlobal);
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(4, result.length);
+
       let key1 = db.collection123.save({ name_1: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
       let key2 = db.collection123.save({ name_1: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
       let key3 = db.collection123.save({ name_1: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "brown" }] }] });
@@ -710,13 +742,19 @@ function IResearchFeatureDDLTestSuite() {
 
       meta = {};
       if (isEnterprise) {
-        meta = { links: { 
-          "TestCollection0": { includeAllFields: true }, 
-          "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
+          }
+        };
       } else {
-        meta = { links: { 
-          "TestCollection0": { includeAllFields: true }, 
-          "collection123": { "fields": { "value": { } } } } };
+        meta = {
+          links: {
+            "TestCollection0": { includeAllFields: true },
+            "collection123": { "fields": { "value": {} } }
+          }
+        };
       }
       view.properties(meta, true); // partial update
 
@@ -749,6 +787,12 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name_1: "half", name: "half", text: "quick fox over lazy" });
       col1.save({ name_1: "other half", name: "other half", text: "the brown jumps the dog" });
       col1.save({ name_1: "other half", name: "quarter", text: "quick over" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+      result = db._query("FOR doc IN TestCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+
       key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
       key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "over" }] }] });
@@ -815,6 +859,12 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name_1: "other half", name: "quarter", text: "quick over" });
       col2.save({ name_1: "full", name: "full", text: "the quick brown fox jumps over the lazy dog" });
       col2.save({ name_1: "full", name: "half", text: "quick fox over lazy" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+      result = db._query("FOR doc IN TestCollection2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+
       key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "a" }] }] });
       key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
       key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "are" }] }] });
@@ -844,7 +894,7 @@ function IResearchFeatureDDLTestSuite() {
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
-      assertEqual((isEnterprise ? docCount: 0) + 4, result.length);
+      assertEqual((isEnterprise ? docCount : 0) + 4, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } filter HAS(doc, 'name') SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
@@ -876,7 +926,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "collection123": { "fields": { "value": {} } } } };
       }
       var view = db._createView("TestView", "arangosearch", meta);
 
@@ -899,7 +949,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -910,7 +960,7 @@ function IResearchFeatureDDLTestSuite() {
       };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      let result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual((isEnterprise ? docCount : 0), result.length);
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -943,6 +993,10 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name_1: "half", nameX: "half", text: "quick fox over lazy" });
       col0.save({ name_1: "other half", nameX: "other half", text: "the brown jumps the dog" });
       col0.save({ name_1: "quarter", nameX: "quarter", text: "quick over" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(4, result.length);
+
       let key1 = db.collection123.save({ text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       let key2 = db.collection123.save({ text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
       let key3 = db.collection123.save({ text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] })["_key"];
@@ -953,7 +1007,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -1002,11 +1056,18 @@ function IResearchFeatureDDLTestSuite() {
       col0 = db._create("TestCollection0");
       var col1 = db._create("TestCollection1");
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
+      [col0, col1].forEach(c => c.ensureIndex(indexMetaGlobal));
 
       col0.save({ name_1: "full", nameY: "full", text: "the quick brown fox jumps over the lazy dog" });
       col0.save({ name_1: "half", nameY: "half", text: "quick fox over lazy" });
       col1.save({ name_1: "other half", nameY: "other half", text: "the brown jumps the dog" });
       col1.save({ name_1: "quarter", nameY: "quarter", text: "quick over" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+      result = db._query("FOR doc IN TestCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'a' RETURN doc").toArray();
+      assertEqual(2, result.length);
+
       key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
@@ -1084,11 +1145,18 @@ function IResearchFeatureDDLTestSuite() {
       var col2 = db._create("TestCollection2");
       col2.ensureIndex(indexMetaGlobal);
       view = db._createView("TestView", "arangosearch", { "cleanupIntervalStep": 42 });
+      [col0, col2].forEach(c => c.ensureIndex(indexMetaGlobal));
 
       col0.save({ name_1: "quarter", nameE: "other half", text: "the brown jumps the dog" });
       col0.save({ name_1: "quarter", nameE: "quarter", text: "quick over" });
       col2.save({ name_1: "quarter", nameE: "full", text: "the quick brown fox jumps over the lazy dog" });
       col2.save({ name_1: "quarter", nameE: "half", text: "quick fox over lazy" });
+
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+      assertEqual(2, result.length);
+      result = db._query("FOR doc IN TestCollection2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+      assertEqual(2, result.length);
+
       key1 = db.collection123.save({ name42: "full", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key2 = db.collection123.save({ name42: "half", text: "quick fox over lazy", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
       key3 = db.collection123.save({ name42: "other half", text: "the brown jumps the dog", "value": [{ "nested_1": [{ "nested_2": "dog" }] }] });
@@ -1175,12 +1243,12 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(0, Object.keys(properties.links).length);
     },
 
-    testViewModifyImmutableProperties: function() {
+    testViewModifyImmutableProperties: function () {
       db._dropView("TestView");
 
       let meta = {};
       if (isEnterprise) {
-        meta = { 
+        meta = {
           writebufferActive: 25,
           writebufferIdle: 12,
           writebufferSizeMax: 44040192,
@@ -1190,15 +1258,15 @@ function IResearchFeatureDDLTestSuite() {
             { field: "my.Nested.field", direction: "asc" },
             { field: "another.field", asc: false }
           ],
-          primarySortCompression:"none",
+          primarySortCompression: "none",
           "cleanupIntervalStep": 42,
           "commitIntervalMsec": 12345,
           "links": {
-            "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
           }
         };
       } else {
-        meta = { 
+        meta = {
           writebufferActive: 25,
           writebufferIdle: 12,
           writebufferSizeMax: 44040192,
@@ -1208,11 +1276,11 @@ function IResearchFeatureDDLTestSuite() {
             { field: "my.Nested.field", direction: "asc" },
             { field: "another.field", asc: false }
           ],
-          primarySortCompression:"none",
+          primarySortCompression: "none",
           "cleanupIntervalStep": 42,
           "commitIntervalMsec": 12345,
           "links": {
-            "collection123": {"fields": { "value": { }}}
+            "collection123": { "fields": { "value": {} } }
           }
         };
       }
@@ -1241,37 +1309,37 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {};
       if (isEnterprise) {
-        meta = { 
+        meta = {
           writebufferActive: 225,
           writebufferIdle: 112,
           writebufferSizeMax: 414040192,
           locale: "en_EN.UTF-8",
           version: 2,
-          primarySort: [ { field: "field", asc: false } ],
-          primarySortCompression:"lz4",
+          primarySort: [{ field: "field", asc: false }],
+          primarySortCompression: "lz4",
           "cleanupIntervalStep": 442,
           "links": {
-            "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+            "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } }
           }
         };
       } else {
-        meta = { 
+        meta = {
           writebufferActive: 225,
           writebufferIdle: 112,
           writebufferSizeMax: 414040192,
           locale: "en_EN.UTF-8",
           version: 2,
-          primarySort: [ { field: "field", asc: false } ],
-          primarySortCompression:"lz4",
+          primarySort: [{ field: "field", asc: false }],
+          primarySortCompression: "lz4",
           "cleanupIntervalStep": 442,
           "links": {
-            "collection123": {"fields": { "value": {}}}
+            "collection123": { "fields": { "value": {} } }
           }
         };
       }
@@ -1301,8 +1369,8 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
     },
 
@@ -1317,6 +1385,8 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ b: "bar", c: "foo", z: 2, name_1: 2 });
       col0.save({ b: "baz", d: "foz", z: 3, name_1: 3 });
       col0.ensureIndex(indexMetaGlobal);
+      let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 >= 0 RETURN doc").toArray();
+      assertEqual(4, result.length);
       let key1 = db.collection123.save({ a: "foo", c: "bar", "value": [{ "nested_1": [{ "nested_2": "dog0" }] }] });
       let key2 = db.collection123.save({ a: "foz", d: "baz", "value": [{ "nested_1": [{ "nested_2": "dog10" }] }] });
       let key3 = db.collection123.save({ b: "bar", c: "foo", "value": [{ "nested_1": [{ "nested_2": "dog100" }] }] });
@@ -1335,14 +1405,14 @@ function IResearchFeatureDDLTestSuite() {
       } else {
         meta = {
           "links": {
-            "collection123": { "fields": { "value": { } } },
+            "collection123": { "fields": { "value": {} } },
             "TestCollection0": { fields: { a: {} } }
           }
         };
       }
       view.properties(meta, true); // partial update
 
-      let result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } RETURN doc").toArray();
+      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } RETURN doc").toArray();
       assertEqual((isEnterprise ? docCount : 0) + 2, result.length);
 
       result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } FILTER doc.z != null SORT doc.z RETURN doc").toArray();
@@ -1362,7 +1432,7 @@ function IResearchFeatureDDLTestSuite() {
       if (isEnterprise) {
         meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": { } } } } };
+        meta = { links: { "TestCollection0": { fields: { b: {} } }, "collection123": { "fields": { "value": {} } } } };
       }
       view.properties(meta, true); // partial update
 
@@ -1421,12 +1491,14 @@ function IResearchFeatureDDLTestSuite() {
         meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
         meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { } } } } };
-        meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": { } } } } };
+        meta1 = { links: { "TestCollection0": { fields: { a: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": {} } } } };
+        meta2 = { links: { "TestCollection0": { fields: { b: {}, z: {} }, storeValues: "id" }, "collection123": { "fields": { "value": {} } } } };
       }
 
       view1.properties(meta1, true); // partial update
       col0.ensureIndex(indexMetaGlobal);
+      result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 >= 0 RETURN doc").toArray();
+      assertEqual(4, result.length);
 
       var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
@@ -1476,14 +1548,19 @@ function IResearchFeatureDDLTestSuite() {
       tmpIdentity = undefined;
       db._useDatabase(databaseNameView);
       db._create("FOO");
-      db._create("collection321");
+
+      let c = db._create("collection321");
+      c.ensureIndex(indexMetaGlobal);
       db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      let result = db._query("FOR doc IN collection321 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+      assertEqual(1, result.length);
+
       try {
         let meta = {};
         if (isEnterprise) {
           meta = { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } } };
         } else {
-          meta = { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": { } } } } } };
+          meta = { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName], "collection321": { "fields": { "value": {} } } } } };
         }
         db._createView("FOO_view", "arangosearch", meta);
         fail();
@@ -1496,10 +1573,10 @@ function IResearchFeatureDDLTestSuite() {
       let meta2 = {};
       if (isEnterprise) {
         meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
-        meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
+        meta2 = { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
       } else {
-        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { } } } } };
-        meta2 =  { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": { } } } } };
+        meta1 = { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] }, "collection321": { "fields": { "value": {} } } } };
+        meta2 = { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] }, "collection321": { "fields": { "value": {} } } } };
       }
       db._createView("FOO_view", "arangosearch", meta1);
       db._createView("FOO_view2", "arangosearch", meta2);
@@ -1555,6 +1632,7 @@ function IResearchFeatureDDLTestSuite() {
       db._dropView(viewName);
 
       const col = db._create(colName);
+      col.ensureIndex(indexMetaGlobal);
       for (let i = 0; i < 10; i++) {
         col.insert({ i });
       }
@@ -1564,7 +1642,7 @@ function IResearchFeatureDDLTestSuite() {
         if (isEnterprise) {
           meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { "nested": { "nested_1": { "nested": { "nested_2": {} } } } } } } } };
         } else {
-          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": { } } } } };
+          meta = { links: { [colName]: { includeAllFields: true }, "collection123": { "fields": { "value": {} } } } };
         }
         view.properties(meta);
         db._dropView(viewName);
@@ -1660,6 +1738,7 @@ function IResearchFeatureDDLTestSuite() {
         };
       }
       const idx = col.ensureIndex(indexMeta);
+      const globalIdx = col.ensureIndex(indexMetaGlobal);
 
       const types = ["arangosearch", "inverted"];
 
@@ -1690,6 +1769,9 @@ function IResearchFeatureDDLTestSuite() {
       col.save({ name_1: "abc", text: "the quick brown fox jumps over the lazy dog", "value": [{ "nested_1": [{ "nested_2": "the" }] }] });
       col.save({ name_1: "abc", text: "the quick brown fox", "value": [{ "nested_1": [{ "nested_2": "quick" }] }] });
       col.save({ name_1: "abc", text: "the quick brown fox", "value": [{ "nested_1": [] }] });
+
+      let result = db._query("FOR doc IN TestCollection OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'abc' RETURN doc").toArray();
+      assertEqual(3, result.length);
 
       if (isCluster) {
         triggerMetrics();
@@ -1723,8 +1805,12 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(5, res.length);
       syncIndex(5);
       res = db._query(`for d in TestCollection OPTIONS { 'forceIndexHint': true, 'waitForSync': true, 'indexHint': 'TestIndex' }
-                      filter d.name_1 == 'abc' return d  
-      `).toArray();
+                      filter d.name_1 == 'abc' return d`).toArray();
+      assertEqual(3, res.length);
+      res = db._query(`for d in TestCollection OPTIONS { 'forceIndexHint': true, 'waitForSync': true, 'indexHint': 'TestIndex' }
+      filter d.name_1 == 'abc' return d `).toArray();
+      assertEqual(3, res.length);
+
       if (isCluster) {
         triggerMetrics();
       }
@@ -1753,6 +1839,9 @@ function IResearchFeatureDDLTestSuite() {
 
       // remove document
       col.remove(res[0]._key);
+
+      result = db._query("FOR doc IN TestCollection OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'abc' RETURN doc").toArray();
+      assertEqual(2, result.length);
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} RETURN d").toArray();
@@ -1849,10 +1938,16 @@ function IResearchFeatureDDLTestSuite() {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
-      db._create("col1");
-      db._create("col2");
-      db._create("collection321");
-      db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      let c1 = db._create("col1");
+      let c2 = db._create("col2");
+      let c3 = db._create("collection321");
+      c3.save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+      c3.ensureIndex(indexMetaGlobal);
+
+      let result = db._query("FOR doc IN collection321 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+      assertEqual(1, result.length);
+
+      [c1,c2,c3].forEach(c => c.ensureIndex(indexMetaGlobal));
 
       analyzers.save("custom_analyzer",
         "text",
@@ -1903,7 +1998,7 @@ function IResearchFeatureDDLTestSuite() {
               "storeValues": "none",
               "trackListPositions": false
             },
-            "collection321": { "fields": { "value": { } } }
+            "collection321": { "fields": { "value": {} } }
           }
         };
       }
@@ -2039,7 +2134,8 @@ function IResearchFeatureDDLTestSuite() {
         db._createDatabase(dbName);
         db._useDatabase(dbName);
         db._analyzers.save({ type: "identity", name: analyzerName });
-        db._create("collection321");
+        let c = db._create("collection321");
+        c.ensureIndex(indexMetaGlobal);
         let meta = {};
         if (isEnterprise) {
           meta = {
@@ -2058,12 +2154,16 @@ function IResearchFeatureDDLTestSuite() {
                 includeAllFields: true,
                 analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
               },
-              "collection321": { "fields": { "value": { } } }
+              "collection321": { "fields": { "value": {} } }
             }
           };
         }
         var view = db._createView("analyzersView", "arangosearch", meta);
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+
+        let result = db._query("FOR doc IN collection321 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+        assertEqual(1, result.length);
+
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
         assertEqual((isEnterprise ? 2 : 1), res.length);
       } finally {
@@ -2086,7 +2186,9 @@ function IResearchFeatureDDLTestSuite() {
         db._createDatabase(dbName);
         db._useDatabase(dbName);
         db._analyzers.save({ type: "identity", name: analyzerName });
-        db._create("collection321");
+        let c = db._create("collection321");
+        c.ensureIndex(indexMetaGlobal);
+
         var view = db._createView("analyzersView", "arangosearch", {});
         let meta = {};
         if (isEnterprise) {
@@ -2106,11 +2208,15 @@ function IResearchFeatureDDLTestSuite() {
                 includeAllFields: true,
                 analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
               },
-              "collection321": { "fields": { "value": { } } }
+              "collection321": { "fields": { "value": {} } }
             }
           };
         }
         db["collection321"].save({ name_1: "quarter", text: "quick over", "value": [{ "nested_1": [{ "nested_2": "jumps" }] }] });
+
+        let result = db._query("FOR doc IN collection321 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 == 'quarter' RETURN doc").toArray();
+        assertEqual(1, result.length);
+        
         view.properties(meta, true);
         var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
         assertEqual((isEnterprise ? 2 : 1), res.length);
@@ -2123,18 +2229,18 @@ function IResearchFeatureDDLTestSuite() {
   };
 }
 
-function testSuite() {
+function IResearchFeatureDDLTestSuite2() {
   const db = require("@arangodb").db;
   const dbName = 'TestDB';
   const taskCreateLinkInBackground = 'CreateLinkInBackgroundMode_AuxTask';
   return {
-    setUp: function() {
+    setUp: function () {
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try { db._dropDatabase(dbName); } catch (e) { }
       db._createDatabase(dbName);
     },
-    tearDown: function() {
-      try { tasks.unregister(taskCreateLinkInBackground); } catch(e) {}
+    tearDown: function () {
+      try { tasks.unregister(taskCreateLinkInBackground); } catch (e) { }
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -2147,65 +2253,70 @@ function testSuite() {
       const initialCount = 500;
       const inTransCount = 1000;
       const markerFileName = fs.join(fs.getTempPath(), "backgroundLinkMarker");
-      try { fs.remove(markerFileName); } catch(e) {}
+      try { fs.remove(markerFileName); } catch (e) { }
       db._useDatabase(dbName);
       let col = db._create(colName);
+      col.ensureIndex(indexMetaGlobal);
       let v = db._createView(viewName, 'arangosearch', {});
       // some initial documents
       for (let i = 0; i < initialCount; ++i) {
-        col.insert({ myField: 'test' + i }); 
-      } 
-      let commandText = function (params) { 
-          var db = require('internal').db; 
-          db._executeTransaction({
-              collections:  { write: params.colName },
-               action: function(params) {
-                var fs = require('fs');
-                var db = require('internal').db; 
-                var c = db._collection(params.colName); 
-                fs.write(params.markerFileName, "TEST");
-                for (var i = 0; i < params.inTransCount; ++i) { 
-                  c.insert({ myField: 'background' + i }); 
-                } 
-                require('internal').sleep(20); 
-              },
-              params: params
-            });
-          };
+        col.insert({ myField: 'test' + i, name_1: i.toString() });
+      }
+      let commandText = function (params) {
+        var db = require('internal').db;
+        db._executeTransaction({
+          collections: { write: params.colName },
+          action: function (params) {
+            var fs = require('fs');
+            var db = require('internal').db;
+            var c = db._collection(params.colName);
+            fs.write(params.markerFileName, "TEST");
+            for (var i = 0; i < params.inTransCount; ++i) {
+              c.insert({ myField: 'background' + i });
+            }
+            require('internal').sleep(20);
+          },
+          params: params
+        });
+      };
       tasks.register({
         command: commandText,
         params: { colName, inTransCount, dbName, markerFileName },
         name: taskCreateLinkInBackground
       });
-      while(!fs.exists(markerFileName)) {
-         require('internal').sleep(1); // give transaction some time to run 
+      while (!fs.exists(markerFileName)) {
+        require('internal').sleep(1); // give transaction some time to run 
       }
       v.properties({ links: { [colName]: { includeAllFields: true, inBackground: true } } });
       // check that all documents are visible
-      let docs = db._query("FOR doc IN " + viewName  + " OPTIONS { waitForSync: true } RETURN doc").toArray();
+      let docs = db._query("FOR doc IN " + viewName + " OPTIONS { waitForSync: true } RETURN doc").toArray();
       assertEqual(initialCount + inTransCount, docs.length);
 
       // inBackground should not be returned as part of index definition
       let indexes = col.getIndexes(false, true);
-      assertEqual(2, indexes.length);
-      var link = indexes[1];
+      assertEqual(3, indexes.length);
+      var index = indexes[1];
+      assertEqual("inverted", index.type);
+      assertTrue(undefined === index.inBackground);
+      var link = indexes[2];
       assertEqual("arangosearch", link.type);
       assertTrue(undefined === link.inBackground);
 
-       // inBackground should not be returned as part of link definition
+      // inBackground should not be returned as part of link definition
       let propertiesReturned = v.properties();
       assertTrue(undefined === propertiesReturned.links[colName].inBackground);
     },
-    testCachedColumns : function() {
+    testCachedColumns: function () {
       const colName = 'TestCollectionCache';
       const viewName = 'TestViewCache';
       try {
         let col = db._create(colName);
-        let v = db._createView(viewName, 'arangosearch', 
+        col.ensureIndex(indexMetaGlobal);
+        let v = db._createView(viewName, 'arangosearch',
           {
-            primarySortCache:true,
-            primaryKeyCache:true, 
-            links: {[colName] : { cache:true }}
+            primarySortCache: true,
+            primaryKeyCache: true,
+            links: { [colName]: { cache: true } }
           });
         let prop = v.properties();
         if (isEnterprise) {
@@ -2229,7 +2340,8 @@ function testSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(IResearchFeatureDDLTestSuite);
-jsunity.run(testSuite);
+jsunity.run(IResearchFeatureDDLTestSuite1);
+jsunity.run(IResearchFeatureDDLTestSuite2);
+db.drop(collection123.name());
 
 return jsunity.done();
