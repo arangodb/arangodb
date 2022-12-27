@@ -803,6 +803,8 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
               msg);
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
 class AssertionCallbackSetter {
  public:
   AssertionCallbackSetter() noexcept {
@@ -819,8 +821,11 @@ class AssertionCallbackSetter {
                                    function.data(), condition.data(),
                                    message.data());
   }
+};
 
-};  // FIXME(gnusi): instantiate when assertions are fixed
+[[maybe_unused]] AssertionCallbackSetter setAssert;
+
+#endif
 
 }  // namespace
 

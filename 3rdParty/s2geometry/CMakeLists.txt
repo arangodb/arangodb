@@ -2,7 +2,6 @@ add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-sign-compare -Wno-unused-const-varia
 add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
 
 set(ARANGO_S2GEOMETRY_VERSION "master") # 254c13666f65f35f5343d34dfbc749e1fb7772ca
-set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 set(PYTHON_INCLUDE_DIR "")
 set(GTEST_ROOT "")
