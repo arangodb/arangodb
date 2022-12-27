@@ -79,7 +79,6 @@ function ArangoSearchOutOfSyncSuite () {
       internal.debugClearFailAt();
       
       let c2 = db._create('UnitTestsCollection2');
-      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
       c2.insert(docs);
       
       v = db._createView('UnitTestsView2', 'arangosearch', {});

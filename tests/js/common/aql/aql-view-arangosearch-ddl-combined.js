@@ -2342,6 +2342,6 @@ function IResearchFeatureDDLTestSuite2() {
 
 jsunity.run(IResearchFeatureDDLTestSuite1);
 jsunity.run(IResearchFeatureDDLTestSuite2);
-db.drop(collection123.name());
+db._drop(collection123.name());
 
 return jsunity.done();
