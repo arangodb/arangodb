@@ -18,38 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <s2/s2region.h>
-#include <s2/s2polyline.h>
+#include <s2/s2point.h>
 
+#include <exception>
 #include <vector>
 
 namespace arangodb::geo {
-namespace rect {
 
-bool intersects(S2LatLngRect const& rect, S2Polyline const& polyline);
-
-}  // namespace rect
-
-class S2Polylines final : public S2Region {
+class S2MultiPointRegion final : public S2Region {
  public:
-  ~S2Polylines() final = default;
+  ~S2MultiPointRegion() final = default;
 
   // The result is not unit length, so you may want to normalize it.
   S2Point GetCentroid() const noexcept;
 
   template<typename Region>
   bool Intersects(Region const& other) const noexcept {
-    for (auto const& line : _impl) {
-      if constexpr (std::is_same_v<Region, S2LatLngRect>) {
-        if (rect::intersects(other, line)) {
-          return true;
-        }
-      } else if (other.Intersects(line)) {
+    for (auto const& point : _impl) {
+      if (other.Contains(point)) {
         return true;
       }
     }
@@ -67,7 +59,7 @@ class S2Polylines final : public S2Region {
   auto const& Impl() const noexcept { return _impl; }
 
  private:
-  std::vector<S2Polyline> _impl;
+  std::vector<S2Point> _impl;
 };
 
 }  // namespace arangodb::geo

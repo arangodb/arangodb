@@ -51,17 +51,17 @@ class ShapeContainer final {
     EMPTY = 0,
     S2_POINT,
     S2_POLYLINE,
-    S2_LAT_LNG_RECT,  // only used in legacy code but kept for backwards
+    S2_LATLNGRECT,  // only used in legacy code but kept for backwards
                       // compatibility of the enum numerical values
     S2_POLYGON,
-    S2_POINTS,
-    S2_POLYLINES,
+    S2_MULTIPOINT,
+    S2_MULTIPOLYLINE,
   };
 
   bool empty() const noexcept { return _type == Type::EMPTY; }
 
   bool isAreaType() const noexcept {
-    return _type == Type::S2_POLYGON || _type == Type::S2_LAT_LNG_RECT;
+    return _type == Type::S2_POLYGON || _type == Type::S2_LATLNGRECT;
   }
 
   void updateBounds(QueryParams& qp) const noexcept;

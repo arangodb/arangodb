@@ -329,7 +329,11 @@ void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
 
 bool GeoJSONAnalyzer::reset(std::string_view value) {
   auto const slice = iresearch::slice(value);
-  if (!parseShape<true>(slice, _shape, _type == Type::POINT)) {
+  if (_type != Type::POINT) {
+    if (!parseShape<Parsing::GeoJson>(slice, _shape, _cache)) {
+      return false;
+    }
+  } else if (!parseShape<Parsing::OnlyPoint>(slice, _shape, _cache)) {
     return false;
   }
 

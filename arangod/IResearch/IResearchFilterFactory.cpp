@@ -196,7 +196,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
       if (json.isArray()) {
         res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
       } else {
-        res = geo::json::parseRegion<true>(json, shape, /*legacy=*/false);
+        res = geo::json::parseRegion(json, shape, /*legacy=*/false);
       }
       if (res.fail()) {
         return res;
@@ -3860,25 +3860,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
 
     Result res;
-    if (auto const slice = shapeValue.slice(); slice.isObject()) {
-      res = geo::json::parseRegion<true>(slice, shape, /*legacy=*/false);
-    } else if (slice.isArray()) {
+    if (auto const slice = shapeValue.slice(); slice.isArray()) {
       res = geo::json::parseCoordinates<true>(slice, shape, /*geoJson=*/true);
     } else {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(shapeNodeIdx))
-              .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(shapeValue.type()).data())
-              .append("' ('")
-              .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_OBJECT).data())
-              .append("' or '")
-              .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_ARRAY).data())
-              .append("' expected)")};
+      res = geo::json::parseRegion(slice, shape, /*legacy=*/false);
     }
 
     if (res.fail()) {

@@ -25,8 +25,8 @@
 #include "Geo/GeoParams.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/Utils.h"
-#include "Geo/S2/S2Points.h"
-#include "Geo/S2/S2Polylines.h"
+#include "Geo/S2/S2MultiPointRegion.h"
+#include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/karney/geodesic.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
@@ -131,7 +131,7 @@ bool containsPoint(S2Region const& region, S2Region const& point) {
 template<typename T>
 bool containsPoints(S2Region const& region, S2Region const& points) {
   auto const& lhs = basics::downCast<T>(region);
-  auto const& rhs = basics::downCast<S2Points>(points);
+  auto const& rhs = basics::downCast<S2MultiPointRegion>(points);
   for (auto const& point : rhs.Impl()) {
     if (!lhs.Contains(point)) {
       return false;
@@ -150,7 +150,7 @@ bool containsPolyline(T const& lhs, S2Polyline const& rhs) {
   } else if constexpr (std::is_same_v<T, S2Polygon>) {
     return lhs.Contains(rhs);
   } else {
-    static_assert(std::is_same_v<T, S2Polylines>);
+    static_assert(std::is_same_v<T, S2MultiPolyline>);
     for (auto const& polyline : lhs.Impl()) {
       if (polyline.ApproxEquals(rhs, kMaxError)) {
         return true;
@@ -170,7 +170,7 @@ bool containsPolyline(S2Region const& region, S2Region const& polyline) {
 template<typename T>
 bool containsPolylines(S2Region const& region, S2Region const& polylines) {
   auto const& lhs = basics::downCast<T>(region);
-  auto const& rhs = basics::downCast<S2Polylines>(polylines);
+  auto const& rhs = basics::downCast<S2MultiPolyline>(polylines);
   for (auto const& polyline : rhs.Impl()) {
     if (!containsPolyline<T>(lhs, polyline)) {
       return false;
@@ -284,7 +284,7 @@ S2Point ShapeContainer::centroid() const noexcept {
     case Type::S2_POLYLINE:
       // S2Polyline::GetCentroid() result isn't unit length
       return basics::downCast<S2Polyline>(*_data).GetCentroid().Normalize();
-    case Type::S2_LAT_LNG_RECT:
+    case Type::S2_LATLNGRECT:
       // TODO(MBkkt) WTF? center is not centroid!
       //  I left it as is, but it's really strange
       // only used in legacy situations
@@ -295,12 +295,16 @@ S2Point ShapeContainer::centroid() const noexcept {
     case Type::S2_POLYGON:
       // S2Polygon::GetCentroid() result isn't unit length
       return basics::downCast<S2Polygon>(*_data).GetCentroid().Normalize();
-    case Type::S2_POINTS:
+    case Type::S2_MULTIPOINT:
       // S2MultiPoint::GetCentroid() result isn't unit length
-      return basics::downCast<S2Points>(*_data).GetCentroid().Normalize();
-    case Type::S2_POLYLINES:
+      return basics::downCast<S2MultiPointRegion>(*_data)
+          .GetCentroid()
+          .Normalize();
+    case Type::S2_MULTIPOLYLINE:
       // S2MultiLine::GetCentroid() result isn't unit length
-      return basics::downCast<S2Polylines>(*_data).GetCentroid().Normalize();
+      return basics::downCast<S2MultiPolyline>(*_data)
+          .GetCentroid()
+          .Normalize();
     case Type::EMPTY:
       TRI_ASSERT(false);
   }
@@ -318,50 +322,50 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
   switch (sum) {
     case binOpCase(Type::S2_POINT, Type::S2_POINT):
       return containsPoint<S2PointRegion>(*_data, *other._data);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POINT):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_POINT):
       return containsPoint<S2LatLngRect>(*_data, *other._data);
     case binOpCase(Type::S2_POLYGON, Type::S2_POINT):
       return containsPoint<S2Polygon>(*_data, *other._data);
-    case binOpCase(Type::S2_POINTS, Type::S2_POINT):
-      return containsPoint<S2Points>(*_data, *other._data);
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_POINT):
+      return containsPoint<S2MultiPointRegion>(*_data, *other._data);
 
-    case binOpCase(Type::S2_POINT, Type::S2_POINTS):
+    case binOpCase(Type::S2_POINT, Type::S2_MULTIPOINT):
       return containsPoints<S2PointRegion>(*_data, *other._data);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POINTS):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOINT):
       return containsPoints<S2LatLngRect>(*_data, *other._data);
-    case binOpCase(Type::S2_POLYGON, Type::S2_POINTS):
+    case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOINT):
       return containsPoints<S2Polygon>(*_data, *other._data);
-    case binOpCase(Type::S2_POINTS, Type::S2_POINTS):
-      return containsPoints<S2Points>(*_data, *other._data);
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_MULTIPOINT):
+      return containsPoints<S2MultiPointRegion>(*_data, *other._data);
 
     case binOpCase(Type::S2_POLYLINE, Type::S2_POLYLINE):
       return containsPolyline<S2Polyline>(*_data, *other._data);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POLYLINE):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_POLYLINE):
       return containsPolyline<S2LatLngRect>(*_data, *other._data);
     case binOpCase(Type::S2_POLYGON, Type::S2_POLYLINE):
       return containsPolyline<S2Polygon>(*_data, *other._data);
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POLYLINE):
-      return containsPolyline<S2Polylines>(*_data, *other._data);
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_POLYLINE):
+      return containsPolyline<S2MultiPolyline>(*_data, *other._data);
 
-    case binOpCase(Type::S2_POLYLINE, Type::S2_POLYLINES):
+    case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2Polyline>(*_data, *other._data);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POLYLINES):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2LatLngRect>(*_data, *other._data);
-    case binOpCase(Type::S2_POLYGON, Type::S2_POLYLINES):
+    case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2Polygon>(*_data, *other._data);
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POLYLINES):
-      return containsPolylines<S2Polylines>(*_data, *other._data);
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOLYLINE):
+      return containsPolylines<S2MultiPolyline>(*_data, *other._data);
 
-    case binOpCase(Type::S2_POINT, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_POINT, Type::S2_LATLNGRECT):
       return containsRect<S2PointRegion>(*_data, *other._data);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_LATLNGRECT):
       return containsRect<S2LatLngRect>(*_data, *other._data);
-    case binOpCase(Type::S2_POLYGON, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_POLYGON, Type::S2_LATLNGRECT):
       return containsRect<S2Polygon>(*_data, *other._data);
-    case binOpCase(Type::S2_POINTS, Type::S2_LAT_LNG_RECT):
-      return containsRect<S2Points>(*_data, *other._data);
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_LATLNGRECT):
+      return containsRect<S2MultiPointRegion>(*_data, *other._data);
 
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POLYGON): {
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_POLYGON): {
       auto const& lhs = basics::downCast<S2LatLngRect>(*_data);
       auto const& rhs = basics::downCast<S2Polygon>(*other._data);
       return lhs.Contains(rhs.GetRectBound());
@@ -373,19 +377,19 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
     }
 
     case binOpCase(Type::S2_POLYLINE, Type::S2_POINT):
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POINT):
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_POINT):
     case binOpCase(Type::S2_POINT, Type::S2_POLYLINE):
-    case binOpCase(Type::S2_POINTS, Type::S2_POLYLINE):
-    case binOpCase(Type::S2_POLYLINE, Type::S2_LAT_LNG_RECT):
-    case binOpCase(Type::S2_POLYLINES, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_POLYLINE):
+    case binOpCase(Type::S2_POLYLINE, Type::S2_LATLNGRECT):
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_LATLNGRECT):
     case binOpCase(Type::S2_POINT, Type::S2_POLYGON):
     case binOpCase(Type::S2_POLYLINE, Type::S2_POLYGON):
-    case binOpCase(Type::S2_POINTS, Type::S2_POLYGON):
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POLYGON):
-    case binOpCase(Type::S2_POLYLINE, Type::S2_POINTS):
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POINTS):
-    case binOpCase(Type::S2_POINT, Type::S2_POLYLINES):
-    case binOpCase(Type::S2_POINTS, Type::S2_POLYLINES):
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_POLYGON):
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_POLYGON):
+    case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOINT):
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOINT):
+    case binOpCase(Type::S2_POINT, Type::S2_MULTIPOLYLINE):
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_MULTIPOLYLINE):
       // is numerically unstable and thus always false
       return false;
     default:
@@ -410,48 +414,48 @@ bool ShapeContainer::intersects(ShapeContainer const& other) const {
   switch (sum) {
     case binOpCase(Type::S2_POINT, Type::S2_POINT):
       return intersectsHelper<S2PointRegion, S2PointRegion>(*d1, *d2);
-    case binOpCase(Type::S2_POINT, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_POINT, Type::S2_LATLNGRECT):
       return intersectsHelper<S2PointRegion, S2LatLngRect>(*d1, *d2);
     case binOpCase(Type::S2_POINT, Type::S2_POLYGON):
       return intersectsHelper<S2PointRegion, S2Polygon>(*d1, *d2);
-    case binOpCase(Type::S2_POINT, Type::S2_POINTS):
-      return intersectsHelper<S2PointRegion, S2Points>(*d1, *d2);
+    case binOpCase(Type::S2_POINT, Type::S2_MULTIPOINT):
+      return intersectsHelper<S2PointRegion, S2MultiPointRegion>(*d1, *d2);
 
     case binOpCase(Type::S2_POLYLINE, Type::S2_POLYLINE):
       return intersectsHelper<S2Polyline, S2Polyline>(*d1, *d2);
-    case binOpCase(Type::S2_POLYLINE, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_POLYLINE, Type::S2_LATLNGRECT):
       return intersectsRect<S2Polyline>(*d1, *d2);
     case binOpCase(Type::S2_POLYLINE, Type::S2_POLYGON):
       return intersectsHelper<S2Polyline, S2Polygon>(*d1, *d2);
-    case binOpCase(Type::S2_POLYLINE, Type::S2_POLYLINES):
-      return intersectsHelper<S2Polyline, S2Polylines>(*d1, *d2);
+    case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOLYLINE):
+      return intersectsHelper<S2Polyline, S2MultiPolyline>(*d1, *d2);
 
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_LAT_LNG_RECT):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_LATLNGRECT):
       return intersectsHelper<S2LatLngRect, S2LatLngRect>(*d1, *d2);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POLYGON):
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_POLYGON):
       return intersectsRect<S2Polygon>(*d2, *d1);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POINTS):
-      return intersectsHelper<S2LatLngRect, S2Points>(*d1, *d2);
-    case binOpCase(Type::S2_LAT_LNG_RECT, Type::S2_POLYLINES):
-      return intersectsHelper<S2LatLngRect, S2Polylines>(*d1, *d2);
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOINT):
+      return intersectsHelper<S2LatLngRect, S2MultiPointRegion>(*d1, *d2);
+    case binOpCase(Type::S2_LATLNGRECT, Type::S2_MULTIPOLYLINE):
+      return intersectsHelper<S2LatLngRect, S2MultiPolyline>(*d1, *d2);
 
     case binOpCase(Type::S2_POLYGON, Type::S2_POLYGON):
       return intersectsHelper<S2Polygon, S2Polygon>(*d1, *d2);
-    case binOpCase(Type::S2_POLYGON, Type::S2_POINTS):
-      return intersectsHelper<S2Polygon, S2Points>(*d1, *d2);
-    case binOpCase(Type::S2_POLYGON, Type::S2_POLYLINES):
-      return intersectsHelper<S2Polygon, S2Polylines>(*d1, *d2);
+    case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOINT):
+      return intersectsHelper<S2Polygon, S2MultiPointRegion>(*d1, *d2);
+    case binOpCase(Type::S2_POLYGON, Type::S2_MULTIPOLYLINE):
+      return intersectsHelper<S2Polygon, S2MultiPolyline>(*d1, *d2);
 
-    case binOpCase(Type::S2_POINTS, Type::S2_POINTS):
-      return intersectsHelper<S2Points, S2Points>(*d1, *d2);
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_MULTIPOINT):
+      return intersectsHelper<S2MultiPointRegion, S2MultiPointRegion>(*d1, *d2);
 
-    case binOpCase(Type::S2_POLYLINES, Type::S2_POLYLINES):
-      return intersectsHelper<S2Polylines, S2Polylines>(*d1, *d2);
+    case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOLYLINE):
+      return intersectsHelper<S2MultiPolyline, S2MultiPolyline>(*d1, *d2);
 
     case binOpCase(Type::S2_POINT, Type::S2_POLYLINE):
-    case binOpCase(Type::S2_POINT, Type::S2_POLYLINES):
-    case binOpCase(Type::S2_POLYLINE, Type::S2_POINTS):
-    case binOpCase(Type::S2_POINTS, Type::S2_POLYLINES): {
+    case binOpCase(Type::S2_POINT, Type::S2_MULTIPOLYLINE):
+    case binOpCase(Type::S2_POLYLINE, Type::S2_MULTIPOINT):
+    case binOpCase(Type::S2_MULTIPOINT, Type::S2_MULTIPOLYLINE): {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "The case GEO_INTERSECTS(<some points>, <some polylines>)"
@@ -473,12 +477,13 @@ void ShapeContainer::reset(S2Point point) {
   // TODO(MBkkt) enable s2 checks in maintainer mode
   // assert from S2PointRegion ctor
   TRI_ASSERT(S2::IsUnitLength(point));
-  if (!_data || _type != Type::S2_POINT) {
-    _data = std::make_unique<S2PointRegion>(point);
-    _type = Type::S2_POINT;
-  } else {
+  if (ADB_LIKELY(_type == Type::S2_POINT)) {
+    TRI_ASSERT(_data);
     auto& region = basics::downCast<S2PointRegion>(*_data);
     region = S2PointRegion{point};
+  } else {
+    _data = std::make_unique<S2PointRegion>(point);
+    _type = Type::S2_POINT;
   }
 }
 
@@ -499,7 +504,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       auto const& rhs = basics::downCast<S2Polyline>(*other._data);
       return lhs.Equals(rhs);
     }
-    case Type::S2_LAT_LNG_RECT: {
+    case Type::S2_LATLNGRECT: {
       auto const& lhs = basics::downCast<S2LatLngRect>(*_data);
       auto const& rhs = basics::downCast<S2LatLngRect>(*other._data);
       return lhs.ApproxEquals(rhs);
@@ -509,9 +514,9 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       auto const& rhs = basics::downCast<S2Polygon>(*other._data);
       return lhs.Equals(rhs);
     }
-    case Type::S2_POINTS: {
-      auto const& lhs = basics::downCast<S2Points>(*_data);
-      auto const& rhs = basics::downCast<S2Points>(*other._data);
+    case Type::S2_MULTIPOINT: {
+      auto const& lhs = basics::downCast<S2MultiPointRegion>(*_data);
+      auto const& rhs = basics::downCast<S2MultiPointRegion>(*other._data);
       auto const& lhsPoints = lhs.Impl();
       auto const& rhsPoints = rhs.Impl();
       auto const size = lhsPoints.size();
@@ -525,9 +530,9 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       }
       return true;
     }
-    case Type::S2_POLYLINES: {
-      auto const& lhs = basics::downCast<S2Polylines>(*_data);
-      auto const& rhs = basics::downCast<S2Polylines>(*other._data);
+    case Type::S2_MULTIPOLYLINE: {
+      auto const& lhs = basics::downCast<S2MultiPolyline>(*_data);
+      auto const& rhs = basics::downCast<S2MultiPolyline>(*other._data);
       auto const& lhsLines = lhs.Impl();
       auto const& rhsLines = rhs.Impl();
       auto const size = lhsLines.size();
@@ -563,7 +568,7 @@ double ShapeContainer::area(Ellipsoid const& e) const {
   // TODO: perhaps remove in favor of one code-path below ?
   if (e.flattening() == 0.0) {
     switch (_type) {
-      case Type::S2_LAT_LNG_RECT: {
+      case Type::S2_LATLNGRECT: {
         auto& data = basics::downCast<S2LatLngRect>(*_data);
         return data.Area() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       }
@@ -584,7 +589,7 @@ double ShapeContainer::area(Ellipsoid const& e) const {
   double P = 0.0;
 
   switch (_type) {
-    case Type::S2_LAT_LNG_RECT: {
+    case Type::S2_LATLNGRECT: {
       geod_polygon p{};
       geod_polygon_init(&p, 0);
 
@@ -633,12 +638,12 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       cover = {S2CellId(data.point())};
     } break;
     case Type::S2_POLYLINE:
-    case Type::S2_LAT_LNG_RECT:
+    case Type::S2_LATLNGRECT:
     case Type::S2_POLYGON: {
       coverer.GetCovering(*_data, &cover);
     } break;
-    case Type::S2_POINTS: {
-      auto const& data = basics::downCast<S2Points>(*_data);
+    case Type::S2_MULTIPOINT: {
+      auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
       auto const& points = data.Impl();
       cover.reserve(points.size());
       // TODO(MBkkt) it was, but is same S2CellId ok here?
@@ -646,8 +651,8 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
         cover.emplace_back(S2CellId{point});
       }
     } break;
-    case Type::S2_POLYLINES: {
-      auto const& data = basics::downCast<S2Polylines>(*_data);
+    case Type::S2_MULTIPOLYLINE: {
+      auto const& data = basics::downCast<S2MultiPolyline>(*_data);
       auto const& lines = data.Impl();
       // TODO(MBkkt) it was, but is same S2CellId ok here?
       std::vector<S2CellId> lineCover;

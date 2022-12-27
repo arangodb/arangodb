@@ -148,12 +148,7 @@ class GeoIterator final : public irs::doc_iterator {
           << "failed to find stored geo value, doc='" << doc->value << "'";
       return false;
     }
-    if (ADB_UNLIKELY(
-            !parseShape<false>(slice(_storedValue->value), _shape, false))) {
-      // TODO(MBkkt) Not sure is it necessary or not.
-      //  Probably needed if index is sparse?
-      return false;
-    }
+    parseShape<Parsing::FromIndex>(slice(_storedValue->value), _shape, _cache);
     return _acceptor(_shape);
   }
 
@@ -161,6 +156,7 @@ class GeoIterator final : public irs::doc_iterator {
       std::tuple<irs::attribute_ptr<irs::document>, irs::cost, irs::score>;
 
   geo::ShapeContainer _shape;
+  std::vector<S2Point> _cache;
   irs::doc_iterator::ptr _approx;
   irs::doc_iterator::ptr _columnIt;
   irs::payload const* _storedValue;

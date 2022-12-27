@@ -34,44 +34,41 @@
 
 namespace arangodb::iresearch {
 
-template<bool Validation>
+template<Parsing p>
 bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
-                bool onlyPoint) {
+                std::vector<S2Point>& cache) {
   Result r;
-  if (vpack.isObject()) {
-    if (onlyPoint) {
-      S2LatLng latLng;
-      r = geo::json::parsePoint<Validation>(vpack, latLng);
-      if (!Validation || r.ok()) {
-        region.reset(latLng.ToPoint());
-      }
-    } else {
-      r = geo::json::parseRegion<Validation>(vpack, region,
-                                             /*legacy=*/false);
+  if (vpack.isArray()) {
+    r = geo::json::parseCoordinates<p != Parsing::FromIndex>(vpack, region,
+                                                             /*geoJson=*/true);
+  } else if constexpr (p == Parsing::OnlyPoint) {
+    S2LatLng latLng;
+    r = geo::json::parsePoint(vpack, latLng);
+    if (ADB_LIKELY(r.ok())) {
+      region.reset(latLng.ToPoint());
     }
-  } else if (vpack.isArray()) {
-    r = geo::json::parseCoordinates<Validation>(vpack, region,
-                                                /*geoJson=*/true);
   } else {
-    LOG_TOPIC("4449c", DEBUG, TOPIC)
-        << "Geo JSON or array of coordinates expected, got '"
-        << vpack.typeName() << "'";
-    return false;
+    r = geo::json::parseRegion<p != Parsing::FromIndex>(vpack, region, cache,
+                                                        /*legacy=*/false);
   }
-  if (Validation && r.fail()) {
+  if (p != Parsing::FromIndex && r.fail()) {
     LOG_TOPIC("4549c", DEBUG, TOPIC)
         << "Failed to parse value as GEO JSON or array of coordinates, error '"
         << r.errorMessage() << "'";
-
     return false;
   }
   return true;
 }
 
-template bool parseShape<true>(velocypack::Slice vpack,
-                               geo::ShapeContainer& region, bool onlyPoint);
-template bool parseShape<false>(velocypack::Slice vpack,
-                                geo::ShapeContainer& region, bool onlyPoint);
+template bool parseShape<Parsing::FromIndex>(velocypack::Slice slice,
+                                             geo::ShapeContainer& shape,
+                                             std::vector<S2Point>& cache);
+template bool parseShape<Parsing::OnlyPoint>(velocypack::Slice slice,
+                                             geo::ShapeContainer& shape,
+                                             std::vector<S2Point>& cache);
+template bool parseShape<Parsing::GeoJson>(velocypack::Slice slice,
+                                           geo::ShapeContainer& shape,
+                                           std::vector<S2Point>& cache);
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng const& latLng) {
   builder.openArray();

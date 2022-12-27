@@ -63,9 +63,15 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
   return s2opts;
 }
 
-template<bool Validation>
+enum class Parsing {
+  FromIndex,
+  OnlyPoint,
+  GeoJson,
+};
+
+template<Parsing p>
 bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape,
-                bool onlyPoint);
+                std::vector<S2Point>& cache);
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 

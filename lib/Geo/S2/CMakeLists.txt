@@ -1,3 +1,3 @@
 target_sources(arango_geo PRIVATE
-  S2Polylines.cpp
-  S2Points.cpp)
+  S2MultiPointRegion.cpp
+  S2MultiPolyline.cpp)

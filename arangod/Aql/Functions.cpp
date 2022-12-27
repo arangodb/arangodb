@@ -1201,8 +1201,8 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  auto res = geo::json::parseRegion<true>(mat1.slice(p1, true), outer,
-                                          /*legacy=*/false);
+  auto res = geo::json::parseRegion(mat1.slice(p1, true), outer,
+                                    /*legacy=*/false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1220,12 +1220,9 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   if (p2.isArray()) {
     res = geo::json::parseCoordinates<true>(mat2.slice(p2, true), inner,
                                             /*geoJson=*/true);
-  } else if (p2.isObject()) {
-    res = geo::json::parseRegion<true>(mat2.slice(p2, true), inner,
-                                       /*legacy=*/false);
   } else {
-    res.reset(TRI_ERROR_BAD_PARAMETER,
-              "Second arg requires coordinate pair or GeoJSON");
+    res = geo::json::parseRegion(mat2.slice(p2, true), inner,
+                                 /*legacy=*/false);
   }
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -1346,12 +1343,9 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   if (value.isArray()) {
     return geo::json::parseCoordinates<true>(mat.slice(value, true), shape,
                                              /*geoJson=*/true);
-  } else if (value.isObject()) {
-    return geo::json::parseRegion<true>(mat.slice(value, true), shape,
-                                        /*legacy=*/false);
-  } else {
-    return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
   }
+  return geo::json::parseRegion(mat.slice(value, true), shape,
+                                /*legacy=*/false);
 }
 
 }  // namespace
@@ -6167,10 +6161,10 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  auto res1 = geo::json::parseRegion<true>(mat1.slice(p1, true), first,
-                                           /*legacy=*/false);
-  auto res2 = geo::json::parseRegion<true>(mat2.slice(p2, true), second,
-                                           /*legacy=*/false);
+  auto res1 = geo::json::parseRegion(mat1.slice(p1, true), first,
+                                     /*legacy=*/false);
+  auto res2 = geo::json::parseRegion(mat2.slice(p2, true), second,
+                                     /*legacy=*/false);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6197,8 +6191,8 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  auto res = geo::json::parseRegion<true>(mat.slice(p1, true), shape,
-                                          /*legacy=*/false);
+  auto res = geo::json::parseRegion(mat.slice(p1, true), shape,
+                                    /*legacy=*/false);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);

@@ -41,8 +41,8 @@ class S2Polygon;
 
 namespace arangodb::geo {
 
-class S2Points;
-class S2Polylines;
+class S2MultiPointRegion;
+class S2MultiPolyline;
 
 class ShapeContainer;
 
@@ -103,7 +103,6 @@ Type type(velocypack::Slice vpack) noexcept;
 /// {
 ///   "type": "Point",
 ///   "coordinates": [lon, lat]
-template<bool Validation>
 Result parsePoint(velocypack::Slice vpack, S2LatLng& region);
 
 /// @brief Expects an GeoJson MultiPoint:
@@ -113,7 +112,7 @@ Result parsePoint(velocypack::Slice vpack, S2LatLng& region);
 ///   "type": "MultiPoint",
 ///   "coordinates": [
 ///     [lon0, lat0], [lon1, lat1], ...
-Result parseMultiPoint(velocypack::Slice vpack, S2Points& region);
+Result parseMultiPoint(velocypack::Slice vpack, S2MultiPointRegion& region);
 
 /// @brief Expects an GeoJson LineString:
 ///
@@ -131,7 +130,7 @@ Result parseLinestring(velocypack::Slice vpack, S2Polyline& region);
 ///   "type": "MultiLineString",
 ///   "coordinates": [
 ///     [[lon0, lat0], [lon1, lat1], ...], ...
-Result parseMultiLinestring(velocypack::Slice vpack, S2Polylines& region);
+Result parseMultiLinestring(velocypack::Slice vpack, S2MultiPolyline& region);
 
 /// @brief Expects an GeoJson Polygon:
 /// Each loop should be closed, so should contains at least four points
@@ -154,9 +153,12 @@ Result parsePolygon(velocypack::Slice vpack, S2Polygon& region);
 Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region);
 
 /// @brief Convenience function to build a region from a GeoJson type.
-template<bool Validation>
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
                    bool legacy);
+
+template<bool Validation>
+Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
+                   std::vector<S2Point>& cache, bool legacy);
 
 template<bool Validation>
 Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,

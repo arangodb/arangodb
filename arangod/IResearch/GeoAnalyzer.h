@@ -178,6 +178,7 @@ class GeoJSONAnalyzer final : public GeoAnalyzer {
  private:
   S2RegionTermIndexer _indexer;
   geo::ShapeContainer _shape;
+  std::vector<S2Point> _cache;
   Type _type;
 };
 
