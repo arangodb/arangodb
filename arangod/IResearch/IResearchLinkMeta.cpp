@@ -47,6 +47,8 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 using namespace arangodb;
@@ -58,11 +60,11 @@ bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
     return false;
   }
 
-  std::unordered_multiset<std::string_view> expected;
+  containers::FlatHashMap<std::string_view, size_t> expected;
 
   for (auto& entry : lhs) {
-    expected.emplace(entry._pool ? std::string_view(entry._pool->name())
-                                 : std::string_view{});
+    ++expected[entry._pool ? std::string_view(entry._pool->name())
+                           : std::string_view{}];
   }
 
   for (auto& entry : rhs) {
@@ -73,7 +75,9 @@ bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
       return false;  // values do not match
     }
 
-    expected.erase(itr);  // ensure same count of duplicates
+    if (--itr->second == 0) {
+      expected.erase(itr);  // ensure same count of duplicates
+    }
   }
 
   return true;

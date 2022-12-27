@@ -29,6 +29,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/VarInfoMap.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -68,8 +69,6 @@ class QueryContext;
 
 class IResearchViewExecutorInfos {
  public:
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
-
   struct LateMaterializeRegister {
     RegisterId documentOutReg;
     RegisterId collectionOutReg;
@@ -159,7 +158,7 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
-  VarInfoMap const& _varInfoMap;
+  aql::VarInfoMap const& _varInfoMap;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
   iresearch::FilterOptimization _filterOptimization;

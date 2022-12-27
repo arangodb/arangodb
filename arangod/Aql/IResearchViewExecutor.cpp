@@ -190,8 +190,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility,
-    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+    std::pair<bool, bool> volatility, aql::VarInfoMap const& varInfoMap,
+    int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
@@ -273,8 +273,7 @@ aql::AstNode const& IResearchViewExecutorInfos::filterCondition()
   return _filterCondition;
 }
 
-const IResearchViewExecutorInfos::VarInfoMap&
-IResearchViewExecutorInfos::varInfoMap() const noexcept {
+aql::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
   return _varInfoMap;
 }
 
@@ -1347,6 +1346,12 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
 
+  auto reset = [&] {
+    ++_readerOffset;
+    _currentSegmentPos = 0;
+    _itr.reset();
+    _doc = nullptr;
+  };
   for (; _readerOffset < count;) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {
@@ -1357,6 +1362,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       }
 
       if (!resetIterator()) {
+        reset();
         continue;
       }
 
@@ -1376,10 +1382,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
                                          msg.str());
 
         // We don't have a collection, skip the current reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
         continue;
       }
 
@@ -1401,10 +1404,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next
         // reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
       }
       continue;
     }
@@ -1438,10 +1438,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
 
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
-      ++_readerOffset;
-      _currentSegmentPos = 0;
-      _itr.reset();
-      _doc = nullptr;
+      reset();
 
       // Here we have at least one document in _indexReadBuffer, so we may not
       // add documents from a new reader.
@@ -1686,8 +1683,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
     size_t const lhs, size_t const rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
-  return _less((*_segments)[rhs].sortValue->value,
-               (*_segments)[lhs].sortValue->value);
+  return _less.Compare((*_segments)[rhs].sortValue->value,
+                       (*_segments)[lhs].sortValue->value) < 0;
 }
 
 template<typename ExecutionTraits>
