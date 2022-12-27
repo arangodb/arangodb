@@ -234,6 +234,12 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(result[0], 12);
     });
 
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER d.Hallo == 12 RETURN d.Hallo`).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], 12);
+    }
+
     if (healing.place === 2) { healFailure(healing); }
     if (failure.place === 3) { makeFailure(failure); }
 
@@ -262,6 +268,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(14, result[1].Hallo);
     });
 
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(13, result[0].Hallo);
+        assertEqual(14, result[1].Hallo);
+    }
+
     if (healing.place === 4) { healFailure(healing); }
     if (failure.place === 5) { makeFailure(failure); }
 
@@ -279,6 +293,13 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(1, result.length);
       assertEqual(100, result[0].Hallo);
     });
+
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key == '${id._key}' RETURN d`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(100, result[0].Hallo);
+    }
 
     if (healing.place === 6) { healFailure(healing); }
     if (failure.place === 7) { makeFailure(failure); }
@@ -302,6 +323,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(102, result[1].Hallo);
     });
 
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(101, result[0].Hallo);
+        assertEqual(102, result[1].Hallo);
+    }
+
     if (healing.place === 8) { healFailure(healing); }
     if (failure.place === 9) { makeFailure(failure); }
 
@@ -321,6 +350,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(100, result[0].Hallo);
       assertEqual(105, result[0].Hallox);
     });
+
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key == '${id._key}' RETURN d`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(100, result[0].Hallo);
+        assertEqual(105, result[0].Hallox);
+    }
 
     if (healing.place === 10) { healFailure(healing); }
     if (failure.place === 11) { makeFailure(failure); }
@@ -348,6 +385,16 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(107, result[1].Hallox);
     });
 
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(101, result[0].Hallo);
+        assertEqual(102, result[1].Hallo);
+        assertEqual(106, result[0].Hallox);
+        assertEqual(107, result[1].Hallox);
+    }
+
     if (healing.place === 12) { healFailure(healing); }
     if (failure.place === 13) { makeFailure(failure); }
 
@@ -365,6 +412,13 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(3, result.length);
       assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
     });
+
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}`).toArray();
+        assertEqual(3, result.length);
+        assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
+    }
 
     if (healing.place === 13) { healFailure(healing); }
     if (failure.place === 14) { makeFailure(failure); }
@@ -495,11 +549,21 @@ function SynchronousReplicationWithViewSuite () {
 
         viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
         let viewMeta = {};
+        let indexMeta = {};
         if (isEnterprise) {
           viewMeta = { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } };
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            "Hallo", "_key",
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
           viewMeta = { properties: { links: { [cn]: { includeAllFields: true } } } };
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            "Hallo", "_key",
+            {"name": "value[*]"}
+          ]};
         }
+        c.ensureIndex(indexMeta); 
         viewOperations("create", viewMeta);
 
         var servers = findCollectionServers("_system", cn);
