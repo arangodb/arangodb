@@ -191,7 +191,7 @@ class PhysicalCollection {
   virtual Result readFromSnapshot(
       transaction::Methods* trx, LocalDocumentId const& token,
       IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
-      StorageEngine::StorageSnapshot const& snapshot) const {
+      StorageSnapshot const& snapshot) const {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
 

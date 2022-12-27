@@ -106,7 +106,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   Result readFromSnapshot(
       transaction::Methods* trx, LocalDocumentId const& token,
       IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
-      StorageEngine::StorageSnapshot const& snapshot) const override;
+      StorageSnapshot const& snapshot) const override;
 
   /// @brief lookup with callback, not thread-safe on same transaction::Context
   Result read(transaction::Methods* trx, LocalDocumentId const& token,

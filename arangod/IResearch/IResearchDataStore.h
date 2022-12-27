@@ -100,10 +100,10 @@ class IResearchDataStore {
   // TODO Refactor irs::directory_reader ctor, now it doesn't have move
   struct DataSnapshot {
     DataSnapshot(irs::directory_reader&& index,
-      std::shared_ptr<StorageEngine::StorageSnapshot>&& db)
+      std::shared_ptr<StorageSnapshot>&& db)
         : _reader(std::move(index)), _snapshot(std::move(db)) {}
     irs::directory_reader _reader;
-    std::shared_ptr<StorageEngine::StorageSnapshot> _snapshot;
+    std::shared_ptr<StorageSnapshot> _snapshot;
   };
 
   using DataSnapshotPtr = std::shared_ptr<DataSnapshot>;

@@ -67,7 +67,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return std::get<0>(_segments[i]);
   }
 
-  [[nodiscard]] StorageEngine::StorageSnapshot const& snapshot(
+  [[nodiscard]] StorageSnapshot const& snapshot(
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
     return std::get<2>(_segments[i]);

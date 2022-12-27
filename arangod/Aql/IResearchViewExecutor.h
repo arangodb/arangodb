@@ -35,6 +35,7 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/SearchDoc.h"
+#include "IResearch/SnapshotDoc.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -257,10 +258,10 @@ class IndexReadBuffer {
     return _keyBuffer[idx].first;
   }
 
-  auto const& getSnapshot(size_t idx) noexcept {
+  auto const* getSnapshot(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
     TRI_ASSERT(_keyBuffer[idx].second);
-    return *_keyBuffer[idx].second;
+    return _keyBuffer[idx].second;
   }
 
   iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
@@ -277,14 +278,14 @@ class IndexReadBuffer {
   irs::score_t* pushNoneScores(size_t count);
 
   template<typename... Args>
-  void pushValue(StorageEngine::StorageSnapshot const& snapshot,
+  void pushValue(StorageSnapshot const& snapshot,
                  Args&&... args);
 
   void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
-  void pushSortedValue(StorageEngine::StorageSnapshot const& snapshot,
+  void pushSortedValue(StorageSnapshot const& snapshot,
                        ValueType&& value, float_t const* scores, size_t count);
 
   void finalizeHeapSort();
@@ -381,7 +382,7 @@ class IndexReadBuffer {
   // .
 
   using BufferValueType =
-      std::pair<ValueType, StorageEngine::StorageSnapshot const*>;
+      std::pair<ValueType, StorageSnapshot const*>;
   std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
@@ -535,8 +536,7 @@ class IResearchViewExecutorBase {
   template<iresearch::MaterializeType t =
                iresearch::MaterializeType::LateMaterialize,
            typename E = enabled_for_materialize_type_t<t>>
-  bool writeLocalDocumentId(ReadContext& ctx, LocalDocumentId const& documentId,
-                            LogicalCollection const& collection);
+  bool writeLocalDocumentId(ReadContext& ctx, iresearch::SnapshotDoc const& doc);
 
   void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);

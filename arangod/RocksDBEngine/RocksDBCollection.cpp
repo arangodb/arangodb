@@ -975,7 +975,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
 Result RocksDBCollection::readFromSnapshot(
     transaction::Methods* trx, LocalDocumentId const& token,
     IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
-    StorageEngine::StorageSnapshot const& snapshot) const {
+    StorageSnapshot const& snapshot) const {
   ::ReadTimeTracker timeTracker(
       _statistics._readWriteMetrics,
       [](TransactionStatistics::ReadWriteMetrics& metrics,

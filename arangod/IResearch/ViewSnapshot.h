@@ -51,12 +51,12 @@ class ViewSnapshot : public irs::index_reader {
   using Links = std::vector<LinkLock>;
   using Segments =
       std::vector<std::tuple<DataSourceId, irs::sub_reader const*,
-                             StorageEngine::StorageSnapshot const&>>;
+                             StorageSnapshot const&>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
 
-  [[nodiscard]] virtual StorageEngine::StorageSnapshot const& snapshot(
+  [[nodiscard]] virtual StorageSnapshot const& snapshot(
       std::size_t i) const noexcept = 0;
 
   [[nodiscard]] bool hasNestedFields() const noexcept {
@@ -104,7 +104,7 @@ class ViewSnapshotView final : public ViewSnapshot {
     return *(std::get<1>(_segments[i]));
   }
 
-  [[nodiscard]] StorageEngine::StorageSnapshot const& snapshot(
+  [[nodiscard]] StorageSnapshot const& snapshot(
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
     return std::get<2>(_segments[i]);

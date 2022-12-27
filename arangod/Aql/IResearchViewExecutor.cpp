@@ -409,7 +409,7 @@ ScoreIterator IndexReadBuffer<ValueType, copyStored>::getScores(
 template<typename ValueType, bool copySorted>
 template<typename... Args>
 void IndexReadBuffer<ValueType, copySorted>::pushValue(
-    StorageEngine::StorageSnapshot const& snapshot, Args&&... args) {
+    StorageSnapshot const& snapshot, Args&&... args) {
   _keyBuffer.emplace_back(ValueType{std::forward<Args>(args)...}, &snapshot);
 }
 
@@ -426,7 +426,7 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
-    StorageEngine::StorageSnapshot const& snapshot, ValueType&& value,
+    StorageSnapshot const& snapshot, ValueType&& value,
     float_t const* scores, size_t count) {
   BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
                                     _scoreBuffer);
@@ -817,25 +817,21 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
 template<typename Impl, typename ExecutionTraits>
 template<arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeLocalDocumentId(
-    ReadContext& ctx, LocalDocumentId const& documentId,
-    LogicalCollection const& collection) {
+    ReadContext& ctx, arangodb::iresearch::SnapshotDoc const& doc) {
   // we will need collection Id also as View could produce documents from
   // multiple collections
-  if (ADB_LIKELY(documentId.isSet())) {
-    {
-      // For sake of performance we store raw pointer to collection
-      // It is safe as pipeline work inside one process
-      static_assert(sizeof(void*) <= sizeof(uint64_t),
-                    "Pointer doesn't fit uint64_t");
+  if (ADB_LIKELY(doc.isValid())) {
+    std::array<char, arangodb::iresearch::kDocRegBufSize> docReg;
+    std::array<char, arangodb::iresearch::kDocRegBufSize> collReg;
+    doc.encode(docReg, collReg);
 
-      AqlValueHintUInt const value{reinterpret_cast<uint64_t>(&collection)};
-      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow,
-                                  value);
-    }
-    {
-      AqlValueHintUInt const value{documentId.id()};
-      ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, value);
-    }
+    AqlValue collectionReg(std::string_view(collReg.data(), collReg.size()));
+    AqlValueGuard collectionGuard{collectionReg, true};
+    ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow,
+                                collectionGuard);
+    AqlValue documentReg{docReg.data(), docReg.size()};
+    AqlValueGuard documentGuard{documentReg, true};
+    ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, documentGuard);
     return true;
   } else {
     return false;
@@ -890,7 +886,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     if (ADB_UNLIKELY(!collection.getPhysical()
                           ->readFromSnapshot(&_trx, documentId, ctx.callback,
                                              ReadOwnWrites::no,
-                                             this->_indexReadBuffer.getSnapshot(
+                                             *this->_indexReadBuffer.getSnapshot(
                                                  bufferEntry.getKeyIdx()))
                           .ok())) {
       return false;
@@ -900,7 +896,11 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
                        MaterializeType::LateMaterialize) {
     // no need to look into collection. Somebody down the stream will do
     // materialization. Just emit LocalDocumentIds
-    if (ADB_UNLIKELY(!writeLocalDocumentId(ctx, documentId, collection))) {
+    auto const* snapshot = this->_indexReadBuffer.getSnapshot(bufferEntry.getKeyIdx());
+    arangodb::iresearch::SnapshotDoc doc(
+        documentId, &collection,
+        snapshot);
+    if (ADB_UNLIKELY(!writeLocalDocumentId(ctx, doc))) {
       return false;
     }
   }

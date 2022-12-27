@@ -88,17 +88,16 @@ struct Options;
 
 }  // namespace transaction
 
+
+class StorageSnapshot {
+ public:
+  virtual ~StorageSnapshot() = default;
+
+  virtual TRI_voc_tick_t tick() const noexcept = 0;
+};
+
 class StorageEngine : public ArangodFeature {
  public:
-
-  class StorageSnapshot {
-   public:
-    virtual ~StorageSnapshot() = default;
-
-    virtual TRI_voc_tick_t tick() const noexcept = 0;
-  };
-
-
 
   // create the storage engine
   StorageEngine(Server& server, std::string_view engineName,
