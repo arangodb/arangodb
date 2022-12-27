@@ -827,10 +827,10 @@ auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStopIndex()
 auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStop()
     const noexcept -> std::pair<LogIndex, CompactionStopReason> {
   auto const stopIndex = calcCompactionStopIndex();
-  ADB_PROD_ASSERT(stopIndex <= _inMemoryLog.getFirstIndex())
-      << "stopIndex is " << stopIndex << " releaseIndex = " << _releaseIndex
-      << " lowestIndexToKeep = " << _lowestIndexToKeep
-      << "first index = " << _inMemoryLog.getFirstIndex();
+  ADB_PROD_ASSERT(stopIndex <= _inMemoryLog.getLastIndex())
+      << "stopIndex is " << stopIndex << ", releaseIndex = " << _releaseIndex
+      << ", lowestIndexToKeep = " << _lowestIndexToKeep
+      << ", last index = " << _inMemoryLog.getLastIndex();
   if (stopIndex == _inMemoryLog.getLastIndex()) {
     return {stopIndex, {CompactionStopReason::NothingToCompact{}}};
   } else if (stopIndex == _releaseIndex + 1) {
