@@ -54,7 +54,11 @@ auto DocumentLeaderState::resign() && noexcept
   _isResigning.store(true);
 
   auto snapshotsGuard = _snapshotHandler.getLockedGuard();
-  snapshotsGuard.get()->clear();
+  if (auto& snapshotHandler = snapshotsGuard.get(); snapshotHandler) {
+    // The snapshot could be null in case the vocbase was being dropped while
+    // the replicated state was being created.
+    snapshotHandler->clear();
+  }
 
   _activeTransactions.doUnderLock([&](auto& activeTransactions) {
     for (auto const& trx : activeTransactions.getTransactions()) {
@@ -212,21 +216,36 @@ auto DocumentLeaderState::snapshotStatus(SnapshotId id)
 
 auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
   return _snapshotHandler.doUnderLock(
-      [&](auto& handler) { return handler->status(); });
+      [&](auto& handler) -> ResultT<AllSnapshotsStatus> {
+        if (handler) {
+          return handler->status();
+        }
+        return Result{
+            TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+            "Snapshot handler failed to be initialized! This could happen if "
+            "the database was dropped before the state was initialized!"};
+      });
 }
 
 template<class ResultType, class GetFunc, class ProcessFunc>
 auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
                                                    ProcessFunc processSnapshot)
     -> ResultType {
-  auto snapshotRes = _snapshotHandler.doUnderLock([&](auto& handler) {
-    if (_isResigning.load()) {
-      return ResultT<std::weak_ptr<Snapshot>>::error(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-          fmt::format("Leader resigned for shard {}", shardId));
-    }
-    return getSnapshot(handler);
-  });
+  auto snapshotRes = _snapshotHandler.doUnderLock(
+      [&](auto& handler) -> ResultT<std::weak_ptr<Snapshot>> {
+        if (handler == nullptr) {
+          return Result{
+              TRI_ERROR_INTERNAL,
+              "Snapshot handler failed to be initialized! This could happen if "
+              "the database was dropped before the state was initialized!"};
+        }
+        if (_isResigning.load()) {
+          return ResultT<std::weak_ptr<Snapshot>>::error(
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+              fmt::format("Leader resigned for shard {}", shardId));
+        }
+        return getSnapshot(handler);
+      });
 
   if (snapshotRes.fail()) {
     return snapshotRes.result();
