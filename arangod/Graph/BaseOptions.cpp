@@ -212,8 +212,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
       ast, varInfo, false, nullptr, indexCondition, indexVariable);
@@ -530,8 +529,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
 }
 
 void BaseOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
     it.initializeNonConstExpressions(ast, varInfo, indexVariable);

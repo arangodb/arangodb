@@ -21,8 +21,9 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchRocksDBInvertedIndex.h"
-#include "IResearchRocksDBEncryption.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
+#include "IResearch/IResearchRocksDBEncryption.h"
+#include "IResearch/IResearchMetricStats.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -31,7 +32,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "IResearch/IResearchMetricStats.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -49,13 +49,10 @@ bool IResearchRocksDBInvertedIndexFactory::equal(
   std::string errField;
   if (!lhsFieldsMeta.init(_server, lhs, true, errField, dbname)) {
     LOG_TOPIC("79384", ERR, iresearch::TOPIC)
-        << (errField.empty()
-                ? (std::string(
-                       "failed to initialize index fields from definition: ") +
-                   lhs.toString())
-                : (std::string("failed to initialize index fields from "
-                               "definition, error in attribute '") +
-                   errField + "': " + lhs.toString()));
+        << "failed to initialize index fields from definition"
+        << (errField.empty() ? absl::StrCat(": ", lhs.toString())
+                             : absl::StrCat(", error in attribute '", errField,
+                                            "': ", lhs.toString()));
     return false;
   }
 
@@ -201,17 +198,24 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
 IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
     IndexId id, LogicalCollection& collection, uint64_t objectId,
     std::string const& name)
-    : IResearchInvertedIndex(id, collection),
-      RocksDBIndex(id, collection, name, {}, false, true,
+    : RocksDBIndex{id,
+                   collection,
+                   name,
+                   {},
+                   false,
+                   true,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
-                   objectId, /*useCache*/ false,
+                   objectId,
+                   /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
                    collection.vocbase()
                        .server()
                        .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()) {}
+                       .engine<RocksDBEngine>()},
+      IResearchInvertedIndex{collection.vocbase().server()} {}
+
 namespace {
 
 template<typename T>
@@ -308,10 +312,9 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
       Index::hasFlag(flags, Index::Serialize::Internals);
   bool const forInventory = Index::hasFlag(flags, Index::Serialize::Inventory);
   VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(
-      IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder,
-      forPersistence || forInventory);
+  IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
+                                       &collection().vocbase(), builder,
+                                       forPersistence || forInventory);
   if (forPersistence) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
     builder.add(arangodb::StaticStrings::ObjectId,
@@ -334,14 +337,6 @@ void IResearchRocksDBInvertedIndex::toVelocyPack(
   }
 }
 
-Result IResearchRocksDBInvertedIndex::drop() /*noexcept*/ {
-  return deleteDataStore();
-}
-
-void IResearchRocksDBInvertedIndex::unload() /*noexcept*/ {
-  shutdownDataStore();
-}
-
 bool IResearchRocksDBInvertedIndex::matchesDefinition(
     velocypack::Slice const& other) const {
   TRI_ASSERT(other.isObject());
@@ -361,10 +356,10 @@ bool IResearchRocksDBInvertedIndex::matchesDefinition(
     }
     // Short circuit. If id is correct the index is identical.
     std::string_view idRef = value.stringView();
-    return idRef == std::to_string(IResearchDataStore::id().id());
+    return idRef == std::to_string(id().id());
   }
-  return IResearchInvertedIndex::matchesDefinition(
-      other, IResearchDataStore::_collection.vocbase());
+  return IResearchInvertedIndex::matchesDefinition(other,
+                                                   collection().vocbase());
 }
 
 }  // namespace iresearch
