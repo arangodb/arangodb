@@ -46,7 +46,7 @@ function ArangoSearchOutOfSyncSuite () {
       
       let v = db._createView('UnitTestsView1', 'arangosearch', {});
       let viewMeta = {};
-      let indexMeta = {}
+      let indexMeta = {};
       if (isEnterprise) {
         viewMeta = { links: { UnitTestsCollection1: { includeAllFields: true, "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
         indexMeta = { type: 'inverted', name: 'inverted', fields: [

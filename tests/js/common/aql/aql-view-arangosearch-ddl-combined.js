@@ -1500,17 +1500,17 @@ function IResearchFeatureDDLTestSuite1() {
       result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 >= 0 RETURN doc").toArray();
       assertEqual(4, result.length);
 
-      var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      let result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
 
-      var result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView1 SEARCH EXISTS(doc.a) OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
 
-      var result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER EXISTS(doc.name_1) SORT doc.z RETURN doc').toArray();
+      result = db._query('FOR doc IN TestCollection0 OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER EXISTS(doc.name_1) SORT doc.z RETURN doc').toArray();
       assertEqual(4, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);

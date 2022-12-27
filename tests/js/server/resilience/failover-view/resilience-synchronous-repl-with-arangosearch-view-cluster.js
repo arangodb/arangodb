@@ -269,7 +269,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
         assertEqual(2, result.length);
         assertEqual(13, result[0].Hallo);
@@ -295,7 +295,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d._key == '${id._key}' RETURN d`).toArray();
         assertEqual(1, result.length);
         assertEqual(100, result[0].Hallo);
@@ -324,7 +324,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
         assertEqual(2, result.length);
         assertEqual(101, result[0].Hallo);
@@ -352,7 +352,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d._key == '${id._key}' RETURN d`).toArray();
         assertEqual(1, result.length);
         assertEqual(100, result[0].Hallo);
@@ -386,7 +386,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
         assertEqual(2, result.length);
         assertEqual(101, result[0].Hallo);
@@ -414,7 +414,7 @@ function SynchronousReplicationWithViewSuite () {
     });
 
     {
-      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}`).toArray();
         assertEqual(3, result.length);
         assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);

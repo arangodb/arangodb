@@ -401,7 +401,7 @@ function iResearchFeatureAqlTestSuite () {
           db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
           db.test_coll.save({field: "value1"});
           let indexMeta = {};
-          db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": `::${analyzerName}`}]})
+          db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": `::${analyzerName}`}]});
           
           var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
           assertEqual(1, res.toArray().length);
@@ -2812,7 +2812,7 @@ function iResearchFeatureAqlTestSuite () {
         analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
                                               returnType:"string"});
         let viewMeta = {};
-        let indexMeta = {}
+        let indexMeta = {};
         if (isEnterprise) { 
           viewMeta = {links: 
             {[colName]: 
