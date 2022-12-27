@@ -71,7 +71,8 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
                 auto slice = resp.slice();
                 if (auto result = slice.get("result"); result.isObject()) {
                   std::unordered_map<std::string, std::string> map;
-                  for (auto it : VPackObjectIterator{result}) {
+                  for (auto it : VPackObjectIterator{
+                           result, /*useSequentialIteration*/ true}) {
                     map.emplace(it.key.copyString(), it.value.copyString());
                   }
                   return map;

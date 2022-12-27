@@ -966,7 +966,7 @@ bool Node::applies(VPackSlice slice) {
   clear();
 
   if (slice.isObject()) {
-    for (auto const& i : VPackObjectIterator(slice)) {
+    for (auto i : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       // note: no need to remove duplicate forward slashes here...
       //  if i.key contains duplicate forward slashes, then we will go
       //  into the  key.find('/')  case, and will be calling  operator()

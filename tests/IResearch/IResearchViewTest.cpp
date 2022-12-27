@@ -6547,8 +6547,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-             ++itr) {
+        for (arangodb::velocypack::ObjectIterator itr(
+                 tmpSlice, /*useSequentialIteration*/ true);
+             itr.valid(); ++itr) {
           arangodb::iresearch::IResearchLinkMeta linkMeta;
           auto key = itr.key();
           auto value = itr.value();
@@ -6732,8 +6733,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-             ++itr) {
+        for (arangodb::velocypack::ObjectIterator itr(
+                 tmpSlice, /*useSequentialIteration*/ true);
+             itr.valid(); ++itr) {
           arangodb::iresearch::IResearchLinkMeta linkMeta;
           auto key = itr.key();
           auto value = itr.value();
@@ -6824,8 +6826,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-             ++itr) {
+        for (arangodb::velocypack::ObjectIterator itr(
+                 tmpSlice, /*useSequentialIteration*/ true);
+             itr.valid(); ++itr) {
           arangodb::iresearch::IResearchLinkMeta linkMeta;
           auto key = itr.key();
           auto value = itr.value();
@@ -8244,8 +8247,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-             ++itr) {
+        for (arangodb::velocypack::ObjectIterator itr(
+                 tmpSlice, /*useSequentialIteration*/ true);
+             itr.valid(); ++itr) {
           arangodb::iresearch::IResearchLinkMeta linkMeta;
           auto key = itr.key();
           auto value = itr.value();
@@ -8339,8 +8343,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-        for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-             ++itr) {
+        for (arangodb::velocypack::ObjectIterator itr(
+                 tmpSlice, /*useSequentialIteration*/ true);
+             itr.valid(); ++itr) {
           arangodb::iresearch::IResearchLinkMeta linkMeta;
           auto key = itr.key();
           auto value = itr.value();
@@ -8522,8 +8527,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto tmpSlice = slice.get("links");
       EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-           ++itr) {
+      for (arangodb::velocypack::ObjectIterator itr(
+               tmpSlice, /*useSequentialIteration*/ true);
+           itr.valid(); ++itr) {
         arangodb::iresearch::IResearchLinkMeta linkMeta;
         auto key = itr.key();
         auto value = itr.value();
@@ -8643,8 +8649,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       auto tmpSlice = slice.get("links");
       EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
 
-      for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-           ++itr) {
+      for (arangodb::velocypack::ObjectIterator itr(
+               tmpSlice, /*useSequentialIteration*/ true);
+           itr.valid(); ++itr) {
         arangodb::iresearch::IResearchLinkMeta linkMeta;
         auto key = itr.key();
         auto value = itr.value();

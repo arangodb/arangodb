@@ -100,14 +100,16 @@ write_ret_t singleWriteTransaction(AgentInterface* _agent,
       VPackArrayBuilder onePair(&envelope);
       {
         VPackObjectBuilder mutationPart(&envelope);
-        for (auto pair : VPackObjectIterator(trx[0])) {
+        for (auto pair :
+             VPackObjectIterator(trx[0], /*useSequentialIteration*/ false)) {
           envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                        pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(&envelope);
-        for (auto pair : VPackObjectIterator(trx[1])) {
+        for (auto pair :
+             VPackObjectIterator(trx[1], /*useSequentialIteration*/ false)) {
           envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                        pair.value);
         }
@@ -142,14 +144,16 @@ trans_ret_t generalTransaction(AgentInterface* _agent,
           VPackArrayBuilder onePair(&envelope);
           {
             VPackObjectBuilder mutationPart(&envelope);
-            for (auto pair : VPackObjectIterator(singleTrans[0])) {
+            for (auto pair : VPackObjectIterator(
+                     singleTrans[0], /*useSequentialIteration*/ false)) {
               envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                            pair.value);
             }
           }
           if (singleTrans.length() > 1) {
             VPackObjectBuilder preconditionPart(&envelope);
-            for (auto pair : VPackObjectIterator(singleTrans[1])) {
+            for (auto pair : VPackObjectIterator(
+                     singleTrans[1], /*useSequentialIteration*/ false)) {
               envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                            pair.value);
             }
@@ -190,14 +194,16 @@ trans_ret_t transient(AgentInterface* _agent,
       VPackArrayBuilder onePair(&envelope);
       {
         VPackObjectBuilder mutationPart(&envelope);
-        for (auto pair : VPackObjectIterator(trx[0])) {
+        for (auto pair :
+             VPackObjectIterator(trx[0], /*useSequentialIteration*/ false)) {
           envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                        pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(&envelope);
-        for (auto pair : VPackObjectIterator(trx[1])) {
+        for (auto pair :
+             VPackObjectIterator(trx[1], /*useSequentialIteration*/ false)) {
           envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
                        pair.value);
         }
@@ -339,7 +345,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
         addRemoveJobFromSomewhere(finished, "Pending", _jobId);
 
         if (operations.length() > 0) {
-          for (auto oper : VPackObjectIterator(operations)) {
+          for (auto oper : VPackObjectIterator(
+                   operations, /*useSequentialIteration*/ true)) {
             finished.add(oper.key.stringView(), oper.value);
           }
         }
@@ -357,7 +364,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
       if (preconditions.isObject() &&
           preconditions.length() > 0) {  // preconditions --
         VPackObjectBuilder precguard(&finished);
-        for (auto prec : VPackObjectIterator(preconditions)) {
+        for (auto prec : VPackObjectIterator(preconditions,
+                                             /*useSequentialIteration*/ true)) {
           finished.add(prec.key.stringView(), prec.value);
         }
       }  // -- preconditions
@@ -927,7 +935,7 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
       trx.add("timeFinished",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
-    for (auto obj : VPackObjectIterator(job)) {
+    for (auto obj : VPackObjectIterator(job, /*useSequentialIteration*/ true)) {
       trx.add(obj.key.stringView(), obj.value);
     }
     if (!reason.empty()) {

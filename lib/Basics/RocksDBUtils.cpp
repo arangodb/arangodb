@@ -40,7 +40,8 @@ namespace {
 bool hasObjectIds(VPackSlice inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
-    for (auto objectPair : velocypack::ObjectIterator(inputSlice)) {
+    for (auto objectPair : velocypack::ObjectIterator(
+             inputSlice, /*useSequentialIteration*/ true)) {
       if (objectPair.key.stringView() == StaticStrings::ObjectId) {
         return true;
       }
@@ -63,7 +64,8 @@ bool hasObjectIds(VPackSlice inputSlice) {
 VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto objectPair : velocypack::ObjectIterator(inputSlice)) {
+    for (auto objectPair : velocypack::ObjectIterator(
+             inputSlice, /*useSequentialIteration*/ true)) {
       if (objectPair.key.stringView() == StaticStrings::ObjectId) {
         continue;
       }

@@ -406,7 +406,9 @@ bool FieldMeta::init(
       subDefaults._fields.clear();
       _fields.clear();  // reset to match either defaults or read values exactly
 
-      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+      for (velocypack::ObjectIterator itr(field,
+                                          /*useSequentialIteration*/ true);
+           itr.valid(); ++itr) {
         auto key = itr.key();
         auto value = itr.value();
 
@@ -460,7 +462,9 @@ bool FieldMeta::init(
 
       _nested.clear();  // reset to match either defaults or read values exactly
 
-      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+      for (velocypack::ObjectIterator itr(field,
+                                          /*useSequentialIteration*/ true);
+           itr.valid(); ++itr) {
         auto key = itr.key();
         auto value = itr.value();
 

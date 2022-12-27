@@ -3208,7 +3208,8 @@ arangodb::Result hotBackupList(
       plan.add(resSlice.get("agency-dump")[0]);
     }
 
-    for (auto backup : VPackObjectIterator(resSlice.get("list"))) {
+    for (auto backup : VPackObjectIterator(resSlice.get("list"),
+                                           /*useSequentialIteration*/ false)) {
       ResultT<BackupMeta> meta = BackupMeta::fromSlice(backup.value);
       if (meta.ok()) {
         dbsBackups[backup.key.copyString()].push_back(std::move(meta.get()));
@@ -3308,7 +3309,8 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 
   // Skip all direct matching names in pair and remove them from localCopy
   std::unordered_set<std::string>::iterator it;
-  for (auto planned : VPackObjectIterator(planServers)) {
+  for (auto planned :
+       VPackObjectIterator(planServers, /*useSequentialIteration*/ true)) {
     auto const plannedStr = planned.key.copyString();
     if ((it = localCopy.find(plannedStr)) != localCopy.end()) {
       localCopy.erase(it);
@@ -3490,7 +3492,7 @@ arangodb::Result applyDBServerMatchesToPlan(
                         std::map<ServerID, ServerID> const& matches) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ false)) {
         newPlan.add(it.key);
         replaceDBServer(it.value, matches);
       }

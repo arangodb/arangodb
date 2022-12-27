@@ -545,7 +545,8 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
         Logger::setLogLevel(l);
       }
       // now process all log topics except "all"
-      for (auto it : VPackObjectIterator(slice)) {
+      for (auto it :
+           VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
         if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
           std::string const l =
               it.key.copyString() + "=" + it.value.copyString();
@@ -597,7 +598,8 @@ void RestAdminLogHandler::handleLogStructuredParams() {
 
     if (slice.isObject()) {
       std::unordered_map<std::string, bool> paramsAndValues;
-      for (auto it : VPackObjectIterator(slice)) {
+      for (auto it :
+           VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
         if (it.value.isBoolean()) {
           paramsAndValues.try_emplace(it.key.copyString(),
                                       it.value.getBoolean());

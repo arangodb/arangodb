@@ -78,11 +78,14 @@ struct agentConfigHealthResult {
 
 void removePlanServers(std::unordered_set<std::string>& servers,
                        VPackSlice plan) {
-  for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
+  for (auto database : VPackObjectIterator(plan.get("Collections"),
+                                           /*useSequentialIteration*/ true)) {
+    for (auto collection :
+         VPackObjectIterator(database.value, /*useSequentialIteration*/ true)) {
       VPackSlice shards = collection.value.get("shards");
-      for (auto const& shard : VPackObjectIterator(shards)) {
-        for (auto const& server : VPackArrayIterator(shard.value)) {
+      for (auto shard :
+           VPackObjectIterator(shards, /*useSequentialIteration*/ true)) {
+        for (auto server : VPackArrayIterator(shard.value)) {
           servers.erase(server.copyString());
           if (servers.empty()) {
             return;
@@ -95,11 +98,13 @@ void removePlanServers(std::unordered_set<std::string>& servers,
 
 void removeCurrentServers(std::unordered_set<std::string>& servers,
                           VPackSlice current) {
-  for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      for (auto const& shard : VPackObjectIterator(collection.value)) {
-        for (auto const& server :
-             VPackArrayIterator(shard.value.get("servers"))) {
+  for (auto database : VPackObjectIterator(current.get("Collections"),
+                                           /*useSequentialIteration*/ true)) {
+    for (auto collection :
+         VPackObjectIterator(database.value, /*useSequentialIteration*/ true)) {
+      for (auto shard : VPackObjectIterator(collection.value,
+                                            /*useSequentialIteration*/ true)) {
+        for (auto server : VPackArrayIterator(shard.value.get("servers"))) {
           servers.erase(server.copyString());
           if (servers.empty()) {
             return;
@@ -154,7 +159,8 @@ void buildHealthResult(
     server_set set;
     {
       VPackObjectIterator memberIter(
-          store.get(rootPath->supervision()->health()->vec()));
+          store.get(rootPath->supervision()->health()->vec()),
+          /*useSequentialIteration*/ true);
       for (auto member : memberIter) {
         set.insert(member.key.copyString());
       }
@@ -189,7 +195,8 @@ void buildHealthResult(
           continue;
         }
         agents[agent.name].leader = true;
-        for (const auto& agentIter : VPackObjectIterator(lastAcked)) {
+        for (auto agentIter :
+             VPackObjectIterator(lastAcked, /*useSequentialIteration*/ true)) {
           agents[agentIter.key.copyString()].lastAcked =
               agentIter.value.get("lastAckedTime").getDouble();
         }
@@ -202,14 +209,16 @@ void buildHealthResult(
     VPackObjectBuilder ob(&builder, "Health");
 
     VPackObjectIterator memberIter(
-        store.get(rootPath->supervision()->health()->vec()));
+        store.get(rootPath->supervision()->health()->vec()),
+        /*useSequentialIteration*/ true);
     for (auto member : memberIter) {
       std::string serverId = member.key.copyString();
 
       {
         VPackObjectBuilder obMember(&builder, serverId);
 
-        builder.add(VPackObjectIterator(member.value));
+        builder.add(
+            VPackObjectIterator(member.value, /*useSequentialIteration*/ true));
         if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
@@ -770,12 +779,14 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   }
 
   bool fromFound = false;
-  bool isLeader = false;
-  for (VPackArrayIterator i(shard); i != i.end(); i++) {
+  bool isLeader = true;
+  for (auto i : VPackArrayIterator(shard)) {
     if (i.value().isEqualString(ctx->fromServer)) {
-      isLeader = i.isFirst();
       fromFound = true;
+      break;
     }
+    // only first server in list is leader
+    isLeader = false;
   }
 
   if (!fromFound) {
@@ -954,7 +965,8 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
                     VPackObjectBuilder ob(&builder);
 
                     // append all the job keys
-                    builder.add(VPackObjectIterator(job));
+                    builder.add(VPackObjectIterator(
+                        job, /*useSequentialIteration*/ true));
                     builder.add("error", VPackValue(false));
                     builder.add("job", VPackValue(jobId));
                     builder.add("status", VPackValue(path[2]));
@@ -2095,8 +2107,10 @@ RestStatus RestAdminClusterHandler::handleHealth() {
             std::vector<futures::Future<::agentConfigHealthResult>> fs;
 
             auto* pool = self->server().getFeature<NetworkFeature>().pool();
-            for (auto member : VPackObjectIterator(result.slice().get(
-                     std::vector<std::string>{"configuration", "pool"}))) {
+            for (auto member : VPackObjectIterator(
+                     result.slice().get(
+                         std::vector<std::string>{"configuration", "pool"}),
+                     /*useSequentialIteration*/ true)) {
               std::string endpoint = member.value.copyString();
               std::string memberName = member.key.copyString();
 
@@ -2416,7 +2430,8 @@ RestAdminClusterHandler::countAllMoveShardJobs() {
 
   auto const countMoveShardsInSlice = [](VPackSlice slice) -> std::size_t {
     std::size_t count = 0;
-    for (auto const& [key, job] : VPackObjectIterator(slice)) {
+    for (auto const& [key, job] :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       if (job.get("type").isEqualString("moveShard")) {
         count += 1;
       }
@@ -2740,7 +2755,8 @@ RestAdminClusterHandler::collectRebalanceInformation(
       agencyCacheInfo[0].get({"arango", "Supervision", "Health"});
 
   std::unordered_set<std::string> activeServers;
-  for (auto it : velocypack::ObjectIterator(serversHealthInfo)) {
+  for (auto it : velocypack::ObjectIterator(serversHealthInfo,
+                                            /*useSequentialIteration*/ true)) {
     if (it.value.get("Status").stringView() ==
         consensus::Supervision::HEALTH_STATUS_GOOD) {
       activeServers.emplace(it.key.copyString());

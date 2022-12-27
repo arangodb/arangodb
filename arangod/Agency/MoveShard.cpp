@@ -484,7 +484,8 @@ bool MoveShard::start(bool&) {
     {
       VPackArrayBuilder guard0(&todo);
       VPackObjectBuilder guard(&todo);
-      for (auto p : VPackObjectIterator(todo2.slice()[0])) {
+      for (auto p : VPackObjectIterator(todo2.slice()[0],
+                                        /*useSequentialIteration*/ true)) {
         std::string_view key = p.key.stringView();
         if (key != "tryUndo") {
           todo.add(key, p.value);
@@ -655,7 +656,8 @@ bool MoveShard::startReplication2() {
   {
     VPackObjectBuilder ob(&newJob);
     newJob.add(EXPECTED_TARGET_VERSION, VPackValue(expected));
-    newJob.add(VPackObjectIterator(oldJob.slice()));
+    newJob.add(
+        VPackObjectIterator(oldJob.slice(), /*useSequentialIteration*/ true));
   }
 
   Builder trx;

@@ -117,7 +117,8 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice slice) {
         return false;
       }
 
-      for (auto it : VPackObjectIterator(invSlice)) {
+      for (auto it :
+           VPackObjectIterator(invSlice, /*useSequentialIteration*/ true)) {
         VPackSlice dbObj = it.value;
         if (!dbObj.isObject()) {
           continue;

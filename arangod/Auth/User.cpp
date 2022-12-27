@@ -164,15 +164,16 @@ auth::User auth::User::newUser(std::string const& user,
 }
 
 void auth::User::fromDocumentDatabases(auth::User& entry,
-                                       VPackSlice const& databasesSlice,
-                                       VPackSlice const& userSlice) {
-  for (auto const& obj : VPackObjectIterator(databasesSlice)) {
-    std::string const dbName = obj.key.copyString();
+                                       VPackSlice databasesSlice,
+                                       VPackSlice userSlice) {
+  for (auto obj :
+       VPackObjectIterator(databasesSlice, /*useSequentialIteration*/ true)) {
+    std::string dbName = obj.key.copyString();
 
     if (obj.value.isObject()) {
       auth::Level databaseAuth = auth::Level::NONE;
 
-      auto const permissionsSlice = obj.value.get("permissions");
+      auto permissionsSlice = obj.value.get("permissions");
 
       if (permissionsSlice.isObject()) {
         databaseAuth = AuthLevelFromSlice(permissionsSlice);
@@ -187,9 +188,10 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
       VPackSlice collectionsSlice = obj.value.get("collections");
 
       if (collectionsSlice.isObject()) {
-        for (auto collection : VPackObjectIterator(collectionsSlice)) {
-          std::string const cName = collection.key.copyString();
-          auto const collPerSlice = collection.value.get("permissions");
+        for (auto collection : VPackObjectIterator(
+                 collectionsSlice, /*useSequentialIteration*/ true)) {
+          std::string cName = collection.key.copyString();
+          auto collPerSlice = collection.value.get("permissions");
 
           if (collPerSlice.isObject()) {
             try {

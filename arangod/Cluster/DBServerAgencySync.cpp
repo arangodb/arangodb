@@ -354,11 +354,12 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
           std::vector<AgencyOperation> operations;
           std::vector<AgencyPrecondition> preconditions;
-          for (auto const& ao : VPackObjectIterator(agency)) {
-            auto const key = ao.key.copyString();
-            auto const op = ao.value.get("op").copyString();
+          for (auto ao :
+               VPackObjectIterator(agency, /*useSequentialIteration*/ false)) {
+            auto key = ao.key.copyString();
+            auto op = ao.value.get("op").copyString();
 
-            auto const precondition = ao.value.get("precondition");
+            auto precondition = ao.value.get("precondition");
             if (!precondition.isNone()) {
               // have a precondition
               preconditions.push_back(AgencyPrecondition(
@@ -367,7 +368,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             }
 
             if (op == "set") {
-              auto const value = ao.value.get("payload");
+              auto value = ao.value.get("payload");
               operations.push_back(
                   AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {

@@ -497,7 +497,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(velocypack::Slice info,
 
       VPackBuilder builder;
       builder.openObject();
-      for (auto pair : VPackObjectIterator(RocksDBValue::data(ps))) {
+      for (auto pair : VPackObjectIterator(RocksDBValue::data(ps),
+                                           /*useSequentialIteration*/ true)) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));

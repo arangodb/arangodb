@@ -629,7 +629,8 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
 
   VPackSlice snippets = result.get("snippets");
   // Link Snippets to their sinks
-  for (auto const& resEntry : VPackObjectIterator(snippets)) {
+  for (auto resEntry :
+       VPackObjectIterator(snippets, /*useSequentialIteration*/ false)) {
     if (!resEntry.value.isString()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query snippets on all required "

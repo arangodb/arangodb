@@ -149,7 +149,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
 
   auto shardsSlice = info.get("shards");
   if (shardsSlice.isObject()) {
-    for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
+    for (auto shardSlice :
+         VPackObjectIterator(shardsSlice, /*useSequentialIteration*/ true)) {
       if (shardSlice.key.isString() && shardSlice.value.isArray()) {
         ShardID shard = shardSlice.key.copyString();
 
@@ -157,7 +158,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
           servers.push_back(serverSlice.copyString());
         }
-        _shardIds->try_emplace(shard, servers);
+        _shardIds->try_emplace(std::move(shard), std::move(servers));
       }
     }
   }

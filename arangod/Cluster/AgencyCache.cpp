@@ -199,10 +199,9 @@ void AgencyCache::handleCallbacksNoLock(
   // Collect and normalize keys
   std::vector<std::string> keys;
   keys.reserve(slice.length());
-  for (auto const& i : VPackObjectIterator(slice)) {
-    VPackValueLength l;
-    char const* p = i.key.getString(l);
-    keys.emplace_back(Store::normalize(p, l));
+  for (auto i : VPackObjectIterator(slice, /*useSequentialIteration*/ false)) {
+    auto sv = i.key.stringView();
+    keys.emplace_back(Store::normalize(sv.data(), sv.size()));
   }
 
   std::sort(keys.begin(), keys.end());

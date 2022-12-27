@@ -416,7 +416,8 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   // order blockers for all collections in the inventory
   TRI_ASSERT(inventory.slice().isObject());
   if (global) {
-    for (auto it : VPackObjectIterator(inventory.slice())) {
+    for (auto it : VPackObjectIterator(inventory.slice(),
+                                       /*useSequentialIteration*/ true)) {
       std::string dbName = it.key.copyString();
       VPackSlice collections = it.value.get("collections");
       handleCollections(dbName, collections);
@@ -425,7 +426,8 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
   } else {
     handleCollections(vocbase.name(), inventory.slice().get("collections"));
     // add inventory data to result
-    for (auto it : VPackObjectIterator(inventory.slice())) {
+    for (auto it : VPackObjectIterator(inventory.slice(),
+                                       /*useSequentialIteration*/ true)) {
       result.add(it.key.copyString(), it.value);
     }
   }

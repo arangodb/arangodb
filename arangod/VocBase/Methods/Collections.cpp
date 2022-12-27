@@ -932,9 +932,10 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
   VPackBuilder props = coll->toVelocyPackIgnore(
       ignoreKeys, LogicalDataSource::Serialization::Properties);
   TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackObjectIterator(props.slice()));
+  builder.add(
+      VPackObjectIterator(props.slice(), /*useSequentialIteration*/ true));
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,

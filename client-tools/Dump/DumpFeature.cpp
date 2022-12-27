@@ -551,7 +551,8 @@ Result DumpFeature::DumpCollectionJob::run(
         VPackSlice shards = parameters.get("shards");
 
         // Iterate over the Map of shardId to server list
-        for (auto const it : VPackObjectIterator(shards)) {
+        for (auto it :
+             VPackObjectIterator(shards, /*useSequentialIteration*/ true)) {
           // extract shard name
           TRI_ASSERT(it.key.isString());
           std::string shardName = it.key.copyString();

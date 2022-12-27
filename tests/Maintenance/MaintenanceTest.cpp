@@ -358,8 +358,9 @@ class SharedMaintenanceTest : public ::testing::Test {
     std::map<std::string, std::string> ret;
     auto const pb = plan.get("Collections")->get().toBuilder();
     auto const ps = pb.slice();
-    for (auto const& db : VPackObjectIterator(ps)) {
-      for (auto const& col : VPackObjectIterator(db.value)) {
+    for (auto db : VPackObjectIterator(ps, /*useSequentialIteration*/ true)) {
+      for (auto col :
+           VPackObjectIterator(db.value, /*useSequentialIteration*/ true)) {
         ret.emplace(
             db.key.copyString() + "/" + col.value.get("name").copyString(),
             col.key.copyString());

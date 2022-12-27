@@ -517,7 +517,7 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
     if (!isStream) {
       isStream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
     }
-    for (auto it : VPackObjectIterator(opts)) {
+    for (auto it : VPackObjectIterator(opts, /*useSequentialIteration*/ true)) {
       if (!it.key.isString() || it.value.isNone()) {
         continue;
       }

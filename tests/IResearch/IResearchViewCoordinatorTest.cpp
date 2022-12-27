@@ -3169,7 +3169,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(3 == it.size());
 
@@ -3469,7 +3469,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(2 == it.size());
 
@@ -3843,7 +3843,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(2 == it.size());
 
@@ -4069,7 +4069,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(3 == it.size());
 
@@ -4588,7 +4588,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(2 == it.size());
 
@@ -4832,7 +4832,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(1 == it.size());
 
@@ -4985,7 +4985,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(1 == it.size());
 
@@ -5287,7 +5287,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
         properties.get(arangodb::iresearch::StaticStrings::LinksField);
     EXPECT_TRUE(linksSlice.isObject());
 
-    VPackObjectIterator it(linksSlice);
+    VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
     EXPECT_TRUE(it.valid());
     EXPECT_TRUE(3 == it.size());
 
@@ -5756,7 +5756,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
           properties.get(arangodb::iresearch::StaticStrings::LinksField);
       EXPECT_TRUE(linksSlice.isObject());
 
-      VPackObjectIterator it(linksSlice);
+      VPackObjectIterator it(linksSlice, /*useSequentialIteration*/ true);
       EXPECT_TRUE(it.valid());
       EXPECT_TRUE(1 == it.size());
       auto const& valuePair = *it;

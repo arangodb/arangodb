@@ -78,7 +78,7 @@ void from_value(Consumer& consumer,
         case arangodb::velocypack::ValueType::Object: {
             const auto len = slice.length();
             consumer.begin_object(len);
-            for (const auto& element : VPackObjectIterator(slice)) {
+            for (const auto& element : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
                 VPackSlice key = element.key;
                 if (key.isString()) {
                     auto ref = key.stringRef();

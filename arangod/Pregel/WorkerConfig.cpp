@@ -84,7 +84,8 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   }
 
   // To access information based on a user defined collection name we need the
-  for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
+  for (auto it : VPackObjectIterator(collectionPlanIdMap,
+                                     /*useSequentialIteration*/ true)) {
     _collectionPlanIdMap.try_emplace(it.key.copyString(),
                                      it.value.copyString());
   }
@@ -93,7 +94,8 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   // Order matters because the for example the third vertex shard, will only
   // every have
   // edges in the third edge shard. This should speed up the startup
-  for (auto pair : VPackObjectIterator(vertexShardMap)) {
+  for (auto pair :
+       VPackObjectIterator(vertexShardMap, /*useSequentialIteration*/ true)) {
     CollectionID cname = pair.key.copyString();
 
     std::vector<ShardID> shards;
@@ -109,7 +111,8 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   }
 
   // Ordered list of edge shards for each collection
-  for (auto pair : VPackObjectIterator(edgeShardMap)) {
+  for (auto pair :
+       VPackObjectIterator(edgeShardMap, /*useSequentialIteration*/ true)) {
     CollectionID cname = pair.key.copyString();
 
     std::vector<ShardID> shards;
@@ -123,7 +126,8 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   }
 
   if (edgeCollectionRestrictions.isObject()) {
-    for (auto pair : VPackObjectIterator(edgeCollectionRestrictions)) {
+    for (auto pair : VPackObjectIterator(edgeCollectionRestrictions,
+                                         /*useSequentialIteration*/ true)) {
       CollectionID cname = pair.key.copyString();
 
       std::vector<ShardID> shards;

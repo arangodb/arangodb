@@ -109,7 +109,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (paramBuilder.slice().isObject()) {
     VPackSlice s = paramBuilder.slice().get("edgeCollectionRestrictions");
     if (s.isObject()) {
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         if (!it.value.isArray()) {
           continue;
         }

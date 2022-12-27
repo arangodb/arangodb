@@ -104,7 +104,8 @@ TEST_F(HotBackupOnCoordinators, test_dbserver_matching) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
 
@@ -120,7 +121,8 @@ TEST_F(HotBackupOnCoordinators, test_first_dbserver_new) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
 
@@ -140,7 +142,8 @@ TEST_F(HotBackupOnCoordinators, test_last_dbserver_new) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
 
@@ -160,7 +163,8 @@ TEST_F(HotBackupOnCoordinators, test_first_and_last_dbserver_new) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
 
@@ -201,7 +205,8 @@ TEST_F(HotBackupOnCoordinators, test_one_more_local_server_than_in_backup) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
   dbServers.push_back(
@@ -220,7 +225,8 @@ TEST_F(HotBackupOnCoordinators, test_one_less_local_server_than_in_backup) {
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
   dbServers.pop_back();
@@ -238,7 +244,8 @@ TEST_F(HotBackupOnCoordinators,
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
   dbServers.front() =
@@ -268,7 +275,8 @@ TEST_F(HotBackupOnCoordinators,
   std::vector<ServerID> dbServers;
   std::map<ServerID, ServerID> matches;
 
-  for (auto const& i : VPackObjectIterator(plan.get(dbsPath))) {
+  for (auto i : VPackObjectIterator(plan.get(dbsPath),
+                                    /*useSequentialIteration*/ false)) {
     dbServers.push_back(i.key.copyString());
   }
   dbServers.front() =

@@ -136,7 +136,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       // and now merge it into our response, while rewriting the "lastLogTick"
       // and "lastUncommittedLogTick"
       b.add("state", VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(tmp.slice())) {
+      for (auto it :
+           VPackObjectIterator(tmp.slice(), /*useSequentialIteration*/ true)) {
         if (it.key.stringView() == "lastLogTick" ||
             it.key.stringView() == "lastUncommittedLogTick") {
           // put into the tick from our own snapshot

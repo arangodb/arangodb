@@ -1901,18 +1901,21 @@ Result RestReplicationHandler::processRestoreIndexes(
         continue;
       }
 
-      if (type.isEqualString(StaticStrings::IndexNamePrimary) ||
-          type.isEqualString(StaticStrings::IndexNameEdge)) {
+      auto ts = type.stringView();
+
+      if (ts == StaticStrings::IndexNamePrimary ||
+          ts == StaticStrings::IndexNameEdge) {
         continue;
       }
 
-      if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+      if (ts == "geo1" || ts == "geo2") {
         // transform type "geo1" or "geo2" into "geo".
         rebuilder.clear();
         rebuilder.openObject();
         rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-        for (auto const& it : VPackObjectIterator(idxDef)) {
-          if (!it.key.isEqualString(StaticStrings::IndexType)) {
+        for (auto it :
+             VPackObjectIterator(idxDef, /*useSequentialIteration*/ true)) {
+          if (it.key.stringView() != StaticStrings::IndexType) {
             rebuilder.add(it.key);
             rebuilder.add(it.value);
           }
@@ -2025,19 +2028,22 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       continue;
     }
 
-    if (type.isEqualString(StaticStrings::IndexNamePrimary) ||
-        type.isEqualString(StaticStrings::IndexNameEdge)) {
+    auto ts = type.stringView();
+
+    if (ts == StaticStrings::IndexNamePrimary ||
+        ts == StaticStrings::IndexNameEdge) {
       // must ignore these types of indexes during restore
       continue;
     }
 
-    if (type.isEqualString("geo1") || type.isEqualString("geo2")) {
+    if (ts == "geo1" || ts == "geo2") {
       // transform type "geo1" or "geo2" into "geo".
       rebuilder.clear();
       rebuilder.openObject();
       rebuilder.add(StaticStrings::IndexType, VPackValue("geo"));
-      for (auto const& it : VPackObjectIterator(idxDef)) {
-        if (!it.key.isEqualString(StaticStrings::IndexType)) {
+      for (auto it :
+           VPackObjectIterator(idxDef, /*useSequentialIteration*/ true)) {
+        if (it.key.stringView() != StaticStrings::IndexType) {
           rebuilder.add(it.key);
           rebuilder.add(it.value);
         }
@@ -2046,7 +2052,7 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
       idxDef = rebuilder.slice();
     }
 
-    if (type.isEqualString("fulltext")) {
+    if (ts == "fulltext") {
       VPackSlice minLength = idxDef.get("minLength");
       if (minLength.isNumber()) {
         int length = minLength.getNumericValue<int>();
@@ -2054,8 +2060,9 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
           rebuilder.clear();
           rebuilder.openObject();
           rebuilder.add("minLength", VPackValue(1));
-          for (auto const& it : VPackObjectIterator(idxDef)) {
-            if (!it.key.isEqualString("minLength")) {
+          for (auto it :
+               VPackObjectIterator(idxDef, /*useSequentialIteration*/ true)) {
+            if (it.key.stringView() != "minLength") {
               rebuilder.add(it.key);
               rebuilder.add(it.value);
             }

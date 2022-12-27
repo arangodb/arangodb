@@ -273,7 +273,8 @@ bool FailedFollower::start(bool& aborts) {
           job.add("timeFinished",  // same same :)
                   VPackValue(timepointToString(system_clock::now())));
           job.add("toServer", VPackValue(_to));  // toServer
-          for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+          for (auto obj : VPackObjectIterator(
+                   todo.slice()[0], /*useSequentialIteration*/ false)) {
             job.add(obj.key.copyString(), obj.value);
           }
         }

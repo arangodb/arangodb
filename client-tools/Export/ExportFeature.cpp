@@ -629,10 +629,12 @@ void ExportFeature::writeBatch(ManagedDirectory::File& fd,
     for (auto const& doc : it) {
       line.clear();
       line.append("<doc key=\"");
-      line.append(encode_char_entities(doc.get("_key").copyString()));
+      line.append(
+          encode_char_entities(doc.get(StaticStrings::KeyString).copyString()));
       line.append("\">\n");
       writeToFile(fd, line);
-      for (auto const& att : VPackObjectIterator(doc)) {
+      for (auto att :
+           VPackObjectIterator(doc, /*useSequentialIteration*/ true)) {
         xgmmlWriteOneAtt(fd, att.value, att.key.copyString(), 2);
       }
       line.clear();
@@ -814,7 +816,8 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File& fd,
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
-        for (auto it : VPackObjectIterator(doc)) {
+        for (auto it :
+             VPackObjectIterator(doc, /*useSequentialIteration*/ true)) {
           xgmmlWriteOneAtt(fd, it.value, it.key.copyString());
         }
 
@@ -839,7 +842,8 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File& fd,
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
-        for (auto it : VPackObjectIterator(doc)) {
+        for (auto it :
+             VPackObjectIterator(doc, /*useSequentialIteration*/ true)) {
           xgmmlWriteOneAtt(fd, it.value, it.key.copyString());
         }
 
@@ -919,7 +923,8 @@ void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File& fd,
         "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag);
 
-    for (auto it : VPackObjectIterator(slice)) {
+    for (auto it :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       xgmmlWriteOneAtt(fd, it.value, it.key.copyString(), deep + 1);
     }
 

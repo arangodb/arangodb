@@ -147,7 +147,8 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
   status.specification =
       Specification::fromVelocyPack(slice.get("specification"));
   for (auto [key, value] :
-       VPackObjectIterator(slice.get(StaticStrings::Participants))) {
+       VPackObjectIterator(slice.get(StaticStrings::Participants),
+                           /*useSequentialIteration*/ true)) {
     auto id = ParticipantId{key.copyString()};
     auto stat = ParticipantStatus::fromVelocyPack(value);
     status.participants.emplace(std::move(id), stat);

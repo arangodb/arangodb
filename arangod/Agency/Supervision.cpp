@@ -816,9 +816,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             if (envelope != nullptr) {  // Failed server
               TRI_ASSERT(envelope->slice().isArray() &&
                          envelope->slice()[0].isObject());
-              for (VPackObjectIterator::ObjectPair i :
-                   VPackObjectIterator(envelope->slice()[0])) {
-                pReport.add(i.key.copyString(), i.value);
+              for (auto i :
+                   VPackObjectIterator(envelope->slice()[0],
+                                       /*useSequentialIteration*/ false)) {
+                pReport.add(i.key.stringView(), i.value);
               }
             }
           }  // Operation
@@ -884,15 +885,17 @@ bool Supervision::earlyBird() const {
   VPackSlice serverStates = serverStatesB.slice();
 
   // every db server in plan accounted for in transient store?
-  for (auto const& server : VPackObjectIterator(dbservers)) {
-    auto serverId = server.key.copyString();
+  for (auto server :
+       VPackObjectIterator(dbservers, /*useSequentialIteration*/ true)) {
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
   }
   // every db server in plan accounted for in transient store?
-  for (auto const& server : VPackObjectIterator(coordinators)) {
-    auto serverId = server.key.copyString();
+  for (auto server :
+       VPackObjectIterator(coordinators, /*useSequentialIteration*/ true)) {
+    auto serverId = server.key.stringView();
     if (!serverStates.hasKey(serverId)) {
       return false;
     }
@@ -3009,7 +3012,8 @@ void Supervision::readyOrphanedIndexCreations() {
                       built.end()) {
                     {
                       VPackObjectBuilder props(&envelope);
-                      for (auto prop : VPackObjectIterator(planIndex)) {
+                      for (auto prop : VPackObjectIterator(
+                               planIndex, /*useSequentialIteration*/ true)) {
                         auto key = prop.key.stringView();
                         if (key != StaticStrings::IndexIsBuilding &&
                             key != StaticStrings::AttrCoordinator &&

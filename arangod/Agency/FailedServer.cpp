@@ -259,7 +259,8 @@ bool FailedServer::start(bool& aborts) {
         VPackObjectBuilder ts(transactions.get());
         transactions->add("timeStarted",
                           VPackValue(timepointToString(system_clock::now())));
-        for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+        for (auto obj : VPackObjectIterator(todo.slice()[0],
+                                            /*useSequentialIteration*/ false)) {
           transactions->add(obj.key.copyString(), obj.value);
         }
       }

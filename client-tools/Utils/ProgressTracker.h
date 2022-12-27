@@ -113,7 +113,8 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory,
   }
 
   std::unique_lock guardState(_collectionStatesMutex);
-  for (auto&& [key, value] : VPackObjectIterator(progress)) {
+  for (auto [key, value] :
+       VPackObjectIterator(progress, /*useSequentialIteration*/ true)) {
     _collectionStates[key.copyString()] = T(value);
   }
 }

@@ -3084,7 +3084,7 @@ Result processPhraseArgObjectType(char const* funcName,
                                   VPackSlice object, size_t firstOffset,
                                   irs::analysis::analyzer* analyzer = nullptr) {
   TRI_ASSERT(object.isObject());
-  VPackObjectIterator itr(object);
+  VPackObjectIterator itr(object, /*useSequentialIteration*/ true);
   if (ADB_LIKELY(itr.valid())) {
     auto key = itr.key();
     auto value = itr.value();

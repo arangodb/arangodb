@@ -535,7 +535,8 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
     b.add(Utils::coordinatorIdKey, VPackValue(coordinatorId));
     b.add(Utils::useMemoryMapsKey, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
-      for (auto pair : VPackObjectIterator(additional)) {
+      for (auto pair :
+           VPackObjectIterator(additional, /*useSequentialIteration*/ true)) {
         b.add(pair.key.copyString(), pair.value);
       }
     }

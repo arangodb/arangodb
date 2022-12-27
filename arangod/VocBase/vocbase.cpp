@@ -2157,7 +2157,7 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 /// the result is the object excluding _id, _key and _rev
 void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice);
+  VPackObjectIterator it(slice, /*useSequentialIteration*/ true);
   while (it.valid()) {
     std::string_view key(it.key().stringView());
     // _id, _key, _rev. minimum size here is 3

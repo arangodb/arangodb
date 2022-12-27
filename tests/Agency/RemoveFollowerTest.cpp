@@ -180,11 +180,11 @@ TEST_F(RemoveFollowerTest,
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -238,11 +238,11 @@ TEST_F(
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
@@ -296,11 +296,11 @@ TEST_F(RemoveFollowerTest,
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -363,11 +363,11 @@ TEST_F(
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -430,11 +430,11 @@ TEST_F(RemoveFollowerTest, all_good_should_remove_folower) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -494,11 +494,11 @@ TEST(RemoveFollowerLargeTest, an_agency_with_12_dbservers) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {

@@ -233,21 +233,22 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   list = base.get("globalEdgeConditions");
   if (list.isArray()) {
-    for (auto const& cond : VPackArrayIterator(list)) {
+    for (auto cond : VPackArrayIterator(list)) {
       _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("globalVertexConditions");
   if (list.isArray()) {
-    for (auto const& cond : VPackArrayIterator(list)) {
+    for (auto cond : VPackArrayIterator(list)) {
       _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
     }
   }
 
   list = base.get("vertexConditions");
   if (list.isObject()) {
-    for (auto const& cond : VPackObjectIterator(list)) {
+    for (auto cond :
+         VPackObjectIterator(list, /*useSequentialIteration*/ true)) {
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
                                     plan->getAst()->createNode(cond.value));
@@ -256,7 +257,8 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   list = base.get("edgeConditions");
   if (list.isObject()) {
-    for (auto const& cond : VPackObjectIterator(list)) {
+    for (auto cond :
+         VPackObjectIterator(list, /*useSequentialIteration*/ true)) {
       std::string key = cond.key.copyString();
       auto ecbuilder =
           std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);

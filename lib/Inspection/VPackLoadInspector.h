@@ -252,7 +252,8 @@ struct VPackLoadInspectorImpl
   template<class... Args>
   Status applyFields(Args&&... args) {
     FieldsMap fields;
-    for (auto [k, v] : VPackObjectIterator(slice())) {
+    for (auto [k, v] :
+         VPackObjectIterator(slice(), /*useSequentialIteration*/ true)) {
       fields.emplace(k.stringView(), std::make_pair(v, false));
     }
 
@@ -349,7 +350,7 @@ struct VPackLoadInspectorImpl
       if (_slice.length() > 1) {
         return {"Unqualified variant data has too many fields"};
       }
-      VPackObjectIterator it(_slice);
+      VPackObjectIterator it(_slice, /*useSequentialIteration*/ true);
       if (!it.valid()) {
         return {"Missing unqualified variant data"};
       }
@@ -585,7 +586,8 @@ struct VPackLoadInspectorImpl
 
   template<class T>
   Status processMap(T& map) {
-    for (auto&& pair : VPackObjectIterator(_slice)) {
+    for (auto&& pair :
+         VPackObjectIterator(_slice, /*useSequentialIteration*/ true)) {
       auto ff = make(pair.value);
       typename T::mapped_type val;
       if (auto res = process(ff, val); !res.ok()) {

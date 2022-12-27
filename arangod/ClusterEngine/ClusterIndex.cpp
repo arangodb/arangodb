@@ -123,7 +123,8 @@ void ClusterIndex::toVelocyPack(
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
   }
 
-  for (auto pair : VPackObjectIterator(_info.slice())) {
+  for (auto pair :
+       VPackObjectIterator(_info.slice(), /*useSequentialIteration*/ true)) {
     if (!pair.key.isEqualString(StaticStrings::IndexId) &&
         !pair.key.isEqualString(StaticStrings::IndexName) &&
         !pair.key.isEqualString(StaticStrings::IndexType) &&

@@ -335,7 +335,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     }
     _depthLookupInfo.reserve(read.length());
     size_t length = collections.length();
-    for (auto const& depth : VPackObjectIterator(read)) {
+    for (auto depth :
+         VPackObjectIterator(read, /*useSequentialIteration*/ true)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
       auto [it, emplaced] =
           _depthLookupInfo.try_emplace(d, std::vector<LookupInfo>());
@@ -358,7 +359,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
     }
 
     _vertexExpressions.reserve(read.length());
-    for (auto const& info : VPackObjectIterator(read)) {
+    for (auto info :
+         VPackObjectIterator(read, /*useSequentialIteration*/ true)) {
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       bool emplaced = false;

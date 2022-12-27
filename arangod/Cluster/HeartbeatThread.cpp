@@ -425,7 +425,8 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
         {AgencyCommHelper::path(), "Target", "FailedServers"}));
     if (failedServersSlice.isObject()) {
       containers::FlatHashSet<ServerID> failedServers;
-      for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+      for (auto server : VPackObjectIterator(failedServersSlice,
+                                             /*useSequentialIteration*/ true)) {
         failedServers.emplace(server.key.stringView());
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT)
@@ -699,7 +700,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
     if (failedServersSlice.isObject()) {
       containers::FlatHashSet<ServerID> failedServers;
-      for (auto const& server : VPackObjectIterator(failedServersSlice)) {
+      for (auto server : VPackObjectIterator(failedServersSlice,
+                                             /*useSequentialIteration*/ true)) {
         failedServers.emplace(server.key.stringView());
       }
       LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT)
@@ -1317,8 +1319,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       return false;
     }
 
-    for (VPackObjectIterator::ObjectPair options :
-         VPackObjectIterator(databases)) {
+    for (auto options :
+         VPackObjectIterator(databases, /*useSequentialIteration*/ true)) {
       try {
         ids.push_back(std::stoul(options.value.get("id").copyString()));
       } catch (std::invalid_argument& e) {
@@ -1363,8 +1365,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
     // loop over all database names we got and create a local database
     // instance if not yet present:
-    for (VPackObjectIterator::ObjectPair options :
-         VPackObjectIterator(databases)) {
+    for (auto options :
+         VPackObjectIterator(databases, /*useSequentialIteration*/ true)) {
       if (!options.value.isObject()) {
         continue;
       }
@@ -1496,7 +1498,8 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       values.reserve(pool.length());
       values.emplace_back(pool.get(leaderId).copyString());
       // now add all non leaders
-      for (auto pair : VPackObjectIterator(pool)) {
+      for (auto pair :
+           VPackObjectIterator(pool, /*useSequentialIteration*/ false)) {
         if (!pair.key.isEqualString(leaderId)) {
           values.emplace_back(pair.value.copyString());
         }

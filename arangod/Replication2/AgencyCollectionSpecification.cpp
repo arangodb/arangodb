@@ -40,7 +40,8 @@ CollectionGroup::CollectionGroup(VPackSlice slice)
     auto cs = slice.get("collections");
     TRI_ASSERT(cs.isObject());
     collections.reserve(cs.length());
-    for (auto const& [key, value] : VPackObjectIterator(cs)) {
+    for (auto const& [key, value] :
+         VPackObjectIterator(cs, /*useSequentialIteration*/ true)) {
       auto cid = key.extract<std::string>();
       collections.emplace(std::move(cid), Collection(value));
     }

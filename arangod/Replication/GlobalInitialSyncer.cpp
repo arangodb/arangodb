@@ -181,7 +181,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 
   try {
     // actually sync the database
-    for (auto const& dbEntry : VPackObjectIterator(databases)) {
+    for (auto dbEntry :
+         VPackObjectIterator(databases, /*useSequentialIteration*/ true)) {
       if (_state.applier._server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
@@ -258,7 +259,8 @@ Result GlobalInitialSyncer::updateServerInventory(
         existingDBs.insert(vocbase.name());
       });
 
-  for (auto const& database : VPackObjectIterator(leaderDatabases)) {
+  for (auto database :
+       VPackObjectIterator(leaderDatabases, /*useSequentialIteration*/ true)) {
     VPackSlice it = database.value;
 
     if (!it.isObject()) {
@@ -266,9 +268,9 @@ Result GlobalInitialSyncer::updateServerInventory(
                     "database declaration is invalid in response");
     }
 
-    VPackSlice const nameSlice = it.get("name");
-    VPackSlice const idSlice = it.get("id");
-    VPackSlice const collections = it.get("collections");
+    VPackSlice nameSlice = it.get("name");
+    VPackSlice idSlice = it.get("id");
+    VPackSlice collections = it.get("collections");
     if (!nameSlice.isString() || !idSlice.isString() ||
         !collections.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

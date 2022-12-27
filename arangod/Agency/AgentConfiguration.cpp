@@ -318,13 +318,14 @@ bool config_t::addGossipPeer(std::string const& endpoint) {
 config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
                                         std::string const& otherId) {
   WRITE_LOCKER(lock, _lock);
-  for (auto const& entry : VPackObjectIterator(otherPool)) {
-    auto const id = entry.key.copyString();
-    auto const endpoint = entry.value.copyString();
+  for (auto entry :
+       VPackObjectIterator(otherPool, /*useSequentialIteration*/ true)) {
+    auto id = entry.key.copyString();
+    auto endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
       LOG_TOPIC("95b8d", INFO, Logger::AGENCY)
           << "Adding " << id << "(" << endpoint << ") to agent pool";
-      _pool[id] = endpoint;
+      _pool[std::move(id)] = std::move(endpoint);
       ++_version;
       return CHANGED;
     } else {
@@ -332,7 +333,7 @@ config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
         if (id != otherId) {  /// discrepancy!
           return WRONG;
         } else {  /// we trust the other guy on his own endpoint
-          _pool.at(id) = endpoint;
+          _pool.at(id) = std::move(endpoint);
         }
       }
     }
@@ -413,9 +414,9 @@ bool config_t::updateEndpoint(std::string const& id, std::string const& ep) {
 
 void config_t::update(velocypack::Slice message) {
   std::unordered_map<std::string, std::string> pool;
-  bool changed = false;
-  for (auto p : VPackObjectIterator(message.get(poolStr))) {
-    auto const& id = p.key.copyString();
+  for (auto p : VPackObjectIterator(message.get(poolStr),
+                                    /*useSequentialIteration*/ true)) {
+    auto id = p.key.copyString();
     if (id != _id) {
       pool[id] = p.value.copyString();
     } else {
@@ -429,6 +430,7 @@ void config_t::update(velocypack::Slice message) {
   double minPing = message.get(minPingStr).getNumber<double>();
   double maxPing = message.get(maxPingStr).getNumber<double>();
   int64_t timeoutMult = message.get(timeoutMultStr).getNumber<int64_t>();
+  bool changed = false;
   WRITE_LOCKER(writeLocker, _lock);
   if (pool != _pool) {
     _pool = pool;
@@ -575,7 +577,8 @@ bool config_t::merge(VPackSlice const& conf) {
   if (conf.hasKey(poolStr)) {  // Persistence only
     LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY)
         << "Found agent pool in persistence:";
-    for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
+    for (auto peer : VPackObjectIterator(conf.get(poolStr),
+                                         /*useSequentialIteration*/ true)) {
       auto const& id = peer.key.copyString();
       if (id != _id) {
         _pool[id] = peer.value.copyString();
@@ -709,7 +712,7 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   WRITE_LOCKER(writeLocker, _lock);
 
   _pool.clear();
-  for (auto p : VPackObjectIterator(pool)) {
+  for (auto p : VPackObjectIterator(pool, /*useSequentialIteration*/ true)) {
     _pool[p.key.copyString()] = p.value.copyString();
   }
   _agencySize = _pool.size();

@@ -942,22 +942,18 @@ static void JS_BinaryDocumentVocbaseCol(
   {
     VPackObjectBuilder meta(builder.get());
 
-    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals())) {
-      std::string key = it.key.copyString();
+    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals(),
+                                       /*useSequentialIteration*/ true)) {
+      auto key = it.key.stringView();
 
       if (key == StaticStrings::AttachmentString) {
-        char const* att;
-        velocypack::ValueLength length;
-
-        try {
-          att = it.value.getString(length);
-        } catch (...) {
+        auto value = it.value;
+        if (!value.isString()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
                                          "'_attachment' must be a string");
         }
 
-        std::string attachment =
-            StringUtils::decodeBase64(std::string(att, length));
+        std::string attachment = StringUtils::decodeBase64(value.stringView());
 
         try {
           FileUtils::spit(filename, attachment);

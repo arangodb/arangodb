@@ -691,7 +691,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   {
     VPackObjectBuilder guard(&result);
 
-    for (auto const& p : VPackObjectIterator(params.slice())) {
+    for (auto p :
+         VPackObjectIterator(params.slice(), /*useSequentialIteration*/ true)) {
       result.add(p.key);
       result.add(p.value);
     }
@@ -815,7 +816,7 @@ void LogicalCollection::toVelocyPackIgnore(
     Serialization context) const {
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, context);
-  result.add(VPackObjectIterator(b.slice()));
+  result.add(VPackObjectIterator(b.slice(), /*useSequentialIteration*/ true));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(

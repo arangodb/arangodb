@@ -367,7 +367,8 @@ TEST_F(SupervisionTestClass, schedule_addfollower_rf_3) {
 static std::unordered_map<std::string, std::string> tableOfJobs(
     VPackSlice envelope) {
   std::unordered_map<std::string, std::string> res;
-  for (auto const& p : VPackObjectIterator(envelope)) {
+  for (auto p :
+       VPackObjectIterator(envelope, /*useSequentialIteration*/ true)) {
     res.emplace(
         std::pair(p.value.get("collection").copyString(), p.key.copyString()));
   }

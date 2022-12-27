@@ -249,7 +249,8 @@ void RestAqlHandler::setupClusterQuery() {
   // Build the collection information
   VPackBuilder collectionBuilder;
   collectionBuilder.openArray();
-  for (auto const& lockInf : VPackObjectIterator(lockInfoSlice)) {
+  for (auto lockInf :
+       VPackObjectIterator(lockInfoSlice, /*useSequentialIteration*/ false)) {
     if (!lockInf.value.isArray()) {
       LOG_TOPIC("1dc00", WARN, arangodb::Logger::AQL)
           << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
@@ -607,13 +608,13 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 
   std::optional<AqlCallStack> callStack;
 
-  for (auto const it : VPackObjectIterator(slice)) {
-    auto const keySlice = it.key;
+  for (auto it : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    auto keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                     "When deserializating AqlExecuteCall: Key is not a string");
     }
-    auto const key = getStringView(keySlice);
+    auto key = getStringView(keySlice);
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {

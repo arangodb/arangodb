@@ -549,13 +549,16 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
     // Note: collections can be NoneSlice if database is already deleted.
     // But then shardMap can also be empty, so we are good.
     if (collections.isObject()) {
-      for (auto collection : VPackObjectIterator(collections)) {
+      for (auto collection :
+           VPackObjectIterator(collections, /*useSequentialIteration*/ true)) {
         TRI_ASSERT(collection.value.isObject());
-        if (!collection.value.get(SHARDS).isObject()) {
+        auto sm = collection.value.get(SHARDS);
+        if (!sm.isObject()) {
           continue;
         }
 
-        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
+        for (auto shard :
+             VPackObjectIterator(sm, /*useSequentialIteration*/ true)) {
           shardMap.add(shard.key.stringView(), shard.value);
         }
       }
@@ -884,16 +887,18 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       try {
         auto const& ldb = lit->second->slice();
         if (ldb.isObject() && pdb.isObject()) {
-          for (auto const& pcol :
-               VPackObjectIterator(pdb, true)) {  // each plan collection
+          for (auto pcol : VPackObjectIterator(
+                   pdb,
+                   /*useSequentialIteration*/ true)) {  // each plan collection
             auto const& cprops = pcol.value;
             // for each shard
             TRI_ASSERT(cprops.isObject());
-            for (auto const& shard :
-                 VPackObjectIterator(cprops.get(SHARDS))) {  // each shard
+            for (auto shard : VPackObjectIterator(
+                     cprops.get(SHARDS),
+                     /*useSequentialIteration*/ true)) {  // each shard
 
               if (shard.value.isArray()) {
-                for (auto const& dbs : VPackArrayIterator(
+                for (auto dbs : VPackArrayIterator(
                          shard.value)) {  // each dbserver with shard
                   // We only care for shards, where we find us as "serverId" or
                   // "_serverId"
@@ -930,9 +935,9 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       continue;
     }
     auto const& ldbname = lit->first;
-    auto const ldbslice = lit->second->slice();  // local collection
+    auto ldbslice = lit->second->slice();  // local collection
 
-    auto const pit = plan.find(ldbname);
+    auto pit = plan.find(ldbname);
     if (pit != plan.end()) {                    // have in plan
       auto plan = pit->second->slice()[0].get(  // plan collections
           std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS,
@@ -941,9 +946,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
         // Note that if `plan` is not an object, then `getShardMap` will simply
         // return an empty object, which is fine for `handleLocalShard`, so we
         // do not have to check anything else here.
-        for (auto const& lcol : VPackObjectIterator(ldbslice)) {
-          auto const& colname = lcol.key.copyString();
-          auto const shardMap = getShardMap(plan);  // plan shards -> servers
+        for (auto lcol :
+             VPackObjectIterator(ldbslice, /*useSequentialIteration*/ true)) {
+          auto colname = lcol.key.copyString();
+          auto shardMap = getShardMap(plan);  // plan shards -> servers
           auto rv = replicationVersion.find(dbname);
           TRI_ASSERT(rv != replicationVersion.end());
 
@@ -971,7 +977,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                               ->database(dbname)
                                               ->vec());
       if (planLogInDatabaseSlice.isObject()) {
-        for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
+        for (auto [key, value] : VPackObjectIterator(
+                 planLogInDatabaseSlice, /*useSequentialIteration*/ true)) {
           auto spec =
               velocypack::deserialize<agency::LogPlanSpecification>(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
@@ -1000,8 +1007,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                          ->database(dbname)
                                          ->vec());
       if (planStatesInDatabaseSlice.isObject()) {
-        for (auto [key, value] :
-             VPackObjectIterator(planStatesInDatabaseSlice)) {
+        for (auto [key, value] : VPackObjectIterator(
+                 planStatesInDatabaseSlice, /*useSequentialIteration*/ true)) {
           auto spec =
               velocypack::deserialize<replicated_state::agency::Plan>(value);
 
@@ -2126,11 +2133,13 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
       if (curcolls.isObject()) {
-        for (auto const& collection : VPackObjectIterator(curcolls)) {
-          auto const colName = collection.key.copyString();
+        for (auto collection :
+             VPackObjectIterator(curcolls, /*useSequentialIteration*/ true)) {
+          auto colName = collection.key.copyString();
 
           TRI_ASSERT(collection.value.isObject());
-          for (auto const& shard : VPackObjectIterator(collection.value)) {
+          for (auto shard : VPackObjectIterator(
+                   collection.value, /*useSequentialIteration*/ true)) {
             TRI_ASSERT(shard.value.isObject());
 
             if (!pdb.isObject()) {  // This database is no longer in plan,
@@ -2380,18 +2389,20 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
     }
 
     TRI_ASSERT(pdb.isObject());
-    for (auto const& pcol : VPackObjectIterator(pdb)) {
+    for (auto pcol :
+         VPackObjectIterator(pdb, /*useSequentialIteration*/ true)) {
       std::string_view colname = pcol.key.stringView();
 
       TRI_ASSERT(cdb.isObject());
-      VPackSlice const cdbcol = cdb.get(colname);
+      VPackSlice cdbcol = cdb.get(colname);
       if (!cdbcol.isObject()) {
         continue;
       }
 
       TRI_ASSERT(pcol.value.isObject());
-      for (auto const& pshrd : VPackObjectIterator(pcol.value.get(SHARDS))) {
-        std::string_view const shname = pshrd.key.stringView();
+      for (auto pshrd : VPackObjectIterator(pcol.value.get(SHARDS),
+                                            /*useSequentialIteration*/ true)) {
+        std::string_view shname = pshrd.key.stringView();
 
         // First check if the shard is locked:
         auto it = shardActionMap.find(std::string(shname));
@@ -2410,7 +2421,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
         // current stuff is created by the leader this one here will just
         // bring followers in sync so just continue here
-        VPackSlice const cshrd = cdbcol.get(shname);
+        VPackSlice cshrd = cdbcol.get(shname);
         if (!cshrd.isObject()) {
           LOG_TOPIC("402a4", DEBUG, Logger::MAINTENANCE)
               << "Shard " << shname

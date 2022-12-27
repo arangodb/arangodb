@@ -312,7 +312,8 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
       ExtractWords(words, v, minWordLength, level + 1);
     }
   } else if (value.isObject() && level == 0) {
-    for (VPackObjectIterator::ObjectPair v : VPackObjectIterator(value)) {
+    for (VPackObjectIterator::ObjectPair v :
+         VPackObjectIterator(value, /*useSequentialIteration*/ true)) {
       ExtractWords(words, v.value, minWordLength, level + 1);
     }
   }

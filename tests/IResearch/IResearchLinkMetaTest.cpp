@@ -800,8 +800,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-         ++itr) {
+    for (arangodb::velocypack::ObjectIterator itr(
+             tmpSlice, /*useSequentialIteration*/ true);
+         itr.valid(); ++itr) {
       auto key = itr.key();
       auto value = itr.value();
       EXPECT_TRUE(key.isString() &&
@@ -814,7 +815,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
       tmpSlice = value.get("fields");
 
-      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice);
+      for (arangodb::velocypack::ObjectIterator overrideItr(
+               tmpSlice, /*useSequentialIteration*/ true);
            overrideItr.valid(); ++overrideItr) {
         auto fieldOverride = overrideItr.key();
         auto sliceOverride = overrideItr.value();
@@ -838,7 +840,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
           EXPECT_EQ(5U, sliceOverride.length());
           tmpSlice = sliceOverride.get("fields");
           EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
-          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice);
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(
+                   tmpSlice, /*useSequentialIteration*/ true);
                overrideFieldItr.valid(); ++overrideFieldItr) {
             EXPECT_TRUE(
                 overrideFieldItr.key().isString() &&
@@ -923,8 +926,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-         ++itr) {
+    for (arangodb::velocypack::ObjectIterator itr(
+             tmpSlice, /*useSequentialIteration*/ true);
+         itr.valid(); ++itr) {
       auto key = itr.key();
       auto value = itr.value();
       EXPECT_TRUE(key.isString() &&
@@ -937,7 +941,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
       tmpSlice = value.get("fields");
 
-      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice);
+      for (arangodb::velocypack::ObjectIterator overrideItr(
+               tmpSlice, /*useSequentialIteration*/ true);
            overrideItr.valid(); ++overrideItr) {
         auto fieldOverride = overrideItr.key();
         auto sliceOverride = overrideItr.value();
@@ -962,7 +967,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
           EXPECT_EQ(5U, sliceOverride.length());
           tmpSlice = sliceOverride.get("fields");
           EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
-          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice);
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(
+                   tmpSlice, /*useSequentialIteration*/ true);
                overrideFieldItr.valid(); ++overrideFieldItr) {
             EXPECT_TRUE((true == overrideFieldItr.key().isString() &&
                          1 == expectedFields.erase(
@@ -1075,8 +1081,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-         ++itr) {
+    for (arangodb::velocypack::ObjectIterator itr(
+             tmpSlice, /*useSequentialIteration*/ true);
+         itr.valid(); ++itr) {
       auto key = itr.key();
       auto value = itr.value();
       EXPECT_TRUE(key.isString() &&
@@ -1089,7 +1096,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
       tmpSlice = value.get("fields");
 
-      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice);
+      for (arangodb::velocypack::ObjectIterator overrideItr(
+               tmpSlice, /*useSequentialIteration*/ true);
            overrideItr.valid(); ++overrideItr) {
         auto fieldOverride = overrideItr.key();
         auto sliceOverride = overrideItr.value();
@@ -1114,7 +1122,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
           EXPECT_EQ(5U, sliceOverride.length());
           tmpSlice = sliceOverride.get("fields");
           EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
-          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice);
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(
+                   tmpSlice, /*useSequentialIteration*/ true);
                overrideFieldItr.valid(); ++overrideFieldItr) {
             EXPECT_TRUE((true == overrideFieldItr.key().isString() &&
                          1 == expectedFields.erase(
@@ -1199,8 +1208,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
-    for (arangodb::velocypack::ObjectIterator itr(tmpSlice); itr.valid();
-         ++itr) {
+    for (arangodb::velocypack::ObjectIterator itr(
+             tmpSlice, /*useSequentialIteration*/ true);
+         itr.valid(); ++itr) {
       auto key = itr.key();
       auto value = itr.value();
       EXPECT_TRUE(key.isString() &&
@@ -1213,7 +1223,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
       tmpSlice = value.get("fields");
 
-      for (arangodb::velocypack::ObjectIterator overrideItr(tmpSlice);
+      for (arangodb::velocypack::ObjectIterator overrideItr(
+               tmpSlice, /*useSequentialIteration*/ true);
            overrideItr.valid(); ++overrideItr) {
         auto fieldOverride = overrideItr.key();
         auto sliceOverride = overrideItr.value();
@@ -1238,7 +1249,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
           EXPECT_EQ(5U, sliceOverride.length());
           tmpSlice = sliceOverride.get("fields");
           EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
-          for (arangodb::velocypack::ObjectIterator overrideFieldItr(tmpSlice);
+          for (arangodb::velocypack::ObjectIterator overrideFieldItr(
+                   tmpSlice, /*useSequentialIteration*/ true);
                overrideFieldItr.valid(); ++overrideFieldItr) {
             EXPECT_TRUE((true == overrideFieldItr.key().isString() &&
                          1 == expectedFields.erase(

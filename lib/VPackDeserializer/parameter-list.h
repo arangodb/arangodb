@@ -415,7 +415,7 @@ struct parameter_list_executor<I, K, parameter_list<>, H, FullList> {
                      typename H::state_type hints, C&&) -> unpack_result {
     if constexpr (!hints::hint_has_ignore_unknown<H>) {
       if (s.length() != K) {
-        for (auto&& pair : ObjectIterator(s)) {
+        for (auto pair : ObjectIterator(s, /*useSequentialIteration*/ true)) {
           if (!FullList::contains_name(pair.key)) {
             return unpack_result{
                 deserialize_error{"superfluous field in object: `" +

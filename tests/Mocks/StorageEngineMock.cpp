@@ -120,7 +120,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
       }
 
       std::tie(_begin, _end) = _map.equal_range(key.toString());
-      _keysIt++;
+      ++_keysIt;
       return true;
     } else {
       // Just make sure begin and end are equal

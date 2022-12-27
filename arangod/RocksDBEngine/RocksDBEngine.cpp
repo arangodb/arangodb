@@ -3053,7 +3053,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   getStatistics(stats);
   VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
-  for (auto a : VPackObjectIterator(sslice)) {
+  for (auto a : VPackObjectIterator(sslice, /*useSequentialIteration*/ true)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');

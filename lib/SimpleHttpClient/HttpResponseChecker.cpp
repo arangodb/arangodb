@@ -38,7 +38,7 @@ void HttpResponseChecker::trimPayload(VPackSlice input, VPackBuilder& output) {
   using namespace velocypack;
   if (input.isObject()) {
     output.openObject();
-    ObjectIterator it(input);
+    ObjectIterator it(input, /*useSequentialIteration*/ true);
     while (it.valid()) {
       if (it.key().stringView() != "passwd") {
         output.add(it.key());

@@ -246,8 +246,9 @@ RestStatus RestAgencyPrivHandler::execute() {
             redirectRequest(slice.get("id").copyString());
             return RestStatus::DONE;
           }
-          for (auto const& obj : VPackObjectIterator(ret->slice())) {
-            result.add(obj.key.copyString(), obj.value);
+          for (auto obj : VPackObjectIterator(
+                   ret->slice(), /*useSequentialIteration*/ true)) {
+            result.add(obj.key.stringView(), obj.value);
           }
         } catch (std::exception const& e) {
           LOG_TOPIC("d7dda", ERR, Logger::AGENCY) << e.what();

@@ -176,7 +176,8 @@ void errorCodesFromHeaders(network::Headers headers,
       return;
     }
 
-    for (auto code : VPackObjectIterator(codesSlice)) {
+    for (auto code :
+         VPackObjectIterator(codesSlice, /*useSequentialIteration*/ true)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
       auto codeNr = ErrorCode{

@@ -140,11 +140,11 @@ auto FailureOracleImpl::getStatus() -> FailureOracleFeature::Status {
 void FailureOracleImpl::reload(VPackSlice result,
                                consensus::index_t raftIndex) {
   FailureOracleFeature::FailureMap isFailed;
-  for (auto const [key, value] : VPackObjectIterator(result)) {
-    auto const serverId = key.copyString();
-    auto const isServerFailed =
+  for (auto const [key, value] :
+       VPackObjectIterator(result, /*useSequentialIteration*/ true)) {
+    auto isServerFailed =
         value.get(kHealthyServerKey).isEqualString(kServerStatusFailed);
-    isFailed[serverId] = isServerFailed;
+    isFailed[key.copyString()] = isServerFailed;
   }
   std::unique_lock writeLock(_mutex);
   if (_lastRaftIndex >= raftIndex) {

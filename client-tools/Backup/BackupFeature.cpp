@@ -248,7 +248,8 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   } else {
     LOG_TOPIC("e0356", INFO, arangodb::Logger::BACKUP)
         << "The following backups are available:";
-    for (auto const& backup : VPackObjectIterator(backups)) {
+    for (auto backup :
+         VPackObjectIterator(backups, /*useSequentialIteration*/ true)) {
       LOG_TOPIC("9e6b6", INFO, arangodb::Logger::BACKUP)
           << " - " << backup.key.copyString();
       arangodb::ResultT<arangodb::BackupMeta> meta =
@@ -550,9 +551,9 @@ arangodb::Result executeStatusQuery(
     result.reset(::ErrorMalformedJsonResponse);
     return result;
   }
-  VPackSlice const resBody = parsedBody->slice();
+  VPackSlice resBody = parsedBody->slice();
 
-  VPackSlice const resultObject = resBody.get("result");
+  VPackSlice resultObject = resBody.get("result");
   if (!resultObject.isObject()) {
     result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
     return result;
@@ -561,9 +562,10 @@ arangodb::Result executeStatusQuery(
 
   // Display status
   if (!options.abort) {
-    VPackSlice const dbserversObject = resultObject.get("DBServers");
+    VPackSlice dbserversObject = resultObject.get("DBServers");
 
-    for (auto const& server : VPackObjectIterator(dbserversObject)) {
+    for (auto server : VPackObjectIterator(dbserversObject,
+                                           /*useSequentialIteration*/ true)) {
       std::string statusMessage = server.key.copyString();
 
       if (server.value.hasKey("Status")) {
@@ -571,9 +573,8 @@ arangodb::Result executeStatusQuery(
       }
       LOG_TOPIC("24d75", INFO, arangodb::Logger::BACKUP) << statusMessage;
 
-      if (server.value.hasKey("Progress")) {
-        VPackSlice const progressSlice = server.value.get("Progress");
-
+      if (auto progressSlice = server.value.get("Progress");
+          !progressSlice.isNone()) {
         LOG_TOPIC("68cc8", INFO, arangodb::Logger::BACKUP)
             << "Last progress update " << progressSlice.get("Time").copyString()
             << ": " << progressSlice.get("Done").getInt() << "/"
@@ -592,7 +593,7 @@ arangodb::Result executeStatusQuery(
       }
     }
   } else {
-    if (resBody.hasKey("error") && resBody.get("error").getBoolean()) {
+    if (resBody.get("error").isTrue()) {
       LOG_TOPIC("f3add", ERR, arangodb::Logger::BACKUP)
           << "error: " << resBody.get("errorMessage").copyString();
     } else {

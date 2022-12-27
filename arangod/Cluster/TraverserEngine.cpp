@@ -121,7 +121,8 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
 
   // Add all Vertex shards to the transaction
   TRI_ASSERT(vertexSlice.isObject());
-  for (auto collection : VPackObjectIterator(vertexSlice)) {
+  for (auto collection :
+       VPackObjectIterator(vertexSlice, /*useSequentialIteration*/ true)) {
     std::vector<std::string> shards;
     TRI_ASSERT(collection.value.isArray());
     for (auto shard : VPackArrayIterator(collection.value)) {

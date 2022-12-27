@@ -634,7 +634,8 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     VPackObjectBuilder b(&newValue);
     // Copy all but SERVERS and FailoverCandidates.
     // They will be injected later.
-    for (auto it : VPackObjectIterator(oldValue)) {
+    for (auto it :
+         VPackObjectIterator(oldValue, /*useSequentialIteration*/ true)) {
       if (!it.key.isEqualString(maintenance::SERVERS) &&
           !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
         newValue.add(it.key);

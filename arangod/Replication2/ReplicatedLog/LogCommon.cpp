@@ -256,7 +256,8 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
       << "Expected object, found: " << s.toJson();
   auto result = QuorumSizeNotReached();
   for (auto const& [participantIdSlice, participantInfoSlice] :
-       VPackObjectIterator(s.get(WhoFieldName))) {
+       VPackObjectIterator(s.get(WhoFieldName),
+                           /*useSequentialIteration*/ true)) {
     auto const participantId = participantIdSlice.stringView();
     result.who.try_emplace(
         participantId, ParticipantInfo::fromVelocyPack(participantInfoSlice));
@@ -381,8 +382,8 @@ auto replicated_log::CommitFailReason::NonEligibleServerRequiredForQuorum::
       << "Expected string `" << NonEligibleServerRequiredForQuorumEnum
       << "`, found: " << s.stringView();
   CandidateMap candidates;
-  for (auto const& [key, value] :
-       velocypack::ObjectIterator(s.get(CandidatesFieldName))) {
+  for (auto const& [key, value] : velocypack::ObjectIterator(
+           s.get(CandidatesFieldName), /*useSequentialIteration*/ true)) {
     if (value.isEqualString(NonEligibleNotAllowedInQuorum)) {
       candidates[key.copyString()] = kNotAllowedInQuorum;
     } else if (value.isEqualString(NonEligibleWrongTerm)) {

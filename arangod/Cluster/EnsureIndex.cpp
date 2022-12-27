@@ -118,7 +118,7 @@ bool EnsureIndex::first() {
       VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(shard));
       auto const props = properties();
-      body.add(VPackObjectIterator(props));
+      body.add(VPackObjectIterator(props, /*useSequentialIteration*/ true));
     }
 
     if (_priority != maintenance::SLOW_OP_PRIORITY) {

@@ -690,7 +690,8 @@ void MockClusterServer::buildCollectionProperties(
     }
 
     if (additionalProperties.isObject()) {
-      props.add(VPackObjectIterator(additionalProperties));
+      props.add(VPackObjectIterator(additionalProperties,
+                                    /*useSequentialIteration*/ true));
     }
   }
 }

@@ -163,7 +163,8 @@ RestStatus RestPrototypeStateHandler::handlePutCompareExchange(
   }
 
   std::unordered_map<std::string, std::pair<std::string, std::string>> entries;
-  for (auto const& [key, value] : VPackObjectIterator{payload}) {
+  for (auto const& [key, value] :
+       VPackObjectIterator{payload, /*useSequentialIteration*/ true}) {
     if (key.isString() && value.isObject()) {
       if (auto oldValue{value.get("oldValue")}, newValue{value.get("newValue")};
           oldValue.isString() && newValue.isString()) {
@@ -224,7 +225,8 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
   }
 
   std::unordered_map<std::string, std::string> entries;
-  for (auto const& [key, value] : VPackObjectIterator{payload}) {
+  for (auto const& [key, value] :
+       VPackObjectIterator{payload, /*useSequentialIteration*/ true}) {
     if (key.isString() && value.isString()) {
       entries.emplace(key.copyString(), value.copyString());
     } else {

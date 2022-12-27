@@ -451,7 +451,8 @@ void RocksDBIndexFactory::prepareIndexes(
 
           from.openObject();
 
-          for (auto f : VPackObjectIterator(v)) {
+          for (auto f :
+               VPackObjectIterator(v, /*useSequentialIteration*/ true)) {
             if (f.key.stringView() == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
@@ -468,7 +469,8 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-          for (auto f : VPackObjectIterator(v)) {
+          for (auto f :
+               VPackObjectIterator(v, /*useSequentialIteration*/ true)) {
             if (f.key.stringView() == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();
@@ -504,7 +506,8 @@ void RocksDBIndexFactory::prepareIndexes(
 
         b.openObject();
 
-        for (auto const& f : VPackObjectIterator(v)) {
+        for (auto const& f :
+             VPackObjectIterator(v, /*useSequentialIteration*/ true)) {
           if (f.key.stringView() == StaticStrings::IndexId) {
             last = IndexId{last.id() + 1};
             b.add(StaticStrings::IndexId,

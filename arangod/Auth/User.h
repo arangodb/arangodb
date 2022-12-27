@@ -32,8 +32,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace auth {
+namespace arangodb::auth {
 
 /// @brief Represents a 'user' entry.
 /// It contains structures to store the access
@@ -49,9 +48,8 @@ class User {
   static User fromDocument(velocypack::Slice const&);
 
  private:
-  static void fromDocumentDatabases(auth::User&,
-                                    velocypack::Slice const& databases,
-                                    velocypack::Slice const& user);
+  static void fromDocumentDatabases(auth::User&, velocypack::Slice databases,
+                                    velocypack::Slice user);
 
  public:
   std::string const& key() const { return _key; }
@@ -165,5 +163,4 @@ class User {
   std::set<std::string> _roles;
 #endif
 };
-}  // namespace auth
-}  // namespace arangodb
+}  // namespace arangodb::auth

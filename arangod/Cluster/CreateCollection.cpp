@@ -135,7 +135,8 @@ bool CreateCollection::first() {
     VPackBuilder docket;
     {
       VPackObjectBuilder d(&docket);
-      for (auto const& i : VPackObjectIterator(props)) {
+      for (auto i :
+           VPackObjectIterator(props, /*useSequentialIteration*/ true)) {
         std::string_view key = i.key.stringView();
         if (key == StaticStrings::DataSourceId ||
             key == StaticStrings::DataSourceName ||

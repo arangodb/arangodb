@@ -191,8 +191,9 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   if (config.get("id").copyString() != myId) {
     {
       VPackObjectBuilder b(&builder);
-      for (auto const& i : VPackObjectIterator(config)) {
-        auto key = i.key.copyString();
+      for (auto i :
+           VPackObjectIterator(config, /*useSequentialIteration*/ true)) {
+        auto key = i.key.stringView();
         if (key == "endpoint") {
           builder.add(key, VPackValue(_agent->endpoint()));
         } else if (key == "id") {
@@ -743,14 +744,16 @@ VPackBuilder State::slices(index_t start, index_t end) const {
       try {  //{ "a" : {"op":"set", "ttl":20, ...}}
         auto slice = VPackSlice(_log.at(i).entry->data());
         VPackObjectBuilder o(&slices);
-        for (auto const& oper : VPackObjectIterator(slice)) {
-          slices.add(VPackValue(oper.key.copyString()));
+        for (auto oper :
+             VPackObjectIterator(slice, /*useSequentialIteration*/ false)) {
+          slices.add(VPackValue(oper.key.stringView()));
 
           if (oper.value.isObject() && oper.value.hasKey("op") &&
               oper.value.get("op").isEqualString("set") &&
               oper.value.hasKey("ttl")) {
             VPackObjectBuilder oo(&slices);
-            for (auto const& i : VPackObjectIterator(oper.value)) {
+            for (auto i : VPackObjectIterator(
+                     oper.value, /*useSequentialIteration*/ true)) {
               slices.add(i.key.stringView(), i.value);
             }
             slices.add("epoch_millis",
@@ -1807,7 +1810,8 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     // Need to remove custom attribute in _id:
     {
       VPackObjectBuilder guard(&builder);
-      for (auto const& p : VPackObjectIterator(slice)) {
+      for (auto p :
+           VPackObjectIterator(slice, /*useSequentialIteration*/ false)) {
         if (!p.key.isEqualString(StaticStrings::IdString)) {
           builder.add(p.key);
           builder.add(p.value);

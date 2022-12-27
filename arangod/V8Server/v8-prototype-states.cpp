@@ -186,7 +186,8 @@ static void JS_WriteInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, args[0], false, false);
-    for (auto const& [k, v] : VPackObjectIterator(builder.slice())) {
+    for (auto const& [k, v] : VPackObjectIterator(
+             builder.slice(), /*useSequentialIteration*/ true)) {
       kvs[k.copyString()] = v.copyString();
     }
   }

@@ -139,7 +139,8 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }
-    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(run)) {
+    for (VPackObjectIterator::ObjectPair pair :
+         VPackObjectIterator(run, /*useSequentialIteration*/ true)) {
       tasks.try_emplace(pair.key.copyString(), pair.value.getBool());
     }
   } catch (velocypack::Exception const& e) {

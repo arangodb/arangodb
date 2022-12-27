@@ -155,7 +155,8 @@ bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice) {
   }
 
   if (builder.isOpenObject() && slice.isObject()) {
-    builder.add(velocypack::ObjectIterator(slice));
+    builder.add(
+        velocypack::ObjectIterator(slice, /*useSequentialIteration*/ true));
 
     return true;
   }
@@ -170,7 +171,8 @@ bool mergeSliceSkipKeys(
     return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }
 
-  for (velocypack::ObjectIterator itr(slice); itr.valid(); ++itr) {
+  for (velocypack::ObjectIterator itr(slice, /*useSequentialIteration*/ true);
+       itr.valid(); ++itr) {
     auto key = itr.key();
     auto value = itr.value();
 

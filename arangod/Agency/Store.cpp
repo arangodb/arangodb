@@ -136,7 +136,8 @@ std::vector<apply_ret_t> Store::applyTransactions(
       for (auto const& i : VPackArrayIterator(query)) {
         if (!wmode.privileged()) {
           bool found = false;
-          for (auto const& o : VPackObjectIterator(i[0])) {
+          for (auto o :
+               VPackObjectIterator(i[0], /*useSequentialIteration*/ false)) {
             size_t pos = o.key.copyString().find(RECONFIGURE);
             if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
@@ -274,9 +275,9 @@ std::vector<bool> Store::applyLogEntries(
     VPackArrayIterator queriesIterator(queries.slice());
 
     while (queriesIterator.valid()) {
-      VPackSlice const& i = queriesIterator.value();
+      VPackSlice i = queriesIterator.value();
 
-      for (auto const& j : VPackObjectIterator(i)) {
+      for (auto j : VPackObjectIterator(i, /*useSequentialIteration*/ false)) {
         if (j.value.isObject() && j.value.hasKey("op")) {
           std::string oper = j.value.get("op").copyString();
           if (!(oper == "observe" || oper == "unobserve")) {
@@ -414,8 +415,8 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
   _storeLock.assertLockedByCurrentThread();
 
-  for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
-
+  for (auto precond : VPackObjectIterator(
+           slice, /*useSequentialIteration*/ false)) {  // Preconditions
     std::string key = precond.key.copyString();
     std::vector<std::string> pv = split(key);
 
@@ -429,8 +430,9 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
     }
 
     if (precond.value.isObject()) {
-      for (auto const& op : VPackObjectIterator(precond.value)) {
-        std::string const& oper = op.key.copyString();
+      for (auto op : VPackObjectIterator(precond.value,
+                                         /*useSequentialIteration*/ false)) {
+        std::string oper = op.key.copyString();
         if (oper == "old") {  // old
           if (*node != op.value) {
             ret.push_back(precond.key);
@@ -817,7 +819,7 @@ void Store::dumpToBuilder(Builder& builder) const {
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   _storeLock.assertLockedByCurrentThread();
 
-  auto it = VPackObjectIterator(transaction);
+  auto it = VPackObjectIterator(transaction, /*useSequentialIteration*/ false);
 
   std::vector<std::string> abskeys;
   abskeys.reserve(it.size());
@@ -957,14 +959,16 @@ Store& Store::operator=(VPackSlice const& s) {
 
     if (s.hasKey("version")) {
       TRI_ASSERT(slice[1].isObject());
-      for (auto const& entry : VPackObjectIterator(slice[1])) {
+      for (auto entry :
+           VPackObjectIterator(slice[1], /*useSequentialIteration*/ false)) {
         if (entry.value.isNumber()) {
-          auto const& key = entry.key.copyString();
+          auto key = entry.key.copyString();
           if (_node.has(key)) {
             auto tp =
                 TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
             _node.getOrCreate(key).timeToLive(tp);
-            _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+            _timeTable.emplace(
+                std::pair<TimePoint, std::string>(tp, std::move(key)));
           }
         }
       }

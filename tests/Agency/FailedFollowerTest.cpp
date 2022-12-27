@@ -202,11 +202,11 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -268,11 +268,11 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -338,11 +338,11 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -411,11 +411,11 @@ TEST_F(FailedFollowerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -472,11 +472,11 @@ TEST_F(FailedFollowerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -555,11 +555,11 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Supervision/Shards") {
@@ -618,11 +618,11 @@ TEST_F(FailedFollowerTest, successfully_started_job_should_finish_immediately) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -711,11 +711,11 @@ TEST_F(FailedFollowerTest, delayed_job_should_wait) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -758,11 +758,11 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Current/Collections/" + DATABASE) {
@@ -914,11 +914,11 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -927,12 +927,13 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
         VPackBuilder timedOutJob;
         {
           VPackObjectBuilder a(&timedOutJob);
-          for (auto it : VPackObjectIterator(todoJob.slice())) {
-            if (it.key.copyString() == "timeCreated") {
+          for (auto it : VPackObjectIterator(todoJob.slice(),
+                                             /*useSequentialIteration*/ true)) {
+            if (it.key.stringView() == "timeCreated") {
               timedOutJob.add("timeCreated",
                               VPackValue("2015-01-01T00:00:00Z"));
             } else {
-              timedOutJob.add(it.key.copyString(), it.value);
+              timedOutJob.add(it.key.stringView(), it.value);
             }
           }
         }
@@ -983,11 +984,11 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 

@@ -145,13 +145,14 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
     }
   };
 
-  for (auto const it : velocypack::ObjectIterator(slice)) {
-    auto const keySlice = it.key;
+  for (auto it :
+       velocypack::ObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    auto keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(TRI_ERROR_TYPE_ERROR,
                     "When deserializating AqlCall: Key is not a string");
     }
-    auto const key = keySlice.stringView();
+    auto key = keySlice.stringView();
 
     if (auto propIt = expectedPropertiesFound.find(key);
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {

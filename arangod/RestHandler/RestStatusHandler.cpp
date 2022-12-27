@@ -250,16 +250,19 @@ RestStatus RestStatusHandler::executeOverview() {
             std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
 
         if (planSlice.isObject()) {
-          if (planSlice.hasKey("Coordinators")) {
-            auto coordinators = planSlice.get("Coordinators");
+          if (auto coordinators = planSlice.get("Coordinators");
+              !coordinators.isNone()) {
             buffer.appendHex(static_cast<uint32_t>(
-                VPackObjectIterator(coordinators).size()));
+                VPackObjectIterator(coordinators,
+                                    /*useSequentialIteration*/ true)
+                    .size()));
             buffer.appendText("-");
           }
-          if (planSlice.hasKey("DBServers")) {
-            auto dbservers = planSlice.get("DBServers");
-            buffer.appendHex(
-                static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+          if (auto dbservers = planSlice.get("DBServers");
+              !dbservers.isNone()) {
+            buffer.appendHex(static_cast<uint32_t>(
+                VPackObjectIterator(dbservers, /*useSequentialIteration*/ true)
+                    .size()));
           }
         } else {
           buffer.appendHex(static_cast<uint32_t>(0xFFFF));

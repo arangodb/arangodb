@@ -270,8 +270,9 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
       linkDefinitions;
   std::vector<State> linkModifications;
 
-  for (velocypack::ObjectIterator linksItr(links); linksItr.valid();
-       ++linksItr) {
+  for (velocypack::ObjectIterator linksItr(links,
+                                           /*useSequentialIteration*/ true);
+       linksItr.valid(); ++linksItr) {
     auto collection = linksItr.key();
 
     if (!collection.isString()) {
@@ -803,7 +804,8 @@ namespace iresearch {
   size_t offset = 0;
   CollectionNameResolver resolver(vocbase);
 
-  for (velocypack::ObjectIterator itr(links); itr.valid(); ++itr, ++offset) {
+  for (velocypack::ObjectIterator itr(links, /*useSequentialIteration*/ true);
+       itr.valid(); ++itr, ++offset) {
     auto collectionName = itr.key();
     auto linkDefinition = itr.value();
 

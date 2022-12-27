@@ -473,7 +473,8 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         TRI_ERROR_QUERY_BAD_JSON_PLAN,
         "graph needs a translation from collection to shard names");
   }
-  for (auto const& item : VPackObjectIterator(collectionToShard)) {
+  for (auto item : VPackObjectIterator(collectionToShard,
+                                       /*useSequentialIteration*/ true)) {
     _collectionToShard.insert({item.key.copyString(), item.value.copyString()});
   }
 

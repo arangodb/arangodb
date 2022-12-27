@@ -290,11 +290,10 @@ auto replicated_log::AppendEntriesRequest::fromVelocyPack(
   auto entries = std::invoke([&] {
     auto entriesVp = velocypack::ArrayIterator(slice.get("entries"));
     auto transientEntries = EntryContainer::transient_type{};
-    std::transform(
-        entriesVp.begin(), entriesVp.end(),
-        std::back_inserter(transientEntries), [](auto const& it) {
-          return InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it));
-        });
+    for (auto it : entriesVp) {
+      transientEntries.push_back(
+          InMemoryLogEntry(PersistingLogEntry::fromVelocyPack(it)));
+    }
     return std::move(transientEntries).persistent();
   });
 

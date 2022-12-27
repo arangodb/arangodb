@@ -299,7 +299,8 @@ bool FailedLeader::start(bool& aborts) {
           pending.add("timeStarted",  // start
                       VPackValue(timepointToString(system_clock::now())));
           pending.add("toServer", VPackValue(_to));  // toServer
-          for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
+          for (auto obj : VPackObjectIterator(
+                   todo.slice()[0], /*useSequentialIteration*/ false)) {
             pending.add(obj.key.copyString(), obj.value);
           }
         }

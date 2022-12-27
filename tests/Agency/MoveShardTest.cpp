@@ -152,11 +152,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_toserver_does_not_exist) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -196,11 +197,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_servers_are_planned_followers) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -241,11 +243,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -287,11 +290,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_is_not_in_plan) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -332,11 +336,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_fromserver_does_not_exist_2) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -396,11 +401,12 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_shard_is_locked) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -437,11 +443,12 @@ TEST_F(MoveShardTest, the_job_should_remain_in_todo_if_server_is_locked) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -478,11 +485,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_target_server_was_cleaned_out) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -530,11 +538,12 @@ TEST_F(MoveShardTest, the_job_should_fail_if_the_target_server_is_failed) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -580,11 +589,12 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -629,11 +639,12 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_from_server_is_in_current) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -678,11 +689,12 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_to_server_is_in_sync) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -728,11 +740,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -778,11 +791,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -902,11 +916,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1026,11 +1041,12 @@ TEST_F(MoveShardTest, moving_from_a_follower_should_be_possible) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1094,11 +1110,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1244,11 +1261,12 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1258,8 +1276,9 @@ TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
             }
@@ -1311,7 +1330,8 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
@@ -1324,8 +1344,9 @@ TEST_F(MoveShardTest,
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob("BOGUS", SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1368,13 +1389,14 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder &&
                 !(path == "/arango/Plan/Collections/" + DATABASE &&
                   it.key.copyString() == COLLECTION)) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1384,8 +1406,9 @@ TEST_F(
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob("ANUNKNOWNCOLLECTION", SHARD_FOLLOWER1,
                                         FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1428,11 +1451,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1442,8 +1466,9 @@ TEST_F(
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1485,11 +1510,12 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1499,8 +1525,9 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1581,11 +1608,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1595,8 +1623,9 @@ TEST_F(MoveShardTest,
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1679,11 +1708,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1693,8 +1723,9 @@ TEST_F(
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1, true);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1785,11 +1816,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1799,8 +1831,9 @@ TEST_F(
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -1915,12 +1948,13 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder && it.key.copyString() != COLLECTION &&
                 path != "/arango/Current/Collections/" + DATABASE) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -1930,8 +1964,9 @@ TEST_F(
               VPackObjectBuilder b(&pendingJob);
               auto plainJob =
                   createJob(COLLECTION, SHARD_FOLLOWER1, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2132,11 +2167,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2193,11 +2229,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2294,11 +2331,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2307,8 +2345,9 @@ TEST_F(MoveShardTest,
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2425,11 +2464,12 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2438,8 +2478,9 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2490,11 +2531,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2503,8 +2545,9 @@ TEST_F(MoveShardTest,
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2560,11 +2603,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2573,8 +2617,9 @@ TEST_F(
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2670,11 +2715,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto const& it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2683,8 +2729,9 @@ TEST_F(
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto const& it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2760,11 +2807,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2773,8 +2821,9 @@ TEST_F(
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -2887,11 +2936,12 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -2900,8 +2950,9 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(
@@ -3100,11 +3151,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3205,11 +3257,12 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3273,11 +3326,12 @@ TEST_F(MoveShardTest,
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3340,11 +3394,12 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3407,11 +3462,12 @@ TEST_F(MoveShardTest, test_cancel_pending_job) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3420,8 +3476,9 @@ TEST_F(MoveShardTest, test_cancel_pending_job) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("abort", VPackValue(true));
             }
@@ -3465,11 +3522,12 @@ TEST_F(MoveShardTest, test_cancel_todo_job) {
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3478,8 +3536,9 @@ TEST_F(MoveShardTest, test_cancel_todo_job) {
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("abort", VPackValue(true));
             }
@@ -3525,11 +3584,12 @@ TEST_F(
         auto builder = std::make_unique<velocypack::Builder>();
         if (s.isObject()) {
           builder->add(VPackValue(VPackValueType::Object));
-          for (auto it : VPackObjectIterator(s)) {
+          for (auto it :
+               VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
             auto childBuilder =
                 createTestStructure(it.value, path + "/" + it.key.copyString());
             if (childBuilder) {
-              builder->add(it.key.copyString(), childBuilder->slice());
+              builder->add(it.key.stringView(), childBuilder->slice());
             }
           }
 
@@ -3538,8 +3598,9 @@ TEST_F(
             {
               VPackObjectBuilder b(&pendingJob);
               auto plainJob = createJob(COLLECTION, SHARD_LEADER, FREE_SERVER);
-              for (auto it : VPackObjectIterator(plainJob.slice())) {
-                pendingJob.add(it.key.copyString(), it.value);
+              for (auto it : VPackObjectIterator(
+                       plainJob.slice(), /*useSequentialIteration*/ true)) {
+                pendingJob.add(it.key.stringView(), it.value);
               }
               pendingJob.add("timeCreated",
                              VPackValue(timepointToString(

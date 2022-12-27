@@ -541,8 +541,9 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     if (valueSlice.isObject()) {
       // map from server UUID to endpoint
       std::unordered_map<std::string, std::string> endpoints;
-      for (auto it : VPackObjectIterator(valueSlice)) {
-        std::string const serverId = it.key.copyString();
+      for (auto it :
+           VPackObjectIterator(valueSlice, /*useSequentialIteration*/ true)) {
+        std::string serverId = it.key.copyString();
 
         if (!isUuid(serverId)) {
           continue;
@@ -676,9 +677,10 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
       return true;  // do not do anything harsh here
     }
 
-    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
+    for (auto pair :
+         VPackObjectIterator(servers, /*useSequentialIteration*/ true)) {
       if (pair.value.isObject()) {
-        std::string_view const engineName =
+        std::string_view engineName =
             _server.getFeature<EngineSelectorFeature>().engineName();
 
         VPackSlice engineStr = pair.value.get("engine");
@@ -709,7 +711,8 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
       return true;  // do not do anything harsh here
     }
 
-    for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(servers)) {
+    for (auto pair :
+         VPackObjectIterator(servers, /*useSequentialIteration*/ true)) {
       if (!pair.value.isObject()) {
         continue;
       }
@@ -726,7 +729,8 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
             << "on all coordinators and DB servers in this cluster.";
 
         std::string msg;
-        for (VPackObjectIterator::ObjectPair p : VPackObjectIterator(servers)) {
+        for (auto p :
+             VPackObjectIterator(servers, /*useSequentialIteration*/ true)) {
           if (!p.value.isObject()) {
             continue;
           }

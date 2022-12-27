@@ -479,10 +479,10 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   header.restVerb =
       static_cast<RestVerb>(headerSlice.at(3).getInt());    // rest verb
   header.path = headerSlice.at(4).copyString();             // request (path)
-  for (auto it : VPackObjectIterator(headerSlice.at(5))) {  // query params
+  for (auto it : VPackObjectIterator(headerSlice.at(5), /*useSequentialIteration*/ true)) {  // query params
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
-  for (auto it : VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
+  for (auto it : VPackObjectIterator(headerSlice.at(6), /*useSequentialIteration*/ true)) {  // meta (headers)
     std::string key = it.key.copyString();
     toLowerInPlace(key);
     header.addMeta(std::move(key), it.value.copyString());
@@ -502,7 +502,7 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     VPackSlice meta = headerSlice.at(3);
     assert(meta.isObject());
     if (meta.isObject()) {
-      for (auto it : VPackObjectIterator(meta)) {
+      for (auto it : VPackObjectIterator(meta, /*useSequentialIteration*/ true)) {
         std::string key = it.key.copyString();
         toLowerInPlace(key);
         header.addMeta(std::move(key), it.value.copyString());

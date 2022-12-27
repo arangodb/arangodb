@@ -218,7 +218,8 @@ void RocksDBBuilderIndex::toVelocyPack(
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
   builder.openObject();  // FIXME refactor RocksDBIndex::toVelocyPack !!
-  builder.add(velocypack::ObjectIterator(inner.slice()));
+  builder.add(velocypack::ObjectIterator(inner.slice(),
+                                         /*useSequentialIteration*/ true));
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     builder.add("_inprogress", VPackValue(true));
   }

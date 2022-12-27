@@ -201,11 +201,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -242,11 +242,11 @@ TEST_F(CleanOutServerTest, cleanout_server_should_wait_if_server_is_blocked) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -280,11 +280,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -322,11 +322,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -370,11 +370,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -414,11 +414,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -460,11 +460,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -507,11 +507,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -553,11 +553,11 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -649,11 +649,11 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -661,8 +661,9 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
         auto job = createJob(SERVER);
         builder->add(VPackValue(JOBID));
         builder->add(VPackValue(VPackValueType::Object));
-        for (auto const& jobIt : VPackObjectIterator(job.slice())) {
-          builder->add(jobIt.key.copyString(), jobIt.value);
+        for (auto jobIt : VPackObjectIterator(
+                 job.slice(), /*useSequentialIteration*/ true)) {
+          builder->add(jobIt.key.stringView(), jobIt.value);
         }
         builder->add("abort", VPackValue(true));
         builder->close();
@@ -737,11 +738,11 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -749,8 +750,9 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
         auto job = createJob(SERVER);
         builder->add(VPackValue(JOBID));
         builder->add(VPackValue(VPackValueType::Object));
-        for (auto const& jobIt : VPackObjectIterator(job.slice())) {
-          builder->add(jobIt.key.copyString(), jobIt.value);
+        for (auto jobIt : VPackObjectIterator(
+                 job.slice(), /*useSequentialIteration*/ true)) {
+          builder->add(jobIt.key.stringView(), jobIt.value);
         }
         builder->add("abort", VPackValue(true));
         builder->close();
@@ -794,11 +796,11 @@ TEST_F(CleanOutServerTest, when_there_are_still_subjobs_it_should_wait) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -832,11 +834,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -902,11 +904,11 @@ TEST_F(CleanOutServerTest, failed_subjob_should_also_fail_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 
@@ -946,11 +948,11 @@ TEST_F(CleanOutServerTest,
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
 

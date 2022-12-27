@@ -216,11 +216,11 @@ TEST_F(
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Supervision/Health/leader") {
@@ -292,11 +292,11 @@ TEST_F(
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Supervision/Health/leader") {
@@ -365,11 +365,11 @@ TEST_F(FailedServerTest,
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -432,11 +432,11 @@ TEST_F(FailedServerTest,
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -500,11 +500,11 @@ TEST_F(FailedServerTest, a_failed_server_test_starts_and_is_moved_to_pending) {
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -578,11 +578,11 @@ TEST_F(FailedServerTest,
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/ToDo") {
@@ -655,11 +655,11 @@ TEST_F(FailedServerTest, a_failed_server_job_is_finished) {
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s, /*useSequentialIteration*/ true)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
-          builder->add(it.key.copyString(), childBuilder->slice());
+          builder->add(it.key.stringView(), childBuilder->slice());
         }
       }
       if (path == "/arango/Target/Pending") {

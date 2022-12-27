@@ -131,7 +131,8 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
                           std::string_view restrictServer) {
   bool foundCollection = false;
 
-  for (auto it : VPackObjectIterator(databaseSlice)) {
+  for (auto it :
+       VPackObjectIterator(databaseSlice, /*useSequentialIteration*/ true)) {
     VPackSlice collection = it.value;
 
     bool hasDistributeShardsLike = false;
@@ -143,7 +144,8 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
 
     bool foundShard = false;
     VPackSlice shards = collection.get("shards");
-    for (auto pair : VPackObjectIterator(shards)) {
+    for (auto pair :
+         VPackObjectIterator(shards, /*useSequentialIteration*/ true)) {
       int i = 0;
       for (auto const& serv : VPackArrayIterator(pair.value)) {
         if (!restrictServer.empty() && serv.stringView() != restrictServer) {
@@ -184,7 +186,8 @@ void addToShardStatistics(
     arangodb::velocypack::Slice databaseSlice) {
   containers::FlatHashSet<std::string_view> serversSeenForDatabase;
 
-  for (auto it : VPackObjectIterator(databaseSlice)) {
+  for (auto it :
+       VPackObjectIterator(databaseSlice, /*useSequentialIteration*/ true)) {
     VPackSlice collection = it.value;
 
     bool hasDistributeShardsLike = false;
@@ -197,7 +200,8 @@ void addToShardStatistics(
     containers::FlatHashSet<std::string_view> serversSeenForCollection;
 
     VPackSlice shards = collection.get("shards");
-    for (auto pair : VPackObjectIterator(shards)) {
+    for (auto pair :
+         VPackObjectIterator(shards, /*useSequentialIteration*/ true)) {
       int i = 0;
       for (auto const& serv : VPackArrayIterator(pair.value)) {
         auto& stat = stats[serv.copyString()];
@@ -1142,11 +1146,13 @@ void ClusterInfo::loadPlan() {
         std::initializer_list<std::string_view> const colPath{
             AgencyCommHelper::path(), "Plan", "Collections", name};
         if (plan->slice()[0].hasKey(colPath)) {
-          for (auto const& col :
-               VPackObjectIterator(plan->slice()[0].get(colPath))) {
+          for (auto col :
+               VPackObjectIterator(plan->slice()[0].get(colPath),
+                                   /*useSequentialIteration*/ true)) {
             if (col.value.hasKey("shards")) {
-              for (auto const& shard :
-                   VPackObjectIterator(col.value.get("shards"))) {
+              for (auto shard :
+                   VPackObjectIterator(col.value.get("shards"),
+                                       /*useSequentialIteration*/ true)) {
                 auto const& shardName = shard.key.copyString();
                 newShards.erase(shardName);
                 newShardServers.erase(shardName);
@@ -1511,10 +1517,11 @@ void ClusterInfo::loadPlan() {
           if (!nps.hasKey(collectionsPath)) {  // collection gone
             collectionsPath.emplace_back("shards");
             READ_LOCKER(guard, _planProt.lock);
-            for (auto const& sh :
+            for (auto sh :
                  VPackObjectIterator(_plan.find(databaseName)
                                          ->second->slice()[0]
-                                         .get(collectionsPath))) {
+                                         .get(collectionsPath),
+                                     /*useSequentialIteration*/ true)) {
               auto const& shardId = sh.key.copyString();
               newShards.erase(shardId);
               newShardServers.erase(shardId);
@@ -1531,8 +1538,8 @@ void ClusterInfo::loadPlan() {
       }
     }
 
-    for (auto const& collectionPairSlice :
-         velocypack::ObjectIterator(collectionsSlice)) {
+    for (auto const& collectionPairSlice : velocypack::ObjectIterator(
+             collectionsSlice, /*useSequentialIteration*/ true)) {
       auto const& collectionSlice = collectionPairSlice.value;
 
       if (!collectionSlice.isObject()) {
@@ -1703,7 +1710,7 @@ void ClusterInfo::loadPlan() {
       if (!logsSlice.isNone()) {
         ReplicatedLogsMap newLogs;
         for (auto const& [idString, logSlice] :
-             VPackObjectIterator(logsSlice)) {
+             VPackObjectIterator(logsSlice, /*useSequentialIteration*/ true)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
                   velocypack::deserialize<
@@ -1720,8 +1727,8 @@ void ClusterInfo::loadPlan() {
       auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
       if (!groupsSlice.isNone()) {
         CollectionGroupMap groups;
-        for (auto const& [idString, groupSlice] :
-             VPackObjectIterator(groupsSlice)) {
+        for (auto const& [idString, groupSlice] : VPackObjectIterator(
+                 groupsSlice, /*useSequentialIteration*/ true)) {
           auto spec = std::make_shared<replication2::agency::CollectionGroup>(
               groupSlice);
           groups.emplace(spec->id, std::move(spec));
@@ -1918,11 +1925,13 @@ void ClusterInfo::loadCurrent() {
 
       if (db != nullptr) {
         if (db->slice()[0].hasKey(colPath)) {
-          auto const colsSlice = db->slice()[0].get(colPath);
+          auto colsSlice = db->slice()[0].get(colPath);
           if (colsSlice.isObject()) {
-            for (auto const cc : VPackObjectIterator(colsSlice)) {
+            for (auto cc : VPackObjectIterator(
+                     colsSlice, /*useSequentialIteration*/ true)) {
               if (cc.value.isObject()) {
-                for (auto const cs : VPackObjectIterator(cc.value)) {
+                for (auto cs : VPackObjectIterator(
+                         cc.value, /*useSequentialIteration*/ true)) {
                   newShardIds.erase(cs.key.copyString());
                 }
               }
@@ -1937,7 +1946,8 @@ void ClusterInfo::loadCurrent() {
 
     containers::FlatHashMap<ServerID, velocypack::Slice> serverList;
     if (databaseSlice.isObject()) {
-      for (auto const& serverSlicePair : VPackObjectIterator(databaseSlice)) {
+      for (auto serverSlicePair : VPackObjectIterator(
+               databaseSlice, /*useSequentialIteration*/ true)) {
         serverList.try_emplace(serverSlicePair.key.copyString(),
                                serverSlicePair.value);
       }
@@ -1984,7 +1994,8 @@ void ClusterInfo::loadCurrent() {
               cur = _current.find(databaseName)->second;
             }
             auto const cc = cur->slice()[0].get(path);
-            for (auto const& sh : VPackObjectIterator(cc)) {
+            for (auto sh :
+                 VPackObjectIterator(cc, /*useSequentialIteration*/ false)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
                 newShardIds.erase(path.back());
@@ -1997,14 +2008,15 @@ void ClusterInfo::loadCurrent() {
       }
     }
 
-    for (auto const& collectionSlice : VPackObjectIterator(databaseSlice)) {
+    for (auto collectionSlice :
+         VPackObjectIterator(databaseSlice, /*useSequentialIteration*/ false)) {
       std::string collectionName = collectionSlice.key.copyString();
 
       auto collectionDataCurrent =
           std::make_shared<CollectionInfoCurrent>(changeSet.version);
 
-      for (auto const& shardSlice :
-           velocypack::ObjectIterator(collectionSlice.value)) {
+      for (auto shardSlice : VPackObjectIterator(
+               collectionSlice.value, /*useSequentialIteration*/ false)) {
         std::string shardID = shardSlice.key.copyString();
 
         collectionDataCurrent->add(shardID, shardSlice.value);
@@ -2466,7 +2478,8 @@ Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
   containers::FlatHashSet<std::string> servers;
   ShardStatistics stats;
 
-  for (auto db : VPackObjectIterator(databasesSlice)) {
+  for (auto db :
+       VPackObjectIterator(databasesSlice, /*useSequentialIteration*/ true)) {
     addToShardStatistics(stats, servers, db.value, restrictServer);
   }
   stats.servers = servers.size();
@@ -2500,7 +2513,8 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
   containers::FlatHashSet<std::string> servers;
 
   builder.openObject();
-  for (auto db : VPackObjectIterator(databasesSlice)) {
+  for (auto db :
+       VPackObjectIterator(databasesSlice, /*useSequentialIteration*/ true)) {
     servers.clear();
     ShardStatistics stats;
     addToShardStatistics(stats, servers, db.value, restrictServer);
@@ -2538,7 +2552,8 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
     }
   }
 
-  for (auto db : VPackObjectIterator(databasesSlice)) {
+  for (auto db :
+       VPackObjectIterator(databasesSlice, /*useSequentialIteration*/ true)) {
     addToShardStatistics(stats, db.value);
   }
 
@@ -2592,12 +2607,12 @@ Result ClusterInfo::waitForDatabaseInCurrent(
           // during the creation of the database and we might not yet have
           // the latest list. Thus there could be more reports than we know
           // servers.
-          VPackObjectIterator dbs(result);
+          VPackObjectIterator dbs(result, /*useSequentialIteration*/ true);
 
           std::string tmpMsg;
           bool tmpHaveError = false;
 
-          for (VPackObjectIterator::ObjectPair dbserver : dbs) {
+          for (auto dbserver : dbs) {
             VPackSlice slice = dbserver.value;
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                     slice, StaticStrings::Error, false)) {
@@ -3196,14 +3211,15 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
-    for (auto pair : VPackObjectIterator(info.json.get("shards"))) {
+    for (auto pair : VPackObjectIterator(info.json.get("shards"),
+                                         /*useSequentialIteration*/ true)) {
       ShardID shardID = pair.key.copyString();
       std::vector<ServerID> serverIds;
 
-      for (auto const& serv : VPackArrayIterator(pair.value)) {
-        auto const sid = serv.copyString();
+      for (auto serv : VPackArrayIterator(pair.value)) {
+        auto sid = serv.copyString();
         serverIds.emplace_back(sid);
-        allServers.emplace(sid);
+        allServers.emplace(std::move(sid));
       }
       shardServers.try_emplace(std::move(shardID), std::move(serverIds));
     }
@@ -3237,7 +3253,8 @@ Result ClusterInfo::createCollectionsCoordinator(
           result.length() == static_cast<size_t>(info.numberOfShards)) {
         std::string tmpError;
 
-        for (auto const& p : VPackObjectIterator(result)) {
+        for (auto p :
+             VPackObjectIterator(result, /*useSequentialIteration*/ true)) {
           // if p contains an error number, add it to tmpError as a string
           if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                   p.value, StaticStrings::Error, false)) {
@@ -4001,7 +4018,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
   if (coll->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> stateIds;
-    for (auto pair : VPackObjectIterator(shardsSlice)) {
+    for (auto pair :
+         VPackObjectIterator(shardsSlice, /*useSequentialIteration*/ false)) {
       auto shardId = pair.key.copyString();
       stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
     }
@@ -4848,7 +4866,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                                  collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
-        resultBuilder.add(VPackObjectIterator(other));
+        resultBuilder.add(
+            VPackObjectIterator(other, /*useSequentialIteration*/ true));
         resultBuilder.add("isNewlyCreated", VPackValue(false));
       }
       return Result(TRI_ERROR_NO_ERROR);
@@ -4881,17 +4900,17 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         }
 
         size_t found = 0;
-        for (auto const& shard : VPackObjectIterator(result)) {
-          VPackSlice const slice = shard.value;
-          if (slice.hasKey("indexes")) {
-            VPackSlice const indexes = slice.get("indexes");
+        for (auto shard :
+             VPackObjectIterator(result, /*useSequentialIteration*/ false)) {
+          VPackSlice slice = shard.value;
+          if (auto indexes = slice.get("indexes"); !indexes.isNone()) {
             if (!indexes.isArray()) {
               break;  // no list, so our index is not present. we can abort
                       // searching
             }
 
             for (VPackSlice v : VPackArrayIterator(indexes)) {
-              VPackSlice const k = v.get(StaticStrings::IndexId);
+              VPackSlice k = v.get(StaticStrings::IndexId);
               if (!k.isString() || idString != k.copyString()) {
                 continue;  // this is not our index
               }
@@ -4930,13 +4949,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
   {
     VPackObjectBuilder ob(&newIndexBuilder);
     // Add the new index ignoring "id"
-    for (auto const& e : VPackObjectIterator(slice)) {
+    for (auto e : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       TRI_ASSERT(e.key.isString());
       auto key = e.key.stringView();
       if (key != StaticStrings::IndexId &&
           key != StaticStrings::IndexIsBuilding) {
-        ob->add(e.key);
-        ob->add(e.value);
+        ob->add(e.key.stringView(), e.value);
       }
     }
     if (numberOfShards > 0) {
@@ -5074,7 +5092,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         VPackBuilder finishedPlanIndex;
         {
           VPackObjectBuilder o(&finishedPlanIndex);
-          for (auto entry : VPackObjectIterator(newIndexBuilder.slice())) {
+          for (auto entry : VPackObjectIterator(
+                   newIndexBuilder.slice(), /*useSequentialIteration*/ true)) {
             auto const key = entry.key.stringView();
             // remove "isBuilding", "coordinatorId" and "rebootId", plus
             // "newlyCreated" from the final index
@@ -5124,7 +5143,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         {
           // Copy over all elements in slice.
           VPackObjectBuilder b(&resultBuilder);
-          resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
+          resultBuilder.add(VPackObjectIterator(
+              finishedPlanIndex.slice(), /*useSequentialIteration*/ true));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
         CONDITION_LOCKER(locker, agencyCallback->_cv);
@@ -5295,10 +5315,11 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
-  size_t const numberOfShards =
-      basics::VelocyPackHelper::getNumericValue<size_t>(
-          collection, StaticStrings::NumberOfShards, 1);
+  TRI_ASSERT(
+      VPackObjectIterator(collection, /*useSequentialIteration*/ true).size() >
+      0);
+  size_t numberOfShards = basics::VelocyPackHelper::getNumericValue<size_t>(
+      collection, StaticStrings::NumberOfShards, 1);
 
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
@@ -5354,7 +5375,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
           return true;
         }
 
-        VPackObjectIterator shards(current);
+        VPackObjectIterator shards(current, /*useSequentialIteration*/ false);
 
         if (shards.size() == numberOfShards) {
           bool found = false;
@@ -5528,7 +5549,8 @@ void ClusterInfo::loadServers() {
 
     containers::FlatHashSet<ServerID> serverIds;
 
-    for (auto const& res : VPackObjectIterator(serversRegistered)) {
+    for (auto res : VPackObjectIterator(serversRegistered,
+                                        /*useSequentialIteration*/ true)) {
       velocypack::Slice slice = res.value;
 
       if (slice.isObject() && slice.hasKey("endpoint")) {
@@ -5780,7 +5802,8 @@ void ClusterInfo::loadCurrentCoordinators() {
     if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
 
-      for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
+      for (auto coordinator : VPackObjectIterator(
+               currentCoordinators, /*useSequentialIteration*/ true)) {
         newCoordinators.try_emplace(coordinator.key.copyString(),
                                     coordinator.value.copyString());
       }
@@ -5829,7 +5852,8 @@ void ClusterInfo::loadCurrentMappings() {
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
 
-      for (auto const& mapping : VPackObjectIterator(mappings)) {
+      for (auto mapping :
+           VPackObjectIterator(mappings, /*useSequentialIteration*/ true)) {
         auto mapObject = mapping.value;
         if (mapObject.isObject()) {
           ServerID fullId = mapping.key.copyString();
@@ -5918,10 +5942,12 @@ void ClusterInfo::loadCurrentDBServers() {
   if (currentDBServers.isObject() && failedDBServers.isObject()) {
     decltype(_dbServers) newDBServers;
 
-    for (auto const& dbserver : VPackObjectIterator(currentDBServers)) {
+    for (auto dbserver : VPackObjectIterator(currentDBServers,
+                                             /*useSequentialIteration*/ true)) {
       bool found = false;
       if (failedDBServers.isObject()) {
-        for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
+        for (auto failedServer : VPackObjectIterator(
+                 failedDBServers, /*useSequentialIteration*/ true)) {
           if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key,
                                               false)) {
             found = true;
@@ -6977,17 +7003,16 @@ ClusterInfo::ServersKnown::ServersKnown(
     : _serversKnown() {
   TRI_ASSERT(serversKnownSlice.isNone() || serversKnownSlice.isObject());
   if (serversKnownSlice.isObject()) {
-    for (auto const it : VPackObjectIterator(serversKnownSlice)) {
-      std::string serverId = it.key.copyString();
-      VPackSlice const knownServerSlice = it.value;
+    for (auto it : VPackObjectIterator(serversKnownSlice,
+                                       /*useSequentialIteration*/ true)) {
+      VPackSlice knownServerSlice = it.value;
       TRI_ASSERT(knownServerSlice.isObject());
       if (knownServerSlice.isObject()) {
-        VPackSlice const rebootIdSlice = knownServerSlice.get("rebootId");
+        VPackSlice rebootIdSlice = knownServerSlice.get("rebootId");
         TRI_ASSERT(rebootIdSlice.isInteger());
         if (rebootIdSlice.isInteger()) {
-          auto const rebootId =
-              RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
-          _serversKnown.try_emplace(std::move(serverId), rebootId);
+          auto rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
+          _serversKnown.try_emplace(it.key.copyString(), rebootId);
         }
       }
     }

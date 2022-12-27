@@ -74,7 +74,8 @@ Report Report::fromVelocyPack(VPackSlice slice) {
   std::string msg = slice.get("msg").copyString();
   auto level = levelFromString(slice.get("level").stringView());
   ReportAnnotations annotations;
-  for (auto&& pair : VPackObjectIterator(slice.get("annotations"))) {
+  for (auto pair : VPackObjectIterator(slice.get("annotations"),
+                                       /*useSequentialIteration*/ true)) {
     VPackBuilder builder;
     builder.add(pair.value);
     annotations.emplace(pair.key.copyString(), std::move(builder));

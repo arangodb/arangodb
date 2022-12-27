@@ -2184,7 +2184,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   LOG_TOPIC("65dd8", TRACE, Logger::AGENCY)
       << "Received gossip " << slice.toJson();
-  for (auto pair : VPackObjectIterator(pslice)) {
+  for (auto pair :
+       VPackObjectIterator(pslice, /*useSequentialIteration*/ true)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
@@ -2341,7 +2342,7 @@ void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
 
   // body consists of object holding keys index, term and the observed keys
   // we'll remove observation on every key and according observer url
-  for (auto const& i : VPackObjectIterator(slice)) {
+  for (auto i : VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
     if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
       MUTEX_LOCKER(lock, _cbtLock);
       _callbackTrashBin[i.key.copyString()].emplace(url);
