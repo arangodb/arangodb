@@ -64,7 +64,6 @@
 #include <unistd.h>
 #endif
 
-
 #include "files.h"
 
 #include "Basics/Exceptions.h"

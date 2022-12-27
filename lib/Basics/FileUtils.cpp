@@ -48,7 +48,6 @@
 #endif
 #include <sys/stat.h>
 
-
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
