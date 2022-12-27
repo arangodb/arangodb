@@ -33,6 +33,9 @@ namespace arangodb::iresearch {
 
 class IResearchInvertedIndexMock final : public Index,
                                          public IResearchInvertedIndex {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchInvertedIndexMock(
       IndexId iid, arangodb::LogicalCollection& collection,

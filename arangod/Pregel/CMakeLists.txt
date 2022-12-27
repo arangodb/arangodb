@@ -16,7 +16,7 @@ add_library(arango_pregel STATIC
   WorkerConfig.cpp)
 
 target_link_libraries(arango_pregel
-	arango
+  arango
   arango_agency
   boost_boost
   boost_system)
