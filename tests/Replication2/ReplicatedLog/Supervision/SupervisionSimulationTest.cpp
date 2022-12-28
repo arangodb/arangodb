@@ -433,7 +433,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_config) {
 
   auto result =
       Engine::run(driver, allTests, initState,
-                  {.iterations = 20000, .seed = this->seed(ADB_HERE)});
+                  {.iterations = 2000, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
   //  std::cout << result.stats << std::endl;
 }
@@ -497,7 +497,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
   //
   auto result =
       Engine::run(driver, allTests, initState,
-                  {.iterations = 20000, .seed = this->seed(ADB_HERE)});
+                  {.iterations = 2000, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
   // std::cout << result.stats << std::endl;
 }
