@@ -425,8 +425,7 @@ struct arangodb::VocBaseLogManager {
             fu2::unique_function<void(bool canceled)> handler) noexcept
             -> WorkItemHandle override {
           auto handle = SchedulerFeature::SCHEDULER->queueDelayed(
-              name, RequestLane::CLUSTER_INTERNAL, delay,
-              std::move(handler));
+              name, RequestLane::CLUSTER_INTERNAL, delay, std::move(handler));
           struct MyWorkItem : WorkItem {
             explicit MyWorkItem(Scheduler::WorkHandle handle)
                 : handle(handle) {}
