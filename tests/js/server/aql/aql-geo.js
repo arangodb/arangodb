@@ -1045,8 +1045,10 @@ function searchAliasGeoSuite() {
   return suite;
 }
 
+/*
 jsunity.run(arangoSearchGeoSuite);
 jsunity.run(searchAliasGeoSuite);
+*/
 
 
 return jsunity.done();
