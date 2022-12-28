@@ -33,7 +33,7 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   explicit RocksDBTrxBaseMethods(RocksDBTransactionState*,
                                  rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxBaseMethods();
+  ~RocksDBTrxBaseMethods() override;
 
   virtual bool isIndexingDisabled() const final override {
     return _indexingDisabled;
@@ -101,7 +101,8 @@ class RocksDBTrxBaseMethods : public RocksDBTransactionMethods {
   /// @brief create a new rocksdb transaction
   virtual void createTransaction();
 
-  arangodb::Result doCommit();
+  Result doCommit();
+  Result doCommitImpl();
 
   rocksdb::TransactionDB* _db{nullptr};
 

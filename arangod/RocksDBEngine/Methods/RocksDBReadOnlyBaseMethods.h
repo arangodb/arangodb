@@ -36,7 +36,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
                                       rocksdb::TransactionDB* db);
 
-  ~RocksDBReadOnlyBaseMethods();
+  ~RocksDBReadOnlyBaseMethods() override;
 
   bool ensureSnapshot() override;
 
