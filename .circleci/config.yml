@@ -101,6 +101,7 @@ workflows:
       - run-gtest-executable-linux:
           name: replication 2 pure tests
           executable: 'build/community-developer/bin/arangodbtests_replication2_pure'
-          filter: '.*'
+          filter: '*'
+          size: medium
           requires:
             - build replication2 test pure
