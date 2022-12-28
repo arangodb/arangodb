@@ -1208,8 +1208,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  auto res = geo::json::parseRegion(mat1.slice(p1, true), outer,
-                                    /*legacy=*/false);
+  auto res = geo::json::parseRegion(mat1.slice(p1, true), outer);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1228,8 +1227,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
     res = geo::json::parseCoordinates<true>(mat2.slice(p2, true), inner,
                                             /*geoJson=*/true);
   } else {
-    res = geo::json::parseRegion(mat2.slice(p2, true), inner,
-                                 /*legacy=*/false);
+    res = geo::json::parseRegion(mat2.slice(p2, true), inner);
   }
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -1351,8 +1349,7 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
     return geo::json::parseCoordinates<true>(mat.slice(value, true), shape,
                                              /*geoJson=*/true);
   }
-  return geo::json::parseRegion(mat.slice(value, true), shape,
-                                /*legacy=*/false);
+  return geo::json::parseRegion(mat.slice(value, true), shape);
 }
 
 irs::string_ref getFunctionName(const AstNode& node) {
@@ -6001,10 +5998,8 @@ AqlValue Functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  auto res1 = geo::json::parseRegion(mat1.slice(p1, true), first,
-                                     /*legacy=*/false);
-  auto res2 = geo::json::parseRegion(mat2.slice(p2, true), second,
-                                     /*legacy=*/false);
+  auto res1 = geo::json::parseRegion(mat1.slice(p1, true), first);
+  auto res2 = geo::json::parseRegion(mat2.slice(p2, true), second);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6031,8 +6026,7 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  auto res = geo::json::parseRegion(mat.slice(p1, true), shape,
-                                    /*legacy=*/false);
+  auto res = geo::json::parseRegion(mat.slice(p1, true), shape);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);
@@ -6259,14 +6253,6 @@ AqlValue Functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // coordinates
   builder->close();  // object
 
-  // Now actually parse the result with S2:
-  S2Polygon polygon;
-  res = geo::json::parsePolygon(builder->slice(), polygon);
-  if (res.fail()) {
-    registerWarning(expressionContext, "GEO_POLYGON", res);
-    return AqlValue(AqlValueHintNull());
-  }
-
   return AqlValue(builder->slice(), builder->size());
 }
 
@@ -6341,14 +6327,6 @@ AqlValue Functions::GeoMultiPolygon(ExpressionContext* expressionContext,
 
   builder->close();
   builder->close();
-
-  // Now actually parse the result with S2:
-  S2Polygon polygon;
-  auto res = geo::json::parseMultiPolygon(builder->slice(), polygon);
-  if (res.fail()) {
-    registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
-    return AqlValue(AqlValueHintNull());
-  }
 
   return AqlValue(builder->slice(), builder->size());
 }

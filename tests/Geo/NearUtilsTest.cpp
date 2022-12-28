@@ -444,7 +444,7 @@ TEST_F(QueryPointsContainedInTest, polygon) {
   auto polygon = createBuilder(R"=({"type": "Polygon", "coordinates":
                                  [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
 
-  auto r = geo::json::parseRegion(polygon->slice(), params.filterShape, false);
+  auto r = geo::json::parseRegion(polygon->slice(), params.filterShape);
   ASSERT_TRUE(r.ok()) << r.errorMessage();
   params.filterShape.updateBounds(params);
 
@@ -462,7 +462,7 @@ TEST_F(QueryPointsContainedInTest, polygon) {
 TEST_F(QueryPointsContainedInTest, rectangle) {
   auto rect = createBuilder(
       R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
-  auto r = geo::json::parseRegion(rect->slice(), params.filterShape, false);
+  auto r = geo::json::parseRegion(rect->slice(), params.filterShape);
   ASSERT_TRUE(r.ok()) << r.errorMessage();
   ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_POLYGON);
   params.filterShape.updateBounds(params);

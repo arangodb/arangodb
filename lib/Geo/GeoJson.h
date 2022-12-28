@@ -140,7 +140,7 @@ Result parseMultiLinestring(velocypack::Slice vpack, S2MultiPolyline& region);
 ///   "type": "Polygon",
 ///   "coordinates": [
 ///     [[lon0, lat0], [lon1, lat1], [lon2, lat2], [lon3, lat3], ...], ...
-Result parsePolygon(velocypack::Slice vpack, S2Polygon& region);
+Result parsePolygon(velocypack::Slice vpack, ShapeContainer& region);
 
 /// @brief Expects an GeoJson MultiPolygon:
 /// Each loop should be closed, so should contains at least four points
@@ -153,12 +153,11 @@ Result parsePolygon(velocypack::Slice vpack, S2Polygon& region);
 Result parseMultiPolygon(velocypack::Slice vpack, S2Polygon& region);
 
 /// @brief Convenience function to build a region from a GeoJson type.
-Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
-                   bool legacy);
+Result parseRegion(velocypack::Slice vpack, ShapeContainer& region);
 
 template<bool Validation>
 Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
-                   std::vector<S2Point>& cache, bool legacy);
+                   std::vector<S2Point>& cache);
 
 template<bool Validation>
 Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,

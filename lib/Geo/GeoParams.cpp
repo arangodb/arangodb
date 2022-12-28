@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Geo/GeoParams.h"
+#include "Basics/StringUtils.h"
 
 #include <s2/s2earth.h>
 #include <s2/s2metrics.h>
@@ -29,8 +30,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include <absl/strings/str_cat.h>
 
 namespace arangodb::geo {
 
@@ -84,7 +83,7 @@ double QueryParams::maxDistanceRad() const noexcept {
 
 std::string QueryParams::toString() const {
   auto t = [](bool x) -> std::string_view { return x ? "true" : "false"; };
-  return absl::StrCat(  // clang-format off
+  return basics::StringUtils::concatT(  // clang-format off
      "minDistance: ", minDistance,
     " incl: ", t(minInclusive),
     " maxDistance: ", maxDistance,

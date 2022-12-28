@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Assertions/Assert.h"
+#include "Basics/debugging.h"
 #include "Geo/ShapeContainer.h"
 
 #include <s2/s2latlng.h>

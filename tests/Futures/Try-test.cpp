@@ -23,6 +23,8 @@
 
 #include "Futures/Try.h"
 
+#include <memory>
+
 #include "gtest/gtest.h"
 
 using namespace arangodb::futures;

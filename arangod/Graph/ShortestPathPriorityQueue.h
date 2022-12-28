@@ -25,6 +25,7 @@
 
 #include <deque>
 #include <unordered_map>
+#include <memory>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"

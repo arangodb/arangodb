@@ -45,7 +45,7 @@ namespace rect {
 // only used in legacy situations
 
 static S2Polygon toPolygon(S2LatLngRect const& rect) {
-  std::array<S2Point, 4> v{
+  std::vector<S2Point> v{
       rect.GetVertex(0).ToPoint(), rect.GetVertex(1).ToPoint(),
       rect.GetVertex(2).ToPoint(), rect.GetVertex(3).ToPoint()};
   auto loop = std::make_unique<S2Loop>(v, S2Debug::DISABLE);
@@ -53,8 +53,8 @@ static S2Polygon toPolygon(S2LatLngRect const& rect) {
 }
 
 static bool contains(S2LatLngRect const& rect, S2Polyline const& polyline) {
-  for (auto const& point : polyline.vertices_span()) {
-    if (!rect.Contains(point)) {
+  for (int k = 0, num = polyline.num_vertices(); k < num; ++k) {
+    if (!rect.Contains(polyline.vertex(k))) {
       return false;
     }
   }
@@ -201,6 +201,10 @@ bool intersectsHelper(S2Region const& r1, S2Region const& r2) {
   auto const& rhs = basics::downCast<R2>(r2);
   if constexpr (std::is_same_v<R1, S2PointRegion>) {
     return rhs.Contains(lhs.point());
+  } else if constexpr (std::is_same_v<R1, R2> &&
+                       (std::is_same_v<R1, S2Polygon> ||
+                        std::is_same_v<R1, S2Polyline>)) {
+    return rhs.Intersects(&lhs);
   } else {
     return rhs.Intersects(lhs);
   }
@@ -373,7 +377,7 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
     case binOpCase(Type::S2_POLYGON, Type::S2_POLYGON): {
       auto const& lhs = basics::downCast<S2Polygon>(*_data);
       auto const& rhs = basics::downCast<S2Polygon>(*other._data);
-      return lhs.Contains(rhs);
+      return lhs.Contains(&rhs);
     }
 
     case binOpCase(Type::S2_POLYLINE, Type::S2_POINT):
@@ -502,7 +506,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
     case Type::S2_POLYLINE: {
       auto const& lhs = basics::downCast<S2Polyline>(*_data);
       auto const& rhs = basics::downCast<S2Polyline>(*other._data);
-      return lhs.Equals(rhs);
+      return lhs.Equals(&rhs);
     }
     case Type::S2_LATLNGRECT: {
       auto const& lhs = basics::downCast<S2LatLngRect>(*_data);
@@ -512,7 +516,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
     case Type::S2_POLYGON: {
       auto const& lhs = basics::downCast<S2Polygon>(*_data);
       auto const& rhs = basics::downCast<S2Polygon>(*other._data);
-      return lhs.Equals(rhs);
+      return lhs.Equals(&rhs);
     }
     case Type::S2_MULTIPOINT: {
       auto const& lhs = basics::downCast<S2MultiPointRegion>(*_data);
@@ -613,8 +617,8 @@ double ShapeContainer::area(Ellipsoid const& e) const {
         geod_polygon_init(&p, 0);
 
         auto const* loop = data.loop(k);
-        for (auto const& vertex : loop->vertices_span()) {
-          S2LatLng latLng{vertex};
+        for (int i = 0, num = loop->num_vertices(); i < num; ++i) {
+          S2LatLng latLng{loop->vertex(i)};
           geod_polygon_addpoint(&g, &p, latLng.lat().degrees(),
                                 latLng.lng().degrees());
         }

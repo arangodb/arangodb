@@ -40,8 +40,6 @@
 #include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
 
-#include <iostream>
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -123,7 +121,7 @@ TEST_F(ShapeContainerTest, valid_point_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POINT, shape.type());
@@ -193,7 +191,7 @@ TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOINT, shape.type());
@@ -275,7 +273,7 @@ TEST_F(ShapeContainerTest, valid_linestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYLINE, shape.type());
@@ -372,7 +370,7 @@ TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_MULTIPOLYLINE, shape.type());
@@ -444,7 +442,7 @@ TEST_F(ShapeContainerTest, valid_polygon_as_region) {
   }
   VPackSlice vpack = builder.slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // properties match
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
@@ -501,52 +499,40 @@ TEST_F(ShapeContainerTest, polygon_area_test) {
   auto builder = VPackParser::fromJson(json);
   VPackSlice vpack = builder->slice();
 
-  ASSERT_TRUE(json::parseRegion(vpack, shape, false).ok());
+  ASSERT_TRUE(json::parseRegion(vpack, shape).ok());
 
   // tolerance 50.000 km^2 vs 7.692.000 km^2 total
   ASSERT_NEAR(shape.area(geo::SPHERE), 7800367402432, 50000000000);
   ASSERT_NEAR(shape.area(geo::WGS84_ELLIPSOID), 7800367402432, 50000000000);
 }
 
-using namespace arangodb::tests;
-
 TEST_F(ShapeContainerTest, compare_new_legacy) {
   // Check that legacy parsing detects LngLatRects and new style finds .
   // a polygon Also check containment of a point to make sure          .
-  auto poly = R"({
+  auto poly = VPackParser::fromJson(R"({
     "type": "Polygon",
     "coordinates": [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]
-  })"_vpack;
+  })");
   VPackSlice polyS = velocypack::Slice(poly->data());
-  Result res = json::parseRegion(polyS, shape, false);
-  ASSERT_TRUE(res.ok());
-  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
-  S2Point point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
-  ASSERT_FALSE(shape.contains(point));
-
-  res = json::parseRegion(polyS, shape, true);
+  Result res = json::parseRegion(polyS, shape);
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(ShapeType::S2_LATLNGRECT, shape.type());
+  S2Point point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
   ASSERT_TRUE(shape.contains(point));
 
   // Check that legacy parsing normalizes polygons whereas new style allows
   // for polygons covering more than half of the world:
-  poly = R"({
+  poly = VPackParser::fromJson(R"({
     "type": "Polygon",
     "coordinates": [[[10, 10], [15, 15], [20, 10], [15, 5], [10, 10]]]
-  })"_vpack;
+  })");
   // This polygon contains what is to the left of the polyline, which is
   // the complement of a small shape around [15, 10]!
   polyS = velocypack::Slice(poly->data());
-  res = json::parseRegion(polyS, shape, false);
+  res = json::parseRegion(polyS, shape);
   ASSERT_TRUE(res.ok());
   ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
   point = S2LatLng::FromDegrees(10.0, 15.0).ToPoint();
-  ASSERT_FALSE(shape.contains(point));
-
-  res = json::parseRegion(polyS, shape, true);
-  ASSERT_TRUE(res.ok());
-  ASSERT_EQ(ShapeType::S2_POLYGON, shape.type());
   ASSERT_TRUE(shape.contains(point));
 }
 
@@ -570,28 +556,28 @@ class ShapeContainerTest2 : public ::testing::Test {
       { "type": "Point",
       "coordinates": [ 6.537, 50.332 ]
       })=");
-    json::parseRegion(builder->slice(), point, false);
+    json::parseRegion(builder->slice(), point);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiPoint",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    json::parseRegion(builder->slice(), multipoint, false);
+    json::parseRegion(builder->slice(), multipoint);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ]
       })=");
-    json::parseRegion(builder->slice(), line, false);
+    json::parseRegion(builder->slice(), line);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiLineString",
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
                          [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ]
       })=");
-    json::parseRegion(builder->slice(), multiline, false);
+    json::parseRegion(builder->slice(), multiline);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,52], [6,51], [6,50] ] ]
       })=");
-    json::parseRegion(builder->slice(), poly, false);
+    json::parseRegion(builder->slice(), poly);
     // Note that internally, a multipolygon is just a special polygon with
     // holes, which could have been initialized as polygon, too!
     builder = VPackParser::fromJson(R"=(
@@ -600,57 +586,57 @@ class ShapeContainerTest2 : public ::testing::Test {
                              [6.501,51], [6.501,50] ] ],
                          [ [ [6,50], [6.5,50], [6.5,51], [6,51], [6,50] ] ] ]
       })=");
-    json::parseRegion(builder->slice(), multipoly, false);
+    json::parseRegion(builder->slice(), multipoly);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [6,50], [7.5,50], [7.5,51], [6,51], [6,50] ] ]
       })=");
-    json::parseRegion(builder->slice(), rect, false);
+    json::parseRegion(builder->slice(), rect);
     builder = VPackParser::fromJson(R"=(
       { "type": "LineString",
         "coordinates": [ [ 5.437, 50.332 ], [ 7.537, 50.376 ] ]
       })=");
-    json::parseRegion(builder->slice(), line2, false);
+    json::parseRegion(builder->slice(), line2);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.0,4.0], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), rects[0], false);
+    json::parseRegion(builder->slice(), rects[0]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.0,3.0], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), rects[1], false);
+    json::parseRegion(builder->slice(), rects[1]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.0,5.0], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), rects[2], false);
+    json::parseRegion(builder->slice(), rects[2]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.0,8.0], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), rects[3], false);
+    json::parseRegion(builder->slice(), rects[3]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [1.0,1.0], [4.0,1.0], [4.1,4.1], [1.0,4.0], [1.0,1.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), nearly[0], false);
+    json::parseRegion(builder->slice(), nearly[0]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [3.0,2.0], [3.1,3.1], [2.0,3.0], [2.0,2.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), nearly[1], false);
+    json::parseRegion(builder->slice(), nearly[1]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [2.0,2.0], [5.0,2.0], [5.1,5.1], [2.0,5.0], [2.0,2.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), nearly[2], false);
+    json::parseRegion(builder->slice(), nearly[2]);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [7.0,7.0], [8.0,7.0], [8.1,8.1], [7.0,8.0], [7.0,7.0] ] ]
       })=");
-    json::parseRegion(builder->slice(), nearly[3], false);
+    json::parseRegion(builder->slice(), nearly[3]);
   }
 };
 
@@ -792,18 +778,18 @@ class ShapeContainerTest3 : public ::testing::Test {
       { "type": "LineString",
         "coordinates": [ [ 5, 5 ], [ 6, 6 ] ]
       })=");
-    json::parseRegion(builder->slice(), line, false);
+    json::parseRegion(builder->slice(), line);
     builder = VPackParser::fromJson(R"=(
       { "type": "MultiLineString",
         "coordinates": [ [ [ 5, 5 ], [ 6, 6 ] ],
                          [ [ 7, 7 ], [ 8, 8 ] ] ]
       })=");
-    json::parseRegion(builder->slice(), multiline, false);
+    json::parseRegion(builder->slice(), multiline);
     builder = VPackParser::fromJson(R"=(
       { "type": "Polygon",
         "coordinates": [ [ [0,0], [10,0], [10,10], [0,10], [0,0] ] ]
       })=");
-    json::parseRegion(builder->slice(), poly, false);
+    json::parseRegion(builder->slice(), poly);
   }
 };
 
@@ -811,5 +797,6 @@ TEST_F(ShapeContainerTest3, contains) {
   ASSERT_TRUE(poly.contains(line));
   ASSERT_TRUE(poly.contains(multiline));
 }
+
 }  // namespace geo
 }  // namespace arangodb

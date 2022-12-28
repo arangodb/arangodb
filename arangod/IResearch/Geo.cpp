@@ -48,8 +48,7 @@ bool parseShape(velocypack::Slice vpack, geo::ShapeContainer& region,
       region.reset(latLng.ToPoint());
     }
   } else {
-    r = geo::json::parseRegion<p != Parsing::FromIndex>(vpack, region, cache,
-                                                        /*legacy=*/false);
+    r = geo::json::parseRegion<p != Parsing::FromIndex>(vpack, region, cache);
   }
   if (p != Parsing::FromIndex && r.fail()) {
     LOG_TOPIC("4549c", DEBUG, TOPIC)

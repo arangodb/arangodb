@@ -91,7 +91,7 @@ Result Index::indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                                           centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::json::parseRegion(loc, shape, _legacyPolygons);
+    Result r = geo::json::parseRegion(loc, shape);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(coverer);
@@ -130,7 +130,7 @@ Result Index::shape(velocypack::Slice doc, geo::ShapeContainer& shape) const {
     if (loc.isArray()) {
       return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/true);
     }
-    return geo::json::parseRegion(loc, shape, _legacyPolygons);
+    return geo::json::parseRegion(loc, shape);
   } else if (_variant == Variant::COMBINED_LAT_LON) {
     auto loc = doc.get(_location);
     return geo::json::parseCoordinates<true>(loc, shape, /*geoJson=*/false);
@@ -184,7 +184,7 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
     if (json.isArray()) {
       res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
     } else {
-      res = geo::json::parseRegion(json, shape, legacy);
+      res = geo::json::parseRegion(json, shape);
     }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -239,7 +239,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
-      auto res = geo::json::parseRegion(bb.slice(), qp.filterShape, legacy);
+      auto res = geo::json::parseRegion(bb.slice(), qp.filterShape);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }

@@ -57,8 +57,8 @@ S2Cap S2MultiPolyline::GetCapBound() const {
 S2LatLngRect S2MultiPolyline::GetRectBound() const {
   S2LatLngRectBounder bounder;
   for (auto const& polyline : _impl) {
-    for (auto const& point : polyline.vertices_span()) {
-      bounder.AddPoint(point);
+    for (int k = 0, num = polyline.num_vertices(); k < num; ++k) {
+      bounder.AddPoint(polyline.vertex(k));
     }
   }
   return bounder.GetBound();

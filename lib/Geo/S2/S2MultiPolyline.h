@@ -49,8 +49,16 @@ class S2MultiPolyline final : public S2Region {
         if (rect::intersects(other, line)) {
           return true;
         }
-      } else if (other.Intersects(line)) {
-        return true;
+      } else {
+        if constexpr (std::is_same_v<Region, S2Polyline>) {
+          if (other.Intersects(&line)) {
+            return true;
+          }
+        } else {
+          if (other.Intersects(line)) {
+            return true;
+          }
+        }
       }
     }
     return false;

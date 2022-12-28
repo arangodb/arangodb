@@ -36,6 +36,9 @@
 
 #include "utils/string_utils.hpp"
 
+#include <s2/s2latlng.h>
+#include <s2/s2region.h>
+
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -235,7 +238,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
       auto doc = insertedDocs.begin();
       arangodb::geo::ShapeContainer shape;
       for (; it->next(); ++doc) {
-        ASSERT_TRUE(arangodb::geo::geojson::parseRegion(
+        ASSERT_TRUE(arangodb::geo::json::parseRegion(
                         doc->slice().get("geometry"), shape)
                         .ok());
         S2LatLng const centroid(shape.centroid());
@@ -625,14 +628,7 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
+    ASSERT_EQ(0, slice.length());
   }
 
   {
