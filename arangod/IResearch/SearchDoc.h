@@ -27,15 +27,23 @@
 #include <span>
 
 #include "Aql/AqlValue.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct sub_reader;
 
 }
 
+namespace arangodb {
+class StorageSnapshot;
+}
+
 namespace arangodb::iresearch {
+
+// FIXME (Dronplane) move all using to some common header and have all forward decls/includes there
+using ViewSegment = std::tuple<DataSourceId, ::irs::sub_reader const*, StorageSnapshot const&>;
 
 constexpr size_t kSearchDocBufSize = sizeof(size_t) + sizeof(irs::doc_id_t);
 
@@ -53,10 +61,10 @@ class SearchDoc {
 
   constexpr SearchDoc() = default;
 
-  SearchDoc(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept
+  SearchDoc(ViewSegment const& segment, irs::doc_id_t doc) noexcept
       : _segment{&segment}, _doc{doc} {}
 
-  irs::sub_reader const* segment() const noexcept { return _segment; }
+  ViewSegment const* segment() const noexcept { return _segment; }
 
   irs::doc_id_t doc() const noexcept { return _doc; }
 
@@ -79,7 +87,7 @@ class SearchDoc {
   }
 
  private:
-  irs::sub_reader const* _segment{};
+  ViewSegment const* _segment{};
   irs::doc_id_t _doc{irs::doc_limits::invalid()};
 };
 

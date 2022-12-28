@@ -72,6 +72,11 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return std::get<2>(_segments[i]);
   }
 
+  [[nodiscard]] ViewSegment const& segment(
+    std::size_t i) const noexcept final {
+    return _segments[i];
+  }
+
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
   std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
@@ -111,12 +116,12 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   for (size_t i = 0; i != _links.size(); ++i) {
     auto const cid = _links[i]->index().collection().id();
     auto const& reader = _readers[i];
-    auto const& snapshot = _readers[i]->_snapshot;
-    for (auto const& segment : reader) {
+    auto const& snapshot = reader->_snapshot;
+    for (auto const& segment : reader->_reader) {
       _segments.emplace_back(cid, &segment, *snapshot.get());
     }
-    _live_docs_count += reader.live_docs_count();
-    _docs_count += reader.docs_count();
+    _live_docs_count += reader->_reader.live_docs_count();
+    _docs_count += reader->_reader.docs_count();
     _hasNestedFields |= _links[i]->hasNestedFields();
   }
 }

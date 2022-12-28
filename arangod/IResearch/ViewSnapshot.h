@@ -43,15 +43,15 @@ class Methods;
 }  // namespace transaction
 namespace iresearch {
 
+using ViewSegment = std::tuple<DataSourceId, irs::sub_reader const*, StorageSnapshot const&>;
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
 //////////////////////////////////////////////////////////////////////////////
 class ViewSnapshot : public irs::index_reader {
  public:
   using Links = std::vector<LinkLock>;
-  using Segments =
-      std::vector<std::tuple<DataSourceId, irs::sub_reader const*,
-                             StorageSnapshot const&>>;
+  using Segments = std::vector<ViewSegment>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -70,6 +70,8 @@ class ViewSnapshot : public irs::index_reader {
   [[nodiscard]] std::uint64_t docs_count() const noexcept final {
     return _docs_count;
   }
+
+  [[nodiscard]] virtual ViewSegment const& segment(std::size_t i) const noexcept = 0;
 
  protected:
   std::uint64_t _live_docs_count = 0;
@@ -107,11 +109,16 @@ class ViewSnapshotView final : public ViewSnapshot {
   [[nodiscard]] StorageSnapshot const& snapshot(
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return std::get<2>(_segments[i]);
+    return (std::get<2>(_segments[i]));
   }
 
   [[nodiscard]] std::size_t size() const noexcept final {
     return _segments.size();
+  }
+
+  ViewSegment const& segment(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i];
   }
 
  private:

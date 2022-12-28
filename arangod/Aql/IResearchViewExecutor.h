@@ -36,7 +36,6 @@
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/SearchDoc.h"
-#include "IResearch/SnapshotDoc.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
@@ -211,6 +210,11 @@ struct FilterCtx final : irs::attribute_provider {
       _execCtx;  // expression execution context
 };               // FilterCtx
 
+// LateMater: storing LocDocIds as invalid()
+// For MultiMaterializerNode-> DocIdReg = SearchDoc
+// CollectionPtr May be dropped as SearchDoc contains Cid! But needs caching to avoid multiple access rights check!
+// Adding buffering for LateMaterializeExecutor!
+
 template<typename ValueType, bool>
 class IndexReadBuffer;
 
@@ -280,7 +284,7 @@ class IndexReadBuffer {
   void pushValue(StorageSnapshot const& snapshot,
                  Args&&... args);
 
-  void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
+  void pushSearchDoc(iresearch::ViewSegment const& segment, irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
@@ -535,7 +539,8 @@ class IResearchViewExecutorBase {
   template<iresearch::MaterializeType t =
                iresearch::MaterializeType::LateMaterialize,
            typename E = enabled_for_materialize_type_t<t>>
-  bool writeLocalDocumentId(ReadContext& ctx, iresearch::SnapshotDoc const& doc);
+  bool writeLocalDocumentId(LogicalCollection const& collection,
+                            ReadContext& ctx, iresearch::SearchDoc const& doc);
 
   void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);

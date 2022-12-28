@@ -26,11 +26,27 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "IResearch/SearchDoc.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 
+#include "IResearch/IResearchDocument.h"
+#include <formats/formats.hpp>
+#include <index/index_reader.hpp>
+#include <search/boolean_filter.hpp>
+
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+// TODO Make it common!
+inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
+  auto const* reader = segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
+
+  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
+}
+
+} // namespace
 
 template<typename T>
 arangodb::IndexIterator::DocumentCallback
@@ -118,14 +134,35 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
       }
     }
 
-    // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-    written =
-        collection->getPhysical()
-            ->read(&_trx,
-                   LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                   callback, ReadOwnWrites::no)
-            .ok();
-
+    if constexpr (std::is_same<T, std::string const&>::value) {
+      // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
+      written =
+          collection->getPhysical()
+              ->read(
+                  &_trx,
+                  LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
+                  callback, ReadOwnWrites::no)
+              .ok();
+    } else {
+      auto const buf = input.getValue(docRegId).slice().stringView();
+      auto searchDoc = iresearch::SearchDoc::decode(buf);
+      // FIXME: Make this buffered!
+      auto pkReader = ::pkColumn(*std::get<1>(*searchDoc.segment()));
+      TRI_ASSERT(pkReader);
+      std::cout << "Got IRS doc:" << searchDoc.doc() << std::endl;
+      pkReader->seek(searchDoc.doc());
+      irs::payload const* docValue = irs::get<irs::payload>(*pkReader);
+      LocalDocumentId documentId;
+      arangodb::iresearch::DocumentPrimaryKey::read(documentId, docValue->value);
+      std::cout << "LocalDoc:" << documentId << std::endl;
+      // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
+      written =
+          collection->getPhysical()
+              ->readFromSnapshot(
+                  &_trx, documentId, callback, ReadOwnWrites::no,
+                  std::get<2>(*searchDoc.segment()))
+              .ok();
+    }
     if (written) {
       // document found
       output.advanceRow();

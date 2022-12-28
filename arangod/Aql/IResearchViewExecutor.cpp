@@ -816,21 +816,23 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
 template<typename Impl, typename ExecutionTraits>
 template<arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeLocalDocumentId(
-    ReadContext& ctx, arangodb::iresearch::SnapshotDoc const& doc) {
+    LogicalCollection const& collection,
+    ReadContext& ctx, arangodb::iresearch::SearchDoc const& doc) {
   // we will need collection Id also as View could produce documents from
   // multiple collections
   if (ADB_LIKELY(doc.isValid())) {
-    std::array<char, arangodb::iresearch::kDocRegBufSize> docReg;
-    std::array<char, arangodb::iresearch::kDocRegBufSize> collReg;
-    doc.encode(docReg, collReg);
+    // FIXME: Move collection resolving to MaterializerNode! Use caching!
+    {
+      // For sake of performance we store raw pointer to collection
+      // It is safe as pipeline work inside one process
+      static_assert(sizeof(void*) <= sizeof(uint64_t),
+                    "Pointer doesn't fit uint64_t");
 
-    AqlValue collectionReg(std::string_view(collReg.data(), collReg.size()));
-    AqlValueGuard collectionGuard{collectionReg, true};
-    ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow,
-                                collectionGuard);
-    AqlValue documentReg{docReg.data(), docReg.size()};
-    AqlValueGuard documentGuard{documentReg, true};
-    ctx.outputRow.moveValueInto(ctx.getDocumentIdReg(), ctx.inputRow, documentGuard);
+      AqlValueHintUInt const value{reinterpret_cast<uint64_t>(&collection)};
+      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow,
+                                  value);
+    }
+    writeSearchDoc(ctx, doc, ctx.getDocumentIdReg());
     return true;
   } else {
     return false;
@@ -894,12 +896,10 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
                         MaterializeType::LateMaterialize) ==
                        MaterializeType::LateMaterialize) {
     // no need to look into collection. Somebody down the stream will do
-    // materialization. Just emit LocalDocumentIds
-    auto const* snapshot = this->_indexReadBuffer.getSnapshot(bufferEntry.getKeyIdx());
-    arangodb::iresearch::SnapshotDoc doc(
-        documentId, &collection,
-        snapshot);
-    if (ADB_UNLIKELY(!writeLocalDocumentId(ctx, doc))) {
+    // materialization.
+    if (ADB_UNLIKELY(!writeLocalDocumentId(
+            collection, ctx,
+            this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx())))) {
       return false;
     }
   }
@@ -1321,9 +1321,11 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
         }
       }
 
-      if constexpr (ExecutionTraits::EmitSearchDoc) {
-        TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
-        this->_indexReadBuffer.pushSearchDoc((*this->_reader)[segmentIdx],
+      if constexpr (ExecutionTraits::EmitSearchDoc ||
+                    ExecutionTraits::MaterializeType == MaterializeType::LateMaterialize) {
+        TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
+                   ExecutionTraits::EmitSearchDoc);
+        this->_indexReadBuffer.pushSearchDoc(this->_reader->segment(segmentIdx),
                                              irsDocId);
       }
 
@@ -1415,10 +1417,13 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
                                      documentId);
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
-      this->_indexReadBuffer.pushSearchDoc((*this->_reader)[_readerOffset],
-                                           _doc->value);
+      if constexpr (ExecutionTraits::EmitSearchDoc ||
+                  ExecutionTraits::MaterializeType ==
+                      MaterializeType::LateMaterialize) {
+      TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
+                 ExecutionTraits::EmitSearchDoc);
+      this->_indexReadBuffer.pushSearchDoc(
+          this->_reader->segment(_readerOffset), _doc->value);
     }
 
     // in the ordered case we have to write scores as well as a document
@@ -1865,10 +1870,13 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
       this->pushStoredValues(*segment.doc, segment.segmentIndex);
     }
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
+    if constexpr (ExecutionTraits::EmitSearchDoc ||
+                  ExecutionTraits::MaterializeType ==
+                      MaterializeType::LateMaterialize) {
+      TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
+                 ExecutionTraits::EmitSearchDoc);
       this->_indexReadBuffer.pushSearchDoc(
-          (*this->_reader)[segment.segmentIndex], segment.doc->value);
+          this->_reader->segment(segment.segmentIndex), segment.doc->value);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
