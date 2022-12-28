@@ -57,8 +57,19 @@ function ArangoSearchOutOfSyncSuite () {
     },
 
     testMarkLinksAsOutOfSync : function () {
-      let c = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
-      c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value[*]', analyzer: 'identity'}] });
+      let indexFields = [];
+      if (isEnterprise) {
+        indexFields = [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ];
+      } else {
+        indexFields = [
+          {"name": "value[*]"}
+        ];
+      }
+
+      let c1 = db._create('UnitTestsRecovery1', { numberOfShards: 5, replicationFactor: 1 });
+      c1.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
       
       let v = db._createView('UnitTestsRecoveryView1', 'arangosearch', {});
       let viewMeta = {};
@@ -70,7 +81,7 @@ function ArangoSearchOutOfSyncSuite () {
       v.properties(viewMeta);
       
       let servers = getDBServers();
-      let shardInfo = c.shards(true);
+      let shardInfo = c1.shards(true);
       let shards = Object.keys(shardInfo);
 
       let leaderUrls = new Set();
@@ -91,7 +102,7 @@ function ArangoSearchOutOfSyncSuite () {
         docs.push({ "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       
-      c.insert(docs);
+      c1.insert(docs);
       
       db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
@@ -99,7 +110,7 @@ function ArangoSearchOutOfSyncSuite () {
       clearFailurePoints();
       
       let c2 = db._create('UnitTestsRecovery2', { numberOfShards: 5, replicationFactor: 1 });
-      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value[*]', analyzer: 'identity'}] });
+      c2.ensureIndex({ type: 'inverted', name: 'inverted', fields: indexFields });
       c2.insert(docs);
       
       v = db._createView('UnitTestsRecoveryView2', 'arangosearch', {});

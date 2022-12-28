@@ -55,22 +55,30 @@ function viewCountOptimization(isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, "fields": [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, "fields": [
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+            {"name": "value"}
+          ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true};
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true};
         }
         let i = c.ensureIndex(indexMeta);
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
         if (isEnterprise) {
           indexMeta = {
             type: "inverted",
-            fields: ["value", "count",
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
+            name: "inverted1",
+            fields: [
+              "count",
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              {"name": "value"}
+            ],
             primarySort: {fields: [{"field": "count", "direction": "asc"}]}
           };
         } else {
           indexMeta = {
             type: "inverted",
+            name: "inverted1",
             fields: ["value", "count"],
             primarySort: {fields: [{"field": "count", "direction": "asc"}]}
           };
@@ -201,6 +209,13 @@ function viewCountOptimization(isSearchAlias) {
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
         "d.value == 'test2' LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER d.value == 'test1' OR
+        d.value == 'test2' LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
+        assertEqual(2002, res.getExtra().stats.fullCount);
+      }
     },
     testNoSortLimitFiltersFullCountCost() {
       if (isCluster) {
@@ -210,17 +225,38 @@ function viewCountOptimization(isSearchAlias) {
         "d.value == 'test2' OPTIONS{countApproximate:'cost'} LIMIT 10, 100 RETURN d",
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
+        FILTER d.value == 'test1' OR d.value == 'test2' LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
+        assertEqual(2002, res.getExtra().stats.fullCount);
+      }
     },
     testNoSortCountFiltersExact() {
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
         " d.value == 'test2'  COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d.value == 'test1' OR d.value == 'test2' COLLECT WITH COUNT INTO c RETURN c`).toArray();
+        assertEqual(2002, res[0]);
+      }
     },
     testNoSortCountFiltersCost() {
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
         " d.value == 'test2' OPTIONS{countApproximate:'cost'} " +
         " COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
+        FILTER d.value == 'test1' OR d.value == 'test2' COLLECT WITH COUNT INTO c RETURN c`).toArray();
+        assertEqual(2002, res[0]);
+      }
     },
     testSortLimitWithFullCountExact() {
       if (isCluster) {
@@ -247,6 +283,13 @@ function viewCountOptimization(isSearchAlias) {
         "SORT d.count ASC LIMIT 10, 100 RETURN d",
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'exact'} 
+        FILTER d.value == 'test1' OR d.value == 'test2' SORT d.count ASC LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
+        assertEqual(2002, res.getExtra().stats.fullCount);
+      }
     },
     testSortLimitFiltersFullCountCost() {
       if (isCluster) {
@@ -257,6 +300,13 @@ function viewCountOptimization(isSearchAlias) {
         "SORT d.count ASC LIMIT 10, 100 RETURN d",
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
+
+      if(isSearchAlias) {
+        res = db._query(`
+        FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
+        FILTER d.value == 'test1' OR d.value == 'test2' SORT d.count ASC LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
+        assertEqual(2002, res.getExtra().stats.fullCount);
+      }
     },
   };
 }

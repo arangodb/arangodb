@@ -91,10 +91,23 @@ function ParallelIndexLinkCreateDropSuite() {
       let c = require("internal").db._collection(cn);
       
       let viewMeta = {};
+      let indexMeta = {};
       if (isEnterprise) {
         viewMeta = `{ links : { cn : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }`;
+        indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
+          {name: 'value1', analyzer: 'identity'},
+          {name: 'value2', analyzer: 'identity'},
+          {name: 'value3', analyzer: 'identity'},
+          {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        ]}`;
       } else {
         viewMeta = `{ links : { cn : { includeAllFields: true} } }`;
+        indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
+          {name: 'value1', analyzer: 'identity'},
+          {name: 'value2', analyzer: 'identity'},
+          {name: 'value3', analyzer: 'identity'},
+          {"name": "value_nested[*]"}
+        ]}`;
       }
 
       for (let i = 0; i < threads; ++i) {
@@ -106,7 +119,9 @@ let c = db._collection("${cn}");
         if (i === 0) {
           command += `
 let idx = db["${cn}"].ensureIndex({ type: "persistent", fields: ["value2"] });   
+let ii = db["${cn}"].ensureIndex(${indexMeta}); 
 db["${cn}"].dropIndex(idx); 
+db["${cn}"].dropIndex(ii); 
 `;
         } else {
           command += `

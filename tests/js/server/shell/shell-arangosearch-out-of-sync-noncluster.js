@@ -67,7 +67,7 @@ function ArangoSearchOutOfSyncSuite () {
 
       let docs = [];
       for (let i = 0; i < 10; ++i) {
-        docs.push({value: i});
+        docs.push({});
         docs.push({"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       

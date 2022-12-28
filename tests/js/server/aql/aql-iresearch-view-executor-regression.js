@@ -132,16 +132,31 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
         c2.save({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       if (isSearchAlias) {
+        let fields = [];
+        if (isEnterprise) {
+          fields = [
+            {name: 'seq'},
+            {name: "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ];
+        } else {
+          [
+            {name: 'seq'},
+            {name: "value_nested[*]"}
+          ]
+        }
         let i1 = c1.ensureIndex({
           type: "inverted",
+          name: "inverted",
           includeAllFields: true,
-          trackListPositions: true,
-          analyzer: analyzerName
+          analyzer: analyzerName,
+          fields: fields
         });
         let i2 = c2.ensureIndex({
           type: "inverted",
+          name: "inverted",
           includeAllFields: true,
-          analyzer: analyzerName
+          analyzer: analyzerName,
+          fields: fields
         });
         db._createView(viewName, "search-alias", {
           indexes: [
@@ -182,18 +197,28 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
             },
           };
         }
-        const view = db._createView(viewName, "arangosearch", metaView);
+        db._createView(viewName, "arangosearch", metaView);
       }
     },
     tearDownAll,
 
     testRegression: function () {
-      const query = `FOR x IN 1..@n FOR d in @@view SEARCH 1 == d.seq OPTIONS { waitForSync: true } RETURN d`;
-
-      const res = db._query(query, { n: N, "@view": viewName });
-      const arr = res.toArray();
-
+      let query = `FOR x IN 1..@n FOR d in @@view SEARCH 1 == d.seq OPTIONS { waitForSync: true } RETURN d`;
+      let res = db._query(query, { n: N, "@view": viewName });
+      let arr = res.toArray();
       assertEqual(arr.length, N);
+
+      if (isSearchAlias) {
+        query = `FOR x IN 1..@n FOR d in @@coll OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
+                FILTER d.seq == 0 RETURN d`;
+        res = db._query(query, { n: N, "@coll": collName1}).toArray();
+        assertEqual(res.length, N);
+
+        query = `FOR x IN 1..@n FOR d in @@coll OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
+                 FILTER d.seq == 1 RETURN d`;
+        res = db._query(query, { n: N, "@coll": collName2}).toArray();
+        assertEqual(res.length, N);
+      }
     },
 
     /**
@@ -204,16 +229,27 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
     testRegressionSkip: function () {
       const k = 1200;
       for (const k of [10, 999, 1000, 1001, 1200]) {
-        const query = `
+        let query = `
         FOR x IN 1..@n
           FOR d in @@view SEARCH 1 == d.seq OPTIONS { waitForSync: true }
           LIMIT ${k}, null
           RETURN d`;
 
-        const res = db._query(query, { n: N, "@view": viewName });
-        const arr = res.toArray();
-
+        let res = db._query(query, { n: N, "@view": viewName });
+        let arr = res.toArray();
         assertEqual(arr.length, N - k);
+
+        if (isSearchAlias) {
+          query = `FOR x IN 1..@n FOR d in @@coll OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
+                  FILTER d.seq == 0 LIMIT ${k}, null RETURN d`;
+          res = db._query(query, { n: N, "@coll": collName1}).toArray();
+          assertEqual(res.length, N - k);
+  
+          query = `FOR x IN 1..@n FOR d in @@coll OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
+                   FILTER d.seq == 1 LIMIT ${k}, null RETURN d`;
+          res = db._query(query, { n: N, "@coll": collName2}).toArray();
+          assertEqual(res.length, N - k);
+        }
       }
     },
   };

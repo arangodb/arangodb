@@ -54,11 +54,13 @@ function viewFiltersMerging(isSearchAlias) {
         if (isEnterprise) {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             fields: ["value", "count", {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
           };
         } else {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             fields: ["value", "count"]
           };
         }
@@ -119,12 +121,28 @@ function viewFiltersMerging(isSearchAlias) {
         "LEVENSHTEIN_MATCH(d.value, 'footest', 1, false) " +
         "AND STARTS_WITH(d.value, 'footest') RETURN d").toArray();
       assertEqual(10, res.length);
+
+      if(isSearchAlias) {
+        res = db._query(`FOR d IN UnitTestsCollection 
+          OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, filterOptimization: 0} FILTER
+          LEVENSHTEIN_MATCH(d.value, 'footest', 1, false) AND
+          STARTS_WITH(d.value, 'footest') RETURN d`).toArray();
+        assertEqual(10, res.length);
+      }
     },
     testMergeDisabled() {
       let res = db._query("FOR d IN UnitTestView SEARCH " +
         "LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) " +
-        "AND STARTS_WITH(d.value, 'footest') OPTIONS {filterOptimization: 0} RETURN d").toArray();
+        "AND STARTS_WITH(d.value, 'footest') RETURN d").toArray();
       assertEqual(50, res.length);
+
+      if (isSearchAlias) {
+        let res = db._query(`FOR d IN UnitTestsCollection 
+          OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, filterOptimization: 0} FILTER
+          LEVENSHTEIN_MATCH(d.value, 'footest', 2, false) AND
+          STARTS_WITH(d.value, 'footest') RETURN d`).toArray();
+        assertEqual(50, res.length);
+      }
     },
   };
 }

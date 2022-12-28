@@ -48,6 +48,19 @@ const qq = `FOR doc IN UnitTestsView
               LIMIT 4 
               RETURN doc`;
 
+const qqIndexWithSync = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+              FILTER TOKENS('the quick brown', 'myText') any in doc.text
+              SORT doc._key ASC 
+              LIMIT 4 
+              RETURN doc`;
+
+const qqSearchAliasWithSync = `FOR doc IN searchAliasView 
+              SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'myText'), 'myText') 
+              OPTIONS { waitForSync : true } 
+              SORT TFIDF(doc) 
+              LIMIT 4 
+              RETURN doc`;                       
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +69,7 @@ function TransactionsIResearchSuite() {
   'use strict';
   let c = null;
   let view = null;
+  let saView = null;
 
   return {
 
@@ -93,6 +107,10 @@ function TransactionsIResearchSuite() {
         view.drop();
         view = null;
       }
+      if (saView) {
+        saView.drop();
+        saView = null;
+      }
       internal.wait(0.0);
     },
 
@@ -101,14 +119,25 @@ function TransactionsIResearchSuite() {
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks1 : function () {
 
-      let meta = {};
+      let indexMeta = {};
+      let viewMeta = {};
       if (isEnterprise) {
-        meta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       } else {
-        meta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }}}}};
+        viewMeta = {links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }}}}};
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value[*]"},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       }
       view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
+      c.ensureIndex(indexMeta);
+      view.properties(viewMeta);
+      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
@@ -138,6 +167,14 @@ function TransactionsIResearchSuite() {
       assertEqual(result.length, 2);
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'full');
+
+      result = db._query(qqSearchAliasWithSync).toArray();
+      assertEqual(result.length, 2);
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'full');
+
+      result = db._query(qqIndexWithSync).toArray();
+      assertEqual(result.length, 2); // we don't track order for inverted index
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -146,14 +183,25 @@ function TransactionsIResearchSuite() {
     testRollbackInsertWithLinks2 : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = {};
+      let indexMeta = {};
+      let viewMeta = {};
       if (isEnterprise) {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       } else {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] } } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value[*]"},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       }
+      c.ensureIndex(indexMeta);
       view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
+      view.properties(viewMeta);
+      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
@@ -182,20 +230,40 @@ function TransactionsIResearchSuite() {
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'other_half');
       assertEqual(result[2]._key, 'full');
+
+      result = db._query(qqSearchAliasWithSync).toArray();
+      assertEqual(result.length, 3);
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'other_half');
+      assertEqual(result[2]._key, 'full');
+
+      result = db._query(qqIndexWithSync).toArray();
+      assertEqual(result.length, 3); // we don't track order for inverted index
     },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testRollbackInsertWithLinks3 : function () {
-      let meta = {};
+      let indexMeta = {};
+      let viewMeta = {};
       if (isEnterprise) {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       } else {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": {} } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": {} } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value[*]"},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       }
+      c.ensureIndex(indexMeta);
       view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
+      view.properties(viewMeta);
+      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
@@ -226,6 +294,15 @@ function TransactionsIResearchSuite() {
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'other_half');
       assertEqual(result[2]._key, 'full');
+
+      result = db._query(qqSearchAliasWithSync).toArray();
+      assertEqual(result.length, 3);
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'other_half');
+      assertEqual(result[2]._key, 'full');
+      
+      result = db._query(qqIndexWithSync).toArray();
+      assertEqual(result.length, 3); // we don't track order for inverted index
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -234,14 +311,25 @@ function TransactionsIResearchSuite() {
     testRollbackRemovalWithLinks1 : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = {};
+      let indexMeta = {};
+      let viewMeta = {};
       if (isEnterprise) {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       } else {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value[*]"},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       }
+      c.ensureIndex(indexMeta);
       view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
+      view.properties(viewMeta);
+      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
@@ -277,6 +365,16 @@ function TransactionsIResearchSuite() {
       assertEqual(result[1]._key, 'quarter');
       assertEqual(result[2]._key, 'other_half');
       assertEqual(result[3]._key, 'full');
+
+      result = db._query(qqSearchAliasWithSync).toArray();
+      assertEqual(result.length, 4);
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'quarter');
+      assertEqual(result[2]._key, 'other_half');
+      assertEqual(result[3]._key, 'full');
+
+      result = db._query(qqIndexWithSync).toArray();
+      assertEqual(result.length, 4); // we don't track order for inverted index
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -285,14 +383,25 @@ function TransactionsIResearchSuite() {
     testWaitForSyncError : function () {
       c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
 
-      let meta = {};
+      let indexMeta = {};
+      let viewMeta = {};
       if (isEnterprise) {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       } else {
-        meta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+        viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
+        indexMeta = { type: 'inverted', name: 'inverted', fields: [
+          {"name": "value[*]"},
+          {name: 'text', analyzer: 'myText'}
+        ]};
       }
+      c.ensureIndex(indexMeta);
       view = db._createView("UnitTestsView", "arangosearch", {});
-      view.properties(meta);
+      view.properties(viewMeta);
+      saView = db._createView("searchAliasView", "search-alias", {indexes:[{collection: "UnitTestsCollection", index: "inverted"}]});
       let links = view.properties().links;
       assertNotEqual(links['UnitTestsCollection'], undefined);
 
@@ -323,12 +432,41 @@ function TransactionsIResearchSuite() {
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
+      try {
+        db._executeTransaction({
+          collections: {write: 'UnitTestsCollection'},
+          action: function() {
+            const db = require('internal').db;
+            let c = db._collection('UnitTestsCollection');
+            c.remove("full");
+            c.remove("half");
+
+            // it should not be possible to query with waitForSync
+            db._query(qqIndexWithSync);
+            fail();
+          }
+        });
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+      }
+
       let result = db._query(qqWithSync).toArray();
       assertEqual(result.length, 4);
       assertEqual(result[0]._key, 'half');
       assertEqual(result[1]._key, 'quarter');
       assertEqual(result[2]._key, 'other_half');
       assertEqual(result[3]._key, 'full');
+
+      result = db._query(qqSearchAliasWithSync).toArray();
+      assertEqual(result.length, 4);
+      assertEqual(result[0]._key, 'half');
+      assertEqual(result[1]._key, 'quarter');
+      assertEqual(result[2]._key, 'other_half');
+      assertEqual(result[3]._key, 'full');
+
+      result = db._query(qqIndexWithSync).toArray();
+      assertEqual(result.length, 4); // we don't track order for inverted index
     }
   };
 }

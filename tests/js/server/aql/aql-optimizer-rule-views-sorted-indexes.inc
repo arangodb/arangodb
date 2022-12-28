@@ -56,14 +56,30 @@
       testNoSortedness: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ]};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ]};
+          }
+          let i = c.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
           let meta = {};
           if (isEnterprise) {
-            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
           } else {
-            meta = {links: {[cn]: {includeAllFields: true}}};
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": {}}}}};
           }
           db._createView(vn, "arangosearch", meta);
         }
@@ -94,17 +110,31 @@
       testRuleSingleAttributeNoEffect: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted", includeAllFields: true, primarySort: {fields: [{field: "value", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value1",
+              "value",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value1",
+              "value",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
           let meta = {};
           if (isEnterprise) {
-            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
             primarySort: [{field: "value", direction: "asc"}]}}};
           } else {
-            meta = {links: {[cn]: {includeAllFields: true}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}} }},
             primarySort: [{field: "value", direction: "asc"}]};
           }
           db._createView(vn, "arangosearch", meta);
@@ -136,19 +166,31 @@
       testRuleMultipleAttributesNoEffect: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
           let meta = {};
           if (isEnterprise) {
-            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
             primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           } else {
-            meta = {links: {[cn]: {includeAllFields: true}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}},
             primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           }
           db._createView(vn, "arangosearch", meta);
@@ -182,19 +224,31 @@
       testRuleSingleAttributeDifferentOrderNoEffect: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
           let meta = {};
           if (isEnterprise) {
-            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
             primarySort: [{field: "value", direction: "asc"}]};
           } else {
-            meta = {links: {[cn]: {includeAllFields: true}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}},
             primarySort: [{field: "value", direction: "asc"}]};
           }
           db._createView(vn, "arangosearch", meta);
@@ -220,19 +274,31 @@
       testRuleMultipleAttributesDifferentOrderNoEffect: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {indexes: [{collection: cn, index: i.name}]});
         } else {
           let meta = {};
           if (isEnterprise) {
-            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
             primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           } else {
-            meta = {links: {[cn]: {includeAllFields: true}},
+            meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}},
             primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           }
           db._createView(vn, "arangosearch", meta);
@@ -260,15 +326,26 @@
       /// @brief test that rule has an effect
       testRuleSingleAttributeHasEffect: function () {
         if (isSearchAlias) {
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value", direction: "asc"}]}
-          };
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          }
           let c = db._collection(cn);
-          let i = c.ensureIndex(indexDefinition);
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -276,12 +353,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value", direction: "asc"}]
             };
           }
@@ -305,14 +382,25 @@
       testRuleMultipleAttributesHasEffect: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}
-          };
-          let i = c.ensureIndex(indexDefinition);
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -320,12 +408,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -351,14 +439,25 @@
       testRuleSingleAttributeResults: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value", direction: "asc"}]}
-          };
-          let i = c.ensureIndex(indexDefinition);
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -366,12 +465,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
             primarySort: [{field: "value", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value", direction: "asc"}]
             };
           }
@@ -412,14 +511,25 @@
       testRuleSingleAttributeResultsDesc: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value", direction: "desc"}]}
-          };
-          let i = c.ensureIndex(indexDefinition);
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "desc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value", direction: "desc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -427,12 +537,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value", direction: "desc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value", direction: "desc"}]
             };
           }
@@ -470,17 +580,25 @@
       testRuleMultipleAttributesResults: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]}
-          });
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -488,12 +606,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -535,17 +653,25 @@
       testRuleMultipleAttributesResultsDesc: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let i = c.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          });
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex({
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          });
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -553,12 +679,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -600,14 +726,25 @@
       testRuleSameAttributeValuesDesc: function () {
         if (isSearchAlias) {
           let c = db._collection(cn);
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          };
-          let i = c.ensureIndex(indexDefinition);
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          }
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -615,12 +752,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -659,15 +796,26 @@
       /// @brief test that rule has an effect
       testRuleSameAttributeValuesDescFullCount: function () {
         if (isSearchAlias) {
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          };
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          }
           let c = db._collection(cn);
-          let i = c.ensureIndex(indexDefinition);
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -675,12 +823,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -720,15 +868,26 @@
       /// @brief test that rule has an effect
       testRuleMultipleAttributesResultsDescWithOffset: function () {
         if (isSearchAlias) {
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          };
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          }
           let c = db._collection(cn);
-          let i = c.ensureIndex(indexDefinition);
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -736,12 +895,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
             };
           }
@@ -804,15 +963,26 @@
 
       testRuleMultipleAttributesResultsDescWithOffsetFullCount: function () {
         if (isSearchAlias) {
-          let indexDefinition = {
-            type: "inverted",
-            includeAllFields: true,
-            primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}
-          };
+          let indexMeta = {};
+          if (isEnterprise) {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          } else {
+            indexMeta = {type: "inverted", includeAllFields: true, fields:[
+              {"name": "value_nested[*]"},
+              "value",
+              "value1",
+              "value2"
+            ], primarySort: {fields: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]}};
+          }
           let c = db._collection(cn);
-          let i = c.ensureIndex(indexDefinition);
+          let i = c.ensureIndex(indexMeta);
           let c1 = db._collection(cn1);
-          let i1 = c1.ensureIndex(indexDefinition);
+          let i1 = c1.ensureIndex(indexMeta);
           db._createView(vn, "search-alias", {
             indexes: [{collection: cn, index: i.name}, {collection: cn1, index: i1.name}]
           });
@@ -820,12 +990,12 @@
           let meta = {};
           if (isEnterprise) {
             meta = {links: {
-              [cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
-              [cn1]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
+              [cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}},
+              [cn1]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]};
           } else {
             meta = {
-              links: {[cn]: {includeAllFields: true}, [cn1]: {includeAllFields: true}},
+              links: {[cn]: {includeAllFields: true, "fields": { "value_nested":{}}}, [cn1]: {includeAllFields: true, "fields": { "value_nested":{}}}},
               primarySort: [{field: "value1", direction: "desc"}, {field: "value2", direction: "asc"}]
             };
           }
