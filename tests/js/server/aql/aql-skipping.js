@@ -458,7 +458,7 @@ function aqlSkippingIndexTestsuite () {
 }
 
 function aqlSkippingIResearchTestsuite (isSearchAlias) {
-  var c;
+  var c1;
   var c2;
   var v;
   var v2;

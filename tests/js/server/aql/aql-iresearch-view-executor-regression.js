@@ -139,10 +139,10 @@ function IResearchViewEnumerationRegressionTest(isSearchAlias) {
             {name: "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
           ];
         } else {
-          [
+          fields = [
             {name: 'seq'},
             {name: "value_nested[*]"}
-          ]
+          ];
         }
         let i1 = c1.ensureIndex({
           type: "inverted",

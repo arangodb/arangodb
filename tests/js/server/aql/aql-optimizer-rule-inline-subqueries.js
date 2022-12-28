@@ -250,18 +250,28 @@ function optimizerRuleViewTestSuite(isSearchAlias) {
       db._drop(cn);
       let c = db._create(cn);
       for (let i = 0; i < 10; ++i) {
-        c.save({ name_1: i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        c.save({ name_1: i, "value_nested": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       if (isSearchAlias) {
         let c = db._collection(cn);
-        let i = c.ensureIndex({type: "inverted", includeAllFields: true});
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        let i = c.ensureIndex(indexMeta);
         db._createView(cn + "View", "search-alias", {indexes: [{collection: cn, index: i.name}]});
       } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
-          meta = {links: {[cn]: {includeAllFields: true}}};
+          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": {}}}}};
         }
         db._createView(cn + "View", "arangosearch", meta);
       }
