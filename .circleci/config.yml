@@ -96,11 +96,11 @@ workflows:
         value: << pipeline.git.branch >>
     jobs:
       - compile-linux-community:
-          name: build-community-replication2-test-pure
+          name: build replication2 test pure
           preset: community-developer
       - run-gtest-executable-linux:
-          name: unit tests
+          name: replication 2 pure tests
           executable: 'build/community-developer/bin/arangodbtests_replication2_pure'
-          filter: '-ReplicatedLogSupervisionSimulationTest.*'
+          filter: '.*'
           requires:
-            - build-community-replication2-test-pure
+            - build replication2 test pure
