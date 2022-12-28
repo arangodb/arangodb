@@ -26,6 +26,7 @@
 #include <queue>
 #include <type_traits>
 #include <vector>
+#include <unordered_set>
 
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>

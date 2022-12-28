@@ -197,10 +197,10 @@ class KShortestPathsFinder : public KShortestPathsFinderInterface {
     VertexRef getKey() const { return _vertex; }
     void setWeight(double weight) { _weight = weight; }
 
-    DijkstraInfo(VertexRef const& vertex, Edge const&& edge,
+    DijkstraInfo(VertexRef const& vertex, Edge const& edge,
                  VertexRef const& pred, double weight)
         : _vertex(vertex),
-          _edge(std::move(edge)),
+          _edge(edge),
           _pred(pred),
           _weight(weight),
           _done(false) {}
@@ -264,7 +264,7 @@ class KShortestPathsFinder : public KShortestPathsFinderInterface {
     std::vector<Step> _outNeighbours;
     std::vector<Step> _inNeighbours;
 
-    explicit FoundVertex(VertexRef const& vertex)
+    explicit FoundVertex(VertexRef vertex)
         : _vertex(vertex),
           _hasCachedOutNeighbours(false),
           _hasCachedInNeighbours(false) {}
@@ -273,7 +273,8 @@ class KShortestPathsFinder : public KShortestPathsFinderInterface {
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef containers::FlatHashMap<VertexRef, FoundVertex> FoundVertexCache;
+  typedef containers::FlatHashMap<VertexRef, std::unique_ptr<FoundVertex>>
+      FoundVertexCache;
 
  public:
   KShortestPathsFinder(

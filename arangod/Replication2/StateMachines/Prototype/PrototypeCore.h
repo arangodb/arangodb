@@ -44,6 +44,7 @@
 #pragma warning(pop)
 #endif
 
+#include <deque>
 #include <optional>
 #include <string>
 #include <unordered_map>

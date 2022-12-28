@@ -182,6 +182,13 @@ class IResearchViewTest
                         systemErrorStr);
   }
 
+  void initLink(arangodb::iresearch::IResearchLinkMock& link) {
+    auto json = VPackParser::fromJson(R"({ "view": "42" })");
+    bool pathExists = false;
+    EXPECT_TRUE(link.init(json->slice(), pathExists).ok());
+    EXPECT_TRUE(pathExists);
+  }
+
   ~IResearchViewTest() { TRI_RemoveDirectory(testFilesystemPath.c_str()); }
 };
 
@@ -1956,7 +1963,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
                std::to_string(logicalCollection->id().id()) + "_" +
                std::to_string(arangodb::iresearch::IResearchLinkHelper::find(
                                   *logicalCollection, *view)
-                                  ->id()
+                                  ->index()
+                                  .id()
                                   .id())))
                  .string();
   EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
@@ -2775,16 +2783,6 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
 }
 
 TEST_F(IResearchViewTest, test_emplace_cid) {
-  struct Link : public arangodb::iresearch::IResearchLink {
-    Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-        : IResearchLink(id, col) {
-      auto json = VPackParser::fromJson(R"({ "view": "42" })");
-      bool pathExists = false;
-      EXPECT_TRUE(init(json->slice(), pathExists).ok());
-      EXPECT_TRUE(pathExists);
-    }
-  };
-
   // emplace (already in list)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -2902,7 +2900,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
-      Link link(arangodb::IndexId{42}, *logicalCollection);
+      arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                  *logicalCollection};
+      initLink(link);
 
       bool persisted = false;
       auto before = StorageEngineMock::before;
@@ -2976,7 +2976,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
-      Link link(arangodb::IndexId{42}, *logicalCollection);
+      arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                  *logicalCollection};
+      initLink(link);
 
       bool persisted = false;
       auto before = StorageEngineMock::before;
@@ -3062,7 +3064,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
         StorageEngineMock::before = before;
       };
       StorageEngineMock::before = []() -> void { throw std::exception(); };
-      Link link(arangodb::IndexId{42}, *logicalCollection);
+      arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                  *logicalCollection};
+      initLink(link);
       auto asyncLinkPtr = std::make_shared<
           arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(
           &link);
@@ -3127,7 +3131,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
 
     // emplace cid 42
     {
-      Link link(arangodb::IndexId{42}, *logicalCollection);
+      arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                  *logicalCollection};
+      initLink(link);
 
       bool persisted = false;
       auto before = StorageEngineMock::before;

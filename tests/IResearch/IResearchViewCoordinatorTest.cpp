@@ -5831,7 +5831,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       auto link = arangodb::iresearch::IResearchLinkHelper::find(
           *updatedCollection, *view);
       ASSERT_TRUE((link));
-      linkId = link->id();
+      linkId = link->index().id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       ASSERT_TRUE((false == !index));
