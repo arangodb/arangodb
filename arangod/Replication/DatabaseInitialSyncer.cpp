@@ -53,6 +53,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -113,6 +114,8 @@ arangodb::Result removeRevisions(
   if (!toRemove.empty()) {
     PhysicalCollection* physical = collection.getPhysical();
 
+    auto indexesSnapshot = physical->getIndexesSnapshot();
+
     arangodb::OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
@@ -131,8 +134,8 @@ arangodb::Result removeRevisions(
                                         arangodb::ReadOwnWrites::yes);
 
       if (r.ok()) {
-        r = physical->remove(trx, documentId, rid, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, rid,
+                             tempBuilder->slice(), options);
       }
 
       if (r.ok()) {
@@ -179,6 +182,7 @@ arangodb::Result fetchRevisions(
   }
 
   PhysicalCollection* physical = collection.getPhysical();
+  auto indexesSnapshot = physical->getIndexesSnapshot();
 
   std::string path = arangodb::replutils::ReplicationUrl + "/" +
                      RestReplicationHandler::Revisions + "/" +
@@ -207,8 +211,8 @@ arangodb::Result fetchRevisions(
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
-        r = physical->remove(trx, documentId, revisionId, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, revisionId,
+                             tempBuilder->slice(), options);
       }
     }
 
@@ -666,7 +670,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     }
 
     return r;
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL, ex.what());
@@ -686,7 +690,7 @@ Result DatabaseInitialSyncer::getInventory(VPackBuilder& builder) {
     return r;
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { batchFinish(); });
+  auto sg = scopeGuard([&]() noexcept { batchFinish(); });
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -950,10 +954,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(
 /// @brief order a new chunk from the /dump API
 void DatabaseInitialSyncer::fetchDumpChunk(
     std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    std::string const& baseUrl, arangodb::LogicalCollection* coll,
+    std::string const& baseUrl, LogicalCollection* coll,
     std::string const& leaderColl, int batch, TRI_voc_tick_t fromTick,
     uint64_t chunkSize) {
-  using ::arangodb::basics::StringUtils::itoa;
+  using basics::StringUtils::itoa;
 
   if (isAborted()) {
     sharedStatus->gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
@@ -1024,14 +1028,14 @@ void DatabaseInitialSyncer::fetchDumpChunk(
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::fetchCollectionDump(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
-    TRI_voc_tick_t maxTick) {
-  using ::arangodb::basics::StringUtils::boolean;
-  using ::arangodb::basics::StringUtils::concatT;
-  using ::arangodb::basics::StringUtils::itoa;
-  using ::arangodb::basics::StringUtils::uint64;
-  using ::arangodb::basics::StringUtils::urlEncode;
+Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
+  using basics::StringUtils::boolean;
+  using basics::StringUtils::concatT;
+  using basics::StringUtils::itoa;
+  using basics::StringUtils::uint64;
+  using basics::StringUtils::urlEncode;
 
   if (isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
@@ -1263,9 +1267,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::fetchCollectionSync(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
-    TRI_voc_tick_t maxTick) {
+Result DatabaseInitialSyncer::fetchCollectionSync(LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
   if (coll->syncByRevision() && _config.leader.version() >= 30800) {
     // local collection should support revisions, and leader is at least aware
     // of the revision-based protocol, so we can query it to find out if we
@@ -1279,10 +1283,10 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 /// @brief incrementally fetch data from a collection using keys as the primary
 /// document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
+    LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
-  using ::arangodb::basics::StringUtils::concatT;
-  using ::arangodb::basics::StringUtils::urlEncode;
+  using basics::StringUtils::concatT;
+  using basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
     batchExtend();
@@ -1490,7 +1494,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
                       ": response does not contain valid 'id' attribute");
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept {
+  auto sg = scopeGuard([&]() noexcept {
     try {
       url = baseUrl + "/" + keysId.copyString();
       std::string msg =
@@ -1560,7 +1564,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
         .getFeature<EngineSelectorFeature>()
         .engine()
         .handleSyncKeys(*this, *coll, keysId.copyString());
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL, ex.what());
@@ -1572,7 +1576,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 /// @brief order a new chunk from the /revisions API
 void DatabaseInitialSyncer::fetchRevisionsChunk(
     std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-    std::string const& baseUrl, arangodb::LogicalCollection* coll,
+    std::string const& baseUrl, LogicalCollection* coll,
     std::string const& leaderColl, std::string const& requestPayload,
     RevisionId requestResume) {
   if (isAborted()) {
@@ -1588,7 +1592,7 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
       batchExtend();
     }
 
-    using ::arangodb::basics::StringUtils::urlEncode;
+    using basics::StringUtils::urlEncode;
 
     // assemble URL to call.
     // note that the URL contains both the "resume" and "resumeHLC"
@@ -1653,11 +1657,11 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 /// @brief incrementally fetch data from a collection using revisions as the
 /// primary document identifier
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
-    arangodb::LogicalCollection* coll, std::string const& leaderColl,
+    LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
-  using ::arangodb::basics::StringUtils::concatT;
-  using ::arangodb::basics::StringUtils::urlEncode;
-  using ::arangodb::transaction::Hints;
+  using basics::StringUtils::concatT;
+  using basics::StringUtils::urlEncode;
+  using transaction::Hints;
 
   ReplicationMetricsFeature::InitialSyncStats stats(
       vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
@@ -1764,8 +1768,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
   PhysicalCollection* physical = coll->getPhysical();
   TRI_ASSERT(physical);
-  auto context =
-      arangodb::transaction::StandaloneContext::Create(coll->vocbase());
+  auto context = transaction::StandaloneContext::Create(coll->vocbase());
   TransactionId blockerId = context->generateId();
   physical->placeRevisionTreeBlocker(blockerId);
 
@@ -1777,7 +1780,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
           << "Failed to remove revision tree blocker: " << ex.what();
     }
   });
-  std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
+  std::unique_ptr<SingleCollectionTransaction> trx;
   transaction::Options options;
   // We do intermediate commits relatively frequently, since this is good
   // for performance, and we actually have no transactional needs here.
@@ -1786,9 +1789,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     options.intermediateCommitCount = 1000;
   }
   try {
-    trx = std::make_unique<arangodb::SingleCollectionTransaction>(
-        context, *coll, arangodb::AccessMode::Type::EXCLUSIVE, options);
-  } catch (arangodb::basics::Exception const& ex) {
+    trx = std::make_unique<SingleCollectionTransaction>(
+        context, *coll, AccessMode::Type::EXCLUSIVE, options);
+  } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       bool locked = false;
       TRI_vocbase_col_status_e status = coll->tryFetchStatus(locked);
@@ -1918,7 +1921,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // Builder will be recycled
     VPackBuilder responseBuilder;
 
-    auto& nf = coll->vocbase().server().getFeature<arangodb::NetworkFeature>();
+    auto& nf = coll->vocbase().server().getFeature<NetworkFeature>();
     while (requestResume < RevisionId::max()) {
       std::unique_ptr<httpclient::SimpleHttpResult> chunkResponse;
 
@@ -2200,26 +2203,25 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 /// @brief incrementally fetch data from a collection
 /// @brief changes the properties of a collection, based on the VelocyPack
 /// provided
-Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
-                                               VPackSlice const& slice) {
-  arangodb::CollectionGuard guard(&vocbase(), col->id());
+Result DatabaseInitialSyncer::changeCollection(LogicalCollection* col,
+                                               velocypack::Slice slice) {
+  CollectionGuard guard(&vocbase(), col->id());
 
   return guard.collection()->properties(slice);
 }
 
 /// @brief whether or not the collection has documents
-bool DatabaseInitialSyncer::hasDocuments(
-    arangodb::LogicalCollection const& col) {
+bool DatabaseInitialSyncer::hasDocuments(LogicalCollection const& col) {
   return col.getPhysical()->hasDocuments();
 }
 
 /// @brief handle the information about a collection
-Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
-                                               VPackSlice const& indexes,
+Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
+                                               velocypack::Slice indexes,
                                                bool incremental,
                                                SyncPhase phase) {
-  using ::arangodb::basics::StringUtils::concatT;
-  using ::arangodb::basics::StringUtils::itoa;
+  using basics::StringUtils::concatT;
+  using basics::StringUtils::itoa;
 
   if (isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
@@ -2475,7 +2477,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
           createIndexInternal(idxDef, *col);
         }
-      } catch (arangodb::basics::Exception const& ex) {
+      } catch (basics::Exception const& ex) {
         return res.reset(ex.code(), ex.what());
       } catch (std::exception const& ex) {
         return res.reset(TRI_ERROR_INTERNAL, ex.what());
@@ -2493,7 +2495,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 }
 
 /// @brief fetch the server's inventory
-arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
+Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = replutils::ReplicationUrl +
                     "/inventory?serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
@@ -2512,7 +2514,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
       _config.applier._restrictType ==
           ReplicationApplierConfiguration::RestrictType::Include &&
       _config.applier._restrictCollections.size() == 1) {
-    url += "&collection=" + arangodb::basics::StringUtils::urlEncode(*(
+    url += "&collection=" + basics::StringUtils::urlEncode(*(
                                 _config.applier._restrictCollections.begin()));
   }
 
@@ -2558,7 +2560,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
 /// @brief handle the inventory response of the leader
 Result DatabaseInitialSyncer::handleCollectionsAndViews(
-    VPackSlice const& collSlices, VPackSlice const& viewSlices,
+    velocypack::Slice collSlices, velocypack::Slice viewSlices,
     bool incremental) {
   TRI_ASSERT(collSlices.isArray());
 
@@ -2671,8 +2673,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
   if (!_config.applier._skipCreateDrop &&
       _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
-    auto r = handleViewCreation(
-        viewSlices, arangodb::iresearch::StaticStrings::ViewArangoSearchType);
+    auto r = handleViewCreation(viewSlices,
+                                iresearch::StaticStrings::ViewArangoSearchType);
     if (r.fail()) {
       LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
           << "Error during initial sync view creation: " << r.errorMessage();
@@ -2692,13 +2694,14 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(
 
   // STEP 6 load "search-alias" views
   // ----------------------------------------------------------------------------------
-  return handleViewCreation(
-      viewSlices, arangodb::iresearch::StaticStrings::ViewSearchAliasType);
+  return handleViewCreation(viewSlices,
+                            iresearch::StaticStrings::ViewSearchAliasType);
 }
 
 /// @brief iterate over all collections from an array and apply an action
 Result DatabaseInitialSyncer::iterateCollections(
-    std::vector<std::pair<VPackSlice, VPackSlice>> const& collections,
+    std::vector<std::pair<velocypack::Slice, velocypack::Slice>> const&
+        collections,
     bool incremental, SyncPhase phase) {
   std::string phaseMsg("starting phase " + translatePhase(phase) + " with " +
                        std::to_string(collections.size()) + " collections");
@@ -2720,7 +2723,7 @@ Result DatabaseInitialSyncer::iterateCollections(
 }
 
 /// @brief create non-existing views locally
-Result DatabaseInitialSyncer::handleViewCreation(VPackSlice views,
+Result DatabaseInitialSyncer::handleViewCreation(velocypack::Slice views,
                                                  std::string_view type) {
   if (!views.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER};

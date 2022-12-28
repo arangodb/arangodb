@@ -31,6 +31,7 @@
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
+#include "IResearchRocksDBLink.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
@@ -52,6 +53,8 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -139,12 +142,13 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
       auto& server = collection.vocbase().server();
       auto& db = server.getFeature<DatabaseFeature>();
 
-      if (db.checkVersion() || db.upgrade()) {
-        // FIXME find a better way to retrieve an IResearch Link
-        // cannot use static_cast/reinterpret_cast since Index is not related to
-        // IResearchLink
-        auto impl = std::dynamic_pointer_cast<IResearchLink>(link);
-
+      if ((db.checkVersion() || db.upgrade()) &&
+          link->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        auto* impl = dynamic_cast<IResearchLink*>(link.get());
+#else
+        auto* impl = basics::downCast<IResearchRocksDBLink>(link.get());
+#endif
         if (impl) {
           return impl->commit();
         }
@@ -197,14 +201,15 @@ template<typename ViewType>
 Result dropLink(LogicalCollection& collection, IResearchLink const& link) {
   // don't need to create an extra transaction inside
   // arangodb::methods::Indexes::drop(...)
-  if (!collection.dropIndex(link.id())) {
-    return {TRI_ERROR_INTERNAL, std::string("failed to drop link '") +
-                                    std::to_string(link.id().id()) +
-                                    "' from collection '" + collection.name() +
-                                    "'"};
+  Result res = collection.dropIndex(link.index().id());
+  if (res.fail()) {
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("failed to drop link '", link.index().id().id(),
+                         "' from collection '", collection.name(),
+                         "': ", res.errorMessage())};
   }
 
-  return {};
+  return res;
 }
 
 template<>
@@ -221,7 +226,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
   velocypack::Builder builder;
   builder.openObject();
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(link.id().id()));
+              velocypack::Value(link.index().id().id()));
   builder.close();
 
   return methods::Indexes::drop(&collection, builder.slice());
@@ -243,9 +248,10 @@ struct State {
 };
 
 template<typename ViewType>
-Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
-                   velocypack::Slice links, LinkVersion defaultVersion,
-                   std::unordered_set<DataSourceId> const& stale) {
+Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
+                   ViewType& view, velocypack::Slice links,
+                   LinkVersion defaultVersion,
+                   containers::FlatHashSet<DataSourceId> const& stale) {
   LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
       << "link modification request for view '" << view.name()
       << "', original definition:" << links.toString();
@@ -342,10 +348,10 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
     if (!linkMeta.init(view.vocbase().server(), namedJson.slice(), error,
                        view.vocbase().name())) {
       return {TRI_ERROR_BAD_PARAMETER,
-              std::string("error parsing link parameters from json for "
-                          "arangosearch view '") +
-                  view.name() + "' collection '" + collectionName +
-                  "' error '" + error + "'"};
+              absl::StrCat("error parsing link parameters from json for "
+                           "arangosearch view '",
+                           view.name(), "' collection '", collectionName,
+                           "' error '", error, "'")};
     }
 
     linkModifications.emplace_back(collectionsToLock.size(),
@@ -381,9 +387,9 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
 
   {
     // track removal for potential reindex
-    std::unordered_set<DataSourceId> collectionsToRemove;
+    containers::FlatHashSet<DataSourceId> collectionsToRemove;
     // track reindex requests
-    std::unordered_set<DataSourceId> collectionsToUpdate;
+    containers::FlatHashSet<DataSourceId> collectionsToUpdate;
 
     // resolve corresponding collection and link
     for (auto itr = linkModifications.begin();
@@ -434,8 +440,9 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
           && state._linkDefinitionsOffset >=
                  linkDefinitions.size()) {  // link removal request
         LOG_TOPIC("a58da", TRACE, arangodb::iresearch::TOPIC)
-            << "found link '" << state._link->id() << "' for collection '"
-            << state._collection->name() << "' - slated for removal";
+            << "found link '" << state._link->index().id()
+            << "' for collection '" << state._collection->name()
+            << "' - slated for removal";
         auto cid = state._collection->id();
 
         // remove duplicate removal requests (e.g. by name + by CID)
@@ -453,13 +460,14 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
           && state._linkDefinitionsOffset <
                  linkDefinitions.size()) {  // link update request
         LOG_TOPIC("8419d", TRACE, arangodb::iresearch::TOPIC)
-            << "found link '" << state._link->id() << "' for collection '"
-            << state._collection->name() << "' - slated for update";
+            << "found link '" << state._link->index().id()
+            << "' for collection '" << state._collection->name()
+            << "' - slated for update";
         collectionsToUpdate.emplace(state._collection->id());
       }
 
       LOG_TOPIC_IF("e9a8c", TRACE, arangodb::iresearch::TOPIC, state._link)
-          << "found link '" << state._link->id() << "' for collection '"
+          << "found link '" << state._link->index().id() << "' for collection '"
           << state._collection->name() << "' - unsure what to do";
 
       LOG_TOPIC_IF("b01be", TRACE, arangodb::iresearch::TOPIC, !state._link)
@@ -488,7 +496,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
            || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) {
         LOG_TOPIC("5c99e", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, came from stale list, for link '"
-            << state._link->id() << "'";
+            << state._link->index().id() << "'";
         itr = linkModifications.erase(itr);
         continue;
       }
@@ -514,7 +522,7 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
                  collectionsToUpdate.end()) {
         LOG_TOPIC("1d095", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, remove+update, for link '"
-            << state._link->id() << "'";
+            << state._link->index().id() << "'";
         itr = linkModifications.erase(itr);
         continue;
       }
@@ -529,11 +537,11 @@ Result modifyLinks(std::unordered_set<DataSourceId>& modified, ViewType& view,
           && collectionsToRemove.find(state._collection->id()) ==
                  collectionsToRemove.end() &&
           // link meta not modified
-          *(state._link) ==
+          state._link->meta() ==
               linkDefinitions[state._linkDefinitionsOffset].second) {
         LOG_TOPIC("4c196", TRACE, arangodb::iresearch::TOPIC)
             << "modification unnecessary, no change, for link '"
-            << state._link->id() << "'";
+            << state._link->index().id() << "'";
         itr = linkModifications.erase(itr);
         continue;
       }
@@ -637,7 +645,7 @@ namespace iresearch {
     // in the cluster, we may have identifiers of the form
     // `cxxx/` and `cxxx/yyy` which should be considered equal if the
     // one is a prefix of the other up to the `/`
-    if (ls.empty() || ls.back() != '/' || ls.compare(rs.substr(0, ls.size()))) {
+    if (ls.empty() || ls.back() != '/' || ls != rs.substr(0, ls.size())) {
       return false;
     }
   }
@@ -654,20 +662,14 @@ namespace iresearch {
     LogicalCollection const& collection, IndexId id) {
   auto index = collection.lookupIndex(id);
 
-  if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-    return nullptr;  // not an IResearchLink
+  if (!index || index->id() != id ||
+      index->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+    return nullptr;
   }
 
-  // TODO FIXME find a better way to retrieve an IResearch Link
-  // cannot use static_cast/reinterpret_cast since Index is not related to
-  // IResearchLink
-  auto link = std::dynamic_pointer_cast<IResearchLink>(index);
-
-  if (link && link->id() == id) {
-    return link;  // found required link
-  }
-
-  return nullptr;
+  // TODO(MBkkt) find a better way to retrieve an IResearchLink
+  //  cannot use downCast since Index is not related to IResearchLink
+  return std::dynamic_pointer_cast<IResearchLink>(index);
 }
 
 /*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
@@ -677,12 +679,11 @@ namespace iresearch {
       continue;  // not an IResearchLink
     }
 
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to
-    // IResearchLink
+    // TODO(MBkkt) find a better way to retrieve an IResearchLink
+    //  cannot use downCast since Index is not related to IResearchLink
     auto link = std::dynamic_pointer_cast<IResearchLink>(index);
 
-    if (link && *link == view) {
+    if (link && link->getViewId() == view.guid()) {
       return link;  // found required link
     }
   }
@@ -902,9 +903,8 @@ namespace iresearch {
       continue;  // not an IResearchLink
     }
 
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to
-    // IResearchLink
+    // TODO(MBkkt) find a better way to retrieve an IResearchLink
+    //  cannot use downCast since Index is not related to IResearchLink
     auto link = std::dynamic_pointer_cast<IResearchLink>(index);
 
     if (link && !visitor(*link)) {
@@ -916,9 +916,9 @@ namespace iresearch {
 }
 
 /*static*/ Result IResearchLinkHelper::updateLinks(
-    std::unordered_set<DataSourceId>& modified, LogicalView& view,
+    containers::FlatHashSet<DataSourceId>& modified, LogicalView& view,
     velocypack::Slice links, LinkVersion defaultVersion,
-    std::unordered_set<DataSourceId> const& stale /*= {}*/) {
+    containers::FlatHashSet<DataSourceId> const& stale /*= {}*/) {
   LOG_TOPIC("00bf9", TRACE, arangodb::iresearch::TOPIC)
       << "beginning IResearchLinkHelper::updateLinks";
   try {

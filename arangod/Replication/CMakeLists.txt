@@ -25,6 +25,3 @@ target_link_libraries(arango_replication
 target_include_directories(arango_replication PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_replication PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})

@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -159,12 +160,11 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     for (auto const& pair : mappings) {
       TRI_voc_tick_t dbid = pair.first;
       DataSourceId cid = pair.second;
-      TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
+      auto vocbase = dbfeature.useDatabase(dbid);
       if (!vocbase) {
         continue;
       }
       TRI_ASSERT(!vocbase->isDangling());
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       std::shared_ptr<LogicalCollection> coll;
       try {

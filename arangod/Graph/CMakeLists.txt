@@ -35,9 +35,6 @@ target_include_directories(arango_graph PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arango_graph PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
-
 add_subdirectory(Cache)
 add_subdirectory(Cursors)
 add_subdirectory(Enumerators)

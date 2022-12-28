@@ -35,6 +35,7 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"

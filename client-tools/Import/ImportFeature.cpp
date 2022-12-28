@@ -34,6 +34,7 @@
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

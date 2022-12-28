@@ -65,6 +65,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
     "overwriteCollectionPrefix");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
+std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");

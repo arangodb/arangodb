@@ -24,14 +24,19 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var analyzers = require("@arangodb/analyzers");
-var ERRORS = require("@arangodb").errors;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const analyzers = require("@arangodb/analyzers");
+const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-const request = require("@arangodb/request");
-const { triggerMetrics } = require("@arangodb/test-helper");
-const { checkIndexMetrics } = require("@arangodb/test-helper-common");
+const {checkIndexMetrics} = require("@arangodb/test-helper-common");
+const {
+  triggerMetrics,
+  debugSetFailAt,
+  debugRemoveFailAt,
+  getEndpointById,
+  getCoordinators,
+} = require('@arangodb/test-helper');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -52,7 +57,10 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db._dropDatabase("TestDB");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +77,48 @@ function IResearchFeatureDDLTestSuite() {
       }
     },
 
+    testViewIsBuilding: function () {
+      if (isServer) {
+        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
+      }
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      if (isServer) {
+        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
+      }
+    },
+
     testStressAddRemoveViewWithDirectLinks: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name: i.toString() });
-        db._createView("TestView", "arangosearch", { links: { "TestCollection0": { includeAllFields: true } } });
+        db.TestCollection0.save({name: i.toString()});
+        db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 1);

@@ -172,6 +172,7 @@ add_library(arangoserver STATIC
   Transaction/Context.cpp
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
+  Transaction/IndexesSnapshot.cpp
   Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
   Transaction/ManagerFeature.cpp
@@ -201,6 +202,7 @@ target_link_libraries(arangoserver
   arango_cluster_engine
   arango_cluster_methods
   arango_common_rest_handler
+  arango_futures
   arango_geo
   arango_graph
   arango_indexes
@@ -222,8 +224,5 @@ endif()
 target_include_directories(arangoserver PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arangoserver PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_dependencies(arangoserver tzdata)

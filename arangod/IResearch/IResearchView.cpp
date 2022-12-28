@@ -36,6 +36,7 @@
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -112,7 +113,7 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
     // link creation failure does not cause view creation failure
     try {
       // only we have access to *impl, so don't need lock
-      std::unordered_set<DataSourceId> collections;  // TODO remove
+      containers::FlatHashSet<DataSourceId> collections;  // TODO remove
       r = IResearchLinkHelper::updateLinks(collections, *impl, links,
                                            getDefaultVersion(isUserRequest));
       if (!r.ok()) {
@@ -344,7 +345,8 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
       if (!link->properties(linkBuild, ctx == Serialization::Inventory).ok()) {
         // link definitions are not output if forPersistence
         LOG_TOPIC("713ad", WARN, TOPIC)
-            << "failed to generate json for arangosearch link '" << link->id()
+            << "failed to generate json for arangosearch link '"
+            << link->index().id()
             << "' while generating json for arangosearch view '" << name()
             << "'";
         return true;  // skip invalid link definitions
@@ -354,7 +356,7 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
       if (!mergeSliceSkipKeys(linksBuild, linkBuild.close().slice(), accept)) {
         r = {TRI_ERROR_INTERNAL,
              "failed to generate arangosearch link '" +
-                 std::to_string(link->id().id()) +
+                 std::to_string(link->index().id().id()) +
                  "' definition while generating json for arangosearch view '" +
                  name() + "'"};
         return false;  // terminate generation
@@ -393,8 +395,8 @@ bool IResearchView::apply(transaction::Methods& trx) {
 
 Result IResearchView::dropImpl() {
   // drop all known links
-  std::unordered_set<DataSourceId> collections;
-  std::unordered_set<DataSourceId> stale;
+  containers::FlatHashSet<DataSourceId> collections;
+  containers::FlatHashSet<DataSourceId> stale;
   {
     std::shared_lock lock{_mutex};
     for (auto& entry : _links) {
@@ -476,7 +478,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
             "arangosearch View '" +
                 name() + "'"};
   }
-  auto const cid = linkLock->collection().id();
+  auto const cid = linkLock->index().collection().id();
   std::lock_guard lock{_mutex};
   auto it = _links.find(cid);
   if (it == _links.end()) {
@@ -628,8 +630,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     // it's also possible for links to be simultaneously modified via a
     // different callflow (e.g. from collections)
     // ...........................................................................
-    std::unordered_set<DataSourceId> collections;
-    std::unordered_set<DataSourceId> stale;
+    containers::FlatHashSet<DataSourceId> collections;
+    containers::FlatHashSet<DataSourceId> stale;
     if (!partialUpdate) {
       for (auto& entry : _links) {
         stale.emplace(entry.first);
@@ -670,6 +672,18 @@ bool IResearchView::visitCollections(
     }
   }
   return true;
+}
+
+bool IResearchView::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _links) {
+    auto linkLock = entry.second->lock();
+    if (linkLock &&
+        basics::downCast<IResearchLink>(linkLock.get())->isBuilding()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 LinkLock IResearchView::linkLock(
