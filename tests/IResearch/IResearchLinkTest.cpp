@@ -2504,7 +2504,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[1200];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2524,7 +2524,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}2054\n"
-    , cid, cid, cid, cid, cid);  // clang-format on
+    , cid, cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2583,7 +2583,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[1200];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2603,7 +2603,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1513\n"
-    , cid, cid, cid, cid, cid);  // clang-format on
+    , cid, cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2625,7 +2625,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   }
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[1200];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2645,7 +2645,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1561\n"
-    , cid, cid, cid, cid, cid);  // clang-format on
+    , cid, cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2666,7 +2666,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     insert(1, 2, 0);
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[1200];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2686,7 +2686,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}681\n"
-    , cid, cid, cid, cid, cid);  // clang-format on
+    , cid, cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2696,7 +2696,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     insert(2, 3, 2);
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[1200];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2716,7 +2716,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1513\n"
-    , cid, cid, cid, cid, cid);  // clang-format on
+    , cid, cid, cid, cid, cid, cid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
