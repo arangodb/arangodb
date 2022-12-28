@@ -10,6 +10,7 @@ if (MSVC)
   set(LIB_ARANGO_MSVC
     Basics/memory-map-win32.cpp
     Basics/win-utils.cpp
+    Basics/Utf8Helper-Win32.cpp
     Zip/iowin32.cpp
   )
 else ()

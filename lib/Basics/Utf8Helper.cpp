@@ -60,36 +60,9 @@
 #endif
 
 using namespace arangodb::basics;
-using namespace icu;
 
 #ifdef _WIN32
-std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
-  icu::UnicodeString utf16(validUTF8String.c_str(),
-                           static_cast<int32_t>(validUTF8String.size()));
-  // // probably required for newer c++ versions
-  // using bufferType =
-  // std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
-  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not
-  // match"); return std::wstring(reinterpret_cast<wchar_t
-  // const*>(utf16.getTerminatedBuffer()), utf16.length());
-  return std::wstring(
-      reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()),
-      utf16.length());
-}
 
-std::string arangodb::basics::fromWString(wchar_t const* validUTF16String,
-                                          std::size_t size) {
-  std::string out;
-  icu::UnicodeString ICUString(validUTF16String, static_cast<int32_t>(size));
-  ICUString.toUTF8String<std::string>(out);
-  return out;
-}
-
-std::string arangodb::basics::fromWString(
-    std::wstring const& validUTF16String) {
-  return arangodb::basics::fromWString(validUTF16String.data(),
-                                       validUTF16String.size());
-}
 #endif
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);

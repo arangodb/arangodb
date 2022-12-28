@@ -65,7 +65,6 @@
 #ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>
-#include <unicode/unistr.h>
 #include "Basics/socket-utils.h"
 #include "Basics/win-utils.h"
 #endif
