@@ -1084,4 +1084,3 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
 }
 
 }  // namespace arangodb::iresearch
-      metrics.get<std::uint64_t>("arangodb_search_num_primary_docs", labels),

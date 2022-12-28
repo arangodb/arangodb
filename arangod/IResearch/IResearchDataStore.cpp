@@ -2083,6 +2083,8 @@ void IResearchDataStore::initClusterMetrics() const {
   metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
   metric.add("arangodb_search_num_live_docs", batchToCoordinator,
              batchToPrometheus);
+  metric.add("arangodb_search_num_primary_docs", batchToCoordinator,
+             batchToPrometheus);
   metric.add("arangodb_search_num_segments", batchToCoordinator,
              batchToPrometheus);
   metric.add("arangodb_search_num_files", batchToCoordinator,
