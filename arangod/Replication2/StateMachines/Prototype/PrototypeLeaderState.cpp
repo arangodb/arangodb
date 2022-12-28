@@ -332,7 +332,7 @@ auto PrototypeLeaderState::GuardedData::waitForApplied(LogIndex index)
   return f;
 }
 
-void PrototypeLeaderState::onSnapshotCompleted() noexcept try {
+void PrototypeLeaderState::onRecoveryCompleted() noexcept try {
   handlePollResult(pollNewEntries());
 } catch (replicated_log::ParticipantResignedException const&) {
   // We're obsolete now, so just ignore this exception.

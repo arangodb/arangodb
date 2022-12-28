@@ -99,19 +99,20 @@ auto DocumentFollowerState::applyEntries(
                   to_string(data.core->getGid()))};
         }
 
-        auto releaseIndex = std::make_optional<LogIndex>();
-        while (auto entry = ptr->next()) {
-          auto doc = entry->second;
-          auto res = self->_transactionHandler->applyEntry(doc);
-          if (res.fail()) {
-            LOG_CTX("d82d4", FATAL, self->loggerContext)
-                << "Failed to apply entry " << entry->first
-                << " to local shard " << self->shardId
-                << " with error: " << res;
-            FATAL_ERROR_EXIT();
-          }
+        return basics::catchToResultT([&]() -> std::optional<LogIndex> {
+          auto releaseIndex = std::make_optional<LogIndex>();
 
-          try {
+          while (auto entry = ptr->next()) {
+            auto doc = entry->second;
+            auto res = self->_transactionHandler->applyEntry(doc);
+            if (res.fail()) {
+              LOG_CTX("d82d4", FATAL, self->loggerContext)
+                  << "Failed to apply entry " << entry->first
+                  << " to local shard " << self->shardId
+                  << " with error: " << res;
+              FATAL_ERROR_EXIT();
+            }
+
             if (doc.operation == OperationType::kAbortAllOngoingTrx) {
               self->_activeTransactions.clear();
               if (!releaseIndex.has_value() ||
@@ -128,19 +129,10 @@ auto DocumentFollowerState::applyEntries(
             } else {
               self->_activeTransactions.emplace(doc.tid, entry->first);
             }
-          } catch (basics::Exception& e) {
-            return Result{e.code(), e.message()};
-          } catch (std::exception& e) {
-            return Result{
-                TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-                fmt::format(
-                    "replicated state {} of type {} is unavailable, exception "
-                    "durin applyEntries: {}",
-                    self->shardId, DocumentState::NAME, e.what())};
           }
-        }
 
-        return releaseIndex;
+          return releaseIndex;
+        });
       });
 
   if (result.fail()) {
@@ -154,7 +146,7 @@ auto DocumentFollowerState::applyEntries(
       stream->release(result->value());
     });
     if (releaseRes.fail()) {
-      LOG_CTX("10f07", WARN, loggerContext)
+      LOG_CTX("10f07", ERR, loggerContext)
           << "Failed to get stream! " << releaseRes;
     }
   }

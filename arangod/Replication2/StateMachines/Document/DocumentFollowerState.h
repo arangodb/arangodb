@@ -48,7 +48,8 @@ struct DocumentFollowerState
   ShardID const shardId;
   LoggerContext const loggerContext;
 
- protected:
+  // unprotected for gtests. TODO think about whether there's a better way
+  // protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept

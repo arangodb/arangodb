@@ -131,4 +131,24 @@ void MockCollectionReader::reset() {
   _idx = 0;
   controlledSoftLimit = 1;
 }
+
+DocumentLogEntryIterator::DocumentLogEntryIterator(
+    std::vector<replicated_state::document::DocumentLogEntry> entries)
+    : entries(std::move(entries)), iter(this->entries.begin()) {}
+
+auto DocumentLogEntryIterator::next() -> std::optional<
+    streams::StreamEntryView<replicated_state::document::DocumentLogEntry>> {
+  if (iter != entries.end()) {
+    auto idx = LogIndex(std::distance(std::begin(entries), iter) + 1);
+    auto res = std::make_pair(idx, std::ref(*iter));
+    ++iter;
+    return res;
+  } else {
+    return std::nullopt;
+  }
+}
+
+auto DocumentLogEntryIterator::range() const noexcept -> LogRange {
+  return LogRange{LogIndex{1}, LogIndex{entries.size() + 1}};
+}
 }  // namespace arangodb::replication2::test

@@ -46,7 +46,7 @@ auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
                                   ParticipantsHealth const& health) -> size_t;
 
-auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool;
 
 auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
