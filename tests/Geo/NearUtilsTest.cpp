@@ -464,7 +464,8 @@ TEST_F(QueryPointsContainedInTest, rectangle) {
       R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
   auto r = geo::json::parseRegion(rect->slice(), params.filterShape);
   ASSERT_TRUE(r.ok()) << r.errorMessage();
-  ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_POLYGON);
+  ASSERT_EQ(params.filterShape.type(),
+            geo::ShapeContainer::Type::S2_LATLNGRECT);
   params.filterShape.updateBounds(params);
 
   AscIterator near(std::move(params));
