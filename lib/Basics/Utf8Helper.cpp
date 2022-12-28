@@ -60,6 +60,7 @@
 #endif
 
 using namespace arangodb::basics;
+using namespace icu;
 
 #ifdef _WIN32
 
