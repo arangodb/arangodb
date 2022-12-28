@@ -1322,7 +1322,9 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
       }
 
       if constexpr (ExecutionTraits::EmitSearchDoc ||
-                    ExecutionTraits::MaterializeType == MaterializeType::LateMaterialize) {
+                    (ExecutionTraits::MaterializeType &
+                     MaterializeType::LateMaterialize) ==
+                        MaterializeType::LateMaterialize) {
         TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
                    ExecutionTraits::EmitSearchDoc);
         this->_indexReadBuffer.pushSearchDoc(this->_reader->segment(segmentIdx),
@@ -1418,7 +1420,8 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
                                      documentId);
 
       if constexpr (ExecutionTraits::EmitSearchDoc ||
-                  ExecutionTraits::MaterializeType ==
+                  (ExecutionTraits::MaterializeType &
+                      MaterializeType::LateMaterialize) ==
                       MaterializeType::LateMaterialize) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
                  ExecutionTraits::EmitSearchDoc);
@@ -1871,7 +1874,8 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     }
 
     if constexpr (ExecutionTraits::EmitSearchDoc ||
-                  ExecutionTraits::MaterializeType ==
+                  (ExecutionTraits::MaterializeType &
+                   MaterializeType::LateMaterialize) ==
                       MaterializeType::LateMaterialize) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid() ==
                  ExecutionTraits::EmitSearchDoc);

@@ -960,7 +960,7 @@ Result IResearchDataStore::commitUnsafeImpl(
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("Failed to get engine snapshot while committing "
                            "ArangoSearch index '",
-                           id().id(), "'")};
+                           index().id().id(), "'")};
     }
     auto const lastTickBeforeCommitOne = engineSnapshot->tick();
 #if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
