@@ -90,6 +90,8 @@
 #include <random>
 #include <vector>
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;

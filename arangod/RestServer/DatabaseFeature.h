@@ -24,8 +24,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
@@ -41,6 +39,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <memory>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -112,7 +112,6 @@ class DatabaseFeature : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(Server& server);
-  ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -207,11 +206,6 @@ class DatabaseFeature : public ArangodFeature {
   void disableUpgrade() { _upgrade = false; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
-  struct DatabasesLists {
-    containers::FlatHashMap<std::string, TRI_vocbase_t*> _databases;
-    containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
-  };
-
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -257,14 +251,39 @@ class DatabaseFeature : public ArangodFeature {
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
-  std::atomic<DatabasesLists*> _databasesLists;
-  // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // arangodb::basics::DataProtector<64>
-  mutable basics::DataProtector _databasesProtector;
-  mutable Mutex _databasesMutex;
+  using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
+  class DatabasesListGuard {
+   public:
+    [[nodiscard]] static std::shared_ptr<DatabasesList> create() {
+      return std::make_shared<DatabasesList>();
+    }
+
+    [[nodiscard]] auto load() const noexcept {
+      auto lists = std::atomic_load(&_impl);
+      TRI_ASSERT(lists != nullptr);
+      return lists;
+    }
+
+    [[nodiscard]] static auto make(
+        std::shared_ptr<DatabasesList const> const& lists) {
+      return std::make_shared<DatabasesList>(*lists);
+    }
+
+    void store(std::shared_ptr<DatabasesList const>&& lists) noexcept {
+      TRI_ASSERT(lists != nullptr);
+      std::atomic_store(&_impl, std::move(lists));
+    }
+
+   private:
+    // TODO(MBkkt) replace via std::atomic<std::shared_ptr>
+    //  when libc++ support it or we drop it support
+    std::shared_ptr<DatabasesList const> _impl = create();
+  } _databases;
+  mutable std::mutex _databasesMutex;
+  containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
 
   /// @brief lock for serializing the creation of databases
-  Mutex _databaseCreateLock;
+  std::mutex _databaseCreateLock;
 
   std::vector<std::function<Result()>> _pendingRecoveryCallbacks;
 

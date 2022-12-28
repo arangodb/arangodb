@@ -1914,7 +1914,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto reader = createSnapshot(engine);
-  if (reader->size() == 0) {
+  if (reader->live_docs_count() == 0) {
     return createNoResultsExecutor(engine);
   }
 
@@ -2158,6 +2158,10 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
     }
   }
   return uniqueVariables;
+}
+
+bool IResearchViewNode::isBuilding() const {
+  return _view && _view->isBuilding();
 }
 
 }  // namespace arangodb::iresearch

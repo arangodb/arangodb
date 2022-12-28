@@ -108,28 +108,35 @@ class RocksDBCollection final : public RocksDBMetaCollection {
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                velocypack::Slice newDocument,
+  Result insert(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                RevisionId newRevisionId, velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result update(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result update(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument, RevisionId newRevisionId,
                 velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result replace(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result replace(transaction::Methods& trx,
+                 IndexesSnapshot const& indexesSnapshot,
+                 LocalDocumentId previousDocumentId,
                  RevisionId previousRevisionId,
                  velocypack::Slice previousDocument, RevisionId newRevisionId,
                  velocypack::Slice newDocument,
                  OperationOptions const& options) override;
 
-  Result remove(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result remove(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  inline bool cacheEnabled() const { return _cacheEnabled; }
+  bool cacheEnabled() const noexcept { return _cacheEnabled; }
 
   bool hasDocuments() override;
 
@@ -145,7 +152,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // WARNING: Make sure that this instance
   // is somehow protected. If it goes out of all scopes
   // or its indexes are freed the pointer returned will get invalidated.
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const override {
+  RocksDBPrimaryIndex* primaryIndex() const override {
     TRI_ASSERT(_primaryIndex != nullptr);
     return _primaryIndex;
   }
@@ -165,27 +172,30 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                               OperationOptions& options);
 
   [[nodiscard]] Result performUpdateOrReplace(
-      transaction::Methods& trx, LocalDocumentId previousDocumentId,
-      RevisionId previousRevisionId, velocypack::Slice previousDocument,
-      RevisionId newRevisionId, velocypack::Slice newDocument,
-      OperationOptions const& options, TRI_voc_document_operation_e opType);
+      transaction::Methods& trx, IndexesSnapshot const& indexesSnapshot,
+      LocalDocumentId previousDocumentId, RevisionId previousRevisionId,
+      velocypack::Slice previousDocument, RevisionId newRevisionId,
+      velocypack::Slice newDocument, OperationOptions const& options,
+      TRI_voc_document_operation_e opType);
 
   /// @brief return engine-specific figures
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
-  Result doInsertDocument(arangodb::transaction::Methods* trx,
-                          RocksDBSavePoint& savepoint,
-                          LocalDocumentId documentId,
-                          arangodb::velocypack::Slice doc,
-                          OperationOptions const& options,
-                          RevisionId revisionId) const;
-
-  Result removeDocument(transaction::Methods* trx, RocksDBSavePoint& savepoint,
-                        LocalDocumentId documentId, velocypack::Slice doc,
-                        OperationOptions const& options,
+  Result insertDocument(transaction::Methods* trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RocksDBSavePoint& savepoint, LocalDocumentId documentId,
+                        velocypack::Slice doc, OperationOptions const& options,
                         RevisionId revisionId) const;
 
-  Result modifyDocument(transaction::Methods* trx, RocksDBSavePoint& savepoint,
+  Result removeDocument(transaction::Methods* trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RocksDBSavePoint& savepoint, LocalDocumentId documentId,
+                        velocypack::Slice doc, OperationOptions const& options,
+                        RevisionId revisionId) const;
+
+  Result modifyDocument(transaction::Methods* trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RocksDBSavePoint& savepoint,
                         LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
                         LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                         RevisionId oldRevisionId, RevisionId newRevisionId,

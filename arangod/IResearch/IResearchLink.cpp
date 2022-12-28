@@ -22,40 +22,36 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchLink.h"
+#include "IResearchLinkCoordinator.h"
 
 #include <index/column_info.hpp>
-#include <utils/singleton.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "IResearchDocument.h"
 #ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchCompression.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchMetricStats.h"
-#include "IResearch/IResearchPrimaryKeyFilter.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace std::literals;
 
@@ -146,8 +142,8 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
   }
   if (logical->type() != ViewType::kArangoSearch) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "error finding view: '" + _viewGuid + "' for link '" +
-                std::to_string(_id.id()) + "' : no such view"};
+            absl::StrCat("error finding view: '", _viewGuid, "' for link '",
+                         index().id().id(), "' : no such view")};
   }
   view = basics::downCast<T>(logical);
   // TODO(MBkkt) Now its workaround for unit tests that expected this behavior
@@ -159,8 +155,8 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
   irs::index_reader_options readerOptions;
 #ifdef USE_ENTERPRISE
-  setupReaderEntepriseOptions(readerOptions, _collection.vocbase().server(),
-                              _meta);
+  setupReaderEntepriseOptions(readerOptions,
+                              index().collection().vocbase().server(), _meta);
 #endif
   auto r = initDataStore(pathExists, init, _meta._version, !_meta._sort.empty(),
 #ifdef USE_ENTERPRISE
@@ -179,7 +175,7 @@ Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
 Result IResearchLink::initSingleServer(bool& pathExists,
                                        InitCallback const& init) {
   std::shared_ptr<IResearchView> view;
-  auto r = toView(_collection.vocbase().lookupView(_viewGuid), view);
+  auto r = toView(index().collection().vocbase().lookupView(_viewGuid), view);
   if (!r.ok()) {
     return r;
   }
@@ -187,41 +183,44 @@ Result IResearchLink::initSingleServer(bool& pathExists,
 }
 
 Result IResearchLink::initCoordinator(InitCallback const& init) {
-  auto& vocbase = _collection.vocbase();
+  auto& vocbase = index().collection().vocbase();
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<IResearchViewCoordinator> view;
   if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !view) {
     return r;
   }
-  return view->link(*this);
+  return view->link(basics::downCast<IResearchLinkCoordinator>(*this));
 }
 
 Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
-  auto& vocbase = _collection.vocbase();
+  auto& vocbase = index().collection().vocbase();
   auto& server = vocbase.server();
   bool const clusterEnabled = server.getFeature<ClusterFeature>().isEnabled();
-  bool wide = _collection.id() == _collection.planId() && _collection.isAStub();
+  bool wide = index().collection().id() == index().collection().planId() &&
+              index().collection().isAStub();
   std::shared_ptr<IResearchView> view;
   if (clusterEnabled) {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    clusterCollectionName(_collection, wide ? nullptr : &ci, id().id(),
-                          _meta.willIndexIdAttribute(), _meta._collectionName);
+    clusterCollectionName(index().collection(), wide ? nullptr : &ci,
+                          index().id().id(), _meta.willIndexIdAttribute(),
+                          _meta._collectionName);
     if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !r.ok()) {
       return r;
     }
   } else {
     LOG_TOPIC("67dd6", DEBUG, TOPIC)
-        << "Skipped link '" << id().id()
+        << "Skipped link '" << index().id().id()
         << "' maybe due to disabled cluster features.";
   }
   if (wide) {
-    return linkWideCluster(_collection, view.get());
+    return linkWideCluster(index().collection(), view.get());
   }
   if (_meta._collectionName.empty() && !clusterEnabled &&
       server.getFeature<EngineSelectorFeature>().engine().inRecovery() &&
       _meta.willIndexIdAttribute()) {
     LOG_TOPIC("f25ce", FATAL, TOPIC)
-        << "Upgrade conflicts with recovering ArangoSearch link '" << id().id()
+        << "Upgrade conflicts with recovering ArangoSearch link '"
+        << index().id().id()
         << "' Please rollback the updated arangodb binary and"
            " finish the recovery first.";
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -233,30 +232,6 @@ Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
   return initAndLink(pathExists, init, view.get());
 }
 
-IResearchLink::IResearchLink(IndexId iid, LogicalCollection& collection)
-    : IResearchDataStore(iid, collection) {}
-
-IResearchLink::~IResearchLink() {
-  // disassociate from view if it has not been done yet
-  auto r = unload();
-  if (!r.ok()) {
-    try {
-      LOG_TOPIC("2b41f", ERR, TOPIC)
-          << "failed to unload arangodb_search link in link destructor: "
-          << r.errorNumber() << " " << r.errorMessage();
-    } catch (...) {
-    }
-  }
-}
-
-bool IResearchLink::operator==(LogicalView const& view) const noexcept {
-  return _viewGuid == view.guid();
-}
-
-bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
-  return _meta == meta;
-}
-
 Result IResearchLink::drop() {
   // the lookup and unlink is valid for single-server only (that is the only
   // scenario where links are persisted) on coordinator and db-server the
@@ -266,7 +241,7 @@ Result IResearchLink::drop() {
   // lookup in ClusterInfo
   if (ServerState::instance()->isSingleServer()) {
     auto view = basics::downCast<IResearchView>(
-        collection().vocbase().lookupView(_viewGuid));
+        index().collection().vocbase().lookupView(_viewGuid));
 
     // may occur if the link was already unlinked from the view via another
     // instance this behavior was seen
@@ -283,10 +258,10 @@ Result IResearchLink::drop() {
     if (!view) {
       LOG_TOPIC("f4e2c", WARN, iresearch::TOPIC)
           << "unable to find arangosearch view '" << _viewGuid
-          << "' while dropping arangosearch link '" << _id.id() << "'";
+          << "' while dropping arangosearch link '" << index().id().id() << "'";
     } else {
       // unlink before reset() to release lock in view (if any)
-      view->unlink(collection().id());
+      view->unlink(index().collection().id());
     }
   }
 
@@ -295,14 +270,14 @@ Result IResearchLink::drop() {
 
 Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
                            InitCallback const& init) {
-  auto& vocbase = _collection.vocbase();
+  auto& vocbase = index().collection().vocbase();
   auto& server = vocbase.server();
   bool const isSingleServer = ServerState::instance()->isSingleServer();
   if (!isSingleServer && !server.hasFeature<ClusterFeature>()) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "failure to get cluster info while initializing arangosearch link '" +
-            std::to_string(_id.id()) + "'"};
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("failure to get cluster info while initializing "
+                         "arangosearch link '",
+                         index().id().id(), "'")};
   }
   std::string error;
   // definition should already be normalized and analyzers created if required
@@ -315,8 +290,9 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
 #endif
   if (!definition.isObject() ||
       !definition.get(StaticStrings::ViewIdField).isString()) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            "error finding view for link '" + std::to_string(_id.id()) + "'"};
+    return {
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        absl::StrCat("error finding view for link '", index().id().id(), "'")};
   }
   TRI_ASSERT(_meta._sortCompression);
   _viewGuid = definition.get(StaticStrings::ViewIdField).stringView();
@@ -352,14 +328,6 @@ bool IResearchLink::isHidden() {
   return !ServerState::instance()->isDBServer();
 }
 
-bool IResearchLink::isSorted() {
-  return false;  // IResearch does not provide a fixed default sort order
-}
-
-void IResearchLink::load() {
-  // Note: this function is only used by RocksDB
-}
-
 bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   if (!slice.isObject() || !slice.hasKey(StaticStrings::ViewIdField)) {
     return false;  // slice has no view identifier field
@@ -375,7 +343,7 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
   std::string errorField;
   // for db-server analyzer validation should have already passed on coordinator
   // (missing analyzer == no match)
-  auto& vocbase = _collection.vocbase();
+  auto& vocbase = index().collection().vocbase();
   return other.init(vocbase.server(), slice, errorField, vocbase.name()) &&
          _meta == other;
 }
@@ -383,13 +351,14 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
 Result IResearchLink::properties(velocypack::Builder& builder,
                                  bool forPersistence) const {
   if (!builder.isOpenObject()  // not an open object
-      || !_meta.json(_collection.vocbase().server(), builder, forPersistence,
-                     nullptr, &(_collection.vocbase()))) {
+      ||
+      !_meta.json(index().collection().vocbase().server(), builder,
+                  forPersistence, nullptr, &(index().collection().vocbase()))) {
     return {TRI_ERROR_BAD_PARAMETER};
   }
 
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(std::to_string(_id.id())));
+              velocypack::Value(std::to_string(index().id().id())));
   builder.add(arangodb::StaticStrings::IndexType,
               velocypack::Value(
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -404,15 +373,6 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   return {};
 }
 
-Index::IndexType IResearchLink::type() {
-  // TODO: don't use enum
-  return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
-}
-
-char const* IResearchLink::typeName() {
-  return StaticStrings::ViewArangoSearchType.data();
-}
-
 bool IResearchLink::setCollectionName(std::string_view name) noexcept {
   TRI_ASSERT(!name.empty());
   if (_meta._collectionName.empty()) {
@@ -420,7 +380,8 @@ bool IResearchLink::setCollectionName(std::string_view name) noexcept {
     return true;
   }
   LOG_TOPIC_IF("5573c", ERR, TOPIC, name != _meta._collectionName)
-      << "Collection name mismatch for arangosearch link '" << id() << "'."
+      << "Collection name mismatch for arangosearch link '" << index().id()
+      << "'."
       << " Meta name '" << _meta._collectionName << "' setting name '" << name
       << "'";
   TRI_ASSERT(name == _meta._collectionName);
@@ -433,8 +394,8 @@ Result IResearchLink::unload() noexcept {
   // with the removal of the link: when we decided whether to drop the link,
   // the collection was still there. But when we did an unload link,
   // the collection was already lazily deleted.
-  if (_collection.deleted()  // collection deleted
-      || _collection.status() == TRI_VOC_COL_STATUS_DELETED) {
+  if (index().collection().deleted()  // collection deleted
+      || index().collection().status() == TRI_VOC_COL_STATUS_DELETED) {
     return basics::catchToResult([&] { return drop(); });
   }
   shutdownDataStore();
@@ -471,7 +432,7 @@ IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
 }
 
 std::string const& IResearchLink::getDbName() const noexcept {
-  return _collection.vocbase().name();
+  return index().collection().vocbase().name();
 }
 
 std::string const& IResearchLink::getViewId() const noexcept {
@@ -480,24 +441,27 @@ std::string const& IResearchLink::getViewId() const noexcept {
 
 std::string IResearchLink::getCollectionName() const {
   if (ServerState::instance()->isSingleServer()) {
-    return std::to_string(_collection.id().id());
+    return std::to_string(index().collection().id().id());
   }
   if (ServerState::instance()->isDBServer()) {
     return _meta._collectionName;
   }
-  return _collection.name();
+  return index().collection().name();
 }
 
 std::string const& IResearchLink::getShardName() const noexcept {
   if (ServerState::instance()->isDBServer()) {
-    return _collection.name();
+    return index().collection().name();
   }
   return arangodb::StaticStrings::Empty;
 }
 
 void IResearchLink::insertMetrics() {
-  auto& metric =
-      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  auto& metric = index()
+                     .collection()
+                     .vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>();
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -513,8 +477,11 @@ void IResearchLink::insertMetrics() {
 }
 
 void IResearchLink::removeMetrics() {
-  auto& metric =
-      _collection.vocbase().server().getFeature<metrics::MetricsFeature>();
+  auto& metric = index()
+                     .collection()
+                     .vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>();
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
     metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));

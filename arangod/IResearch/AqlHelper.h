@@ -36,6 +36,8 @@
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
 
+#include <absl/strings/numbers.h>
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #if (__GNUC__ >= 7)
@@ -353,7 +355,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _type = AqlValueTraits::type(_value);
   }
 
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _value.destroy();
     }

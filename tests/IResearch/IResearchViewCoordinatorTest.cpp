@@ -100,8 +100,6 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-              vocbase->type());
   }
 
   ~IResearchViewCoordinatorTest() = default;
@@ -122,8 +120,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                  testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
@@ -241,8 +238,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
@@ -5790,7 +5786,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       auto link = arangodb::iresearch::IResearchLinkHelper::find(
           *updatedCollection, *view);
       ASSERT_TRUE((link));
-      linkId = link->id();
+      linkId = link->index().id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       ASSERT_TRUE((false == !index));

@@ -58,7 +58,7 @@ class NondeterministicExpressionIteratorBase : public irs::doc_iterator {
   }
 
  private:
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _val.destroy();
     }

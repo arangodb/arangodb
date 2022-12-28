@@ -157,7 +157,17 @@ class BuilderLeaser {
  public:
   explicit BuilderLeaser(transaction::Context*);
   explicit BuilderLeaser(transaction::Methods*);
+
+  BuilderLeaser(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser&&) = delete;
+
+  BuilderLeaser(BuilderLeaser&& source)
+      : _transactionContext(source._transactionContext),
+        _builder(source.steal()) {}
+
   ~BuilderLeaser();
+
   inline arangodb::velocypack::Builder* builder() const noexcept {
     return _builder;
   }
