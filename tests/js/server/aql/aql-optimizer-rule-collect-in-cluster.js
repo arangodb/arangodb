@@ -53,16 +53,26 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
         if (isEnterprise) {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             includeAllFields: true,
             primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+            fields: [
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "group"
+            ]
           };
         } else {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             includeAllFields: true,
             primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            fields: [{"name": "value_nested[*]"}]
+            fields: [
+              {"name": "value_nested[*]"},
+              "value",
+              "group"
+            ]
           };
         }
         let i = c.ensureIndex(indexMeta);
@@ -111,6 +121,11 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
   
       // sync the view
       db._query("FOR d IN UnitTestViewSorted OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
+
+      if (isSearchAlias) {
+        // sync the index
+        res = db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
+      }
     },
 
     tearDownAll: function () {
@@ -132,6 +147,13 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value >= 0 COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000, results.json[0]);
+      }
     },
 
     testCountView: function () {
@@ -148,6 +170,14 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER STARTS_WITH(doc.group, "test") COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000, results.json[0]);
+      }
     },
 
     testCountMulti: function () {
@@ -164,6 +194,16 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+          FOR doc2 in UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value >= 0
+          COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(10000, results.json[0]);
+      }
     },
 
     testCountMultiView: function () {
@@ -180,6 +220,16 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER STARTS_WITH(doc1.group, "test")
+          FOR doc2 in UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value >= 0
+          COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000000, results.json[0]);
+      }
     },
     
     testCountGroups: function () {
@@ -200,6 +250,15 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER STARTS_WITH(doc.group, "test")
+          COLLECT value = doc.group WITH COUNT INTO length SORT value RETURN { value, length }`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(expected.length, results.json.length);
+        assertEqual(expected, results.json);
+      }
     },
 
     testDistinct: function () {
@@ -218,6 +277,18 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          SORT doc.value RETURN DISTINCT doc.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testDistinctView: function () {
@@ -236,6 +307,16 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc.value >= 0 SORT doc.value RETURN DISTINCT doc.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testDistinctMulti: function () {
@@ -254,6 +335,19 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+        FOR doc2 in ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER doc2.value >= 0
+        SORT doc2.value RETURN DISTINCT doc2.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testDistinctMultiView: function () {
@@ -272,6 +366,19 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+          FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          SORT doc2.value RETURN DISTINCT doc2.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     }
 
   };
@@ -294,16 +401,26 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
         if (isEnterprise) {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             includeAllFields: true,
-            fields: [{"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}],
+            fields: [
+              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              "value",
+              "group"],
             primarySort: {fields: [{"field": "value", "direction": "asc"}]}
           };
         } else {
           indexMeta = {
             type: "inverted",
+            name: "inverted",
             includeAllFields: true,
-            primarySort: {fields: [{"field": "value", "direction": "asc"}]},
-            fields: [{"name": "value_nested[*]"}],
+            primarySort: {fields: [
+              {"field": "value", "direction": "asc"}]},
+            fields: [
+              {"name": "value_nested[*]"},
+              "value",
+              "group"
+            ],
           };
         }
         let i = c.ensureIndex(indexMeta);
@@ -352,6 +469,11 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       // sync the view
       db._query("FOR d IN UnitTestViewSorted OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
+    
+      if (isSearchAlias) {
+        // sync the index
+        res = db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
+      }
     },
 
     tearDownAll: function () {
@@ -373,6 +495,13 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value >= 0 COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000, results.json[0]);
+      }
     },
 
     testSingleCountView: function () {
@@ -389,6 +518,14 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER STARTS_WITH(doc.group, "test") COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000, results.json[0]);
+      }
     },
 
     testSingleCountMulti: function () {
@@ -405,6 +542,16 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+          FOR doc2 in UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value >= 0
+          COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(10000, results.json[0]);
+      }
     },
 
     testSingleCountMultiView: function () {
@@ -421,6 +568,16 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER STARTS_WITH(doc1.group, "test")
+          FOR doc2 in UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value >= 0
+          COLLECT WITH COUNT INTO length RETURN length`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(1, results.json.length);
+        assertEqual(1000000, results.json[0]);
+      }
     },
     
     testSingleCountGroups: function () {
@@ -449,6 +606,15 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
         assertEqual(-1, plan.rules.indexOf("cluster-one-shard"));
         assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "CollectNode", "SortNode", "CalculationNode", "ReturnNode"], nodeTypes);
       }
+
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER STARTS_WITH(doc.group, "test")
+          COLLECT value = doc.group WITH COUNT INTO length SORT value RETURN { value, length }`;
+        results = AQL_EXECUTE(indexQuery);
+        assertEqual(expected.length, results.json.length);
+        assertEqual(expected, results.json);
+      }
     },
 
     testSingleDistinct: function () {
@@ -467,6 +633,18 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          SORT doc.value RETURN DISTINCT doc.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testSingleDistinctView: function () {
@@ -485,6 +663,16 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "SortNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc.value >= 0 SORT doc.value RETURN DISTINCT doc.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testSingleDistinctMulti: function () {
@@ -503,6 +691,19 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+        FOR doc2 in ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER doc2.value >= 0
+        SORT doc2.value RETURN DISTINCT doc2.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
     testSingleDistinctMultiView: function () {
@@ -521,6 +722,19 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateViewNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateViewNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+    
+      if (isSearchAlias) {
+        let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+          FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+          FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          SORT doc2.value RETURN DISTINCT doc2.value`;
+        let indexResults = AQL_EXECUTE(indexQuery);
+        // print(JSON.stringify(indexResults));
+        assertEqual(1000, indexResults.json.length);
+        for (let i = 0; i < 1000; ++i) {
+          assertEqual(i, indexResults.json[i]);
+        }
+      }
     },
 
   };

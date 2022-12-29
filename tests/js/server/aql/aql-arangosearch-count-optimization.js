@@ -60,7 +60,10 @@ function viewCountOptimization(isSearchAlias) {
             {"name": "value"}
           ]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true};
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, "fields": [
+            {"name": "value_nested[*]"},
+            {"name": "value"}
+          ]};
         }
         let i = c.ensureIndex(indexMeta);
         db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});

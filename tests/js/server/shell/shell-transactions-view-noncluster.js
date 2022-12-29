@@ -381,7 +381,7 @@ function TransactionsIResearchSuite() {
     /// @brief should honor rollbacks of inserts
     ////////////////////////////////////////////////////////////////////////////
     testWaitForSyncError : function () {
-      c.ensureIndex({type: 'hash', fields:['val', 'text1'], unique: true});
+      c.ensureIndex({type: 'hash', fields:['val', 'text'], unique: true});
 
       let indexMeta = {};
       let viewMeta = {};
@@ -389,7 +389,7 @@ function TransactionsIResearchSuite() {
         viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} } } } };
         indexMeta = { type: 'inverted', name: 'inverted', fields: [
           {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-          {name: 'text', analyzer: 'myText'}
+          {"name": 'text', "analyzer": 'myText'}
         ]};
       } else {
         viewMeta = { links: { 'UnitTestsCollection' : { fields: {text: {analyzers: [ "myText" ] }, "value": { } } } } };
@@ -409,10 +409,11 @@ function TransactionsIResearchSuite() {
       c.save({ _key: "half", text: "quick fox over lazy", val: 2 });
       c.save({ _key: "other_half", text: "the brown jumps the dog", val: 3 });
       c.save({ _key: "quarter", text: "quick quick over", val: 4 });
-      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}]});
-      c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text1: "lazy fox is crazy"});
-      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text1: "crazy fox is crazy"});
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "a"}]}], val: 5 });
+      c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text: "lazy fox is crazy", val: 6 });
+      c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text: "crazy fox is crazy", val: 7 });
 
+      print("count = ", c.count())
       try {
         db._executeTransaction({
           collections: {write: 'UnitTestsCollection'},
@@ -432,6 +433,7 @@ function TransactionsIResearchSuite() {
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
+      print("isEnterprise = ", isEnterprise);
       try {
         db._executeTransaction({
           collections: {write: 'UnitTestsCollection'},
@@ -441,13 +443,38 @@ function TransactionsIResearchSuite() {
             c.remove("full");
             c.remove("half");
 
+            print('start query')
             // it should not be possible to query with waitForSync
-            db._query(qqIndexWithSync);
+            db._query(qqSearchAliasWithSync);
+            print('end query')
             fail();
           }
         });
         fail();
       } catch(err) {
+        print(err)
+        assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
+      }
+
+      try {
+        db._executeTransaction({
+          collections: {write: 'UnitTestsCollection'},
+          action: function() {
+            const db = require('internal').db;
+            let c = db._collection('UnitTestsCollection');
+            c.remove("full");
+            c.remove("half");
+
+            print('start query')
+            // it should not be possible to query with waitForSync
+            db._query(qqIndexWithSync);
+            print('end query')
+            fail();
+          }
+        });
+        fail();
+      } catch(err) {
+        print(err)
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
