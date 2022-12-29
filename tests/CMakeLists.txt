@@ -302,7 +302,7 @@ add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_test(NAME arangodbtests
-	 COMMAND arangodbtests)
+  COMMAND arangodbtests)
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
