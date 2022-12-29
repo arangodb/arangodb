@@ -83,9 +83,7 @@ bool IResearchViewStoredValues::buildStoredColumnFromSlice(
     containers::FlatHashSet<std::string>& uniqueColumns,
     std::vector<std::string_view>& fieldNames,
     irs::type_info::type_id compression, bool cached) {
-  if (!columnSlice.isArray() && !columnSlice.isString()) {
-    return false;
-  }
+  TRI_ASSERT(columnSlice.isArray() || columnSlice.isString());
   fieldNames.clear();
   size_t columnLength = 0;
   StoredColumn sc;
@@ -177,7 +175,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
   for (auto columnSlice : VPackArrayIterator(slice)) {
     ++idx;
     if (columnSlice.isObject()) {
-      if (ADB_LIKELY(columnSlice.hasKey(FIELD_COLUMN_PARAM))) {
+      auto data = columnSlice.get(FIELD_COLUMN_PARAM);
+      if (ADB_LIKELY(!data.isNone())) {
         auto compression = getDefaultCompression();
         if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
           auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
@@ -209,9 +208,9 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
           cached = cachedField.getBool();
         }
 #endif
-        if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                        uniqueColumns, fieldNames, compression,
-                                        cached)) {
+        if (!data.isArray() ||
+            !buildStoredColumnFromSlice(data, uniqueColumns, fieldNames,
+                                        compression, cached)) {
           errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
           return false;
         }
@@ -220,7 +219,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
         return false;
       }
     } else {
-      if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
+      if (!(columnSlice.isArray() || columnSlice.isString()) ||
+          !buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
                                       getDefaultCompression(), false)) {
         errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
         return false;
