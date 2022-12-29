@@ -426,10 +426,6 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice,
       constexpr std::string_view kTypeFieldName("type");
 
       auto typeField = field.get(kTypeFieldName);
-      if (typeField.isNone()) {
-        errorField = absl::StrCat(kFieldName, ".", kTypeFieldName);
-        return false;
-      }
 
       if (!typeField.isString()) {
         errorField = absl::StrCat(kFieldName, ".", kTypeFieldName);

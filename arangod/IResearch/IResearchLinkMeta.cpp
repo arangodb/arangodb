@@ -809,14 +809,15 @@ bool IResearchLinkMeta::init(
           // required string value
           constexpr std::string_view kSubFieldName{"name"};
 
-          if (!value.get(kSubFieldName).isString()) {
+          auto nameSlice = value.get(kSubFieldName);
+          if (!nameSlice.isString()) {
             errorField =
                 absl::StrCat(kFieldName, "[", itr.index(), "].", kSubFieldName);
 
             return false;
           }
 
-          name = value.get(kSubFieldName).stringView();
+          name = nameSlice.stringView();
           if (!irs::IsNull(defaultVocbase)) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
@@ -828,13 +829,14 @@ bool IResearchLinkMeta::init(
           // required string value
           constexpr std::string_view kSubFieldName{"type"};
 
-          if (!value.get(kSubFieldName).isString()) {
+          auto typeSlice = value.get(kSubFieldName);
+          if (!typeSlice.isString()) {
             errorField =
                 absl::StrCat(kFieldName, "[", itr.index(), "].", kSubFieldName);
             return false;
           }
 
-          type = getStringRef(value.get(kSubFieldName));
+          type = typeSlice.stringView();
         }
 
         VPackSlice properties;

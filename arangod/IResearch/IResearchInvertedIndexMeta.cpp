@@ -255,13 +255,14 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
           // required string value
           constexpr std::string_view kSubFieldName{"name"};
 
-          if (!value.get(kSubFieldName).isString()) {
+          auto nameSlice = value.get(kSubFieldName);
+          if (!nameSlice.isString()) {
             errorField = absl::StrCat(kAnalyzerDefinitionsFieldName, "[",
                                       itr.index(), "].", kSubFieldName);
             return false;
           }
 
-          name = value.get(kSubFieldName).stringView();
+          name = nameSlice.stringView();
           if (!irs::IsNull(defaultVocbase)) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);

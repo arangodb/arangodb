@@ -666,7 +666,7 @@ Result parseAnalyzerSlice(VPackSlice slice, std::string_view& name,
 
   type = ::arangodb::iresearch::getStringRef(typeSlice);
 
-  if (auto subSlice = slice.get("properties"); !slice.isNone()) {
+  if (auto subSlice = slice.get("properties"); !subSlice.isNone()) {
     if (subSlice.isArray() || subSlice.isObject()) {
       properties = subSlice;  // format as a jSON encoded string
     } else {
@@ -675,7 +675,7 @@ Result parseAnalyzerSlice(VPackSlice slice, std::string_view& name,
     }
   }
 
-  if (auto subSlice = slice.get("features"); !slice.isNone()) {
+  if (auto subSlice = slice.get("features"); !subSlice.isNone()) {
     auto featuresRes = features.fromVelocyPack(subSlice);
     if (featuresRes.fail()) {
       return {TRI_ERROR_BAD_PARAMETER,
@@ -2188,7 +2188,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {};  // skip analyzer
       }
 
-      key = getStringRef(keySlice);
+      key = keySlice.stringView();
 
       Features features;
       auto parseRes =
