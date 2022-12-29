@@ -334,12 +334,9 @@ bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
     return false;  // slice has no view identifier field
   }
   auto viewId = slice.get(StaticStrings::ViewIdField);
-  if (viewId.isNone()) {
-    return false;  // slice has no view identifier field
-  }
   // NOTE: below will not match if 'viewId' is 'id' or 'name',
   //       but ViewIdField should always contain GUID
-  if (!viewId.isString() || !viewId.isEqualString(_viewGuid)) {
+  if (!viewId.isString() || viewId.stringView() != _viewGuid) {
     // IResearch View identifiers of current object and slice do not match
     return false;
   }

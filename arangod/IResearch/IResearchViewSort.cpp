@@ -105,7 +105,7 @@ bool IResearchSortBase::fromVelocyPack(velocypack::Slice slice,
     std::vector<arangodb::basics::AttributeName> field;
 
     try {
-      basics::TRI_ParseAttributeString(getStringRef(fieldSlice), field, false);
+      basics::TRI_ParseAttributeString(fieldSlice.stringView(), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
       error = absl::StrCat("[", size(), "].", kFieldName);

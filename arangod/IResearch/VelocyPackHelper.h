@@ -229,7 +229,7 @@ inline bool getString(std::string_view& buf, velocypack::Slice const& slice,
   if (!field.isString()) {
     return false;
   }
-  buf = getStringRef(field);
+  buf = field.stringView();
   return true;
 }
 

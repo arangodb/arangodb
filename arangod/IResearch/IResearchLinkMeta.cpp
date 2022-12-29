@@ -720,7 +720,7 @@ bool IResearchLinkMeta::init(
     mask->_sortCompression = field.isString();
 
     if (mask->_sortCompression &&
-        (_sortCompression = columnCompressionFromString(getStringRef(field))) ==
+        (_sortCompression = columnCompressionFromString(field.stringView())) ==
             nullptr) {
       return false;
     }

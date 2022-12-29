@@ -711,7 +711,8 @@ bool InvertedIndexField::init(
     } else {
       _features = parent._features;
     }
-    if (auto subSlice = slice.get(kExpressionFieldName); !subSlice.isNone()) {
+    if (velocypack::Slice subSlice;
+        !rootMode && !(subSlice = slice.get(kExpressionFieldName)).isNone()) {
       if (!subSlice.isString()) {
         errorField = kExpressionFieldName;
         return false;

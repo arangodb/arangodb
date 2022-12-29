@@ -183,8 +183,8 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
         auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
         if (!compressionKey.isNone()) {
           if (ADB_LIKELY(compressionKey.isString())) {
-            auto decodedCompression = columnCompressionFromString(
-                iresearch::getStringRef(compressionKey));
+            auto decodedCompression =
+                columnCompressionFromString(compressionKey.stringView());
             if (ADB_LIKELY(decodedCompression != nullptr)) {
               compression = decodedCompression;
             } else {

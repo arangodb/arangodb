@@ -2445,7 +2445,7 @@ class ArgsTraits<VPackSlice> {
 
   static bool getValueString(ValueType v, std::string_view& str) {
     if (v.isString()) {
-      str = ::getStringRef(v);
+      str = v.stringView();
       return true;
     }
     return false;
@@ -2486,7 +2486,7 @@ class ArgsTraits<VPackSlice> {
     value = args.at(i);
     if constexpr (std::is_same<T, std::string_view>::value) {
       if (value.isString()) {
-        out = getStringRef(value);
+        out = value.stringView();
         return {};
       }
     } else if constexpr (std::is_same<T, int64_t>::value) {
@@ -2541,7 +2541,7 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
                                SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(actualArg));
   }
-  term = getStringRef(actualArg);
+  term = actualArg.stringView();
   return {};
 }
 
@@ -3007,7 +3007,7 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  std::string_view const minStrValue = getStringRef(min);
+  auto const minStrValue = min.stringView();
 
   if (!max.isString()) {
     return error::typeMismatch(subFuncName, 2, SCOPED_VALUE_TYPE_STRING,
@@ -3016,7 +3016,7 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  std::string_view const maxStrValue = getStringRef(max);
+  auto const maxStrValue = max.stringView();
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(

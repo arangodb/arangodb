@@ -510,7 +510,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       valueType = AnalyzerValueType::Object;
     } break;
     case VPackValueType::String: {
-      valueRef = iresearch::getStringRef(value);
+      valueRef = value.stringView();
       valueType = AnalyzerValueType::String;
     } break;
     case VPackValueType::Custom: {

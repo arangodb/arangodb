@@ -324,11 +324,11 @@ class ScopedAqlValue : private irs::util::noncopyable {
     } else {
       auto const valueSlice = _value.slice();
 
-      if (VPackValueType::String != valueSlice.type()) {
+      if (!valueSlice.isString()) {
         return false;
       }
 
-      value = getStringRef(valueSlice);
+      value = valueSlice.stringView();
     }
 
     return true;

@@ -114,7 +114,7 @@ bool keyFromSlice(VPackSlice keySlice, std::string_view& key) {
       }
       return true;
     case VPackValueType::String:  // regular attribute
-      key = arangodb::iresearch::getStringRef(keySlice);
+      key = keySlice.stringView();
       return true;
     default:  // unsupported
       return false;
@@ -177,7 +177,7 @@ bool mergeSliceSkipKeys(
       return false;
     }
 
-    auto attr = getStringRef(key);
+    auto attr = key.stringView();
 
     if (acceptor(attr)) {
       builder.add(attr.data(), attr.size(), value);

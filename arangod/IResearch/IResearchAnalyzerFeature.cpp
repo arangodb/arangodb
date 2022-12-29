@@ -158,8 +158,9 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, message);
   }
 
-  if (args.size() > 1 &&
-      !args[1].isString()) {  // second arg must be analyzer name
+  velocypack::Slice arg1;
+  if (args.size() > 1 && !(arg1 = args[1].slice()).isString()) {
+    // second arg must be analyzer name
     std::string_view const message =
         "invalid analyzer name argument type while computing result for "
         "function 'TOKENS',"
@@ -172,7 +173,7 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
   // identity now is default analyzer
   auto const name =
       args.size() > 1
-          ? arangodb::iresearch::getStringRef(args[1].slice())
+          ? args[1].slice().stringView()
           : std::string_view(IResearchAnalyzerFeature::identity()->name());
 
   TRI_ASSERT(expressionContext);
@@ -275,17 +276,18 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
       current = arrayIteratorStack.back().value();
     }
     // process current item
-    switch (current.type()) {
+    auto const type = current.type();
+    switch (type) {
       case VPackValueType::Object:
       case VPackValueType::String: {
         std::string_view value;
         AnalyzerValueType valueType{AnalyzerValueType::Undefined};
-        if (current.isObject()) {
+        if (type == VPackValueType::Object) {
           valueType = AnalyzerValueType::Object;
           value = arangodb::iresearch::ref<char>(current);
         } else {
           valueType = AnalyzerValueType::String;
-          value = arangodb::iresearch::getStringRef(current);
+          value = current.stringView();
         }
 
         if (!pool->accepts(valueType)) {
@@ -1015,10 +1017,9 @@ bool AnalyzerPool::init(std::string_view const& type,
   return false;
 }
 
-void AnalyzerPool::setKey(std::string_view const& key) {
+void AnalyzerPool::setKey(std::string_view key) {
   if (irs::IsNull(key)) {
     _key = std::string_view{};
-
     return;  // nothing more to do
   }
 
@@ -2868,7 +2869,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
       return res;
     }
 
-    pool.setKey(getStringRef(key));
+    pool.setKey(key.stringView());
   } catch (basics::Exception const& e) {
     return {e.code(),
             absl::StrCat("caught exception while persisting configuration for "
@@ -3025,7 +3026,7 @@ Result Features::fromVelocyPack(VPackSlice slice) {
           TRI_ERROR_BAD_PARAMETER,
           absl::StrCat("array entry #", subItr.index(), " is not a string")};
     }
-    const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
+    const auto featureName = subEntry.stringView();
     if (!add(featureName)) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("failed to find feature '", featureName,
