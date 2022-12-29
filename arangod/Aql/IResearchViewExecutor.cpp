@@ -1341,6 +1341,12 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
 
+  auto reset = [&] {
+    ++_readerOffset;
+    _currentSegmentPos = 0;
+    _itr.reset();
+    _doc = nullptr;
+  };
   for (; _readerOffset < count;) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {
@@ -1351,6 +1357,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       }
 
       if (!resetIterator()) {
+        reset();
         continue;
       }
 
@@ -1370,10 +1377,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
                                          msg.str());
 
         // We don't have a collection, skip the current reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
         continue;
       }
 
@@ -1395,10 +1399,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next
         // reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
       }
       continue;
     }
@@ -1431,10 +1432,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
 
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
-      ++_readerOffset;
-      _currentSegmentPos = 0;
-      _itr.reset();
-      _doc = nullptr;
+      reset();
 
       // Here we have at least one document in _indexReadBuffer, so we may not
       // add documents from a new reader.
