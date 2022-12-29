@@ -470,6 +470,8 @@ class IResearchDataStore {
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
 
+  irs::format::ptr _format;
+
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
   metrics::Gauge<uint64_t>* _numFailedConsolidations{nullptr};
