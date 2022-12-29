@@ -78,6 +78,7 @@ constexpr std::string_view toString() noexcept {
     case Type::GEOMETRY_COLLECTION:
       return kTypeStringGeometryCollection;
   }
+  return {};
 }
 
 template<Type t>
