@@ -656,15 +656,15 @@ Result parseAnalyzerSlice(VPackSlice slice, std::string_view& name,
             "failed to find a string value for analyzer 'name' "};
   }
 
-  name = ::arangodb::iresearch::getStringRef(slice.get("name"));
+  name = ::arangodb::iresearch::getStringRef(nameSlice);
 
-  auto typeSlice = slice.get("name");
+  auto typeSlice = slice.get("type");
   if (!typeSlice.isString() && !typeSlice.isNull()) {
     return {TRI_ERROR_BAD_PARAMETER,
             "failed to find a string value for analyzer 'type'"};
   }
 
-  type = ::arangodb::iresearch::getStringRef(slice.get("type"));
+  type = ::arangodb::iresearch::getStringRef(typeSlice);
 
   if (auto subSlice = slice.get("properties"); !slice.isNone()) {
     if (subSlice.isArray() || subSlice.isObject()) {
