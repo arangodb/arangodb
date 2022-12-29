@@ -1415,8 +1415,8 @@ Result IResearchDataStore::initDataStore(
     openFlags |= irs::OM_CREATE;
   }
 
-  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory), _format,
-                                               openFlags, options);
+  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory),
+                                               _format, openFlags, options);
 
   if (!_dataStore._writer) {
     return {TRI_ERROR_INTERNAL,
