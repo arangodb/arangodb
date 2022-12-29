@@ -551,6 +551,9 @@ class IResearchViewExecutorBase {
       ReadContext& ctx,
       typename IndexReadBufferType::StoredValuesContainer const& storedValues,
       size_t index, std::map<size_t, RegisterId> const& fieldsRegs);
+  bool writeStoredValue(
+      ReadContext& ctx,
+      irs::bytes_view storedValue, std::map<size_t, RegisterId> const& fieldsRegs);
 
   void readStoredValues(irs::document const& doc, size_t index);
 
@@ -577,7 +580,7 @@ class IResearchViewExecutorBase {
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
-
+  std::vector<float_t> _singleDocScoreBuffer;
   // new mangling only:
   iresearch::AnalyzerProvider _provider;
 };
@@ -612,6 +615,18 @@ class IResearchViewExecutor
   bool resetIterator();
 
   void reset();
+
+  // Direct output row write support
+  bool next();
+  auto value() const {
+    return iresearch::SearchDoc(this->_reader->segment(_readerOffset), _doc->value);
+  }
+  size_t readerIndex() const noexcept { return 0; }
+  irs::score const& score() const {
+    TRI_ASSERT(_scr);
+    return *_scr;
+  }
+
 
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
@@ -712,6 +727,17 @@ class IResearchViewMergeExecutor
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
+  // Direct output row write support
+  bool next() { return false; }
+  iresearch::SearchDoc value() const {
+    return {this->_reader->segment(_segments[_heap_it.value()].segmentIndex),
+            _segments[_heap_it.value()].doc->value};
+  }
+  size_t readerIndex() const noexcept { return _segments[_heap_it.value()].segmentIndex; }
+  irs::score const& score() const { 
+    TRI_ASSERT(_segments[_heap_it.value()].score);
+    return *_segments[_heap_it.value()].score;
+  }
  private:
   std::vector<Segment> _segments;
   irs::ExternalHeapIterator<MinHeapContext> _heap_it;
@@ -720,8 +746,7 @@ class IResearchViewMergeExecutor
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<ExecutionTraits>> {
-  using IndexBufferValueType =
-      std::pair<LocalDocumentId, LogicalCollection const*>;
+  using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -830,6 +855,11 @@ static_assert(sizeof(HeapSortExecutorValue) <= 16,
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewHeapSortExecutor<ExecutionTraits>> {
+  // TODO support it here!
+  //using IndexBufferValueType =
+  //    (ExecutionTraits::MaterializeType &
+  //     MaterializeType::Materialize) == MaterializeType::Materialize,
+  //      iresearch::SearchDoc, HeapSortExecutorValue > ::type;
   using IndexBufferValueType = HeapSortExecutorValue;
   static constexpr bool ExplicitScanned = true;
 };
