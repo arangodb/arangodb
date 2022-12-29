@@ -1032,7 +1032,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 #endif
     // get new reader
-    auto reader = _dataStore._reader.reopen();
+    auto reader = _dataStore._reader.reopen(_format);
 
     if (!reader) {
       // nothing more to do
@@ -1248,11 +1248,11 @@ Result IResearchDataStore::initDataStore(
   auto& flushFeature = server.getFeature<FlushFeature>();
 
   auto const formatId = getFormat(LinkVersion{version});
-  auto format = irs::formats::get(formatId);
+  _format = irs::formats::get(formatId);
 
-  if (!format) {
+  if (!_format) {
     return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failed to get data store codec '", formatId.data(),
+            absl::StrCat("failed to get data store codec '", formatId,
                          "' while initializing ArangoSearch index '", _id.id(),
                          "'")};
   }
@@ -1415,7 +1415,7 @@ Result IResearchDataStore::initDataStore(
     openFlags |= irs::OM_CREATE;
   }
 
-  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory), format,
+  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory), _format,
                                                openFlags, options);
 
   if (!_dataStore._writer) {
@@ -1429,7 +1429,7 @@ Result IResearchDataStore::initDataStore(
   if (!_dataStore._reader) {
     _dataStore._writer->commit();  // initialize 'store'
     _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
-                                                     nullptr, readerOptions);
+                                                     _format, readerOptions);
   }
 
   if (!_dataStore._reader) {
@@ -1916,7 +1916,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _lastCommittedTickTwo = _lastCommittedTickOne;
 
     // get new reader
-    auto reader = _dataStore._reader.reopen();
+    auto reader = _dataStore._reader.reopen(_format);
 
     if (!reader) {
       // nothing more to do

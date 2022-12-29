@@ -475,6 +475,8 @@ class IResearchDataStore {
   // prevents data store sequential commits
   std::mutex _commitMutex;
 
+  irs::format::ptr _format;
+
   // for insert(...)/remove(...)
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
