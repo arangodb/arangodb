@@ -96,14 +96,6 @@ irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
 std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
     irs::type<irs::granularity_prefix>::id()};
 
-// appends the specified 'value' to 'out'
-void append(std::string& out, size_t value) {
-  auto const size = out.size();  // intial size
-  out.resize(size + 21);         // enough to hold all numbers up to 64-bits
-  auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
-  out.resize(size + written);
-}
-
 bool canHandleValue(std::string const& key, VPackSlice const& value,
                     arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
@@ -222,10 +214,8 @@ bool inObject(std::string& buffer,
 bool inArrayOrdered(std::string& buffer,
                     arangodb::iresearch::FieldMeta const*& context,
                     arangodb::iresearch::IteratorValue const& value) {
-  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
-  append(buffer, value.pos);
-  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
-
+  // NESTING_LIST_OFFSET_PREFIX value.pos NESTING_LIST_OFFSET_SUFFIX
+  absl::StrAppend(&buffer, "[", value.pos, "]");
   return canHandleValue(buffer, value.value, *context);
 }
 
@@ -343,12 +333,11 @@ bool inArrayInverted(
         context,
     arangodb::iresearch::IteratorValue const& value) {
   if (context->_trackListPositions) {
-    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
-    append(buffer, value.pos);
-    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
+    // NESTING_LIST_OFFSET_PREFIX value.pos NESTING_LIST_OFFSET_SUFFIX
+    absl::StrAppend(&buffer, "[", value.pos, "]");
   } else {
     if (!context->_isSearchField) {
-      buffer += "[*]";
+      buffer.append("[*]");
     }
   }
   return true;

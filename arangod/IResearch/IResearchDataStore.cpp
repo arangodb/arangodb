@@ -1067,7 +1067,7 @@ Result IResearchDataStore::commitUnsafeImpl(
     return {
         e.code(),
         absl::StrCat("caught exception while committing ArangoSearch index '",
-                     index().id().id(), "': ", e.what())};
+                     index().id().id(), "': ", e.message())};
   } catch (std::exception const& e) {
     return {
         TRI_ERROR_INTERNAL,
@@ -1698,7 +1698,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
     return {e.code(), absl::StrCat("caught exception while removing document "
                                    "from ArangoSearch index '",
                                    index().id().id(), "', documentId '",
-                                   documentId.id(), "': ", e.what())};
+                                   documentId.id(), "': ", e.message())};
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             absl::StrCat("caught exception while removing document from "
@@ -1804,7 +1804,7 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
 
   TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
     if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-      return Result(TRI_ERROR_DEBUG);
+      return {TRI_ERROR_DEBUG};
     }
   }
 
@@ -1820,7 +1820,7 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       if (res.fail()) {
         return res;
       }
-      return Result(TRI_ERROR_DEBUG);
+      return {TRI_ERROR_DEBUG};
     }
     return insertImpl(ctx);
   }
@@ -2060,7 +2060,9 @@ void IResearchDataStore::initClusterMetrics() const {
   auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
                                std::string_view name, velocypack::Slice labels,
                                velocypack::Slice value) {
-    auto& v = metrics.values[{std::string{name}, labels.copyString()}];
+    // TODO(MBkkt) remove std::string
+    auto& v =
+        metrics.values[{std::string{name}, std::string{labels.stringView()}}];
     std::get<uint64_t>(v) += value.getNumber<uint64_t>();
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
@@ -2083,11 +2085,9 @@ void IResearchDataStore::initClusterMetrics() const {
                                velocypack::Slice value) {
     auto labelsStr = labels.stringView();
     auto end = labelsStr.find(",shard=\"");
-    if (end == std::string_view::npos) {
-      TRI_ASSERT(false);
-      return;
-    }
+    TRI_ASSERT(end != std::string_view::npos);
     labelsStr = labelsStr.substr(0, end);
+    // TODO(MBkkt) remove std::string
     auto& v = metrics.values[{std::string{name}, std::string{labelsStr}}];
     std::get<uint64_t>(v) += value.getNumber<uint64_t>();
   };
@@ -2107,18 +2107,16 @@ void IResearchDataStore::initClusterMetrics() const {
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       IResearchDataStore const& link) {
-  std::filesystem::path dataPath(dbPathFeature.directory());
+                                       IResearchDataStore const& dataStore) {
+  std::filesystem::path dataPath{dbPathFeature.directory()};
 
   dataPath /= "databases";
-  dataPath /= "database-";
-  dataPath += std::to_string(link.index().collection().vocbase().id());
-  dataPath /= StaticStrings::ViewArangoSearchType;
-  dataPath += "-";
-  // has to be 'id' since this can be a per-shard collection
-  dataPath += std::to_string(link.index().collection().id().id());
-  dataPath += "_";
-  dataPath += std::to_string(link.index().id().id());
+  auto& i = dataStore.index();
+  dataPath /= absl::StrCat("database-", i.collection().vocbase().id());
+  dataPath /=
+      absl::StrCat(StaticStrings::ViewArangoSearchType, "-",
+                   // has to be 'id' since this can be a per-shard collection
+                   i.collection().id().id(), "_", i.id().id());
 
   return dataPath;
 }

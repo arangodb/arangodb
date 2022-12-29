@@ -33,7 +33,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Containers/FlatHashSet.h"
-#include "Basics/StringUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/StaticStrings.h"
@@ -181,7 +180,8 @@ bool FieldMeta::init(
     // optional string list
     constexpr std::string_view kFieldName("analyzers");
 
-    mask->_analyzers = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_analyzers = !field.isNone();
 
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
@@ -190,8 +190,6 @@ bool FieldMeta::init(
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       bool const extendedNames =
           server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-
-      auto field = slice.get(kFieldName);
 
       if (!field.isArray()) {
         errorField = kFieldName;
@@ -206,13 +204,11 @@ bool FieldMeta::init(
         auto value = *itr;
 
         if (!value.isString()) {
-          errorField =
-              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
-
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           return false;
         }
 
-        auto name = value.copyString();
+        std::string name{value.stringView()};
         auto shortName = name;
 
         if (!irs::IsNull(defaultVocbase)) {
@@ -244,8 +240,7 @@ bool FieldMeta::init(
                                    ServerState::instance()->isClusterRole());
 
           if (!analyzer) {
-            errorField = std::string{kFieldName} + "." + value.copyString();
-
+            errorField = absl::StrCat(kFieldName, ".", value.stringView());
             return false;
           }
 
@@ -256,8 +251,7 @@ bool FieldMeta::init(
               remappedAnalyzer, *analyzer, version, extendedNames);
 
           if (res.fail() || !remappedAnalyzer) {
-            errorField = std::string{kFieldName} + "." + value.copyString();
-
+            errorField = absl::StrCat(kFieldName, ".", value.stringView());
             return false;
           }
 
@@ -295,13 +289,12 @@ bool FieldMeta::init(
     // optional bool
     constexpr std::string_view kFieldName{"includeAllFields"};
 
-    mask->_includeAllFields = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_includeAllFields = !field.isNone();
 
     if (!mask->_includeAllFields) {
       _includeAllFields = defaults._includeAllFields;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isBool()) {
         errorField = kFieldName;
 
@@ -316,13 +309,12 @@ bool FieldMeta::init(
     // optional bool
     constexpr std::string_view kFieldName{"trackListPositions"};
 
-    mask->_trackListPositions = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_trackListPositions = !field.isNone();
 
     if (!mask->_trackListPositions) {
       _trackListPositions = defaults._trackListPositions;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isBool()) {
         errorField = kFieldName;
 
@@ -337,25 +329,23 @@ bool FieldMeta::init(
     // optional string enum
     constexpr std::string_view kFieldName{"storeValues"};
 
-    mask->_storeValues = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_storeValues = !field.isNone();
 
     if (!mask->_storeValues) {
       _storeValues = defaults._storeValues;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isString()) {
         errorField = kFieldName;
 
         return false;
       }
 
-      auto name = field.copyString();
+      auto name = field.stringView();
       auto itr = kNameToPolicy.find(name);
 
       if (itr == kNameToPolicy.end()) {
-        errorField = std::string{kFieldName} + "." + name;
-
+        errorField = absl::StrCat(kFieldName, ".", name);
         return false;
       }
 
@@ -387,13 +377,12 @@ bool FieldMeta::init(
     // optional string map<name, overrides>
     constexpr std::string_view kFieldName{"fields"};
 
-    mask->_fields = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_fields = !field.isNone();
 
     if (!mask->_fields) {
       _fields = defaults._fields;
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isObject()) {
         errorField = kFieldName;
 
@@ -411,17 +400,14 @@ bool FieldMeta::init(
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = std::string{kFieldName} + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
-
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           return false;
         }
 
-        auto name = key.copyString();
+        auto name = key.stringView();
 
         if (!value.isObject()) {
-          errorField = std::string{kFieldName} + "." + name;
-
+          errorField = absl::StrCat(kFieldName, ".", name);
           return false;
         }
 
@@ -431,8 +417,7 @@ bool FieldMeta::init(
                                  version, subDefaults, referencedAnalyzers,
                                  nullptr)) {
           errorField =
-              std::string{kFieldName} + "." + name + "." + childErrorField;
-
+              absl::StrCat(kFieldName, ".", name, ".", childErrorField);
           return false;
         }
       }
@@ -465,9 +450,7 @@ bool FieldMeta::init(
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = std::string{kFieldName} + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
-
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           return false;
         }
 
@@ -800,13 +783,12 @@ bool IResearchLinkMeta::init(
     constexpr std::string_view kFieldName{
         StaticStrings::AnalyzerDefinitionsField};
 
-    mask->_analyzerDefinitions = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_analyzerDefinitions = !field.isNone();
 
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (mask->_analyzerDefinitions) {
-      auto field = slice.get(kFieldName);
-
       if (!field.isArray()) {
         errorField = kFieldName;
 
@@ -817,9 +799,7 @@ bool IResearchLinkMeta::init(
         auto value = *itr;
 
         if (!value.isObject()) {
-          errorField =
-              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
-
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           return false;
         }
 
@@ -829,16 +809,14 @@ bool IResearchLinkMeta::init(
           // required string value
           constexpr std::string_view kSubFieldName{"name"};
 
-          if (!value.hasKey(kSubFieldName)  // missing required filed
-              || !value.get(kSubFieldName).isString()) {
-            errorField = std::string{kFieldName} + "[" +
-                         std::to_string(itr.index()) + "]." +
-                         std::string{kSubFieldName};
+          if (!value.get(kSubFieldName).isString()) {
+            errorField =
+                absl::StrCat(kFieldName, "[", itr.index(), "].", kSubFieldName);
 
             return false;
           }
 
-          name = value.get(kSubFieldName).copyString();
+          name = value.get(kSubFieldName).stringView();
           if (!irs::IsNull(defaultVocbase)) {
             name =
                 IResearchAnalyzerFeature::normalize(name, defaultVocbase, true);
@@ -850,12 +828,9 @@ bool IResearchLinkMeta::init(
           // required string value
           constexpr std::string_view kSubFieldName{"type"};
 
-          if (!value.hasKey(kSubFieldName)  // missing required filed
-              || !value.get(kSubFieldName).isString()) {
-            errorField = std::string{kFieldName} + "[" +
-                         std::to_string(itr.index()) + "]." +
-                         std::string{kSubFieldName};
-
+          if (!value.get(kSubFieldName).isString()) {
+            errorField =
+                absl::StrCat(kFieldName, "[", itr.index(), "].", kSubFieldName);
             return false;
           }
 
@@ -868,14 +843,11 @@ bool IResearchLinkMeta::init(
           // optional string value
           constexpr std::string_view kSubFieldName{"properties"};
 
-          if (value.hasKey(kSubFieldName)) {
-            auto subField = value.get(kSubFieldName);
-
+          auto subField = value.get(kSubFieldName);
+          if (!subField.isNone()) {
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = std::string{kFieldName} + "[" +
-                           std::to_string(itr.index()) + "]." +
-                           std::string{kSubFieldName};
-
+              errorField = absl::StrCat(kFieldName, "[", itr.index(), "].",
+                                        kSubFieldName);
               return false;
             }
 
@@ -889,14 +861,12 @@ bool IResearchLinkMeta::init(
           // optional string list
           constexpr std::string_view kSubFieldName("features");
 
-          if (value.hasKey(kSubFieldName)) {
-            auto subField = value.get(kSubFieldName);
+          auto subField = value.get(kSubFieldName);
+          if (!subField.isNone()) {
             auto featuresRes = features.fromVelocyPack(subField);
             if (featuresRes.fail()) {
-              errorField = std::string{kFieldName}
-                               .append(" (")
-                               .append(featuresRes.errorMessage())
-                               .append(")");
+              errorField = absl::StrCat(kFieldName, " (",
+                                        featuresRes.errorMessage(), ")");
               return false;
             }
           }
@@ -920,13 +890,10 @@ bool IResearchLinkMeta::init(
             LinkVersion{_version}, extendedNames);
 
         if (res.fail() || !analyzer) {
-          errorField =
-              std::string{kFieldName} + "[" + std::to_string(itr.index()) + "]";
-
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           if (res.fail()) {
-            errorField.append(": ").append(res.errorMessage());
+            absl::StrAppend(&errorField, ": ", res.errorMessage());
           }
-
           return false;
         }
 
@@ -935,13 +902,13 @@ bool IResearchLinkMeta::init(
     }
   }
 
-  if (slice.hasKey(StaticStrings::CollectionNameField) &&
-      ServerState::instance()->isClusterRole()) {
+  if (ServerState::instance()->isClusterRole()) {
     auto const field = slice.get(StaticStrings::CollectionNameField);
-    if (!field.isString()) {
+    if (field.isString()) {
+      _collectionName = field.stringView();
+    } else if (!field.isNone()) {
       return false;
     }
-    _collectionName = field.copyString();
   }
 
   // Initialize version specific defaults

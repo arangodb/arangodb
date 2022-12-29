@@ -100,10 +100,10 @@ T getMetric(IResearchLink const& link) {
 }
 
 std::string getLabels(IResearchLink const& link) {
-  return "db=\"" + link.getDbName() +                     //
-         "\",view=\"" + link.getViewId() +                //
-         "\",collection=\"" + link.getCollectionName() +  //
-         "\",shard=\"" + link.getShardName() + "\"";
+  return absl::StrCat("db=\"", link.getDbName(),                     //
+                      "\",view=\"", link.getViewId(),                //
+                      "\",collection=\"", link.getCollectionName(),  //
+                      "\",shard=\"", link.getShardName(), "\"");
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
@@ -282,8 +282,9 @@ Result IResearchLink::init(velocypack::Slice definition, bool& pathExists,
   std::string error;
   // definition should already be normalized and analyzers created if required
   if (!_meta.init(server, definition, error, vocbase.name())) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "error parsing view link parameters from json: " + error};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("error parsing view link parameters from json: ", error)};
   }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkAnalyzerFeatures(_meta);
@@ -329,10 +330,13 @@ bool IResearchLink::isHidden() {
 }
 
 bool IResearchLink::matchesDefinition(velocypack::Slice slice) const {
-  if (!slice.isObject() || !slice.hasKey(StaticStrings::ViewIdField)) {
+  if (!slice.isObject()) {
     return false;  // slice has no view identifier field
   }
   auto viewId = slice.get(StaticStrings::ViewIdField);
+  if (viewId.isNone()) {
+    return false;  // slice has no view identifier field
+  }
   // NOTE: below will not match if 'viewId' is 'id' or 'name',
   //       but ViewIdField should always contain GUID
   if (!viewId.isString() || !viewId.isEqualString(_viewGuid)) {
@@ -358,7 +362,7 @@ Result IResearchLink::properties(velocypack::Builder& builder,
   }
 
   builder.add(arangodb::StaticStrings::IndexId,
-              velocypack::Value(std::to_string(index().id().id())));
+              velocypack::Value(absl::AlphaNum{index().id().id()}.Piece()));
   builder.add(arangodb::StaticStrings::IndexType,
               velocypack::Value(
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType));

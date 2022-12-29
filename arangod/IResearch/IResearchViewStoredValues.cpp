@@ -25,6 +25,8 @@
 #include "IResearchViewStoredValues.h"
 #include "IResearchCommon.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs) {
@@ -79,13 +81,11 @@ bool IResearchViewStoredValues::toVelocyPack(
 }
 
 bool IResearchViewStoredValues::buildStoredColumnFromSlice(
-    velocypack::Slice const& columnSlice,
+    velocypack::Slice columnSlice,
     containers::FlatHashSet<std::string>& uniqueColumns,
     std::vector<std::string_view>& fieldNames,
     irs::type_info::type_id compression, bool cached) {
-  if (!columnSlice.isArray() && !columnSlice.isString()) {
-    return false;
-  }
+  TRI_ASSERT(columnSlice.isArray() || columnSlice.isString());
   fieldNames.clear();
   size_t columnLength = 0;
   StoredColumn sc;
@@ -177,10 +177,11 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
   for (auto columnSlice : VPackArrayIterator(slice)) {
     ++idx;
     if (columnSlice.isObject()) {
-      if (ADB_LIKELY(columnSlice.hasKey(FIELD_COLUMN_PARAM))) {
+      auto data = columnSlice.get(FIELD_COLUMN_PARAM);
+      if (ADB_LIKELY(!data.isNone())) {
         auto compression = getDefaultCompression();
-        if (columnSlice.hasKey(COMPRESSION_COLUMN_PARAM)) {
-          auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
+        auto compressionKey = columnSlice.get(COMPRESSION_COLUMN_PARAM);
+        if (!compressionKey.isNone()) {
           if (ADB_LIKELY(compressionKey.isString())) {
             auto decodedCompression = columnCompressionFromString(
                 iresearch::getStringRef(compressionKey));
@@ -188,12 +189,11 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
               compression = decodedCompression;
             } else {
               errorField =
-                  "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+                  absl::StrCat("[", idx, "].", COMPRESSION_COLUMN_PARAM);
               return false;
             }
           } else {
-            errorField =
-                "[" + std::to_string(idx) + "]." + COMPRESSION_COLUMN_PARAM;
+            errorField = absl::StrCat("[", idx, "].", COMPRESSION_COLUMN_PARAM);
             return false;
           }
         }
@@ -202,27 +202,28 @@ bool IResearchViewStoredValues::fromVelocyPack(velocypack::Slice slice,
         auto cachedField = columnSlice.get(StaticStrings::kCacheField);
         if (!cachedField.isNone()) {
           if (!cachedField.isBool()) {
-            errorField = "[" + std::to_string(idx) + "]." +
-                         std::string(StaticStrings::kCacheField);
+            errorField =
+                absl::StrCat("[", idx, "].", StaticStrings::kCacheField);
             return false;
           }
           cached = cachedField.getBool();
         }
 #endif
-        if (!buildStoredColumnFromSlice(columnSlice.get(FIELD_COLUMN_PARAM),
-                                        uniqueColumns, fieldNames, compression,
-                                        cached)) {
-          errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
+        if (!data.isArray() ||
+            !buildStoredColumnFromSlice(data, uniqueColumns, fieldNames,
+                                        compression, cached)) {
+          errorField = absl::StrCat("[", idx, "].", FIELD_COLUMN_PARAM);
           return false;
         }
       } else {
-        errorField = "[" + std::to_string(idx) + "]";
+        errorField = absl::StrCat("[", idx, "]");
         return false;
       }
     } else {
-      if (!buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
+      if (!(columnSlice.isArray() || columnSlice.isString()) ||
+          !buildStoredColumnFromSlice(columnSlice, uniqueColumns, fieldNames,
                                       getDefaultCompression(), false)) {
-        errorField = "[" + std::to_string(idx) + "]." + FIELD_COLUMN_PARAM;
+        errorField = absl::StrCat("[", idx, "].", FIELD_COLUMN_PARAM);
         return false;
       }
     }

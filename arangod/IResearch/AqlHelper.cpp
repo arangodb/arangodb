@@ -37,8 +37,7 @@
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#include <absl/strings/str_cat.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -353,17 +352,6 @@ void visitReferencedVariables(
 }
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
-
-/*static*/ std::string_view ScopedAqlValue::typeString(
-    ScopedValueType type) noexcept {
-  static std::string_view constexpr kTypeNames[] = {
-      "invalid", "null",  "boolean", "double",
-      "string",  "array", "range",   "object"};
-
-  TRI_ASSERT(size_t(type) < std::size(kTypeNames));
-
-  return kTypeNames[size_t(type)];
-}
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {
@@ -718,25 +706,23 @@ bool nameFromAttributeAccess(
       }
     }
 
-    void append(std::string_view const& value) {
+    void append(std::string_view value) {
       if (!_str.empty()) {
-        _str += NESTING_LEVEL_DELIMITER;
+        // NESTING_LEVEL_DELIMITER value
+        return absl::StrAppend(&_str, ".", value);
       }
-      _str.append(value.data(), value.size());
+      _str = value;
     }
 
     void append(int64_t value) {
-      _str += NESTING_LIST_OFFSET_PREFIX;
-      auto const written = sprintf(_buf, "%" PRIu64, value);
-      _str.append(_buf, written);
-      _str += NESTING_LIST_OFFSET_SUFFIX;
+      // NESTING_LIST_OFFSET_PREFIX value NESTING_LIST_OFFSET_SUFFIX
+      absl::StrAppend(&_str, "[", value, "]");
     }
 
    private:
     ScopedAqlValue _value;
     std::string& _str;
     QueryContext const& _ctx;
-    char _buf[21];  // enough to hold all numbers up to 64-bits
     bool _expansion;
     bool _filter;
   } builder{name, ctx, filter};

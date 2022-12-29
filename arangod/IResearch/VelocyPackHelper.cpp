@@ -26,7 +26,6 @@
 #include "Misc.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -218,8 +217,8 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = slice.copyString();
-    arangodb::basics::StringUtils::tolowerInPlace(value);
+    std::string value{slice.stringView()};
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
     if (value == "asc") {
       direction = true;
