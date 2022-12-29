@@ -708,21 +708,24 @@ bool nameFromAttributeAccess(
 
     void append(std::string_view value) {
       if (!_str.empty()) {
-        // NESTING_LEVEL_DELIMITER value
-        return absl::StrAppend(&_str, ".", value);
+        _str.push_back(NESTING_LEVEL_DELIMITER);
       }
-      _str = value;
+      _str.append(value);
     }
 
     void append(int64_t value) {
-      // NESTING_LIST_OFFSET_PREFIX value NESTING_LIST_OFFSET_SUFFIX
-      absl::StrAppend(&_str, "[", value, "]");
+      _str.push_back(NESTING_LIST_OFFSET_PREFIX);
+      auto const len = static_cast<size_t>(
+          absl::numbers_internal::FastIntToBuffer(value, _buf) - &_buf[0]);
+      _str.append(_buf, len);
+      _str.push_back(NESTING_LIST_OFFSET_SUFFIX);
     }
 
    private:
     ScopedAqlValue _value;
     std::string& _str;
     QueryContext const& _ctx;
+    char _buf[21];  // enough to hold all numbers up to 64-bits
     bool _expansion;
     bool _filter;
   } builder{name, ctx, filter};
