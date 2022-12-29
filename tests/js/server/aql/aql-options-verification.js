@@ -64,9 +64,9 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true};
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value[*]"}]};
         }
         let i1 = c.ensureIndex(indexMeta);
         db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(), index: i1.name}]});
@@ -75,7 +75,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         if (isEnterprise) {
           viewMeta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
-          viewMeta = {links: {[cn]: {includeAllFields: true}}};
+          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": {}}}};
         }
         db._createView(cn + "View", "arangosearch", viewMeta);
       }
@@ -101,6 +101,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ indexHint: ['primary'] } RETURN 1"],
         [prefix + "{ indexHint: ['primary'], forceIndexHint: false } RETURN 1"],
         [prefix + "{ forceIndexHint: false } RETURN 1"],
+        [prefix + "{ indexHint: 'inverted'} RETURN 1"],
 
         [prefix + "{ forceIndexHint: 'meow' } RETURN 1", "forceIndexHint"],
         [prefix + "{ indexHint: false } RETURN 1", "indexHint"],
@@ -254,7 +255,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
     },
 
     testInsert: function () {
-      const prefix = "FOR doc IN " + cn + " INSERT {} INTO " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " INSERT {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} INTO " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
@@ -284,7 +285,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
     },
 
     testUpdate: function () {
-      const prefix = "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " UPDATE doc WITH {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} IN " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
@@ -314,7 +315,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
     },
 
     testReplace: function () {
-      const prefix = "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " REPLACE doc WITH {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} IN " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
