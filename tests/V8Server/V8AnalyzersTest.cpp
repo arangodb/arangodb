@@ -228,7 +228,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
+  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
@@ -551,7 +551,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
+  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -1054,7 +1054,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
+  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
 
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
@@ -1512,7 +1512,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
+  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
@@ -1918,7 +1918,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   isolateParams.array_buffer_allocator = &arrayBufferAllocator;
   auto* isolate = v8::Isolate::New(isolateParams);
   ASSERT_NE(nullptr, isolate);
-  irs::Finally cleanup = [isolate]() noexcept { isolate->Dispose(); };
+  irs::finally cleanup{[isolate]() noexcept { isolate->Dispose(); }};
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
   v8::Isolate::Scope isolateScope(isolate);
