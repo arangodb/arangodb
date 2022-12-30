@@ -18,24 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <unordered_map>
+// TODO(MBkkt) Try to use FlatHashMap to achieve better
+//  lookup performance on query execution
+// #include "Containers/FlatHashMap.h"
 
-namespace arangodb::basics {
+namespace arangodb::aql {
 
-enum class LockerType {
-  BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
-  EVENTUAL,  // always lock, sleeping while the lock is not acquired
-  TRY  // try to acquire the lock and give up instantly if it cannot be acquired
-};
+using VariableId = uint32_t;
 
-namespace ConditionalLocking {
-static constexpr bool DoLock = true;
-static constexpr bool DoNotLock = false;
-}  // namespace ConditionalLocking
+struct VarInfo;
 
-}  // namespace arangodb::basics
+using VarInfoMap = std::unordered_map<VariableId, VarInfo>;
+
+}  // namespace arangodb::aql

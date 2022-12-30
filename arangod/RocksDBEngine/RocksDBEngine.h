@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <deque>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"

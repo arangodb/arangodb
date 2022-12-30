@@ -230,7 +230,7 @@
                                 field3: {}}}}});
         let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"}],
-                                storedValues: [["field2"], ["field3"]]});
+                                storedValues: ["field2", "field3"]});
         wpsl.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],

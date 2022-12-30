@@ -97,7 +97,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void getPropertiesVPack(
       arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(
-      arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
+      arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
+      arangodb::RevisionId newRevisionId,
       arangodb::velocypack::Slice newDocument,
       arangodb::OperationOptions const& options) override;
 
@@ -132,12 +134,14 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::ReadOwnWrites readOwnWrites) const override;
   virtual arangodb::Result remove(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId previousDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
       arangodb::OperationOptions const& options) override;
   virtual arangodb::Result replace(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId newDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
@@ -152,6 +156,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual void compact() override {}
   virtual arangodb::Result update(
       arangodb::transaction::Methods& trx,
+      arangodb::IndexesSnapshot const& indexesSnapshot,
       arangodb::LocalDocumentId newDocumentId,
       arangodb::RevisionId previousRevisionId,
       arangodb::velocypack::Slice previousDocument,
