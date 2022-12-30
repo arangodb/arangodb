@@ -803,15 +803,8 @@ template<typename S>
 void ReplicatedState<S>::drop(
     std::shared_ptr<replicated_log::IReplicatedStateHandle> stateHandle) && {
   ADB_PROD_ASSERT(stateHandle != nullptr);
-<<<<<<< HEAD
   ADB_PROD_ASSERT(manager.has_value());
   auto core = std::move(*manager).resign();
-=======
-
-  auto stateManager = basics::downCast<ReplicatedStateManager<S>>(stateHandle);
-  ADB_PROD_ASSERT(stateManager != nullptr);
-  auto core = std::move(*stateManager).resign();
->>>>>>> origin/feature/merge-replicated-logs-into-replicated-states
   ADB_PROD_ASSERT(core != nullptr);
 
   using CleanupHandler = typename ReplicatedStateTraits<S>::CleanupHandlerType;
