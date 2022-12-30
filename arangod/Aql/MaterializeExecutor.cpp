@@ -29,7 +29,8 @@
 #include "IResearch/SearchDoc.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
-
+#include "StorageEngine/TransactionCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "IResearch/IResearchDocument.h"
 #include <formats/formats.hpp>
 #include <index/index_reader.hpp>
@@ -113,11 +114,9 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
         _collection = _trx.documentCollection(collectionSource);
       }
       collection = _collection;
-    } else {
-      collection = reinterpret_cast<arangodb::LogicalCollection const*>(
-          input.getValue(collectionSource).slice().getUInt());
+      TRI_ASSERT(collection != nullptr);
     }
-    TRI_ASSERT(collection != nullptr);
+    
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
 
@@ -155,6 +154,12 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
       LocalDocumentId documentId;
       arangodb::iresearch::DocumentPrimaryKey::read(documentId, docValue->value);
       std::cout << "LocalDoc:" << documentId << std::endl;
+      std::cout << "CID:" << std::get<0>(*searchDoc.segment()) << std::endl;
+      collection = _trx.state()->collection(std::get<0>(*searchDoc.segment()),
+                                    arangodb::AccessMode::Type::READ)
+                       ->collection()
+                       .get();
+      TRI_ASSERT(collection != nullptr);
       // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
       written =
           collection->getPhysical()

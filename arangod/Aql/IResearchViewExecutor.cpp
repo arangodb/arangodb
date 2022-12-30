@@ -711,6 +711,10 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     if (impl.next()) {
       auto doc  = impl.value();
       writeSearchDoc(ctx, doc, ctx.getDocumentIdReg());
+      // FIXME: remove dummy
+      auto const val = AqlValueHintUInt(0);
+      ctx.outputRow.moveValueInto(ctx.getCollectionPointerReg(), ctx.inputRow,
+                                  val);
       // FIXME: this could be optimized to use same register as document
       if constexpr (ExecutionTraits::EmitSearchDoc) {
         auto reg = this->infos().searchDocIdRegId();
@@ -759,8 +763,9 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
         // we should have written exactly all score registers by now
         TRI_ASSERT(scoreRegIter == scoreRegisters.end());
       }
+      return true;
     }
-    return true;
+    return false;
   }
 
   while (true) {
@@ -879,6 +884,7 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::writeSearchDoc(
   ctx.outputRow.moveValueInto(reg, ctx.inputRow, guard);
 }
 
+//TODO Remove!
 template<typename Impl, typename ExecutionTraits>
 template<arangodb::iresearch::MaterializeType, typename>
 bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeLocalDocumentId(
