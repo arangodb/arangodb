@@ -55,3 +55,4 @@ race:DummyConnection::sendRequest
 # 5. s[i + 1].flush_mutex lock
 # It should be fixed in future, because current code doing a lot unnecessary stuff
 deadlock:iresearch::index_writer::flush_pending
+deadlock:irs::index_writer::flush_pending

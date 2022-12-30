@@ -301,8 +301,8 @@ bool acceptAll(
       // we were expecting an array but something else were given
       // this case is just skipped. Just like regular indicies do.
       return false;
-    } else if (value.value.isObject() && !context->_includeAllFields &&
-               context->_fields.empty() &&
+    } else if (!context->_isSearchField && value.value.isObject() &&
+               !context->_includeAllFields && context->_fields.empty() &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Object)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -312,8 +312,8 @@ bool acceptAll(
           "another analyzer to process an object or exclude field '%s' "
           " from index definition",
           buffer.c_str());
-    } else if (value.value.isArray() && !context->_isArray &&
-               !context->_isSearchField &&
+    } else if (!context->_isSearchField && value.value.isArray() &&
+               !context->_isArray &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Array)) {
       THROW_ARANGO_EXCEPTION_FORMAT(

@@ -329,6 +329,14 @@ Result byTerm(irs::by_term* filter, NormalizedCmpNode const& node,
   if (!value.isConstant()) {
     if (!filter) {
       // can't evaluate non constant filter before the execution
+      if (!filterCtx.query.isSearchQuery) {
+        // but at least we must validate attribute name
+        std::string fieldName{filterCtx.query.namePrefix};
+        if (!nameFromAttributeAccess(fieldName, *node.attribute,
+                                     filterCtx.query, false)) {
+          return error::failedToGenerateName("byTerm", 1);
+        }
+      }
       return {};
     }
 

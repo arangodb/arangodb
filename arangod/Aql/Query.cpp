@@ -1471,6 +1471,7 @@ velocypack::Options const& Query::vpackOptions() const {
 
 transaction::Methods& Query::trxForOptimization() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   return *_trx;
 }
 
