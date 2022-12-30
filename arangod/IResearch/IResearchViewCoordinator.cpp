@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -82,17 +81,18 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
     auto& server = vocbase.server();
     if (!server.hasFeature<ClusterFeature>()) {
       return {TRI_ERROR_INTERNAL,
-              "failure to find 'ClusterInfo' instance while creating "
-              "arangosearch View in database '" +
-                  vocbase.name() + "'"};
+              absl::StrCat("failure to find 'ClusterInfo' instance while "
+                           "creating arangosearch View in database '",
+                           vocbase.name(), "'")};
     }
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     auto properties = definition.isObject()
                           ? definition
                           : velocypack::Slice::emptyObjectSlice();
-    auto links = properties.hasKey(StaticStrings::LinksField)
-                     ? properties.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+    auto links = properties.get(StaticStrings::LinksField);
+    if (links.isNone()) {
+      links = velocypack::Slice::emptyObjectSlice();
+    }
     auto r = IResearchLinkHelper::validateLinks(vocbase, links);
     if (!r.ok()) {
       return r;
@@ -120,7 +120,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
       LOG_TOPIC("09bb9", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
-          << impl->name() << "': " << e.code() << " " << e.what();
+          << impl->name() << "': " << e.code() << " " << e.message();
     } catch (std::exception const& e) {
       LOG_TOPIC("6b99b", WARN, iresearch::TOPIC)
           << "caught exception while creating links while creating "
@@ -133,7 +133,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
           << impl->name() << "'";
     }
     // refresh view from Agency
-    view = ci.getView(vocbase.name(), std::to_string(impl->id().id()));
+    view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
     TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
@@ -336,9 +336,10 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
   }
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   try {
-    auto links = slice.hasKey(StaticStrings::LinksField)
-                     ? slice.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+    auto links = slice.get(StaticStrings::LinksField);
+    if (links.isNone()) {
+      links = velocypack::Slice::emptyObjectSlice();
+    }
     auto r = IResearchLinkHelper::validateLinks(vocbase(), links);
     if (!r.ok()) {
       return r;
@@ -349,8 +350,8 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
       std::shared_lock lock{_mutex};
       for (auto& entry : _collections) {
         auto const& name = vocbase().name();
-        auto collection =
-            engine.getCollection(name, std::to_string(entry.first.id()));
+        auto collection = engine.getCollection(
+            name, absl::AlphaNum{entry.first.id()}.Piece());
         if (collection &&
             !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
           return {
@@ -406,20 +407,20 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     return IResearchLinkHelper::updateLinks(collections, *this, links,
                                             getDefaultVersion(isUserRequest),
                                             currentCids);
-  } catch (basics::Exception& e) {
+  } catch (basics::Exception const& e) {
     LOG_TOPIC("714b3", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
-        << name() << "': " << e.code() << " " << e.what();
+        << name() << "': " << e.code() << " " << e.message();
     return {e.code(),
             absl::StrCat("error updating properties for arangosearch view '",
-                         name(), "'")};
+                         name(), "': ", e.message())};
   } catch (std::exception const& e) {
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
     return {TRI_ERROR_BAD_PARAMETER,
             absl::StrCat("error updating properties for arangosearch view '",
-                         name(), "'")};
+                         name(), "': ", e.what())};
   } catch (...) {
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
@@ -451,7 +452,8 @@ Result IResearchViewCoordinator::dropImpl() {
   if (!exec.isSuperuser()) {
     for (auto& entry : currentCids) {
       auto const& name = vocbase().name();
-      auto collection = engine.getCollection(name, std::to_string(entry.id()));
+      auto collection =
+          engine.getCollection(name, absl::AlphaNum{entry.id()}.Piece());
       if (collection &&
           !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
         return {TRI_ERROR_FORBIDDEN};

@@ -85,7 +85,7 @@ class IResearchViewStoredValues {
 
  private:
   bool buildStoredColumnFromSlice(
-      velocypack::Slice const& columnSlice,
+      velocypack::Slice columnSlice,
       containers::FlatHashSet<std::string>& uniqueColumns,
       std::vector<std::string_view>& fieldNames,
       irs::type_info::type_id compression, bool cached);
