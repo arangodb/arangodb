@@ -162,6 +162,7 @@ auto LogRange::begin() const noexcept -> LogRange::Iterator {
 }
 
 auto replication2::operator==(LogRange left, LogRange right) noexcept -> bool {
+  // Two ranges compare equal iff either both are empty or _from_ and _to_ agree
   return (left.empty() && right.empty()) ||
          (left.from == right.from && left.to == right.to);
 }

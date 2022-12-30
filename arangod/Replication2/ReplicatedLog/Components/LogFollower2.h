@@ -83,6 +83,7 @@ struct FollowerManager {
   std::shared_ptr<ReplicatedLogGlobalSettings const> const options;
   std::shared_ptr<ReplicatedLogMetrics> const metrics;
 
+  // Make this into shared_ptrs allows types to remain incomplete in this header
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
   std::shared_ptr<StateHandleManager> const stateHandle;

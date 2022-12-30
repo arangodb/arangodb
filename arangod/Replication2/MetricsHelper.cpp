@@ -38,7 +38,7 @@ void MeasureTimeGuard::fire() {
     auto const duration =
         std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
     _histogram->count(duration.count());
-    _histogram = nullptr;
+    _histogram.reset();
   }
 }
 
