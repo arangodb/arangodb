@@ -44,7 +44,6 @@
 #include "Aql/StandaloneCalculation.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
 #include "IResearch/IResearchCommon.h"
@@ -58,6 +57,8 @@
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 using namespace arangodb::velocypack::deserializer;
@@ -80,44 +81,36 @@ using Options = arangodb::iresearch::AqlAnalyzer::Options;
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
     if (opts.queryString.empty()) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(QUERY_STRING_PARAM_NAME)
-                                   .append("' should be non empty string")};
+      return deserialize_error{absl::StrCat("Value of '",
+                                            QUERY_STRING_PARAM_NAME,
+                                            "' should be non empty string")};
     }
     if (opts.batchSize == 0) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(BATCH_SIZE_PARAM_NAME)
-                                   .append("' should be greater than 0")};
+      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                            "' should be greater than 0")};
     }
     if (opts.batchSize > MAX_BATCH_SIZE) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(BATCH_SIZE_PARAM_NAME)
-                                   .append("' should be less or equal to ")
-                                   .append(std::to_string(MAX_BATCH_SIZE))};
+      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                            "' should be less or equal to ",
+                                            MAX_BATCH_SIZE)};
     }
     if (opts.memoryLimit == 0) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(MEMORY_LIMIT_PARAM_NAME)
-                                   .append("' should be greater than 0")};
+      return deserialize_error{absl::StrCat(
+          "Value of '", MEMORY_LIMIT_PARAM_NAME, "' should be greater than 0")};
     }
     if (opts.memoryLimit > MAX_MEMORY_LIMIT) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(MEMORY_LIMIT_PARAM_NAME)
-                                   .append("' should be less or equal to ")
-                                   .append(std::to_string(MAX_MEMORY_LIMIT))};
+      return deserialize_error{
+          absl::StrCat("Value of '", MEMORY_LIMIT_PARAM_NAME,
+                       "' should be less or equal to ", MAX_MEMORY_LIMIT)};
     }
     if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
       return deserialize_error{
-          std::string("Value of '")
-              .append(RETURN_TYPE_PARAM_NAME)
-              .append("' should be ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
-              .append(" or ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
-              .append(" or ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
+          absl::StrCat("Value of '", RETURN_TYPE_PARAM_NAME, "' should be ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING, " or ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER, " or ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
     }
     return {};
   }

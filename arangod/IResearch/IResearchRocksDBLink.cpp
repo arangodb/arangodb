@@ -39,6 +39,8 @@
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchFeature.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::iresearch {
 
 IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
@@ -65,11 +67,11 @@ void IResearchRocksDBLink::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(Result(  // result
-        TRI_ERROR_BAD_PARAMETER,    // code
-        std::string("failed to generate link definition for arangosearch view "
-                    "RocksDB link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("failed to generate link definition for arangosearch view "
+                     "RocksDB link '",
+                     id().id(), "'"));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -77,16 +79,15 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.openObject();
 
   if (!IResearchLink::properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "RocksDB link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("failed to generate link definition "
+                                         "for arangosearch view RocksDB link '",
+                                         id().id(), "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
-    builder.add("objectId", VPackValue(std::to_string(objectId())));
+    builder.add("objectId", VPackValue(absl::AlphaNum{objectId()}.Piece()));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

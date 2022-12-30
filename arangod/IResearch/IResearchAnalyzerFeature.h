@@ -254,7 +254,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool init(std::string_view const& type, VPackSlice const properties,
             AnalyzersRevision::Revision revision, Features features,
             LinkVersion version);
-  void setKey(std::string_view const& type);
+  void setKey(std::string_view type);
 
   mutable CacheType _cache;  // cache of irs::analysis::analyzer
   // cached iresearch field features
