@@ -30,6 +30,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
+#include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -143,6 +144,11 @@ class MaterializeExecutor {
     static arangodb::IndexIterator::DocumentCallback copyDocumentCallback(
         ReadContext& ctx);
   };
+
+  void fillBuffer(AqlItemBlockInputRange& inputRange);
+  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId, LogicalCollection const*>;
+  using BufferedRecordsContainer = std::vector<BufferRecord>;
+  BufferedRecordsContainer _bufferedDocs;
 
   transaction::Methods _trx;
   ReadContext _readDocumentContext;

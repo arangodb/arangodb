@@ -26,7 +26,6 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "IResearch/SearchDoc.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -89,6 +88,84 @@ arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
       _infos(infos) {}
 
 template<typename T>
+void
+arangodb::aql::MaterializeExecutor<T>::fillBuffer(
+    AqlItemBlockInputRange& inputRange) {
+  _bufferedDocs.clear();
+  auto const block = inputRange.getBlock();
+  if (block == nullptr) {
+    return;
+  }
+  auto const numRows = block->numRows();
+  auto const numDataRows = numRows - block->numShadowRows();
+  if (ADB_UNLIKELY(!numDataRows)) {
+    return;
+  }
+  _bufferedDocs.reserve(numDataRows);
+  auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
+    auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+    for (size_t i = 0, j = 0; i < numRows; ++i) {
+      if constexpr (HasShadowRows) {
+        if (block->isShadowRow(i)) {
+          continue;
+        }
+      }
+      auto const buf = block->getValueReference(i, docRegId).slice().stringView();
+      auto searchDoc = iresearch::SearchDoc::decode(buf);
+      auto transactionCollection = _trx.state()->collection(
+          std::get<0>(*searchDoc.segment()), arangodb::AccessMode::Type::READ);
+      TRI_ASSERT(transactionCollection);
+      auto collection = transactionCollection->collection().get();
+      TRI_ASSERT(collection);
+      _bufferedDocs.push_back(
+          std::make_tuple(searchDoc, LocalDocumentId{}, collection));
+    }
+  };
+
+  if (block->hasShadowRows()) {
+    readInputDocs.operator()<false>();
+  } else {
+    readInputDocs.operator()<true>();
+  }
+  std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
+  std::iota(readOrder.begin(), readOrder.end(), 0);
+  std::sort(
+      std::begin(readOrder), std::end(readOrder),
+            [&](auto& lhs, auto& rhs) { return std::get<0>(_bufferedDocs[lhs]) < std::get<0>(_bufferedDocs[rhs]); });
+  iresearch::ViewSegment const* lastSegment{nullptr};
+  irs::doc_iterator::ptr pkReader;
+  irs::payload const* docValue{nullptr};
+  LocalDocumentId documentId;
+  auto doc = readOrder.begin();
+  auto end = readOrder.end();
+  while (doc != end) {
+    auto& document = _bufferedDocs[*doc];
+    if (lastSegment != std::get<0>(document).segment()) {
+      lastSegment = std::get<0>(document).segment();
+      pkReader = ::pkColumn(*std::get<1>(*lastSegment));
+      if (ADB_LIKELY(pkReader)) {
+        docValue = irs::get<irs::payload>(*pkReader);
+      } else {
+        // skip segment without PK column
+        do {
+          ++doc;
+        } while (doc != end &&
+                 lastSegment == std::get<0>(_bufferedDocs[*doc]).segment());
+        continue;
+      }
+    }
+    TRI_ASSERT(docValue);
+    if (std::get<0>(document).doc() == pkReader->seek(std::get<0>(document).doc())) {
+      arangodb::iresearch::DocumentPrimaryKey::read(documentId,
+                                                    docValue->value);
+      std::get<1>(document) = documentId;
+    }
+    ++doc;
+  }
+
+}
+
+template<typename T>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
 arangodb::aql::MaterializeExecutor<T>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
@@ -97,24 +174,26 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
+
+  if constexpr (!std::is_same<T, std::string const&>::value) {
+    // buffering all LocalDocumentIds to avoid memory ping-pong
+    // between iresearch and storage engine
+    fillBuffer(inputRange);
+  }
+  auto doc = _bufferedDocs.begin();
+  auto end = _bufferedDocs.end();
+  auto& callback = _readDocumentContext._callback;
+  auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
+  T collectionSource = _readDocumentContext._infos->collectionSource();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
-
-    // FIXME(gnusi): move outside the loop?
-    // some micro-optimization
-    auto& callback = _readDocumentContext._callback;
-    auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
-    T collectionSource = _readDocumentContext._infos->collectionSource();
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-
-    arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {
       if (_collection == nullptr) {
         _collection = _trx.documentCollection(collectionSource);
       }
-      collection = _collection;
-      TRI_ASSERT(collection != nullptr);
+      TRI_ASSERT(_collection != nullptr);
     }
     
     _readDocumentContext._inputRow = &input;
@@ -136,37 +215,27 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
     if constexpr (std::is_same<T, std::string const&>::value) {
       // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
       written =
-          collection->getPhysical()
+          _collection->getPhysical()
               ->read(
                   &_trx,
                   LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
                   callback, ReadOwnWrites::no)
               .ok();
     } else {
-      auto const buf = input.getValue(docRegId).slice().stringView();
-      auto searchDoc = iresearch::SearchDoc::decode(buf);
-      // FIXME: Make this buffered!
-      auto pkReader = ::pkColumn(*std::get<1>(*searchDoc.segment()));
-      TRI_ASSERT(pkReader);
-      std::cout << "Got IRS doc:" << searchDoc.doc() << std::endl;
-      pkReader->seek(searchDoc.doc());
-      irs::payload const* docValue = irs::get<irs::payload>(*pkReader);
-      LocalDocumentId documentId;
-      arangodb::iresearch::DocumentPrimaryKey::read(documentId, docValue->value);
-      std::cout << "LocalDoc:" << documentId << std::endl;
-      std::cout << "CID:" << std::get<0>(*searchDoc.segment()) << std::endl;
-      collection = _trx.state()->collection(std::get<0>(*searchDoc.segment()),
-                                    arangodb::AccessMode::Type::READ)
-                       ->collection()
-                       .get();
-      TRI_ASSERT(collection != nullptr);
-      // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-      written =
-          collection->getPhysical()
-              ->readFromSnapshot(
-                  &_trx, documentId, callback, ReadOwnWrites::no,
-                  std::get<2>(*searchDoc.segment()))
-              .ok();
+      if (doc != end) {
+        auto const& documentId = std::get<1>(*doc);
+        if (documentId.isSet()) {
+          auto collection = std::get<2>(*doc);
+          TRI_ASSERT(collection);
+          // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
+          written = collection->getPhysical()
+                        ->readFromSnapshot(
+                            &_trx, documentId, callback, ReadOwnWrites::no,
+                            std::get<2>(*std::get<0>(*doc).segment()))
+                        .ok();
+        }
+        ++doc;
+      }
     }
     if (written) {
       // document found
