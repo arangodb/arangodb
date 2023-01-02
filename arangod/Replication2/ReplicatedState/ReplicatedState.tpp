@@ -275,7 +275,7 @@ void LeaderStateManager<S>::recoverEntries() {
       [weak = this->weak_from_this()](futures::Try<Result>&& tryResult) {
         // TODO error handling
         ADB_PROD_ASSERT(tryResult.hasValue());
-        ADB_PROD_ASSERT(tryResult.get().ok());
+        ADB_PROD_ASSERT(tryResult.get().ok()) << tryResult.get();
         if (auto self = weak.lock(); self != nullptr) {
           auto guard = self->_guardedData.getLockedGuard();
           guard->_leaderState->onRecoveryCompleted();
