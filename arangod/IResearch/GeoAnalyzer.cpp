@@ -40,6 +40,8 @@
 #include "VPackDeserializer/deserializer.h"
 #include "Basics/DownCast.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 using namespace std::literals::string_literals;
@@ -78,9 +80,8 @@ struct GeoOptionsValidator {
     if (opts.maxLevel > GeoOptions::MAX_LEVEL ||
         opts.minLevel > GeoOptions::MAX_LEVEL) {
       return deserialize_error{
-          "'minLevel', 'maxLevel' must not exceed '"s
-              .append(std::to_string(GeoOptions::MAX_LEVEL))
-              .append("'")};
+          absl::StrCat("'minLevel', 'maxLevel' must not exceed '",
+                       GeoOptions::MAX_LEVEL, "'")};
     }
 
     if (opts.minLevel > opts.maxLevel) {

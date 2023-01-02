@@ -26,12 +26,11 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
+#include "Aql/VarInfoMap.h"
 
 #include <cstdint>
 #include <memory>
 #include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -100,9 +99,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, Index* index, AstNode const* condition,
-    Variable const* indexVariable);
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable);
 
 }  // namespace utils
 }  // namespace aql

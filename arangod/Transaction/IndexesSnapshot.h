@@ -23,19 +23,35 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
 
-namespace arangodb::basics {
+#include <memory>
+#include <vector>
 
-enum class LockerType {
-  BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
-  EVENTUAL,  // always lock, sleeping while the lock is not acquired
-  TRY  // try to acquire the lock and give up instantly if it cannot be acquired
+namespace arangodb {
+class Index;
+
+class IndexesSnapshot {
+ public:
+  explicit IndexesSnapshot(RecursiveReadLocker<basics::ReadWriteLock>&& locker,
+                           std::vector<std::shared_ptr<Index>> indexes);
+  ~IndexesSnapshot();
+
+  IndexesSnapshot(IndexesSnapshot const& other) = delete;
+  IndexesSnapshot& operator=(IndexesSnapshot const& other) = delete;
+  IndexesSnapshot(IndexesSnapshot&& other) = default;
+  IndexesSnapshot& operator=(IndexesSnapshot&& other) = delete;
+
+  std::vector<std::shared_ptr<Index>> const& getIndexes() const noexcept;
+  void release();
+
+  bool hasSecondaryIndex() const noexcept;
+
+ private:
+  RecursiveReadLocker<basics::ReadWriteLock> _locker;
+  std::vector<std::shared_ptr<Index>> _indexes;
+  bool _valid;
 };
 
-namespace ConditionalLocking {
-static constexpr bool DoLock = true;
-static constexpr bool DoNotLock = false;
-}  // namespace ConditionalLocking
-
-}  // namespace arangodb::basics
+}  // namespace arangodb

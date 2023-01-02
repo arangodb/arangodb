@@ -126,10 +126,10 @@ struct IResearchLinkHelper {
   /// @param stale links to remove if there is no creation definition in 'links'
   /// @param linkVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
-  static Result updateLinks(std::unordered_set<DataSourceId>& modified,
-                            LogicalView& view, velocypack::Slice links,
-                            LinkVersion defaultVersion,
-                            std::unordered_set<DataSourceId> const& stale = {});
+  static Result updateLinks(
+      containers::FlatHashSet<DataSourceId>& modified, LogicalView& view,
+      velocypack::Slice links, LinkVersion defaultVersion,
+      containers::FlatHashSet<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;
