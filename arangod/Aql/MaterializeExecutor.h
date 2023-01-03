@@ -48,11 +48,36 @@ class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-template<typename T>
-class MaterializerExecutorInfos {
+// two storage varians as we need
+// collection name to be sotred only
+// when needed.
+class NoCollectionNameHolder {};
+class StringCollectionNameHolder {
  public:
-  MaterializerExecutorInfos(T collectionSource, RegisterId inNmDocId,
-                            RegisterId outDocRegId, aql::QueryContext& query);
+  StringCollectionNameHolder(std::string const& name)
+      : _collectionSource(name) {}
+
+ protected:
+  std::string const& _collectionSource;
+};
+
+template<typename T>
+class MaterializerExecutorInfos
+    : private std::conditional_t<std::is_same_v<T, std::string const&>,
+                                 StringCollectionNameHolder,
+                                 NoCollectionNameHolder> {
+ public:
+  using Base =
+      std::conditional_t<std::is_same_v<T, std::string const&>,
+                         StringCollectionNameHolder, NoCollectionNameHolder>;
+
+  template<class... _Types>
+  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
+                            aql::QueryContext& query, _Types&&... Args)
+      : Base(Args...),
+        _inNonMaterializedDocRegId(inNmDocId),
+        _outMaterializedDocumentRegId(outDocRegId),
+        _query(query) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -69,11 +94,13 @@ class MaterializerExecutorInfos {
 
   aql::QueryContext& query() const { return _query; }
 
-  T collectionSource() const { return _collectionSource; }
+  template<typename Source = T>
+  std::enable_if_t<std::is_same_v<Source, std::string const&>, Source>
+  collectionSource() const {
+    return StringCollectionNameHolder::_collectionSource;
+  }
 
  private:
-  /// @brief register to store raw collection pointer or collection name
-  T const _collectionSource;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
@@ -146,7 +173,8 @@ class MaterializeExecutor {
   };
 
   void fillBuffer(AqlItemBlockInputRange& inputRange);
-  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId, LogicalCollection const*>;
+  using BufferRecord = std::tuple<iresearch::SearchDoc, LocalDocumentId,
+                                  LogicalCollection const*>;
   using BufferedRecordsContainer = std::vector<BufferRecord>;
   BufferedRecordsContainer _bufferedDocs;
 

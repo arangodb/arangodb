@@ -754,7 +754,6 @@ const char* NODE_VIEW_ID_PARAM = "viewId";
 const char* NODE_OUT_VARIABLE_PARAM = "outVariable";
 const char* NODE_OUT_SEARCH_DOC_PARAM = "outSearchDocId";
 const char* NODE_OUT_NM_DOC_PARAM = "outNmDocId";
-const char* NODE_OUT_NM_COL_PARAM = "outNmColPtr";
 const char* NODE_CONDITION_PARAM = "condition";
 const char* NODE_SCORERS_PARAM = "scorers";
 const char* NODE_SHARDS_PARAM = "shards";
@@ -1083,20 +1082,10 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
                                                NODE_OUT_VARIABLE_PARAM)},
       _outNonMaterializedDocId{aql::Variable::varFromVPack(
           plan.getAst(), base, NODE_OUT_NM_DOC_PARAM, true)},
-      _outNonMaterializedColPtr{aql::Variable::varFromVPack(
-          plan.getAst(), base, NODE_OUT_NM_COL_PARAM, true)},
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition{&kAll},
       _scorers{fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))} {
-  if ((_outNonMaterializedColPtr != nullptr) !=
-      (_outNonMaterializedDocId != nullptr)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("invalid node config, '", NODE_OUT_NM_DOC_PARAM,
-                     "' attribute should be consistent with '",
-                     NODE_OUT_NM_COL_PARAM, "' attribute"));
-  }
   auto const viewNameSlice = base.get(NODE_VIEW_NAME_PARAM);
   auto const viewName =
       viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
@@ -1375,11 +1364,6 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
     _outNonMaterializedDocId->toVelocyPack(nodes);
   }
 
-  if (_outNonMaterializedColPtr != nullptr) {
-    nodes.add(VPackValue(NODE_OUT_NM_COL_PARAM));
-    _outNonMaterializedColPtr->toVelocyPack(nodes);
-  }
-
   if (_noMaterialization) {
     nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
   }
@@ -1517,7 +1501,6 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   auto* outVariable = _outVariable;
   auto* outSearchDocId = _outSearchDocId;
   auto* outNonMaterializedDocId = _outNonMaterializedDocId;
-  auto* outNonMaterializedColId = _outNonMaterializedColPtr;
   auto outNonMaterializedViewVars = _outNonMaterializedViewVars;
 
   if (withProperties) {
@@ -1528,12 +1511,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
       outSearchDocId = vars->createVariable(outNonMaterializedDocId);
     }
     if (outNonMaterializedDocId != nullptr) {
-      TRI_ASSERT(_outNonMaterializedColPtr != nullptr);
       outNonMaterializedDocId = vars->createVariable(outNonMaterializedDocId);
-    }
-    if (outNonMaterializedColId != nullptr) {
-      TRI_ASSERT(_outNonMaterializedDocId != nullptr);
-      outNonMaterializedColId = vars->createVariable(outNonMaterializedColId);
     }
     for (auto& columnFieldsVars : outNonMaterializedViewVars) {
       for (auto& fieldVar : columnFieldsVars.second) {
@@ -1554,10 +1532,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   if (outSearchDocId != nullptr) {
     node->setSearchDocIdVar(*outSearchDocId);
   }
-  if (outNonMaterializedColId != nullptr &&
-      outNonMaterializedDocId != nullptr) {
-    node->setLateMaterialized(*outNonMaterializedColId,
-                              *outNonMaterializedDocId);
+  if (outNonMaterializedDocId != nullptr) {
+    node->setLateMaterialized(*outNonMaterializedDocId);
   }
   node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
@@ -1677,7 +1653,6 @@ std::vector<aql::Variable const*> IResearchViewNode::getVariablesSetHere()
                  [](auto const& scorer) { return scorer.var; });
   if (isLateMaterialized() || isNoMaterialization()) {
     if (isLateMaterialized()) {
-      vars.emplace_back(_outNonMaterializedColPtr);
       vars.emplace_back(_outNonMaterializedDocId);
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
@@ -1794,7 +1769,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     if (isLateMaterialized()) {
       TRI_ASSERT(!isNoMaterialization());
       materializeType = MaterializeType::LateMaterialize;
-      numDocumentRegs += 2;
+      numDocumentRegs += 1;
     } else if (isNoMaterialization()) {
       TRI_ASSERT(options().noMaterialization);
       materializeType = MaterializeType::NotMaterialize;
@@ -1832,27 +1807,20 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       writableOutputRegisters.emplace(searchDocRegId);
     }
 
-    auto const outRegister =
-        std::invoke([&]() -> aql::IResearchViewExecutorInfos::OutRegisters {
-          if (isLateMaterialized()) {
-            aql::RegisterId documentRegId =
-                variableToRegisterId(_outNonMaterializedDocId);
-            aql::RegisterId collectionRegId =
-                variableToRegisterId(_outNonMaterializedColPtr);
-
-            writableOutputRegisters.emplace(documentRegId);
-            writableOutputRegisters.emplace(collectionRegId);
-            return aql::IResearchViewExecutorInfos::LateMaterializeRegister{
-                documentRegId, collectionRegId};
-          } else if (isNoMaterialization()) {
-            return aql::IResearchViewExecutorInfos::NoMaterializeRegisters{};
-          } else {
-            auto outReg = variableToRegisterId(_outVariable);
-            writableOutputRegisters.emplace(outReg);
-            return aql::IResearchViewExecutorInfos::MaterializeRegisters{
-                outReg};
-          }
-        });
+    auto const outRegister = std::invoke([&]() -> aql::RegisterId {
+      if (isLateMaterialized()) {
+        aql::RegisterId documentRegId =
+            variableToRegisterId(_outNonMaterializedDocId);
+        writableOutputRegisters.emplace(documentRegId);
+        return documentRegId;
+      } else if (isNoMaterialization()) {
+        return aql::RegisterId::maxRegisterId;
+      } else {
+        auto outReg = variableToRegisterId(_outVariable);
+        writableOutputRegisters.emplace(outReg);
+        return outReg;
+      }
+    });
 
     std::vector<aql::RegisterId> scoreRegisters;
     scoreRegisters.reserve(numScoreRegisters);

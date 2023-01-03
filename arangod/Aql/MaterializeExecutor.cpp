@@ -41,12 +41,13 @@ using namespace arangodb::aql;
 namespace {
 // TODO Make it common!
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader = segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
+  auto const* reader =
+      segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
-} // namespace
+}  // namespace
 
 template<typename T>
 arangodb::IndexIterator::DocumentCallback
@@ -72,15 +73,6 @@ MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
 }
 
 template<typename T>
-arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
-    T collectionSource, RegisterId inNmDocId, RegisterId outDocRegId,
-    aql::QueryContext& query)
-    : _collectionSource(collectionSource),
-      _inNonMaterializedDocRegId(inNmDocId),
-      _outMaterializedDocumentRegId(outDocRegId),
-      _query(query) {}
-
-template<typename T>
 arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
     MaterializeExecutor<T>::Fetcher& /*fetcher*/, Infos& infos)
     : _trx(infos.query().newTrxContext()),
@@ -88,8 +80,7 @@ arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
       _infos(infos) {}
 
 template<typename T>
-void
-arangodb::aql::MaterializeExecutor<T>::fillBuffer(
+void arangodb::aql::MaterializeExecutor<T>::fillBuffer(
     AqlItemBlockInputRange& inputRange) {
   _bufferedDocs.clear();
   auto const block = inputRange.getBlock();
@@ -110,7 +101,8 @@ arangodb::aql::MaterializeExecutor<T>::fillBuffer(
           continue;
         }
       }
-      auto const buf = block->getValueReference(i, docRegId).slice().stringView();
+      auto const buf =
+          block->getValueReference(i, docRegId).slice().stringView();
       auto searchDoc = iresearch::SearchDoc::decode(buf);
       auto transactionCollection = _trx.state()->collection(
           std::get<0>(*searchDoc.segment()), arangodb::AccessMode::Type::READ);
@@ -129,9 +121,11 @@ arangodb::aql::MaterializeExecutor<T>::fillBuffer(
   }
   std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
   std::iota(readOrder.begin(), readOrder.end(), 0);
-  std::sort(
-      std::begin(readOrder), std::end(readOrder),
-            [&](auto& lhs, auto& rhs) { return std::get<0>(_bufferedDocs[lhs]) < std::get<0>(_bufferedDocs[rhs]); });
+  std::sort(std::begin(readOrder), std::end(readOrder),
+            [&](auto& lhs, auto& rhs) {
+              return std::get<0>(_bufferedDocs[lhs]) <
+                     std::get<0>(_bufferedDocs[rhs]);
+            });
   iresearch::ViewSegment const* lastSegment{nullptr};
   irs::doc_iterator::ptr pkReader;
   irs::payload const* docValue{nullptr};
@@ -155,14 +149,14 @@ arangodb::aql::MaterializeExecutor<T>::fillBuffer(
       }
     }
     TRI_ASSERT(docValue);
-    if (std::get<0>(document).doc() == pkReader->seek(std::get<0>(document).doc())) {
+    if (std::get<0>(document).doc() ==
+        pkReader->seek(std::get<0>(document).doc())) {
       arangodb::iresearch::DocumentPrimaryKey::read(documentId,
                                                     docValue->value);
       std::get<1>(document) = documentId;
     }
     ++doc;
   }
-
 }
 
 template<typename T>
@@ -174,7 +168,6 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
-
   if constexpr (!std::is_same<T, std::string const&>::value) {
     // buffering all LocalDocumentIds to avoid memory ping-pong
     // between iresearch and storage engine
@@ -184,18 +177,18 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
   auto end = _bufferedDocs.end();
   auto& callback = _readDocumentContext._callback;
   auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
-  T collectionSource = _readDocumentContext._infos->collectionSource();
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool written = false;
     auto const [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    if constexpr (std::is_same<T, std::string const&>::value) {
+    if constexpr (std::is_same_v<T, std::string const&>) {
       if (_collection == nullptr) {
-        _collection = _trx.documentCollection(collectionSource);
+        _collection = _trx.documentCollection(
+            _readDocumentContext._infos->collectionSource());
       }
       TRI_ASSERT(_collection != nullptr);
     }
-    
+
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
 
@@ -271,8 +264,8 @@ arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class ::arangodb::aql::MaterializeExecutor<RegisterId>;
+template class ::arangodb::aql::MaterializeExecutor<void>;
 template class ::arangodb::aql::MaterializeExecutor<std::string const&>;
 
-template class ::arangodb::aql::MaterializerExecutorInfos<RegisterId>;
+template class ::arangodb::aql::MaterializerExecutorInfos<void>;
 template class ::arangodb::aql::MaterializerExecutorInfos<std::string const&>;
