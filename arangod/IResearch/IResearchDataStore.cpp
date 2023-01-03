@@ -1442,8 +1442,10 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._snapshot) {
     _dataStore._writer->commit();  // initialize 'store'
-    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory),
-                                                     _format, readerOptions);
+    _dataStore._snapshot = std::make_shared<DataSnapshot>(
+        irs::directory_reader::open(*(_dataStore._directory), _format,
+                                    readerOptions),
+        _engine->currentSnapshot());
   }
 
   if (!_dataStore._snapshot) {
