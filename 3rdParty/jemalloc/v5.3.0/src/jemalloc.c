@@ -1220,7 +1220,7 @@ malloc_conf_init_helper(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
 
 			CONF_HANDLE_BOOL(opt_abort, "abort")
 			CONF_HANDLE_BOOL(opt_abort_conf, "abort_conf")
-                        CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
+			CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
 			CONF_HANDLE_BOOL(opt_trust_madvise, "trust_madvise")
 			if (strncmp("metadata_thp", k, klen) == 0) {
 				int m;
