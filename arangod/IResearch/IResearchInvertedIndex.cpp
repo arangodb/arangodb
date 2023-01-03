@@ -31,7 +31,6 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -744,9 +743,9 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
                                           velocypack::Builder& builder,
                                           bool writeAnalyzerDefinition) const {
   if (!_meta.json(server, builder, writeAnalyzerDefinition, defaultVocbase)) {
-    THROW_ARANGO_EXCEPTION(Result(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        std::string{"Failed to generate inverted index field definition"}));
+        "Failed to generate inverted index field definition");
   }
   if (isOutOfSync()) {
     // index is out of sync - we need to report that
@@ -783,12 +782,12 @@ Result IResearchInvertedIndex::init(
                   errField, index().collection().vocbase().name())) {
     LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
         << (errField.empty()
-                ? (std::string(
-                       "failed to initialize index fields from definition: ") +
-                   definition.toString())
-                : (std::string("failed to initialize index fields from "
-                               "definition, error in attribute '") +
-                   errField + "': " + definition.toString()));
+                ? absl::StrCat(
+                      "failed to initialize index fields from definition: ",
+                      definition.toString())
+                : absl::StrCat("failed to initialize index fields from "
+                               "definition, error in attribute '",
+                               errField, "': ", definition.toString()));
     return {TRI_ERROR_BAD_PARAMETER, errField};
   }
   auto& cf =
@@ -924,7 +923,7 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
   if (failQueriesOnOutOfSync() && isOutOfSync()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-        absl::StrCat("link ", std::to_string(index().id().id()),
+        absl::StrCat("link ", index().id().id(),
                      " has been marked as failed and needs to be recreated"));
   }
 
@@ -942,6 +941,13 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
       state.cookie(key, std::move(ptr));
 
       if (opts.waitForSync) {
+        // TODO(MBkkt) Move it to optimization stage
+        if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              "cannot use waitForSync with inverted index and streaming or js "
+              "transaction");
+        }
         commit();
       }
 
