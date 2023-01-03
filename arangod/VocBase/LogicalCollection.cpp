@@ -132,6 +132,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(
           info, StaticStrings::Version,
           static_cast<uint32_t>(currentVersion())))),
+      _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
           info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
       _isAStub(isAStub),
@@ -452,8 +453,6 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   return numberOfShards() != 1;
 }
 
-TRI_col_type_e LogicalCollection::type() const { return _type; }
-
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
   WRITE_LOCKER_EVENTUAL(locker, _statusLock);
@@ -563,6 +562,7 @@ Result LogicalCollection::rename(std::string&& newName) {
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
     engine.changeCollection(vocbase(), *this);
+    ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));

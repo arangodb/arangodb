@@ -135,11 +135,13 @@ class LogicalCollection : public LogicalDataSource {
       std::string_view shardId);
 
   // SECTION: Meta Information
-  Version version() const { return _version; }
+  Version version() const noexcept { return _version; }
 
-  void setVersion(Version version) { _version = version; }
+  void setVersion(Version version) noexcept { _version = version; }
 
-  TRI_col_type_e type() const;
+  uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
+
+  TRI_col_type_e type() const noexcept { return _type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -387,8 +389,6 @@ class LogicalCollection : public LogicalDataSource {
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  void increaseV8Version();
-
   bool determineSyncByRevision() const;
 
   void decorateWithInternalValidators();
@@ -413,6 +413,9 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief collection format version
   Version _version;
+
+  // @brief Internal version used for caching
+  uint32_t _v8CacheVersion;
 
   // @brief Collection type
   TRI_col_type_e const _type;

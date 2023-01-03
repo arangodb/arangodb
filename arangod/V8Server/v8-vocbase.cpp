@@ -1407,12 +1407,12 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
     auto* collection = UnwrapCollection(isolate, value);
 
     // check if the collection is from the same database
-    if (collection && &(collection->vocbase()) == &vocbase) {
+    if (!ServerState::instance()->isCoordinator() && collection &&
+        &(collection->vocbase()) == &vocbase) {
       auto cid = collection->id();
 
       // check if the collection is still alive
-      if (!collection->deleted() && cid.isSet() &&
-          !ServerState::instance()->isCoordinator()) {
+      if (!collection->deleted() && cid.isSet()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           DataSourceId cachedCid{TRI_ObjectToUInt64(
@@ -1420,7 +1420,13 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
               value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()),
               true)};
 
-          if (cachedCid == cid) {
+          TRI_GET_GLOBAL_STRING(VersionKeyHidden);
+          uint32_t cachedVersion = static_cast<uint32_t>(TRI_ObjectToInt64(
+              isolate, value->Get(context, VersionKeyHidden)
+                           .FromMaybe(v8::Local<v8::Value>())));
+
+          if (cachedCid == cid &&
+              cachedVersion == collection->v8CacheVersion()) {
             // cache hit
             TRI_V8_RETURN(value);
           }
@@ -1443,7 +1449,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
                        .getCollectionNT(vocbase.name(), std::string(key));
     }
   } else {
-    collection = vocbase.lookupCollection(std::string(key));
+    collection = vocbase.lookupCollection(std::string_view(key, keyLength));
   }
 
   if (collection == nullptr) {
