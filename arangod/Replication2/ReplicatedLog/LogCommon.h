@@ -277,7 +277,7 @@ struct ReplicatedLogGlobalSettings {
       1024 * 1024};
   static inline constexpr std::size_t minThresholdRocksDBWriteBatchSize{1024 *
                                                                         1024};
-  static inline constexpr std::size_t defaultThresholdLogCompaction{1000};
+  static inline constexpr std::size_t defaultThresholdLogCompaction{10'000'000};
 
   std::size_t _thresholdNetworkBatchSize{defaultThresholdNetworkBatchSize};
   std::size_t _thresholdRocksDBWriteBatchSize{

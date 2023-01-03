@@ -43,9 +43,11 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   LoggerContext lctx =
       loggerContext.with<logContextKeyMessageId>(request.messageId)
           .with<logContextKeyPrevLogIdx>(request.prevLogEntry);
+  LOG_DEVEL_CTX(lctx) << "append entries";
   LOG_CTX("7f407", TRACE, lctx) << "receiving append entries";
 
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
+  LOG_DEVEL_CTX(lctx) << "got guard";
   auto self = shared_from_this();  // required for coroutine to keep this alive
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
@@ -92,6 +94,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
       auto result = co_await asResult(std::move(f));
+      LOG_DEVEL_CTX(lctx) << "removed back - done.";
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
         co_return AppendEntriesResult::withPersistenceError(
@@ -100,6 +103,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       }
       guard = self->guarded.getLockedGuard();
       store = guard->storage.transaction();
+      LOG_DEVEL_CTX(lctx) << "re-acquired lock 1";
     }
 
     if (not request.entries.empty()) {
@@ -110,6 +114,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       auto f = store->appendEntries(InMemoryLog{request.entries});
       guard.unlock();
       auto result = co_await asResult(std::move(f));
+      LOG_DEVEL_CTX(lctx) << "stored append entries - done.";
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx) << "failed to persist:" << result;
         co_return AppendEntriesResult::withPersistenceError(
@@ -117,11 +122,14 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
             guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE);
       }
       guard = self->guarded.getLockedGuard();
+      LOG_DEVEL_CTX(lctx) << "re-acquired lock 2";
     }
   }
 
   guard->compaction.updateLargestIndexToKeep(request.lowestIndexToKeep);
+  LOG_DEVEL_CTX(lctx) << "updated litk";
   auto action = guard->commit.updateCommitIndex(request.leaderCommit);
+  LOG_DEVEL_CTX(lctx) << "updated commit index";
   auto hasSnapshot =
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   guard.unlock();

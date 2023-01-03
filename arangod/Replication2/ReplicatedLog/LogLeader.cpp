@@ -256,6 +256,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
+        auto numEntries = request.entries.size();
         follower->_impl->appendEntries(std::move(request))
             .thenFinal([weakParentLog = req->_parentLog,
                         followerWeak = req->_follower, lastIndex = lastIndex,
@@ -263,7 +264,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                         currentLITK = request.lowestIndexToKeep,
                         currentTerm = logLeader->_currentTerm,
                         messageId = messageId, startTime,
-                        logMetrics = logMetrics](
+                        logMetrics = logMetrics, numEntries](
                            futures::Try<AppendEntriesResult>&& res) noexcept {
               // This has to remain noexcept, because the code below is not
               // exception safe
@@ -276,6 +277,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
                     duration / 1us);
+                LOG_DEVEL << "Append entries took " << (duration / 1ms)
+                          << "ms on " << follower->_impl->getParticipantId()
+                          << " for " << numEntries << " log entries";
                 LOG_CTX("8ff44", TRACE, follower->logContext)
                     << "received append entries response, messageId = "
                     << messageId;
