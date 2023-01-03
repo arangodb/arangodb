@@ -57,9 +57,10 @@ struct Runtime
         scheduler(scheduler),
         externalDispatcher(externalDispatcher) {}
 
-  template<typename ActorConfig>
+  // TODO concept that InitialMessage is in variant of ActorConfig
+  template<typename ActorConfig, typename InitialMessage>
   auto spawn(typename ActorConfig::State initialState,
-             typename ActorConfig::Message initialMessage) -> ActorID {
+             InitialMessage initialMessage) -> ActorID {
     auto newId = ActorID{
         uniqueActorIDCounter++};  // TODO: check whether this is what we want
 
@@ -71,9 +72,9 @@ struct Runtime
     actors.emplace(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    auto initialPayload =
-        std::make_unique<MessagePayload<typename ActorConfig::Message>>(
-            initialMessage);
+    auto initialPayload = std::make_unique<
+        MessagePayload<MessageOrError<typename ActorConfig::Message>>>(
+        initialMessage);
     dispatch(address, address, std::move(initialPayload));
 
     return newId;
@@ -156,6 +157,7 @@ struct Runtime
     auto& actor = findActorLocally(receiver);
     actor->process(sender, std::move(payload));
   }
+
   auto dispatch(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server == myServerID) {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <string_view>
 #include <thread>
@@ -84,6 +85,15 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     this->state->state += msg.store;
     return std::move(this->state);
   }
+
+  auto operator()(auto&& bla) -> std::unique_ptr<TrivialState> {
+    fmt::print(stderr, "Catch all");
+    return std::move(this->state);
+  }
+  // auto operator()(UnknownMessage msg) -> std::unique_ptr<TrivialState> {
+  //   fmt::print(stderr, "Handle unknown message");
+  //   // go into error state
+  // }
 };
 
 struct TrivialActor {

@@ -37,14 +37,17 @@ struct HandlerBase {
               std::shared_ptr<Runtime> runtime)
       : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};
 
-  template<typename ActorMessage>
-  auto dispatch(ActorPID receiver, ActorMessage message) -> void {
+  // TODO concept that SpecificMessage is in variant of ActorConfig
+  template<typename ActorMessage, typename SpecificMessage>
+  auto dispatch(ActorPID receiver, SpecificMessage message) -> void {
     if (receiver.server == self.server) {
       runtime->dispatch(
           self, receiver,
-          std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
+          std::make_unique<MessagePayload<MessageOrError<ActorMessage>>>(
+              std::move(message)));
     } else {
-      auto payload = inspection::serializeWithErrorT(message);
+      auto messageOrError = MessageOrError<ActorMessage>(message);
+      auto payload = inspection::serializeWithErrorT(messageOrError);
       if (payload.ok()) {
         runtime->dispatch(self, receiver, payload.get());
       } else {
@@ -54,11 +57,17 @@ struct HandlerBase {
     }
   }
 
-  template<typename ActorConfig>
+  // TODO concept that InitialMessage is in variant of ActorConfig
+  template<typename ActorConfig, typename InitialMessage>
   auto spawn(typename ActorConfig::State initialState,
-             typename ActorConfig::Message initialMessage) -> ActorID {
+             InitialMessage initialMessage) -> ActorID {
     return runtime->template spawn<ActorConfig>(initialState, initialMessage);
   }
+
+  // auto operator()(UnknownMessage msg) -> std::unique_ptr<State> {
+  //   fmt::print(stderr, "Handle unknown message");
+  //   // go into error state
+  // }
 
   ActorPID self;
   ActorPID sender;

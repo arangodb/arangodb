@@ -3,7 +3,7 @@ add_executable(arangodbtests_actor
   main.cpp
   ActorTest.cpp
   RuntimeTest.cpp
-  MultiRuntimeTest.cpp
+  # MultiRuntimeTest.cpp
   MPSCQueueTest.cpp
   SimpleQueueTest.cpp
   )

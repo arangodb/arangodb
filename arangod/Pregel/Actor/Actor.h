@@ -92,30 +92,38 @@ struct Actor : ActorBase {
 
   auto typeName() -> std::string_view override { return Config::typeName(); };
 
+  using MessageType = MessageOrError<typename Config::Message>;
+
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
     auto* ptr = msg.release();
-    auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
+    auto* m = dynamic_cast<MessagePayload<MessageType>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
+      // send error back to sender
       fmt::print(stderr,
                  "Actor {} recieved a message it could not handle from {}", pid,
                  sender);
+      // runtime->dispatch(
+      //     pid, sender,
+      //     std::make_unique<MessagePayload<MessageOrError<ActorError>>>(
+      //         UnknownMessage{.sender = sender,
+      //                        .receiver = pid,
+      // .message = std::move(msg)}));
+
       std::abort();
     }
     inbox.push(std::make_unique<InternalMessage>(
-        sender,
-        std::make_unique<typename Config::Message>(std::move(m->payload))));
+        sender, std::make_unique<MessageType>(std::move(m->payload))));
     delete m;
     kick();
   }
+
   void process(ActorPID sender, velocypack::SharedSlice msg) override {
-    auto m = inspection::deserializeWithErrorT<typename Config::Message>(msg);
+    auto m = inspection::deserializeWithErrorT<MessageType>(msg);
 
     if (m.ok()) {
-      process(
-          sender,
-          std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
+      process(sender, std::make_unique<MessagePayload<MessageType>>(m.get()));
     } else {
       fmt::print(stderr, "Actor {} cannot deserialize message {}", pid,
                  msg.toJson());
@@ -161,11 +169,10 @@ struct Actor : ActorBase {
 
   struct InternalMessage
       : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
-    InternalMessage(ActorPID sender,
-                    std::unique_ptr<typename Config::Message>&& payload)
+    InternalMessage(ActorPID sender, std::unique_ptr<MessageType>&& payload)
         : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
-    std::unique_ptr<typename Config::Message> payload;
+    std::unique_ptr<MessageType> payload;
   };
   template<typename Inspector>
   auto inspect(Inspector& f, InternalMessage& x) {

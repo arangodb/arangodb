@@ -58,13 +58,13 @@ TEST(RuntimeTest, formats_runtime_and_actor_state) {
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>(
       ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, dispatcher);
-  auto actorID = runtime->spawn<pong_actor::Actor>(pong_actor::State{},
-                                                   pong_actor::Start{});
+  auto actorID = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                              TrivialMessage0{});
   ASSERT_EQ(
       fmt::format("{}", *runtime),
-      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
-  auto actor = runtime->getActorStateByID<pong_actor::Actor>(actorID).value();
-  ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
+      R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"TrivialActor"}]})");
+  auto actor = runtime->getActorStateByID<TrivialActor>(actorID).value();
+  ASSERT_EQ(fmt::format("{}", actor), R"({"state":"foo","called":1})");
 }
 
 TEST(RuntimeTest, spawns_actor) {
@@ -121,17 +121,36 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage0{});
 
-  runtime->dispatch(ActorPID{.server = "Foo", .id = actor},
-                    ActorPID{.server = "PRMR-1234", .id = actor},
-                    std::make_unique<MessagePayload<TrivialActor::Message>>(
-                        TrivialMessage1("baz")));
+  runtime->dispatch(
+      ActorPID{.server = "Foo", .id = actor},
+      ActorPID{.server = "PRMR-1234", .id = actor},
+      std::make_unique<MessagePayload<MessageOrError<TrivialActor::Message>>>(
+          TrivialMessage1("baz")));
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
 }
 
+// struct SomeMessage {};
+// struct SomeMessages : std::variant<SomeMessage> {
+//   using std::variant<SomeMessage>::variant;
+// };
 // TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
-//   // TODO what happens then? currently aborts
+//   auto scheduler = std::make_shared<MockScheduler>();
+//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+//   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
+//                                                scheduler, dispatcher);
+//   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+//                                             TrivialMessage0{});
+
+//   runtime->dispatch(
+//       ActorPID{.server = "Foo", .id = actor},
+//       ActorPID{.server = "PRMR-1234", .id = actor},
+//       std::make_unique<MessagePayload<MessageOrError<SomeMessages>>>(
+//           SomeMessage()));
+
+//   // auto state = runtime.getActorStateByID<TrivialActor>(actor);
+//   // ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
 // }
 
 TEST(RuntimeTest, ping_pong_game) {
@@ -167,10 +186,11 @@ TEST(RuntimeTest, spawn_game) {
   auto spawn_actor =
       runtime->spawn<SpawnActor>(SpawnState{}, SpawnStartMessage{});
 
-  runtime->dispatch(ActorPID{.server = serverID, .id = spawn_actor},
-                    ActorPID{.server = serverID, .id = spawn_actor},
-                    std::make_unique<MessagePayload<SpawnActor::Message>>(
-                        SpawnMessage("baz")));
+  runtime->dispatch(
+      ActorPID{.server = serverID, .id = spawn_actor},
+      ActorPID{.server = serverID, .id = spawn_actor},
+      std::make_unique<MessagePayload<MessageOrError<SpawnActor::Message>>>(
+          SpawnMessage("baz")));
 
   auto allActors = runtime->getActorIDs();
   ASSERT_EQ(allActors.size(), 2);
