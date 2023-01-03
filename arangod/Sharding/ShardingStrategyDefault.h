@@ -24,12 +24,12 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Sharding/ShardingStrategy.h"
 
 #include <velocypack/Slice.h>
 
 #include <span>
+#include <mutex>
 
 namespace arangodb {
 class ShardingInfo;
