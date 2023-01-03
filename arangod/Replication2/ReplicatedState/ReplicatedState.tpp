@@ -88,7 +88,21 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [index](auto& manager) { manager->updateCommitIndex(index); },
+                 [index](auto& manager) {
+                   // temporary hack: post on the scheduler to avoid deadlocks
+                   // with the log
+                   // THIS IS ACTUALLY A PERFORMANCE IMPROVEMENT
+                   // otherwise committed log entries are applied synchronous
+                   // during the append entries call.
+                   auto& scheduler = *SchedulerFeature::SCHEDULER;
+                   scheduler.queue(
+                       RequestLane::CLUSTER_INTERNAL,
+                       [weak = manager->weak_from_this(), index]() mutable {
+                         if (auto manager = weak.lock(); manager != nullptr) {
+                           manager->updateCommitIndex(index);
+                         }
+                       });
+                 },
                  [](std::shared_ptr<UnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";

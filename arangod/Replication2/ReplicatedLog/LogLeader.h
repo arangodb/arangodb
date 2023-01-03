@@ -385,7 +385,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::vector<std::optional<PreparedAppendEntryRequest>> requests,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics, IScheduler*);
   static void handleResolvedPromiseSet(
-      ResolvedPromiseSet set,
+      replicated_log::IScheduler* sched, ResolvedPromiseSet set,
       std::shared_ptr<ReplicatedLogMetrics> const& logMetrics);
 };
 
