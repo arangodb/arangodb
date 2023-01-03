@@ -28,7 +28,6 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "Replication2/Version.h"
@@ -122,9 +121,9 @@ class DatabaseFeature : public ArangodFeature {
   void unprepare() override final;
   void prepare() override final;
 
-  // used by catch tests
+  // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  ErrorCode loadDatabases(velocypack::Slice const& databases) {
+  ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif
@@ -209,13 +208,6 @@ class DatabaseFeature : public ArangodFeature {
 
   static TRI_vocbase_t& getCalculationVocbase();
 
-  // operations on gauges for the number of collections in old and new
-  // (revision tree-based) format
-  void increaseCollectionFormatNew() noexcept;
-  void increaseCollectionFormatOld() noexcept;
-  void decreaseCollectionFormatNew() noexcept;
-  void decreaseCollectionFormatOld() noexcept;
-
  private:
   static void initCalculationVocbase(ArangodServer& server);
 
@@ -299,11 +291,6 @@ class DatabaseFeature : public ArangodFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
-
-  // number of collections/shards in old format (pre-3.8)
-  metrics::Gauge<uint64_t>& _metricsCollectionFormatOld;
-  // number of collections/shards in new format (>= 3.8, using revision trees)
-  metrics::Gauge<uint64_t>& _metricsCollectionFormatNew;
 };
 
 }  // namespace arangodb

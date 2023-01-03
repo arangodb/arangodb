@@ -45,7 +45,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -411,19 +410,8 @@ void IOHeartbeatThread::run() {
   LOG_TOPIC("66664", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: stopped.";
 }
 
-DECLARE_GAUGE(arangodb_collections_format_without_revision_tree, uint64_t,
-              "Number of collections/shards in format without revision tree");
-DECLARE_GAUGE(arangodb_collections_format_with_revision_tree, uint64_t,
-              "Number of collections/shards in format using revision tree");
-
 DatabaseFeature::DatabaseFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _metricsCollectionFormatOld(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_collections_format_without_revision_tree{})),
-      _metricsCollectionFormatNew(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_collections_format_with_revision_tree{})) {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -1573,20 +1561,4 @@ void DatabaseFeature::enableDeadlockDetection() {
 
     vocbase->_deadlockDetector.enabled(true);
   }
-}
-
-void DatabaseFeature::increaseCollectionFormatNew() noexcept {
-  ++_metricsCollectionFormatNew;
-}
-
-void DatabaseFeature::increaseCollectionFormatOld() noexcept {
-  ++_metricsCollectionFormatOld;
-}
-
-void DatabaseFeature::decreaseCollectionFormatNew() noexcept {
-  --_metricsCollectionFormatNew;
-}
-
-void DatabaseFeature::decreaseCollectionFormatOld() noexcept {
-  --_metricsCollectionFormatOld;
 }
