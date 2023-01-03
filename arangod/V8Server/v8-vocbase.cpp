@@ -1424,13 +1424,23 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
           uint32_t cachedVersion = static_cast<uint32_t>(TRI_ObjectToInt64(
               isolate, value->Get(context, VersionKeyHidden)
                            .FromMaybe(v8::Local<v8::Value>())));
+          auto internalVersion = collection->v8CacheVersion();
 
-          if (cachedCid == cid &&
-              cachedVersion == collection->v8CacheVersion()) {
+          if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
             TRI_V8_RETURN(value);
           }
-          // cid has changed
+          // store the updated version number in the object for future
+          // comparisons
+          value
+              ->DefineOwnProperty(
+                  context, VersionKeyHidden,
+                  v8::Number::New(isolate, (double)internalVersion),
+                  v8::DontEnum)
+              .FromMaybe(false);  // Ignore result...
+
+          // cid has changed (i.e. collection has been dropped and re-created)
+          // or version has changed
         }
       }
     }

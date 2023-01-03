@@ -89,6 +89,7 @@ v8::Handle<v8::Object> WrapCollection(
 
   TRI_GET_GLOBAL_STRING(_IdKey);
   TRI_GET_GLOBAL_STRING(_DbNameKey);
+  TRI_GET_GLOBAL_STRING(VersionKeyHidden);
   result
       ->DefineOwnProperty(  // define own property
           TRI_IGETC,        // context
@@ -104,6 +105,15 @@ v8::Handle<v8::Object> WrapCollection(
             TRI_V8_STD_STRING(isolate, collection->vocbase().name())  // args
             )
       .FromMaybe(false);
+  result
+      ->DefineOwnProperty(   // define own property
+          TRI_IGETC,         // context
+          VersionKeyHidden,  // key
+          v8::Integer::NewFromUnsigned(isolate,
+                                       collection->v8CacheVersion()),  // value
+          v8::DontEnum  // attributes
+          )
+      .FromMaybe(false);  // ignore return value
 
   return scope.Escape<v8::Object>(result);
 }
