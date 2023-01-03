@@ -139,8 +139,6 @@ class LogicalCollection : public LogicalDataSource {
 
   void setVersion(Version version) { _version = version; }
 
-  uint32_t v8CacheVersion() const;
-
   TRI_col_type_e type() const;
 
   // For normal collections the realNames is just a vector of length 1
@@ -156,16 +154,7 @@ class LogicalCollection : public LogicalDataSource {
 
   RevisionId newRevisionId() const;
 
-  TRI_vocbase_col_status_e status() const;
-  TRI_vocbase_col_status_e getStatusLocked();
-
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-
-  /// @brief try to fetch the collection status under a lock
-  /// the boolean value will be set to true if the lock could be acquired
-  /// if the boolean is false, the return value is always
-  /// TRI_VOC_COL_STATUS_CORRUPTED
-  TRI_vocbase_col_status_e tryFetchStatus(bool&);
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -280,7 +269,6 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -426,14 +414,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief collection format version
   Version _version;
 
-  // @brief Internal version used for caching
-  uint32_t _v8CacheVersion;
-
   // @brief Collection type
   TRI_col_type_e const _type;
-
-  // @brief Current state of this colletion
-  std::atomic<TRI_vocbase_col_status_e> _status;
 
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
@@ -451,10 +433,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  bool _usesRevisionsAsDocumentIds;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 

@@ -1408,45 +1408,23 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
 
     // check if the collection is from the same database
     if (collection && &(collection->vocbase()) == &vocbase) {
-      // we cannot use collection->getStatusLocked() here, because we
-      // have no idea who is calling us (db[...]). The problem is that
-      // if we are called from within a JavaScript transaction, the
-      // caller may have already acquired the collection's status lock
-      // with that transaction. if we now lock again, we may deadlock!
-      auto status = collection->status();
       auto cid = collection->id();
-      auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid.isSet() &&
+      if (!collection->deleted() && cid.isSet() &&
           !ServerState::instance()->isCoordinator()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
-        TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           DataSourceId cachedCid{TRI_ObjectToUInt64(
               isolate,
               value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()),
               true)};
-          uint32_t cachedVersion = (uint32_t)TRI_ObjectToInt64(
-              isolate, value->Get(context, VersionKeyHidden)
-                           .FromMaybe(v8::Local<v8::Value>()));
 
-          if (cachedCid == cid && cachedVersion == internalVersion) {
+          if (cachedCid == cid) {
             // cache hit
             TRI_V8_RETURN(value);
           }
-
-          // store the updated version number in the object for future
-          // comparisons
-          value
-              ->DefineOwnProperty(
-                  context, VersionKeyHidden,
-                  v8::Number::New(isolate, (double)internalVersion),
-                  v8::DontEnum)
-              .FromMaybe(false);  // Ignore result...
-
-          // cid has changed (i.e. collection has been dropped and re-created)
-          // or version has changed
+          // cid has changed
         }
       }
     }

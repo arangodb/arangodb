@@ -57,8 +57,11 @@ class LogicalDataSource {
   virtual ~LogicalDataSource() = default;
 
   Category category() const noexcept { return _category; }
-  bool deleted() const noexcept {
+  [[nodiscard]] bool deleted() const noexcept {
     return _deleted.load(std::memory_order_relaxed);
+  }
+  void deleted(bool deleted) noexcept {
+    _deleted.store(deleted, std::memory_order_relaxed);
   }
   virtual Result drop() = 0;
   std::string const& guid() const noexcept { return _guid; }
@@ -106,9 +109,6 @@ class LogicalDataSource {
     return {};
   }
 
-  void deleted(bool deleted) noexcept {
-    _deleted.store(deleted, std::memory_order_relaxed);
-  }
   void name(std::string&& name) noexcept { _name = std::move(name); }
 
  private:

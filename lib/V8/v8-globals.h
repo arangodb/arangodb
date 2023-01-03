@@ -786,9 +786,6 @@ struct TRI_v8_global_t {
   /// @brief "value" key
   v8::Persistent<v8::String> ValueKey;
 
-  /// @brief "version" key
-  v8::Persistent<v8::String> VersionKeyHidden;
-
   /// @brief "waitForSync" key name
   v8::Persistent<v8::String> WaitForSyncKey;
 

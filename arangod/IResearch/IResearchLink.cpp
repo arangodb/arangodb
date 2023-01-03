@@ -395,7 +395,7 @@ Result IResearchLink::unload() noexcept {
   // the collection was still there. But when we did an unload link,
   // the collection was already lazily deleted.
   if (index().collection().deleted()  // collection deleted
-      || index().collection().status() == TRI_VOC_COL_STATUS_DELETED) {
+      || index().collection().deleted()) {
     return basics::catchToResult([&] { return drop(); });
   }
   shutdownDataStore();
