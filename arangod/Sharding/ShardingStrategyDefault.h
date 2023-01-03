@@ -99,13 +99,15 @@ class ShardingStrategyHashBase : public ShardingStrategy {
                                     std::string_view key);
 
  protected:
-  void determineShards();
+  std::span<ShardID const> determineShards();
 
   ShardingInfo* _sharding;
-  std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
-  std::atomic<bool> _shardsSet;
-  Mutex _shardsSetMutex;
+
+ private:
+  std::atomic_bool _shardsSet;
+  std::mutex _shardsSetMutex;
+  std::vector<ShardID> _shards;
 };
 
 /// @brief old version of the sharding used in the Community Edition
