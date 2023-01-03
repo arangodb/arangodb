@@ -104,6 +104,3 @@ target_include_directories(arango_iresearch SYSTEM PUBLIC
 target_include_directories(arango_iresearch PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_definitions(arango_iresearch
-  PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>")

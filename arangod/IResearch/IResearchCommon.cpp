@@ -24,10 +24,8 @@
 
 #include "IResearchCommon.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 LogTopic TOPIC{std::string{"arangosearch"}, LogLevel::INFO};
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
