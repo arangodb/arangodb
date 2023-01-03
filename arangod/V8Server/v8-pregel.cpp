@@ -23,6 +23,7 @@
 
 #include "v8-pregel.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "v8-vocbaseprivate.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -121,15 +122,20 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     }
   }
+  auto pregelOptions = pregel::PregelOptions{
+      .algorithm = algorithm,
+      .userParameters = paramBuilder,
+      .graphSource = {
+          {pregel::GraphCollectionNames{.vertexCollections = paramVertices,
+                                        .edgeCollections = paramEdges}},
+          {paramEdgeCollectionRestrictions}}};
 
   auto& vocbase = GetContextVocBase(isolate);
   if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
-  auto res = pregel.startExecution(vocbase, algorithm, paramVertices,
-                                   paramEdges, paramEdgeCollectionRestrictions,
-                                   paramBuilder.slice());
+  auto res = pregel.startExecution(vocbase, pregelOptions);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res.result());
   }
