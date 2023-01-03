@@ -257,7 +257,6 @@ ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
 ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
     : ShardingStrategy(),
       _sharding(sharding),
-      _shards(),
       _usesDefaultShardKeys(false),
       _shardsSet(false) {
   auto shardKeys = _sharding->shardKeys();
