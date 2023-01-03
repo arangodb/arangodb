@@ -245,10 +245,18 @@ struct AqlValueTraits {
 /// @brief convenient wrapper around `AqlValue` and `AstNode`
 ////////////////////////////////////////////////////////////////////////////////
 class ScopedAqlValue : private irs::util::noncopyable {
+  static constexpr std::string_view kTypeNames[] = {
+      "invalid", "null",  "boolean", "double",
+      "string",  "array", "range",   "object"};
+
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static std::string_view typeString(ScopedValueType type) noexcept;
+  static constexpr std::string_view typeString(ScopedValueType type) noexcept {
+    auto const index = static_cast<size_t>(type);
+    TRI_ASSERT(index < std::size(kTypeNames));
+    return kTypeNames[index];
+  }
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -316,11 +324,11 @@ class ScopedAqlValue : private irs::util::noncopyable {
     } else {
       auto const valueSlice = _value.slice();
 
-      if (VPackValueType::String != valueSlice.type()) {
+      if (!valueSlice.isString()) {
         return false;
       }
 
-      value = getStringRef(valueSlice);
+      value = valueSlice.stringView();
     }
 
     return true;

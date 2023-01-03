@@ -415,8 +415,9 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
     auto r =
         storage_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
-      auto name = nameSlice.copyString();  // TODO stringView()
-      events::CreateView(vocbase.name(), name, r.errorNumber());
+      auto name = nameSlice.stringView();
+      // TODO(MBkkt) remove std::string when update events::*
+      events::CreateView(vocbase.name(), std::string{name}, r.errorNumber());
       return r;
     }
     view = impl;
@@ -626,8 +627,8 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
             } else {
               build.add("collection", velocypack::Value{collection->name()});
             }
-            absl::AlphaNum indexId{index.id().id()};
-            build.add("index", velocypack::Value{indexId.Piece()});
+            build.add("index", velocypack::Value{
+                                   absl::AlphaNum{index.id().id()}.Piece()});
           }
           build.close();
         }
@@ -640,7 +641,7 @@ Result Search::appendVPackImpl(velocypack::Builder& build, Serialization ctx,
     return {
         e.code(),
         absl::StrCat("caught exception while generating json for search view '",
-                     name(), "': ", e.what())};
+                     name(), "': ", e.message())};
   } catch (std::exception const& e) {
     return {
         TRI_ERROR_INTERNAL,

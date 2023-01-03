@@ -177,9 +177,9 @@ void reverseIdxOps(std::vector<std::shared_ptr<Index>> const& indexes,
                    std::vector<std::shared_ptr<Index>>::const_iterator& it,
                    F&& op) {
   while (it != indexes.begin()) {
-    it--;
-    auto* rIdx = static_cast<RocksDBIndex*>(it->get());
-    if (rIdx->needsReversal()) {
+    --it;
+    auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
+    if (rIdx.needsReversal()) {
       if (std::forward<F>(op)(rIdx).fail()) {
         // best effort for reverse failed. Let`s trigger full rollback
         // or we will end up with inconsistent storage and indexes
@@ -1386,37 +1386,38 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 
   {
     bool needReversal = false;
-
-    for (auto it = indexes.begin(); it != indexes.end(); ++it) {
-      TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          return res.reset(TRI_ERROR_DEBUG);
-        }
+    auto reverse = [&](auto it) {
+      if (needReversal && !state->isSingleOperation()) {
+        ::reverseIdxOps(
+            indexes, it,
+            [mthds, trx, &documentId, &doc, &options](RocksDBIndex& rIdx) {
+              return rIdx.remove(*trx, mthds, documentId, doc, options);
+            });
       }
-
+    };
+    for (auto it = indexes.begin(); it != indexes.end(); ++it) {
+      TRI_ASSERT(*it);
       TRI_IF_FAILURE("RocksDBCollection::insertFail2Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
-
-      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-      // if we already performed the preflight checks, there is no need to
-      // repeat the checks once again here
-      res = rIdx->insert(*trx, mthds, documentId, doc, options,
-                         /*performChecks*/ !performPreflightChecks);
-      // currently only IResearchLink indexes need a reversal
-      needReversal = needReversal || rIdx->needsReversal();
-
-      if (res.fail()) {
-        if (needReversal && !state->isSingleOperation()) {
-          ::reverseIdxOps(
-              indexes, it,
-              [mthds, trx, &documentId, &doc, &options](RocksDBIndex* rIdx) {
-                return rIdx->remove(*trx, mthds, documentId, doc, options);
-              });
+      TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          res.reset(TRI_ERROR_DEBUG);
+          // reverse(it); TODO(MBkkt) remove first part of condition
+          break;
         }
+      }
+      auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
+      // if we already performed the preflight checks,
+      // there is no need to repeat the checks once again here
+      res = rIdx.insert(*trx, mthds, documentId, doc, options,
+                        /*performChecks*/ !performPreflightChecks);
+      if (!res.ok()) {
+        reverse(it);
         break;
       }
+      needReversal = needReversal || rIdx.needsReversal();
     }
   }
 
@@ -1487,33 +1488,37 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
 
   {
     bool needReversal = false;
-
-    for (auto it = indexes.begin(); it != indexes.end(); it++) {
-      TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          return res.reset(TRI_ERROR_DEBUG);
-        }
+    auto reverse = [&](auto it) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(
+            indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex& rIdx) {
+              OperationOptions options;
+              options.indexOperationMode = IndexOperationMode::rollback;
+              return rIdx.insert(*trx, mthds, documentId, doc, options,
+                                 /*performChecks*/ true);
+            });
       }
+    };
+    for (auto it = indexes.begin(); it != indexes.end(); ++it) {
+      TRI_ASSERT(*it);
       TRI_IF_FAILURE("RocksDBCollection::removeFail2Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
-
-      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
-      res = rIdx->remove(*trx, mthds, documentId, doc, options);
-      needReversal = needReversal || rIdx->needsReversal();
-      if (res.fail()) {
-        if (needReversal && !trx->isSingleOperationTransaction()) {
-          ::reverseIdxOps(
-              indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rIdx) {
-                OperationOptions options;
-                options.indexOperationMode = IndexOperationMode::rollback;
-                return rIdx->insert(*trx, mthds, documentId, doc, options,
-                                    /*performChecks*/ true);
-              });
+      TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          res.reset(TRI_ERROR_DEBUG);
+          // reverse(it); TODO(MBkkt) remove first part of condition
+          break;
         }
+      }
+      auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
+      res = rIdx.remove(*trx, mthds, documentId, doc, options);
+      if (!res.ok()) {
+        reverse(it);
         break;
       }
+      needReversal = needReversal || rIdx.needsReversal();
     }
   }
 
@@ -1606,13 +1611,13 @@ Result RocksDBCollection::modifyDocument(
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
 
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
     if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
       return res.reset(TRI_ERROR_DEBUG);
     }
   }
 
-  TRI_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
+  TRI_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
     return res.reset(TRI_ERROR_DEBUG);
   }
 
@@ -1635,36 +1640,39 @@ Result RocksDBCollection::modifyDocument(
 
   {
     bool needReversal = false;
-
-    for (auto it = indexes.begin(); it != indexes.end(); it++) {
-      TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          return res.reset(TRI_ERROR_DEBUG);
-        }
+    auto reverse = [&](auto it) {
+      if (needReversal && !trx->isSingleOperationTransaction()) {
+        ::reverseIdxOps(indexes, it, [&](RocksDBIndex& rIdx) {
+          return rIdx.update(*trx, mthds, newDocumentId, newDoc, oldDocumentId,
+                             oldDoc, options,
+                             /*performChecks*/ true);
+        });
       }
-
-      TRI_IF_FAILURE("RocksDBCollection::modifyFail3Always") {
+    };
+    for (auto it = indexes.begin(); it != indexes.end(); ++it) {
+      TRI_ASSERT(*it);
+      TRI_IF_FAILURE("RocksDBCollection::modifyFail2Always") {
         return res.reset(TRI_ERROR_DEBUG);
       }
-
-      auto rIdx = static_cast<RocksDBIndex*>(it->get());
-      // if we already performed the preflight checks, there is no need to
-      // repeat the checks once again here
-      res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
-                         newDoc, options,
-                         /*performChecks*/ !performPreflightChecks);
-      needReversal = needReversal || rIdx->needsReversal();
-      if (!res.ok()) {
-        if (needReversal && !trx->isSingleOperationTransaction()) {
-          ::reverseIdxOps(indexes, it, [&](RocksDBIndex* rIdx) {
-            return rIdx->update(*trx, mthds, newDocumentId, newDoc,
-                                oldDocumentId, oldDoc, options,
-                                /*performChecks*/ true);
-          });
+      TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
+        if (it == indexes.begin() &&
+            RandomGenerator::interval(uint32_t(1000)) >= 995) {
+          res.reset(TRI_ERROR_DEBUG);
+          // reverse(it); TODO(MBkkt) remove first part of condition
+          break;
         }
+      }
+      auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
+      // if we already performed the preflight checks,
+      // there is no need to repeat the checks once again here
+      res = rIdx.update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
+                        newDoc, options,
+                        /*performChecks*/ !performPreflightChecks);
+      if (!res.ok()) {
+        reverse(it);
         break;
       }
+      needReversal = needReversal || rIdx.needsReversal();
     }
   }
 
