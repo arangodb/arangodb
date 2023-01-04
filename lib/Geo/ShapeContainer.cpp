@@ -567,7 +567,7 @@ double ShapeContainer::area(Ellipsoid const& e) const {
   // TODO: perhaps remove in favor of one code-path below ?
   if (e.flattening() == 0.0) {
     switch (_type) {
-      case Type::S2_LATLNGRECT: {
+      case Type::S2_LATLNGRECT: {  // only used in legacy situations
         auto& data = basics::downCast<S2LatLngRect>(*_data);
         return data.Area() * kEarthRadiusInMeters * kEarthRadiusInMeters;
       }
@@ -588,7 +588,7 @@ double ShapeContainer::area(Ellipsoid const& e) const {
   double P = 0.0;
 
   switch (_type) {
-    case Type::S2_LATLNGRECT: {
+    case Type::S2_LATLNGRECT: {  // only used in legacy situations
       geod_polygon p{};
       geod_polygon_init(&p, 0);
 
