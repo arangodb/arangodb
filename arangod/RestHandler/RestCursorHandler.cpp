@@ -43,8 +43,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -171,7 +169,6 @@ void RestCursorHandler::cancel() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
-  LOG_DEVEL << "RestCursorHandler::registerQueryOrCursor";
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -265,7 +262,6 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::processQuery() {
-  LOG_DEVEL << "RestCursorHandler::processQuery";
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -292,7 +288,6 @@ RestStatus RestCursorHandler::processQuery() {
 
 // non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
-  LOG_DEVEL << "RestCursorHandler::handleQueryResult";
   TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -608,7 +603,6 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
-  LOG_DEVEL << "RestCursorHandler::generateCursorResult";
   TRI_ASSERT(_cursor != nullptr);
 
   // dump might delete the cursor
@@ -637,6 +631,8 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     _cursor->setLastQueryBatchObject(builder);
 
     _response->setContentType(rest::ContentType::JSON);
+    TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
+
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
     VPackBuilder builder;
@@ -662,7 +658,6 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::createQueryCursor() {
-  LOG_DEVEL << "RestCursorHandler::createQueryCursor";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -694,7 +689,6 @@ RestStatus RestCursorHandler::createQueryCursor() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::showLastBatchRetry() {
-  LOG_DEVEL << "RestCursorHandler::showLastBatchRetry";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
@@ -764,7 +758,6 @@ RestStatus RestCursorHandler::showLastBatchRetry() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::modifyQueryCursor() {
-  LOG_DEVEL << "RestCursorHandler::modifyQueryCursor";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
@@ -772,8 +765,6 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
                   "expecting POST /_api/cursor/<cursor-id>");
     return RestStatus::DONE;
   }
-
-  TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
 
   std::string const& id = suffixes[0];
 

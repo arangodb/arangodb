@@ -54,6 +54,7 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  LOG_DEVEL << "JS_CreateCursor";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
