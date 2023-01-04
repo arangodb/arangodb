@@ -57,9 +57,12 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
     if (e == TRI_ERROR_NO_ERROR) {
       e = TRI_ERROR_TRANSACTION_INTERNAL;
     }
-    msg << "Transaction " << tid << ": ";
+    msg << "Transaction " << tid << " error codes: ";
     for (auto const& it : res.countErrorCodes) {
       msg << it.first << ' ';
+    }
+    if (res.hasSlice()) {
+      msg << "; Full result: " << res.slice().toJson();
     }
   }
   return arangodb::Result{e, std::move(msg).str()};
