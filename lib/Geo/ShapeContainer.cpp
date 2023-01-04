@@ -71,8 +71,9 @@ static bool contains(S2Polygon const& polygon, S2LatLngRect const& rect) {
     return false;
   }
   // TODO(MBkkt) ask and check is it really necessary
-  if (ADB_UNLIKELY(rect.is_full() && polygon.is_empty())) {
-    return true;
+  //  The main question will be full rect is full polygon or not?
+  if (ADB_UNLIKELY(polygon.is_empty() && rect.is_full())) {
+    return false;
   }
   auto rectPolygon = toPolygon(rect);
   return S2BooleanOperation::Contains(polygon.index(), rectPolygon.index());
@@ -284,10 +285,7 @@ S2Point ShapeContainer::centroid() const noexcept {
     case Type::S2_POLYLINE:
       // S2Polyline::GetCentroid() result isn't unit length
       return basics::downCast<S2Polyline>(*_data).GetCentroid().Normalize();
-    case Type::S2_LATLNGRECT:
-      // TODO(MBkkt) WTF? center is not centroid!
-      //  I left it as is, but it's really strange
-      // only used in legacy situations
+    case Type::S2_LATLNGRECT:  // only used in legacy situations
       // S2LatLngRect should be constructed from Normalized S2LatLng,
       // so it's ok to don't Normilize here
       // return basics::downCast<S2LatLngRect>(*_data).GetCenter().ToPoint();
@@ -356,6 +354,7 @@ bool ShapeContainer::contains(ShapeContainer const& other) const {
     case binOpCase(Type::S2_MULTIPOLYLINE, Type::S2_MULTIPOLYLINE):
       return containsPolylines<S2MultiPolyline>(*_data, *other._data);
 
+      // only used in legacy situations
     case binOpCase(Type::S2_POINT, Type::S2_LATLNGRECT):
       return containsRect<S2PointRegion>(*_data, *other._data);
     case binOpCase(Type::S2_LATLNGRECT, Type::S2_LATLNGRECT):
@@ -504,7 +503,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
       auto const& rhs = basics::downCast<S2Polyline>(*other._data);
       return lhs.Equals(rhs);
     }
-    case Type::S2_LATLNGRECT: {
+    case Type::S2_LATLNGRECT: {  // only used in legacy situations
       auto const& lhs = basics::downCast<S2LatLngRect>(*_data);
       auto const& rhs = basics::downCast<S2LatLngRect>(*other._data);
       return lhs.ApproxEquals(rhs);
