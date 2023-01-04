@@ -46,7 +46,8 @@ class RebootId {
   using value_type = uint64_t;
 
   explicit constexpr RebootId() noexcept = delete;
-  explicit constexpr RebootId(value_type rebootId) noexcept : _value(rebootId) {}
+  explicit constexpr RebootId(value_type rebootId) noexcept
+      : _value(rebootId) {}
   [[nodiscard]] value_type value() const noexcept { return _value; }
 
   [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
