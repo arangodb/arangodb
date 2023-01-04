@@ -162,7 +162,6 @@ QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
              isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
-      // _currentBatchResult(std::pair(0, VPackSlice::noneSlice())),
       _finalization(false),
       _allowDirtyReads(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);

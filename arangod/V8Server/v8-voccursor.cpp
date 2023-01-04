@@ -27,7 +27,6 @@
 #include "Aql/QueryResult.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
@@ -42,10 +41,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Logger/Logger.h"
-
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -54,7 +49,6 @@ using namespace arangodb::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  LOG_DEVEL << "JS_CreateCursor";
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
