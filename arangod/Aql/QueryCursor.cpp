@@ -51,8 +51,9 @@ using namespace arangodb::basics;
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
                                      aql::QueryResult&& result,
                                      size_t batchSize, double ttl,
-                                     bool hasCount)
-    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
+                                     bool hasCount, bool isRetriable)
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount,
+             isRetriable),
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
@@ -128,6 +129,13 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     builder.add("cached", VPackValue(_cached));
 
+    if (isRetriable()) {
+      _currentBatchResult.first = ++_currentBatchId;
+      if (hasNext()) {
+        builder.add("nextBatchId", _currentBatchId + 1);
+      }
+    }
+
     if (!hasNext()) {
       // mark the cursor as deleted
       this->setDeleted();
@@ -148,10 +156,13 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // .............................................................................
 
 QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl)
-    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
+                                     size_t batchSize, double ttl,
+                                     bool isRetriable)
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
+             isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
+      // _currentBatchResult(std::pair(0, VPackSlice::noneSlice())),
       _finalization(false),
       _allowDirtyReads(false) {
   _query->prepareQuery(SerializationFormat::SHADOWROWS);
@@ -451,6 +462,13 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (hasMore) {
     builder.add("id", VPackValue(std::to_string(id())));
   }
+  if (isRetriable()) {
+    _currentBatchResult.first = ++_currentBatchId;
+    if (hasMore) {
+      builder.add("nextBatchId", _currentBatchId + 1);
+    }
+  }
+
   builder.add("cached", VPackValue(false));
 
   if (!hasMore) {

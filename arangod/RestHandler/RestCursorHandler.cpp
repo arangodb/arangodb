@@ -43,6 +43,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -74,9 +76,11 @@ RestStatus RestCursorHandler::execute() {
     if (_request->suffixes().size() == 0) {
       // POST /_api/cursor
       return createQueryCursor();
+    } else if (_request->suffixes().size() == 1) {
+      // POST /_api/cursor/cursor-id
+      return modifyQueryCursor();
     }
-    // POST /_api/cursor/cursor-id
-    return modifyQueryCursor();
+    return showLastBatchRetry();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
@@ -167,6 +171,7 @@ void RestCursorHandler::cancel() {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
+  LOG_DEVEL << "RestCursorHandler::registerQueryOrCursor";
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
@@ -207,6 +212,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(
       opts, "ttl", _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  bool retriable = VelocyPackHelper::getBooleanValue(opts, "retriable", false);
 
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
@@ -225,7 +231,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
+    _cursor =
+        cursors->createQueryStream(std::move(query), batchSize, ttl, retriable);
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
@@ -258,6 +265,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::processQuery() {
+  LOG_DEVEL << "RestCursorHandler::processQuery";
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -284,6 +292,7 @@ RestStatus RestCursorHandler::processQuery() {
 
 // non stream case, result is complete
 RestStatus RestCursorHandler::handleQueryResult() {
+  LOG_DEVEL << "RestCursorHandler::handleQueryResult";
   TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -308,6 +317,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
       VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  bool retriable = VelocyPackHelper::getBooleanValue(opts, "retriable", false);
 
   _response->setContentType(rest::ContentType::JSON);
   size_t const n = static_cast<size_t>(qResult.length());
@@ -381,7 +391,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
     _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize,
-                                             ttl, count);
+                                             ttl, count, retriable);
     // throws if a coordinator soft shutdown is ongoing
 
     return generateCursorResult(rest::ResponseCode::CREATED);
@@ -529,8 +539,9 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
         allowDirtyReads |= it.value.isTrue();
         _options->add(keyName, VPackValue(allowDirtyReads));
       }
-      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
-          keyName == "stream" || (isStream && keyName == "fullCount")) {
+      if (keyName == "count" || keyName == "retriable" ||
+          keyName == "batchSize" || keyName == "ttl" || keyName == "stream" ||
+          (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
         hasCache = true;  // don't honor if appears below
@@ -560,6 +571,10 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       _options->add("cache", VPackValue(val));
     }
   }
+
+  bool isRetriable =
+      VelocyPackHelper::getBooleanValue(slice, "retriable", false);
+  _options->add("retriable", VPackValue(isRetriable));
 
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
@@ -593,6 +608,7 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
 //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
+  LOG_DEVEL << "RestCursorHandler::generateCursorResult";
   TRI_ASSERT(_cursor != nullptr);
 
   // dump might delete the cursor
@@ -618,10 +634,22 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.add(StaticStrings::Error, VPackValue(false));
     builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.close();
+    _cursor->setLastQueryBatchObject(builder);
 
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add(StaticStrings::Code,
+                VPackValue(static_cast<int>(
+                    GeneralResponse::responseCode(r.errorNumber()))));
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add("errorMessage", VPackValue(r.errorMessage()));
+    builder.add("errorNum", VPackValue(r.errorNumber()));
+    builder.close();
+    _cursor->setLastQueryBatchObject(builder);
+
     // builder can be in a broken state here. simply return the error
     generateError(r);
   }
@@ -634,6 +662,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::createQueryCursor() {
+  LOG_DEVEL << "RestCursorHandler::createQueryCursor";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -660,10 +689,82 @@ RestStatus RestCursorHandler::createQueryCursor() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shows the batch given by <batch-id> if it's the last cached batch
+/// response on a retry, and does't advance cursor
+////////////////////////////////////////////////////////////////////////////////
+
+RestStatus RestCursorHandler::showLastBatchRetry() {
+  LOG_DEVEL << "RestCursorHandler::showLastBatchRetry";
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/cursor/<cursor-id>/<batch-id>");
+    return RestStatus::DONE;
+  }
+
+  std::string const& id = suffixes[0];
+
+  auto cursors = _vocbase.cursorRepository();
+  TRI_ASSERT(cursors != nullptr);
+
+  auto cursorId = static_cast<arangodb::CursorId>(
+      arangodb::basics::StringUtils::uint64(id));
+  bool busy;
+  _cursor = cursors->find(cursorId, busy);
+
+  if (_cursor == nullptr) {
+    if (busy) {
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
+                    TRI_ERROR_CURSOR_BUSY);
+    } else {
+      generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
+                    TRI_ERROR_CURSOR_NOT_FOUND);
+    }
+    return RestStatus::DONE;
+  }
+  if (!_cursor->isRetriable()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting retriable option to be true");
+    return RestStatus::DONE;
+  }
+
+  _cursor->setWakeupHandler(withLogContext(
+      [self = shared_from_this()]() { return self->wakeupHandler(); }));
+
+  TRI_ASSERT(_cursor != nullptr);
+
+  std::shared_ptr<transaction::Context> ctx = _cursor->context();
+
+  VPackBuilder builder;
+
+  size_t batchId;
+  std::stringstream batchSuffix(suffixes[1]);
+  batchSuffix >> batchId;
+
+  // VPackBuilder builder;
+  auto const r = _cursor->getLastBatchResult(batchId, builder);
+
+  if (r.ok()) {
+    _response->setContentType(rest::ContentType::JSON);
+    //  generateResult(rest::ResponseCode::OK, std::move(buffer),
+    //  std::move(ctx));
+    generateResult(rest::ResponseCode::OK, std::move(*(builder.buffer().get())),
+                   std::move(ctx));
+  } else {
+    // builder can be in a broken state here. simply return the error
+    generateError(r);
+  }
+
+  return RestStatus::DONE;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::modifyQueryCursor() {
+  LOG_DEVEL << "RestCursorHandler::modifyQueryCursor";
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
@@ -671,6 +772,8 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
                   "expecting POST /_api/cursor/<cursor-id>");
     return RestStatus::DONE;
   }
+
+  TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
 
   std::string const& id = suffixes[0];
 

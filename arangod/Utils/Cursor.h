@@ -32,6 +32,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Builder.h>
 #include <atomic>
 
 namespace arangodb {
@@ -52,13 +53,16 @@ class Cursor {
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
+  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount,
+         bool isRetriable)
       : _id(id),
         _batchSize(batchSize == 0 ? 1 : batchSize),
+        _currentBatchId(0),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
         _isDeleted(false),
+        _isRetriable(isRetriable),
         _isUsed(false) {}
 
   virtual ~Cursor() = default;
@@ -69,6 +73,8 @@ class Cursor {
   inline size_t batchSize() const { return _batchSize; }
 
   inline bool hasCount() const { return _hasCount; }
+
+  inline bool isRetriable() const { return _isRetriable; }
 
   inline double ttl() const { return _ttl; }
 
@@ -84,6 +90,18 @@ class Cursor {
   inline bool isDeleted() const { return _isDeleted; }
 
   void setDeleted() { _isDeleted = true; }
+
+  void setLastQueryBatchObject(velocypack::Builder& builder) {
+    _currentBatchResult.second = builder;
+  }
+
+  Result getLastBatchResult(size_t batchId, velocypack::Builder& result) {
+    if (_currentBatchResult.first != batchId) {
+      return Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found");
+    }
+    result = VPackBuilder(_currentBatchResult.second.slice());
+    return {TRI_ERROR_NO_ERROR};
+  }
 
   void use() {
     TRI_ASSERT(!_isDeleted);
@@ -145,10 +163,13 @@ class Cursor {
  protected:
   CursorId const _id;
   size_t const _batchSize;
+  size_t _currentBatchId;
   double _ttl;
   std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
+  bool _isRetriable;
   std::atomic<bool> _isUsed;
+  std::pair<size_t, VPackBuilder> _currentBatchResult;
 };
 }  // namespace arangodb

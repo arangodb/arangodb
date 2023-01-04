@@ -66,6 +66,7 @@ QueryOptions::QueryOptions()
       verbosePlans(false),
       explainInternals(true),
       stream(false),
+      retriable(false),
       silent(false),
       failOnWarning(
           QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
@@ -201,6 +202,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
+  if (value = slice.get("retriable"); value.isBool()) {
+    retriable = value.getBool();
+  }
   if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
@@ -292,6 +296,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
+  builder.add("retriable", VPackValue(retriable));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
