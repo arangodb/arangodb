@@ -30,23 +30,32 @@
 #include <vector>
 
 #include "Actor.h"
-#include "Dispatcher.h"
 
 namespace arangodb::pregel::actor {
 
-template<CallableOnFunction Scheduler>
-struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
+template<typename S>
+concept CallableOnFunction = requires(S s) {
+  {s([]() {})};
+};
+template<typename D>
+concept VPackDispatchable = requires(D d, ActorPID pid,
+                                     arangodb::velocypack::SharedSlice msg) {
+  {d(pid, pid, msg)};
+};
+
+template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher>
+struct Runtime
+    : std::enable_shared_from_this<Runtime<Scheduler, ExternalDispatcher>> {
   Runtime() = delete;
   Runtime(Runtime const&) = delete;
   Runtime(Runtime&&) = delete;
   Runtime(ServerID myServerID, std::string runtimeID,
           std::shared_ptr<Scheduler> scheduler,
-          ExternalDispatcher externalDispatcher)
+          std::shared_ptr<ExternalDispatcher> externalDispatcher)
       : myServerID(myServerID),
         runtimeID(runtimeID),
         scheduler(scheduler),
-        dispatcher(std::make_shared<Dispatcher>(myServerID, actors,
-                                                externalDispatcher)) {}
+        externalDispatcher(externalDispatcher) {}
 
   template<typename ActorConfig>
   auto spawn(typename ActorConfig::State initialState,
@@ -65,7 +74,7 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
     auto initialPayload =
         std::make_unique<MessagePayload<typename ActorConfig::Message>>(
             initialMessage);
-    (*dispatcher)(address, address, std::move(initialPayload));
+    dispatch(address, address, std::move(initialPayload));
 
     return newId;
   }
@@ -129,7 +138,7 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
     actor->process(sender, msg);
   }
 
-  auto preDispatch(ActorPID receiver) -> ActorMap::mapped_type& {
+  auto findActorLocally(ActorPID receiver) -> ActorMap::mapped_type& {
     if (receiver.server != myServerID) {
       std::abort();
       // TODO
@@ -144,18 +153,16 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
 
   auto dispatch(ActorPID sender, ActorPID receiver,
                 std::unique_ptr<MessagePayloadBase> payload) -> void {
-    auto& actor = preDispatch(receiver);
+    auto& actor = findActorLocally(receiver);
     actor->process(sender, std::move(payload));
   }
   auto dispatch(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server == myServerID) {
-      auto& actor = preDispatch(receiver);
+      auto& actor = findActorLocally(receiver);
       actor->process(sender, msg);
     } else {
-      // TODO
-      std::abort();
-      // externalDispatcher.send(sender, receiver, msg);
+      (*externalDispatcher)(sender, receiver, msg);
     }
   }
 
@@ -163,14 +170,15 @@ struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
   std::string const runtimeID;
 
   std::shared_ptr<Scheduler> scheduler;
-  std::shared_ptr<Dispatcher> dispatcher;
+  std::shared_ptr<ExternalDispatcher> externalDispatcher;
 
   std::atomic<size_t> uniqueActorIDCounter{0};
 
   ActorMap actors;
 };
-template<CallableOnFunction Scheduler, typename Inspector>
-auto inspect(Inspector& f, Runtime<Scheduler>& x) {
+template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,
+         typename Inspector>
+auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
   return f.object(x).fields(
       f.field("myServerID", x.myServerID), f.field("runtimeID", x.runtimeID),
       f.field("uniqueActorIDCounter", x.uniqueActorIDCounter.load()),
@@ -179,6 +187,8 @@ auto inspect(Inspector& f, Runtime<Scheduler>& x) {
 
 };  // namespace arangodb::pregel::actor
 
-template<arangodb::pregel::actor::CallableOnFunction Scheduler>
-struct fmt::formatter<arangodb::pregel::actor::Runtime<Scheduler>>
+template<arangodb::pregel::actor::CallableOnFunction Scheduler,
+         arangodb::pregel::actor::VPackDispatchable ExternalDispatcher>
+struct fmt::formatter<
+    arangodb::pregel::actor::Runtime<Scheduler, ExternalDispatcher>>
     : arangodb::inspection::inspection_formatter {};

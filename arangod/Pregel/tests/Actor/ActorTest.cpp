@@ -21,7 +21,6 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Actor/Dispatcher.h"
 #include "Pregel/Actor/Message.h"
 #include "Pregel/Actor/Runtime.h"
 #include "gtest/gtest.h"
@@ -38,12 +37,17 @@ using namespace arangodb::pregel::actor::test;
 struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
-using ActorTestRuntime = Runtime<MockScheduler>;
+struct EmptyExternalDispatcher {
+  auto operator()(ActorPID sender, ActorPID receiver,
+                  arangodb::velocypack::SharedSlice msg) -> void {}
+};
+using ActorTestRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
 
 TEST(ActorTest, has_a_type_name) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
-                                                    ExternalDispatcher());
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
       ActorPID{}, runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(actor.typeName(), "TrivialActor");
@@ -51,8 +55,9 @@ TEST(ActorTest, has_a_type_name) {
 
 TEST(ActorTest, formats_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
-                                                    ExternalDispatcher());
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
@@ -63,8 +68,9 @@ TEST(ActorTest, formats_actor) {
 
 TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
-                                                    ExternalDispatcher());
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
@@ -79,8 +85,9 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
 
 TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
-                                                    ExternalDispatcher());
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());

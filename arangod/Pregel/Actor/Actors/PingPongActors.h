@@ -144,6 +144,7 @@ auto inspect(Inspector& f, State& x) {
 template<typename Runtime>
 struct Handler : HandlerBase<Runtime, State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
+    this->state->called++;
     return std::move(this->state);
   }
 

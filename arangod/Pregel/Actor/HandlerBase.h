@@ -26,7 +26,6 @@
 
 #include "Inspection/VPackWithErrorT.h"
 
-#include "Dispatcher.h"
 #include "Message.h"
 #include "ActorPID.h"
 

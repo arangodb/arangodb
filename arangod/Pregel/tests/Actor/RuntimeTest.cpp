@@ -27,12 +27,12 @@
 
 #include "Pregel/Actor/ActorPID.h"
 #include "Pregel/Actor/Actors/SpawnActor.h"
-#include "Pregel/Actor/Dispatcher.h"
 #include "Pregel/Actor/Runtime.h"
 #include "Pregel/Actor/Actors/TrivialActor.h"
 #include "Pregel/Actor/Actors/PingPongActors.h"
 
 #include "fmt/format.h"
+#include "velocypack/SharedSlice.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::actor::test;
@@ -46,25 +46,32 @@ struct MockScheduler {
 //   ThreadGuard threads;
 // };
 
-using MockRuntime = Runtime<MockScheduler>;
+struct EmptyExternalDispatcher {
+  auto operator()(ActorPID sender, ActorPID receiver,
+                  arangodb::velocypack::SharedSlice msg) -> void {}
+};
+
+using MockRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
 
 TEST(RuntimeTest, formats_runtime_and_actor_state) {
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>(
-      ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, ExternalDispatcher{});
+      ServerID{"PRMR-1234"}, "RuntimeTest", scheduler, dispatcher);
   auto actorID = runtime->spawn<pong_actor::Actor>(pong_actor::State{},
                                                    pong_actor::Start{});
   ASSERT_EQ(
       fmt::format("{}", *runtime),
       R"({"myServerID":"PRMR-1234","runtimeID":"RuntimeTest","uniqueActorIDCounter":1,"actors":[{"id":0,"type":"PongActor"}]})");
   auto actor = runtime->getActorStateByID<pong_actor::Actor>(actorID).value();
-  ASSERT_EQ(fmt::format("{}", actor), R"({"called":0})");
+  ASSERT_EQ(fmt::format("{}", actor), R"({"called":1})");
 }
 
 TEST(RuntimeTest, spawns_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
 
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage0());
@@ -75,8 +82,9 @@ TEST(RuntimeTest, spawns_actor) {
 
 TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
 
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage1("bar"));
@@ -87,8 +95,9 @@ TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
 
 TEST(RuntimeTest, gives_all_existing_actor_ids) {
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
 
   ASSERT_TRUE(runtime->getActorIDs().empty());
 
@@ -106,8 +115,9 @@ TEST(RuntimeTest, gives_all_existing_actor_ids) {
 
 TEST(RuntimeTest, sends_message_to_an_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage0{});
 
@@ -127,8 +137,9 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
 
   auto pong_actor = runtime->spawn<pong_actor::Actor>(pong_actor::State{},
                                                       pong_actor::Start{});
@@ -143,14 +154,15 @@ TEST(RuntimeTest, ping_pong_game) {
             (ping_actor::State{.called = 2, .message = "hello world"}));
   auto pong_actor_state =
       runtime->getActorStateByID<pong_actor::Actor>(pong_actor);
-  ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 1}));
+  ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 2}));
 }
 
 TEST(RuntimeTest, spawn_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>(serverID, "RuntimeTest",
-                                               scheduler, ExternalDispatcher{});
+                                               scheduler, dispatcher);
 
   auto spawn_actor =
       runtime->spawn<SpawnActor>(SpawnState{}, SpawnStartMessage{});

@@ -36,13 +36,11 @@
 
 namespace arangodb::pregel::actor {
 
-struct Dispatcher;
-
 namespace {
-template<typename A>
+template<typename Runtime, typename A>
 concept IncludesAllActorRelevantTypes =
     std::is_class<typename A::State>::value &&
-    // std::is_class<typename A::Handler>::value &&
+    std::is_class<typename A::template Handler<Runtime>>::value &&
     std::is_class<typename A::Message>::value;
 template<typename A>
 concept IncludesName = requires() {
@@ -71,14 +69,9 @@ concept IsInspectable = requires(typename A::Message message,
 };
 };  // namespace
 template<typename Runtime, typename A>
-concept Actorable = IncludesAllActorRelevantTypes<A> && IncludesName<A> &&
-    HandlerInheritsFromBaseHandler<Runtime, A> &&
+concept Actorable = IncludesAllActorRelevantTypes<Runtime, A> &&
+    IncludesName<A> && HandlerInheritsFromBaseHandler<Runtime, A> &&
     MessageIsVariant<Runtime, A> && IsInspectable<A>;
-
-template<typename S>
-concept CallableOnFunction = requires(S s) {
-  {s([]() {})};
-};
 
 template<typename Runtime, typename Config>
 requires Actorable<Runtime, Config>
