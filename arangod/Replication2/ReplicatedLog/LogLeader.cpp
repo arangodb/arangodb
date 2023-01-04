@@ -277,9 +277,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
                     duration / 1us);
-                LOG_DEVEL << "Append entries took " << (duration / 1ms)
-                          << "ms on " << follower->_impl->getParticipantId()
-                          << " for " << numEntries << " log entries";
                 LOG_CTX("8ff44", TRACE, follower->logContext)
                     << "received append entries response, messageId = "
                     << messageId;
