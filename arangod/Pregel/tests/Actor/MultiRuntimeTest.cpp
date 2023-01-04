@@ -42,7 +42,7 @@ struct MockScheduler {
 };
 
 TEST(MultiRuntimeTest, ping_pong_game) {
-  std::unordered_map<ServerID, std::unique_ptr<Runtime<MockScheduler>>>
+  std::unordered_map<ServerID, std::shared_ptr<Runtime<MockScheduler>>>
       runtimes;
   auto externalDispatcher = ExternalDispatcher{
       .send = [&runtimes](ActorPID sender, ActorPID receiver,

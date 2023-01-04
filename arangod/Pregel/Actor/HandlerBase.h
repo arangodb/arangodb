@@ -32,25 +32,22 @@
 
 namespace arangodb::pregel::actor {
 
-template<typename State>
+template<typename Runtime, typename State>
 struct HandlerBase {
   HandlerBase(ActorPID self, ActorPID sender, std::unique_ptr<State> state,
-              std::shared_ptr<Dispatcher> messageDispatcher)
-      : self(self),
-        sender(sender),
-        state{std::move(state)},
-        messageDispatcher(messageDispatcher){};
+              std::shared_ptr<Runtime> runtime)
+      : self(self), sender(sender), state{std::move(state)}, runtime(runtime){};
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage message) -> void {
     if (receiver.server == self.server) {
-      (*messageDispatcher)(
+      runtime->dispatch(
           self, receiver,
           std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
     } else {
       auto payload = inspection::serializeWithErrorT(message);
       if (payload.ok()) {
-        (*messageDispatcher)(self, receiver, payload.get());
+        runtime->dispatch(self, receiver, payload.get());
       } else {
         fmt::print("HandlerBase error serializing message");
         std::abort();
@@ -63,7 +60,7 @@ struct HandlerBase {
   std::unique_ptr<State> state;
 
  private:
-  std::shared_ptr<Dispatcher> messageDispatcher;
+  std::shared_ptr<Runtime> runtime;
 };
 
 }  // namespace arangodb::pregel::actor

@@ -21,7 +21,9 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Pregel/Actor/Dispatcher.h"
 #include "Pregel/Actor/Message.h"
+#include "Pregel/Actor/Runtime.h"
 #include "gtest/gtest.h"
 #include "Pregel/Actor/Actor.h"
 #include "Pregel/Actor/ActorPID.h"
@@ -36,18 +38,23 @@ using namespace arangodb::pregel::actor::test;
 struct MockScheduler {
   auto operator()(auto fn) { fn(); }
 };
+using ActorTestRuntime = Runtime<MockScheduler>;
 
 TEST(ActorTest, has_a_type_name) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto actor = Actor<MockScheduler, TrivialActor>(
-      ActorPID{}, scheduler, nullptr, std::make_unique<TrivialState>());
+  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
+                                                    ExternalDispatcher());
+  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+      ActorPID{}, runtime, std::make_unique<TrivialState>());
   ASSERT_EQ(actor.typeName(), "TrivialActor");
 }
 
 TEST(ActorTest, formats_actor) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto actor = Actor<MockScheduler, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
+                                                    ExternalDispatcher());
+  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(
       fmt::format("{}", actor),
@@ -56,8 +63,10 @@ TEST(ActorTest, formats_actor) {
 
 TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto actor = Actor<MockScheduler, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
+                                                    ExternalDispatcher());
+  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
   auto message = std::make_unique<MessagePayload<TrivialMessage>>(
@@ -70,8 +79,10 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
 
 TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto scheduler = std::make_shared<MockScheduler>();
-  auto actor = Actor<MockScheduler, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}}, scheduler, nullptr,
+  auto runtime = std::make_shared<ActorTestRuntime>("A", "myID", scheduler,
+                                                    ExternalDispatcher());
+  auto actor = Actor<ActorTestRuntime, TrivialActor>(
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
   auto message = TrivialMessage{TrivialMessage1{"Hello"}};

@@ -71,23 +71,25 @@ auto inspect(Inspector& f, TrivialMessage& x) {
       arangodb::inspection::type<TrivialMessage1>("msg1"));
 }
 
-struct TrivialHandler : HandlerBase<TrivialState> {
+template<typename Runtime>
+struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
-    state->called++;
-    return std::move(state);
+    this->state->called++;
+    return std::move(this->state);
   }
 
   auto operator()(TrivialMessage1 msg) -> std::unique_ptr<TrivialState> {
-    state->called++;
-    state->state += msg.store;
-    return std::move(state);
+    this->state->called++;
+    this->state->state += msg.store;
+    return std::move(this->state);
   }
 };
 
 struct TrivialActor {
   using State = TrivialState;
   using Message = TrivialMessage;
-  using Handler = TrivialHandler;
+  template<typename Runtime>
+  using Handler = TrivialHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
     return "TrivialActor";
   };

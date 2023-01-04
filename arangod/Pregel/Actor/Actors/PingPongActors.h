@@ -104,24 +104,26 @@ auto inspect(Inspector& f, PongMessage& x) {
       arangodb::inspection::type<Pong>("pong"));
 }
 
-struct Handler : HandlerBase<State> {
+template<typename Runtime>
+struct Handler : HandlerBase<Runtime, State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
-    dispatch<pong_actor::PingMessage>(msg.pongActor,
-                                      pong_actor::Ping{.text = "hello world"});
-    state->called++;
-    return std::move(state);
+    this->template dispatch<pong_actor::PingMessage>(
+        msg.pongActor, pong_actor::Ping{.text = "hello world"});
+    this->state->called++;
+    return std::move(this->state);
   }
 
   auto operator()(Pong msg) -> std::unique_ptr<State> {
-    state->called++;
-    state->message = msg.text;
-    return std::move(state);
+    this->state->called++;
+    this->state->message = msg.text;
+    return std::move(this->state);
   }
 };
 
 struct Actor {
   using State = State;
-  using Handler = Handler;
+  template<typename Runtime>
+  using Handler = Handler<Runtime>;
   using Message = PongMessage;
   static constexpr auto typeName() -> std::string_view { return "PingActor"; };
 };
@@ -139,22 +141,24 @@ auto inspect(Inspector& f, State& x) {
   return f.object(x).fields(f.field("called", x.called));
 }
 
-struct Handler : HandlerBase<State> {
+template<typename Runtime>
+struct Handler : HandlerBase<Runtime, State> {
   auto operator()(Start msg) -> std::unique_ptr<State> {
-    return std::move(state);
+    return std::move(this->state);
   }
 
   auto operator()(Ping msg) -> std::unique_ptr<State> {
-    dispatch<ping_actor::Actor::Message>(sender,
-                                         ping_actor::Pong{.text = msg.text});
-    state->called++;
-    return std::move(state);
+    this->template dispatch<ping_actor::Actor::Message>(
+        this->sender, ping_actor::Pong{.text = msg.text});
+    this->state->called++;
+    return std::move(this->state);
   }
 };
 
 struct Actor {
   using State = State;
-  using Handler = Handler;
+  template<typename Runtime>
+  using Handler = Handler<Runtime>;
   using Message = PingMessage;
   static constexpr auto typeName() -> std::string_view { return "PongActor"; };
 };

@@ -35,7 +35,7 @@
 namespace arangodb::pregel::actor {
 
 template<CallableOnFunction Scheduler>
-struct Runtime {
+struct Runtime : std::enable_shared_from_this<Runtime<Scheduler>> {
   Runtime() = delete;
   Runtime(Runtime const&) = delete;
   Runtime(Runtime&&) = delete;
@@ -48,7 +48,7 @@ struct Runtime {
         dispatcher(std::make_shared<Dispatcher>(myServerID, actors,
                                                 externalDispatcher)) {}
 
-  template<Actorable ActorConfig>
+  template<typename ActorConfig>
   auto spawn(typename ActorConfig::State initialState,
              typename ActorConfig::Message initialMessage) -> ActorID {
     auto newId = ActorID{
@@ -56,8 +56,8 @@ struct Runtime {
 
     auto address = ActorPID{.server = myServerID, .id = newId};
 
-    auto newActor = std::make_unique<Actor<Scheduler, ActorConfig>>(
-        address, scheduler, dispatcher,
+    auto newActor = std::make_unique<Actor<Runtime, ActorConfig>>(
+        address, this->shared_from_this(),
         std::make_unique<typename ActorConfig::State>(initialState));
     actors.emplace(newId, std::move(newActor));
 
@@ -84,12 +84,12 @@ struct Runtime {
     return res;
   }
 
-  template<Actorable ActorConfig>
+  template<typename ActorConfig>
   auto getActorStateByID(ActorID id)
       -> std::optional<typename ActorConfig::State> {
     if (actors.contains(id)) {
       auto* actor =
-          dynamic_cast<Actor<Scheduler, ActorConfig>*>(actors[id].get());
+          dynamic_cast<Actor<Runtime, ActorConfig>*>(actors[id].get());
       if (actor != nullptr && actor->state != nullptr) {
         return *actor->state;
       }
@@ -97,8 +97,9 @@ struct Runtime {
     return std::nullopt;
   }
 
-  auto getSerializedActorByID(ActorID id) -> std::optional<velocypack::SharedSlice> {
-     if (actors.contains(id)) {
+  auto getSerializedActorByID(ActorID id)
+      -> std::optional<velocypack::SharedSlice> {
+    if (actors.contains(id)) {
       auto& actor = actors[id];
       if (actor != nullptr) {
         return actor->serialize();
@@ -110,18 +111,52 @@ struct Runtime {
   auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server != myServerID) {
-      fmt::print(stderr, "received message for receiver {}, this is not me: {}", receiver, myServerID);
+      fmt::print(stderr, "received message for receiver {}, this is not me: {}",
+                 receiver, myServerID);
       std::abort();
     }
 
     auto a = actors.find(receiver.id);
     if (a == std::end(actors)) {
-      fmt::print(stderr, "received message for receiver {}, but the actor could not be found.", receiver);
+      fmt::print(
+          stderr,
+          "received message for receiver {}, but the actor could not be found.",
+          receiver);
       std::abort();
     }
 
     auto& [_, actor] = *a;
     actor->process(sender, msg);
+  }
+
+  auto preDispatch(ActorPID receiver) -> ActorMap::mapped_type& {
+    if (receiver.server != myServerID) {
+      std::abort();
+      // TODO
+    }
+    auto a = actors.find(receiver.id);
+    if (a == std::end(actors)) {
+      std::abort();
+    }
+    auto& [_, actor] = *a;
+    return actor;
+  }
+
+  auto dispatch(ActorPID sender, ActorPID receiver,
+                std::unique_ptr<MessagePayloadBase> payload) -> void {
+    auto& actor = preDispatch(receiver);
+    actor->process(sender, std::move(payload));
+  }
+  auto dispatch(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
+      -> void {
+    if (receiver.server == myServerID) {
+      auto& actor = preDispatch(receiver);
+      actor->process(sender, msg);
+    } else {
+      // TODO
+      std::abort();
+      // externalDispatcher.send(sender, receiver, msg);
+    }
   }
 
   ServerID myServerID;
