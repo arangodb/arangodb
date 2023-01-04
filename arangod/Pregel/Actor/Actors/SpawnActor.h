@@ -29,77 +29,76 @@
 #include <memory>
 #include <variant>
 
-#include "Pregel/Actor/Actor.h"
-
 #include "Inspection/InspectorBase.h"
+#include "Pregel/Actor/Actor.h"
+#include "Pregel/Actor/Actors/TrivialActor.h"
 
 namespace arangodb::pregel::actor::test {
 
-struct TrivialState {
-  std::string state;
+struct SpawnState {
   std::size_t called{};
-  bool operator==(const TrivialState&) const = default;
+  std::string state;
+  bool operator==(const SpawnState&) const = default;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialState& x) {
-  return f.object(x).fields(f.field("state", x.state),
-                            f.field("called", x.called));
+auto inspect(Inspector& f, SpawnState& x) {
+  return f.object(x).fields(f.field("called", x.called),
+                            f.field("state", x.state));
 }
 
-struct TrivialMessage0 {};
+struct SpawnStartMessage {};
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage0& x) {
+auto inspect(Inspector& f, SpawnStartMessage& x) {
   return f.object(x).fields();
 }
 
-struct TrivialMessage1 {
-  TrivialMessage1() = default;
-  TrivialMessage1(std::string value) : store(std::move(value)) {}
-  std::string store;
+struct SpawnMessage {
+  SpawnMessage() = default;
+  SpawnMessage(std::string message) : message(std::move(message)) {}
+  std::string message;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage1& x) {
-  return f.object(x).fields(f.field("store", x.store));
+auto inspect(Inspector& f, SpawnMessage& x) {
+  return f.object(x).fields(f.field("message", x.message));
 }
 
-struct TrivialMessage : std::variant<TrivialMessage0, TrivialMessage1> {
-  using std::variant<TrivialMessage0, TrivialMessage1>::variant;
+struct SpawnActorMessage : std::variant<SpawnStartMessage, SpawnMessage> {
+  using std::variant<SpawnStartMessage, SpawnMessage>::variant;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage& x) {
+auto inspect(Inspector& f, SpawnActorMessage& x) {
   return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<TrivialMessage0>("msg0"),
-      arangodb::inspection::type<TrivialMessage1>("msg1"));
+      arangodb::inspection::type<SpawnStartMessage>("start"),
+      arangodb::inspection::type<SpawnMessage>("spawn"));
 }
 
 template<typename Runtime>
-struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
-  auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
+struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
+  auto operator()(SpawnStartMessage msg) -> std::unique_ptr<SpawnState> {
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(TrivialMessage1 msg) -> std::unique_ptr<TrivialState> {
+  auto operator()(SpawnMessage msg) -> std::unique_ptr<SpawnState> {
+    this->template spawn<TrivialActor>(TrivialState{}, TrivialMessage0{});
     this->state->called++;
-    this->state->state += msg.store;
+    this->state->state += msg.message;
     return std::move(this->state);
   }
 };
 
-struct TrivialActor {
-  using State = TrivialState;
-  using Message = TrivialMessage;
+struct SpawnActor {
+  using State = SpawnState;
+  using Message = SpawnActorMessage;
   template<typename Runtime>
-  using Handler = TrivialHandler<Runtime>;
-  static constexpr auto typeName() -> std::string_view {
-    return "TrivialActor";
-  };
+  using Handler = SpawnHandler<Runtime>;
+  static constexpr auto typeName() -> std::string_view { return "SpawnActor"; };
 };
 }  // namespace arangodb::pregel::actor::test
 
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
+struct fmt::formatter<arangodb::pregel::actor::test::SpawnState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessage>
+struct fmt::formatter<arangodb::pregel::actor::test::SpawnMessage>
     : arangodb::inspection::inspection_formatter {};
