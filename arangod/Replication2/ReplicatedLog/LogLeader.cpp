@@ -246,13 +246,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
             });
 
         auto messageId = request.messageId;
-
-        LoggerContext lctx =
-            follower->logContext
-                .template with<logContextKeyMessageId>(request.messageId)
-                .template with<logContextKeyPrevLogIdx>(request.prevLogEntry);
-
-        LOG_CTX("1b0ec", TRACE, lctx) << "sending append entries";
+        LOG_CTX("1b0ec", TRACE, follower->logContext)
+            << "sending append entries, messageId = " << messageId;
 
         // We take the start time here again to have a more precise
         // measurement. (And do not use follower._lastRequestStartTP)
@@ -261,7 +256,6 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         // Capture a weak pointer `parentLog` that will be locked
         // when the request returns. If the locking is successful
         // we are still in the same term.
-        auto numEntries = request.entries.size();
         follower->_impl->appendEntries(std::move(request))
             .thenFinal([weakParentLog = req->_parentLog,
                         followerWeak = req->_follower, lastIndex = lastIndex,
@@ -269,7 +263,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                         currentLITK = request.lowestIndexToKeep,
                         currentTerm = logLeader->_currentTerm,
                         messageId = messageId, startTime,
-                        logMetrics = logMetrics, numEntries, lctx = lctx](
+                        logMetrics = logMetrics](
                            futures::Try<AppendEntriesResult>&& res) noexcept {
               // This has to remain noexcept, because the code below is not
               // exception safe
@@ -282,9 +276,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                 auto const duration = endTime - startTime;
                 self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
                     duration / 1us);
-                LOG_CTX("8ff44", TRACE, lctx)
-                    << "received append entries response for " << numEntries
-                    << " log entries after " << (duration / 1ms) << "ms";
+                LOG_CTX("8ff44", TRACE, follower->logContext)
+                    << "received append entries response, messageId = "
+                    << messageId;
                 auto [preparedRequests, resolvedPromises] = std::invoke(
                     [&]() -> std::pair<std::vector<std::optional<
                                            PreparedAppendEntryRequest>>,
@@ -296,9 +290,10 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                             currentLITK, currentTerm, std::move(res),
                             endTime - startTime, messageId);
                       } else {
-                        LOG_CTX("da116", DEBUG, lctx)
+                        LOG_CTX("da116", DEBUG, follower->logContext)
                             << "received response from follower but leader "
-                               "already resigned";
+                               "already resigned, messageId = "
+                            << messageId;
                       }
                       return {};
                     });
@@ -311,9 +306,11 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                              self->_scheduler.get());
               } else {
                 if (follower == nullptr) {
-                  LOG_CTX("6f490", DEBUG, lctx) << "follower already gone.";
+                  LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
+                      << "follower already gone.";
                 } else {
-                  LOG_CTX("de300", DEBUG, lctx) << "parent log already gone";
+                  LOG_CTX("de300", DEBUG, follower->logContext)
+                      << "parent log already gone, messageId = " << messageId;
                 }
               }
             });

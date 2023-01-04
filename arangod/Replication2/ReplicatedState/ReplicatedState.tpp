@@ -88,9 +88,7 @@ void ReplicatedStateManager<S>::updateCommitIndex(LogIndex index) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
-                 [index](auto& manager) {
-                   manager->updateCommitIndex(index);
-                 },
+                 [index](auto& manager) { manager->updateCommitIndex(index); },
                  [](std::shared_ptr<UnconfiguredStateManager<S>>& manager) {
                    ADB_PROD_ASSERT(false) << "update commit index called on "
                                              "an unconfigured state manager";
@@ -459,10 +457,10 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     auto future = promise.getFuture();
     auto& scheduler = *SchedulerFeature::SCHEDULER;
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
-    // As applyEntries is currently synchronous, we have to post it on the scheduler
-    // to avoid blocking the current appendEntries request from returning.
-    // By using _applyEntriesIndexInFlight we make sure not to call it multiple
-    // time in parallel.
+    // As applyEntries is currently synchronous, we have to post it on the
+    // scheduler to avoid blocking the current appendEntries request from
+    // returning. By using _applyEntriesIndexInFlight we make sure not to call
+    // it multiple time in parallel.
     scheduler.queue(RequestLane::CLUSTER_INTERNAL,
                     [promise = std::move(promise),
                      deserializedIter = std::move(deserializedIter),
@@ -600,7 +598,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
   MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
-      _metrics->replicatedStateNumberWaitingForSnapshot);
+      *_metrics->replicatedStateNumberWaitingForSnapshot);
   auto fut = _guardedData.doUnderLock([&](auto& self) {
     return self._followerState->acquireSnapshot(leader, index);
   });

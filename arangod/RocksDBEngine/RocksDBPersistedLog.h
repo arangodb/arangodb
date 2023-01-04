@@ -27,6 +27,7 @@
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Metrics/Fwd.h"
 
 #include <array>
 #include <variant>
@@ -111,6 +112,25 @@ struct IRocksDBAsyncLogWriteBatcher {
       -> futures::Future<ResultT<SequenceNumber>> = 0;
 };
 
+struct RocksDBAsyncLogWriteBatcherMetrics {
+  metrics::Gauge<std::size_t>* numWorkerThreadsWaitForSync;
+  metrics::Gauge<std::size_t>* numWorkerThreadsNoWaitForSync;
+  metrics::Gauge<std::size_t>* queueLength;
+
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* writeBatchSize;
+  // metrics::Histogram<metrics::LogScale<std::uint64_t>>* writeBatchCount; TODO
+  // required?
+
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* rocksdbWriteTimeInUs;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* rocksdbSyncTimeInUs;
+
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>* operationLatencyInsert;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      operationLatencyRemoveFront;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      operationLatencyRemoveBack;
+};
+
 struct RocksDBAsyncLogWriteBatcher final
     : IRocksDBAsyncLogWriteBatcher,
       std::enable_shared_from_this<RocksDBAsyncLogWriteBatcher> {
@@ -122,7 +142,8 @@ struct RocksDBAsyncLogWriteBatcher final
   RocksDBAsyncLogWriteBatcher(
       rocksdb::ColumnFamilyHandle* cf, rocksdb::DB* db,
       std::shared_ptr<IAsyncExecutor> executor,
-      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options);
+      std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> options,
+      std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics);
 
   struct InsertEntries {
     std::unique_ptr<arangodb::replication2::PersistedLogIterator> iter;
@@ -175,6 +196,7 @@ struct RocksDBAsyncLogWriteBatcher final
     std::vector<Request> _pendingPersistRequests;
     std::atomic<unsigned> _activePersistorThreads = 0;
     bool const _waitForSync;
+    metrics::Gauge<std::size_t>* _numWorkerMetrics;
   };
 
   void runPersistorWorker(Lane& lane) noexcept;
@@ -187,6 +209,7 @@ struct RocksDBAsyncLogWriteBatcher final
   std::shared_ptr<IAsyncExecutor> const _executor;
   std::shared_ptr<replication2::ReplicatedLogGlobalSettings const> const
       _options;
+  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
 };
 
 struct RocksDBReplicatedStateInfo {
@@ -210,7 +233,8 @@ struct RocksDBLogStorageMethods final
   explicit RocksDBLogStorageMethods(
       uint64_t objectId, std::uint64_t vocbaseId, replication2::LogId logId,
       std::shared_ptr<IRocksDBAsyncLogWriteBatcher> persistor, rocksdb::DB* db,
-      rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf);
+      rocksdb::ColumnFamilyHandle* metaCf, rocksdb::ColumnFamilyHandle* logCf,
+      std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> metrics);
 
   auto updateMetadata(replication2::replicated_state::PersistedStateInfo info)
       -> Result override;
@@ -243,6 +267,7 @@ struct RocksDBLogStorageMethods final
   rocksdb::ColumnFamilyHandle* const metaCf;
   rocksdb::ColumnFamilyHandle* const logCf;
   AsyncLogWriteContext ctx;
+  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> const _metrics;
 };
 
 }  // namespace arangodb

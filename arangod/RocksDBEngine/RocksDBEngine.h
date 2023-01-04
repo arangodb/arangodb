@@ -53,6 +53,7 @@ class TransactionDB;
 namespace arangodb {
 
 struct RocksDBAsyncLogWriteBatcher;
+struct RocksDBAsyncLogWriteBatcherMetrics;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -680,6 +681,7 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // @brief persistor for replicated logs
+  std::shared_ptr<RocksDBAsyncLogWriteBatcherMetrics> _logMetrics;
   std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
