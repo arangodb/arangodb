@@ -373,6 +373,9 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      _metrics->replicatedStateApplyDebt->operator-=(
+          guard->_applyEntriesIndexInFlight->value -
+          guard->_lastAppliedIndex.value);
       auto const index = guard->_lastAppliedIndex =
           *guard->_applyEntriesIndexInFlight;
       // TODO
@@ -440,6 +443,9 @@ auto FollowerStateManager<S>::GuardedData::updateCommitIndex(
   if (_stream == nullptr) {
     return std::nullopt;
   }
+  ADB_PROD_ASSERT(commitIndex > _commitIndex);
+  metrics->replicatedStateApplyDebt->operator+=(commitIndex.value -
+                                                _commitIndex.value);
   _commitIndex = std::max(_commitIndex, commitIndex);
   return maybeScheduleApplyEntries(metrics);
 }
@@ -454,7 +460,8 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
     auto log = _stream->methods().getLogSnapshot();
-    _applyEntriesIndexInFlight = _commitIndex;
+    _applyEntriesIndexInFlight =
+        std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
     auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
                                         *_applyEntriesIndexInFlight + 1);
