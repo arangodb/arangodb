@@ -193,10 +193,12 @@ class PhysicalCollection {
                       IndexIterator::DocumentCallback const& cb,
                       ReadOwnWrites readOwnWrites) const = 0;
 
-  virtual Result readFromSnapshot(
-      transaction::Methods* trx, LocalDocumentId const& token,
-      IndexIterator::DocumentCallback const& cb, ReadOwnWrites readOwnWrites,
-      StorageSnapshot const& snapshot) const {
+  virtual Result readFromSnapshot(transaction::Methods* trx,
+                                  LocalDocumentId const& token,
+                                  IndexIterator::DocumentCallback const& cb,
+                                  ReadOwnWrites readOwnWrites,
+                                  StorageSnapshot const& snapshot) const {
+    TRI_ASSERT(false);
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
 

@@ -376,8 +376,8 @@ TEST_F(IResearchViewTest, test_defaults) {
           cids.emplace(cid);
           return true;
         });
-    EXPECT_TRUE((1 == cids.size()));
-    EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+    EXPECT_EQ(1, cids.size());
+    EXPECT_FALSE(logicalCollection->getIndexes().empty());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::velocypack::Builder builder;

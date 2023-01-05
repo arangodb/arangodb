@@ -1090,6 +1090,15 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
   auto const viewName =
       viewNameSlice.isNone() ? "" : viewNameSlice.stringView();
   auto const viewIdSlice = base.get(NODE_VIEW_ID_PARAM);
+
+  if (base.hasKey("outNmColPtr")) {
+    // Old coordinator tries to run query on
+    // new dbserver. Registers are not compatible.
+    // We must abort.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "Incompatible View node parameters. This "
+                                   "may happen if rolling upgrade is running.");
+  }
   if (viewIdSlice.isNone()) {  // handle search-alias view
     auto meta = SearchMeta::make();
     fromVelocyPack(base, *meta);

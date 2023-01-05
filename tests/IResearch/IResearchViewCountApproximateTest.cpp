@@ -548,8 +548,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
@@ -629,8 +628,7 @@ TEST_F(IResearchViewCountApproximateTest,
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
@@ -712,8 +710,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<arangodb::iresearch::SearchFunc> emptyScorers;
   std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
-      reader,
-      arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{},
+      reader, arangodb::aql::RegisterId::makeInvalid(),
       arangodb::aql::RegisterId::makeInvalid(), {}, *query, emptyScorers,
       {&sort, 1U}, _view->storedValues(), *plan, viewNode.outVariable(),
       viewNode.filterCondition(), {false, false},
