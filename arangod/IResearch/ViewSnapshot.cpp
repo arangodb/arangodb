@@ -72,8 +72,7 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return std::get<2>(_segments[i]);
   }
 
-  [[nodiscard]] ViewSegment const& segment(
-    std::size_t i) const noexcept final {
+  [[nodiscard]] ViewSegment const& segment(std::size_t i) const noexcept final {
     return _segments[i];
   }
 

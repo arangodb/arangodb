@@ -1335,10 +1335,12 @@ Result IResearchDataStore::initDataStore(
       LOG_TOPIC("7e028", TRACE, TOPIC)
           << "successfully opened existing data store data store reader for "
           << "ArangoSearch index '" << index().id() << "', docs count '"
-          << _dataStore._snapshot->_reader->docs_count() << "', live docs count '"
-          << _dataStore._snapshot->_reader->live_docs_count() << "', recovery tick low '"
-          << _dataStore._recoveryTickLow << "' and recovery tick high '"
-          << _dataStore._recoveryTickHigh << "'";
+          << _dataStore._snapshot->_reader->docs_count()
+          << "', live docs count '"
+          << _dataStore._snapshot->_reader->live_docs_count()
+          << "', recovery tick low '" << _dataStore._recoveryTickLow
+          << "' and recovery tick high '" << _dataStore._recoveryTickHigh
+          << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }

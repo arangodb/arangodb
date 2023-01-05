@@ -43,7 +43,8 @@ class Methods;
 }  // namespace transaction
 namespace iresearch {
 
-using ViewSegment = std::tuple<DataSourceId, irs::sub_reader const*, StorageSnapshot const&>;
+using ViewSegment =
+    std::tuple<DataSourceId, irs::sub_reader const*, StorageSnapshot const&>;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
@@ -71,7 +72,8 @@ class ViewSnapshot : public irs::index_reader {
     return _docs_count;
   }
 
-  [[nodiscard]] virtual ViewSegment const& segment(std::size_t i) const noexcept = 0;
+  [[nodiscard]] virtual ViewSegment const& segment(
+      std::size_t i) const noexcept = 0;
 
  protected:
   std::uint64_t _live_docs_count = 0;

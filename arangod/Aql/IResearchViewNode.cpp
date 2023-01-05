@@ -1823,7 +1823,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         writableOutputRegisters.emplace(documentRegId);
         return documentRegId;
       } else if (isNoMaterialization()) {
-        return aql::RegisterId::maxRegisterId;
+        return aql::RegisterId::makeInvalid();
       } else {
         auto outReg = variableToRegisterId(_outVariable);
         writableOutputRegisters.emplace(outReg);

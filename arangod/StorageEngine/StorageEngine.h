@@ -88,7 +88,6 @@ struct Options;
 
 }  // namespace transaction
 
-
 class StorageSnapshot {
  public:
   virtual ~StorageSnapshot() = default;
@@ -98,7 +97,6 @@ class StorageSnapshot {
 
 class StorageEngine : public ArangodFeature {
  public:
-
   // create the storage engine
   StorageEngine(Server& server, std::string_view engineName,
                 std::string_view featureName, size_t registration,
