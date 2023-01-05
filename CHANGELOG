@@ -1,6 +1,9 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--rocksdb.bloom-filter-bits-per-key` to configure the
+  average number of bits to use per key in a Bloom filter.
+
 * Improve performance of RocksDB's transaction lock manager by using different
   container types for the locked keys maps.
   This can improve performance of write-heavy operations that are not I/O-bound
