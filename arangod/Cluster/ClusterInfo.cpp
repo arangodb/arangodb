@@ -2584,8 +2584,10 @@ Result ClusterInfo::waitForDatabaseInCurrent(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  // make capture explicit as callback might be called after the return
+  // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [errMsg, dbServerResult, DBServers](VPackSlice result) {
         size_t numDbServers = DBServers->size();
         if (result.isObject() && result.length() >= numDbServers) {
           // We use >= here since the number of DBservers could have increased
@@ -2919,8 +2921,10 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // make capture explicit as callback might be called after the return
+  // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [dbServerResult](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
@@ -3213,6 +3217,9 @@ Result ClusterInfo::createCollectionsCoordinator(
     // the database via dbServerResult, in errMsg and in info.state.
     //
     // The AgencyCallback will copy the closure and take responsibility of it.
+    // this here is ok as ClusterInfo is not destroyed
+    // for &info it should have ensured lifetime somehow. OR ensured that
+    // callback is noop in case it is triggered too late.
     auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
                     nrDone, isCleaned, shardServers, this](VPackSlice result) {
       // NOTE: This ordering here is important to cover against a race in
@@ -3885,8 +3892,10 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   double const interval = getPollInterval();
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // Capture only explicitly! Please check lifetime of captured objects
+  // as callback might be called after this function returns.
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice result) {
+      [dbServerResult](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
         }
@@ -4874,8 +4883,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
+  // We need explicit copies as this callback may run even after
+  // this function returns. So let's keep all used variables
+  // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =  // for format
-      [=](VPackSlice result) {
+      [dbServerResult, errMsg, numberOfShards,
+       idString = std::string{idString}](VPackSlice result) {
         if (!result.isObject() || result.length() != numberOfShards) {
           return true;
         }
@@ -4892,7 +4905,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             for (VPackSlice v : VPackArrayIterator(indexes)) {
               VPackSlice const k = v.get(StaticStrings::IndexId);
-              if (!k.isString() || idString != k.copyString()) {
+              if (!k.isString() || idString != k.stringView()) {
                 continue;  // this is not our index
               }
 
@@ -4901,7 +4914,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
                 // Note that this closure runs with the mutex in the condition
                 // variable of the agency callback, which protects writing
                 // to *errMsg:
-                *errMsg = extractErrorMessage(shard.key.copyString(), v);
+                *errMsg = extractErrorMessage(shard.key.stringView(), v);
                 *errMsg = "Error during index creation: " + *errMsg;
                 // Returns the specific error number if set, or the general
                 // error otherwise
@@ -5052,7 +5065,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
         if (indexes.isArray()) {
           for (VPackSlice v : VPackArrayIterator(indexes)) {
             VPackSlice const k = v.get(StaticStrings::IndexId);
-            if (k.isString() && k.isEqualString(idString)) {
+            if (k.isString() && k.stringView() == idString) {
               // index is still here
               found = true;
               break;
@@ -5344,8 +5357,11 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  // We need explicit copies as this callback may run even after
+  // this function returns. So let's keep all used variables
+  // explicit here.
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [=](VPackSlice current) {
+      [dbServerResult, idString, numberOfShards](VPackSlice current) {
         if (numberOfShards == 0) {
           return false;
         }
@@ -7150,8 +7166,9 @@ bool ClusterInfo::SyncerThread::start() {
 }
 
 void ClusterInfo::SyncerThread::run() {
+  // Syncer thread is not destroyed. So we assume it is fine to capture this
   std::function<bool(VPackSlice result)> update =  // for format
-      [=, this](VPackSlice result) {
+      [this](VPackSlice result) {
         if (!result.isNumber()) {
           LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
               << "Plan Version is not a number! " << result.toJson();
