@@ -1755,9 +1755,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
     if (options().forceSync &&
         trx->state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot use waitForSync with "
-                                     "views and transactions");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "cannot use waitForSync with view and streaming or js transaction");
     }
 
     auto const viewName = this->view() ? this->view()->name() : "";

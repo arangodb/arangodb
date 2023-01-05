@@ -24,35 +24,42 @@
 #pragma once
 
 #include <s2/s2region.h>
+#include <s2/s2point.h>
 
-/// An S2MultiPointRegion is a region that contains a one or more points.
-/// Added to complete the GeoJson support
+#include <exception>
+#include <vector>
+
+namespace arangodb::geo {
+
 class S2MultiPointRegion final : public S2Region {
  public:
-  // Create a region containing the given points, will take ownership
-  explicit S2MultiPointRegion(std::vector<S2Point>* points);
+  ~S2MultiPointRegion() final = default;
 
-  ~S2MultiPointRegion() { delete[] points_; }
+  // The result is not unit length, so you may want to normalize it.
+  S2Point GetCentroid() const noexcept;
 
-  int num_points() const { return num_points_; }
-  S2Point const& point(int k) const { return points_[k]; }
+  template<typename Region>
+  bool Intersects(Region const& other) const noexcept {
+    for (auto const& point : _impl) {
+      if (other.Contains(point)) {
+        return true;
+      }
+    }
+    return false;
+  }
 
-  ////////////////////////////////////////////////////////////////////////
-  // S2Region interface (see s2region.h for details):
+  S2Region* Clone() const final;
+  S2Cap GetCapBound() const final;
+  S2LatLngRect GetRectBound() const final;
+  bool Contains(S2Cell const& cell) const final;
+  bool MayIntersect(S2Cell const& cell) const final;
+  bool Contains(S2Point const& p) const final;
 
-  virtual S2MultiPointRegion* Clone() const override;
-  S2Cap GetCapBound() const override;
-  S2LatLngRect GetRectBound() const override;
-  bool Contains(S2Cell const& cell) const override { return false; }
-  bool MayIntersect(S2Cell const& cell) const override;
-  bool Contains(S2Point const& p) const override;
-  // void Encode(Encoder* const encoder) const override;
-  // bool Decode(Decoder* const decoder) override;
+  auto& Impl() noexcept { return _impl; }
+  auto const& Impl() const noexcept { return _impl; }
 
  private:
-  // private constructor for clone
-  explicit S2MultiPointRegion(S2MultiPointRegion const*);
-
-  int num_points_;
-  S2Point* points_;
+  std::vector<S2Point> _impl;
 };
+
+}  // namespace arangodb::geo
