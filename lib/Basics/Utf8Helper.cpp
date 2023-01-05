@@ -55,16 +55,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 using namespace arangodb::basics;
 using namespace icu;
-
-#ifdef _WIN32
-
-#endif
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
