@@ -27,6 +27,26 @@ import AccordionView from './Components/Accordion/Accordion';
 
 const ViewSettingsReactView = ({ name }) => {
 
+  const PrimarySortContent = () => {
+    return (<table>
+      <tbody>
+      {
+        formState.primarySort.map (item =>(
+          <tr className="tableRow" id={"row_" + (item.field)}>
+            <th className="collectionTh">
+              {item.field}:
+            </th>
+            <th className="collectionTh">
+            <Textbox type={'text'} disabled={true} required={false}
+              value={item.asc ? "asc" : "desc"} />
+            </th>
+          </tr>
+        ))
+      }
+      </tbody>
+      </table>)
+  };
+
   const GeneralContent = () => {
   return( <table>
   <tbody>
@@ -285,7 +305,7 @@ const [linkName, setLinkName] = useState('')
               },
               {
                 index: 2,
-                content: <div>Accordion Item 3</div>,
+                content: <div><PrimarySortContent /></div>,
                 label: "Primary Sort",
                 testID: "accordionItem3"
               },
