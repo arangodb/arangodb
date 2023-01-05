@@ -36,7 +36,9 @@ constexpr auto* downCast(From* from) noexcept {
   static_assert(!std::is_reference_v<To>, "'To' shouldn't be reference");
   using CastTo =
       std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(from == nullptr || dynamic_cast<CastTo*>(from) != nullptr);
+#endif
   return static_cast<CastTo*>(from);
 }
 
@@ -51,8 +53,10 @@ auto downCast(std::shared_ptr<From> from) noexcept {
   static_assert(!std::is_reference_v<To>, "'To' shouldn't be reference");
   using CastTo =
       std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(from == nullptr ||
              std::dynamic_pointer_cast<CastTo>(from) != nullptr);
+#endif
   return std::static_pointer_cast<CastTo>(std::move(from));
 }
 
