@@ -30,7 +30,6 @@
 
 #include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
-#include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
 
@@ -331,8 +330,11 @@ void GeoJSONAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
 
 bool GeoJSONAnalyzer::reset(std::string_view value) {
   auto const slice = iresearch::slice(value);
-
-  if (!parseShape(slice, _shape, _type == Type::POINT)) {
+  if (_type != Type::POINT) {
+    if (!parseShape<Parsing::GeoJson>(slice, _shape, _cache)) {
+      return false;
+    }
+  } else if (!parseShape<Parsing::OnlyPoint>(slice, _shape, _cache)) {
     return false;
   }
 
@@ -344,7 +346,7 @@ bool GeoJSONAnalyzer::reset(std::string_view value) {
     auto const* region = _shape.region();
     TRI_ASSERT(region);
 
-    if (arangodb::geo::ShapeContainer::Type::S2_POINT == _shape.type()) {
+    if (geo::ShapeContainer::Type::S2_POINT == _shape.type()) {
       GeoAnalyzer::reset(_indexer.GetIndexTerms(
           static_cast<S2PointRegion const*>(region)->point(), {}));
     } else {
@@ -377,21 +379,31 @@ void GeoPointAnalyzer::prepare(S2RegionTermIndexer::Options& opts) const {
   opts.set_index_contains_points_only(true);
 }
 
-bool GeoPointAnalyzer::parsePoint(VPackSlice json, S2LatLng& point) const {
-  VPackSlice latitude, longitude;
+bool GeoPointAnalyzer::parsePoint(velocypack::Slice json,
+                                  S2LatLng& point) const {
+  velocypack::Slice lat, lng;
   if (_fromArray) {
-    if (!json.isArray() || json.length() < 2) {
+    if (!json.isArray()) {
       return false;
     }
-
-    latitude = json.at(0);
-    longitude = json.at(1);
+    velocypack::ArrayIterator it{json};
+    if (it.size() != 2) {
+      return false;
+    }
+    lat = *it;
+    it.next();
+    lng = *it;
   } else {
-    latitude = json.get(_latitude);
-    longitude = json.get(_longitude);
+    lat = json.get(_latitude);
+    lng = json.get(_longitude);
   }
-
-  return iresearch::parsePoint(latitude, longitude, point);
+  if (ADB_UNLIKELY(!lat.isNumber<double>() || !lng.isNumber<double>())) {
+    return false;
+  }
+  point =
+      S2LatLng::FromDegrees(lat.getNumber<double>(), lng.getNumber<double>())
+          .Normalized();
+  return true;
 }
 
 bool GeoPointAnalyzer::reset(std::string_view value) {
