@@ -321,6 +321,9 @@ auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
       }
     })();
 
+    // The DocumentFollowerState does not synchronize calls to `release()` with
+    // resigning (see https://github.com/arangodb/arangodb/pull/17850).
+    // It relies on this method to throw an exception in that case.
     throw replicated_log::ParticipantResignedException(errorCode, ADB_HERE);
   }
 }
