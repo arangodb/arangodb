@@ -144,6 +144,9 @@ struct StreamProxy : Interface<typename ReplicatedStateTraits<S>::EntryType> {
       -> futures::Future<std::unique_ptr<Iterator>> override;
 
   auto release(LogIndex index) -> void override;
+
+ protected:
+  [[noreturn]] static void throwResignedException();
 };
 
 template<typename S>
@@ -154,33 +157,16 @@ struct ProducerStreamProxy
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   using Serializer = typename ReplicatedStateTraits<S>::Serializer;
   explicit ProducerStreamProxy(
-      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
-      : StreamProxy<S, streams::ProducerStream,
-                    replicated_log::IReplicatedLogLeaderMethods>(
-            std::move(methods)) {
-    ADB_PROD_ASSERT(this->_logMethods != nullptr);
-  }
+      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods);
 
   // TODO waitForSync parameter is missing
-  auto insert(EntryType const& v) -> LogIndex override {
-    ADB_PROD_ASSERT(this->_logMethods != nullptr);
-    return this->_logMethods->insert(serialize(v));
-  }
+  auto insert(EntryType const& v) -> LogIndex override;
 
   auto insertDeferred(EntryType const& v)
-      -> std::pair<LogIndex, DeferredAction> override {
-    // TODO Remove this method, it should be superfluous
-    return this->_logMethods->insertDeferred(serialize(v));
-  }
+      -> std::pair<LogIndex, DeferredAction> override;
 
  private:
-  auto serialize(EntryType const& v) -> LogPayload {
-    auto builder = velocypack::Builder();
-    std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
-    // TODO avoid the copy
-    auto payload = LogPayload::createFromSlice(builder.slice());
-    return payload;
-  }
+  auto serialize(EntryType const& v) -> LogPayload;
 };
 
 template<typename S>

@@ -302,31 +302,75 @@ auto StreamProxy<S, Interface, ILogMethodsT>::release(LogIndex index) -> void {
   if (_logMethods != nullptr) [[likely]] {
     _logMethods->releaseIndex(index);
   } else {
-    static constexpr auto errorCode = ([]() consteval->ErrorCode {
-      if constexpr (std::is_same_v<
-                        ILogMethodsT,
-                        replicated_log::IReplicatedLogLeaderMethods>) {
-        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-      } else if constexpr (std::is_same_v<
-                               ILogMethodsT,
-                               replicated_log::IReplicatedLogMethodsBase>) {
-        return TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED;
-      } else {
-        []<bool flag = false>() {
-          static_assert(flag,
-                        "Unhandled log methods. This should have been "
-                        "prevented by the concept ValidStreamLogMethods.");
-        }
-        ();
-        ADB_PROD_ASSERT(false);
-      }
-    })();
-
-    // The DocumentFollowerState does not synchronize calls to `release()` with
-    // resigning (see https://github.com/arangodb/arangodb/pull/17850).
-    // It relies on this method to throw an exception in that case.
-    throw replicated_log::ParticipantResignedException(errorCode, ADB_HERE);
+    throwResignedException();
   }
+}
+
+template<typename S, template<typename> typename Interface,
+         ValidStreamLogMethods ILogMethodsT>
+void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
+  static constexpr auto errorCode = ([]() consteval->ErrorCode {
+    if constexpr (std::is_same_v<ILogMethodsT,
+                                 replicated_log::IReplicatedLogLeaderMethods>) {
+      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+    } else if constexpr (std::is_same_v<
+                             ILogMethodsT,
+                             replicated_log::IReplicatedLogMethodsBase>) {
+      return TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED;
+    } else {
+      []<bool flag = false>() {
+        static_assert(flag,
+                      "Unhandled log methods. This should have been "
+                      "prevented by the concept ValidStreamLogMethods.");
+      }
+      ();
+      ADB_PROD_ASSERT(false);
+    }
+  })();
+
+  // The DocumentStates do not synchronize calls to `release()` or `insert()` on
+  // the stream with resigning (see
+  // https://github.com/arangodb/arangodb/pull/17850).
+  // It relies on the stream throwing an exception in that case.
+  throw replicated_log::ParticipantResignedException(errorCode, ADB_HERE);
+}
+
+template<typename S>
+ProducerStreamProxy<S>::ProducerStreamProxy(
+    std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
+    : StreamProxy<S, streams::ProducerStream,
+                  replicated_log::IReplicatedLogLeaderMethods>(
+          std::move(methods)) {
+  ADB_PROD_ASSERT(this->_logMethods != nullptr);
+}
+
+template<typename S>
+auto ProducerStreamProxy<S>::insert(const EntryType& v) -> LogIndex {
+  if (this->_logMethods != nullptr) [[likely]] {
+    return this->_logMethods->insert(serialize(v));
+  } else {
+    this->throwResignedException();
+  }
+}
+
+template<typename S>
+auto ProducerStreamProxy<S>::insertDeferred(const EntryType& v)
+    -> std::pair<LogIndex, DeferredAction> {
+  // TODO Remove this method, it should be superfluous
+  if (this->_logMethods != nullptr) [[likely]] {
+    return this->_logMethods->insertDeferred(serialize(v));
+  } else {
+    this->throwResignedException();
+  }
+}
+
+template<typename S>
+auto ProducerStreamProxy<S>::serialize(const EntryType& v) -> LogPayload {
+  auto builder = velocypack::Builder();
+  std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
+  // TODO avoid the copy
+  auto payload = LogPayload::createFromSlice(builder.slice());
+  return payload;
 }
 
 template<typename S>
