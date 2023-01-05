@@ -274,8 +274,9 @@ template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface, ILogMethodsT>::waitFor(LogIndex index)
     -> futures::Future<WaitForResult> {
-  // TODO As far as I can tell right now, we can get rid of this:
-  //      Delete this, also in streams::Stream.
+  // TODO We might want to remove waitFor here, in favor of updateCommitIndex.
+  //      It's currently used by DocumentLeaderState::replicateOperation.
+  //      If this is removed, delete it also in streams::Stream.
   return _logMethods->waitFor(index).thenValue(
       [](auto const&) { return WaitForResult(); });
 }
