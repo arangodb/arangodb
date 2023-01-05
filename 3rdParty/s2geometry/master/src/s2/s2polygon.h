@@ -701,7 +701,6 @@ class S2Polygon final : public S2Region {
   S2Polygon* Clone() const override;
   S2Cap GetCapBound() const override;  // Cap surrounding rect bound.
   S2LatLngRect GetRectBound() const override { return bound_; }
-  S2LatLngRect GetSubRegionBound() const { return subregion_bound_; }
   void GetCellUnionBound(std::vector<S2CellId> *cell_ids) const override;
 
   bool Contains(const S2Cell& cell) const override;
@@ -1010,10 +1009,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
     }
   } else {
     i = prev_loop_.load(std::memory_order_relaxed);
-    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
+    if (e >= start[i] && e < start[i + 1]) {
       // This edge belongs to the same loop as the previous call.
     } else {
-      if (e == static_cast<int>(start[i + 1])) {
+      if (e == start[i + 1]) {
         // This edge immediately follows the loop from the previous call.
         // Note that S2Polygon does not allow empty loops.
         ++i;

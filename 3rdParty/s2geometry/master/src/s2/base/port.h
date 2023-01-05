@@ -59,15 +59,6 @@
 #undef ERROR
 #undef DELETE
 #undef DIFFERENCE
-#undef S_IRUSR
-#undef S_IWUSR
-#undef S_IXUSR
-#undef S_IRGRP
-#undef S_IWGRP
-#undef S_IXGRP
-#undef S_IROTH
-#undef S_IWOTH
-#undef S_IXOTH
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2

@@ -495,7 +495,7 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
                 "Decoder must be trivially copy-assignable");
   static_assert(absl::is_trivially_destructible<Decoder>::value,
                 "Decoder must be trivially destructible");
-  std::memset(static_cast<void*>(array), 0, num_decoders * sizeof(Decoder));
+  std::memset(array, 0, num_decoders * sizeof(Decoder));
 }
 
 inline unsigned char Decoder::get8() {
