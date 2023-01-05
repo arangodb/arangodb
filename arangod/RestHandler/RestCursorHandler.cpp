@@ -736,13 +736,10 @@ RestStatus RestCursorHandler::showLastBatchRetry() {
   std::stringstream batchSuffix(suffixes[1]);
   batchSuffix >> batchId;
 
-  // VPackBuilder builder;
   auto const r = _cursor->getLastBatchResult(batchId, builder);
 
   if (r.ok()) {
     _response->setContentType(rest::ContentType::JSON);
-    //  generateResult(rest::ResponseCode::OK, std::move(buffer),
-    //  std::move(ctx));
     generateResult(rest::ResponseCode::OK, std::move(*(builder.buffer().get())),
                    std::move(ctx));
   } else {
