@@ -260,13 +260,14 @@ endif()
 # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
 # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
 # target_link_libraries(<target_name> s2)
-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Add version information to the target
 set_target_properties(s2 PROPERTIES
     SOVERSION ${PROJECT_VERSION_MAJOR}
     VERSION ${PROJECT_VERSION})
 
+#[[
 # We don't need to install all headers, only those
 # transitively included by s2 headers we are exporting.
 install(FILES src/s2/_fp_contract_off.h
@@ -438,6 +439,7 @@ install(TARGETS ${S2_TARGETS}
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+]]
 
 message("GTEST_ROOT: ${GTEST_ROOT}")
 if (GTEST_ROOT)
