@@ -43,9 +43,12 @@ typedef std::string ServerShortName;  // Short name of a server
 
 class RebootId {
  public:
+  using value_type = uint64_t;
+
   explicit constexpr RebootId() noexcept = delete;
-  explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
-  [[nodiscard]] uint64_t value() const noexcept { return _value; }
+  explicit constexpr RebootId(value_type rebootId) noexcept
+      : _value(rebootId) {}
+  [[nodiscard]] value_type value() const noexcept { return _value; }
 
   [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
 
@@ -69,13 +72,13 @@ class RebootId {
   }
 
   [[nodiscard]] static constexpr RebootId max() noexcept {
-    return RebootId{std::numeric_limits<decltype(_value)>::max()};
+    return RebootId{std::numeric_limits<value_type>::max()};
   }
 
   std::ostream& print(std::ostream& o) const;
 
  private:
-  uint64_t _value{};
+  value_type _value{};
 };
 
 template<class Inspector>

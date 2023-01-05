@@ -83,159 +83,6 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
               !distributeId.empty()));
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
-  // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-
-  std::unique_lock<std::mutex> guard(_communicationMutex);
-
-  if (_requestInFlight) {
-    // Already sent a getSome request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, nullptr};
-  }
-
-  // For every call we simply forward via HTTP
-  if (_lastError.fail()) {
-    TRI_ASSERT(_lastResponse == nullptr);
-    Result res = std::move(_lastError);
-    _lastError.reset();
-    // we were called with an error need to throw it.
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  if (_lastResponse != nullptr) {
-    TRI_ASSERT(_lastError.ok());
-    // We do not have an error but a result, all is good
-    // We have an open result still.
-    auto response = std::move(_lastResponse);
-    // Result is the response which will be a serialized AqlItemBlock
-
-    // both must be reset before return or throw
-    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
-
-    VPackSlice responseBody = response->slice();
-
-    if (!responseBody.hasKey("data")) {
-      return {ExecutionState::DONE, nullptr};
-    }
-
-    ExecutionState state = ExecutionState::HASMORE;
-    if (VelocyPackHelper::getBooleanValue(responseBody, "done", true)) {
-      state = ExecutionState::DONE;
-    }
-    return {state,
-            _engine->itemBlockManager().requestAndInitBlock(responseBody)};
-  }
-
-  // We need to send a request here
-  VPackBuffer<uint8_t> buffer;
-  {
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add("atMost", VPackValue(atMost));
-    builder.close();
-    traceGetSomeRequest(builder.slice(), atMost);
-  }
-
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome",
-                              std::move(buffer));
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return {ExecutionState::WAITING, nullptr};
-}
-
-std::pair<ExecutionState, size_t>
-ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
-  std::unique_lock<std::mutex> guard(_communicationMutex);
-
-  if (_requestInFlight) {
-    // Already sent a shutdown request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, 0};
-  }
-
-  if (_lastError.fail()) {
-    TRI_ASSERT(_lastResponse == nullptr);
-    Result res = _lastError;
-    _lastError.reset();
-    // we were called with an error need to throw it.
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-
-  if (_lastResponse != nullptr) {
-    TRI_ASSERT(_lastError.ok());
-    TRI_ASSERT(_requestInFlight == false);
-
-    // We have an open result still.
-    // Result is the response which will be a serialized AqlItemBlock
-    auto response = std::move(_lastResponse);
-
-    // both must be reset before return or throw
-    TRI_ASSERT(_lastError.ok() && _lastResponse == nullptr);
-
-    VPackSlice slice = response->slice();
-
-    if (!slice.hasKey(StaticStrings::Error) ||
-        slice.get(StaticStrings::Error).getBoolean()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-    }
-    size_t skipped = 0;
-    VPackSlice s = slice.get("skipped");
-    if (s.isNumber()) {
-      auto value = s.getNumericValue<int64_t>();
-      if (value < 0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "skipped cannot be negative");
-      }
-      skipped = s.getNumericValue<size_t>();
-    }
-
-    // TODO Check if we can get better with HASMORE/DONE
-    if (skipped == 0) {
-      return {ExecutionState::DONE, skipped};
-    }
-    return {ExecutionState::HASMORE, skipped};
-  }
-
-  // For every call we simply forward via HTTP
-
-  VPackBuffer<uint8_t> buffer;
-  {
-    VPackBuilder builder(buffer);
-    builder.openObject(/*unindexed*/ true);
-    builder.add("atMost", VPackValue(atMost));
-    builder.close();
-    traceSkipSomeRequest(builder.slice(), atMost);
-  }
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/skipSome",
-                              std::move(buffer));
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return {ExecutionState::WAITING, 0};
-}
-
 std::pair<ExecutionState, Result> ExecutionBlockImpl<
     RemoteExecutor>::initializeCursor(InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
@@ -415,7 +262,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
 }
 
 auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(
-    VPackSlice const slice) const -> ResultT<AqlExecuteResult> {
+    VPackSlice slice) const -> ResultT<AqlExecuteResult> {
   // Errors should have been caught earlier
   TRI_ASSERT(TRI_ERROR_NO_ERROR ==
              VelocyPackHelper::getNumericValue<ErrorCode>(
@@ -572,26 +419,6 @@ void ExecutionBlockImpl<RemoteExecutor>::traceExecuteRequest(
     // only stringify if profile level requires us
     using namespace std::string_literals;
     traceRequest("execute", slice, "callStack="s + callStack.toString());
-  }
-}
-
-void ExecutionBlockImpl<RemoteExecutor>::traceGetSomeRequest(VPackSlice slice,
-                                                             size_t atMost) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
-    // only stringify if profile level requires us
-    using namespace std::string_literals;
-    traceRequest("getSome", slice, "atMost="s + std::to_string(atMost));
-  }
-}
-
-void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice slice,
-                                                              size_t atMost) {
-  if (_profileLevel == ProfileLevel::TraceOne ||
-      _profileLevel == ProfileLevel::TraceTwo) {
-    // only stringify if profile level requires us
-    using namespace std::string_literals;
-    traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
   }
 }
 
