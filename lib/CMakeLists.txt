@@ -63,6 +63,7 @@ add_library(arango_lightweight STATIC
         Basics/RebootId.cpp Basics/RebootId.h
         Basics/Result.cpp
         Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
+        Basics/SHA256Functor.cpp Basics/SHA256Functor.h
         Basics/StringBuffer.cpp
         Basics/StringHeap.cpp
         Basics/StringUtils.cpp
