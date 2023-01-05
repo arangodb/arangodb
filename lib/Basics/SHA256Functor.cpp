@@ -28,21 +28,13 @@
 #include <openssl/evp.h>
 
 TRI_SHA256Functor::TRI_SHA256Functor()
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     : _context(EVP_MD_CTX_new()) {
-#else
-    : _context(EVP_MD_CTX_create()) {
-#endif
   auto* context = static_cast<EVP_MD_CTX*>(_context);
   if (context == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (EVP_DigestInit_ex(context, EVP_sha256(), nullptr) == 0) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     EVP_MD_CTX_free(context);
-#else
-    EVP_MD_CTX_destroy(_context);
-#endif
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to initialize SHA256 processor");
   }
@@ -50,11 +42,7 @@ TRI_SHA256Functor::TRI_SHA256Functor()
 
 TRI_SHA256Functor::~TRI_SHA256Functor() {
   auto* context = static_cast<EVP_MD_CTX*>(_context);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   EVP_MD_CTX_free(context);
-#else
-  EVP_MD_CTX_destroy(context);
-#endif
 }
 
 bool TRI_SHA256Functor::operator()(char const* data, size_t size) noexcept {
