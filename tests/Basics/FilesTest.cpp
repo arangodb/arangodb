@@ -25,6 +25,7 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/SHA256Functor.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"

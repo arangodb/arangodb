@@ -112,6 +112,10 @@
 #include "V8/v8-vpack.h"
 #include "V8/v8-deadline.h"
 
+#if defined(USE_ENTERPRISE)
+#include "Basics/files-slurp-decrypt.h"
+#endif
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif

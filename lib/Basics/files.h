@@ -237,16 +237,6 @@ bool TRI_ProcessFile(
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 
-#ifdef USE_ENTERPRISE
-////////////////////////////////////////////////////////////////////////////////
-/// @brief slurps in a file that is encrypted and return unencrypted contents
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature,
-                           char const* filename, char const* keyfile,
-                           size_t* length);
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
@@ -442,17 +432,3 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
 
 bool TRI_GETENV(char const* which, std::string& value);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief functor for generating a SHA256.  Use with TRI_ProcessFiles.
-///        you need to wrap your TRI_SHA256Functor object within std::ref().
-////////////////////////////////////////////////////////////////////////////////
-struct TRI_SHA256Functor {
-  TRI_SHA256Functor();
-  ~TRI_SHA256Functor();
-
-  bool operator()(char const* data, size_t size) noexcept;
-
-  std::string finalize();
-
-  void* _context;
-};  // struct TRI_SHA256Functor

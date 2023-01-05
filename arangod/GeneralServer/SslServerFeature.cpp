@@ -45,6 +45,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/SHA256Functor.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
