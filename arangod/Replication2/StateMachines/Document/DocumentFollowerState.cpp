@@ -100,7 +100,7 @@ auto DocumentFollowerState::applyEntries(
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {
-          auto releaseIndex = std::make_optional<LogIndex>();
+          std::optional<LogIndex> releaseIndex{std::nullopt};
 
           while (auto entry = ptr->next()) {
             auto doc = entry->second;
@@ -115,17 +115,13 @@ auto DocumentFollowerState::applyEntries(
 
             if (doc.operation == OperationType::kAbortAllOngoingTrx) {
               self->_activeTransactions.clear();
-              if (!releaseIndex.has_value() ||
-                  releaseIndex.value() < entry->first) {
-                releaseIndex = entry->first;
-              }
+              releaseIndex =
+                  self->_activeTransactions.getReleaseIndex(entry->first);
             } else if (doc.operation == OperationType::kCommit ||
                        doc.operation == OperationType::kAbort) {
               self->_activeTransactions.erase(doc.tid);
-              if (!releaseIndex.has_value() ||
-                  releaseIndex.value() < entry->first) {
-                releaseIndex = entry->first;
-              }
+              releaseIndex =
+                  self->_activeTransactions.getReleaseIndex(entry->first);
             } else {
               self->_activeTransactions.emplace(doc.tid, entry->first);
             }

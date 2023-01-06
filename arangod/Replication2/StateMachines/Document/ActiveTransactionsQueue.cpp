@@ -53,6 +53,9 @@ bool ActiveTransactionsQueue::erase(TransactionId const& tid) {
     return false;
   }
 
+  // Locate the transaction with that specific log index, corresponding to when
+  // tid was first created. Then, mark it as inactive.
+  // This assumes that the log indices are always given in increasing order.
   auto deactivateIdx =
       std::lower_bound(std::begin(_logIndices), std::end(_logIndices),
                        std::make_pair(it->second, Status::kActive));
