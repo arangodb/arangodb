@@ -427,12 +427,10 @@ const replicatedStateIntermediateCommitsSuite = function() {
     },
 
     testIntermediateCommitsFull: function(testName) {
-      print("start query");
       db._query(`
       FOR i in 0..2000 
       INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`,
         {}, {intermediateCommitCount: 1});
-      print("query done");
       let keys = [];
       for (let i = 0; i <= 2000; ++i) {
         keys.push(`test${i}`);

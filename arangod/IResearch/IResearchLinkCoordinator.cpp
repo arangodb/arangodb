@@ -22,7 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -30,7 +30,6 @@
 #include <memory>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -46,41 +45,15 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace {
-
-using namespace arangodb;
-
-ClusterEngineType getEngineType(ArangodServer& server) {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  // during the unit tests there is a mock storage engine which cannot be casted
-  // to a ClusterEngine at all. the only sensible way to find out the engine
-  // type is to try a dynamic_cast here and assume the MockEngine if the cast
-  // goes wrong
-  auto& engine = server.getFeature<EngineSelectorFeature>().engine();
-  auto cast = dynamic_cast<ClusterEngine*>(&engine);
-  if (cast != nullptr) {
-    return cast->engineType();
-  }
-  return ClusterEngineType::MockEngine;
-#else
-  return server.getFeature<arangodb::EngineSelectorFeature>()
-      .engine<arangodb::ClusterEngine>()
-      .engineType();
-#endif
-}
-
-}  // namespace
+#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 
 IResearchLinkCoordinator::IResearchLinkCoordinator(
     IndexId id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(
-          id, collection, ::getEngineType(collection.vocbase().server()),
-          arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-          IResearchLinkHelper::emptyIndexSlice(0)
-              .slice()),  // we don`t have objectId`s on coordinator
-      IResearchLink(id, collection) {
+    :  // we don`t have objectId`s on coordinator
+      Index{id, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()},
+      IResearchLink{collection.vocbase().server()} {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -100,7 +73,7 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
 }
 
 IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
-  auto& cmf = Index::collection()
+  auto& cmf = collection()
                   .vocbase()
                   .server()
                   .getFeature<metrics::ClusterMetricsFeature>();
@@ -126,11 +99,11 @@ void IResearchLinkCoordinator::toVelocyPack(
     velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(Result(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+        absl::StrCat("failed to generate link definition for "
+                     "arangosearch view Cluster link '",
+                     id().id(), "'"));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -138,11 +111,10 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "Cluster link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("failed to generate link definition "
+                                         "for arangosearch view Cluster link '",
+                                         id().id(), "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

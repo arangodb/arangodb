@@ -25,6 +25,7 @@
 
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
+#include "absl/strings/str_cat.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

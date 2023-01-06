@@ -81,7 +81,7 @@ if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
-	target_link_libraries(arango_rocksdb
+  target_link_libraries(arango_rocksdb
     arango_rclone)
 endif()
 

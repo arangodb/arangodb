@@ -112,11 +112,20 @@ struct ReplicatedStateBase {
       -> std::shared_ptr<IReplicatedFollowerStateBase> = 0;
 };
 
+// The streams for follower states use IReplicatedLogMethodsBase, while the
+// leader ones use IReplicatedLogLeaderMethods.
+template<class ILogMethodsT>
+concept ValidStreamLogMethods =
+    std::is_same_v<ILogMethodsT, replicated_log::IReplicatedLogMethodsBase> ||
+    std::is_same_v<ILogMethodsT, replicated_log::IReplicatedLogLeaderMethods>;
+
 // TODO Clean this up, starting with trimming Stream to its minimum
-template<typename EntryType, typename Deserializer,
-         template<typename> typename Interface = streams::Stream,
-         typename ILogMethodsT = replicated_log::IReplicatedLogMethodsBase>
-struct StreamProxy : Interface<EntryType> {
+template<typename S, template<typename> typename Interface = streams::Stream,
+         ValidStreamLogMethods ILogMethodsT =
+             replicated_log::IReplicatedLogMethodsBase>
+struct StreamProxy : Interface<typename ReplicatedStateTraits<S>::EntryType> {
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   using WaitForResult = typename streams::Stream<EntryType>::WaitForResult;
   using Iterator = typename streams::Stream<EntryType>::Iterator;
 
@@ -124,61 +133,40 @@ struct StreamProxy : Interface<EntryType> {
   std::unique_ptr<ILogMethodsT> _logMethods;
 
  public:
-  explicit StreamProxy(std::unique_ptr<ILogMethodsT> methods)
-      : _logMethods(std::move(methods)) {}
+  explicit StreamProxy(std::unique_ptr<ILogMethodsT> methods);
 
-  auto methods() -> auto& { return *this->_logMethods; }
+  auto methods() -> auto&;
 
-  auto resign() && -> decltype(this->_logMethods) {
-    return std::move(this->_logMethods);
-  }
+  auto resign() && -> decltype(_logMethods);
 
-  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override {
-    // TODO As far as I can tell right now, we can get rid of this:
-    //      Delete this, also in streams::Stream.
-    return _logMethods->waitFor(index).thenValue(
-        [](auto const&) { return WaitForResult(); });
-  }
+  auto waitFor(LogIndex index) -> futures::Future<WaitForResult> override;
   auto waitForIterator(LogIndex index)
       -> futures::Future<std::unique_ptr<Iterator>> override;
 
-  auto release(LogIndex index) -> void override {
-    _logMethods->releaseIndex(index);
-  }
+  auto release(LogIndex index) -> void override;
+
+ protected:
+  [[noreturn]] static void throwResignedException();
 };
 
-template<typename EntryType, typename Deserializer, typename Serializer>
+template<typename S>
 struct ProducerStreamProxy
-    : StreamProxy<EntryType, Deserializer, streams::ProducerStream,
+    : StreamProxy<S, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods> {
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
+  using Serializer = typename ReplicatedStateTraits<S>::Serializer;
   explicit ProducerStreamProxy(
-      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods)
-      : StreamProxy<EntryType, Deserializer, streams::ProducerStream,
-                    replicated_log::IReplicatedLogLeaderMethods>(
-            std::move(methods)) {
-    ADB_PROD_ASSERT(this->_logMethods != nullptr);
-  }
+      std::unique_ptr<replicated_log::IReplicatedLogLeaderMethods> methods);
 
   // TODO waitForSync parameter is missing
-  auto insert(EntryType const& v) -> LogIndex override {
-    ADB_PROD_ASSERT(this->_logMethods != nullptr);
-    return this->_logMethods->insert(serialize(v));
-  }
+  auto insert(EntryType const& v) -> LogIndex override;
 
   auto insertDeferred(EntryType const& v)
-      -> std::pair<LogIndex, DeferredAction> override {
-    // TODO Remove this method, it should be superfluous
-    return this->_logMethods->insertDeferred(serialize(v));
-  }
+      -> std::pair<LogIndex, DeferredAction> override;
 
  private:
-  auto serialize(EntryType const& v) -> LogPayload {
-    auto builder = velocypack::Builder();
-    std::invoke(Serializer{}, streams::serializer_tag<EntryType>, v, builder);
-    // TODO avoid the copy
-    auto payload = LogPayload::createFromSlice(builder.slice());
-    return payload;
-  }
+  auto serialize(EntryType const& v) -> LogPayload;
 };
 
 template<typename S>
@@ -188,12 +176,13 @@ struct LeaderStateManager
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
   using Serializer = typename ReplicatedStateTraits<S>::Serializer;
+  using StreamImpl = ProducerStreamProxy<S>;
+
   explicit LeaderStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedLeaderState<S>> leaderState,
-      std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
-          stream);
+      std::shared_ptr<StreamImpl> stream);
 
   void recoverEntries();
   void updateCommitIndex(LogIndex index) noexcept {
@@ -219,8 +208,7 @@ struct LeaderStateManager
     LoggerContext const& _loggerContext;
     ReplicatedStateMetrics const& _metrics;
     std::shared_ptr<IReplicatedLeaderState<S>> _leaderState;
-    std::shared_ptr<ProducerStreamProxy<EntryType, Deserializer, Serializer>>
-        _stream;
+    std::shared_ptr<StreamImpl> _stream;
   };
   Guarded<GuardedData> _guardedData;
 };
@@ -232,11 +220,13 @@ struct FollowerStateManager
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
+  using StreamImpl = StreamProxy<S>;
+
   explicit FollowerStateManager(
       LoggerContext loggerContext,
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
-      std::shared_ptr<StreamProxy<EntryType, Deserializer>> stream);
+      std::shared_ptr<StreamImpl> stream);
   void acquireSnapshot(ServerID leader, LogIndex index);
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
@@ -269,7 +259,7 @@ struct FollowerStateManager
     void clearSnapshotErrors() noexcept;
 
     std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
-    std::shared_ptr<StreamProxy<EntryType, Deserializer>> _stream;
+    std::shared_ptr<StreamImpl> _stream;
     std::unique_ptr<replicated_log::IReplicatedLogFollowerMethods>
         _logMethods{};
     WaitForQueue _waitQueue{};

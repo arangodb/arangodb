@@ -82,7 +82,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
-  Aql/AqlItemMatrixTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
@@ -301,7 +300,7 @@ add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_test(NAME arangodbtests
-	 COMMAND arangodbtests)
+  COMMAND arangodbtests)
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)

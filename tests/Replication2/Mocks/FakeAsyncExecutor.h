@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include "RocksDBEngine/RocksDBPersistedLog.h"
+#include <deque>
+#include <thread>
 
 namespace arangodb::replication2::test {
 

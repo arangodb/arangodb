@@ -18,27 +18,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Ellipsoid.h"
+#pragma once
 
-#include <cstring>
+#include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
+
+#include <memory>
+#include <vector>
 
 namespace arangodb {
-namespace geo {
-namespace utils {
+class Index;
 
-Ellipsoid const& ellipsoidFromString(const char* ptr, size_t len) {
-  if (len == 5 && memcmp(ptr, "wgs84", 5) == 0) {
-    return WGS84_ELLIPSOID;
-  }
-  if (len == 6 && memcmp(ptr, "sphere", 6) == 0) {
-    return SPHERE;
-  }
-  return SPHERE;
-}
+class IndexesSnapshot {
+ public:
+  explicit IndexesSnapshot(RecursiveReadLocker<basics::ReadWriteLock>&& locker,
+                           std::vector<std::shared_ptr<Index>> indexes);
+  ~IndexesSnapshot();
 
-}  // namespace utils
-}  // namespace geo
+  IndexesSnapshot(IndexesSnapshot const& other) = delete;
+  IndexesSnapshot& operator=(IndexesSnapshot const& other) = delete;
+  IndexesSnapshot(IndexesSnapshot&& other) = default;
+  IndexesSnapshot& operator=(IndexesSnapshot&& other) = delete;
+
+  std::vector<std::shared_ptr<Index>> const& getIndexes() const noexcept;
+  void release();
+
+  bool hasSecondaryIndex() const noexcept;
+
+ private:
+  RecursiveReadLocker<basics::ReadWriteLock> _locker;
+  std::vector<std::shared_ptr<Index>> _indexes;
+  bool _valid;
+};
+
 }  // namespace arangodb

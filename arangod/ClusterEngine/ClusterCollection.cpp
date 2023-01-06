@@ -38,22 +38,18 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/LogMacros.h"
-#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
 
 namespace arangodb {
 
@@ -141,14 +137,16 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
   TRI_ASSERT(_info.isClosed());
 
   // notify all indexes about the properties change for the collection
-  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-  for (auto& idx : _indexes) {
+  auto indexesSnapshot = getIndexesSnapshot();
+  auto const& indexes = indexesSnapshot.getIndexes();
+  for (auto& idx : indexes) {
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
     if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
-      static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
+      std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
+          _info.slice());
     }
   }
 
@@ -286,25 +284,28 @@ Result ClusterCollection::lookupDocument(
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::insert(transaction::Methods&, RevisionId,
-                                 velocypack::Slice, OperationOptions const&) {
+Result ClusterCollection::insert(transaction::Methods&, IndexesSnapshot const&,
+                                 RevisionId, velocypack::Slice,
+                                 OperationOptions const&) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::update(transaction::Methods&, LocalDocumentId,
-                                 RevisionId, velocypack::Slice, RevisionId,
-                                 velocypack::Slice, OperationOptions const&) {
+Result ClusterCollection::update(transaction::Methods&, IndexesSnapshot const&,
+                                 LocalDocumentId, RevisionId, velocypack::Slice,
+                                 RevisionId, velocypack::Slice,
+                                 OperationOptions const&) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::replace(transaction::Methods&, LocalDocumentId,
-                                  RevisionId, velocypack::Slice, RevisionId,
+Result ClusterCollection::replace(transaction::Methods&, IndexesSnapshot const&,
+                                  LocalDocumentId, RevisionId,
+                                  velocypack::Slice, RevisionId,
                                   velocypack::Slice, OperationOptions const&) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::remove(transaction::Methods&, LocalDocumentId,
-                                 RevisionId, velocypack::Slice,
+Result ClusterCollection::remove(transaction::Methods&, IndexesSnapshot const&,
+                                 LocalDocumentId, RevisionId, velocypack::Slice,
                                  OperationOptions const&) {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }

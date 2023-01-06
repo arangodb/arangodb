@@ -1172,8 +1172,9 @@ void PhysicalCollectionMock::getPropertiesVPack(
 }
 
 arangodb::Result PhysicalCollectionMock::insert(
-    arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
-    arangodb::velocypack::Slice newDocument,
+    arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
+    arangodb::RevisionId newRevisionId, arangodb::velocypack::Slice newDocument,
     arangodb::OperationOptions const& options) {
   before();
 
@@ -1377,6 +1378,7 @@ arangodb::Result PhysicalCollectionMock::lookupDocument(
 
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId previousDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
@@ -1405,6 +1407,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
 arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId newDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
@@ -1417,6 +1420,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
 arangodb::Result PhysicalCollectionMock::replace(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId newDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
