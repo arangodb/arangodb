@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor (database, data, stream) {
+function ArangoQueryCursor(database, data, stream) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -78,6 +78,7 @@ ArangoQueryCursor.prototype.toString = function () {
   }
 
   let result = '[object ArangoQueryCursor';
+
 
   if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
@@ -204,6 +205,7 @@ ArangoQueryCursor.prototype.next = function () {
   if (!this._hasNext) {
     throw 'No more results';
   }
+  const latestBatchId = this.data.nextBatchId;
 
   var result = this.data.result[this._pos];
   this._pos++;
@@ -219,7 +221,18 @@ ArangoQueryCursor.prototype.next = function () {
       // load more results
       var requestResult = this._database._connection.POST(this._baseurl(), null);
 
-      arangosh.checkRequestResult(requestResult);
+
+      try {
+        arangosh.checkRequestResult(requestResult);
+      } catch (err) {
+        if (latestBatchId !== undefined) {
+          requestResult = this._database._connection.POST(this._baseurl() + '/' + encodeURIComponent(latestBatchId), null);
+          arangosh.checkRequestResult(requestResult);
+        } else {
+          // throw the error again for the case in which the request to the latest batch is not retryable
+          throw(err);
+        }
+      }
 
       this.data = requestResult;
       this._count = requestResult.result.length;
@@ -237,7 +250,7 @@ ArangoQueryCursor.prototype.next = function () {
   return result;
 };
 
-ArangoQueryCursor.prototype[Symbol.iterator] = function * () {
+ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
   while (this._hasNext) {
     yield this.next();
   }
@@ -281,7 +294,7 @@ ArangoQueryCursor.prototype.count = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.getExtra = function () {
-  return this.data.extra || { };
+  return this.data.extra || {};
 };
 
 // //////////////////////////////////////////////////////////////////////////////

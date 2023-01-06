@@ -41,7 +41,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 
 using namespace arangodb;

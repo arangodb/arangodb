@@ -1237,7 +1237,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_non_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "stream": true, "count": true, "retriable": true};
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "retriable": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1308,7 +1308,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "stream": true, "retriable": true};
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "retriable": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1377,6 +1377,50 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
+    test_cursor_non_stream_retriable: function () {
+      const stmt = db._createStatement({
+        query: `FOR u IN ${cn} RETURN u`,
+        options: {stream: false, retriable: true},
+        batchSize: 100
+      });
+      let cursor = stmt.execute();
+      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+
+      // the batches in between will also be retrieved with `/_api/cursor/<cursorId>/<latestBatchId>` because
+      // the failure point is located in a place in which the server would return an error, hence not returning
+      // the batch response object to the user, but it would have been constructed, so the latest batch would be cached
+      for (let i = 0; i < 2001; ++i) {
+        const nextValue = cursor.next();
+        // last batch not returning will close the cursor, won't be able to fetch the latest batch
+        if (i === 1900) {
+          internal.debugClearFailAt();
+        }
+        assertEqual("test" + i, nextValue._key);
+        assertEqual(i !== 2000, cursor.hasNext());
+      }
+      assertFalse(cursor.hasNext());
+    },
+
+    test_cursor_stream_retriable: function () {
+      const stmt = db._createStatement({
+        query: `FOR u IN ${cn} RETURN u`,
+        options: {stream: true, retriable: true},
+        batchSize: 100
+      });
+      let cursor = stmt.execute();
+      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+
+      for (let i = 0; i < 2001; ++i) {
+        const nextValue = cursor.next();
+        // last batch not returning will close the cursor, won't be able to fetch the latest batch
+        if (i === 1900) {
+          internal.debugClearFailAt();
+        }
+        assertEqual("test" + i, nextValue._key);
+        assertEqual(i !== 2000, cursor.hasNext());
+      }
+      assertFalse(cursor.hasNext());
+    },
   };
 }
 

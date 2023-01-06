@@ -534,9 +534,8 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
         allowDirtyReads |= it.value.isTrue();
         _options->add(keyName, VPackValue(allowDirtyReads));
       }
-      if (keyName == "count" || keyName == "retriable" ||
-          keyName == "batchSize" || keyName == "ttl" || keyName == "stream" ||
-          (isStream && keyName == "fullCount")) {
+      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
+          keyName == "stream" || (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
         hasCache = true;  // don't honor if appears below
@@ -566,10 +565,6 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       _options->add("cache", VPackValue(val));
     }
   }
-
-  bool isRetriable =
-      VelocyPackHelper::getBooleanValue(slice, "retriable", false);
-  _options->add("retriable", VPackValue(isRetriable));
 
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
