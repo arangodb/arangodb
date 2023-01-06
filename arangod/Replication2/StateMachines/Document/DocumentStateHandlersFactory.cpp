@@ -22,9 +22,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
+#include "Replication2/StateMachines/Document/CollectionReader.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 
@@ -33,7 +35,6 @@
 #include "Transaction/ReplicatedContext.h"
 
 namespace arangodb::replication2::replicated_state::document {
-
 DocumentStateHandlersFactory::DocumentStateHandlersFactory(
     ArangodServer& server, AgencyCache& agencyCache,
     network::ConnectionPool* connectionPool,
@@ -56,6 +57,20 @@ auto DocumentStateHandlersFactory::createShardHandler(GlobalLogIdentifier gid)
                                                      _maintenanceFeature);
 }
 
+auto DocumentStateHandlersFactory::createSnapshotHandler(
+    GlobalLogIdentifier const& gid)
+    -> std::unique_ptr<IDocumentStateSnapshotHandler> {
+  auto* vocbase = _databaseFeature.lookupDatabase(gid.database);
+  if (vocbase == nullptr) {
+    LOG_TOPIC("52f26", ERR, Logger::REPLICATION2)
+        << "database " << gid.database
+        << " not found during creation of snapshot handler";
+    return nullptr;
+  }
+  return std::make_unique<DocumentStateSnapshotHandler>(
+      std::make_unique<CollectionReaderFactory>(*vocbase));
+}
+
 auto DocumentStateHandlersFactory::createTransactionHandler(
     GlobalLogIdentifier gid)
     -> std::unique_ptr<IDocumentStateTransactionHandler> {
@@ -76,9 +91,6 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
 auto DocumentStateHandlersFactory::createTransaction(
     DocumentLogEntry const& doc, IDatabaseGuard const& dbGuard)
     -> std::shared_ptr<IDocumentStateTransaction> {
-  TRI_ASSERT(doc.operation != OperationType::kCommit &&
-             doc.operation != OperationType::kAbort);
-
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;

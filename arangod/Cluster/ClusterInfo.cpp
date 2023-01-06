@@ -71,7 +71,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
@@ -563,10 +562,10 @@ void ClusterInfo::triggerBackgroundGetIds() {
 auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
     ClusterCollectionCreationInfo const& info, std::string const& databaseName)
-    -> replication2::replicated_state::agency::Target {
+    -> replication2::agency::LogTarget {
   using namespace replication2::replicated_state;
 
-  replication2::replicated_state::agency::Target spec;
+  replication2::agency::LogTarget spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
@@ -579,9 +578,7 @@ auto ClusterInfo::createDocumentStateSpec(
   spec.leader = serverIds.front();
 
   for (auto const& serverId : serverIds) {
-    spec.participants.emplace(
-        serverId,
-        replication2::replicated_state::agency::Target::Participant{});
+    spec.participants.emplace(serverId, replication2::ParticipantFlags{});
   }
 
   spec.config.writeConcern = info.writeConcern;
@@ -594,17 +591,17 @@ auto ClusterInfo::createDocumentStateSpec(
 
 auto ClusterInfo::waitForReplicatedStatesCreation(
     std::string const& databaseName,
-    std::vector<replication2::replicated_state::agency::Target> const&
-        replicatedStates) -> futures::Future<Result> {
+    std::vector<replication2::agency::LogTarget> const& replicatedStates)
+    -> futures::Future<Result> {
   auto replicatedStateMethods =
-      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          _server, databaseName);
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
 
   std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
   futureStates.reserve(replicatedStates.size());
   for (auto const& spec : replicatedStates) {
     futureStates.emplace_back(
-        replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+        replicatedStateMethods->waitForLogReady(spec.id, *spec.version));
   }
 
   // we need to define this here instead of using an inline lambda expression
@@ -624,7 +621,8 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
             for (auto& v : raftIndices) {
               maxIndex = std::max(maxIndex, v.get().get());
             }
-            return clusterInfo.waitForPlan(maxIndex);
+            return clusterInfo.fetchAndWaitForPlanVersion(
+                std::chrono::seconds{240});
           })
       .then([&appendErrorMessage](auto&& tryResult) {
         Result result =
@@ -644,14 +642,13 @@ auto ClusterInfo::deleteReplicatedStates(
     std::vector<replication2::LogId> const& replicatedStatesIds)
     -> futures::Future<Result> {
   auto replicatedStateMethods =
-      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          _server, databaseName);
+      arangodb::replication2::ReplicatedLogMethods::createInstance(databaseName,
+                                                                   _server);
 
   std::vector<futures::Future<Result>> deletedStates;
   deletedStates.reserve(replicatedStatesIds.size());
   for (auto const& id : replicatedStatesIds) {
-    deletedStates.emplace_back(
-        replicatedStateMethods->deleteReplicatedState(id));
+    deletedStates.emplace_back(replicatedStateMethods->deleteReplicatedLog(id));
   }
 
   return futures::collectAll(std::move(deletedStates))
@@ -3187,7 +3184,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyPrecondition> precs;
   containers::FlatHashSet<std::string> conditions;
   containers::FlatHashSet<ServerID> allServers;
-  std::vector<replication2::replicated_state::agency::Target> replicatedStates;
+  std::vector<replication2::agency::LogTarget> replicatedStates;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
@@ -3375,8 +3372,10 @@ Result ClusterInfo::createCollectionsCoordinator(
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
-        auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
-                                               databaseName, spec.id);
+        auto path = paths::aliases::target()
+                        ->replicatedLogs()
+                        ->database(databaseName)
+                        ->log(spec.id);
 
         opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
                                            std::move(builder)));
@@ -3491,12 +3490,11 @@ Result ClusterInfo::createCollectionsCoordinator(
       auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
       if (replicationVersion == replication::Version::TWO) {
         std::vector<replication2::LogId> stateIds;
-        std::transform(
-            replicatedStates.begin(), replicatedStates.end(),
-            std::back_inserter(stateIds),
-            [](replication2::replicated_state::agency::Target const& spec) {
-              return spec.id;
-            });
+        std::transform(replicatedStates.begin(), replicatedStates.end(),
+                       std::back_inserter(stateIds),
+                       [](replication2::agency::LogTarget const& spec) {
+                         return spec.id;
+                       });
 
         replicatedStatesCleanup =
             this->deleteReplicatedStates(databaseName, stateIds);
@@ -6143,7 +6141,7 @@ ClusterInfo::getResponsibleServerReplication2(std::string_view shardID) {
     }
 
     LOG_TOPIC("4fff5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication2: did not found leader,"
+        << "getResponsibleServerReplication2: did not find leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
@@ -6295,7 +6293,7 @@ bool ClusterInfo::getResponsibleServersReplication2(
     }
 
     LOG_TOPIC("0f8a7", INFO, Logger::CLUSTER)
-        << "getResponsibleServersReplication2: did not found leader,"
+        << "getResponsibleServersReplication2: did not find leader,"
         << "waiting for half a second...";
 
     if (tries >= 100 || !result.empty() || _server.isStopping()) {

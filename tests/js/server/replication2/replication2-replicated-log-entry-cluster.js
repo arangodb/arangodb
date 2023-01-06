@@ -75,11 +75,11 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 1);
       const [firstEntry] = head;
       assertEqual(firstEntry.logIndex, 1);
-      assertTrue([1,2].includes(firstEntry.logTerm));
+      assertTrue([1, 2].includes(firstEntry.logTerm));
       assertEqual(firstEntry.logPayload, undefined);
       assertTrue(firstEntry.meta !== undefined);
       const meta = firstEntry.meta;
-      assertEqual(meta.type, "FirstIndexOfTerm");
+      assertEqual(meta.type, "FirstEntryOfTerm");
       assertEqual(meta.leader, leader);
       assertEqual(meta.participants.generation, 1);
       assertEqual(Object.keys(meta.participants.participants).sort(), servers.sort());
@@ -106,7 +106,7 @@ const replicatedLogEntrySuite = function () {
       assertEqual(head.length, 2);
       const entry = head[1];
       assertEqual(entry.logIndex, 2);
-      assertTrue([1,2].includes(entry.logTerm));
+      assertTrue([1, 2].includes(entry.logTerm));
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;
@@ -114,6 +114,21 @@ const replicatedLogEntrySuite = function () {
       assertEqual(meta.leader, undefined);
       assertEqual(meta.participants.generation, 2);
       assertEqual(Object.keys(meta.participants.participants).sort(), servers.sort());
+      lh.replicatedLogDeleteTarget(database, logId);
+    },
+
+    testCheckPingLog: function () {
+      const {logId} = lh.createReplicatedLog(database, targetConfig);
+      waitForReplicatedLogAvailable(logId);
+      const result = db._replicatedLog(logId).ping("message");
+      assertEqual(result.index, 2);
+      const head = db._replicatedLog(logId).head();
+      assertEqual(head.length, 2);
+      const entry = head[1];
+      assertEqual(entry.logPayload, undefined);
+      assertTrue(entry.meta !== undefined);
+      const meta = entry.meta;
+      assertEqual(meta.type, "Ping");
       lh.replicatedLogDeleteTarget(database, logId);
     }
   };

@@ -400,8 +400,8 @@ void throwCollectionNotFound(std::string const& name) {
 void createBabiesError(VPackBuilder* builder,
                        std::unordered_map<ErrorCode, size_t>& countErrorCodes,
                        Result const& error) {
-  // on followers, builder will be a nullptr, so we can spare building
-  // the error result details in the response body, which the leader
+  // on replication1 followers, builder will be a nullptr, so we can spare
+  // building the error result details in the response body, which the leader
   // will ignore anyway.
   if (builder != nullptr) {
     // only build error detail results if we got a builder passed here.
@@ -637,7 +637,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _operationType(operationType),
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-            _indexesSnapshot.hasSecondaryIndex() || options.returnOld) {
+            _indexesSnapshot.hasSecondaryIndex() || options.returnOld),
+        _replicationVersion(collection.replicationVersion()) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
         this->_collection, operationName, this->_value, this->_options,
@@ -661,6 +662,15 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     _replicationData->openArray(true);
     std::unordered_map<ErrorCode, size_t> errorCounter;
     Result res;
+
+    // On replication2 we want to report all errors, even in the case of
+    // followers, for debugging purposes. On replication1, we avoid doing so,
+    // because it costs us extra network traffic, which is ignored by the leader
+    // anyway.
+    bool reportAllBabiesErrors =
+        _replicationVersion == replication::Version::TWO ||
+        _replicationType != Methods::ReplicationType::FOLLOWER;
+
     if (this->_value.isArray()) {
       this->_resultBuilder.openArray();
 
@@ -668,9 +678,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         res = this->self().processValue(s, true);
         if (res.fail()) {
           createBabiesError(
-              _replicationType == Methods::ReplicationType::FOLLOWER
-                  ? nullptr
-                  : &this->_resultBuilder,
+              reportAllBabiesErrors ? &this->_resultBuilder : nullptr,
               errorCounter, res);
           res.reset();
         }
@@ -694,8 +702,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     // early as possible
     _indexesSnapshot.release();
 
-    // on a follower, our result should always be an empty array or object
-    TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
+    // on a replication1 follower, our result should always be an empty array or
+    // object
+    TRI_ASSERT(_replicationVersion == replication::Version::TWO ||
+               _replicationType != Methods::ReplicationType::FOLLOWER ||
                (this->_value.isArray() &&
                 this->_resultBuilder.slice().isEmptyArray()) ||
                (this->_value.isObject() &&
@@ -703,7 +713,10 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     TRI_ASSERT(_replicationData->slice().isArray());
     TRI_ASSERT(_replicationType != Methods::ReplicationType::FOLLOWER ||
                _replicationData->slice().isEmptyArray());
-    TRI_ASSERT(!this->_value.isArray() || this->_options.silent ||
+    // On replication2, followers are expected to report babies errors
+    TRI_ASSERT((!this->_value.isArray() ||
+                _replicationVersion == replication::Version::TWO) ||
+               this->_options.silent ||
                this->_resultBuilder.slice().length() == this->_value.length())
         << "operation: " << _operationType
         << ", silent: " << this->_options.silent
@@ -717,7 +730,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     auto resDocs = this->_resultBuilder.steal();
     auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
-      auto replicationVersion = this->_collection.replicationVersion();
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       StorageEngine& engine = this->_collection.vocbase()
                                   .server()
@@ -731,7 +743,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
 
       if (!isMock && _replicationType == Methods::ReplicationType::LEADER &&
           (!_followers->empty() ||
-           replicationVersion == replication::Version::TWO) &&
+           _replicationVersion == replication::Version::TWO) &&
           !_replicationData->slice().isEmptyArray()) {
         // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
         // get here, in the single document case, we do not try to replicate
@@ -802,6 +814,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   bool _excludeAllFromReplication;
   // whether or not we need to read the previous document version
   bool _needToFetchOldDocument;
+  // whether we use replication 1 or 2
+  replication::Version _replicationVersion;
 };
 
 struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
@@ -2616,11 +2630,17 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       VPackObjectBuilder ob(&body);
       body.add("collection", collectionName);
     }
-    leaderState->replicateOperation(
-        body.sharedSlice(),
-        replication2::replicated_state::document::OperationType::kTruncate,
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
+    try {
+      leaderState->replicateOperation(
+          body.sharedSlice(),
+          replication2::replicated_state::document::OperationType::kTruncate,
+          state()->id(),
+          replication2::replicated_state::document::ReplicationOptions{});
+    } catch (basics::Exception const& e) {
+      return OperationResult(Result{e.code(), e.what()}, options);
+    } catch (std::exception const& e) {
+      return OperationResult(Result{TRI_ERROR_INTERNAL, e.what()}, options);
+    }
     return OperationResult{Result{}, options};
   }
 
@@ -3105,12 +3125,18 @@ Future<Result> Methods::replicateOperations(
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
-    leaderState->replicateOperation(
-        replicationData.sharedSlice(),
-        replication2::replicated_state::document::fromDocumentOperation(
-            operation),
-        state()->id(),
-        replication2::replicated_state::document::ReplicationOptions{});
+    try {
+      leaderState->replicateOperation(
+          replicationData.sharedSlice(),
+          replication2::replicated_state::document::fromDocumentOperation(
+              operation),
+          state()->id(),
+          replication2::replicated_state::document::ReplicationOptions{});
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.what()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
     return performIntermediateCommitIfRequired(collection->id());
   }
 

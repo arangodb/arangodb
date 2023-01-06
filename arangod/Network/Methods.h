@@ -24,9 +24,11 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "Futures/Future.h"
 #include "GeneralServer/RequestLane.h"
+#include "Inspection/VPack.h"
 #include "Network/ConnectionPool.h"
 #include "Network/types.h"
 
@@ -90,6 +92,15 @@ struct Response {
 
   // returns a slice of the payload if there was no error
   [[nodiscard]] velocypack::Slice slice() const noexcept;
+
+  template<typename T>
+  [[nodiscard]] auto deserialize() -> ResultT<T> {
+    if (auto res = combinedResult(); res.fail()) {
+      return res;
+    } else {
+      return velocypack::deserialize<T>(slice().get("result"));
+    }
+  }
 
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 

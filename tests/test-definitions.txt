@@ -83,7 +83,7 @@ load_balancing priority=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
 
 replication2_client cluster
-replication2_server cluster -- --dumpAgencyOnError true
+replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 cluster -- --dumpAgencyOnError true
 resilience_failover priority=750 cluster -- --dumpAgencyOnError true
