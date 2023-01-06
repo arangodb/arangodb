@@ -614,6 +614,36 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
   }
 
+  if (VPackSlice raw = slice.get("raw"); !raw.isNone()) {
+    // hack: if there is a "raw" attribute, and we have either an array or
+    // an object, it means that a special, more efficient/compact way of
+    // encoding was chosen. we now have to decode this in a special way.
+    if (type == NODE_TYPE_ARRAY) {
+      // array
+      VPackArrayIterator it(raw);
+      members.reserve(it.size());
+      while (it.valid()) {
+        addMember(ast->nodeFromVPack(it.value(), /*copyStringValues*/ true));
+        it.next();
+      }
+      return;
+    } else if (type == NODE_TYPE_OBJECT) {
+      // object
+      VPackObjectIterator it(raw, /*useSequentialIteration*/ true);
+      members.reserve(it.size());
+      while (it.valid()) {
+        std::string_view key = it.key().stringView();
+        char* p = ast->resources().registerString(key);
+        addMember(ast->createNodeObjectElement(
+            std::string_view(p, key.size()),
+            ast->nodeFromVPack(it.value(), /*copyStringValues*/ true)));
+        it.next();
+      }
+      return;
+    }
+    // something else that had a "raw" attribute... 🥹
+  }
+
   VPackSlice subNodes = slice.get("subNodes");
 
   if (subNodes.isArray()) {
@@ -1055,6 +1085,20 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   if (type == NODE_TYPE_ARRAY && hasFlag(DETERMINED_SORTED)) {
     // transport information about a node's sortedness
     builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
+  }
+
+  if ((type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) && isConstant()) {
+    // this is a hack to serialize (potentially large) arrays and objects
+    // in a more compact way.
+    // instead of serializing every array/object member with their "typeID",
+    // "vType", "vTypeID" etc. attributes, we simply store the array/object
+    // data in plain JSON.
+    // when unserializing the data back, we have to check if there is a "raw"
+    // attribute, and if it exists, we have to use a special decoder for the
+    // data.
+    builder.add(VPackValue("raw"));
+    toVelocyPackValue(builder);
+    return;
   }
 
   if (type == NODE_TYPE_VALUE) {
