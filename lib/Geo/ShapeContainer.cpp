@@ -48,8 +48,8 @@ static S2Polygon toPolygon(S2LatLngRect const& rect) {
   std::array<S2Point, 4> v{
       rect.GetVertex(0).ToPoint(), rect.GetVertex(1).ToPoint(),
       rect.GetVertex(2).ToPoint(), rect.GetVertex(3).ToPoint()};
-  auto loop = std::make_unique<S2Loop>(v, S2Debug::DISABLE);
-  return S2Polygon{std::move(loop), S2Debug::DISABLE};
+  auto loop = std::make_unique<S2Loop>(v);
+  return S2Polygon{std::move(loop)};
 }
 
 static bool contains(S2LatLngRect const& rect, S2Polyline const& polyline) {
@@ -213,6 +213,15 @@ bool intersectsRect(S2Region const& r1, S2Region const& r2) {
   auto const& rhs = basics::downCast<S2LatLngRect>(r2);
   return rect::intersects(rhs, lhs);
 }
+
+template<uint8_t Version = 1>
+constexpr uint8_t serialize(ShapeContainer::Type t) noexcept {
+  static_assert(Version == 1);
+  return static_cast<uint8_t>(t);
+}
+
+constexpr uint8_t kCurrentLosslessEncodingVersionNumber = 1;
+// constexpr uint8_t kCurrentCompressedEncodingVersionNumber = 2;
 
 }  // namespace
 
@@ -645,7 +654,6 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
       auto const& points = data.Impl();
       cover.reserve(points.size());
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       for (auto const& point : points) {
         cover.emplace_back(S2CellId{point});
       }
@@ -653,7 +661,6 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
     case Type::S2_MULTIPOLYLINE: {
       auto const& data = basics::downCast<S2MultiPolyline>(*_data);
       auto const& lines = data.Impl();
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       std::vector<S2CellId> lineCover;
       for (auto const& line : lines) {
         coverer.GetCovering(line, &lineCover);
@@ -666,6 +673,133 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       TRI_ASSERT(false);
   }
   return cover;
+}
+
+void ShapeContainer::Encode(Encoder& encoder, s2coding::CodingHint hint) const {
+  // because smaller S2Shape -- point needs 30 but really only 25 so it's enough
+  encoder.Ensure(30);
+  encoder.put8(serialize(_type));
+  switch (_type) {
+    case Type::S2_POINT: {
+      auto const& data = basics::downCast<S2PointRegion>(*_data);
+      encodePoint(encoder, data.point(), hint);
+    } break;
+    case Type::S2_POLYLINE: {
+      auto const& data = basics::downCast<S2Polyline>(*_data);
+      if (hint == s2coding::CodingHint::FAST) {
+        data.EncodeUncompressed(&encoder);
+      } else {
+        data.EncodeMostCompact(&encoder);
+      }
+    } break;
+    case Type::S2_POLYGON: {
+      auto const& data = basics::downCast<S2Polygon>(*_data);
+      if (hint == s2coding::CodingHint::FAST) {
+        data.EncodeUncompressed(&encoder);
+      } else {
+        data.Encode(&encoder);
+      }
+    } break;
+    case Type::S2_MULTIPOINT: {
+      auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
+      data.Encode(&encoder, hint);
+    } break;
+    case Type::S2_MULTIPOLYLINE: {
+      auto const& data = basics::downCast<S2MultiPolyline>(*_data);
+      data.Encode(&encoder, hint);
+    } break;
+    case Type::S2_LATLNGRECT:  // not exist in non-legacy geo
+    case Type::EMPTY:
+      TRI_ASSERT(false);
+  }
+}
+
+template<ShapeContainer::Type Type, typename T>
+bool ShapeContainer::DecodeImpl(Decoder& decoder) {
+  if (ADB_UNLIKELY(_type != Type)) {
+    if constexpr (std::is_same_v<T, S2PointRegion>) {
+      _data = std::make_unique<T>(S2Point{});
+    } else {
+      _data = std::make_unique<T>();
+    }
+    _type = Type;
+  }
+  if constexpr (std::is_same_v<T, S2PointRegion>) {
+    return decodePoint(decoder, basics::downCast<T>(*_data));
+  } else {
+    return basics::downCast<T>(*_data).Decode(&decoder);
+  }
+}
+
+bool ShapeContainer::Decode(Decoder& decoder) {
+  if (decoder.avail() < sizeof(uint8_t)) {
+    return false;
+  }
+  auto type = decoder.get8();
+  switch (type) {
+    case serialize(Type::S2_POINT):
+      return DecodeImpl<Type::S2_POINT, S2PointRegion>(decoder);
+    case serialize(Type::S2_POLYLINE):
+      return DecodeImpl<Type::S2_POLYLINE, S2Polyline>(decoder);
+    case serialize(Type::S2_POLYGON):
+      return DecodeImpl<Type::S2_POLYGON, S2Polygon>(decoder);
+    case serialize(Type::S2_MULTIPOINT):
+      return DecodeImpl<Type::S2_MULTIPOINT, S2MultiPointRegion>(decoder);
+    case serialize(Type::S2_MULTIPOLYLINE):
+      return DecodeImpl<Type::S2_MULTIPOLYLINE, S2MultiPolyline>(decoder);
+    default:
+      TRI_ASSERT(false);
+  }
+  return false;
+}
+
+void encodePoint(Encoder& encoder, S2Point const& point,
+                 s2coding::CodingHint hint) {
+  TRI_ASSERT(S2::IsUnitLength(point));
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + 3 * sizeof(double));
+  // if (hint == s2coding::CodingHint::FAST) {
+  encoder.put8(kCurrentLosslessEncodingVersionNumber);
+  for (int i = 0; i < 3; ++i) {
+    encoder.putdouble(point[i]);
+  }
+  /* } else {
+    encoder.put8(kCurrentCompressedEncodingVersionNumber);
+    S2LatLng const temp{point};
+    TRI_ASSERT(temp.is_valid());
+    encoder.putdouble(temp.lat().radians());
+    encoder.putdouble(temp.lng().radians());
+  } */
+}
+
+bool decodePoint(Decoder& decoder, S2PointRegion& region) {
+  if (decoder.avail() < sizeof(uint8_t) + 2 * sizeof(double)) {
+    return false;
+  }
+  S2Point point;
+  auto const version = decoder.get8();
+  switch (version) {
+    case kCurrentLosslessEncodingVersionNumber: {
+      if (decoder.avail() < 3 * sizeof(double)) {
+        return false;
+      }
+      for (int i = 0; i < 3; ++i) {
+        point[i] = decoder.getdouble();
+      }
+    } break; /*
+    case kCurrentCompressedEncodingVersionNumber: {
+      auto const lat = decoder.getdouble();
+      auto const lng = decoder.getdouble();
+      auto temp = S2LatLng::FromRadians(lat, lng);
+      TRI_ASSERT(temp.is_valid());
+      point = temp.ToPoint();
+    } break; */
+    default:
+      TRI_ASSERT(false);
+      return false;
+  }
+  TRI_ASSERT(S2::IsUnitLength(point));
+  region = S2PointRegion{point};
+  return true;
 }
 
 }  // namespace arangodb::geo

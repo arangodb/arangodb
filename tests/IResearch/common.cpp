@@ -1092,12 +1092,11 @@ void assertFilter(
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
         .query = ctx, .contextAnalyzer = analyzer};
-    EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
-                          &actual, filterCtx, *filterNode)
-                          .ok());
-
+    auto r = arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
+                                                        *filterNode);
+    EXPECT_EQ(execOk, r.ok());
     if (execOk) {
-      EXPECT_EQ(expected, actual);
+      EXPECT_EQ(expected, actual) << r.errorMessage();
       assertFilterBoost(expected, actual);
     }
   }
