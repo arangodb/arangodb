@@ -84,14 +84,14 @@ struct Response {
   [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response>
   stealResponse() noexcept;
 
-  [[nodiscard]] bool ok() const {
+  [[nodiscard]] bool ok() const noexcept {
     return fuerte::Error::NoError == this->error;
   }
 
-  [[nodiscard]] bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const noexcept { return !ok(); }
 
   // returns a slice of the payload if there was no error
-  [[nodiscard]] velocypack::Slice slice() const;
+  [[nodiscard]] velocypack::Slice slice() const noexcept;
 
   template<typename T>
   [[nodiscard]] auto deserialize() -> ResultT<T> {
@@ -104,7 +104,7 @@ struct Response {
 
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 
-  fuerte::StatusCode statusCode() const;
+  fuerte::StatusCode statusCode() const noexcept;
 
   /// @brief Build a Result that contains
   ///   - no error if everything went well, otherwise

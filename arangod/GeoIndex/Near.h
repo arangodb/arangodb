@@ -26,7 +26,6 @@
 #include <queue>
 #include <type_traits>
 #include <vector>
-#include <unordered_set>
 
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
@@ -35,6 +34,7 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
+#include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
@@ -215,7 +215,7 @@ class NearUtils {
   GeoDocumentsQueue _buffer;
 
   // deduplication filter
-  std::unordered_set<uint64_t> _seenDocs;
+  containers::FlatHashSet<uint64_t> _seenDocs;
 
   /// Track the already scanned region
   std::vector<S2CellId> _scannedCells;
