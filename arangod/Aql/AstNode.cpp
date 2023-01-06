@@ -1087,7 +1087,8 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("sorted", VPackValue(hasFlag(VALUE_SORTED)));
   }
 
-  if ((type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) && isConstant()) {
+  if (verbose && (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT) &&
+      isConstant() && valueHasVelocyPackRepresentation()) {
     // this is a hack to serialize (potentially large) arrays and objects
     // in a more compact way.
     // instead of serializing every array/object member with their "typeID",

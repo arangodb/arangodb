@@ -382,10 +382,8 @@ void Ast::clearMost() noexcept { _resources.clearMost(); }
 
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  {
-    VPackArrayBuilder guard(&builder);
-    _root->toVelocyPack(builder, verbose);
-  }
+  VPackArrayBuilder guard(&builder);
+  _root->toVelocyPack(builder, verbose);
 }
 
 /// @brief add an operation to the AST
