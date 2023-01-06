@@ -33,7 +33,16 @@ namespace {
 
 auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
-    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    /*
+     * These errors are ignored because the snapshot can be more recent than
+     * the applied log entries.
+     * TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED could happen during insert
+     * operations.
+     * TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND could happen during
+     * remove operations.
+     */
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+           code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   };
 
   if (res.fail() && !ignoreError(res.errorNumber())) {
@@ -135,6 +144,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
+        break;
       case OperationType::kIntermediateCommit:
         return trx->intermediateCommit();
       default:
