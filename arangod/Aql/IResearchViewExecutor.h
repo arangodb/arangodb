@@ -319,8 +319,6 @@ class IndexReadBuffer {
       if (newMemoryUsage != tracked) {
         if (newMemoryUsage > tracked) {
           _memoryTracker.increase(newMemoryUsage - tracked);
-        } else {
-          _memoryTracker.decrease(tracked - newMemoryUsage);
         }
       }
       _keyBuffer.reserve(atMost);
@@ -372,7 +370,7 @@ class IndexReadBuffer {
   std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
-  std::vector<float_t> _scoreBuffer;
+  std::vector<irs::score_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
@@ -413,9 +411,25 @@ class IResearchViewExecutorBase {
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = IResearchViewExecutorInfos;
   using Stats = IResearchViewStats;
+
+  static constexpr bool isLateMaterialized =
+      (ExecutionTraits::MaterializeType &
+       iresearch::MaterializeType::LateMaterialize) ==
+      iresearch::MaterializeType::LateMaterialize;
+
+  static constexpr bool isMaterialized =
+      (ExecutionTraits::MaterializeType &
+       iresearch::MaterializeType::Materialize) ==
+      iresearch::MaterializeType::Materialize;
+
+  static constexpr bool usesStoredValues =
+      (ExecutionTraits::MaterializeType &
+       iresearch::MaterializeType::UseStoredValues) ==
+      iresearch::MaterializeType::UseStoredValues;
+
   using IndexReadBufferType =
       IndexReadBuffer<typename Traits::IndexBufferValueType,
-                      Traits::CopyStored>;
+                      Traits::CopyStored && !isLateMaterialized>;
   /**
    * @brief produce the next Rows of Aql Values.
    *
@@ -506,9 +520,10 @@ class IResearchViewExecutorBase {
     score(_indexReadBuffer.pushNoneScores(infos().scoreRegistersCount()));
   }
 
+  template<typename DocumentValueType>
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
-                LocalDocumentId const& documentId,
-                LogicalCollection const& collection);
+                DocumentValueType const& documentId,
+                LogicalCollection const* collection);
 
   void writeSearchDoc(ReadContext& ctx, iresearch::SearchDoc const& doc,
                       RegisterId reg);
@@ -547,7 +562,6 @@ class IResearchViewExecutorBase {
   std::vector<ColumnIterator> _storedValuesReaders;
   std::array<char, arangodb::iresearch::kSearchDocBufSize> _buf;
   bool _isInitialized;
-  std::vector<float_t> _singleDocScoreBuffer;
   // new mangling only:
   iresearch::AnalyzerProvider _provider;
 };
@@ -583,18 +597,6 @@ class IResearchViewExecutor
 
   void reset();
 
-  // Direct output row write support
-  bool next();
-  auto value() const {
-    return iresearch::SearchDoc(this->_reader->segment(_readerOffset),
-                                _doc->value);
-  }
-  size_t readerIndex() const noexcept { return 0; }
-  irs::score const& score() const {
-    TRI_ASSERT(_scr);
-    return *_scr;
-  }
-
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
@@ -616,7 +618,11 @@ class IResearchViewExecutor
 
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ExecutionTraits>> {
-  using IndexBufferValueType = LocalDocumentId;
+  using IndexBufferValueType =
+      typename std::conditional<(ExecutionTraits::MaterializeType &
+                                 iresearch::MaterializeType::LateMaterialize) ==
+                                    iresearch::MaterializeType::LateMaterialize,
+                                iresearch::SearchDoc, LocalDocumentId>::type;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -644,7 +650,7 @@ class IResearchViewMergeExecutor
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, size_t numScores,
-            LogicalCollection const& collection,
+            LogicalCollection const* collection,
             irs::doc_iterator::ptr&& pkReader, size_t index,
             irs::doc_iterator* sortReaderRef,
             irs::payload const* sortReaderValue,
@@ -694,20 +700,6 @@ class IResearchViewMergeExecutor
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
-  // Direct output row write support
-  bool next() { return false; }
-  iresearch::SearchDoc value() const {
-    return {this->_reader->segment(_segments[_heap_it.value()].segmentIndex),
-            _segments[_heap_it.value()].doc->value};
-  }
-  size_t readerIndex() const noexcept {
-    return _segments[_heap_it.value()].segmentIndex;
-  }
-  irs::score const& score() const {
-    TRI_ASSERT(_segments[_heap_it.value()].score);
-    return *_segments[_heap_it.value()].score;
-  }
-
  private:
   std::vector<Segment> _segments;
   irs::ExternalHeapIterator<MinHeapContext> _heap_it;
@@ -716,8 +708,12 @@ class IResearchViewMergeExecutor
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<ExecutionTraits>> {
-  using IndexBufferValueType =
-      std::pair<LocalDocumentId, LogicalCollection const*>;
+  using IndexBufferValueType = typename std::conditional<
+      (ExecutionTraits::MaterializeType &
+       iresearch::MaterializeType::LateMaterialize) ==
+          iresearch::MaterializeType::LateMaterialize,
+      iresearch::SearchDoc,
+      std::pair<LocalDocumentId, LogicalCollection const*>>::type;
   static constexpr bool ExplicitScanned = false;
 };
 
