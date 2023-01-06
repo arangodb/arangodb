@@ -163,13 +163,13 @@ createConsolidationPolicy<irs::index_utils::consolidate_tier>(
 
     auto field = slice.get(kFieldName);
     if (!field.isNone()) {
-      if (!field.isNumber<double_t>()) {
+      if (!field.isNumber<double>()) {
         errorField = kFieldName;
 
         return {};
       }
 
-      options.min_score = field.getNumber<double_t>();
+      options.min_score = field.getNumber<double>();
     }
   }
 

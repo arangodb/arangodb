@@ -125,8 +125,10 @@ REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make,
                         IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
-REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make,
-                        GeoJSONAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
+                        GeoVPackAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoS2Analyzer, GeoS2Analyzer::make,
+                        GeoS2Analyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
@@ -793,9 +795,12 @@ std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   TRI_ASSERT(analyzer);
   auto const type = analyzer->type();
-  if (type == irs::type<GeoJSONAnalyzer>::id()) {
+  if (type == irs::type<GeoVPackAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
-            AnalyzerValueType::String, &GeoJSONAnalyzer::store};
+            AnalyzerValueType::String, &GeoVPackAnalyzer::store};
+  } else if (type == irs::type<GeoS2Analyzer>::id()) {
+    return {AnalyzerValueType::Object | AnalyzerValueType::Array,
+            AnalyzerValueType::String, &GeoS2Analyzer::store};
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
@@ -873,8 +878,8 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
   toVelocyPack(builder, name);
 }
 
-/*static*/ AnalyzerPool::Builder::ptr AnalyzerPool::Builder::make(
-    std::string_view type, VPackSlice properties) {
+AnalyzerPool::Builder::ptr AnalyzerPool::Builder::make(std::string_view type,
+                                                       VPackSlice properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return nullptr;
@@ -945,7 +950,7 @@ bool AnalyzerPool::init(std::string_view const& type,
         _type = std::string_view(_config.c_str() + _properties.byteSize(),
                                  type.size());
       }
-      _requireMangling = isGeoAnalyzer(_type);
+      _requireMangling = !kludge::isPrimitiveAnalyzer(_type);
 
       if (instance->type() ==
           irs::type<irs::analysis::pipeline_token_stream>::id()) {
@@ -1110,8 +1115,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
   };
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUseVocbase(
-    std::string_view vocbaseName, auth::Level const& level) {
+bool IResearchAnalyzerFeature::canUseVocbase(std::string_view vocbaseName,
+                                             auth::Level const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = ExecContext::current();
   auto const nameStr = static_cast<std::string>(vocbaseName);
@@ -1121,13 +1126,13 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
                               level);  // can use analyzers
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
-                                                 auth::Level const& level) {
+bool IResearchAnalyzerFeature::canUse(TRI_vocbase_t const& vocbase,
+                                      auth::Level const& level) {
   return canUseVocbase(vocbase.name(), level);
 }
 
-/*static*/ bool IResearchAnalyzerFeature::canUse(std::string_view name,
-                                                 auth::Level const& level) {
+bool IResearchAnalyzerFeature::canUse(std::string_view name,
+                                      auth::Level const& level) {
   auto& ctx = ExecContext::current();
 
   if (ctx.isAdminUser()) {
@@ -1150,15 +1155,16 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
                     level));  // can use analyzers
 }
 
-/*static*/ Result IResearchAnalyzerFeature::copyAnalyzerPool(
-    AnalyzerPool::ptr& analyzer, AnalyzerPool const& src, LinkVersion version,
-    bool extendedNames) {
+Result IResearchAnalyzerFeature::copyAnalyzerPool(AnalyzerPool::ptr& analyzer,
+                                                  AnalyzerPool const& src,
+                                                  LinkVersion version,
+                                                  bool extendedNames) {
   return IResearchAnalyzerFeature::createAnalyzerPool(
       analyzer, src.name(), src.type(), src.properties(), src.revision(),
       src.features(), version, extendedNames);
 }
 
-/*static*/ Result IResearchAnalyzerFeature::createAnalyzerPool(
+Result IResearchAnalyzerFeature::createAnalyzerPool(
     AnalyzerPool::ptr& pool, std::string_view name, std::string_view type,
     VPackSlice const properties, AnalyzersRevision::Revision revision,
     Features features, LinkVersion version, bool extendedNames) {
@@ -1829,7 +1835,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a container of statically defined/initialized analyzers
 ////////////////////////////////////////////////////////////////////////////////
-/*static*/ IResearchAnalyzerFeature::Analyzers const&
+IResearchAnalyzerFeature::Analyzers const&
 IResearchAnalyzerFeature::getStaticAnalyzers() {
   struct Instance {
     Analyzers analyzers;
@@ -1919,7 +1925,7 @@ IResearchAnalyzerFeature::getStaticAnalyzers() {
   return instance.analyzers;
 }
 
-/*static*/ AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
+AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
   struct Identity {
     AnalyzerPool::ptr instance;
     Identity() {
@@ -2328,7 +2334,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   return {};
 }
 
-/*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
+bool IResearchAnalyzerFeature::analyzerReachableFromDb(
     std::string_view dbNameFromAnalyzer, std::string_view currentDbName,
     bool forGetters) noexcept {
   TRI_ASSERT(!currentDbName.empty());
@@ -2348,7 +2354,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
           dbNameFromAnalyzer == arangodb::StaticStrings::SystemDatabase);
 }
 
-/*static*/ std::pair<std::string_view, std::string_view>
+std::pair<std::string_view, std::string_view>
 IResearchAnalyzerFeature::splitAnalyzerName(
     std::string_view analyzer) noexcept {
   // search for vocbase prefix ending with '::'
@@ -2375,7 +2381,7 @@ IResearchAnalyzerFeature::splitAnalyzerName(
   return {std::string_view{}, analyzer};  // unprefixed analyzer name
 }
 
-/*static*/ std::string IResearchAnalyzerFeature::normalize(
+std::string IResearchAnalyzerFeature::normalize(
     std::string_view name, std::string_view activeVocbase,
     bool expandVocbasePrefix /*= true*/) {
   auto& staticAnalyzers = getStaticAnalyzers();

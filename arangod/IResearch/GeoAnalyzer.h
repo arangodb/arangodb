@@ -25,59 +25,62 @@
 
 #include <s2/s2region_term_indexer.h>
 #include <s2/s2latlng.h>
+#include <s2/util/coding/coder.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
-
 #include "analysis/analyzer.hpp"
 #include "utils/attribute_helper.hpp"
 
 #include "Geo/ShapeContainer.h"
 #include "IResearch/Geo.h"
-#include "velocypack/Slice.h"
 
-namespace arangodb {
+namespace arangodb::iresearch {
 
-namespace velocypack {
-template<typename T>
-class Buffer;
-}
+struct GeoFilterOptionsBase;
 
-namespace iresearch {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class GeoAnalyzer
-/// @brief base class for other geo analyzers
-////////////////////////////////////////////////////////////////////////////////
 class GeoAnalyzer : public irs::analysis::analyzer,
                     private irs::util::noncopyable {
  public:
-  virtual bool next() noexcept override final;
+  bool next() noexcept final;
   using irs::analysis::analyzer::reset;
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;
+  virtual void prepare(GeoFilterOptionsBase& options) const = 0;
 
   irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(_attrs, id);
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto const& options() const noexcept { return _indexer.options(); }
+#endif
+
  protected:
-  explicit GeoAnalyzer(const irs::type_info& type);
+  explicit GeoAnalyzer(irs::type_info const& type,
+                       S2RegionTermIndexer::Options const& options);
   void reset(std::vector<std::string>&& terms) noexcept;
   void reset() noexcept {
     _begin = _terms.data();
     _end = _begin;
   }
 
+  S2RegionTermIndexer _indexer;
+  // We already have S2RegionCoverer in S2RegionTermIndexer
+  // but it's private. TODO(MBkkt) make PR to s2
+  S2RegionCoverer _coverer;
+
  private:
   using attributes = std::tuple<irs::increment, irs::term_attribute>;
 
   std::vector<std::string> _terms;
-  const std::string* _begin{_terms.data()};
-  const std::string* _end{_begin};
+  std::string const* _begin{_terms.data()};
+  std::string const* _end{_begin};
   irs::offset _offset;
   attributes _attrs;
-};  // GeoAnalyzer
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class GeoPointAnalyzer
@@ -97,96 +100,119 @@ class GeoPointAnalyzer final : public GeoAnalyzer {
   static irs::analysis::analyzer::ptr make(std::string_view args);
 
   // store point as [lng, lat] array to be GeoJSON compliant
-  static VPackSlice store(irs::token_stream const* ctx, VPackSlice slice,
-                          velocypack::Buffer<uint8_t>& buf);
+  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
 
-  explicit GeoPointAnalyzer(Options const& opts);
+  explicit GeoPointAnalyzer(Options const& options);
 
-  std::vector<std::string> const& latitude() const noexcept {
-    return _latitude;
-  }
-  std::vector<std::string> const& longitude() const noexcept {
-    return _longitude;
-  }
+  bool reset(std::string_view value) final;
 
-  S2RegionTermIndexer::Options const& options() const noexcept {
-    return _indexer.options();
-  }
+  void prepare(GeoFilterOptionsBase& options) const final;
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(std::string_view value) override;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto const& latitude() const noexcept { return _latitude; }
+  auto const& longitude() const noexcept { return _longitude; }
+#endif
 
  private:
   bool parsePoint(VPackSlice slice, S2LatLng& out) const;
 
-  S2RegionTermIndexer _indexer;
+  S2LatLng _point;
   bool _fromArray;
   std::vector<std::string> _latitude;
   std::vector<std::string> _longitude;
-  S2LatLng _point;
-};  // GeoPointAnalyzer
+  velocypack::Builder _builder;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class GeoJSONAnalyzer
-/// @brief an analyzer capable of breaking up a valid GEO JSON input into a set
-///        of tokens for further indexing
-////////////////////////////////////////////////////////////////////////////////
-class GeoJSONAnalyzer final : public GeoAnalyzer {
+class GeoJsonAnalyzerBase : public GeoAnalyzer {
  public:
-  enum class Type : uint32_t {
-    //////////////////////////////////////////////////////////////////////////////
-    /// @brief analyzer accepts any valid GEO JSON input and produces tokens
-    ///        denoting an approximation for a given shape
-    //////////////////////////////////////////////////////////////////////////////
+  enum class Type : uint8_t {
+    // analyzer accepts any valid GeoJson input
+    // and produces tokens denoting an approximation for a given shape
     SHAPE = 0,
-
-    //////////////////////////////////////////////////////////////////////////////
-    /// @brief analyzer accepts any valid GEO JSON shape, but produces tokens
-    ///        denoting a centroid of a given shape
-    //////////////////////////////////////////////////////////////////////////////
+    // analyzer accepts any valid GeoJson shape
+    // but produces tokens denoting a centroid of a given shape
     CENTROID,
-
-    //////////////////////////////////////////////////////////////////////////////
-    /// @brief analyzer accepts points only
-    //////////////////////////////////////////////////////////////////////////////
-    POINT
+    // analyzer accepts points only
+    POINT,
   };
 
-  struct Options {
+  struct OptionsBase {
     GeoOptions options;
     Type type{Type::SHAPE};
+  };
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto shapeType() const noexcept { return _type; }
+#endif
+
+ protected:
+  explicit GeoJsonAnalyzerBase(irs::type_info const& type,
+                               OptionsBase const& options);
+
+  bool resetImpl(std::string_view value, bool legacy, bool legacyCovering);
+
+  geo::ShapeContainer _shape;
+  std::vector<S2Point> _cache;
+  Type _type;
+};
+
+/// The analyzer capable of breaking up a valid GeoJson input
+/// into a set of tokens for further indexing. Store vpack.
+class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
+ public:
+  struct Options : OptionsBase {
+    bool legacy{false};
   };
 
   static constexpr std::string_view type_name() noexcept { return "geojson"; }
   static bool normalize(std::string_view args, std::string& out);
   static irs::analysis::analyzer::ptr make(std::string_view args);
 
-  static VPackSlice store(irs::token_stream const*, VPackSlice slice,
-                          velocypack::Buffer<uint8_t>&) noexcept;
+  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
 
-  explicit GeoJSONAnalyzer(Options const& opts);
+  explicit GeoVPackAnalyzer(Options const& opts);
 
-  virtual void prepare(S2RegionTermIndexer::Options& opts) const override;
-  virtual bool reset(std::string_view value) override;
+  bool reset(std::string_view value) final;
 
-  Type shapeType() const noexcept { return _type; }
-
-  S2RegionTermIndexer::Options const& options() const noexcept {
-    return _indexer.options();
-  }
+  void prepare(GeoFilterOptionsBase& options) const final;
 
  private:
-  S2RegionTermIndexer _indexer;
-  geo::ShapeContainer _shape;
-  std::vector<S2Point> _cache;
-  Type _type;
+  velocypack::Builder _builder;
+  bool _legacy{false};
 };
 
-// FIXME remove kludge
-inline bool isGeoAnalyzer(std::string_view type) noexcept {
-  return type == GeoJSONAnalyzer::type_name() ||
-         type == GeoPointAnalyzer::type_name();
-}
+/// The analyzer capable of breaking up a valid GeoJson input
+/// into a set of tokens for further indexing. Store S2 geometry.
+class GeoS2Analyzer final : public GeoJsonAnalyzerBase {
+ public:
+  struct Options : OptionsBase {
+    s2coding::CodingHint hint{s2coding::CodingHint::COMPACT};
+  };
 
-}  // namespace iresearch
-}  // namespace arangodb
+  static constexpr std::string_view type_name() noexcept {
+    return "geojson-s2";
+  }
+  static bool normalize(std::string_view args, std::string& out);
+  static irs::analysis::analyzer::ptr make(std::string_view args);
+
+  static irs::bytes_view store(irs::token_stream* ctx, velocypack::Slice slice);
+
+  explicit GeoS2Analyzer(Options const& opts);
+
+  bool reset(std::string_view value) final;
+
+  void prepare(GeoFilterOptionsBase& options) const final;
+
+ private:
+  Encoder _encoder;
+  s2coding::CodingHint _hint{s2coding::CodingHint::COMPACT};
+};
+
+void toVelocyPack(velocypack::Builder& builder,
+                  GeoPointAnalyzer::Options const& options);
+void toVelocyPack(velocypack::Builder& builder,
+                  GeoVPackAnalyzer::Options const& options);
+void toVelocyPack(velocypack::Builder& builder,
+                  GeoS2Analyzer::Options const& options);
+
+}  // namespace arangodb::iresearch
