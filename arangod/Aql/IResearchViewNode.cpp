@@ -1862,7 +1862,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     TRI_ASSERT(_view || _meta);
     auto executorInfos = aql::IResearchViewExecutorInfos{
         std::move(reader),
-        std::move(outRegister),
+        outRegister,
         searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),

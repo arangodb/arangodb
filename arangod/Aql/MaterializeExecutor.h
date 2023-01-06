@@ -29,6 +29,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashMap.h"
 #include "Indexes/IndexIterator.h"
 #include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
@@ -148,10 +149,15 @@ class MaterializeExecutor {
 
   void initializeCursor() noexcept {
     // Does nothing but prevents the whole executor to be re-created.
-    _collection = nullptr;
+    if constexpr (isSingleCollection) {
+      _collection = nullptr;
+    }
   }
 
  protected:
+  static constexpr bool isSingleCollection =
+      std::is_same_v<T, std::string const&>;
+
   class ReadContext {
    public:
     explicit ReadContext(Infos& infos)
@@ -182,8 +188,11 @@ class MaterializeExecutor {
   ReadContext _readDocumentContext;
   Infos const& _infos;
 
-  // for single collection case
-  LogicalCollection const* _collection = nullptr;
+  ResourceUsageScope _memoryTracker;
+  std::conditional_t<
+      isSingleCollection, LogicalCollection const*,
+      containers::FlatHashMap<DataSourceId, LogicalCollection const*>>
+      _collection;
 };
 
 }  // namespace aql

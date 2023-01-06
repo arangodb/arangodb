@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramo
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -47,7 +47,8 @@ namespace arangodb::iresearch {
 using ViewSegment =
     std::tuple<DataSourceId, ::irs::sub_reader const*, StorageSnapshot const&>;
 
-constexpr size_t kSearchDocBufSize = sizeof(size_t) + sizeof(irs::doc_id_t);
+constexpr size_t kSearchDocBufSize =
+    sizeof(ViewSegment const*) + sizeof(irs::doc_id_t);
 
 class SearchDoc {
  public:
