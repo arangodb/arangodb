@@ -29,6 +29,7 @@
 #include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 #include <algorithm>
 #include <random>
@@ -105,83 +106,11 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
   }
 }
 
-auto algorithms::updateReplicatedLog(
-    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result> {
-  auto result = basics::catchToResultT([&]() -> futures::Future<
-                                                 arangodb::Result> {
-    if (spec == nullptr) {
-      return ctx.dropReplicatedLog(logId);
-    }
-
-    TRI_ASSERT(logId == spec->id);
-    TRI_ASSERT(spec->currentTerm.has_value());
-    auto& plannedLeader = spec->currentTerm->leader;
-    auto log = ctx.ensureReplicatedLog(logId);
-
-    if (log->getParticipant()->getTerm() == spec->currentTerm->term) {
-      // something has changed in the term volatile configuration
-      auto leader = log->getLeader();
-      TRI_ASSERT(leader != nullptr);
-      // Provide the leader with a way to build a follower
-      auto const buildFollower = [&ctx,
-                                  &logId](ParticipantId const& participantId) {
-        return ctx.buildAbstractFollowerImpl(logId, participantId);
-      };
-      auto index = leader->updateParticipantsConfig(
-          std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
-          buildFollower);
-      return leader->waitFor(index).thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else if (plannedLeader.has_value() &&
-               plannedLeader->serverId == myServerId &&
-               plannedLeader->rebootId == myRebootId) {
-      auto followers = std::vector<
-          std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
-      for (auto const& [participant, data] :
-           spec->participantsConfig.participants) {
-        if (participant != myServerId) {
-          followers.emplace_back(
-              ctx.buildAbstractFollowerImpl(logId, participant));
-        }
-      }
-
-      TRI_ASSERT(spec->participantsConfig.generation > 0);
-      auto newLeader = log->becomeLeader(
-          myServerId, spec->currentTerm->term, followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
-          std::move(failureOracle));
-      newLeader->triggerAsyncReplication();  // TODO move this call into
-                                             // becomeLeader?
-      return newLeader->waitForLeadership().thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else {
-      auto leaderString = std::optional<ParticipantId>{};
-      if (spec->currentTerm->leader) {
-        leaderString = spec->currentTerm->leader->serverId;
-      }
-
-      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term,
-                                        leaderString);
-    }
-
-    return futures::Future<arangodb::Result>{std::in_place};
-  });
-
-  if (result.ok()) {
-    return *std::move(result);
-  } else {
-    return futures::Future<arangodb::Result>{std::in_place, result.result()};
-  }
-}
-
 auto algorithms::operator<<(std::ostream& os,
                             ParticipantState const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
-  os << "failed = " << std::boolalpha << p.failed;
+  os << '{' << p.id << ':' << p.lastAckedEntry;
+  os << ", snapshot = " << std::boolalpha << p.snapshotAvailable;
   os << ", flags = " << p.flags;
   os << '}';
   return os;
@@ -195,7 +124,9 @@ auto ParticipantState::isForced() const noexcept -> bool {
   return flags.forced;
 };
 
-auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
+auto ParticipantState::isSnapshotAvailable() const noexcept -> bool {
+  return snapshotAvailable;
+}
 
 auto ParticipantState::lastTerm() const noexcept -> LogTerm {
   return lastAckedEntry.term;
@@ -230,7 +161,7 @@ auto algorithms::calculateCommitIndex(
   eligible.reserve(participants.size());
   std::copy_if(std::begin(participants), std::end(participants),
                std::back_inserter(eligible), [&](auto const& p) {
-                 return p.isAllowedInQuorum() &&
+                 return p.isAllowedInQuorum() and p.isSnapshotAvailable() and
                         p.lastTerm() == lastTermIndex.term;
                });
 
@@ -316,12 +247,13 @@ auto algorithms::calculateCommitIndex(
       auto who = CommitFailReason::QuorumSizeNotReached::who_type();
       for (auto const& participant : participants) {
         if (participant.lastAckedEntry < lastTermIndex ||
-            !participant.isAllowedInQuorum()) {
+            !participant.isAllowedInQuorum() ||
+            !participant.isSnapshotAvailable()) {
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
-                  .isFailed = participant.isFailed(),
                   .isAllowedInQuorum = participant.isAllowedInQuorum(),
+                  .snapshotAvailable = participant.isSnapshotAvailable(),
                   .lastAcknowledged = participant.lastAckedEntry,
               });
         }
@@ -347,6 +279,10 @@ auto algorithms::calculateCommitIndex(
       candidates.emplace(
           p.id,
           CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm);
+    } else if (not p.isSnapshotAvailable()) {
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             kSnapshotMissing);
     }
   }
 
