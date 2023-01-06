@@ -78,7 +78,7 @@ static_assert(
     static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
     "unexpected min QueryExecutionState enum value");
 static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) <
-                  11,
+                  12,
               "unexpected max QueryExecutionState enum value");
 
 }  // namespace aql
