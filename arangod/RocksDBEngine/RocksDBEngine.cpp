@@ -1662,8 +1662,7 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
-  return TRI_voc_tick_t(
-      server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber());
+  return server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber();
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
@@ -3428,7 +3427,7 @@ std::string RocksDBEngine::getCompressionSupport() const {
 
 // management methods for synchronizing with external persistent stores
 TRI_voc_tick_t RocksDBEngine::currentTick() const {
-  return static_cast<TRI_voc_tick_t>(_db->GetLatestSequenceNumber());
+  return _db->GetLatestSequenceNumber();
 }
 
 TRI_voc_tick_t RocksDBEngine::releasedTick() const {
