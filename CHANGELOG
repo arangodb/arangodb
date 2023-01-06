@@ -6,6 +6,11 @@ devel
   `_api/cursor/<cursorId>/<batchId>`, the response object from the `batchd` that
   had not been received before would be returned. The request is idempotent.
 
+* BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from 
+  server start, and remove setting this variable from startup scripts. 
+  The reason is that the environment variable only controls the behavior of
+  programs linked against glibc, but our release builds are linked to libmusl.
+
 * Make the cache_oblivious option of jemalloc configurable from the
   environment and set its default to `false`. This helps to save
   4096 bytes of RAM for every allocation which is at least 16384 bytes

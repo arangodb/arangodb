@@ -104,6 +104,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
