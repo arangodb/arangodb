@@ -822,11 +822,6 @@ static_assert(sizeof(HeapSortExecutorValue) <= 16,
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewHeapSortExecutor<ExecutionTraits>> {
-  // TODO support it here!
-  // using IndexBufferValueType =
-  //    (ExecutionTraits::MaterializeType &
-  //     MaterializeType::Materialize) == MaterializeType::Materialize,
-  //      iresearch::SearchDoc, HeapSortExecutorValue > ::type;
   using IndexBufferValueType = HeapSortExecutorValue;
   static constexpr bool ExplicitScanned = true;
 };
