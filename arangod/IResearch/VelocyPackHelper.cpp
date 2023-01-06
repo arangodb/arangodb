@@ -26,7 +26,6 @@
 #include "Misc.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -115,7 +114,7 @@ bool keyFromSlice(VPackSlice keySlice, std::string_view& key) {
       }
       return true;
     case VPackValueType::String:  // regular attribute
-      key = arangodb::iresearch::getStringRef(keySlice);
+      key = keySlice.stringView();
       return true;
     default:  // unsupported
       return false;
@@ -178,7 +177,7 @@ bool mergeSliceSkipKeys(
       return false;
     }
 
-    auto attr = getStringRef(key);
+    auto attr = key.stringView();
 
     if (acceptor(attr)) {
       builder.add(attr.data(), attr.size(), value);
@@ -218,8 +217,8 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = slice.copyString();
-    arangodb::basics::StringUtils::tolowerInPlace(value);
+    std::string value{slice.stringView()};
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
     if (value == "asc") {
       direction = true;

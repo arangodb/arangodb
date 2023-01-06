@@ -18,20 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Shapes.h"
+#pragma once
 
-#include <s2/s2latlng.h>
+#include <unordered_map>
+// TODO(MBkkt) Try to use FlatHashMap to achieve better
+//  lookup performance on query execution
+// #include "Containers/FlatHashMap.h"
 
-using namespace arangodb;
-using namespace arangodb::geo;
+namespace arangodb::aql {
 
-Coordinate Coordinate::fromLatLng(S2LatLng const& ll) noexcept {
-  return Coordinate(ll.lat().degrees(), ll.lng().degrees());
-}
+using VariableId = uint32_t;
 
-S2Point Coordinate::toPoint() const noexcept {
-  return S2LatLng::FromDegrees(latitude, longitude).ToPoint();
-}
+struct VarInfo;
+
+using VarInfoMap = std::unordered_map<VariableId, VarInfo>;
+
+}  // namespace arangodb::aql

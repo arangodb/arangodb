@@ -364,7 +364,7 @@ class ServerState {
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
-  RebootId _rebootId;
+  std::atomic<RebootId::value_type> _rebootId = 0;
 
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;

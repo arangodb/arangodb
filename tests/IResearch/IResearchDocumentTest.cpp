@@ -2572,7 +2572,8 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
     // insert document
     {
-      auto doc = writer->documents().insert();
+      auto ctx = writer->documents();
+      auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
       EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);

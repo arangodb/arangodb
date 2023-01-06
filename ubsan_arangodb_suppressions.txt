@@ -31,3 +31,7 @@ vptr:v8::internal::Isolate::~Isolate
 # https://github.com/libjpeg-turbo/libjpeg-turbo/issues/470
 pointer-overflow:3rdParty/nghttp2/lib/nghttp2_buf.c
 pointer-overflow:3rdParty/lz4/lib/lz4.c
+
+# It's intentional perform operations with nullptr
+# TODO(MBkkt) I think it can be fixed with using uintptr_t instead of pointer
+pointer-overflow:3rdParty/iresearch/core/search/bitset_doc_iterator.cpp

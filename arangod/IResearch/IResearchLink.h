@@ -57,43 +57,16 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink& operator=(IResearchLink const&) = delete;
   IResearchLink& operator=(IResearchLink&&) = delete;
 
-  ~IResearchLink() override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this IResearch Link reference the supplied view
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(LogicalView const& view) const noexcept;
-  bool operator!=(LogicalView const& view) const noexcept {
-    return !(*this == view);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link match the meta definition
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchLinkMeta const& meta) const noexcept;
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
-    return !(*this == meta);
-  }
-
-  static bool canBeDropped() {
-    // valid for a link to be dropped from an ArangoSearch view
-    return true;
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result drop();
 
-  static bool isHidden();  // arangodb::Index override
-  static bool isSorted();  // arangodb::Index override
+  static bool isHidden();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called when the iResearch Link is loaded into memory
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  void load();
+  // IResearch does not provide a fixed default sort order
+  static constexpr bool isSorted() noexcept { return false; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the
@@ -109,18 +82,6 @@ class IResearchLink : public IResearchDataStore {
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type enum value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static Index::IndexType type();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type string value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static char const* typeName();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
@@ -178,14 +139,14 @@ class IResearchLink : public IResearchDataStore {
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLink(IndexId iid, LogicalCollection& collection);
+  using IResearchDataStore::IResearchDataStore;
 
   void insertMetrics() final;
   void removeMetrics() final;
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const* getComparator() const noexcept override {
+  irs::Comparer const* getComparator() const noexcept final {
     return &_comparer;
   }
 

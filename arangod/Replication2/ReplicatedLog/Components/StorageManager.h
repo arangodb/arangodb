@@ -26,6 +26,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Futures/Promise.h"
+#include <deque>
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {

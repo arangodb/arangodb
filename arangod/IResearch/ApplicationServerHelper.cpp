@@ -49,7 +49,7 @@ arangodb::aql::Function const* getFunction(
   // exception
   try {
     return functions.byName(name);
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
       throw;  // not a missing function exception
     }
