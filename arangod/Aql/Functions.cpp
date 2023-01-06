@@ -9539,7 +9539,7 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
                       F&& distanceFunc) {
   auto calculateDistance = [distanceFunc = std::forward<F>(distanceFunc),
                             expressionContext,
-                            &node](const VPackSlice lhs, const VPackSlice rhs) {
+                            &node](VPackSlice lhs, VPackSlice rhs) {
     TRI_ASSERT(lhs.isArray());
     TRI_ASSERT(rhs.isArray());
     auto lhsLength = lhs.length();
