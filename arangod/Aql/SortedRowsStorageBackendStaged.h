@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/SortedRowsStorageBackend.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 

@@ -106,9 +106,6 @@ class AqlSharedExecutionBlockImplTest : public ::testing::Test {
   arangodb::TemporaryStorageFeature tempStorage{fakedQuery->vocbase().server()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
-  // Used for AllRowsFetcherCases
-  std::unique_ptr<AqlItemMatrix> _aqlItemBlockMatrix;
-
   // Used only for InsertExecutor:
   std::unique_ptr<aql::Collection> _aqlCollection;
 

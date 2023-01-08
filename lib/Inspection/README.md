@@ -305,7 +305,7 @@ We previously saw how we can use `fallback` values for attributes that are not
 mandatory. As an alternative to fallback values one can use optional values.
 `std::optional`, `std::unique_ptr` and `std::shared_ptr` all qualify as optional
 values. That is, if no matching attribute is found, then the field is set to
-`std::monostate`/`nullptr`. Otherwise, a default constructed instance of the
+`std::nullopt`/`nullptr`. Otherwise, a default constructed instance of the
 wrapped type is created and inspected recursively.
 
 ### Variants

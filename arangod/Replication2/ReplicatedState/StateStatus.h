@@ -71,13 +71,13 @@ struct LeaderInternalStateStringTransformer {
 struct LeaderStatus {
   using clock = std::chrono::system_clock;
 
-  struct ManagerState {
-    LeaderInternalState state{};
-    clock::time_point lastChange{};
-    std::optional<std::string> detail;
-  };
-
-  ManagerState managerState;
+  // struct ManagerState {
+  //   LeaderInternalState state{};
+  //   clock::time_point lastChange{};
+  //   std::optional<std::string> detail;
+  // };
+  //
+  // ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
 };
@@ -88,19 +88,19 @@ auto inspect(Inspector& f, LeaderStatus& x) {
   return f.object(x).fields(
       f.field(static_strings::StringGeneration, x.generation),
       f.field(static_strings::StringSnapshot, x.snapshot),
-      f.field(static_strings::StringManager, x.managerState),
+      // f.field(static_strings::StringManager, x.managerState),
       f.field(static_strings::StringRole, role));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
-  return f.object(x).fields(
-      f.field(static_strings::StringManagerState, x.state)
-          .transformWith(LeaderInternalStateStringTransformer{}),
-      f.field(static_strings::StringLastChange, x.lastChange)
-          .transformWith(inspection::TimeStampTransformer{}),
-      f.field(static_strings::StringDetail, x.detail));
-}
+// template<class Inspector>
+// auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
+//   return f.object(x).fields(
+//       f.field(static_strings::StringManagerState, x.state)
+//           .transformWith(LeaderInternalStateStringTransformer{}),
+//       f.field(static_strings::StringLastChange, x.lastChange)
+//           .transformWith(inspection::TimeStampTransformer{}),
+//       f.field(static_strings::StringDetail, x.detail));
+// }
 
 enum class FollowerInternalState {
   kUninitializedState,

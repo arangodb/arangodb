@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,18 +19,33 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
+#include "RocksDBEngine/RocksDBPersistedLog.h"
 
-#include "Cluster/ActionBase.h"
+namespace arangodb::replication2::test {
 
-namespace arangodb::maintenance {
+struct ThreadAsyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+  using Func = fu2::unique_function<void() noexcept>;
 
-class UpdateReplicatedStateAction : public ActionBase {
- public:
-  UpdateReplicatedStateAction(MaintenanceFeature&, ActionDescription const&);
+  void operator()(Func fn) override;
 
-  bool first() override;
+  ~ThreadAsyncExecutor() override;
+  ThreadAsyncExecutor();
+
+ private:
+  void run() noexcept;
+
+  std::mutex mutex;
+  std::condition_variable cv;
+  std::vector<Func> queue;
+  bool stopping{false};
+  // initialize thread last, so the thread cannot access uninitialized members
+  std::thread thread;
 };
 
-}  // namespace arangodb::maintenance
+struct SyncExecutor : RocksDBAsyncLogWriteBatcher::IAsyncExecutor {
+  void operator()(fu2::unique_function<void() noexcept> f) noexcept override {
+    std::move(f).operator()();
+  }
+};
+}  // namespace arangodb::replication2::test
