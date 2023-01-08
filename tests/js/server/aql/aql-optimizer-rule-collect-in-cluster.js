@@ -124,7 +124,7 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
 
       if (isSearchAlias) {
         // sync the index
-        res = db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
+        db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
       }
     },
 
@@ -472,7 +472,7 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
     
       if (isSearchAlias) {
         // sync the index
-        res = db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
+        db._query(`FOR doc IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.value > 0 LIMIT 1 RETURN doc`);
       }
     },
 
