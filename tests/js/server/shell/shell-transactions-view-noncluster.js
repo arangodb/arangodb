@@ -413,7 +413,6 @@ function TransactionsIResearchSuite() {
       c.save({ name_1: "456", "value": [{ "nested_1": [{ "nested_2": "123"}]}], text: "lazy fox is crazy", val: 6 });
       c.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "321"}]}], text: "crazy fox is crazy", val: 7 });
 
-      print("count = ", c.count())
       try {
         db._executeTransaction({
           collections: {write: 'UnitTestsCollection'},
@@ -433,7 +432,6 @@ function TransactionsIResearchSuite() {
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
-      print("isEnterprise = ", isEnterprise);
       try {
         db._executeTransaction({
           collections: {write: 'UnitTestsCollection'},
@@ -443,16 +441,13 @@ function TransactionsIResearchSuite() {
             c.remove("full");
             c.remove("half");
 
-            print('start query')
             // it should not be possible to query with waitForSync
             db._query(qqSearchAliasWithSync);
-            print('end query')
             fail();
           }
         });
         fail();
       } catch(err) {
-        print(err)
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
@@ -465,16 +460,13 @@ function TransactionsIResearchSuite() {
             c.remove("full");
             c.remove("half");
 
-            print('start query')
             // it should not be possible to query with waitForSync
             db._query(qqIndexWithSync);
-            print('end query')
             fail();
           }
         });
         fail();
       } catch(err) {
-        print(err)
         assertEqual(err.errorNum, ERRORS.ERROR_BAD_PARAMETER.code);
       }
 
