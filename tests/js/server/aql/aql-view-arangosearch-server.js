@@ -159,9 +159,15 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
                            " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       if (isSearchAlias) {
         assertEqual(docs.length + docsNew.length - 1,
-         db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-                      FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                      COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);           
+          db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                       FILTER u.indexField >= 0 
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+        if (isEnterprise) {
+          assertEqual(docs.length + docsNew.length - 1,
+            db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                         FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+        }          
       }          
 
       // add another index (to make it fail after arangosearch insert passed) 

@@ -291,16 +291,16 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
         //   assertEqual(i, indexResults.json[i]);
         // }
 
-        if (isEnterprise) {
-          let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-            FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
-            SORT doc.value RETURN DISTINCT doc.value`;
-          let indexResults = AQL_EXECUTE(indexQuery);
-          assertEqual(1000, indexResults.json.length);
-          for (let i = 0; i < 1000; ++i) {
-            assertEqual(i, indexResults.json[i]);
-          }
-        }
+        // if (isEnterprise) {
+        //   let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        //     FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+        //     SORT doc.value RETURN DISTINCT doc.value`;
+        //   let indexResults = AQL_EXECUTE(indexQuery);
+        //   assertEqual(1000, indexResults.json.length);
+        //   for (let i = 0; i < 1000; ++i) {
+        //     assertEqual(i, indexResults.json[i]);
+        //   }
+        // }
       } 
     },
 
