@@ -128,12 +128,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     builder.add("cached", VPackValue(_cached));
 
-    if (isRetriable()) {
-      _currentBatchResult.first = ++_currentBatchId;
-      if (hasNext()) {
-        builder.add("nextBatchId", _currentBatchId + 1);
-      }
-    }
+    handleNextBatchIdValue(builder, hasNext());
 
     if (!hasNext()) {
       // mark the cursor as deleted
@@ -460,12 +455,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (hasMore) {
     builder.add("id", VPackValue(std::to_string(id())));
   }
-  if (isRetriable()) {
-    _currentBatchResult.first = ++_currentBatchId;
-    if (hasMore) {
-      builder.add("nextBatchId", _currentBatchId + 1);
-    }
-  }
+  handleNextBatchIdValue(builder, hasMore);
 
   builder.add("cached", VPackValue(false));
 

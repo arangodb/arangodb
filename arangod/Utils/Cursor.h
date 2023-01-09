@@ -31,6 +31,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 
+#include "velocypack/Buffer.h"
 #include <velocypack/Iterator.h>
 #include <velocypack/Builder.h>
 #include <atomic>
@@ -91,16 +92,28 @@ class Cursor {
 
   void setDeleted() { _isDeleted = true; }
 
-  void setLastQueryBatchObject(velocypack::Builder& builder) {
-    _currentBatchResult.second = builder;
+  void setLastQueryBatchObject(
+      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
+    _currentBatchResult.second = buffer;
   }
 
-  Result getLastBatchResult(size_t batchId, velocypack::Builder& result) {
-    if (_currentBatchResult.first != batchId) {
+  Result getLastBatchResult(std::string const& batchId,
+                            VPackBufferUInt8& buffer) {
+    if (_currentBatchResult.first.compare(batchId) != 0) {
       return Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found");
     }
-    result = VPackBuilder(_currentBatchResult.second.slice());
+    VPackBuilder builder(*(_currentBatchResult.second.get()));
+    buffer = *(_currentBatchResult.second.get());
     return {TRI_ERROR_NO_ERROR};
+  }
+
+  void handleNextBatchIdValue(VPackBuilder& builder, bool hasMore) {
+    if (isRetriable()) {
+      _currentBatchResult.first = std::to_string(++_currentBatchId);
+      if (hasMore) {
+        builder.add("nextBatchId", std::to_string(_currentBatchId + 1));
+      }
+    }
   }
 
   void use() {
@@ -170,6 +183,7 @@ class Cursor {
   bool _isDeleted;
   bool _isRetriable;
   std::atomic<bool> _isUsed;
-  std::pair<size_t, VPackBuilder> _currentBatchResult;
+  std::pair<std::string, std::shared_ptr<velocypack::Buffer<uint8_t>>>
+      _currentBatchResult;
 };
 }  // namespace arangodb

@@ -78,7 +78,7 @@ RestStatus RestCursorHandler::execute() {
       // POST /_api/cursor/cursor-id
       return modifyQueryCursor();
     }
-    return showLastBatchRetry();
+    return showLatestBatch();
   } else if (type == rest::RequestType::PUT) {
     return modifyQueryCursor();
   } else if (type == rest::RequestType::DELETE_REQ) {
@@ -603,8 +603,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   // dump might delete the cursor
   std::shared_ptr<transaction::Context> ctx = _cursor->context();
 
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
+  VPackBuilder builder;
   builder.openObject(/*unindexed*/ true);
 
   auto const [state, r] = _cursor->dump(builder);
@@ -623,31 +622,30 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.add(StaticStrings::Error, VPackValue(false));
     builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.close();
-    _cursor->setLastQueryBatchObject(builder);
-
+    if (_cursor->isRetriable()) {
+      _cursor->setLastQueryBatchObject(builder.buffer());
+    }
     _response->setContentType(rest::ContentType::JSON);
     TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
 
-    generateResult(code, std::move(buffer), std::move(ctx));
+    generateResult(code, std::move(*(builder.buffer().get())), std::move(ctx));
   } else {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add(StaticStrings::Code,
-                VPackValue(static_cast<int>(
-                    GeneralResponse::responseCode(r.errorNumber()))));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add("errorMessage", VPackValue(r.errorMessage()));
-    builder.add("errorNum", VPackValue(r.errorNumber()));
-    builder.close();
-    _cursor->setLastQueryBatchObject(builder);
-
+    if (_cursor->isRetriable()) {
+      builder.add(StaticStrings::Code,
+                  VPackValue(static_cast<int>(
+                      GeneralResponse::responseCode(r.errorNumber()))));
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add("errorMessage", VPackValue(r.errorMessage()));
+      builder.add("errorNum", VPackValue(r.errorNumber()));
+      builder.close();
+      _cursor->setLastQueryBatchObject(builder.buffer());
+    }
     // builder can be in a broken state here. simply return the error
     generateError(r);
   }
 
   return RestStatus::DONE;
-}
-
+};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
@@ -683,7 +681,7 @@ RestStatus RestCursorHandler::createQueryCursor() {
 /// response on a retry, and does't advance cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::showLastBatchRetry() {
+RestStatus RestCursorHandler::showLatestBatch() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
@@ -721,20 +719,17 @@ RestStatus RestCursorHandler::showLastBatchRetry() {
   _cursor->setWakeupHandler(withLogContext(
       [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-  TRI_ASSERT(_cursor != nullptr);
-
   std::shared_ptr<transaction::Context> ctx = _cursor->context();
 
-  VPackBuilder builder;
+  VPackBufferUInt8 buffer;
 
-  size_t batchId = basics::StringUtils::uint64(suffixes[1]);
+  std::string const& batchId = suffixes[1];
 
-  auto const r = _cursor->getLastBatchResult(batchId, builder);
+  auto const r = _cursor->getLastBatchResult(batchId, buffer);
 
   if (r.ok()) {
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, std::move(*(builder.buffer().get())),
-                   std::move(ctx));
+    generateResult(rest::ResponseCode::OK, std::move(buffer), std::move(ctx));
   } else {
     // builder can be in a broken state here. simply return the error
     generateError(r);
