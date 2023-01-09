@@ -47,6 +47,23 @@ const ViewSettingsReactView = ({ name }) => {
       </table>)
   };
 
+  const StoredValuesContent = () => {
+    return (<table>
+      <tbody>
+      {
+        formState.storedValues.map (item =>(
+          <tr className="tableRow" id={"row_" + (item.fields)}>
+            <th className="collectionTh">
+            <Textbox type={'text'} disabled={true} required={false}
+              value={item.fields} /> {item.compression}
+            </th>
+          </tr>
+        ))
+      }
+      </tbody>
+      </table>)
+  };
+
   const GeneralContent = () => {
   return( <table>
   <tbody>
@@ -311,7 +328,7 @@ const [linkName, setLinkName] = useState('')
               },
               {
                 index: 3,
-                content: <div>Accordion Item 4</div>,
+                content: <div><StoredValuesContent /></div>,
                 label: "Stored Values",
                 testID: "accordionItem4"
               },
