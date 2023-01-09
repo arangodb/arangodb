@@ -64,7 +64,7 @@ struct DocumentFollowerState
   auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex,
+      LogIndex waitForIndex, std::uint64_t snapshotsCount,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<Result>;
 
@@ -81,6 +81,8 @@ struct DocumentFollowerState
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;
+  std::atomic<std::uint64_t> _snapshotsCount;
+  std::mutex _shardRewriteMutex;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -43,7 +43,8 @@ DocumentFollowerState::DocumentFollowerState(
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
-      _guardedData(std::move(core)) {}
+      _guardedData(std::move(core)),
+      _snapshotsCount(0) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -60,15 +61,22 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto truncateRes = _guardedData.doUnderLock(
-      [self = shared_from_this()](auto& data) -> Result {
+  auto snapshotsCount = _guardedData.doUnderLock(
+      [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-        return self->truncateLocalShard();
+
+        std::unique_lock guard(self->_shardRewriteMutex);
+        auto count = ++self->_snapshotsCount;
+        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+          return truncateRes;
+        }
+        return count;
       });
-  if (truncateRes.fail()) {
-    return truncateRes;
+
+  if (snapshotsCount.fail()) {
+    return snapshotsCount.result();
   }
 
   // A follower may request a snapshot before leadership has been
@@ -76,7 +84,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   auto leader = _networkHandler->getLeaderInterface(destination);
   auto fut = leader->startSnapshot(waitForIndex);
   return handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                std::move(fut));
+                                snapshotsCount.get(), std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
@@ -184,11 +192,12 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex,
+    LogIndex waitForIndex, std::uint64_t snapshotsCount,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
   return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+             snapshotsCount](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
@@ -211,13 +220,28 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         TRI_ASSERT(snapshotRes->shardId == self->shardId);
 
         auto& docs = snapshotRes->payload;
-        auto insertRes = self->_guardedData.doUnderLock(
-            [&self, &docs](auto& data) -> Result {
-              if (data.didResign()) {
-                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-              }
-              return self->populateLocalShard(docs);
-            });
+        auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                         snapshotsCount](
+                                                            auto& data)
+                                                            -> Result {
+          if (data.didResign()) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+          }
+
+          // The user may remove and add the server again. The leader
+          // might do a compaction which the follower won't notice. Hence, a
+          // new snapshot is required. This can happen so quick, that one
+          // snapshot transfer is not yet completed before another one is
+          // requested. Before populating the shard, we have to make sure
+          // there's no new snapshot transfer in progress.
+          std::unique_lock guard(self->_shardRewriteMutex);
+          if (self->_snapshotsCount.load() != snapshotsCount) {
+            return {
+                TRI_ERROR_INTERNAL,
+                "Snapshot transfer cancelled because a new one was started!"};
+          }
+          return self->populateLocalShard(docs);
+        });
         if (insertRes.fail()) {
           return insertRes;
         }
@@ -225,7 +249,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         if (snapshotRes->hasMore) {
           auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
           return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                              std::move(fut));
+                                              snapshotsCount, std::move(fut));
         }
 
         return leader->finishSnapshot(snapshotRes->snapshotId);
