@@ -2625,8 +2625,8 @@ function explainQuerysRegisters(plan) {
    *     type: string,
    *     unusedRegsStack: Array<number[]>,
    *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
-   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
-   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsSetHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
    *   }
    * }
    */

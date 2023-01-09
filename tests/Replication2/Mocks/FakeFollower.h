@@ -45,15 +45,12 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
-  auto waitForResign() -> futures::Future<futures::Unit> override;
-  auto getCommitIndex() const noexcept -> LogIndex override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
-
-  auto waitForLeaderAcked() -> WaitForFuture override;
-
-  auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& override;
+  auto compact() -> ResultT<
+      arangodb::replication2::replicated_log::CompactionResult> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   auto getParticipantId() const noexcept -> ParticipantId const& override;
 

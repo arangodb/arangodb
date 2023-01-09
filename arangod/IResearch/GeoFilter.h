@@ -54,7 +54,7 @@ struct GeoFilterOptions {
   using filter_type = GeoFilter;
 
   bool operator==(const GeoFilterOptions& rhs) const noexcept {
-    return type == rhs.type && shape.equals(&rhs.shape);
+    return type == rhs.type && shape.equals(rhs.shape);
   }
 
   size_t hash() const noexcept {

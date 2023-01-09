@@ -245,30 +245,16 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       break;
 
     case TLS_V1:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       meth = TLS_client_method();
-#else
-      meth = TLSv1_method();
-#endif
       break;
 
     case TLS_V12:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       meth = TLS_client_method();
-#else
-      meth = TLSv1_2_method();
-#endif
       break;
 
-      // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
-
-      // openssl version number format is
-      // MNNFFPPS: major minor fix patch status
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
       meth = TLS_client_method();
       break;
-#endif
 
     case TLS_GENERIC:
       meth = TLS_client_method();
@@ -276,17 +262,12 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
     case SSL_UNKNOWN:
     default:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       // The actual protocol version used will be negotiated to the highest
       // version mutually supported by the client and the server. The supported
       // protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should
       // use these methods, and avoid the version-specific methods described
       // below.
       meth = TLS_method();
-#else
-      // default to TLS 1.2
-      meth = TLSv1_2_method();
-#endif
       break;
   }
 
@@ -342,9 +323,7 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
-#endif
     case TLS_GENERIC:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());

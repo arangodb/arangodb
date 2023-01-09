@@ -63,11 +63,9 @@ auto detectConflict(replicated_log::InMemoryLog const& log,
 
 struct LogActionContext {
   virtual ~LogActionContext() = default;
-  virtual auto dropReplicatedLog(LogId) -> Result = 0;
-  virtual auto ensureReplicatedLog(LogId)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> = 0;
-  virtual auto buildAbstractFollowerImpl(LogId, ParticipantId)
-      -> std::shared_ptr<replication2::replicated_log::AbstractFollower> = 0;
+  virtual auto dropReplicatedState(LogId) -> Result = 0;
+  virtual auto ensureReplicatedState(LogId id, std::string_view type,
+                                     VPackSlice parameter) -> Result = 0;
 };
 
 auto updateReplicatedLog(
@@ -79,12 +77,12 @@ auto updateReplicatedLog(
 struct ParticipantState {
   TermIndexPair lastAckedEntry;
   ParticipantId id;
-  bool failed = false;
+  bool snapshotAvailable = false;
   ParticipantFlags flags{};
 
   [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
-  [[nodiscard]] auto isFailed() const noexcept -> bool;
+  [[nodiscard]] auto isSnapshotAvailable() const noexcept -> bool;
 
   [[nodiscard]] auto lastTerm() const noexcept -> LogTerm;
   [[nodiscard]] auto lastIndex() const noexcept -> LogIndex;

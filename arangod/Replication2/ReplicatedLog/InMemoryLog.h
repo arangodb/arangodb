@@ -119,6 +119,8 @@ struct InMemoryLog {
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const
       -> std::unique_ptr<PersistedLogIterator>;
+  [[nodiscard]] auto getRangeIteratorFrom(LogIndex fromIdx) const
+      -> std::unique_ptr<LogRangeIterator>;
   [[nodiscard]] auto getInternalIteratorRange(LogIndex fromIdx,
                                               LogIndex toIdx) const
       -> std::unique_ptr<PersistedLogIterator>;

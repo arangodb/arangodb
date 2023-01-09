@@ -54,8 +54,6 @@
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 #include "StorageEngine/HealthData.h"
 #include "Basics/ScopeGuard.h"
 #include "MoveShard.h"
@@ -957,18 +955,18 @@ bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
-  LOG_TOPIC("aadea", DEBUG, Logger::SUPERVISION) << "Checking dbservers...";
+  LOG_TOPIC("aadea", TRACE, Logger::SUPERVISION) << "Checking dbservers...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
-  LOG_TOPIC("aadeb", DEBUG, Logger::SUPERVISION) << "Checking coordinators...";
+  LOG_TOPIC("aadeb", TRACE, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
              "Singles");
-  LOG_TOPIC("aadec", DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("aadec", TRACE, Logger::SUPERVISION)
       << "Checking single servers (active failover)...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
-  LOG_TOPIC("aaded", DEBUG, Logger::SUPERVISION) << "Server checks done.";
+  LOG_TOPIC("aaded", TRACE, Logger::SUPERVISION) << "Server checks done.";
 
   return true;
 }
@@ -1318,7 +1316,7 @@ void Supervision::waitForSupervisionNode() {
       break;
     }
 
-    LOG_TOPIC("9a79b", DEBUG, Logger::SUPERVISION) << "Waiting for ArangoDB to "
+    LOG_TOPIC("9a79b", TRACE, Logger::SUPERVISION) << "Waiting for ArangoDB to "
                                                       "initialize its data.";
   }
 }
@@ -1801,11 +1799,6 @@ void Supervision::handleJobs() {
   LOG_TOPIC("2cd7b", TRACE, Logger::SUPERVISION)
       << "Begin checkUndoLeaderChangeActions";
   checkUndoLeaderChangeActions();
-
-  LOG_TOPIC("f7aa5", TRACE, Logger::SUPERVISION)
-      << "Begin checkReplicatedStates";
-  checkReplicatedStates();
-  updateSnapshot();  // make updates from replicated state visible
 
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
@@ -2499,7 +2492,7 @@ void Supervision::checkBrokenCreatedDatabases() {
   for (auto const& dbpair : databases.value().get().children()) {
     std::shared_ptr<Node> const& db = dbpair.second;
 
-    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
+    LOG_TOPIC("24152", TRACE, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
 
     ifResourceCreatorLost(db, [&](ResourceCreatorLostEvent const& ev) {
       LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
@@ -2724,26 +2717,6 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
   }
 }
 
-auto parseReplicatedStateAgency(Node const& root, Node const& targetNode,
-                                std::string const& dbName,
-                                std::string const& idString)
-    -> replication2::replicated_state::agency::State {
-  return replication2::replicated_state::agency::State{
-      .target = parseSomethingFromNode<
-          replication2::replicated_state::agency::Target>(targetNode),
-      .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
-          root, aliases::plan()
-                    ->replicatedStates()
-                    ->database(dbName)
-                    ->state(idString)
-                    ->str(SkipComponents(1))),
-      .current = parseIfExists<replication2::replicated_state::agency::Current>(
-          root, aliases::current()
-                    ->replicatedStates()
-                    ->database(dbName)
-                    ->state(idString)
-                    ->str(SkipComponents(1)))};
-}
 }  // namespace
 
 namespace {
@@ -2816,7 +2789,7 @@ void Supervision::checkReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Target has replicated logs
-  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
   if (!targetNode) {
     return;
   }
@@ -2855,58 +2828,6 @@ void Supervision::checkReplicatedLogs() {
     write_ret_t res = _agent->write(builder.slice());
     if (!res.successful()) {
       LOG_TOPIC("12d36", WARN, Logger::SUPERVISION)
-          << "failed to update term in agency. Will retry. "
-          << builder.toJson();
-    }
-  }
-}
-
-namespace {
-auto handleReplicatedState(Node const& snapshot, Node const& targetNode,
-                           std::string const& dbName,
-                           std::string const& idString,
-                           arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope try {
-  auto log = parseReplicatedLogAgency(snapshot, dbName, idString);
-  auto state =
-      parseReplicatedStateAgency(snapshot, targetNode, dbName, idString);
-
-  return replication2::replicated_state::executeCheckReplicatedState(
-      dbName, std::move(state), std::move(log), std::move(envelope));
-} catch (std::exception const& err) {
-  LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
-      << "Supervision caught exception while parsing "
-         "replicated state "
-      << dbName << "/" << idString << ": " << err.what();
-  return envelope;
-}
-}  // namespace
-
-void Supervision::checkReplicatedStates() {
-  _lock.assertLockedByCurrentThread();
-
-  using namespace replication2::agency;
-
-  auto targetNode = snapshot().hasAsNode(targetRepStatePrefix);
-  if (!targetNode.has_value()) {
-    return;
-  }
-
-  velocypack::Builder builder;
-  auto envelope = arangodb::agency::envelope::into_builder(builder);
-
-  for (auto const& [dbName, db] : targetNode->get().children()) {
-    for (auto const& [idString, node] : db->children()) {
-      envelope = handleReplicatedState(snapshot(), *node, dbName, idString,
-                                       std::move(envelope));
-    }
-  }
-
-  envelope.done();
-  if (builder.slice().length() > 0) {
-    write_ret_t res = _agent->write(builder.slice());
-    if (!res.successful()) {
-      LOG_TOPIC("12e37", WARN, Logger::SUPERVISION)
           << "failed to update term in agency. Will retry. "
           << builder.toJson();
     }
@@ -3049,12 +2970,12 @@ void Supervision::cleanupReplicatedLogs() {
   using namespace replication2::agency;
 
   // check if Plan has replicated logs
-  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  auto const& planNode = snapshot().hasAsNode(planRepStatePrefix);
   if (!planNode) {
     return;
   }
 
-  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+  auto const& targetNode = snapshot().hasAsNode(targetRepStatePrefix);
 
   velocypack::Builder builder;
   auto envelope = arangodb::agency::envelope::into_builder(builder);
@@ -3124,7 +3045,7 @@ void Supervision::cleanupReplicatedStates() {
       // delete plan and target
       auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
       envelope =
-          methods::deleteReplicatedStateTrx(std::move(envelope), dbName, logId);
+          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
     }
   }
 
@@ -3590,7 +3511,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       if (isReplication2(*database)) {
         auto stateId = LogicalCollection::shardIdToStateId(shard);
         auto target = Job::readStateTarget(snapshot(), *database, stateId);
-        if (not target->participants.contains(*server)) {
+        if (!target.has_value() || !target->participants.contains(*server)) {
           return true;
         }
       } else {
