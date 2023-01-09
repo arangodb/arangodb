@@ -230,7 +230,7 @@ ArangoQueryCursor.prototype.next = function () {
           arangosh.checkRequestResult(requestResult);
         } else {
           // throw the error again for the case in which the request to the latest batch is not retryable
-          throw(err);
+          throw err;
         }
       }
 
