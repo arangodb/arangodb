@@ -273,9 +273,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -311,9 +311,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -493,9 +493,9 @@ class RDBCoveringIterator final : public IndexIterator {
                          TRI_ASSERT(res.ok());  // this should never fail here
                          if (res.fail() ||
                              (ft == geo::FilterType::CONTAINS &&
-                              !filter.contains(&test)) ||
+                              !filter.contains(test)) ||
                              (ft == geo::FilterType::INTERSECTS &&
-                              !filter.intersects(&test))) {
+                              !filter.intersects(test))) {
                            result = false;
                            return false;
                          }
@@ -530,9 +530,9 @@ class RDBCoveringIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }

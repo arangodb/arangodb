@@ -50,7 +50,7 @@ using StreamEntry = std::pair<LogIndex, T>;
 
 /**
  * Consumer interface for a multiplexed object stream. Provides methods for
- * iteraction with the replicated logs stream.
+ * interaction with the replicated logs stream.
  * @tparam T Object Type
  */
 template<typename T>

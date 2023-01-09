@@ -70,8 +70,6 @@ extern std::string const cleanedPrefix;
 extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
-extern std::string const planRepLogPrefix;
-extern std::string const targetRepLogPrefix;
 extern std::string const targetRepStatePrefix;
 extern std::string const planRepStatePrefix;
 extern std::string const curColPrefix;
@@ -167,12 +165,9 @@ struct Job {
                                           replication2::LogId stateId,
                                           std::string const& server);
 
-  static std::optional<replication2::replicated_state::agency::Target>
+  static std::optional<arangodb::replication2::agency::LogTarget>
   readStateTarget(Node const& snap, std::string const& db,
                   replication2::LogId stateId);
-  static std::optional<replication2::replicated_state::agency::Plan>
-  readStatePlan(Node const& snap, std::string const& db,
-                replication2::LogId stateId);
   static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
       Node const& snap, std::string const& db, replication2::LogId logId);
 

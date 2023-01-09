@@ -89,7 +89,7 @@ Result DocumentStateShardHandler::dropLocalShard(
   bool work = collectionDropper.first();
   if (work) {
     return {TRI_ERROR_INTERNAL,
-            fmt::format("Cannot create shard ID {}", shardId)};
+            fmt::format("Cannot drop shard ID {}", shardId)};
   }
 
   _maintenanceFeature.addDirty(_gid.database);

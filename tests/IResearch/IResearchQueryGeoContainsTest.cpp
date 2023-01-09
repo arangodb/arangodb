@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <s2/s2latlng.h>
+#include <s2/s2region.h>
 
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
@@ -528,9 +529,9 @@ class QueryGeoContains : public QueryTest {
         auto doc = _insertedDocs.begin();
         geo::ShapeContainer shape;
         for (; it->next(); ++doc) {
-          ASSERT_TRUE(geo::geojson::parseRegion(doc->slice().get("geometry"),
-                                                shape, false)
-                          .ok());
+          ASSERT_TRUE(
+              geo::json::parseRegion(doc->slice().get("geometry"), shape, false)
+                  .ok());
           S2LatLng const centroid(shape.centroid());
 
           auto const storedValue = iresearch::slice(payload->value);
