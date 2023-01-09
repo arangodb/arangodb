@@ -175,8 +175,9 @@ query result in RAM, use a streaming query.)");
   options
       ->addOption(
           "--temp.intermediate-results-spillover-threshold-memory-usage",
-          "The memory usage threshold after which a spillover form RAM to disk "
-          "happens for intermediate results (threshold per query executor).",
+          "The memory usage threshold (in bytes) after which a spillover from "
+          "RAM to disk happens for intermediate results "
+          "(threshold per query executor).",
           new SizeTParameter(&_spillOverThresholdMemoryUsage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Experimental))
