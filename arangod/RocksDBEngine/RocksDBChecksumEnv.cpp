@@ -35,13 +35,7 @@
 
 namespace arangodb::checksum {
 
-ChecksumCalculator::ChecksumCalculator()
-    :
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      _context(EVP_MD_CTX_new()) {
-#else
-      _context(EVP_MD_CTX_create()) {
-#endif
+ChecksumCalculator::ChecksumCalculator() : _context(EVP_MD_CTX_new()) {
   if (_context == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

@@ -120,7 +120,7 @@ void TraverserEngineShardLists::serializeIntoBuilder(
       infoBuilder.add(VPackValue("variables"));
       infoBuilder.openArray();
       for (auto v : vars) {
-        v->toVelocyPack(infoBuilder);
+        v->toVelocyPack(infoBuilder, Variable::WithConstantValue{});
       }
       infoBuilder.close();
     }
