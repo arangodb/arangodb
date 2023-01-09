@@ -714,15 +714,15 @@ void ShapeContainer::Encode(Encoder& encoder, s2coding::CodingHint hint) const {
   }
 }
 
-template<ShapeContainer::Type Type, typename T>
+template<ShapeContainer::Type TypeT, typename T>
 bool ShapeContainer::DecodeImpl(Decoder& decoder) {
-  if (ADB_UNLIKELY(_type != Type)) {
+  if (ADB_UNLIKELY(_type != TypeT)) {
     if constexpr (std::is_same_v<T, S2PointRegion>) {
       _data = std::make_unique<T>(S2Point{});
     } else {
       _data = std::make_unique<T>();
     }
-    _type = Type;
+    _type = TypeT;
   }
   if constexpr (std::is_same_v<T, S2PointRegion>) {
     return decodePoint(decoder, basics::downCast<T>(*_data));
