@@ -493,7 +493,7 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   TRI_ASSERT(_keyBaseIdx < _keyBuffer.size());
   assertSizeCoherence();
   size_t key = _keyBaseIdx;
-  if (!_rows.empty()) {
+  if (std::is_same_v<ValueType, HeapSortExecutorValue> && !_rows.empty()) {
     TRI_ASSERT(!_scoresSort.empty());
     key = _rows[_keyBaseIdx];
   }
@@ -1787,7 +1787,8 @@ template<typename ExecutionTraits>
 void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
-  size_t const atMost = ctx.outputRow.numRowsLeft();
+  size_t const atMost =
+      Base::isLateMaterialized ? 1 : ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
