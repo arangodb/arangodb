@@ -278,20 +278,30 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
       
-      /*
-        PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/SEARCH-446
-      */  
+      if (isSearchAlias) {
+        /*
+          PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/SEARCH-446
+        */  
+        // let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        //   FILTER doc.value >= 0
+        //   SORT doc.value RETURN DISTINCT doc.value`;
+        // let indexResults = AQL_EXECUTE(indexQuery);
+        // assertEqual(1000, indexResults.json.length);
+        // for (let i = 0; i < 1000; ++i) {
+        //   assertEqual(i, indexResults.json[i]);
+        // }
 
-      // if (isSearchAlias) {
-      //   let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-      //     FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
-      //     SORT doc.value RETURN DISTINCT doc.value`;
-      //   let indexResults = AQL_EXECUTE(indexQuery);
-      //   assertEqual(1000, indexResults.json.length);
-      //   for (let i = 0; i < 1000; ++i) {
-      //     assertEqual(i, indexResults.json[i]);
-      //   }
-      // } 
+        if (isEnterprise) {
+          let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER doc.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+            SORT doc.value RETURN DISTINCT doc.value`;
+          let indexResults = AQL_EXECUTE(indexQuery);
+          assertEqual(1000, indexResults.json.length);
+          for (let i = 0; i < 1000; ++i) {
+            assertEqual(i, indexResults.json[i]);
+          }
+        }
+      } 
     },
 
     testDistinctView: function () {
@@ -314,7 +324,6 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       /*
         PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/SEARCH-446
       */  
-
       // if (isSearchAlias) {
       //   let indexQuery = `FOR doc IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
       //     FILTER doc.value >= 0 SORT doc.value RETURN DISTINCT doc.value`;
@@ -377,13 +386,26 @@ function optimizerCollectInClusterSuite(isSearchAlias) {
       if (isSearchAlias) {
         let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
           FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-          FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          FILTER doc2.value >= 0
           SORT doc2.value RETURN DISTINCT doc2.value`;
+
         let indexResults = AQL_EXECUTE(indexQuery);
-        // print(JSON.stringify(indexResults));
         assertEqual(1000, indexResults.json.length);
         for (let i = 0; i < 1000; ++i) {
           assertEqual(i, indexResults.json[i]);
+        }
+
+        if (isEnterprise) {
+          let indexQueryEE = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+            FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+            SORT doc2.value RETURN DISTINCT doc2.value`;
+
+          indexResults = AQL_EXECUTE(indexQueryEE);
+          assertEqual(1000, indexResults.json.length);
+          for (let i = 0; i < 1000; ++i) {
+            assertEqual(i, indexResults.json[i]);
+          }  
         }
       }
     }
@@ -733,13 +755,24 @@ function optimizerCollectInClusterSingleShardSuite(isSearchAlias) {
       if (isSearchAlias) {
         let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
           FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-          FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+          FILTER doc2.value >= 0
           SORT doc2.value RETURN DISTINCT doc2.value`;
         let indexResults = AQL_EXECUTE(indexQuery);
-        // print(JSON.stringify(indexResults));
         assertEqual(1000, indexResults.json.length);
         for (let i = 0; i < 1000; ++i) {
           assertEqual(i, indexResults.json[i]);
+        }
+
+        if (isEnterprise) {
+          let indexQuery = `FOR doc1 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc1.value < 10 
+            FOR doc2 IN ${c.name()} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER doc2.value_nested[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]]
+            SORT doc2.value RETURN DISTINCT doc2.value`;
+          let indexResults = AQL_EXECUTE(indexQuery);
+          assertEqual(1000, indexResults.json.length);
+          for (let i = 0; i < 1000; ++i) {
+            assertEqual(i, indexResults.json[i]);
+          }  
         }
       }
     },

@@ -499,7 +499,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         let i = c1.ensureIndex({
           type: "inverted",
           includeAllFields: true,
-          fields: [{name: "text", analyzer: "text_en"}, {"name": "value[*]"}, "a"] 
+          fields: [{name: "text", analyzer: "text_en"}, {"name": "value[*]"}, "a", "b", "c", "anotherNullField"] 
         });
         v = db._createView("UnitTestView", "search-alias", {});
         v.properties({indexes: [{collection: c1.name(), index: i.name}]});

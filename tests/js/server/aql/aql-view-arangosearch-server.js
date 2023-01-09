@@ -61,11 +61,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+            "indexField"
           ]};
         } else {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value[*]"}
+            {"name": "value[*]"},
+            "indexField"
           ]};
         }
 
@@ -131,8 +133,14 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       if (isSearchAlias) {
         assertEqual(docs.length,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
-                       FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                       FILTER u.indexField >= 0 
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
+        if (isEnterprise) {
+          assertEqual(docs.length,
+            db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
+                         FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+        }
       }
                  
       // testMultipleOparationTransaction (no index revert as PK will be violated)
@@ -223,11 +231,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+            "indexField"
           ]};
         } else {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value[*]"}
+            {"name": "value[*]"},
+            "indexField"
           ]};
         }
 
@@ -289,8 +299,15 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       if (isSearchAlias) {
         assertEqual(docs.length,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
-                       FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                       FILTER u.indexField >= 0
                        COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+
+        if (isEnterprise) {
+          assertEqual(docs.length,
+            db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
+                         FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+        }
       }
       // add another index (to make it fail after arangosearch update passed) 
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
@@ -332,11 +349,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+            "indexField"
           ]};
         } else {
           indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value[*]"}
+            {"name": "value[*]"},
+            "indexField"
           ]};
         }
 
@@ -397,9 +416,16 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       if (isSearchAlias) {
         assertEqual(docs.length,
-         db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-                      FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                      COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);           
+          db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                       FILTER u.indexField >= 0
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+
+        if (isEnterprise) {
+          assertEqual(docs.length,
+            db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                         FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+        }
       }       
 
       // add another index (to make it fail after arangosearch remove passed)
