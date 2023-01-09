@@ -72,13 +72,13 @@ class Cursor {
 
   inline size_t batchSize() const { return _batchSize; }
 
-  inline bool hasCount() const { return _hasCount; }
+  bool hasCount() const noexcept { return _hasCount; }
 
-  inline bool isRetriable() const { return _isRetriable; }
+  bool isRetriable() const noexcept { return _isRetriable; }
 
-  inline double ttl() const { return _ttl; }
+  double ttl() const noexcept { return _ttl; }
 
-  inline double expires() const {
+  double expires() const noexcept {
     return _expires.load(std::memory_order_relaxed);
   }
 
