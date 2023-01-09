@@ -628,7 +628,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     _response->setContentType(rest::ContentType::JSON);
     TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
 
-    generateResult(code, std::move(*(builder.buffer().get())), std::move(ctx));
+    generateResult(code, std::move(*builder.steal()), std::move(ctx));
   } else {
     if (_cursor->isRetriable()) {
       builder.add(StaticStrings::Code,
