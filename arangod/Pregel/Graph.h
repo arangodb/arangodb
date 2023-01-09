@@ -26,6 +26,7 @@
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-common.h>
 
 #include <cstdint>
 #include <functional>
@@ -34,15 +35,35 @@
 
 namespace arangodb::pregel {
 
-typedef uint16_t PregelShard;
-const PregelShard InvalidPregelShard = -1;
+struct PregelShard {
+  PregelShard() : shard(InvalidSentinel) {}
+  explicit PregelShard(uint16_t shard) : shard(shard) {}
+  PregelShard(PregelShard const&) = default;
+  PregelShard(PregelShard&&) = default;
+  auto operator=(PregelShard const&) -> PregelShard& = default;
+  auto operator=(PregelShard&&) -> PregelShard& = default;
+
+  // TODO: This operator is just here to make transition easier;
+  // once VPackValue is not called on PregelShard anymore it should
+  // be removed
+  explicit operator arangodb::velocypack::Value() const { return VPackValue(static_cast<uint32_t>(shard)); }
+
+  [[nodiscard]] auto isValid() const noexcept -> bool {
+    return shard == InvalidSentinel;
+  }
+
+  [[nodiscard]] auto operator<=>(PregelShard const&) const = default;
+
+  uint16_t shard;
+  uint16_t constexpr static InvalidSentinel =
+      std::numeric_limits<uint16_t>::max();
+};
+
+auto const InvalidPregelShard = PregelShard();
 
 struct PregelID {
-  std::string key;    // std::string 24
-  PregelShard shard;  // uint16_t
-
-  PregelID() : shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
+  PregelID() = default;
+  PregelID(PregelShard s, std::string k) : shard(s), key(std::move(k)) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
@@ -56,9 +77,10 @@ struct PregelID {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  [[nodiscard]] bool isValid() const {
-    return shard != InvalidPregelShard && !key.empty();
-  }
+  [[nodiscard]] bool isValid() const { return shard.isValid() && !key.empty(); }
+
+  PregelShard shard;
+  std::string key;
 };
 
 template<typename V, typename E>
@@ -91,38 +113,14 @@ class Edge {
 template<typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  char const* _key;  // uint64_t
-
-  // these members are initialized by the GraphStore
-  Edge<E>* _edges;  // uint64_t
-
-  // the number of edges per vertex is limited to 4G.
-  // this should be more than enough
-  uint32_t _edgeCount;  // uint32_t
-
-  // combined uint16_t attribute fusing the active bit
-  // and the length of the key in its other 15 bits. we do this
-  // to save RAM/space (we may have _lots_ of vertices).
-  // according to cppreference.com it is implementation-defined
-  // if multiple variables in a bitfield are tightly packed or
-  // not. in order to protect us from compilers that don't tightly
-  // pack bitfield variables, we validate the size of the struct
-  // via static_assert in the constructor of Vertex<V, E>.
-  uint16_t _active : 1;      // uint16_t (shared with _keyLength)
-  uint16_t _keyLength : 15;  // uint16_t (shared with _active)
-
-  PregelShard _shard;  // uint16_t
-
-  V _data;  // variable byte size
+  std::string _key;
+  std::vector<E> _edges;
+  bool _active;
+  PregelShard _shard;
+  V _data;
 
  public:
-  Vertex() noexcept
-      : _key(nullptr),
-        _edges(nullptr),
-        _edgeCount(0),
-        _active(1),
-        _keyLength(0),
-        _shard(InvalidPregelShard) {
+  Vertex() noexcept : _key(), _edges(), _active(true), _shard() {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
 
@@ -149,61 +147,53 @@ class Vertex {
   size_t addEdge(Edge<E>* edge) noexcept {
     // must only be called during initial vertex creation
     TRI_ASSERT(active());
-    TRI_ASSERT(_edgeCount < maxEdgeCount());
-
-    if (_edges == nullptr) {
-      _edges = edge;
-    }
-    return static_cast<size_t>(++_edgeCount);
   }
 
   // returns the number of associated edges
-  [[nodiscard]] size_t getEdgeCount() const noexcept {
-    return static_cast<size_t>(_edgeCount);
-  }
-
-  // maximum number of edges that can be added for each vertex
-  static constexpr size_t maxEdgeCount() {
-    return static_cast<size_t>(
-        std::numeric_limits<decltype(_edgeCount)>::max());
-  }
+  [[nodiscard]] size_t getEdgeCount() const noexcept { return _edges.size(); }
 
   void setActive(bool bb) noexcept {
-    _active = bb ? 1 : 0;
+    _active = bb;
     TRI_ASSERT((bb && active()) || (!bb && !active()));
   }
 
-  [[nodiscard]] bool active() const noexcept { return _active == 1; }
+  [[nodiscard]] bool active() const noexcept { return _active; }
 
   void setShard(PregelShard shard) noexcept { _shard = shard; }
   [[nodiscard]] PregelShard shard() const noexcept { return _shard; }
 
   void setKey(char const* key, uint16_t keyLength) noexcept {
-    // must only be called during initial vertex creation
     TRI_ASSERT(active());
     TRI_ASSERT(this->keyLength() == 0);
-    _key = key;
-    _keyLength = keyLength;
-    TRI_ASSERT(active());
+    _key = std::string(key);
     TRI_ASSERT(this->keyLength() == keyLength);
   }
 
-  [[nodiscard]] uint16_t keyLength() const noexcept { return _keyLength; }
+  [[nodiscard]] uint16_t keyLength() const noexcept { return _key.size(); }
 
   [[nodiscard]] std::string_view key() const {
-    return std::string_view(_key, keyLength());
+    return std::string_view(_key);
   }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
   [[nodiscard]] PregelID pregelId() const {
-    return PregelID{_shard, std::string(_key, keyLength())};
+    return PregelID{_shard, _key};
   }
 };
 
 }  // namespace arangodb::pregel
 
 namespace std {
+
+template<>
+struct hash<arangodb::pregel::PregelShard> {
+  std::size_t operator()(const arangodb::pregel::PregelShard& k) const noexcept {
+    using std::hash;
+    return std::hash<std::uint16_t>()(k.shard);
+  }
+};
+
 template<>
 struct hash<arangodb::pregel::PregelID> {
   std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
@@ -215,7 +205,7 @@ struct hash<arangodb::pregel::PregelID> {
     // second and third and combine them using XOR
     // and bit shifting:
     size_t h1 = std::hash<std::string>()(k.key);
-    size_t h2 = std::hash<size_t>()(k.shard);
+    size_t h2 = std::hash<arangodb::pregel::PregelShard>()(k.shard);
     return h2 ^ (h1 << 1);
   }
 };

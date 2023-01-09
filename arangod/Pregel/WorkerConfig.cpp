@@ -76,11 +76,12 @@ void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
   // Instead we have an index identifying a shard name in this vector
-  PregelShard i = 0;
+  uint16_t i = 0;
   for (VPackSlice shard : VPackArrayIterator(globalShards)) {
     ShardID s = shard.copyString();
     _globalShardIDs.push_back(s);
-    _pregelShardIDs.try_emplace(s, i++);  // Cache these ids
+    _pregelShardIDs.try_emplace(s, PregelShard(i));  // Cache these ids
+    i++;
   }
 
   // To access information based on a user defined collection name we need the

@@ -139,7 +139,7 @@ void ArrayOutCache<M>::flushMessages() {
     data.close();
     data.close();
     // add a request
-    ShardID const& shardId = this->_config->globalShardIDs()[shard];
+    ShardID const& shardId = this->_config->getShardIDByPregelShard(shard);
 
     responses.emplace_back(network::sendRequest(
         pool, "shard:" + shardId, fuerte::RestVerb::Post,

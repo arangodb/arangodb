@@ -100,6 +100,10 @@ class WorkerConfig {
     return _globalShardIDs;
   }
 
+  [[nodiscard]] ShardID getShardIDByPregelShard(PregelShard id) const {
+    return _globalShardIDs.at(id.shard);
+  }
+
   // convenvience access without guaranteed order, same values as in
   // vertexCollectionShards
   inline std::vector<ShardID> const& localVertexShardIDs() const {
