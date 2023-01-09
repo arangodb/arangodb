@@ -1093,7 +1093,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     // this is a hack to serialize (potentially large) arrays and objects
     // in a more compact way.
     // instead of serializing every array/object member with their "typeID",
-    // "vType", "vTypeID" etc. attributes, we simply store the array/object
+    // "vTypeID" etc. attributes, we simply store the array/object
     // data in plain JSON.
     // when unserializing the data back, we have to check if there is a "raw"
     // attribute, and if it exists, we have to use a special decoder for the
@@ -1111,7 +1111,12 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     toVelocyPackValue(builder);
 
     if (verbose) {
-      builder.add("vType", VPackValue(getValueTypeString()));
+      // it is not necessary to serialize the type name for the value type,
+      // because there is not code that ever reads it back.
+      // not serializing it helps to save a bit of overhead:
+      //   builder.add("vType", VPackValue(getValueTypeString()));
+      // we need to serialize the value type ID though, because that is
+      // later read back
       builder.add("vTypeID", VPackValue(static_cast<int>(value.type)));
     }
   }
