@@ -203,7 +203,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     stream = value.getBool();
   }
   if (value = slice.get("retriable"); value.isBool()) {
-    retriable = value.getBool();
+    retriable = value.isTrue();
   }
   if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
