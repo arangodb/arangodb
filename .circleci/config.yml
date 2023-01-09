@@ -7,7 +7,7 @@ jobs:
         type: string
     machine:
       image: ubuntu-2204:current
-    resource_class: arm.medium
+    resource_class: arm.xlarge
     environment:
       GIT_SSH_COMMAND: ssh -v
     steps:
