@@ -727,9 +727,7 @@ RestStatus RestCursorHandler::showLastBatchRetry() {
 
   VPackBuilder builder;
 
-  size_t batchId;
-  std::stringstream batchSuffix(suffixes[1]);
-  batchSuffix >> batchId;
+  size_t batchId = basics::StringUtils::uint64(suffixes[1]);
 
   auto const r = _cursor->getLastBatchResult(batchId, builder);
 
