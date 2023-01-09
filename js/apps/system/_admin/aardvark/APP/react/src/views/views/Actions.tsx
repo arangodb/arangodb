@@ -161,9 +161,7 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         onClick={() => setShow(true)}
         type={"danger"}
         style={{
-          marginTop: 10,
-          marginBottom: 10,
-          marginLeft: 0
+          float: 'right'
         }}
       >
         Delete

@@ -290,6 +290,8 @@ const [linkName, setLinkName] = useState('')
                         <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
                       : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
                     }
+                    <DeleteButton view={formState}
+                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
                   </div>
                 </div>
             </Cell>
