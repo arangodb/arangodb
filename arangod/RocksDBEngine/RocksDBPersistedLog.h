@@ -27,7 +27,10 @@
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
-#include "Metrics/Fwd.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/LogScale.h"
 
 #include <array>
 #include <variant>
@@ -111,6 +114,36 @@ struct IRocksDBAsyncLogWriteBatcher {
                                WriteOptions const& opts)
       -> futures::Future<ResultT<SequenceNumber>> = 0;
 };
+
+struct WriteBatchSizeScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    // values in bytes, smallest bucket is up to 1kb
+    return {scale_t::kSupplySmallestBucket, 2, 0, 1024, 16};
+  }
+};
+DECLARE_GAUGE(arangodb_replication2_rocksdb_num_persistor_worker, std::uint64_t,
+              "Number of threads running in the log persistor");
+DECLARE_GAUGE(arangodb_replication2_rocksdb_queue_length, std::uint64_t,
+              "Number of replicated log storage operations queued");
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_batch_size,
+                  WriteBatchSizeScale,
+                  "Size of replicated log write batches in bytes");
+struct ApplyEntriesRttScale {
+  using scale_t = metrics::LogScale<std::uint64_t>;
+  static scale_t scale() {
+    // values in us, smallest bucket is up to 1ms, scales up to 2^16ms =~ 65s.
+    return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
+  }
+};
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time_us,
+                  ApplyEntriesRttScale,
+                  "Replicated log batches write time[us]");
+DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time_us,
+                  ApplyEntriesRttScale, "Replicated log batches sync time[us]");
+DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency_us,
+                  ApplyEntriesRttScale,
+                  "Replicated log storage operation latency[us]");
 
 struct RocksDBAsyncLogWriteBatcherMetrics {
   metrics::Gauge<std::size_t>* numWorkerThreadsWaitForSync;

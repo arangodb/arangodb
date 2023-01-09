@@ -781,35 +781,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
 }
 
 namespace {
-struct WriteBatchSizeScale {
-  using scale_t = metrics::LogScale<std::uint64_t>;
-  static scale_t scale() {
-    // values in bytes, smallest bucket is up to 1kb
-    return {scale_t::kSupplySmallestBucket, 2, 0, 1024, 16};
-  }
-};
-DECLARE_GAUGE(arangodb_replication2_rocksdb_num_persistor_worker, std::uint64_t,
-              "Number of threads running in the log persistor");
-DECLARE_GAUGE(arangodb_replication2_rocksdb_queue_length, std::uint64_t,
-              "Number of replicated log storage operations queued");
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_batch_size,
-                  WriteBatchSizeScale,
-                  "Size of replicated log write batches in bytes");
-struct ApplyEntriesRttScale {
-  using scale_t = metrics::LogScale<std::uint64_t>;
-  static scale_t scale() {
-    // values in us, smallest bucket is up to 1ms, scales up to 2^16ms =~ 65s.
-    return {scale_t::kSupplySmallestBucket, 2, 0, 1'000, 16};
-  }
-};
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_write_time_us,
-                  ApplyEntriesRttScale,
-                  "Replicated log batches write time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_rocksdb_sync_time_us,
-                  ApplyEntriesRttScale, "Replicated log batches sync time[us]");
-DECLARE_HISTOGRAM(arangodb_replication2_storage_operation_latency_us,
-                  ApplyEntriesRttScale,
-                  "Replicated log storage operation latency[us]");
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
     : RocksDBAsyncLogWriteBatcherMetrics {
