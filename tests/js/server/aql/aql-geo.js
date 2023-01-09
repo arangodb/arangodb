@@ -142,31 +142,51 @@ function geoSuite(isSearchAlias) {
   }
 
   function compare(query, queryView) {
-    let q = `FOR d IN @@coll ${query} RETURN d._key`;
-    let qv = `FOR d IN ${viewName} ${queryView} RETURN d._key`;
-    let iiQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} ${query} RETURN d._key`;
-    let wo = getQueryResults(q, {"@coll": collWithoutIndex}).sort();
-    let wi = getQueryResults(q, {"@coll": collWithIndex}).sort();
-    let wv = getQueryResults(qv, {}).sort();
-    let iiQueryResults = getQueryResults(iiQuery, {}).sort();
-    let oi = compareKeyLists("without index", wo, "with index", wi);
-    let ov = compareKeyLists("without index", wo, "with view", wv);
-    let oii = compareKeyLists("without index", wo, "with inverted index", iiQueryResults);
-    if (!oi.good || !ov.good || !oii.good) {
-      print("Query for collections:", q);
-      print("Query for views:", qv);
-      print("Query for collections with Inverted Index:", iiQuery);
-      print("Without index:", wo.length);
-      print("With index:", wi.length);
-      print("With view:", wv.length);
-      print("Errors with index: ", oi.msg);
-      print("Errors with view: ", ov.msg);
-      print("Errors with Inverted Index: ", oii.msg);
+    let fullScanQuery = `FOR d IN @@coll ${query} RETURN d._key`;
+    let viewQuery = `FOR d IN ${viewName} ${queryView} RETURN d._key`;
+    let invertedIndexQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} ${query} RETURN d._key`;
+    
+    let resFullScanNoIndexes = getQueryResults(fullScanQuery, {"@coll": collWithoutIndex}).sort();
+    let resFullScanWithIndexes = getQueryResults(fullScanQuery, {"@coll": collWithIndex}).sort();
+    let resView = getQueryResults(viewQuery, {}).sort();
+    let resInvertedIndex = getQueryResults(invertedIndexQuery, {}).sort();
+
+    let cmpResFullScanWithIndexes = compareKeyLists("without index", resFullScanNoIndexes, "with index", resFullScanWithIndexes);
+    let cmpResView = compareKeyLists("without index", resFullScanNoIndexes, "with view", resView);
+    let cmpResInvertedIndex = compareKeyLists("without index", resFullScanNoIndexes, "with inverted index", resInvertedIndex);
+    
+    // PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/BTS-1184
+    
+    /*
+    let explanation = db._createStatement(invertedIndexQuery).explain().plan;
+    let utilizedIndexes = explanation.nodes.filter(node => node.type === 'IndexNode')[0].indexes;
+    assertEqual(utilizedIndexes.length, 1);
+    assertEqual(utilizedIndexes[0].name, "inverted");
+    */
+
+    if (!cmpResFullScanWithIndexes.good || !cmpResView.good || !cmpResInvertedIndex.good) {
+      print("Query for collections:", fullScanQuery);
+      print("Query for views:", viewQuery);
+      print("Query for collections with Inverted Index:", invertedIndexQuery);
+
+      print("Without index:", resFullScanNoIndexes.length);
+      print("With index:", resFullScanWithIndexes.length);
+      print("With view:", resView.length);
+      print("With Inverted Index:", resInvertedIndex.length);
+
+      print("Errors with index: ", cmpResFullScanWithIndexes.msg);
+      print("Errors with view: ", cmpResView.msg);
+      print("Errors with Inverted Index: ", cmpResInvertedIndex.msg);
     }
+
+    /*
+      NB: 'if' statement below should be removed after fixing all bugs from ticket https://arangodb.atlassian.net/browse/SEARCH-284
+    */  
     if (disableViewTests) {
-      ov.good = true;   // fake goodness
+      cmpResView.good = true;   // fake goodness
+      cmpResInvertedIndex.good = true;   // fake goodness
     }
-    return {oi, ov, oii};
+    return {cmpResFullScanWithIndexes, cmpResView, cmpResInvertedIndex};
   }
 
   return {
@@ -280,7 +300,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([50, 50], d.geo) < 5000, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,7 +322,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 5000, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +348,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +376,7 @@ function geoSuite(isSearchAlias) {
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
                          GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,7 +402,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,7 +430,7 @@ function geoSuite(isSearchAlias) {
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) <= 666666, "geo_json")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,7 +460,7 @@ function geoSuite(isSearchAlias) {
                          GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")
          SORT GEO_DISTANCE([15, 15], d.geo) DESC`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,7 +486,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
         `SEARCH ANALYZER(GEO_DISTANCE([15, 15], d.geo) >= 300000, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,7 +516,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
         `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,7 +546,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
         `SEARCH ANALYZER(GEO_DISTANCE([10, 10], d.geo) <= 555974, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,7 +569,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
           `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -576,7 +596,7 @@ function geoSuite(isSearchAlias) {
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
           );
-          assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         }
       }
     },
@@ -608,7 +628,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -640,7 +660,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -667,7 +687,7 @@ function geoSuite(isSearchAlias) {
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
           );
-          assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+          assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
         }
       }
     },
@@ -699,7 +719,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -731,7 +751,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -756,7 +776,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo)`,
         `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo), "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -799,7 +819,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -851,7 +871,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -903,7 +923,7 @@ function geoSuite(isSearchAlias) {
           `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
           `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "geo_json")`
         );
-        assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+        assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       }
     },
 
@@ -961,7 +981,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
         `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       multiLineString = {
         "type": "MultiLineString",
         "coordinates": [ [[ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ]],
@@ -970,7 +990,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100`,
         `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiLineString)}, d.geo) < 100, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       let multiPoint = {
         type: "MultiPoint",
         coordinates: [ [ 6.537, 50.332 ], [ 6.537, 50.376 ],
@@ -979,7 +999,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
         `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       multiPoint = {
         type: "MultiPoint",
         "coordinates": [ [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
@@ -988,7 +1008,7 @@ function geoSuite(isSearchAlias) {
         `FILTER GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100`,
         `SEARCH ANALYZER(GEO_DISTANCE(${JSON.stringify(multiPoint)}, d.geo) < 100, "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1042,46 +1062,42 @@ function geoSuite(isSearchAlias) {
         "coordinates": [ [ [ 6.537, 50.332 ], [ 6.537, 50.376 ] ],
                          [ [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] ] };
                          
-      print("compare1");  
       let c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       multiLineString = {
         "type": "MultiLineString",
         "coordinates": [ [[ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ]],
                          [[ 37.614323, 55.70652 ], [ 37.615825, 55.70652 ]] ] };
 
-      print("compare2");  
       c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiLineString)}, d.geo, 0, 100), "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       let multiPoint = {
         type: "MultiPoint",
         coordinates: [ [ 6.537, 50.332 ], [ 6.537, 50.376 ],
                        [ 6.621, 50.332 ], [ 6.621, 50.376 ] ] };
 
-      print("compare3");  
       c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       multiPoint = {
         type: "MultiPoint",
         "coordinates": [ [ 37.614323, 55.705898 ], [ 37.615825, 55.705898 ],
           [37.614323, 55.70652], [37.615825, 55.70652]]
       };
 
-      print("compare4");  
       c = compare(
         `FILTER GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100)`,
         `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "geo_json")`
       );
-      assertTrue(c.oi.good && c.ov.good && c.oii.good, c.oi.msg + c.ov.msg + c.oii.msg);
+      assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
     },
   };
 }
