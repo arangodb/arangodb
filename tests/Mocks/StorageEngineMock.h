@@ -342,23 +342,17 @@ class StorageEngineMock : public arangodb::StorageEngine {
                          arangodb::LogicalCollection& collection,
                          VPackSlice const& info);
 
-  auto createReplicatedLog(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id)
-      -> arangodb::ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  auto dropReplicatedLog(
+  auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const& ptr)
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr)
       -> arangodb::Result override;
-
-  auto updateReplicatedState(
-      TRI_vocbase_t& vocbase,
+  auto createReplicatedState(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
       const arangodb::replication2::replicated_state::PersistedStateInfo& info)
-      -> arangodb::Result override;
-  auto dropReplicatedState(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id)
-      -> arangodb::Result override;
+      -> arangodb::ResultT<
+          std::unique_ptr<arangodb::replication2::replicated_state::
+                              IStorageEngineMethods>> override;
 
   std::shared_ptr<arangodb::StorageSnapshot> currentSnapshot() override {
     return std::make_shared<StorageEngineMockSnapshot>(currentTick());

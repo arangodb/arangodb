@@ -24,45 +24,30 @@
 #include "LogCore.h"
 
 #include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/debugging.h>
-#include <Basics/system-compiler.h>
-#include <Basics/voc-errors.h>
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+using namespace arangodb::replication2::replicated_state;
 
-replicated_log::LogCore::LogCore(std::shared_ptr<PersistedLog> persistedLog)
-    : _persistedLog(std::move(persistedLog)) {
-  if (ADB_UNLIKELY(_persistedLog == nullptr)) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "When instantiating ReplicatedLog: "
-                                   "persistedLog must not be a nullptr");
-  }
-}
+replicated_log::LogCore::LogCore(
+    replicated_state::IStorageEngineMethods& methods)
+    : _storage(methods) {}
 
 auto replicated_log::LogCore::removeBack(LogIndex first) -> Result {
   std::unique_lock guard(_operationMutex);
-  return _persistedLog->removeBack(first);
-}
-
-auto replicated_log::LogCore::insert(PersistedLogIterator& iter,
-                                     bool waitForSync) -> Result {
-  std::unique_lock guard(_operationMutex);
-  PersistedLog::WriteOptions opts;
-  opts.waitForSync = waitForSync;
-  return _persistedLog->insert(iter, opts);
+  return _storage.removeBack(first, {}).get().result();
 }
 
 auto replicated_log::LogCore::read(LogIndex first) const
     -> std::unique_ptr<PersistedLogIterator> {
   std::unique_lock guard(_operationMutex);
-  return _persistedLog->read(first);
+  return _storage.read(first);
 }
 
 auto replicated_log::LogCore::insertAsync(
@@ -70,34 +55,46 @@ auto replicated_log::LogCore::insertAsync(
     -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
   // This will hold the mutex
-  PersistedLog::WriteOptions opts;
+  IStorageEngineMethods::WriteOptions opts;
   opts.waitForSync = waitForSync;
-  return _persistedLog->insertAsync(std::move(iter), opts)
-      .thenValue([guard = std::move(guard)](Result&& res) mutable {
-        guard.unlock();
-        return std::move(res);
-      });
-}
-
-auto replicated_log::LogCore::releasePersistedLog() && -> std::shared_ptr<
-    PersistedLog> {
-  std::unique_lock guard(_operationMutex);
-  return std::move(_persistedLog);
+  return _storage.insert(std::move(iter), opts)
+      .thenValue(
+          [guard = std::move(guard)](
+              ResultT<IStorageEngineMethods::SequenceNumber>&& res) mutable {
+            guard.unlock();
+            return std::move(res).result();
+          });
 }
 
 auto replicated_log::LogCore::logId() const noexcept -> LogId {
-  return _persistedLog->id();
+  return _storage.getLogId();
 }
 
 auto LogCore::removeFront(LogIndex stop) -> futures::Future<Result> {
   std::unique_lock guard(_operationMutex);
-  return _persistedLog->removeFront(stop).thenValue(
-      [guard = std::move(guard)](Result&& res) mutable {
+  return _storage.removeFront(stop, {}).thenValue(
+      [guard = std::move(guard)](
+          ResultT<IStorageEngineMethods::SequenceNumber>&& res) mutable {
         guard.unlock();
-        return std::move(res);
+        return std::move(res).result();
       });
 }
 
-auto LogCore::gid() const noexcept -> GlobalLogIdentifier const& {
-  return _persistedLog->gid();
+auto LogCore::updateSnapshotState(replicated_state::SnapshotStatus status)
+    -> Result {
+  auto metaResult = _storage.readMetadata();
+  if (metaResult.fail()) {
+    return metaResult.result();
+  }
+  auto& meta = metaResult.get();
+  meta.snapshot.status = status;
+  return _storage.updateMetadata(meta);
+}
+
+auto LogCore::getSnapshotState() -> ResultT<replicated_state::SnapshotStatus> {
+  auto metaResult = _storage.readMetadata();
+  if (metaResult.fail()) {
+    return metaResult.result();
+  }
+  return metaResult->snapshot.status;
 }

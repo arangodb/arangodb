@@ -46,35 +46,46 @@ using namespace arangodb::test;
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, false, LogTerm{1});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::OK);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           false, false, LogTerm{1});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      false, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, false, LogTerm{3});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, false, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, true, LogTerm{3});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, true, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED);
+  }
+
+  {
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, false),
+                      true, false, LogTerm{1});
+    EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING);
   }
 }
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -105,9 +116,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = false}},
@@ -139,9 +150,9 @@ TEST_F(LeaderElectionCampaignTest,
   // all servers have reported, but A has the longest log. However,
   // it is not in plan and should therefore not be elected.
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}, true}},
+      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -221,7 +232,7 @@ struct LogSupervisionTest : ::testing::Test {
 
 TEST_F(LogSupervisionTest, test_leader_not_failed) {
   // Leader is not failed and the reboot id is as expected
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
@@ -231,7 +242,7 @@ TEST_F(LogSupervisionTest, test_leader_not_failed) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_failed) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = false}}}};
@@ -241,7 +252,7 @@ TEST_F(LogSupervisionTest, test_leader_failed) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{15},
                                           .notIsFailed = false}}}};
@@ -251,7 +262,7 @@ TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"B", ParticipantHealth{.rebootId = RebootId{15},
                                           .notIsFailed = false}}}};
@@ -302,8 +313,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -373,8 +384,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
@@ -449,8 +460,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -514,8 +525,8 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{2}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{2},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
@@ -533,14 +544,14 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.localState = {
-      {"A", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
-      {"B", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
-      {"C", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(3), LogIndex(44)))},
-      {"D", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))}};
+      {"A", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
+      {"B", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
+      {"C", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(3), LogIndex(44)), true)},
+      {"D", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)}};
   current.supervision.emplace(LogCurrentSupervision{});
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
@@ -709,10 +720,6 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
       .setPlanParticipant("C", defaultFlags)
       .setPlanParticipant("D", defaultFlags);
   log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
-  log.acknowledgeTerm("A")
-      .acknowledgeTerm("B")
-      .acknowledgeTerm("C")
-      .acknowledgeTerm("D");
 
   log.establishLeadership();
   log.setEmptyTerm();
@@ -720,7 +727,8 @@ TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
   log.acknowledgeTerm("A")
       .acknowledgeTerm("B")
       .acknowledgeTerm("C")
-      .acknowledgeTerm("D");
+      .acknowledgeTerm("D")
+      .allSnapshotsTrue();
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(

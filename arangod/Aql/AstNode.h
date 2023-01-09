@@ -297,15 +297,11 @@ struct AstNode {
   static void validateValueType(int type);
 
   /// @brief fetch a node's type from VPack
-  static AstNodeType getNodeTypeFromVPack(
-      arangodb::velocypack::Slice const& slice);
+  static AstNodeType getNodeTypeFromVPack(arangodb::velocypack::Slice slice);
 
-  /**
-   * @brief Helper class to check if this node can be represented as VelocyPack
-   * If this method returns FALSE a call to "toVelocyPackValue" will yield
-   * no change in the handed in builder.
-   * On TRUE it is guaranteed that the handed in Builder was modified.
-   */
+  void setConstantFlags() noexcept;
+
+  /// @brief function to check if this node can be represented as VelocyPack.
   bool valueHasVelocyPackRepresentation() const;
 
   /// @brief build a VelocyPack representation of the node value
