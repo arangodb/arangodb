@@ -2,7 +2,7 @@ add_library(arango_tests_zkd OBJECT
   Conversion.cpp
   Library.cpp)
 target_link_libraries(arango_tests_zkd
-	PRIVATE
+  PRIVATE
     arango_rocksdb
     gtest)	
 target_include_directories(arango_tests_zkd
