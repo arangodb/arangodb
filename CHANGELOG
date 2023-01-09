@@ -1,6 +1,9 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Added startup option `--rocksdb.bloom-filter-bits-per-key` to configure the
+  average number of bits to use per key in a Bloom filter.
+
 * Make the cache_oblivious option of jemalloc configurable from the environment.
   This helps to save 4096 bytes of RAM for every allocation which is at least
   16384 bytes large. This is particularly beneficial for the RocksDB buffer

@@ -161,6 +161,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
       _blockCacheSize(::defaultBlockCacheSize()),
       _blockCacheShardBits(-1),
+      _bloomBitsPerKey(10.0),
       _tableBlockSize(std::max(
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
@@ -847,6 +848,19 @@ the overall size of the block cache.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
+  options
+      ->addOption(
+          "--rocksdb.bloom-filter-bits-per-key",
+          "The average number of bits to use per key in a Bloom filter.",
+          new DoubleParameter(&_bloomBitsPerKey),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31003);
+
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
       "If non-zero, bigger reads are performed when doing compaction. If you "
@@ -1234,6 +1248,7 @@ void RocksDBOptionFeature::start() {
       << ", periodic_compaction_ttl: " << _periodicCompactionTtl
       << ", checksum: " << _checksumType
       << ", format_version: " << _formatVersion
+      << ", bloom_bits_per_key: " << _bloomBitsPerKey
       << ", enable_index_compression: " << _enableIndexCompression
       << ", prepopulate_block_cache: " << _prepopulateBlockCache
       << ", reserve_table_builder_memory: " << _reserveTableBuilderMemory
@@ -1463,7 +1478,8 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   result.pin_top_level_index_and_filter = _pinTopLevelIndexAndFilter;
 
   result.block_size = _tableBlockSize;
-  result.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  result.filter_policy.reset(
+      rocksdb::NewBloomFilterPolicy(_bloomBitsPerKey, true));
   result.enable_index_compression = _enableIndexCompression;
   result.format_version = _formatVersion;
   result.prepopulate_block_cache =
