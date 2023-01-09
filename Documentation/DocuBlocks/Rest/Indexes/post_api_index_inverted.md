@@ -175,10 +175,22 @@ the same tokens occur repeatedly, to emphasize these documents less.
 Default: `false`
 
 @RESTBODYPARAM{storedValues,array,optional,post_api_index_inverted_storedvalues}
-The optional `storedValues` attribute can contain an array of paths to additional 
-attributes to store in the index. These additional attributes cannot be used for
-index lookups or for sorting, but they can be used for projections. This allows an
-index to fully cover more queries and avoid extra document lookups.
+The optional `storedValues` attribute can contain an array of objects with paths
+to additional attributes to store in the index. These additional attributes
+cannot be used for index lookups or for sorting, but they can be used for
+projections. This allows an index to fully cover more queries and avoid extra
+document lookups.
+
+You may use the following shorthand notations on index creation instead of
+an array of objects. The default compression and cache settings are used in
+this case:
+
+- An array of string, like `["attr1", "attr2"]`, to place each attribute into
+  a separate column of the index (introduced in v3.10.3).
+
+- An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
+  attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
+  to place each attribute into a separate column.
 
 @RESTSTRUCT{fields,post_api_index_inverted_storedvalues,array,required,string}
 A list of attribute paths. The `.` character denotes sub-attributes.
