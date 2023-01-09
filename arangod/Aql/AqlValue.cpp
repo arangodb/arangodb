@@ -334,21 +334,46 @@ bool AqlValue::isArray() const noexcept {
   return true;
 }
 
-char const* AqlValue::getTypeString() const noexcept {
-  if (isNone()) {
-    return "none";
-  } else if (isNull(true)) {
-    return "null";
-  } else if (isBoolean()) {
-    return "bool";
-  } else if (isNumber()) {
-    return "number";
-  } else if (isString()) {
-    return "string";
-  } else if (isObject()) {
-    return "object";
-  } else if (isArray()) {
-    return "array";
+std::string_view AqlValue::getTypeString() const noexcept {
+  auto get = [](auto t) -> std::string_view {
+    switch (t) {
+      case velocypack::ValueType::Null:
+        return "null";
+      case velocypack::ValueType::Bool:
+        return "bool";
+      case velocypack::ValueType::Array:
+        return "array";
+      case velocypack::ValueType::Object:
+        return "object";
+      case velocypack::ValueType::Double:
+      case velocypack::ValueType::Int:
+      case velocypack::ValueType::UInt:
+      case velocypack::ValueType::SmallInt:
+        return "number";
+      case velocypack::ValueType::String:
+        return "string";
+      default:
+        return "none";
+    }
+  };
+  switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return "number";
+    case VPACK_INLINE:
+      return get(velocypack::Slice(_data.inlineSliceMeta.slice)
+                     .resolveExternal()
+                     .type());
+    case VPACK_SLICE_POINTER:
+      return get(velocypack::Slice(_data.pointerMeta.pointer).type());
+    case VPACK_MANAGED_SLICE:
+      return get(velocypack::Slice(_data.managedSliceMeta.managedPointer)
+                     .resolveExternal()
+                     .type());
+    case RANGE:
+      break;
   }
   return "none";
 }
