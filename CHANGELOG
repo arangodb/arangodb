@@ -6,6 +6,22 @@ devel
   `_api/cursor/<cursorId>/<batchId>`, the response object from the `batchd` that
   had not been received before would be returned. The request is idempotent.
 
+* Added new stage "instantiating executors" to the query profiling output.
+  The time spent in "instantiating executors" is the time needed to create
+  the query executors from the final query execution time. In cluster mode,
+  this stage also includes the time needed for physically distributing the 
+  query snippets to the participating database servers.
+  Previously, the time spent for instantiating executors and the physical
+  distribution was contained in the "optimizing plan" stage, which was
+  misleading.
+
+* Remove constant values for query variables from query plan serialization 
+  in cases they were not needed. Previously, constant values of query variables
+  were always serialized for all occurrences of a variable in a query plan.
+  If the constant values were large, this contributed to higher serialization
+  and thus query setup times. Now the constant values are only serialized
+  for relevant parts of query execution plans.
+
 * BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from 
   server start, and remove setting this variable from startup scripts. 
   The reason is that the environment variable only controls the behavior of
