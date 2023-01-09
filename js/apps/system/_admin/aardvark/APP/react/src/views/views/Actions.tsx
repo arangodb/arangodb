@@ -119,12 +119,8 @@ export const SaveButton = ({
   };
 
 
-  return <IconButton disabled={disabled} icon={"save"} onClick={handleSave} type={"success"} style={{
-    marginTop: 10,
-    marginBottom: 10,
-    marginLeft: 0,
-    marginRight: 10
-  }}>
+  return <IconButton disabled={disabled} icon={"save"} onClick={handleSave} type={"success"}
+    style={{ float: 'right', marginRight: '10px' }}>
     Save View
   </IconButton>;
 };

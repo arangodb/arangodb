@@ -279,13 +279,19 @@ const [linkName, setLinkName] = useState('')
         {
           isAdminUser && views.length
             ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-              <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-              {
-                isAdminUser && changed
-                ?
-                  <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-                : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
-              }
+                <div style={{display: 'flex'}}>
+                  <div style={{flex: 1, padding: '10'}}>
+                    <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+                  </div>
+                  <div style={{flex: 1, padding: '10'}}>
+                    {
+                      isAdminUser && changed
+                      ?
+                        <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+                      : <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged} disabled/>
+                    }
+                  </div>
+                </div>
             </Cell>
             : null
         }
