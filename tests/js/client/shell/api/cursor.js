@@ -1221,13 +1221,13 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
   return {
     setUpAll: function () {
       db._drop(cn);
-      let cid = db._create(cn);
+      let c = db._create(cn);
 
       let docs = [];
       for (let i = 0; i < 2001; i++) {
         docs.push({"_key": `test${i}`});
       }
-      db[cn].save(docs);
+      c.insert(docs);
     },
 
     tearDownAll: function () {
