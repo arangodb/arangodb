@@ -676,6 +676,18 @@ bool IResearchView::visitCollections(
   return true;
 }
 
+bool IResearchView::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _links) {
+    auto linkLock = entry.second->lock();
+    if (linkLock &&
+        basics::downCast<IResearchLink>(linkLock.get())->isBuilding()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 LinkLock IResearchView::linkLock(
     std::shared_lock<boost::upgrade_mutex> const& guard,
     DataSourceId cid) const noexcept {

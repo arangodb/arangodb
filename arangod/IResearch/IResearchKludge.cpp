@@ -49,23 +49,27 @@ std::string_view constexpr kStringSuffix{"\0_s", 3};
 }  // namespace
 
 namespace arangodb {
+
 void syncIndexOnCreate(Index& index) {
-  iresearch::IResearchDataStore* store{nullptr};
   switch (index.type()) {
-    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
-      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
-      break;
-    case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX:
-      store =
-          &basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
-      break;
+    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK: {
+      auto& store = basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      store.commit();
+      TRI_IF_FAILURE("search::AlwaysIsBuildingSingle") {}
+      else {
+        store.setBuilding(false);
+      }
+    } break;
+    case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX: {
+      auto& store =
+          basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
+      store.commit();
+    } break;
     default:
       break;
   }
-  if (store) {
-    store->commit();
-  }
 }
+
 }  // namespace arangodb
 
 namespace arangodb::iresearch::kludge {
@@ -165,6 +169,16 @@ std::string_view demangleNested(std::string_view name, std::string& buf) {
   buf.append(prev, cur);
 
   return buf;
+}
+
+std::string_view extractAnalyzerName(std::string_view fieldName) {
+  auto analyzerIndex = fieldName.find(kAnalyzerDelimiter);
+  if (analyzerIndex != std::string_view::npos) {
+    ++analyzerIndex;
+    TRI_ASSERT(analyzerIndex != fieldName.size());
+    return fieldName.substr(analyzerIndex);
+  }
+  return {};
 }
 #endif
 

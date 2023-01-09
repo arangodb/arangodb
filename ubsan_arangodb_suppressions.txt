@@ -21,7 +21,10 @@ vptr:s2cell.h
 vptr:s2cell.cc
 
 # fix some V8 false positive
+# TODO(MBkkt) I don't think it's false positive, but probably issue in our version of V8, my issue about arangodbtests
 vptr:v8::Platform
+# TODO(MBkkt) Some issue in our version of V8, only in arangodbtests
+vptr:v8::internal::Isolate::~Isolate
 
 # Applying zero offset to null pointer not UB at least in C++20
 # https://github.com/libjpeg-turbo/libjpeg-turbo/issues/470

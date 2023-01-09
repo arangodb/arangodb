@@ -311,19 +311,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         }
       }  // index selection
     }
-
-    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-      // the node is still an EnumerateCollection... now check if we need
-      // to force an index hint
-      EnumerateCollectionNode const* en =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
-      auto const& hint = en->hint();
-      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-            "could not use index hint to serve query; " + hint.toString());
-      }
-    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
