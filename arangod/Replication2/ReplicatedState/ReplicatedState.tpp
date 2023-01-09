@@ -905,10 +905,6 @@ auto ReplicatedState<S>::buildCore(
     }
     auto params = velocypack::deserialize<typename S::CoreParameterType>(
         coreParameter->slice());
-    PersistedStateInfo info;
-    info.stateId = gid.id;
-    info.specification.type = S::NAME;
-    info.specification.parameters = *coreParameter;
     return factory->constructCore(gid, std::move(params));
   }
 }

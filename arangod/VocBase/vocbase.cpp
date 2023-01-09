@@ -138,9 +138,25 @@ struct arangodb::VocBaseLogManager {
   void registerReplicatedState(
       replication2::LogId id,
       std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>) {
-    ADB_PROD_ASSERT(false) << "register not yet implemented";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          arangodb::replication2::replicated_state::IStorageEngineMethods>
+          methods) {
+    auto meta = methods->readMetadata();
+    if (meta.fail()) {
+      THROW_ARANGO_EXCEPTION(meta.result());
+    }
+
+    auto& feature = _server.getFeature<
+        replication2::replicated_state::ReplicatedStateAppFeature>();
+
+    auto result =
+        _guardedData.getLockedGuard()->buildReplicatedStateWithMethods(
+            id, meta->specification.type,
+            meta->specification.parameters->slice(), feature,
+            _logContext.withTopic(Logger::REPLICATED_STATE), _server, _vocbase,
+            std::move(methods));
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
   }
 
   auto resignAll() {
@@ -335,17 +351,20 @@ struct arangodb::VocBaseLogManager {
       }
     }
 
-    auto buildReplicatedState(
+    auto buildReplicatedStateWithMethods(
         replication2::LogId const id, std::string_view type,
         VPackSlice parameters,
         replication2::replicated_state::ReplicatedStateAppFeature& feature,
         LoggerContext const& logContext, ArangodServer& server,
-        TRI_vocbase_t& vocbase)
+        TRI_vocbase_t& vocbase,
+        std::unique_ptr<
+            arangodb::replication2::replicated_state::IStorageEngineMethods>
+            storage)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>> try {
-      // TODO Make this atomic without crashing on errors if possible
       using namespace arangodb::replication2;
       using namespace arangodb::replication2::replicated_state;
+      // TODO Make this atomic without crashing on errors if possible
 
       if (auto iter = statesAndLogs.find(id); iter != std::end(statesAndLogs)) {
         return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER};
@@ -359,36 +378,13 @@ struct arangodb::VocBaseLogManager {
       // ---- from now on no errors are allowed
       // 3. forward storage interface to replicated state
       // 4. start up with initial configuration
-      StorageEngine& engine =
-          server.getFeature<EngineSelectorFeature>().engine();
 
       LOG_CTX("ef73d", DEBUG, logContext)
           << "building new replicated state " << id << " impl = " << type;
 
       // prepare map
       auto stateAndLog = StateAndLog{};
-
-      {
-        VPackBufferUInt8 buffer;
-        buffer.append(parameters.start(), parameters.byteSize());
-        auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
-
-        auto metadata = PersistedStateInfo{
-            .stateId = id,
-            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
-                         .timestamp = {},
-                         .error = {}},
-            .generation = {},
-            .specification = {.type = std::string(type),
-                              .parameters = std::move(parametersCopy)},
-        };
-        auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
-
-        if (maybeStorage.fail()) {
-          return std::move(maybeStorage).result();
-        }
-        stateAndLog.storage = std::move(*maybeStorage);
-      }
+      stateAndLog.storage = std::move(storage);
 
       struct NetworkFollowerFactory
           : replication2::replicated_log::IAbstractFollowerFactory {
@@ -462,6 +458,45 @@ struct arangodb::VocBaseLogManager {
       std::abort();
     } catch (...) {
       std::abort();
+    }
+
+    auto buildReplicatedState(
+        replication2::LogId const id, std::string_view type,
+        VPackSlice parameters,
+        replication2::replicated_state::ReplicatedStateAppFeature& feature,
+        LoggerContext const& logContext, ArangodServer& server,
+        TRI_vocbase_t& vocbase)
+        -> ResultT<std::shared_ptr<
+            replication2::replicated_state::ReplicatedStateBase>> {
+      using namespace arangodb::replication2;
+      using namespace arangodb::replication2::replicated_state;
+      StorageEngine& engine =
+          server.getFeature<EngineSelectorFeature>().engine();
+      statesAndLogs.reserve(1);  // make sure we have enough memory here
+      {
+        VPackBufferUInt8 buffer;
+        buffer.append(parameters.start(), parameters.byteSize());
+        auto parametersCopy = velocypack::SharedSlice(std::move(buffer));
+
+        auto metadata = PersistedStateInfo{
+            .stateId = id,
+            .snapshot = {.status = replicated_state::SnapshotStatus::kCompleted,
+                         .timestamp = {},
+                         .error = {}},
+            .generation = {},
+            .specification = {.type = std::string(type),
+                              .parameters = std::move(parametersCopy)},
+        };
+        auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
+
+        if (maybeStorage.fail()) {
+          return std::move(maybeStorage).result();
+        }
+
+        return buildReplicatedStateWithMethods(id, type, parameters, feature,
+                                               logContext, server, vocbase,
+                                               std::move(*maybeStorage));
+      }
     }
   };
   Guarded<GuardedData> _guardedData;

@@ -2765,18 +2765,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for "arangosearch" views
   scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
-  try {
-    loadReplicatedStates(*vocbase);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
-
   // scan the database path for collections
   try {
     VPackBuilder builder;
@@ -2817,6 +2805,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: unknown exception";
+    throw;
+  }
+
+  try {
+    loadReplicatedStates(*vocbase);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("554c1", ERR, arangodb::Logger::ENGINES)
+        << "error while opening database: " << ex.what();
+    throw;
+  } catch (...) {
+    LOG_TOPIC("5f33d", ERR, arangodb::Logger::ENGINES)
         << "error while opening database: unknown exception";
     throw;
   }
