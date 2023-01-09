@@ -243,7 +243,12 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           return self->populateLocalShard(docs);
         });
         if (insertRes.fail()) {
-          return insertRes;
+          LOG_CTX("d8b8a", ERR, self->loggerContext)
+              << "Failed to populate local shard: " << insertRes;
+          return leader->finishSnapshot(snapshotRes->snapshotId);
+          // TODO return result and maybe the leader clear the failed snapshot
+          // itself
+          // return insertRes;
         }
 
         if (snapshotRes->hasMore) {
