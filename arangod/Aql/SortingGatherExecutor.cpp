@@ -358,14 +358,14 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     // First initialize
     auto const callSet = initialize(input, output.getClientCall());
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, callSet};
+      return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
   }
 
   {
     auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, callSet};
+      return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
   }
 
@@ -383,7 +383,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
 
     auto const callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, callSet};
+      return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
   }
 
@@ -407,14 +407,14 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
     // First initialize
     auto const callSet = initialize(input, call);
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, 0, callSet};
+      return {ExecutorState::HASMORE, NoStats{}, 0, std::move(callSet)};
     }
   }
 
   {
     auto const callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, 0, callSet};
+      return {ExecutorState::HASMORE, NoStats{}, 0, std::move(callSet)};
     }
   }
 
@@ -434,7 +434,8 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
     }
     auto const callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
-      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), callSet};
+      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
+              std::move(callSet)};
     }
   }
 
@@ -476,7 +477,7 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
 
   TRI_ASSERT(!input.isDone() || callSet.empty());
 
-  return {input.state(), NoStats{}, call.getSkipCount(), callSet};
+  return {input.state(), NoStats{}, call.getSkipCount(), std::move(callSet)};
 }
 
 bool SortingGatherExecutor::constrainedSort() const noexcept {

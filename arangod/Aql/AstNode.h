@@ -278,10 +278,10 @@ struct AstNode {
   void sort();
 
   /// @brief return the type name of a node
-  std::string const& getTypeString() const;
+  std::string_view getTypeString() const;
 
   /// @brief return the value type name of a node
-  std::string const& getValueTypeString() const;
+  std::string_view getValueTypeString() const;
 
   /// @brief stringify the AstNode
   static std::string toString(AstNode const*);
@@ -597,7 +597,7 @@ struct AstNode {
 };
 
 template<bool resolveAttributeAccess = true>
-int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
+int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

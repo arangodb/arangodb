@@ -79,6 +79,8 @@
 
 #include <tuple>
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 bool willUseV8(arangodb::aql::ExecutionPlan const& plan) {
@@ -1757,7 +1759,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + attribute->getString() + name;
+      name = absl::StrCat(".", attribute->getStringView(), name);
       attribute = attribute->getMember(0);
     }
 
@@ -1849,7 +1851,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() ==
-                        nameAttribute->getString()) {
+                        nameAttribute->getStringView()) {
                   // don't remove a SmartJoin attribute access!
                   return;
                 } else {
@@ -6026,7 +6028,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value
   // is better
   bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) {
-    int cmp = CompareAstNodes(bestValue, value, true);
+    int cmp = compareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);
@@ -7026,7 +7028,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return static_cast<Variable const*>(lhs->getData())->id ==
            static_cast<Variable const*>(rhs->getData())->id;
   }
-  // CompareAstNodes does not handle non const attribute access
+  // compareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
       res2;
   bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
@@ -7034,7 +7036,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   if (acc1 || acc2) {
     return acc1 && acc2 && res1 == res2;  // same variable same path
   }
-  return aql::CompareAstNodes(lhs, rhs, false) == 0;
+  return aql::compareAstNodes(lhs, rhs, false) == 0;
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
