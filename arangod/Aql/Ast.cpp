@@ -1346,10 +1346,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1367,10 +1364,7 @@ AstNode* Ast::createNodeValueDouble(double value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1403,10 +1397,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -3966,7 +3957,7 @@ AstNode* Ast::optimizeObject(AstNode* node) {
 /// sure then that string values are valid through the query lifetime.
 AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
   if (slice.isBoolean()) {
-    return createNodeValueBool(slice.getBoolean());
+    return createNodeValueBool(slice.isTrue());
   }
 
   if (slice.isNumber()) {
@@ -4008,16 +3999,12 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
   if (slice.isObject()) {
     VPackObjectIterator it(slice, true);
-
     auto node = createNodeObject();
     node->members.reserve(static_cast<size_t>(it.size()));
 
@@ -4037,10 +4024,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
@@ -4369,6 +4353,7 @@ AstNode* Ast::endSubQuery() {
 }
 
 bool Ast::isInSubQuery() const { return (_queries.size() > 1); }
+
 std::unordered_set<std::string> Ast::bindParameters() const {
   return std::unordered_set<std::string>(_bindParameters);
 }

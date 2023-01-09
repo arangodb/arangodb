@@ -181,11 +181,12 @@ void DatabaseManagerThread::run() {
             }
           }
 
-          auto shutdownRes = basics::catchVoidToResult([&database]() {database->shutdown();});
+          auto shutdownRes = basics::catchVoidToResult(
+              [&database]() { database->shutdown(); });
           if (shutdownRes.fail()) {
             LOG_TOPIC("b3db4", ERR, Logger::FIXME)
-                << "failed to shutdown database '" << database->name() << "': "
-                << shutdownRes.errorMessage();
+                << "failed to shutdown database '" << database->name()
+                << "': " << shutdownRes.errorMessage();
           }
 
           // destroy all items in the QueryRegistry for this database

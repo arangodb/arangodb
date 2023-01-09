@@ -401,7 +401,6 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
       }
     }
 
-#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
     if (!_ecdhCurve.empty()) {
       int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
@@ -431,7 +430,6 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
       EC_KEY_free(ecdhKey);
       SSL_CTX_set_options(nativeContext, SSL_OP_SINGLE_ECDH_USE);
     }
-#endif
 
     // set ssl context
     int res = SSL_CTX_set_session_id_context(
