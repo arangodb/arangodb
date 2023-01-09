@@ -30,7 +30,7 @@
 namespace arangodb::replication2::replicated_state::document {
 
 /**
- * Returns the first index which can be released without affecting discarding
+ * Returns the first index which can be released without discarding
  * any active transactions.
  */
 LogIndex ActiveTransactionsQueue::getReleaseIndex(LogIndex current) const {
