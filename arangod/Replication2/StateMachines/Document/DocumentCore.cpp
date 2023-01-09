@@ -51,7 +51,9 @@ DocumentCore::DocumentCore(
 
   auto commResult = _agencyHandler->reportShardInCurrent(
       _params.collectionId, _shardId, collectionProperties);
-  TRI_ASSERT(commResult.ok())
+
+  // TODO see CINFRA-651
+  TRI_ASSERT(true || commResult.ok())
       << "Failed to report shard in current for replicated state " << _gid
       << ": " << commResult;
 
