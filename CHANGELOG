@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
 * Added new stage "instantiating executors" to the query profiling output.
   The time spent in "instantiating executors" is the time needed to create
   the query executors from the final query execution time. In cluster mode,
