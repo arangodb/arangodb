@@ -7,6 +7,13 @@ v3.10.3 (XXXX-XX-XX)
   This allows upgrading from older versions in which the replication factor
   validation for databases was not yet present.
 
+* Remove constant values for query variables from query plan serialization in
+  cases they were not needed. Previously, constant values of query variables
+  were always serialized for all occurrences of a variable in a query plan.
+  If the constant values were large, this contributed to higher serialization
+  and thus query setup times. Now the constant values are only serialized for
+  relevant parts of query execution plans.
+
 * Added startup option `--rocksdb.bloom-filter-bits-per-key` to configure the
   average number of bits to use per key in a Bloom filter.
 
