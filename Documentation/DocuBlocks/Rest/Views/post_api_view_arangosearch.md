@@ -88,6 +88,17 @@ Each object is expected in the following form:
   `--arangosearch.columns-cache-limit` startup option
   to control the memory consumption of this cache.
 
+  You may use the following shorthand notations on View creation instead of
+  an array of objects as described above. The default compression and cache
+  settings are used in this case:
+
+  - An array of string, like `["attr1", "attr2"]`, to place each attribute into
+    a separate column of the index (introduced in v3.10.3).
+
+  - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
+    attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
+    to place each attribute into a separate column.
+
 The `storedValues` option is not to be confused with the `storeValues` option,
 which allows to store meta data about attribute values in the View index.
 
