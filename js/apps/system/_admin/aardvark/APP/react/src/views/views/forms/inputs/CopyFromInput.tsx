@@ -41,7 +41,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   };
 
   return <>
-    Copy mutable properties <select value={selectedView.name} onChange={updateSelectedView}>
+    Copy mutable properties <select value={selectedView.name} onChange={updateSelectedView} style={{marginBottom: "0px"}}>
       {
         sortedViews.map((view, idx) =>
           <option key={idx} value={view.name}>{view.name}</option>)
