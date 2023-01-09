@@ -1164,7 +1164,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     }
 
     if (rhs->type == NODE_TYPE_ARRAY) {
-      if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
+      if (rhs->numMembers() < AstNode::kSortNumberThreshold ||
+          rhs->isSorted()) {
         // number of values is below threshold or array is already sorted
         continue;
       }
@@ -1223,7 +1224,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < AstNode::SortNumberThreshold) {
+          testNode->numMembers() < AstNode::kSortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -1259,7 +1260,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       // estimate items in subquery
       CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::kSortNumberThreshold) {
         continue;
       }
 

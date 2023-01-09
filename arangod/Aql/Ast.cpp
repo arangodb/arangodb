@@ -3420,7 +3420,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
-    if (rhs->numMembers() >= AstNode::SortNumberThreshold &&
+    if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
         rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {

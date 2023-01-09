@@ -55,7 +55,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-std::unordered_map<int, std::string const> const AstNode::Operators{
+namespace {
+std::unordered_map<int, std::string const> const kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT), "!"},
     {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS), "+"},
     {static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS), "-"},
@@ -84,7 +85,7 @@ std::unordered_map<int, std::string const> const AstNode::Operators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-std::unordered_map<int, std::string const> const AstNode::TypeNames{
+std::unordered_map<int, std::string const> const kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -171,14 +172,12 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
 };
 
 /// @brief names for AST node value types
-std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
+std::unordered_map<int, std::string const> const kValueTypeNames{
     {static_cast<int>(VALUE_TYPE_NULL), "null"},
     {static_cast<int>(VALUE_TYPE_BOOL), "bool"},
     {static_cast<int>(VALUE_TYPE_INT), "int"},
     {static_cast<int>(VALUE_TYPE_DOUBLE), "double"},
     {static_cast<int>(VALUE_TYPE_STRING), "string"}};
-
-namespace {
 
 /// @brief quick translation array from an AST node value type to a VPack type
 std::array<VPackValueType, 5> const valueTypes{{
@@ -849,14 +848,14 @@ void AstNode::sort() {
 
 /// @brief return the type name of a node
 std::string const& AstNode::getTypeString() const {
-  auto it = TypeNames.find(static_cast<int>(type));
+  auto it = ::kTypeNames.find(static_cast<int>(type));
 
-  if (it != TypeNames.end()) {
+  if (it != ::kTypeNames.end()) {
     return (*it).second;
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing node type in TypeNames");
+                                 "missing node type in kTypeNames");
 }
 
 /// @brief return the value type name of a node
@@ -866,21 +865,21 @@ std::string const& AstNode::getValueTypeString() const {
     // anyway, they need to be supported here because this function
     // can be called to determine the type of user-defined data for
     // error messages.
-    auto it = TypeNames.find(static_cast<int>(type));
-    if (it != TypeNames.end()) {
+    auto it = ::kTypeNames.find(static_cast<int>(type));
+    if (it != ::kTypeNames.end()) {
       return (*it).second;
     }
     // should not happen
     TRI_ASSERT(false);
   }
-  auto it = ValueTypeNames.find(static_cast<int>(value.type));
+  auto it = ::kValueTypeNames.find(static_cast<int>(value.type));
 
-  if (it != ValueTypeNames.end()) {
+  if (it != ::kValueTypeNames.end()) {
     return (*it).second;
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing node type in ValueTypeNames");
+                                 "missing node type in kValueTypeNames");
 }
 
 /// @brief stringify the AstNode
@@ -892,9 +891,9 @@ std::string AstNode::toString(AstNode const* node) {
 
 /// @brief checks whether we know a type of this kind; throws exception if not.
 void AstNode::validateType(int type) {
-  auto it = TypeNames.find(static_cast<int>(type));
+  auto it = ::kTypeNames.find(static_cast<int>(type));
 
-  if (it == TypeNames.end()) {
+  if (it == ::kTypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "unknown AST node TypeID");
   }
@@ -903,9 +902,9 @@ void AstNode::validateType(int type) {
 /// @brief checks whether we know a value type of this kind;
 /// throws exception if not.
 void AstNode::validateValueType(int type) {
-  auto it = ValueTypeNames.find(static_cast<int>(type));
+  auto it = ::kValueTypeNames.find(static_cast<int>(type));
 
-  if (it == ValueTypeNames.end()) {
+  if (it == ::kValueTypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "invalid AST node valueTypeName");
   }
@@ -1101,6 +1100,8 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     // data.
     builder.add(VPackValue("raw"));
     toVelocyPackValue(builder);
+    // do NOT descend into subnodes, because toVelocyPackValue has serialized
+    // them already!
     return;
   }
 
@@ -2199,8 +2200,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
       type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
     // not used by V8
     TRI_ASSERT(numMembers() == 1);
-    auto it = Operators.find(static_cast<int>(type));
-    TRI_ASSERT(it != Operators.end());
+    auto it = ::kOperators.find(static_cast<int>(type));
+    TRI_ASSERT(it != ::kOperators.end());
     buffer.push_back(' ');
     buffer.append((*it).second);
 
@@ -2225,8 +2226,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
       type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     // not used by V8
     TRI_ASSERT(numMembers() == 2);
-    auto it = Operators.find(type);
-    TRI_ASSERT(it != Operators.end());
+    auto it = ::kOperators.find(type);
+    TRI_ASSERT(it != ::kOperators.end());
 
     getMember(0)->stringify(buffer, failIfLong);
     buffer.push_back(' ');
@@ -2246,8 +2247,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
     // not used by V8
     TRI_ASSERT(numMembers() == 3);
-    auto it = Operators.find(type);
-    TRI_ASSERT(it != Operators.end());
+    auto it = ::kOperators.find(type);
+    TRI_ASSERT(it != ::kOperators.end());
 
     getMember(0)->stringify(buffer, failIfLong);
     buffer.push_back(' ');

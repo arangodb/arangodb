@@ -926,7 +926,7 @@ function processQuery(query, explain, planIndex) {
         // print only the first few values from the array
         return '[ ' + node.slice(0, maxMembersToPrint).map(buildRaw).join(', ') + ', ... ]';
       }
-      return '[ ' + node.subNodes.map(buildRaw).join(', ') + ' ]';
+      return '[ ' + node.map(buildRaw).join(', ') + ' ]';
     } else if (typeof node === 'object' && node !== null) {
       // object
       let keys = Object.keys(node);

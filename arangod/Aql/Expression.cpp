@@ -209,7 +209,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
-  if (n >= AstNode::SortNumberThreshold &&
+  if (n >= AstNode::kSortNumberThreshold &&
       (node->getMember(1)->isSorted() ||
        ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
