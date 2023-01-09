@@ -7,6 +7,12 @@ devel
   setup, and also reduce the time needed for parsing these messages. This 
   especially helps when there are large bind parameter values that are arrays
   or objects.
+  The more efficient format is used also inside an AQL query's "explain" and 
+  "profile" methods, and thus any callers that process the return values of
+  explain and profile operations may now receive the new format. All callers
+  inside the ArangoDB code have been adjusted, but any external callers that
+  process the JSON response values of AQL query explain or profile operations
+  may need to be adjusted to handle the new format.
 
 * Added new stage "instantiating executors" to the query profiling output.
   The time spent in "instantiating executors" is the time needed to create
