@@ -44,10 +44,6 @@ RocksDBValue RocksDBValue::Collection(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::ReplicatedLog(VPackSlice data) {
-  return RocksDBValue(RocksDBEntryType::ReplicatedLog, data);
-}
-
 RocksDBValue RocksDBValue::ReplicatedState(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::ReplicatedState, data);
 }
@@ -251,7 +247,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
 
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::ReplicatedLog:
+    case RocksDBEntryType::ReplicatedState:
     case RocksDBEntryType::View:
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {

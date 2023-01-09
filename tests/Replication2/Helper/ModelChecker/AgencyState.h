@@ -23,15 +23,12 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include <boost/container_hash/hash_fwd.hpp>
 #include <optional>
 
 namespace arangodb::test {
 
 struct AgencyState {
-  std::optional<arangodb::replication2::replicated_state::agency::State>
-      replicatedState{};
   std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
@@ -42,7 +39,6 @@ struct AgencyState {
 
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
-    boost::hash_combine(seed, s.replicatedState);
     boost::hash_combine(seed, s.replicatedLog);
     boost::hash_combine(seed, s.health);
     return seed;
@@ -59,18 +55,6 @@ struct AgencyState {
       os << builder.toString() << std::endl;
     };
 
-    if (state.replicatedState) {
-      os << "State/Target: ";
-      print(state.replicatedState->target);
-      if (state.replicatedState->plan) {
-        os << "State/Plan: ";
-        print(*state.replicatedState->plan);
-      }
-      if (state.replicatedState->current) {
-        os << "State/Current: ";
-        print(*state.replicatedState->current);
-      }
-    }
     if (state.replicatedLog) {
       os << "Log/Target: ";
       print(state.replicatedLog->target);

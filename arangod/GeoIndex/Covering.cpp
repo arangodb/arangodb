@@ -62,7 +62,7 @@ std::vector<geo::Interval> CoveringUtils::intervals() {
   TRI_ASSERT(!isDone());
 
   std::vector<geo::Interval> intervals;
-  std::vector<S2CellId> cover = _params.filterShape.covering(&_coverer);
+  auto cover = _params.filterShape.covering(_coverer);
   geo::utils::scanIntervals(_params, cover, intervals);
   _allIntervalsCovered = true;
   return intervals;

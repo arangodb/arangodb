@@ -57,9 +57,12 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
     if (e == TRI_ERROR_NO_ERROR) {
       e = TRI_ERROR_TRANSACTION_INTERNAL;
     }
-    msg << "Transaction " << tid << ": ";
+    msg << "Transaction " << tid << " error codes: ";
     for (auto const& it : res.countErrorCodes) {
       msg << it.first << ' ';
+    }
+    if (res.hasSlice()) {
+      msg << "; Full result: " << res.slice().toJson();
     }
   }
   return arangodb::Result{e, std::move(msg).str()};
@@ -116,7 +119,6 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
               << "Result ignored while applying transaction " << doc.tid
               << " with operation " << int(doc.operation) << " on shard "
               << doc.shardId << ": " << res;
-          ;
           return Result{};
         }
         return res;
@@ -147,15 +149,13 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
 
 auto DocumentStateTransactionHandler::ensureTransaction(
     DocumentLogEntry const& doc) -> std::shared_ptr<IDocumentStateTransaction> {
+  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
+
   auto tid = doc.tid;
   auto trx = getTrx(tid);
   if (trx != nullptr) {
     return trx;
   }
-
-  TRI_ASSERT(doc.operation != OperationType::kCommit);
-  TRI_ASSERT(doc.operation != OperationType::kAbort);
-  TRI_ASSERT(doc.operation != OperationType::kAbortAllOngoingTrx);
 
   trx = _factory->createTransaction(doc, *_dbGuard);
   _transactions.emplace(tid, trx);
@@ -166,7 +166,7 @@ void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
   _transactions.erase(tid);
 }
 
-auto DocumentStateTransactionHandler::getActiveTransactions() const
+auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
     -> TransactionMap const& {
   return _transactions;
 }

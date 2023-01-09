@@ -11,7 +11,6 @@ add_library(arango_aql STATIC
   AqlItemBlockInputRange.cpp
   AqlItemBlockManager.cpp
   AqlItemBlockUtils.cpp
-  AqlItemMatrix.cpp
   AqlTransaction.cpp
   AqlValue.cpp
   AqlValueGroup.cpp

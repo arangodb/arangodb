@@ -30,7 +30,6 @@
 #include <memory>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StringUtils.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -101,11 +100,11 @@ void IResearchLinkCoordinator::toVelocyPack(
     velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(
-        Result(TRI_ERROR_BAD_PARAMETER,
-               absl::StrCat("failed to generate link definition for "
-                            "arangosearch view Cluster link '",
-                            id().id(), "'")));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("failed to generate link definition for "
+                     "arangosearch view Cluster link '",
+                     id().id(), "'"));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -113,10 +112,10 @@ void IResearchLinkCoordinator::toVelocyPack(
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, absl::StrCat("failed to generate link definition "
                                          "for arangosearch view Cluster link '",
-                                         id().id(), "'")));
+                                         id().id(), "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {

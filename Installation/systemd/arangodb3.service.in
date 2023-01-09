@@ -26,7 +26,6 @@ LimitNPROC=131072
 TasksMax=131072
 
 PIDFile=/var/run/arangodb3/arangod.pid
-Environment=GLIBCXX_FORCE_NEW=1
 
 # Protect users from making their installation unusable by
 # starting arangod with wrong permissions (e.g. as root).
