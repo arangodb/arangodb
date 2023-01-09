@@ -23,92 +23,11 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-common.h>
-
-#include <cstdint>
-#include <functional>
 #include <string>
-#include <utility>
+#include <vector>
 
+#include "PregelID.h"
 namespace arangodb::pregel {
-
-struct PregelShard {
-  PregelShard() : shard(InvalidSentinel) {}
-  explicit PregelShard(uint16_t shard) : shard(shard) {}
-  PregelShard(PregelShard const&) = default;
-  PregelShard(PregelShard&&) = default;
-  auto operator=(PregelShard const&) -> PregelShard& = default;
-  auto operator=(PregelShard&&) -> PregelShard& = default;
-
-  // TODO: This operator is just here to make transition easier;
-  // once VPackValue is not called on PregelShard anymore it should
-  // be removed
-  explicit operator arangodb::velocypack::Value() const { return VPackValue(static_cast<uint32_t>(shard)); }
-
-  [[nodiscard]] auto isValid() const noexcept -> bool {
-    return shard == InvalidSentinel;
-  }
-
-  [[nodiscard]] auto operator<=>(PregelShard const&) const = default;
-
-  uint16_t shard;
-  uint16_t constexpr static InvalidSentinel =
-      std::numeric_limits<uint16_t>::max();
-};
-
-auto const InvalidPregelShard = PregelShard();
-
-struct PregelID {
-  PregelID() = default;
-  PregelID(PregelShard s, std::string k) : shard(s), key(std::move(k)) {}
-
-  bool operator==(const PregelID& rhs) const {
-    return shard == rhs.shard && key == rhs.key;
-  }
-
-  bool operator!=(const PregelID& rhs) const {
-    return shard != rhs.shard || key != rhs.key;
-  }
-
-  bool operator<(const PregelID& rhs) const {
-    return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
-  }
-
-  [[nodiscard]] bool isValid() const { return shard.isValid() && !key.empty(); }
-
-  PregelShard shard;
-  std::string key;
-};
-
-template<typename V, typename E>
-class GraphStore;
-
-// header entry for the edge file
-template<typename E>
-// cppcheck-suppress noConstructor
-class Edge {
-  template<typename V, typename E2>
-  friend class GraphStore;
-
-  // these members are initialized by the GraphStore
-  char* _toKey;              // uint64_t
-  uint16_t _toKeyLength;     // uint16_t
-  PregelShard _targetShard;  // uint16_t
-
-  E _data;
-
- public:
-  [[nodiscard]] std::string_view toKey() const {
-    return {_toKey, _toKeyLength};
-  }
-  E& data() noexcept { return _data; }
-  [[nodiscard]] PregelShard targetShard() const noexcept {
-    return _targetShard;
-  }
-};
 
 template<typename V, typename E>
 // cppcheck-suppress noConstructor
@@ -183,30 +102,3 @@ class Vertex {
 };
 
 }  // namespace arangodb::pregel
-
-namespace std {
-
-template<>
-struct hash<arangodb::pregel::PregelShard> {
-  std::size_t operator()(const arangodb::pregel::PregelShard& k) const noexcept {
-    using std::hash;
-    return std::hash<std::uint16_t>()(k.shard);
-  }
-};
-
-template<>
-struct hash<arangodb::pregel::PregelID> {
-  std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
-    using std::hash;
-    using std::size_t;
-    using std::string;
-
-    // Compute individual hash values for first,
-    // second and third and combine them using XOR
-    // and bit shifting:
-    size_t h1 = std::hash<std::string>()(k.key);
-    size_t h2 = std::hash<arangodb::pregel::PregelShard>()(k.shard);
-    return h2 ^ (h1 << 1);
-  }
-};
-}  // namespace std
