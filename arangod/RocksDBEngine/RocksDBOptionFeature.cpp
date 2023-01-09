@@ -1007,7 +1007,7 @@ the overall size of the block cache.)");
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31003);
 
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",

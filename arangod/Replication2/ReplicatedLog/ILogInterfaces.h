@@ -26,7 +26,9 @@
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Basics/ResultT.h"
 
 #include <Futures/Future.h>
 #include <Futures/Promise.h>
@@ -82,23 +84,27 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
-  [[nodiscard]] virtual auto waitForResign()
-      -> futures::Future<futures::Unit> = 0;
-  [[nodiscard]] virtual auto getTerm() const noexcept -> std::optional<LogTerm>;
-  [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
 
   [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
+  [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };
 
 /**
  * Interface describing a LogFollower API. Components should use this interface
  * if they want to refer to a LogFollower instance.
  */
-struct ILogFollower : ILogParticipant, AbstractFollower {
-  [[nodiscard]] virtual auto waitForLeaderAcked() -> WaitForFuture = 0;
-  [[nodiscard]] virtual auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& = 0;
+struct ILogFollower : ILogParticipant, AbstractFollower {};
+
+struct ILeaderCommunicator {
+  virtual ~ILeaderCommunicator() = default;
+  virtual auto getParticipantId() const noexcept -> ParticipantId const& = 0;
+  /// @param mid Last message id received from the leader. This is reported to
+  ///            the leader, so it can ignore snapshot status updates from
+  ///            append entries responses that are lower than or equal to this
+  ///            id, as they are less recent than this information.
+  virtual auto reportSnapshotAvailable(MessageId mid) noexcept
+      -> futures::Future<Result> = 0;
 };
 
 /**
@@ -106,18 +112,10 @@ struct ILogFollower : ILogParticipant, AbstractFollower {
  * if they want to refer to a LogLeader instance.
  */
 struct ILogLeader : ILogParticipant {
-  virtual auto insert(LogPayload payload, bool waitForSync) -> LogIndex = 0;
-
-  struct DoNotTriggerAsyncReplication {};
-  constexpr static auto doNotTriggerAsyncReplication =
-      DoNotTriggerAsyncReplication{};
-  virtual auto insert(LogPayload payload, bool waitForSync,
-                      DoNotTriggerAsyncReplication) -> LogIndex = 0;
-  virtual void triggerAsyncReplication() = 0;
-
-  [[nodiscard]] virtual auto isLeadershipEstablished() const noexcept
-      -> bool = 0;
-  [[nodiscard]] virtual auto waitForLeadership() -> WaitForFuture = 0;
+  virtual auto updateParticipantsConfig(
+      std::shared_ptr<agency::ParticipantsConfig const> const& config)
+      -> LogIndex = 0;
+  virtual auto ping(std::optional<std::string> message) -> LogIndex = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_log

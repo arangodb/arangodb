@@ -51,6 +51,8 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "Basics/ErrorCode.h"
 
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>
@@ -60,7 +62,10 @@ namespace arangodb::velocypack {
 class Builder;
 class Slice;
 }  // namespace arangodb::velocypack
-
+namespace arangodb {
+template<typename T>
+class ResultT;
+}
 namespace arangodb::replication2 {
 
 struct LogIndex {
@@ -74,6 +79,7 @@ struct LogIndex {
   friend auto operator<=>(LogIndex const&, LogIndex const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
+  auto operator+=(std::uint64_t delta) -> LogIndex&;
 
   friend auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
@@ -147,9 +153,10 @@ auto inspect(Inspector& f, TermIndexPair& x) {
 }
 
 struct LogRange {
-  LogIndex from;
-  LogIndex to;
+  LogIndex from{0};
+  LogIndex to{0};
 
+  LogRange() noexcept = default;
   LogRange(LogIndex from, LogIndex to) noexcept;
 
   [[nodiscard]] auto empty() const noexcept -> bool;
@@ -247,9 +254,6 @@ struct ParticipantFlags {
 
   friend auto operator<<(std::ostream&, ParticipantFlags const&)
       -> std::ostream&;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
 };
 
 template<class Inspector>
@@ -293,40 +297,54 @@ struct CommitFailReason {
   CommitFailReason() = default;
 
   struct NothingToCommit {
-    static auto fromVelocyPack(velocypack::Slice) -> NothingToCommit;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(NothingToCommit const& left,
                            NothingToCommit const& right) noexcept
         -> bool = default;
+
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, NothingToCommit& x) {
+      return f.object(x).fields();
+    }
   };
   struct QuorumSizeNotReached {
     struct ParticipantInfo {
-      bool isFailed{};
       bool isAllowedInQuorum{};
+      bool snapshotAvailable{};
       TermIndexPair lastAcknowledged;
-      static auto fromVelocyPack(velocypack::Slice) -> ParticipantInfo;
-      void toVelocyPack(velocypack::Builder& builder) const;
       friend auto operator==(ParticipantInfo const& left,
                              ParticipantInfo const& right) noexcept
           -> bool = default;
+      template<typename Inspector>
+      friend auto inspect(Inspector& f, ParticipantInfo& x) {
+        return f.object(x).fields(
+            f.field("isAllowedInQuorum", x.isAllowedInQuorum),
+            f.field("snapshotAvailable", x.snapshotAvailable),
+            f.field("lastAcknowledged", x.lastAcknowledged));
+      }
     };
     using who_type = containers::FlatHashMap<ParticipantId, ParticipantInfo>;
-    static auto fromVelocyPack(velocypack::Slice) -> QuorumSizeNotReached;
-    void toVelocyPack(velocypack::Builder& builder) const;
+
     who_type who;
     TermIndexPair spearhead;
     friend auto operator==(QuorumSizeNotReached const& left,
                            QuorumSizeNotReached const& right) noexcept
         -> bool = default;
+
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, QuorumSizeNotReached& x) {
+      return f.object(x).fields(f.field("who", x.who),
+                                f.field("spearhead", x.spearhead));
+    }
   };
   struct ForcedParticipantNotInQuorum {
-    static auto fromVelocyPack(velocypack::Slice)
-        -> ForcedParticipantNotInQuorum;
-    void toVelocyPack(velocypack::Builder& builder) const;
     ParticipantId who;
     friend auto operator==(ForcedParticipantNotInQuorum const& left,
                            ForcedParticipantNotInQuorum const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, ForcedParticipantNotInQuorum& x) {
+      return f.object(x).fields(f.field("who", x.who));
+    }
   };
   struct NonEligibleServerRequiredForQuorum {
     enum Why {
@@ -334,6 +352,7 @@ struct CommitFailReason {
       // WrongTerm might be misleading, because the follower might be in the
       // right term, it just never has acked an entry of the current term.
       kWrongTerm,
+      kSnapshotMissing,
     };
     static auto to_string(Why) noexcept -> std::string_view;
 
@@ -341,24 +360,35 @@ struct CommitFailReason {
 
     CandidateMap candidates;
 
-    static auto fromVelocyPack(velocypack::Slice)
-        -> NonEligibleServerRequiredForQuorum;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(
         NonEligibleServerRequiredForQuorum const& left,
         NonEligibleServerRequiredForQuorum const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, NonEligibleServerRequiredForQuorum& x) {
+      return f.object(x).fields(f.field("candidates", x.candidates));
+    }
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, Why& x) {
+      return f.enumeration(x).values(
+          Why::kNotAllowedInQuorum, "notAllowedInQuorum", Why::kWrongTerm,
+          "wrongTerm", Why::kSnapshotMissing, "snapshotMissing");
+    }
   };
   struct FewerParticipantsThanWriteConcern {
     std::size_t effectiveWriteConcern{};
     std::size_t numParticipants{};
-    static auto fromVelocyPack(velocypack::Slice)
-        -> FewerParticipantsThanWriteConcern;
-    void toVelocyPack(velocypack::Builder& builder) const;
     friend auto operator==(
         FewerParticipantsThanWriteConcern const& left,
         FewerParticipantsThanWriteConcern const& right) noexcept
         -> bool = default;
+    template<typename Inspector>
+    friend auto inspect(Inspector& f, FewerParticipantsThanWriteConcern& x) {
+      return f.object(x).fields(
+          f.field("effectiveWriteConcern", x.effectiveWriteConcern),
+          f.field("numParticipants", x.numParticipants));
+    }
   };
   std::variant<NothingToCommit, QuorumSizeNotReached,
                ForcedParticipantNotInQuorum, NonEligibleServerRequiredForQuorum,
@@ -379,33 +409,151 @@ struct CommitFailReason {
   static auto withFewerParticipantsThanWriteConcern(
       FewerParticipantsThanWriteConcern) -> CommitFailReason;
 
-  static auto fromVelocyPack(velocypack::Slice) -> CommitFailReason;
-  void toVelocyPack(velocypack::Builder& builder) const;
-
   friend auto operator==(CommitFailReason const& left,
                          CommitFailReason const& right) -> bool = default;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, CommitFailReason& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("reason").alternatives(
+        insp::type<NothingToCommit>("NothingToCommit"),
+        insp::type<QuorumSizeNotReached>("QuorumSizeNotReached"),
+        insp::type<ForcedParticipantNotInQuorum>(
+            "ForcedParticipantNotInQuorum"),
+        insp::type<NonEligibleServerRequiredForQuorum>(
+            "NonEligibleServerRequiredForQuorum"),
+        insp::type<FewerParticipantsThanWriteConcern>(
+            "FewerParticipantsThanWriteConcern"));
+  }
 
  private:
   template<typename... Args>
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
-template<class Inspector>
-auto inspect(Inspector& f,
-             arangodb::replication2::replicated_log::CommitFailReason& x) {
-  if constexpr (Inspector::isLoading) {
-    x = CommitFailReason::fromVelocyPack(f.slice());
-  } else {
-    x.toVelocyPack(f.builder());
-  }
-  return arangodb::inspection::Status::Success{};
-}
-
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
     -> std::ostream&;
 
 auto to_string(CommitFailReason const&) -> std::string;
+
+struct CompactionStopReason {
+  struct CompactionThresholdNotReached {
+    LogIndex nextCompactionAt;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, CompactionThresholdNotReached& x) {
+      return f.object(x).fields(
+          f.field("nextCompactionAt", x.nextCompactionAt));
+    }
+    friend auto operator==(CompactionThresholdNotReached const& left,
+                           CompactionThresholdNotReached const& right) noexcept
+        -> bool = default;
+  };
+  struct NotReleasedByStateMachine {
+    LogIndex releasedIndex;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, NotReleasedByStateMachine& x) {
+      return f.object(x).fields(f.field("releasedIndex", x.releasedIndex));
+    }
+    friend auto operator==(NotReleasedByStateMachine const& left,
+                           NotReleasedByStateMachine const& right) noexcept
+        -> bool = default;
+  };
+  struct ParticipantMissingEntries {
+    ParticipantId who;
+    template<class Inspector>
+    friend auto inspect(Inspector& f, ParticipantMissingEntries& x) {
+      return f.object(x).fields(f.field("who", x.who));
+    }
+    friend auto operator==(ParticipantMissingEntries const& left,
+                           ParticipantMissingEntries const& right) noexcept
+        -> bool = default;
+  };
+  struct LeaderBlocksReleaseEntry {
+    template<class Inspector>
+    friend auto inspect(Inspector& f, LeaderBlocksReleaseEntry& x) {
+      return f.object(x).fields();
+    }
+    friend auto operator==(LeaderBlocksReleaseEntry const& left,
+                           LeaderBlocksReleaseEntry const& right) noexcept
+        -> bool = default;
+  };
+
+  struct NothingToCompact {
+    template<class Inspector>
+    friend auto inspect(Inspector& f, NothingToCompact& x) {
+      return f.object(x).fields();
+    }
+    friend auto operator==(NothingToCompact const& left,
+                           NothingToCompact const& right) noexcept
+        -> bool = default;
+  };
+
+  std::variant<CompactionThresholdNotReached, NotReleasedByStateMachine,
+               ParticipantMissingEntries, LeaderBlocksReleaseEntry,
+               NothingToCompact>
+      value;
+
+  friend auto operator==(CompactionStopReason const& left,
+                         CompactionStopReason const& right) noexcept
+      -> bool = default;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionStopReason& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("reason").alternatives(
+        insp::type<CompactionThresholdNotReached>(
+            "CompactionThresholdNotReached"),
+        insp::type<NotReleasedByStateMachine>("NotReleasedByStateMachine"),
+        insp::type<LeaderBlocksReleaseEntry>("LeaderBlocksRelease"),
+        insp::type<NothingToCompact>("NothingToCompact"),
+        insp::type<ParticipantMissingEntries>("ParticipantMissingEntries"));
+  }
+};
+
+auto operator<<(std::ostream&, CompactionStopReason const&) -> std::ostream&;
+auto to_string(CompactionStopReason const&) -> std::string;
+
+struct CompactionResult {
+  std::size_t numEntriesCompacted{0};
+  std::optional<CompactionStopReason> stopReason;
+
+  friend auto operator==(CompactionResult const& left,
+                         CompactionResult const& right) noexcept
+      -> bool = default;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResult& x) {
+    return f.object(x).fields(
+        f.field("numEntriesCompacted", x.numEntriesCompacted),
+        f.field("stopReason", x.stopReason));
+  }
+};
+
+struct CompactionResponse {
+  struct Error {
+    ErrorCode error{0};
+    std::string errorMessage;
+
+    template<class Inspector>
+    friend auto inspect(Inspector& f, Error& x) {
+      return f.object(x).fields(f.field("error", x.error),
+                                f.field("errorMessage", x.errorMessage));
+    }
+  };
+  static auto fromResult(ResultT<CompactionResult>) -> CompactionResponse;
+
+  std::variant<CompactionResult, Error> value;
+
+  template<class Inspector>
+  friend auto inspect(Inspector& f, CompactionResponse& x) {
+    namespace insp = arangodb::inspection;
+    return f.variant(x.value).embedded("result").alternatives(
+        insp::type<CompactionResult>("ok"),
+        insp::type<CompactionResponse::Error>("error"));
+  }
+};
+
 }  // namespace replicated_log
 
 }  // namespace arangodb::replication2

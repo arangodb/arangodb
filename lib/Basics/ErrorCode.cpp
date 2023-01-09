@@ -29,6 +29,8 @@
 
 using namespace arangodb;
 
+ErrorCode::ValueType ErrorCode::value() const noexcept { return _value; }
+
 auto to_string(::ErrorCode value) -> std::string {
   return std::to_string(value._value);
 }

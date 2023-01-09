@@ -27,6 +27,7 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 namespace arangodb {
 

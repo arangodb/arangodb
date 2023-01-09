@@ -63,7 +63,7 @@ auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};
 }  // namespace static_strings
 
 template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
+auto inspect(Inspector& f, ServerInstanceReference& x) {
   return f.object(x).fields(f.field(StaticStrings::ServerId, x.serverId),
                             f.field(StaticStrings::RebootId, x.rebootId));
 }
@@ -80,13 +80,15 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
       f.field(static_strings::Owner, x.owner),
+      f.field("properties", x.properties),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Spearhead, x.spearhead));
+                            f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("snapshotAvailable", x.snapshotAvailable));
 }
 
 template<typename Enum>
@@ -288,6 +290,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(ParticipantsFlagsMap{}),
+      f.field(StaticStrings::Properties, x.properties),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),

@@ -36,11 +36,14 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
 
+#include <array>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include <iostream>
 #endif
+#include <unordered_map>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -48,7 +51,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
-#include <array>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -521,17 +523,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_OPERATOR_BINARY_NIN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN: {
-      bool sorted = false;
-      VPackSlice v = slice.get("sorted");
-      if (v.isBoolean()) {
-        sorted = v.getBoolean();
-      }
-      setBoolValue(sorted);
+      setBoolValue(slice.get("sorted").isTrue());
       break;
     }
     case NODE_TYPE_ARRAY: {
-      VPackSlice v = slice.get("sorted");
-      if (v.isBoolean() && v.getBoolean()) {
+      if (VPackSlice v = slice.get("sorted"); v.isTrue()) {
         setFlag(DETERMINED_SORTED, VALUE_SORTED);
       }
       break;
@@ -544,12 +540,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_OPERATOR_BINARY_EQ:
     case NODE_TYPE_OPERATOR_BINARY_LT:
     case NODE_TYPE_OPERATOR_BINARY_LE: {
-      bool excludesNull = false;
-      VPackSlice v = slice.get("excludesNull");
-      if (v.isBoolean()) {
-        excludesNull = v.getBoolean();
-      }
-      setExcludesNull(excludesNull);
+      setExcludesNull(slice.get("excludesNull").isTrue());
       break;
     }
     case NODE_TYPE_OBJECT:
@@ -614,9 +605,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
       break;
   }
 
-  VPackSlice subNodes = slice.get("subNodes");
-
-  if (subNodes.isArray()) {
+  if (VPackSlice subNodes = slice.get("subNodes"); subNodes.isArray()) {
     members.reserve(subNodes.length());
 
     try {
@@ -893,11 +882,16 @@ void AstNode::validateValueType(int type) {
 }
 
 /// @brief fetch a node's type from VPack
-AstNodeType AstNode::getNodeTypeFromVPack(
-    arangodb::velocypack::Slice const& slice) {
+AstNodeType AstNode::getNodeTypeFromVPack(arangodb::velocypack::Slice slice) {
   int type = slice.get("typeID").getNumericValue<int>();
   validateType(type);
   return static_cast<AstNodeType>(type);
+}
+
+void AstNode::setConstantFlags() noexcept {
+  setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+  setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+  setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
 }
 
 bool AstNode::valueHasVelocyPackRepresentation() const {
@@ -973,7 +967,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
     return;
   }
   if (type == NODE_TYPE_ARRAY) {
-    builder.openArray(false);
+    builder.openArray(/*allowUnindexed*/ false);
     size_t const n = numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
@@ -988,15 +982,22 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
   if (type == NODE_TYPE_OBJECT) {
     builder.openObject();
 
-    std::unordered_set<std::string_view> keys;
+    containers::FlatHashSet<std::string_view> keys;
     size_t const n = numMembers();
+
+    // only check for duplicate keys if we have more than a single attribute
+    bool checkUniqueness = (n > 1);
+    if (checkUniqueness && hasFlag(DETERMINED_CHECKUNIQUENESS)) {
+      // turn off duplicate keys checking if everything was already checked
+      checkUniqueness = hasFlag(VALUE_CHECKUNIQUENESS);
+    }
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMemberUnchecked(i);
       if (member != nullptr) {
         std::string_view key(member->getStringView());
 
-        if (n > 1 && !keys.emplace(key).second) {
+        if (checkUniqueness && !keys.emplace(key).second) {
           // duplicate key, skip it
           continue;
         }
@@ -1016,7 +1017,7 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
 
     VPackSlice slice = tmp.slice();
     if (slice.isObject()) {
-      slice = slice.get(getString());
+      slice = slice.get(getStringView());
       if (!slice.isNone()) {
         builder.add(slice);
         return;
@@ -1037,6 +1038,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   if (verbose) {
     builder.add("typeID", VPackValue(static_cast<int>(type)));
   }
+
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_OBJECT_ELEMENT ||
@@ -1100,10 +1102,9 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   }
 
   // dump sub-nodes
-  size_t const n = members.size();
-  if (n > 0) {
+  if (size_t const n = members.size(); n > 0) {
     builder.add(VPackValue("subNodes"));
-    builder.openArray(false);
+    builder.openArray(/*allowUnindexed*/ true);
     for (size_t i = 0; i < n; ++i) {
       AstNode* member = getMemberUnchecked(i);
       if (member != nullptr) {
@@ -1790,10 +1791,8 @@ bool AstNode::mustCheckUniqueness() const {
   bool mustCheck = false;
 
   // check the actual key members now
-  size_t const n = numMembers();
-
-  if (n >= 2) {
-    std::unordered_set<std::string> keys;
+  if (size_t const n = numMembers(); n >= 2) {
+    containers::FlatHashSet<std::string_view> keys;
 
     // only useful to check when there are 2 or more keys
     for (size_t i = 0; i < n; ++i) {
@@ -1801,7 +1800,7 @@ bool AstNode::mustCheckUniqueness() const {
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         // constant key
-        if (!keys.emplace(member->getString()).second) {
+        if (!keys.emplace(member->getStringView()).second) {
           // duplicate key
           mustCheck = true;
           break;

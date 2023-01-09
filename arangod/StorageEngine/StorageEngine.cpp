@@ -28,6 +28,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -132,16 +133,12 @@ void StorageEngine::registerView(
   vocbase.registerView(true, view);
 }
 
-void StorageEngine::registerReplicatedLog(
-    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
-  vocbase.registerReplicatedLog(id, std::move(log));
-}
-
 void StorageEngine::registerReplicatedState(
-    TRI_vocbase_t& vocbase,
-    arangodb::replication2::replicated_state::PersistedStateInfo const& info) {
-  vocbase.registerReplicatedState(info);
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    std::unique_ptr<
+        arangodb::replication2::replicated_state::IStorageEngineMethods>
+        methods) {
+  vocbase.registerReplicatedState(id, std::move(methods));
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }
