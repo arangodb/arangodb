@@ -1,10 +1,13 @@
 devel
 -----
 
-* APM-592: Added a retriable flag for queries in which, case the batch response
-  object isn't successfully received, by sending a POST request with 
-  `_api/cursor/<cursorId>/<batchId>`, the response object from the `batchd` that
-  had not been received before would be returned. The request is idempotent.
+* APM-592: In batched query results, when executing requests for `_api/cursor`, 
+  there might be a connection error and the user might not be able to retrieve
+  the latest batch in `cursorId`. For that, a query option flag `retriable` was
+  added. When set to `true`, if the latest batch response object wasn't
+  successfully returned, the user can send a retry request to receive it with 
+  a POST request to `_api/cursor/<cursorId>/<batchId>`. Only the latest batch
+  is cached, meaning former batches cannot be retrieved with this request.
 
 * Added new stage "instantiating executors" to the query profiling output.
   The time spent in "instantiating executors" is the time needed to create
