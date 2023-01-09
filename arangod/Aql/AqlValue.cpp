@@ -373,7 +373,7 @@ std::string_view AqlValue::getTypeString() const noexcept {
                      .resolveExternal()
                      .type());
     case RANGE:
-      break;
+      return "array";
   }
   return "none";
 }
