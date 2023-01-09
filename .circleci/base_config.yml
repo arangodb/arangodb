@@ -1,0 +1,380 @@
+version: 2.1
+
+run-js-test-suite: &run-js-test-suite
+  docker:
+    - image: cimg/base:2022.12
+  resource_class: << parameters.size >>
+  parallelism: << parameters.buckets >>
+  steps:
+    - attach_workspace:
+        at: .
+    - run:
+        name: Enabled coredumps
+        command: ulimit -c unlimited
+    - run:
+        name: Run << parameters.suite >> suite
+        command: |
+          scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX << parameters.cluster >> << parameters.extraArgs >>
+    # - run:
+    #     command: |
+    #       mkdir test-results && cp ./out/*.xml test-results
+    - run:
+        command: |
+          mkdir -p /tmp/core_dumps
+          cp core.* /tmp/core_dumps
+        when: on_fail
+    - store_artifacts:
+        destination: << parameters.suite >>
+        path: ./out/
+    - store_test_results:
+        path: ./out/
+
+jobs:
+  compile-linux-community:
+    parameters:
+      preset:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:gcc11.2-openssl1.1.1s
+    resource_class: xlarge
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
+      - run:
+          name: Print CCache Settings
+          command: ccache -p
+      - restore_cache:
+          keys:
+            - ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-docker-{{ .Branch }}-
+            - ccache-v1-docker
+      - run:
+          name: Zero CCache Statistics
+          command: ccache -z
+      - run:
+          name: Configure
+          command: |
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+      - run:
+          name: Build
+          command: |
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench
+      - run:
+          command: |
+            rm build/<< parameters.preset >>/bin/*.a
+      - run:
+          name: CCache Statistics
+          command: ccache -s
+      - store_artifacts:
+          path: build/<< parameters.preset >>/bin/arango*
+      - save_cache:
+          when: always
+          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /root/.cache/ccache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/<< parameters.preset >>/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+
+  run-gtest-executable-linux:
+    parameters:
+      executable:
+        type: string
+      filter:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:gcc11.2-openssl1.1.1s
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run GTest
+          command: |
+            << parameters.executable >> --gtest_filter=<< parameters.filter >> --gtest_output=xml
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_test_results:
+          path: test_detail.xml
+
+  test-single-server-only:
+    docker:
+      - image: cimg/base:2022.12
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run single server only tests
+          command: |
+            scripts/unittest BackupAuthNoSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupAuthSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupNoAuthNoSysTests --cleanup false --writeXmlReport true
+            scripts/unittest BackupNoAuthSysTests --cleanup false --writeXmlReport true
+            scripts/unittest arangosh --cleanup false --writeXmlReport true
+            scripts/unittest arangobench --cleanup false --writeXmlReport true
+            scripts/unittest permissions --cleanup false --writeXmlReport true
+            scripts/unittest paths_server --cleanup false --writeXmlReport true
+            scripts/unittest version --cleanup false --writeXmlReport true
+            scripts/unittest active_failover --cleanup false --writeXmlReport true
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_test_results:
+          path: ./out/
+
+  test-single-all-protocols:
+    parameters:
+      suite:
+        type: string
+      extraArgs:
+        type: string
+        default: ""
+    docker:
+      - image: cimg/base:2022.12
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run << parameters.suite >> HTTP
+          command: |
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true << parameters.extraArgs >>
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true << parameters.extraArgs >> --http2 true
+            scripts/unittest << parameters.suite >> --cleanup false --writeXmlReport true << parameters.extraArgs >> --vst true
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_test_results:
+          path: ./out/
+
+  test-single:
+    parameters:
+      suite:
+        type: string
+      size:
+        type: string
+        default: small
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: string
+        default: ""
+    <<: *run-js-test-suite
+
+  test-cluster:
+    parameters:
+      suite:
+        type: string
+      size:
+        type: string
+        default: medium
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: string
+        default: "--cluster true"
+    <<: *run-js-test-suite
+
+workflows:
+  devel-pr:
+    when:
+      matches:
+        pattern: /^(bug-fix|feature|chore)\/.*$/
+        value: << pipeline.git.branch >>
+    jobs:
+      - compile-linux-community:
+          name: build-community-pr
+          preset: community-pr
+      # - run-gtest-executable-linux:
+      #     name: arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "-*_LongRunning"
+      #     requires:
+      #       - build-community-pr
+      # - run-gtest-executable-linux:
+      #     name: iresearch arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "IResearch*"
+      #     requires:
+      #       - build-community-pr
+
+      # === single server tests ===
+      - test-single-server-only:
+          requires:
+            - build-community-pr
+
+      # Single Server Replication Tests
+      - test-single:
+          size: medium # TODO - would small be sufficient?
+          extraArgs: "--extraArgs:log.level replication=trace"
+          matrix:
+            parameters:
+              suite:
+                - replication_fuzz
+                - replication_ongoing
+                - replication_ongoing_frompresent
+                - replication_ongoing_global
+                - replication_ongoing_global_spec
+                - replication_static
+                - replication_ongoing_global
+                - replication_sync
+                - shell_replication
+                - http_replication
+          requires:
+            - build-community-pr
+
+      # Shell client tests Single Server; distribute evenly
+      - test-single:
+          matrix:
+            parameters:
+              suite: [shell_client, shell_api_multi, shell_v8, shell_server_v8]
+          requires:
+            - build-community-pr
+
+      - test-single:
+          name: test-single-shell_server_aql
+          suite: shell_server_aql
+          buckets: 5
+          requires:
+            - build-community-pr
+
+      - test-single:
+          name: test-single-shell_server
+          suite: shell_server
+          buckets: 2
+          requires:
+            - build-community-pr
+
+      - test-single-all-protocols:
+          matrix:
+            parameters:
+              suite:
+                - shell_client_multi
+                - shell_client_transaction
+                - shell_client_traffic
+                - shell_client_aql
+          requires:
+            - build-community-pr
+
+      - test-single-all-protocols:
+          name: test-single-all-protocols-ssl-shell_client_traffic
+          suite: shell_client_traffic
+          extraArgs: "--protocol ssl"
+          requires:
+            - build-community-pr
+
+      - test-single:
+          matrix:
+            parameters:
+              suite:
+                - export
+                - server_parameters
+                - shell_fuzzer
+                - authentication_parameters
+                - authentication_server
+          requires:
+            - build-community-pr
+
+      - test-single:
+          matrix:
+            parameters:
+              suite:
+                - authentication
+                - shell_api
+          requires:
+            - build-community-pr
+
+      # === cluster tests ===
+
+      - test-cluster:
+          matrix:
+            parameters:
+              suite:
+                - arangobench
+                - load_balancing
+                - load_balancing_auth
+                - replication2_client
+                - replication2_server
+                - resilience_analyzers
+                - resilience_move
+                - resilience_failover # TODO - should be bucketized, but does not yet support it
+                - resilience_sharddist
+                - shell_api
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          buckets: 4
+          matrix:
+            parameters:
+              suite:
+                - shell_client_replication2_recovery
+                - shell_client_transaction
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-shell_server_aql
+          suite: shell_server_aql
+          size: medium+
+          buckets: 16
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-shell_client
+          suite: shell_client
+          size: medium+
+          buckets: 5
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-shell_server
+          suite: shell_server
+          size: large
+          buckets: 6
+          requires:
+            - build-community-pr
+
+      - test-cluster:
+          name: test-cluster-recovery_cluster
+          suite: recovery_cluster
+          buckets: 8
+          requires:
+            - build-community-pr
