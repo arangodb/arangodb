@@ -100,7 +100,7 @@ auto DocumentFollowerState::applyEntries(
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {
-          std::optional<LogIndex> releaseIndex{std::nullopt};
+          std::optional<LogIndex> releaseIndex;
 
           while (auto entry = ptr->next()) {
             auto doc = entry->second;

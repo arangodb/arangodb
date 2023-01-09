@@ -22,6 +22,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/LoggerContext.h"
@@ -144,7 +145,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
-        break;
+        FATAL_ERROR_EXIT();
       case OperationType::kIntermediateCommit:
         return trx->intermediateCommit();
       default:
