@@ -73,7 +73,8 @@ class CursorRepository {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  Cursor* createFromQueryResult(aql::QueryResult&& result, size_t batchSize, double ttl, bool hasCount, bool isRetriable);
+  Cursor* createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
+                                double ttl, bool hasCount, bool isRetriable);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
