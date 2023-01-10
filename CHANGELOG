@@ -1,4 +1,4 @@
-v3.9.7 (XXXX-XX-XX)
+v3.9.7 (2023-01-10)
 -------------------
 
 * Allow cluster database servers to start even when there are existing databases
