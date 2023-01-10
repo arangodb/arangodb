@@ -1,6 +1,12 @@
 v3.9.7 (XXXX-XX-XX)
 -------------------
 
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
 * Make the cache_oblivious option of jemalloc configurable from the environment.
   This helps to save 4096 bytes of RAM for every allocation which is at least
   16384 bytes large. This is particularly beneficial for the RocksDB buffer
