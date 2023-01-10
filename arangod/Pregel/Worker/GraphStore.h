@@ -28,7 +28,7 @@
 #include "Utils/DatabaseGuard.h"
 
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Status/Status.h"
