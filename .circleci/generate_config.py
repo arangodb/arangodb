@@ -187,6 +187,8 @@ def filter_tests(args, tests):
     else:
         filters.append(lambda test: "gtest" !=  test["name"])
 
+    filters.append(lambda test: "enterprise" not in test["flags"])
+
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
 
@@ -196,10 +198,16 @@ def filter_tests(args, tests):
 
 
 def create_test_job(test):
+    params = test["params"]
     isCluster = "cluster" in test["flags"]
+    suiteName = test["name"]
+    suffix = params.get("suffix", "")
+    if suffix:
+        suiteName += f"-{suffix}"
+
     result = {
-        "name": f"test-ce-{'cluster' if isCluster else 'single'}-{test['name']}",
-        "suiteName": test['name'],
+        "name": f"test-ce-{'cluster' if isCluster else 'single'}-{suiteName}",
+        "suiteName": suiteName,
         "suites": test["suites"],
         "cluster": isCluster,
         "requires": ["build-community-pr"]
@@ -221,7 +229,7 @@ def create_test_job(test):
     if extraArgs != []:
         result["extraArgs"] = " ".join(extraArgs)
 
-    buckets = test["params"].get("buckets", 1)
+    buckets = params.get("buckets", 1)
     if buckets != 1:
         result["buckets"] = buckets
 
@@ -249,7 +257,6 @@ def main():
         generate_output(args, tests)
     except Exception as exc:
         print(exc, file=sys.stderr)
-        print_exc()
         sys.exit(1)
 
 
