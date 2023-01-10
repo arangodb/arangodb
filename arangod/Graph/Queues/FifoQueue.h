@@ -128,7 +128,8 @@ class FifoQueue {
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
-    return {};
+    auto const& first = _queue.front();
+    return first;
   }
 
   Step pop() {
