@@ -668,9 +668,10 @@ TEST_F(DocumentStateMachineTest,
 
   std::thread t([follower]() {
     auto res = follower->acquireSnapshot("participantId", LogIndex{1});
-    EXPECT_TRUE(res.isReady() && res.get().fail() &&
-                res.get().errorNumber() ==
-                    TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    EXPECT_TRUE(res.isReady());
+    EXPECT_TRUE(res.get().fail());
+    EXPECT_TRUE(res.get().errorNumber() ==
+                TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
   });
 
   acquireSnapshotCalled.wait(false);
