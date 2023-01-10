@@ -199,6 +199,7 @@ def create_test_job(test):
     isCluster = "cluster" in test["flags"]
     result = {
         "name": f"test-ce-{'cluster' if isCluster else 'single'}-{test['name']}",
+        "suiteName": test['name'],
         "suites": test["suites"],
         "cluster": isCluster,
         "requires": ["build-community-pr"]
