@@ -3,7 +3,6 @@
 import argparse
 import sys
 import yaml
-from traceback import print_exc
 
 # check python 3
 if sys.version_info[0] != 3:
@@ -195,7 +194,6 @@ def filter_tests(args, tests):
 
 
 def create_test_job(test):
-    print(test)
     isCluster = "cluster" in test["flags"]
     result = {
         "name": f"test-ce-{'cluster' if isCluster else 'single'}-{test['name']}",
