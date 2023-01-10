@@ -67,7 +67,6 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        std::unique_lock guard(self->_shardRewriteMutex);
         auto count = ++self->_snapshotsCount;
         if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
           return truncateRes;
@@ -234,7 +233,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           // snapshot transfer is not yet completed before another one is
           // requested. Before populating the shard, we have to make sure
           // there's no new snapshot transfer in progress.
-          std::unique_lock guard(self->_shardRewriteMutex);
           if (self->_snapshotsCount.load() != snapshotsCount) {
             return {
                 TRI_ERROR_INTERNAL,
@@ -245,10 +243,13 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         if (insertRes.fail()) {
           LOG_CTX("d8b8a", ERR, self->loggerContext)
               << "Failed to populate local shard: " << insertRes;
-          return leader->finishSnapshot(snapshotRes->snapshotId);
-          // TODO return result and maybe the leader clear the failed snapshot
-          // itself
-          // return insertRes;
+          if (insertRes.isNot(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            // TODO return result and let the leader clear the failed snapshot
+            // itself, or send an abort instead of finish?
+            return leader->finishSnapshot(snapshotRes->snapshotId);
+          }
+          return insertRes;
         }
 
         if (snapshotRes->hasMore) {

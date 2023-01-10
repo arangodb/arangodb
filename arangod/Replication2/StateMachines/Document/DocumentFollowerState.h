@@ -82,7 +82,6 @@ struct DocumentFollowerState
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;
   std::atomic<std::uint64_t> _snapshotsCount;
-  std::mutex _shardRewriteMutex;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document
