@@ -32,7 +32,7 @@
 
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/Graph.h"
 
 struct TRI_vocbase_t;
 

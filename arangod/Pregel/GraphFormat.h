@@ -30,7 +30,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/Graph.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {

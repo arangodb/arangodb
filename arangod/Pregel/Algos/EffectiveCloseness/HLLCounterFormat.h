@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
