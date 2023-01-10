@@ -110,6 +110,7 @@ class LifoQueue {
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
+    return {};
   }
 
   Step pop() {

@@ -349,10 +349,11 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());
 
-  auto executorInfos = ShortestPathExecutorInfos(
-      engine.getQuery(), std::move(shortestPathFinder),
-      std::move(outputRegisterMapping), std::move(sourceInput),
-      std::move(targetInput));
+  ShortestPathExecutorInfos<ShortestPathRefactored> executorInfos =
+      ShortestPathExecutorInfos(engine.getQuery(),
+                                std::move(shortestPathFinder),
+                                std::move(outputRegisterMapping),
+                                std::move(sourceInput), std::move(targetInput));
 
   return std::make_unique<
       ExecutionBlockImpl<ShortestPathExecutor<ShortestPathRefactored>>>(
