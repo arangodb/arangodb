@@ -464,20 +464,6 @@ struct NormalizedCmpNode {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @returns pointer to type name for the specified value if it's present in
-///          TypeMap, nullptr otherwise
-////////////////////////////////////////////////////////////////////////////////
-inline std::string const* getNodeTypeName(aql::AstNodeType type) noexcept {
-  auto const it = aql::AstNode::TypeNames.find(type);
-
-  if (aql::AstNode::TypeNames.end() == it) {
-    return nullptr;
-  }
-
-  return &it->second;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @returns pointer to 'idx'th member of type 'expectedType', or nullptr
 ////////////////////////////////////////////////////////////////////////////////
 inline aql::AstNode const* getNode(aql::AstNode const& node, size_t idx,

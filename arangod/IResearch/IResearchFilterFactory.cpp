@@ -1037,7 +1037,7 @@ Result fromRange(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_RANGE == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(
         TRI_ERROR_BAD_PARAMETER,
         absl::StrCat("wrong number of arguments in range expression: ",
@@ -1386,7 +1386,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type ||
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("error in Array comparison operator: ",
                                  rv.errorMessage()));
@@ -1706,7 +1706,7 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
              aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("error in from In", rv.errorMessage()));
   }
@@ -1842,7 +1842,7 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_OPERATOR_UNARY_NOT == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
                     absl::StrCat("Bad node in negation", rv.errorMessage()));
   }
@@ -1886,7 +1886,7 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter,
              aql::NODE_TYPE_OPERATOR_NARY_AND == node.type);
 
   if (node.numMembers() != 2) {
-    logMalformedNode(node.type);
+    logMalformedNode(node);
     return false;  // wrong number of members
   }
 
@@ -3871,7 +3871,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
   TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   auto const* args = getNode(node, 0, aql::NODE_TYPE_ARRAY);
@@ -3931,7 +3931,7 @@ Result fromFCall(irs::boolean_filter* filter, FilterContext const& filterCtx,
   auto const* fn = static_cast<aql::Function*>(node.getData());
 
   if (!fn || node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   if (!isFilter(*fn)) {
@@ -3961,7 +3961,7 @@ Result fromFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_FILTER == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(
         rv.errorNumber(),
         absl::StrCat("wrong number of parameters: ", rv.errorMessage()));
