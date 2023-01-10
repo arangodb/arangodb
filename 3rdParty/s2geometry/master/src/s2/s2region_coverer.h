@@ -267,11 +267,11 @@ class S2RegionCoverer {
     ~Candidate() = default;
 
     S2Cell cell;
-    bool is_terminal;      // Cell should not be expanded further.
-    int num_children = 0;  // Number of children that intersect the region.
+    bool is_terminal;        // Cell should not be expanded further.
+    int num_children = 0;    // Number of children that intersect the region.
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable : 4200)
+#pragma warning(disable:4200)
 #endif
     Candidate* children[0];  // Actual size may be 0, 4, 16, or 64 elements.
 #ifdef _MSC_VER
