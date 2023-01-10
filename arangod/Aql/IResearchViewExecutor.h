@@ -429,7 +429,7 @@ class IResearchViewExecutorBase {
 
   using IndexReadBufferType =
       IndexReadBuffer<typename Traits::IndexBufferValueType,
-                      Traits::CopyStored && !isLateMaterialized>;
+                      Traits::CopyStored>;
   /**
    * @brief produce the next Rows of Aql Values.
    *
