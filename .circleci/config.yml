@@ -20,6 +20,7 @@ jobs:
       - run:
           name: Generate config
           command: |
+            pip install pyyaml
             python3 ".circleci/generate_config.py" -o generated_config.yml ./.circleci/base_config.yml "tests/test-definitions.txt"
 
       - continuation/continue:
