@@ -37,28 +37,28 @@ std::vector<VPackSlice> const empty;
 
 class QueryGeoContains : public QueryTest {
  protected:
-  void createAnalyzers() {
+  void createAnalyzers(std::string_view analyzer) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     {
       auto json = VPackParser::fromJson(R"({})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeojson",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
     {
       auto json = VPackParser::fromJson(R"({"type": "centroid"})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeocentroid",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
     {
       auto json = VPackParser::fromJson(R"({"type": "point"})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeopoint",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
   }
@@ -470,7 +470,7 @@ class QueryGeoContains : public QueryTest {
     }
   }
 
-  void queryTestsMulti() {
+  void queryTestsMulti(bool isVPack) {
     // ensure presence of special a column for geo indices
     {
       auto collection = _vocbase.lookupCollection("testCollection0");
@@ -500,7 +500,7 @@ class QueryGeoContains : public QueryTest {
 
       auto& segment = (*snapshot)[0];
 
-      {
+      if (isVPack) {
         auto const columnName = mangleString("geometry", "mygeojson");
         auto* columnReader = segment.column(columnName);
         ASSERT_NE(nullptr, columnReader);
@@ -517,7 +517,7 @@ class QueryGeoContains : public QueryTest {
         ASSERT_EQ(doc, _insertedDocs.end());
       }
 
-      {
+      if (isVPack) {
         auto const columnName = mangleString("geometry", "mygeocentroid");
         auto* columnReader = segment.column(columnName);
         ASSERT_NE(nullptr, columnReader);
@@ -545,7 +545,7 @@ class QueryGeoContains : public QueryTest {
         ASSERT_EQ(doc, _insertedDocs.end());
       }
 
-      {
+      if (isVPack) {
         auto const columnName = mangleString("geometry", "mygeopoint");
         auto* columnReader = segment.column(columnName);
         ASSERT_NE(nullptr, columnReader);
@@ -624,18 +624,18 @@ class QueryGeoContainsSearch : public QueryGeoContains {
 };
 
 TEST_P(QueryGeoContainsView, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createView();
   queryTests();
   queryTestsGeoJson();
   queryTestsGeoCentroid();
   queryTestsGeoPoint();
-  queryTestsMulti();
+  queryTestsMulti(true);
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoJson) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
@@ -644,7 +644,7 @@ TEST_P(QueryGeoContainsSearch, TestGeoJson) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoCentroid) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -653,7 +653,45 @@ TEST_P(QueryGeoContainsSearch, TestGeoCentroid) {
 }
 
 TEST_P(QueryGeoContainsSearch, TestGeoPoint) {
-  createAnalyzers();
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes("mygeopoint");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+TEST_P(QueryGeoContainsView, TestS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createView();
+  queryTests();
+  queryTestsGeoJson();
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti(false);
+}
+
+TEST_P(QueryGeoContainsSearch, TestGeoJsonS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createIndexes("mygeojson");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson();
+}
+
+TEST_P(QueryGeoContainsSearch, TestGeoCentroidS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createIndexes("mygeocentroid");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoContainsSearch, TestGeoPointS2) {
+  createAnalyzers("geojson-s2");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();

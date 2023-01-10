@@ -30,7 +30,7 @@ namespace {
 
 class QueryGeoIntersects : public QueryTest {
  protected:
-  void createAnalyzers() {
+  void createAnalyzers(std::string_view analyzer) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -364,14 +364,29 @@ class QueryGeoIntersectsSearch : public QueryGeoIntersects {
 };
 
 TEST_P(QueryGeoIntersectsView, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createView();
   queryTests();
 }
 
 TEST_P(QueryGeoIntersectsSearch, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes();
+  createSearch();
+  queryTests();
+}
+
+TEST_P(QueryGeoIntersectsView, TestS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createView();
+  queryTests();
+}
+
+TEST_P(QueryGeoIntersectsSearch, TestS2) {
+  createAnalyzers("geojson-s2");
   createCollections();
   createIndexes();
   createSearch();
