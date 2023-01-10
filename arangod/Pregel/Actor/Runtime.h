@@ -121,17 +121,18 @@ struct Runtime
   auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
     if (receiver.server != myServerID) {
-      fmt::print(stderr, "received message for receiver {}, this is not me: {}",
+      fmt::print(stderr,
+                 "received message for receiver {}, this is not me: {}\n",
                  receiver, myServerID);
       std::abort();
     }
 
     auto a = actors.find(receiver.id);
     if (a == std::end(actors)) {
-      fmt::print(
-          stderr,
-          "received message for receiver {}, but the actor could not be found.",
-          receiver);
+      fmt::print(stderr,
+                 "received message for receiver {}, but the actor could not be "
+                 "found.\n",
+                 receiver);
       std::abort();
     }
 
@@ -154,6 +155,11 @@ struct Runtime
 
   auto dispatch(ActorPID sender, ActorPID receiver,
                 std::unique_ptr<MessagePayloadBase> payload) -> void {
+    if (payload == nullptr) {
+      fmt::print(stderr, "Payload is nullptr in Runtime::dispatch\n");
+      std::abort();
+    }
+    fmt::print(stderr, "Runtime::dispatch\n");
     auto& actor = findActorLocally(receiver);
     actor->process(sender, std::move(payload));
   }

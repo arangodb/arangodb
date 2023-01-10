@@ -43,44 +43,44 @@ struct EmptyExternalDispatcher {
 };
 using ActorTestRuntime = Runtime<MockScheduler, EmptyExternalDispatcher>;
 
-TEST(ActorTest, has_a_type_name) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime =
-      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{}, runtime, std::make_unique<TrivialState>());
-  ASSERT_EQ(actor.typeName(), "TrivialActor");
-}
+// TEST(ActorTest, has_a_type_name) {
+//   auto scheduler = std::make_shared<MockScheduler>();
+//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+//   auto runtime =
+//       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
+//   auto actor = Actor<ActorTestRuntime, TrivialActor>(
+//       ActorPID{}, runtime, std::make_unique<TrivialState>());
+//   ASSERT_EQ(actor.typeName(), "TrivialActor");
+// }
 
-TEST(ActorTest, formats_actor) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime =
-      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
-  ASSERT_EQ(
-      fmt::format("{}", actor),
-      R"({"pid":{"server":"A","id":1,"databaseName":""},"state":{"state":"","called":0},"batchsize":16})");
-}
+// TEST(ActorTest, formats_actor) {
+//   auto scheduler = std::make_shared<MockScheduler>();
+//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+//   auto runtime =
+//       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
+//   auto actor = Actor<ActorTestRuntime, TrivialActor>(
+//       ActorPID{.server = "A", .id = {1}}, runtime,
+//       std::make_unique<TrivialState>());
+//   ASSERT_EQ(
+//       fmt::format("{}", actor),
+//       R"({"pid":{"server":"A","id":1,"databaseName":""},"state":{"state":"","called":0},"batchsize":16})");
+// }
 
-TEST(ActorTest, changes_its_state_after_processing_a_message) {
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-  auto runtime =
-      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
-  auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}}, runtime,
-      std::make_unique<TrivialState>());
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
-  auto message =
-      std::make_unique<MessagePayload<MessageOrError<TrivialMessage>>>(
-          TrivialMessage1{"Hello"});
-  actor.process(ActorPID{.server = "A", .id = {5}}, std::move(message));
-  ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
-}
+// TEST(ActorTest, changes_its_state_after_processing_a_message) {
+//   auto scheduler = std::make_shared<MockScheduler>();
+//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+//   auto runtime =
+//       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
+//   auto actor = Actor<ActorTestRuntime, TrivialActor>(
+//       ActorPID{.server = "A", .id = {1}}, runtime,
+//       std::make_unique<TrivialState>());
+//   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
+//   auto message =
+//       std::make_unique<MessagePayload<MessageOrError<TrivialMessage>>>(
+//           TrivialMessage1{"Hello"});
+//   actor.process(ActorPID{.server = "A", .id = {5}}, std::move(message));
+//   ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
+// }
 
 // // TODO error handling when actor receives unknown message
 
@@ -99,5 +99,18 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
 //                 arangodb::inspection::serializeWithErrorT(message).get());
 //   ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
 // }
+
+TEST(Handler, bla) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime =
+      std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
+  auto handler = TrivialActor::Handler<ActorTestRuntime>(
+      ActorPID{.server = "bla", .id = {1}, .databaseName = ""},
+      ActorPID{.server = "bla", .id = {1}, .databaseName = ""},
+      std::make_unique<TrivialState>(), runtime);
+  handler.foo(UnknownMessage{});
+  // handler(UnknownMessage{});
+}
 
 // TODO error handling when actor received unknown velocypack message

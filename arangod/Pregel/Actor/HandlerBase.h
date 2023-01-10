@@ -64,10 +64,18 @@ struct HandlerBase {
     return runtime->template spawn<ActorConfig>(initialState, initialMessage);
   }
 
-  // auto operator()(UnknownMessage msg) -> std::unique_ptr<State> {
-  //   fmt::print(stderr, "Handle unknown message");
-  //   // go into error state
-  // }
+  auto operator()(UnknownMessage msg) -> std::unique_ptr<State> {
+    fmt::print(stderr, "Handle unknown message");
+    return std::move(this->state);
+    // go into error state
+  }
+  auto operator()(auto&& bla) -> std::unique_ptr<State> {
+    fmt::print(stderr, "Catch all");
+    return std::move(this->state);
+  }
+
+  void foo(UnknownMessage msg) {}
+  virtual ~HandlerBase() = default;
 
   ActorPID self;
   ActorPID sender;

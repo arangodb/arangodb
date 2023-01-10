@@ -86,10 +86,10 @@ struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
     return std::move(this->state);
   }
 
-  auto operator()(auto&& bla) -> std::unique_ptr<SpawnState> {
-    fmt::print(stderr, "Catch all");
-    return std::move(this->state);
-  }
+  // auto operator()(auto&& bla) -> std::unique_ptr<SpawnState> {
+  //   fmt::print(stderr, "Catch all");
+  //   return std::move(this->state);
+  // }
 };
 
 struct SpawnActor {

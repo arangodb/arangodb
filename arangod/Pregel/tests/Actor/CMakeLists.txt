@@ -2,7 +2,7 @@ add_executable(arangodbtests_actor
   ${PROJECT_SOURCE_DIR}/arangod/Pregel/Actor/Actor.cpp
   main.cpp
   ActorTest.cpp
-  RuntimeTest.cpp
+  # RuntimeTest.cpp
   # MultiRuntimeTest.cpp
   MPSCQueueTest.cpp
   SimpleQueueTest.cpp

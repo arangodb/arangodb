@@ -131,27 +131,29 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
 }
 
-// struct SomeMessage {};
-// struct SomeMessages : std::variant<SomeMessage> {
-//   using std::variant<SomeMessage>::variant;
-// };
-// TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
-//   auto scheduler = std::make_shared<MockScheduler>();
-//   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
-//   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
-//                                                scheduler, dispatcher);
-//   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-//                                             TrivialMessage0{});
+struct SomeMessage {};
+struct SomeMessages : std::variant<SomeMessage> {
+  using std::variant<SomeMessage>::variant;
+};
+TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
+                                               scheduler, dispatcher);
+  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                            TrivialMessage0{});
 
-//   runtime->dispatch(
-//       ActorPID{.server = "Foo", .id = actor},
-//       ActorPID{.server = "PRMR-1234", .id = actor},
-//       std::make_unique<MessagePayload<MessageOrError<SomeMessages>>>(
-//           SomeMessage()));
-
-//   // auto state = runtime.getActorStateByID<TrivialActor>(actor);
-//   // ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
-// }
+  auto msg = MessageOrError<SomeMessages>(SomeMessage());
+  ASSERT_TRUE(std::holds_alternative<SomeMessage>(msg));
+  auto msg2 =
+      std::make_unique<MessagePayload<MessageOrError<SomeMessages>>>(msg);
+  ASSERT_NE(msg2, nullptr);
+  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
+                    ActorPID{.server = "PRMR-1234", .id = actor},
+                    std::move(msg2));
+  // auto state = runtime->getActorStateByID<TrivialActor>(actor);
+  // ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
+}
 
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};

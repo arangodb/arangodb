@@ -96,25 +96,31 @@ struct Actor : ActorBase {
 
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
+    if (msg == nullptr) {
+      fmt::print(stderr, "Payload is nullptr in Actor::process\n");
+      std::abort();
+    }
     auto* ptr = msg.release();
     auto* m = dynamic_cast<MessagePayload<MessageType>*>(ptr);
     if (m == nullptr) {
       // TODO possibly send an information back to the runtime
       // send error back to sender
       fmt::print(stderr,
-                 "Actor {} recieved a message it could not handle from {}", pid,
-                 sender);
-      // runtime->dispatch(
-      //     pid, sender,
-      //     std::make_unique<MessagePayload<MessageOrError<ActorError>>>(
-      //         UnknownMessage{.sender = sender,
-      //                        .receiver = pid,
-      // .message = std::move(msg)}));
+                 "Actor {} received a message it could not handle from {}\n",
+                 pid, sender);
+      auto message = std::make_unique<MessagePayload<MessageType>>(
+          UnknownMessage{.sender = sender, .receiver = pid});
+      if (message == nullptr) {
+        fmt::print(stderr, "Returning error message is nullptr\n");
+        std::abort();
+      }
+      runtime->dispatch(pid, sender, std::move(message));
 
-      std::abort();
+      // std::abort();
+    } else {
+      inbox.push(std::make_unique<InternalMessage>(
+                                                   sender, std::make_unique<MessageType>(std::move(m->payload))));
     }
-    inbox.push(std::make_unique<InternalMessage>(
-        sender, std::make_unique<MessageType>(std::move(m->payload))));
     delete m;
     kick();
   }
@@ -125,7 +131,7 @@ struct Actor : ActorBase {
     if (m.ok()) {
       process(sender, std::make_unique<MessagePayload<MessageType>>(m.get()));
     } else {
-      fmt::print(stderr, "Actor {} cannot deserialize message {}", pid,
+      fmt::print(stderr, "Actor {} cannot deserialize message {}\n", pid,
                  msg.toJson());
       std::abort();
     }

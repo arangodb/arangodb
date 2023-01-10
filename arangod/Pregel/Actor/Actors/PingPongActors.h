@@ -118,10 +118,10 @@ struct Handler : HandlerBase<Runtime, State> {
     this->state->message = msg.text;
     return std::move(this->state);
   }
-  auto operator()(auto&& bla) -> std::unique_ptr<State> {
-    fmt::print(stderr, "Catch all");
-    return std::move(this->state);
-  }
+  // auto operator()(auto&& bla) -> std::unique_ptr<State> {
+  //   fmt::print(stderr, "Catch all");
+  //   return std::move(this->state);
+  // }
 };
 
 struct Actor {
@@ -158,10 +158,10 @@ struct Handler : HandlerBase<Runtime, State> {
     this->state->called++;
     return std::move(this->state);
   }
-  auto operator()(auto&& bla) -> std::unique_ptr<State> {
-    fmt::print(stderr, "Catch all");
-    return std::move(this->state);
-  }
+  // auto operator()(auto&& bla) -> std::unique_ptr<State> {
+  //   fmt::print(stderr, "Catch all");
+  //   return std::move(this->state);
+  // }
 };
 
 struct Actor {

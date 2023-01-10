@@ -75,6 +75,7 @@ auto inspect(Inspector& f, TrivialMessage& x) {
 
 template<typename Runtime>
 struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
+  using HandlerBase<Runtime, TrivialState>::HandlerBase;
   auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     return std::move(this->state);
@@ -85,14 +86,16 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     this->state->state += msg.store;
     return std::move(this->state);
   }
-
-  auto operator()(auto&& bla) -> std::unique_ptr<TrivialState> {
-    fmt::print(stderr, "Catch all");
+  auto operator()(UnknownMessage msg) -> std::unique_ptr<TrivialState> {
+    fmt::print(stderr, "Handle unknown message");
     return std::move(this->state);
+    // go into error state
   }
-  // auto operator()(UnknownMessage msg) -> std::unique_ptr<TrivialState> {
-  //   fmt::print(stderr, "Handle unknown message");
-  //   // go into error state
+  void foo(TrivialMessage1 msg) {}
+
+  // auto operator()(auto&& bla) -> std::unique_ptr<TrivialState> {
+  //   fmt::print(stderr, "Catch all");
+  //   return std::move(this->state);
   // }
 };
 
