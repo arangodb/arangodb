@@ -59,6 +59,7 @@ p/
 !core.h
 TAGS
 
+CMakeUserPresets.json
 CPackConfig.cmake
 CPackSourceConfig.cmake
 CTestTestfile.cmake
