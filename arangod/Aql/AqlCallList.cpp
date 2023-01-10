@@ -181,13 +181,6 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
             expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
             [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
-        // should never happen
-        TRI_ASSERT(false);
-        return Result(
-            TRI_ERROR_TYPE_ERROR,
-            "When deserializating AqlCallList: Encountered duplicate key");
-      }
       propIt->second = true;
     }
 

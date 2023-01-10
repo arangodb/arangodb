@@ -834,14 +834,14 @@ void AstNode::sort() {
     // attribute accesses
     std::sort(members.begin(), members.end(),
               [](AstNode const* lhs, AstNode const* rhs) {
-                return (compareAstNodes<false>(lhs, rhs, true) < 0);
+                return compareAstNodes<false>(lhs, rhs, true) < 0;
               });
   } else {
     // slower compare function that needs to resolve attribute
     // accesses
     std::sort(members.begin(), members.end(),
               [](AstNode const* lhs, AstNode const* rhs) {
-                return (compareAstNodes<true>(lhs, rhs, true) < 0);
+                return compareAstNodes<true>(lhs, rhs, true) < 0;
               });
   }
 

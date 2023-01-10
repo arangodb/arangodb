@@ -356,14 +356,14 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     -> std::tuple<ExecutorState, Stats, AqlCallSet> {
   if (!_initialized) {
     // First initialize
-    auto const callSet = initialize(input, output.getClientCall());
+    auto callSet = initialize(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
   }
 
   {
-    auto const callSet = requiresMoreInput(input, output.getClientCall());
+    auto callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
@@ -381,7 +381,7 @@ auto SortingGatherExecutor::produceRows(typename Fetcher::DataRange& input,
       output.advanceRow();
     }
 
-    auto const callSet = requiresMoreInput(input, output.getClientCall());
+    auto callSet = requiresMoreInput(input, output.getClientCall());
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, std::move(callSet)};
     }
@@ -405,14 +405,14 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet> {
   if (!_initialized) {
     // First initialize
-    auto const callSet = initialize(input, call);
+    auto callSet = initialize(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, 0, std::move(callSet)};
     }
   }
 
   {
-    auto const callSet = requiresMoreInput(input, call);
+    auto callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, 0, std::move(callSet)};
     }
@@ -432,7 +432,7 @@ auto SortingGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
     if (row) {
       call.didSkip(1);
     }
-    auto const callSet = requiresMoreInput(input, call);
+    auto callSet = requiresMoreInput(input, call);
     if (!callSet.empty()) {
       return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
               std::move(callSet)};
