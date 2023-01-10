@@ -1228,8 +1228,6 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
       query = `FOR v IN OUTBOUND SHORTEST_PATH "${vertexIds.Caesar}" TO "${vertexIds.Anton}" GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 80} RETURN v._id`;
       actual = getQueryResults(query);
-      print("This fails: ");
-      print(actual);
       assertEqual(actual.length, 3);
 
       query = `FOR v IN OUTBOUND SHORTEST_PATH "${vertexIds.Caesar}" TO "${vertexIds.Anton}" GRAPH "${graphName}" RETURN v._id`;
