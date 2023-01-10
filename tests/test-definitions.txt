@@ -99,7 +99,7 @@ hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 cluster buckets=5 -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 -- --dumpAgencyOnError true
 server_secrets priority=500 -- --dumpAgencyOnError true
 
