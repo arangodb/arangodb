@@ -1276,8 +1276,8 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['result'].length, 1000);
       assertFalse(doc.parsedBody['cached']);
 
-      assertEqual(doc.parsedBody['nextBatchId'], 3);
       nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "3");      
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
 
