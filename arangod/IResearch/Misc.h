@@ -34,7 +34,8 @@ namespace arangodb::iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 struct adjacencyChecker {
-  using type_t = typename std::enable_if_t<std::is_enum_v<T>, T>;
+  static_assert(std::is_enum_v<T>);
+  using type_t = T;
 
   template<type_t Max>
   static constexpr bool checkAdjacency() noexcept {
