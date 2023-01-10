@@ -1251,8 +1251,9 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertFalse(doc.parsedBody['cached']);
 
       let cursorId = doc.parsedBody['id'];
-      assertEqual(doc.parsedBody['nextBatchId'], 2);
       let nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "2");
+      
 
       internal.debugSetFailAt("MakeConnectionErrorForRetry");
 
