@@ -101,7 +101,7 @@ jobs:
         type: integer
         default: 1
       cluster:
-        type: string
+        type: boolean
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
