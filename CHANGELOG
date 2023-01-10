@@ -5,7 +5,7 @@ devel
   there might be a connection error and the user might not be able to retrieve
   the latest batch from the cursor. For that, a query option flag `retriable` was
   added. When set to `true`, if the latest batch response object wasn't
-  successfully returned, the user can send a retry request to receive it with 
+  successfully received, the user can send a retry request to receive it with 
   a POST request to `_api/cursor/<cursorId>/<batchId>`. Only the latest batch
   is cached, meaning former batches cannot be retrieved with this request.
 
