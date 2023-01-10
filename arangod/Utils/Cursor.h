@@ -94,7 +94,7 @@ class Cursor {
 
   void setLastQueryBatchObject(
       std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
-    _currentBatchResult.second = buffer;
+    _currentBatchResult.second = std::move(buffer);
   }
 
   Result getLastBatchResult(std::string const& batchId,
