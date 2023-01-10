@@ -131,8 +131,8 @@ Remarks:
   results up to that point meaningless.
 - The query options `cache`, `count` and `fullCount` are not supported for
   streaming queries.
-- Query statistics, profiling data and warnings are delivered as part of the
-  last batch.
+- Query statistics and profiling data are delivered as part of the last batch.
+  Every batch can include warnings, however.
 
 If the `stream` option is `false` (default), then the complete result of the
 query is calculated before any of it is returned to the client. The server
