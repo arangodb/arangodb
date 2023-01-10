@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include "PregelShard.h"
+#include "PregelVertexID.h"
+
 namespace arangodb::pregel {
 
 template<typename V, typename E>

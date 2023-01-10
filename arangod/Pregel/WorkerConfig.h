@@ -31,7 +31,8 @@
 #include "Cluster/ClusterInfo.h"
 
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/PregelVertexID.h"
+#include "Pregel/Graph/PregelShard.h"
 
 struct TRI_vocbase_t;
 

@@ -280,28 +280,28 @@ RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator(size_t i,
                                      numVertices);
 }
 
-template<typename V, typename E>
-RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
-    Vertex<V, E> const* entry) {
-  if (entry->getEdgeCount() == 0) {
-    return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
-  }
+// template<typename V, typename E>
+// RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
+//     Vertex<V, E> const* entry) {
+//   if (entry->getEdgeCount() == 0) {
+//     return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
+//   }
 
-  size_t i = 0;
-  for (; i < _edges.size(); i++) {
-    if (_edges[i]->begin() <= entry->getEdges() &&
-        entry->getEdges() <= _edges[i]->end()) {
-      break;
-    }
-  }
+//   size_t i = 0;
+//   for (; i < _edges.size(); i++) {
+//     if (_edges[i]->begin() <= entry->getEdges() &&
+//         entry->getEdges() <= _edges[i]->end()) {
+//       break;
+//     }
+//   }
 
-  TRI_ASSERT(i < _edges.size());
-  TRI_ASSERT(i != _edges.size() - 1 ||
-             _edges[i]->size() >= entry->getEdgeCount());
-  return RangeIterator<Edge<E>>(_edges, i,
-                                static_cast<Edge<E>*>(entry->getEdges()),
-                                entry->getEdgeCount());
-}
+//   TRI_ASSERT(i < _edges.size());
+//   TRI_ASSERT(i != _edges.size() - 1 ||
+//              _edges[i]->size() >= entry->getEdgeCount());
+//   return RangeIterator<Edge<E>>(_edges, i,
+//                                 static_cast<Edge<E>*>(entry->getEdges()),
+//                                 entry->getEdgeCount());
+// }
 
 namespace {
 template<typename X>
@@ -524,10 +524,7 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
-    if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "too many edges for vertex");
-    }
+    vertex.addEdge(edge);
     ++_observables.edgesLoaded;
     _observables.memoryBytesUsed += sizeof(Edge<E>);
 
@@ -709,7 +706,7 @@ void GraphStore<V, E>::storeVertices(
       commitTransaction();
 
       currentShard = it->shard();
-      shard = globalShards[currentShard];
+      shard = globalShards[currentShard.shard];
 
       auto ctx =
           transaction::StandaloneContext::Create(_vocbaseGuard.database());

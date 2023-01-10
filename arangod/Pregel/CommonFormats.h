@@ -29,7 +29,6 @@
 
 #include <map>
 
-#include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"

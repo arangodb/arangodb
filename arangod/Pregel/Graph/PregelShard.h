@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include <hash>
+#include <functional>
 
 namespace arangodb::pregel {
 

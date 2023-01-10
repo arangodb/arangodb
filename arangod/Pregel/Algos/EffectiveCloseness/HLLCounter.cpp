@@ -24,7 +24,7 @@
 #include <cmath>
 #include "Basics/fasthash.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/PregelVertexID.h"
 
 using namespace arangodb::pregel;
 

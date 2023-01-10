@@ -574,8 +574,8 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   for (; it.hasMore(); ++it) {
     Vertex<V, E> const* vertexEntry = *it;
 
-    TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
-    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
+    TRI_ASSERT(vertexEntry->shard().shard < _config.globalShardIDs().size());
+    ShardID const& shardId = _config.getShardIDByPregelShard(vertexEntry->shard());
 
     b.openObject(/*unindexed*/ true);
 

@@ -62,10 +62,9 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         return;
       }
 
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<int64_t>* edge = *edges;
-        int64_t val = edge->data() + current;
+      auto& edges = getEdges();
+      for (auto&& edge : edges) {
+        int64_t val = edge.data() + current;
         if (val < max) {
           sendMessage(edge, val);
         }

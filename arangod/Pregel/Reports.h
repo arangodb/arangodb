@@ -26,7 +26,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/PregelVertexID.h"
 
 namespace arangodb::pregel {
 

@@ -162,10 +162,9 @@ struct DMIDComputation
    */
   void superstep0(MessageIterator<DMIDMessage> const& messages) {
     DMIDMessage message(pregelId(), 0);
-    RangeIterator<Edge<float>> edges = getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<float>* edge = *edges;
-      message.weight = edge->data();  // edge weight
+    auto& edges = getEdges();
+    for (auto&& edge : edges) {
+      message.weight = edge.data();
       sendMessage(edge, message);
     }
   }
@@ -332,11 +331,9 @@ struct DMIDComputation
        */
       bool hasEdgeToSender = false;
 
-      for (auto edges = getEdges(); edges.hasMore(); ++edges) {
-        Edge<float>* edge = *edges;
-
-        if (edge->targetShard() == senderID.shard &&
-            edge->toKey() == senderID.key) {
+      for (auto&& edge : getEdges()) {
+        if (edge.targetShard() == senderID.shard &&
+            edge.toKey() == senderID.key) {
           hasEdgeToSender = true;
           /**
            * Has this vertex more influence on the sender than the
@@ -344,7 +341,7 @@ struct DMIDComputation
            */
           float senderInfluence =
               (float)vecLS->getAggregatedValue(senderID.shard, senderID.key);
-          senderInfluence *= edge->data();
+          senderInfluence *= edge.data();
 
           if (myInfluence > senderInfluence) {
             /** send new message */

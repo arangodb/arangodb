@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include <hash>
+#include <functional>
 
 #include "PregelShard.h"
 namespace arangodb::pregel {

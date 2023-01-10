@@ -109,10 +109,9 @@ struct WCCComputation
     auto const& myData = vertexData();
     SenderMessage<uint64_t> message(pregelId(), myData.component);
     // Send to OUTBOUND neighbors
-    RangeIterator<Edge<uint64_t>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<uint64_t>* edge = *edges;
-      if (edge->toKey() == this->key()) {
+    auto& edges = this->getEdges();
+    for (auto&& edge : edges) {
+      if (edge.toKey() == this->key()) {
         continue;  // no need to send message to self
       }
 
@@ -120,7 +119,7 @@ struct WCCComputation
       // NOTE: I have done refactroing of the algorithm
       // the original variant saved this, i do not know
       // if it is actually relevant for anything.
-      edge->data() = myData.component;
+      edge.data() = myData.component;
 
       sendMessage(edge, message);
     }

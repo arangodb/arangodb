@@ -27,7 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "Pregel/Graph.h"
+#include "Pregel/Graph/PregelShard.h"
 
 #include <map>
 #include <string>
@@ -92,7 +92,7 @@ struct VertexSumAggregator : public IAggregator {
   void serialize(std::string const& key, VPackBuilder& builder) const override {
     builder.add(key, VPackValue(VPackValueType::Object));
     for (auto const& pair1 : _entries) {
-      builder.add(std::to_string(pair1.first),
+      builder.add(std::to_string(pair1.first.shard),
                   VPackValue(VPackValueType::Array));
       for (auto const& pair2 : pair1.second) {
         builder.add(VPackValuePair(pair2.first.data(), pair2.first.size(),
