@@ -97,14 +97,12 @@ class Cursor {
     _currentBatchResult.second = std::move(buffer);
   }
 
-  Result getLastBatchResult(std::string const& batchId,
-                            VPackBufferUInt8& buffer) {
+  std::pair<std::shared_ptr<VPackBufferUInt8>, Result> getLastBatchResult(
+      std::string const& batchId) {
     if (_currentBatchResult.first != batchId) {
-      return Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found");
+      return {nullptr, Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found")};
     }
-    VPackBuilder builder(*(_currentBatchResult.second.get()));
-    buffer = *(_currentBatchResult.second.get());
-    return {TRI_ERROR_NO_ERROR};
+    return {_currentBatchResult.second, TRI_ERROR_NO_ERROR};
   }
 
   void handleNextBatchIdValue(VPackBuilder& builder, bool hasMore) {

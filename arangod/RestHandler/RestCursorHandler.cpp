@@ -622,21 +622,26 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     builder.add(StaticStrings::Error, VPackValue(false));
     builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.close();
-    if (_cursor->isRetriable()) {
-      _cursor->setLastQueryBatchObject(builder.buffer());
-    }
     _response->setContentType(rest::ContentType::JSON);
-    TRI_IF_FAILURE("MakeConnectionErrorForRetry") { return RestStatus::FAIL; }
+    TRI_IF_FAILURE("MakeConnectionErrorForRetry") {
+      if (_cursor->isRetriable()) {
+        _cursor->setLastQueryBatchObject(builder.steal());
+      }
+      return RestStatus::FAIL;
+    }
 
     generateResult(code, builder.slice(), std::move(ctx));
+    if (_cursor->isRetriable()) {
+      _cursor->setLastQueryBatchObject(builder.steal());
+    }
   } else {
     if (_cursor->isRetriable()) {
       builder.add(StaticStrings::Code,
                   VPackValue(static_cast<int>(
                       GeneralResponse::responseCode(r.errorNumber()))));
       builder.add(StaticStrings::Error, VPackValue(true));
-      builder.add("errorMessage", VPackValue(r.errorMessage()));
-      builder.add("errorNum", VPackValue(r.errorNumber()));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(r.errorMessage()));
+      builder.add(StaticStrings::ErrorNum, VPackValue(r.errorNumber()));
       builder.close();
       _cursor->setLastQueryBatchObject(builder.buffer());
     }
@@ -721,15 +726,13 @@ RestStatus RestCursorHandler::showLatestBatch() {
 
   std::shared_ptr<transaction::Context> ctx = _cursor->context();
 
-  VPackBufferUInt8 buffer;
-
   std::string const& batchId = suffixes[1];
-
-  auto const r = _cursor->getLastBatchResult(batchId, buffer);
+  auto const [buffer, r] = _cursor->getLastBatchResult(batchId);
 
   if (r.ok()) {
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, std::move(buffer), std::move(ctx));
+    generateResult(rest::ResponseCode::OK, VPackSlice(buffer->data()),
+                   std::move(ctx));
   } else {
     // builder can be in a broken state here. simply return the error
     generateError(r);
