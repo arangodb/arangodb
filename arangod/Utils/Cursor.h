@@ -99,7 +99,7 @@ class Cursor {
 
   Result getLastBatchResult(std::string const& batchId,
                             VPackBufferUInt8& buffer) {
-    if (_currentBatchResult.first.compare(batchId) != 0) {
+    if (_currentBatchResult.first != batchId) {
       return Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found");
     }
     VPackBuilder builder(*(_currentBatchResult.second.get()));
