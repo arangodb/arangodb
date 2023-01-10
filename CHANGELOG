@@ -7,7 +7,7 @@ devel
   added. When set to `true`, if the latest batch response object wasn't
   successfully received, the user can send a retry request to receive it with 
   a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch
-  is cached, meaning former batches cannot be retrieved with this request.
+  is cached, meaning former batches cannot be retrieved again later.
 
 * Allow cluster database servers to start even when there are existing databases
   that would violate the settings `--cluster.min-replication-factor` or
