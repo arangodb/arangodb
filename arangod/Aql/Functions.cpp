@@ -1495,9 +1495,7 @@ AqlValue functions::IsObject(ExpressionContext*, AstNode const&,
 AqlValue functions::Typename(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  char const* type = value.getTypeString();
-
-  return AqlValue(type, std::strlen(type));
+  return AqlValue(value.getTypeString());
 }
 
 /// @brief function TO_NUMBER
