@@ -677,15 +677,12 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
 
   while (true) {
     if (_indexReadBuffer.empty()) {
-      impl.fillBuffer(ctx);
-      if constexpr (Traits::ExplicitScanned) {
-        if (!_indexReadBuffer.empty()) {
-          stats.incrScanned(static_cast<Impl&>(*this).getScanned());
-        }
+      if (!impl.fillBuffer(ctx)) {
+        return false;
       }
-    }
-    if (_indexReadBuffer.empty()) {
-      return false;
+      if constexpr (Traits::ExplicitScanned) {
+        stats.incrScanned(static_cast<Impl&>(*this).getScanned());
+      }
     }
     IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
@@ -1117,9 +1114,11 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(
+bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBuffer(
     IResearchViewHeapSortExecutor::ReadContext&) {
   fillBufferInternal(0);
+  // FIXME: Use additional flag from FillBufferInternal
+  return !this->_indexReadBuffer.empty();
 }
 
 template<typename ExecutionTraits>
@@ -1295,18 +1294,17 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
   return true;
 }
 template<typename ExecutionTraits>
-void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
+bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
     IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
-  size_t const atMost =
-      Base::isLateMaterialized ? 1 : ctx.outputRow.numRowsLeft();
+  size_t const atMost = ctx.outputRow.numRowsLeft();
   TRI_ASSERT(this->_indexReadBuffer.empty());
   this->_indexReadBuffer.reset();
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
-
+  bool gotData{false};
   auto reset = [&] {
     ++_readerOffset;
     _currentSegmentPos = 0;
@@ -1365,6 +1363,11 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       // The iterator is exhausted, we need to continue with the next
       // reader.
       reset();
+      if (gotData) {
+        // Here we have at least one document in _indexReadBuffer, so we may not
+        // add documents from a new reader.
+        break;
+      }
       continue;
     }
     if constexpr (Base::isMaterialized) {
@@ -1383,6 +1386,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       this->_indexReadBuffer.pushValue(this->_reader->snapshot(_readerOffset),
                                        documentId);
     }
+    gotData = true;
 
     if constexpr (ExecutionTraits::EmitSearchDoc) {
       TRI_ASSERT(this->infos().searchDocIdRegId().isValid());
@@ -1415,6 +1419,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       break;
     }
   }
+  return gotData;
 }
 
 template<typename ExecutionTraits>
@@ -1784,7 +1789,7 @@ LocalDocumentId IResearchViewMergeExecutor<ExecutionTraits>::readPK(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
+bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t const atMost =
@@ -1794,7 +1799,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-
+  bool gotData{false};
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
     ++segment.segmentPos;
@@ -1824,7 +1829,7 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
           this->_reader->snapshot(segment.segmentIndex), documentId,
           segment.collection);
     }
-
+    gotData = true;
     // in the ordered case we have to write scores as well as a document
     if constexpr (ExecutionTraits::Ordered) {
       // Writes into _scoreBuffer
@@ -1846,10 +1851,11 @@ void IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
 
-    if (this->_indexReadBuffer.size() >= atMost) {
+    if (Base::isLateMaterialized || this->_indexReadBuffer.size() >= atMost) {
       break;
     }
   }
+  return gotData;
 }
 
 template<typename ExecutionTraits>

@@ -589,7 +589,7 @@ class IResearchViewExecutor
 
   void saveCollection();
 
-  void fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
@@ -692,7 +692,7 @@ class IResearchViewMergeExecutor
   // reads local document id from a specified segment
   LocalDocumentId readPK(Segment const& segment);
 
-  void fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
@@ -741,7 +741,7 @@ class IResearchViewHeapSortExecutor
   bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
 
   void reset();
-  void fillBuffer(ReadContext& ctx);
+  bool fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
