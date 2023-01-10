@@ -253,7 +253,7 @@ Result parseLinesImpl(velocypack::Slice vpack, std::vector<S2Polyline>& lines,
       return r;
     }
     // TODO(MBkkt) single unnecessary copy here, needs to patch S2!
-    lines.emplace_back(vertices);
+    lines.emplace_back(vertices, S2Debug::DISABLE);
     // TODO should be FindValidationError instead of assert?
     //  We don't remove antipodal vertices
     TRI_ASSERT(lines.back().IsValid());
@@ -354,7 +354,7 @@ Result parseLoopImpl(velocypack::Slice vpack,
     return r;
   }
 
-  loops.push_back(std::make_unique<S2Loop>(vertices));
+  loops.push_back(std::make_unique<S2Loop>(vertices, S2Debug::DISABLE));
   auto& last = *loops.back();
   if constexpr (Validation) {
     S2Error error;
@@ -398,10 +398,11 @@ Result parseLoopImpl(velocypack::Slice vpack,
 
 S2Polygon createPolygon(std::vector<std::unique_ptr<S2Loop>>&& loops) {
   if (loops.size() != 1 || !loops[0]->is_empty()) {
-    return S2Polygon{std::move(loops)};
+    return S2Polygon{std::move(loops), S2Debug::DISABLE};
   }
   // Handle creation of empty polygon otherwise will be error in validation
   S2Polygon polygon;
+  polygon.set_s2debug_override(S2Debug::DISABLE);
   return polygon;
 }
 
@@ -456,7 +457,7 @@ Result parsePolygonImpl(velocypack::Slice vpack, ShapeContainer& region,
               absl::StrCat("Invalid Loop in Polygon: ", error.text())};
     }
     loop->Normalize();
-    d = std::make_unique<S2Polygon>(std::move(loop));
+    d = std::make_unique<S2Polygon>(std::move(loop), S2Debug::DISABLE);
     if (Validation && ADB_UNLIKELY(d->FindValidationError(&error))) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("Invalid Polygon: ", error.text())};
@@ -541,7 +542,7 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
       if (Validation && ADB_UNLIKELY(!r.ok())) {
         return r;
       }
-      auto d = std::make_unique<S2Polyline>(cache);
+      auto d = std::make_unique<S2Polyline>(cache, S2Debug::DISABLE);
       // TODO should be FindValidationError instead of assert?
       //  We don't remove antipodal vertices
       TRI_ASSERT(d->IsValid());
@@ -675,7 +676,7 @@ Result parseLinestring(velocypack::Slice vpack, S2Polyline& region) {
   if (ADB_UNLIKELY(!r.ok())) {
     return r;
   }
-  region = S2Polyline{vertices};
+  region = S2Polyline{vertices, S2Debug::DISABLE};
   // TODO should be FindValidationError instead of assert?
   //  We don't remove antipodal vertices
   TRI_ASSERT(region.IsValid());
@@ -776,7 +777,7 @@ Result parseLoop(velocypack::Slice vpack, S2Loop& loop, bool geoJson) {
       break;
   }
   // size() 2 here is incorrect but it will be handled by FindValidationError
-  loop = S2Loop{vertices};
+  loop = S2Loop{vertices, S2Debug::DISABLE};
   S2Error error;
   if (ADB_UNLIKELY(loop.FindValidationError(&error))) {
     return {TRI_ERROR_BAD_PARAMETER,

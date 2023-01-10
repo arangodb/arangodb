@@ -135,9 +135,10 @@ Result fromVelocyPack(velocypack::Slice object, GeoOptions& options) {
     return r;
   }
   if (options.minLevel > options.maxLevel) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("'", kMinLevelParam, "' should be less or equal '",
-                         kMaxLevelParam, "'.")};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("'", kMinLevelParam, "' should be less than or equal to '",
+                     kMaxLevelParam, "'.")};
   }
   return getBool(object, kOptimizeForSpaceParam, options.optimizeForSpace);
 }

@@ -762,6 +762,7 @@ void encodePoint(Encoder& encoder, S2Point const& point,
   for (int i = 0; i < 3; ++i) {
     encoder.putdouble(point[i]);
   }
+  // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
   /* } else {
     encoder.put8(kCurrentCompressedEncodingVersionNumber);
     S2LatLng const temp{point};
@@ -786,6 +787,7 @@ bool decodePoint(Decoder& decoder, S2PointRegion& region) {
         point[i] = decoder.getdouble();
       }
     } break; /*
+    // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
     case kCurrentCompressedEncodingVersionNumber: {
       auto const lat = decoder.getdouble();
       auto const lng = decoder.getdouble();

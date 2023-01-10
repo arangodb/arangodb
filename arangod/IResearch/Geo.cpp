@@ -75,10 +75,15 @@ template bool parseShape<Parsing::GeoJson>(velocypack::Slice slice,
 
 void toVelocyPack(velocypack::Builder& builder, S2LatLng point) {
   TRI_ASSERT(point.is_valid());
-  builder.openArray(false);  // TODO(MBkkt)
+  // false because with false it's smaller
+  // in general we want only doubles, but format requires it should be array
+  // so we generate most smaller vpack array
+  builder.openArray(false);
   builder.add(velocypack::Value{point.lng().degrees()});
   builder.add(velocypack::Value{point.lat().degrees()});
   builder.close();
+  TRI_ASSERT(builder.slice().isArray());
+  TRI_ASSERT(builder.slice().head() == 0x02);
 }
 
 }  // namespace arangodb::iresearch
