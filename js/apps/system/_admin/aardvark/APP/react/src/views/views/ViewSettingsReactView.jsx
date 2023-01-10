@@ -76,12 +76,13 @@ const ViewSettingsReactView = ({ name }) => {
               required={true} disabled={nameEditDisabled}/>
     </th>
     <th className="collectionTh">
+    
       <ToolTip
-        title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
-        setArrow={true}
-      >
-        <span className="arangoicon icon_arangodb_info"></span>
-      </ToolTip>
+          title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
+          setArrow={true}
+        >
+          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
+        </ToolTip>
     </th>
   </tr>
 
@@ -98,7 +99,7 @@ const ViewSettingsReactView = ({ name }) => {
         title={`Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable).`}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -117,7 +118,7 @@ const ViewSettingsReactView = ({ name }) => {
         title={`Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable).`}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -136,7 +137,7 @@ const ViewSettingsReactView = ({ name }) => {
         title={`Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered. 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option). 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable, immutable).`}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -155,7 +156,7 @@ const ViewSettingsReactView = ({ name }) => {
         title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -174,7 +175,7 @@ const ViewSettingsReactView = ({ name }) => {
         title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -193,7 +194,7 @@ const ViewSettingsReactView = ({ name }) => {
         title="Wait at least this many milliseconds between index segments consolidations."
         setArrow={true}
       >
-        <span className="arangoicon icon_arangodb_info"></span>
+        <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
       </ToolTip>
     </th>
   </tr>
@@ -357,7 +358,7 @@ const [linkName, setLinkName] = useState('')
                       <LinkPropertiesForm name={name}/>
                     </Route>
                     <Route exact path={'/'}>
-                      <LinkList name={'andreasview'}/>
+                      <LinkList name={name}/>
                     </Route>
                   </Switch>
                 </HashRouter>
