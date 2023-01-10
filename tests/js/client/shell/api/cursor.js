@@ -1475,6 +1475,6 @@ jsunity.run(dealing_with_cursorsSuite_handling_a_cursorSuite);
 jsunity.run(dealing_with_cursorsSuite_checking_a_querySuite);
 jsunity.run(dealing_with_cursorsSuite_fetching_floating_point_valuesSuite);
 if (internal.debugCanUseFailAt()) {
-    jsunity.run(dealing_with_cursorsSuite_retriable_request_last_batch);
+  jsunity.run(dealing_with_cursorsSuite_retriable_request_last_batch);
 }
 return jsunity.done();
