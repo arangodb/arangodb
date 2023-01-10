@@ -1447,7 +1447,6 @@ function ahuacatlQueryGeneralCyclesSuite() {
             SORT source, target
             RETURN {vertices, distance}`;
       actual = getQueryResults(query);
-      print(actual);
       assertEqual(actual.length, 12, "Expect one entry for every connected pair.");
       assertEqual(actual[0], {
         vertices: [vertexIds.Anton, vertexIds.Berta],
@@ -1800,7 +1799,6 @@ function ahuacatlQueryShortestPathTestSuite() {
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
       var actual = getQueryResults(query);
-      print(actual);
       assertEqual(actual.length, 4);
       assertEqual(actual[0].v._key, "A");
       assertEqual(actual[0].e, null);
@@ -1829,7 +1827,6 @@ function ahuacatlQueryShortestPathTestSuite() {
         LET target = "${v1}/F"
         FOR v, e IN INBOUND SHORTEST_PATH source TO target ${e1},${e3} OPTIONS {weightAttribute: "entfernung", defaultWeight: 100}  RETURN {v, e}`;
       var actual = getQueryResults(query);
-      print(actual);
       assertEqual(actual.length, 3);
       assertEqual(actual[0].v._key, "A");
       assertEqual(actual[0].e, null);
