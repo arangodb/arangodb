@@ -10,11 +10,14 @@ jobs:
   setup:
     executor: continuation/default
     steps:
+      - run:
+          name: Checkout
+          command: wget https://raw.githubusercontent.com/arangodb/arangodb/chore/circle-ci-take-2-js-tests/.circleci/base_config.yml
       #- checkout # checkout code
-      #- run: # run a command
-      #    name: Generate config
-      #    command: |
-      #      ./generate-config > generated_config.yml
+      # - run: # run a command
+      #     name: Generate config
+      #     command: |
+      #       ./generate-config > generated_config.yml
       - continuation/continue:
           configuration_path: base_config.yml # use newly generated config to continue
 
