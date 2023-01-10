@@ -59,7 +59,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
 class WeightedTwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
-  using CandidatesMap = std::unordered_map<double, std::pair<Step, Step>>;
+  using Candidate = std::pair<Step, Step>;
+  using CandidatesMap = std::unordered_map<double, Candidate>;
 
  private:
   enum Direction { FORWARD, BACKWARD };
@@ -90,9 +91,9 @@ class WeightedTwoSidedEnumerator {
 
     auto matchResultsInShell(Step const& match, CandidatesMap& results,
                              PathValidatorType const& otherSideValidator)
-        -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesMap& results)
-        -> void;
+        -> double;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesMap& results,
+                                          double& matchPathLength) -> void;
 
     auto hasBeenVisited(Step const& step) -> bool;
 
@@ -100,7 +101,8 @@ class WeightedTwoSidedEnumerator {
     // in the _results list.
     // Otherwise we will not be able to
     // generate the resulting path
-    auto fetchResults(ResultList& results) -> void;
+    auto fetchResults(CandidatesMap& candidates) -> void;
+    auto fetchResult(Candidate& candidate) -> void;
 
     auto provider() -> ProviderType&;
 
@@ -203,6 +205,7 @@ class WeightedTwoSidedEnumerator {
   // Otherwise we will not be able to
   // generate the resulting path
   auto fetchResults() -> void;
+  auto fetchResult(double key) -> void;
 
   // Ensure that we have more valid paths in the _result stock.
   // May be a noop if _result is not empty.
@@ -243,8 +246,8 @@ class WeightedTwoSidedEnumerator {
   bool _handledInitialFetch{false};
 
   // Templated result list, where only valid result(s) are stored in
-  ResultList _results{};
-  CandidatesMap _candidates;
+  CandidatesMap _candidates{};
+  double _bestCandidateLength = -1.0;
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};

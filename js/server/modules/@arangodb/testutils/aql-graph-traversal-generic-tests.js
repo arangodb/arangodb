@@ -5131,7 +5131,7 @@ function testCompleteGraphShortestPathEnabledWeightCheck(testGraph) {
       `;
 
   const allowedPaths = [
-    ["A", "B", "C"]
+    ["A", "B", "C"] /* Path-length: 4 */, ["A", "E", "D", "C",] /* Path-length: 4 */
   ];
 
   const res = db._query(query);
