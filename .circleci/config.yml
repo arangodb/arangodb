@@ -8,6 +8,8 @@ orbs:
 # our defined job, and its steps
 jobs:
   setup:
+    docker:
+      - image: circleci/python:latest
     executor: continuation/default
     steps:
       - run:
