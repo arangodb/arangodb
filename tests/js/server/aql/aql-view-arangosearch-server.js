@@ -217,9 +217,16 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       if (isSearchAlias) {
         assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
-                  db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-                    FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                    COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+          db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER u.indexField >= 0
+            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+
+        if (isEnterprise) {
+          assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
+            db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+              FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+              COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+        }
       }                           
 
       db._drop(docsCollectionName);
@@ -544,8 +551,15 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           if (isSearchAlias) {
             assertEqual(docs.length,
               db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
-                           FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                           FILTER u.indexField >= 0;
                            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+
+            if (isEnterprise) {
+              assertEqual(docs.length,
+                db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
+                             FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+            }
           }
         }
       } finally {
@@ -634,9 +648,16 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
           if (isSearchAlias) {
             assertEqual(docs.length,
-             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-                          FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                          COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);           
+              db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                           FILTER u.indexField >= 0
+                           COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);   
+
+            if (isEnterprise) {
+              assertEqual(docs.length,
+                db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+                             FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
+                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);    
+            }       
           } 
         }
 
