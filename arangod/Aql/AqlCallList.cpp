@@ -181,6 +181,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
             expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
             [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
+      TRI_ASSERT(!propIt->second);
       propIt->second = true;
     }
 
