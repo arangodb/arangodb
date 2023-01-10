@@ -184,6 +184,8 @@ def filter_tests(args, tests):
 
     if args.gtest:
         filters.append(lambda test: "gtest" ==  test["name"])
+    else:
+        filters.append(lambda test: "gtest" !=  test["name"])
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
