@@ -470,7 +470,9 @@ irs::bytes_view GeoS2Analyzer::store(irs::token_stream* ctx,
 
 GeoS2Analyzer::GeoS2Analyzer(Options const& options)
     : GeoJsonAnalyzerBase{irs::type<GeoS2Analyzer>::get(), options},
-      _hint{options.hint} {}
+      _hint{options.hint} {
+  _encoder.Ensure(30);
+}
 
 bool GeoS2Analyzer::reset(std::string_view value) {
   return resetImpl(value, /*legacy=*/false, /*legacyCovering=*/false);
@@ -478,7 +480,9 @@ bool GeoS2Analyzer::reset(std::string_view value) {
 
 void GeoS2Analyzer::prepare(GeoFilterOptionsBase& options) const {
   options.options = _indexer.options();
-  options.stored = StoredType::S2Shape;
+  options.stored = _type == GeoJsonAnalyzerBase::Type::CENTROID
+                       ? StoredType::S2Centroid
+                       : StoredType::S2Shape;
 }
 
 bool GeoPointAnalyzer::normalize(std::string_view args, std::string& out) {

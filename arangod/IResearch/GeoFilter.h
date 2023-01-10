@@ -40,6 +40,8 @@ enum class StoredType : uint8_t {
   VPack,
   // Valid ShapeContainer serialized as S2Shape
   S2Shape,
+  // Valid S2Point serialized as S2Point
+  S2Centroid,
 };
 
 struct GeoFilterOptionsBase {

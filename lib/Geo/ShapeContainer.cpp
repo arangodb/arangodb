@@ -221,7 +221,7 @@ constexpr uint8_t serialize(ShapeContainer::Type t) noexcept {
 }
 
 constexpr uint8_t kCurrentLosslessEncodingVersionNumber = 1;
-// constexpr uint8_t kCurrentCompressedEncodingVersionNumber = 2;
+constexpr uint8_t kCurrentCompressedEncodingVersionNumber = 2;
 
 }  // namespace
 
@@ -676,8 +676,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
 }
 
 void ShapeContainer::Encode(Encoder& encoder, s2coding::CodingHint hint) const {
-  // because smaller S2Shape -- point needs 30 but really only 25 so it's enough
-  encoder.Ensure(30);
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t));
   encoder.put8(serialize(_type));
   switch (_type) {
     case Type::S2_POINT: {
@@ -756,20 +755,19 @@ bool ShapeContainer::Decode(Decoder& decoder) {
 void encodePoint(Encoder& encoder, S2Point const& point,
                  s2coding::CodingHint hint) {
   TRI_ASSERT(S2::IsUnitLength(point));
-  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + 3 * sizeof(double));
-  // if (hint == s2coding::CodingHint::FAST) {
-  encoder.put8(kCurrentLosslessEncodingVersionNumber);
-  for (int i = 0; i < 3; ++i) {
-    encoder.putdouble(point[i]);
-  }
+  static_assert(sizeof(S2Point) >= sizeof(double) * 2);
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + sizeof(S2Point));
   // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
-  /* } else {
+  if constexpr (true) {
+    encoder.put8(kCurrentLosslessEncodingVersionNumber);
+    encoder.putn(&point, sizeof(S2Point));
+  } else {
     encoder.put8(kCurrentCompressedEncodingVersionNumber);
     S2LatLng const temp{point};
     TRI_ASSERT(temp.is_valid());
     encoder.putdouble(temp.lat().radians());
     encoder.putdouble(temp.lng().radians());
-  } */
+  }
 }
 
 bool decodePoint(Decoder& decoder, S2PointRegion& region) {
@@ -786,15 +784,18 @@ bool decodePoint(Decoder& decoder, S2PointRegion& region) {
       for (int i = 0; i < 3; ++i) {
         point[i] = decoder.getdouble();
       }
-    } break; /*
-    // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
+    } break;
     case kCurrentCompressedEncodingVersionNumber: {
-      auto const lat = decoder.getdouble();
-      auto const lng = decoder.getdouble();
-      auto temp = S2LatLng::FromRadians(lat, lng);
-      TRI_ASSERT(temp.is_valid());
-      point = temp.ToPoint();
-    } break; */
+      // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
+      if constexpr (false) {
+        auto const lat = decoder.getdouble();
+        auto const lng = decoder.getdouble();
+        auto temp = S2LatLng::FromRadians(lat, lng);
+        TRI_ASSERT(temp.is_valid());
+        point = temp.ToPoint();
+        break;
+      }
+    }
     default:
       TRI_ASSERT(false);
       return false;
