@@ -17,8 +17,8 @@ jobs:
           command: |
             # We do not want to clone the whole repository since we only need a few files.
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
-            (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_BRANCH | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_BRANCH/tests/test-definitions.txt)
+            (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
+            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/tests/test-definitions.txt)
       - run:
           name: Generate config
           command: |
