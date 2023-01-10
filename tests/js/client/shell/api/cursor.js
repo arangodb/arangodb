@@ -1251,7 +1251,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertFalse(doc.parsedBody['cached']);
 
       let cursorId = doc.parsedBody['id'];
-      assertNotEqual(doc.parsedBody['nextBatchId'], undefined);
+      assertEqual(doc.parsedBody['nextBatchId'], 2);
       let nextBatchId = doc.parsedBody['nextBatchId'];
 
       internal.debugSetFailAt("MakeConnectionErrorForRetry");
@@ -1275,6 +1275,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['result'].length, 1000);
       assertFalse(doc.parsedBody['cached']);
 
+      assertEqual(doc.parsedBody['nextBatchId'], 3);
       nextBatchId = doc.parsedBody['nextBatchId'];
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1323,6 +1324,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertFalse(doc.parsedBody['cached']);
 
       let cursorId = doc.parsedBody['id'];
+      assertEqual(doc.parsedBody['nextBatchId'], 2);
       let nextBatchId = doc.parsedBody['nextBatchId'];
 
       internal.debugSetFailAt("MakeConnectionErrorForRetry");
@@ -1346,6 +1348,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['result'].length, 1000);
       assertFalse(doc.parsedBody['cached']);
 
+      assertEqual(doc.parsedBody['nextBatchId'], 3);
       nextBatchId = doc.parsedBody['nextBatchId'];
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
