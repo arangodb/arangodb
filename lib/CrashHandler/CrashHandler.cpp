@@ -839,7 +839,10 @@ void CrashHandler::installCrashHandler() {
 
   // install handler for std::terminate()
   std::set_terminate([]() {
-    char buffer[256];
+    using namespace std::string_view_literals;
+
+    constexpr static auto bufferSize = 256;
+    char buffer[bufferSize];
     memset(&buffer[0], 0, sizeof(buffer));
     char* p = &buffer[0];
 
@@ -849,27 +852,34 @@ void CrashHandler::installCrashHandler() {
         // rethrow so we can get the exception type and its message
         std::rethrow_exception(ex);
       } catch (std::exception const& ex) {
-        char const* msg =
-            "handler for std::terminate() invoked with an std::exception: ";
+        constexpr static auto msg =
+            "handler for std::terminate() invoked with an std::exception: "sv;
+        static_assert(msg.size() < bufferSize);
         appendNullTerminatedString(msg, p);
         char const* e = ex.what();
         if (e != nullptr) {
-          if (strlen(e) > 100) {
-            memcpy(p, e, 100);
-            p += 100;
-            appendNullTerminatedString(" (truncated)", p);
+          constexpr static auto maxDynMsgSize = bufferSize - msg.size() - 1;
+          if (strlen(e) > maxDynMsgSize) {
+            constexpr static auto truncatedSuffix = " (truncated)"sv;
+            static_assert(truncatedSuffix.size() <= maxDynMsgSize);
+            constexpr static auto remainingMsgSize =
+                maxDynMsgSize - truncatedSuffix.size();
+            static_assert(remainingMsgSize > 100);
+            memcpy(p, e, remainingMsgSize);
+            p += remainingMsgSize;
+            appendNullTerminatedString(truncatedSuffix, p);
           } else {
             appendNullTerminatedString(e, p);
           }
         }
       } catch (...) {
-        char const* msg =
-            "handler for std::terminate() invoked with an unknown exception";
+        constexpr static auto msg =
+            "handler for std::terminate() invoked with an unknown exception"sv;
         appendNullTerminatedString(msg, p);
       }
     } else {
-      char const* msg =
-          "handler for std::terminate() invoked without active exception";
+      constexpr static auto msg =
+          "handler for std::terminate() invoked without active exception"sv;
       appendNullTerminatedString(msg, p);
     }
 

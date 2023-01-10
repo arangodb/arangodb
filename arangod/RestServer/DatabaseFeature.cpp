@@ -135,9 +135,13 @@ void DatabaseManagerThread::run() {
         for (auto it = dropped.begin(), end = dropped.end(); it != end; ++it) {
           TRI_ASSERT(*it != nullptr);
           if ((*it)->isDangling()) {
-            database.reset(*it);
+            // found a database to delete
+            // now move the to-be-deleted database from _droppedDatabases
+            // into the unique_ptr
+            auto* p = *it;
             dropped.erase(it);
-            break;  // found a database to delete
+            database.reset(p);
+            break;
           }
         }
       }
@@ -175,6 +179,14 @@ void DatabaseManagerThread::run() {
                 }
               }
             }
+          }
+
+          auto shutdownRes = basics::catchVoidToResult(
+              [&database]() { database->shutdown(); });
+          if (shutdownRes.fail()) {
+            LOG_TOPIC("b3db4", ERR, Logger::FIXME)
+                << "failed to shutdown database '" << database->name()
+                << "': " << shutdownRes.errorMessage();
           }
 
           // destroy all items in the QueryRegistry for this database
@@ -770,19 +782,20 @@ void DatabaseFeature::recoveryDone() {
 
   _pendingRecoveryCallbacks.clear();
 
-  if (!ServerState::instance()->isCoordinator()) {
-    auto databases = _databases.load();
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
 
-    for (auto& p : *databases) {
-      TRI_vocbase_t* vocbase = p.second;
-      // iterate over all databases
-      TRI_ASSERT(vocbase != nullptr);
+  auto databases = _databases.load();
 
-      if (vocbase->replicationApplier()) {
-        if (server().hasFeature<ReplicationFeature>()) {
-          server().getFeature<ReplicationFeature>().startApplier(vocbase);
-        }
-      }
+  for (auto& p : *databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    // iterate over all databases
+    TRI_ASSERT(vocbase != nullptr);
+
+    if (vocbase->replicationApplier() &&
+        server().hasFeature<ReplicationFeature>()) {
+      server().getFeature<ReplicationFeature>().startApplier(vocbase);
     }
   }
 }
@@ -1441,13 +1454,19 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
     // open the database and scan collections in it
 
     // try to open this database
-    arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
+    CreateDatabaseInfo info(server(), ExecContext::current());
+    // set strict validation for database options to false.
+    // we don't want the server start to fail here in case some
+    // invalid settings are present
+    info.strictValidation(false);
     auto res = info.load(it, VPackSlice::emptyArraySlice());
+
     if (res.fail()) {
+      std::string errorMsg;
       if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
-        std::string errorMsg(res.errorMessage());
+        errorMsg.append(res.errorMessage());
         errorMsg.append(": '").append(databaseName).append("'");
         // check if the name would be allowed when using extended names
         if (DatabaseNameValidator::isAllowedName(
@@ -1459,8 +1478,14 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
               "be enabled via the startup option "
               "`--database.extended-names-databases true`");
         }
-        res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID, std::move(errorMsg));
+      } else {
+        errorMsg.append("when opening database '")
+            .append(databaseName)
+            .append("': ");
+        errorMsg.append(res.errorMessage());
       }
+
+      res.reset(res.errorNumber(), std::move(errorMsg));
       THROW_ARANGO_EXCEPTION(res);
     }
 

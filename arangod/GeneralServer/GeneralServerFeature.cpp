@@ -50,6 +50,8 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
+#include "Pregel/REST/RestControlPregelHandler.h"
+#include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -68,7 +70,6 @@
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCompactHandler.h"
-#include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
@@ -87,11 +88,9 @@
 #include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
-#include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestPrototypeStateHandler.h"
-#include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -681,9 +680,6 @@ void GeneralServerFeature::defineRemainingHandlers(
     f.addPrefixHandler(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
-    f.addPrefixHandler(
-        std::string{StaticStrings::ApiReplicatedStateExternal},
-        RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
     f.addPrefixHandler(
         "/_api/prototype-state",
         RestHandlerCreator<RestPrototypeStateHandler>::createNoData);

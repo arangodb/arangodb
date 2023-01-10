@@ -118,9 +118,7 @@ set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 
 UpdateModule(${GIT_EXECUTABLE} "abseil-cpp" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
-set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
-set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ABSL_PROPAGATE_CXX_STD ON)
 
 add_subdirectory(abseil-cpp)
 
@@ -129,7 +127,6 @@ add_subdirectory(abseil-cpp)
 ################################################################################
 
 add_subdirectory(s2geometry)
-set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## BOOST
@@ -214,8 +211,6 @@ foreach(ELEMENT ${IRESEARCH_PREBUILT})
 endforeach()
 
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
-unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
-unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
 ################################################################################
 ## ROCKSDB

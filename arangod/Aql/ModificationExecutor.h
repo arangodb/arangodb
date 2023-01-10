@@ -28,7 +28,6 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
-#include "AqlItemMatrix.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 

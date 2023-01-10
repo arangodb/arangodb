@@ -35,7 +35,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace boost {
@@ -59,7 +58,7 @@ namespace aql {
 struct Collection;
 
 /// @brief type for variable ids
-typedef uint32_t VariableId;
+using VariableId = uint32_t;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;

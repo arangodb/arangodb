@@ -23,30 +23,50 @@
 
 #pragma once
 
+#include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
 #include "Basics/UnshackledMutex.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
-struct IDocumentStateTransactionHandler;
+enum class OperationType;
+struct SnapshotBatch;
 
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
       std::unique_ptr<DocumentCore> core,
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
-  ~DocumentFollowerState();
+      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+  ~DocumentFollowerState() override;
 
- protected:
+  ShardID const shardId;
+  LoggerContext const loggerContext;
+
+  // unprotected for gtests. TODO think about whether there's a better way
+  // protected:
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<DocumentCore> override;
   auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
       -> futures::Future<Result> override;
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
       -> futures::Future<Result> override;
+
+ private:
+  auto forceLocalTransaction(OperationType opType,
+                             velocypack::SharedSlice slice) -> Result;
+  auto truncateLocalShard() -> Result;
+  auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
+  auto handleSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      LogIndex waitForIndex,
+      futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
+      -> futures::Future<Result>;
 
  private:
   struct GuardedData {
@@ -60,6 +80,7 @@ struct DocumentFollowerState
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
+  ActiveTransactionsQueue _activeTransactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

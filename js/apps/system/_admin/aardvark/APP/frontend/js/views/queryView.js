@@ -2393,7 +2393,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'
           ];
 
           var colors = [
@@ -2403,6 +2403,7 @@
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(64, 74, 83)',
+            'rgb(110, 112, 57)',
             'rgb(96, 189, 104)',
             'rgb(221, 224, 114)'
           ];
@@ -2412,8 +2413,9 @@
             'query parsing',
             'abstract syntax tree optimizations',
             'loading collections',
-            'instanciation of initial execution plan',
+            'instantiation of initial execution plan',
             'execution plan optimization and permutation',
+            'instantiation of query executors (incl. distribution)',
             'query execution',
             'query finalization'
           ];

@@ -37,6 +37,7 @@ namespace {
 auto const String_InProgress = std::string_view{"InProgress"};
 auto const String_Completed = std::string_view{"Completed"};
 auto const String_Failed = std::string_view{"Failed"};
+auto const String_Invalidated = std::string_view{"Invalidated"};
 auto const String_Uninitialized = std::string_view{"Uninitialized"};
 }  // namespace
 
@@ -93,6 +94,8 @@ auto replicated_state::to_string(SnapshotStatus s) noexcept
       return String_Completed;
     case SnapshotStatus::kFailed:
       return String_Failed;
+    case SnapshotStatus::kInvalidated:
+      return String_Invalidated;
     default:
       return "(unknown snapshot status)";
   }
@@ -106,6 +109,8 @@ auto replicated_state::snapshotStatusFromString(
     return SnapshotStatus::kCompleted;
   } else if (string == String_Failed) {
     return SnapshotStatus::kFailed;
+  } else if (string == String_Invalidated) {
+    return SnapshotStatus::kInvalidated;
   } else {
     return SnapshotStatus::kUninitialized;
   }
@@ -133,6 +138,8 @@ auto SnapshotStatusStringTransformer::fromSerialized(
     target = SnapshotStatus::kFailed;
   } else if (source == String_Uninitialized) {
     target = SnapshotStatus::kUninitialized;
+  } else if (source == String_Invalidated) {
+    target = SnapshotStatus::kInvalidated;
   } else {
     return inspection::Status{"Invalid status code name " +
                               std::string{source}};

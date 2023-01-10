@@ -22,6 +22,9 @@
 
 #pragma once
 
+// It's test only abstraction other code should use some thread pool
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+
 #include <thread>
 #include <vector>
 
@@ -63,3 +66,5 @@ struct ThreadGuard {
 };
 
 }  // namespace arangodb
+
+#endif

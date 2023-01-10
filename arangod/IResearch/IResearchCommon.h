@@ -29,8 +29,7 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the delimiter used to separate jSON nesting levels when
@@ -235,5 +234,4 @@ struct StaticStrings {
   static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

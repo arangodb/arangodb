@@ -31,9 +31,6 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
 #include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
@@ -44,7 +41,6 @@ using namespace arangodb::test;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
-namespace RSA = arangodb::replication2::replicated_state::agency;
 
 namespace arangodb::test {
 
@@ -52,9 +48,6 @@ auto SupervisionActor::step(AgencyState const& agency) const
     -> std::vector<AgencyTransition> {
   std::vector<AgencyTransition> v;
   if (auto action = stepReplicatedLog(agency); action) {
-    v.emplace_back(std::move(*action));
-  }
-  if (auto action = stepReplicatedState(agency); action) {
     v.emplace_back(std::move(*action));
   }
   return v;
@@ -76,22 +69,6 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
     }
   }
   return std::nullopt;
-}
-
-auto SupervisionActor::stepReplicatedState(AgencyState const& agency)
-    -> std::optional<AgencyTransition> {
-  if (!agency.replicatedState.has_value()) {
-    return std::nullopt;
-  }
-  replicated_state::SupervisionContext ctx;
-  ctx.enableErrorReporting();
-  replicated_state::checkReplicatedState(ctx, agency.replicatedLog,
-                                         *agency.replicatedState);
-  auto action = ctx.getAction();
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return std::nullopt;
-  }
-  return SupervisionStateAction{std::move(action)};
 }
 
 auto DBServerActor::step(AgencyState const& agency) const
@@ -192,26 +169,23 @@ auto DBServerActor::stepReplicatedLogReportTerm(AgencyState const& agency) const
 
 auto DBServerActor::stepReplicatedState(AgencyState const& agency) const
     -> std::optional<AgencyTransition> {
-  if (!agency.replicatedState) {
+  if (!agency.replicatedLog) {
     return std::nullopt;
   }
-  if (auto& plan = agency.replicatedState->plan; plan.has_value()) {
-    if (auto iter = plan->participants.find(name);
-        iter != plan->participants.end()) {
-      auto wantedGeneration = iter->second.generation;
-
-      if (auto current = agency.replicatedState->current; current.has_value()) {
-        if (auto iter2 = current->participants.find(name);
-            iter2 != current->participants.end()) {
+  if (auto& plan = agency.replicatedLog->plan; plan.has_value()) {
+    if (auto iter = plan->participantsConfig.participants.find(name);
+        iter != plan->participantsConfig.participants.end()) {
+      if (auto current = agency.replicatedLog->current; current.has_value()) {
+        if (auto iter2 = current->localState.find(name);
+            iter2 != current->localState.end()) {
           auto& status = iter2->second;
-          if (status.generation == wantedGeneration &&
-              status.snapshot.status == SnapshotStatus::kCompleted) {
+          if (status.snapshotAvailable) {
             return std::nullopt;
           }
         }
       }
 
-      return DBServerSnapshotCompleteAction{name, wantedGeneration};
+      return DBServerSnapshotCompleteAction{name};
     }
   }
 
@@ -315,11 +289,11 @@ ReplaceAnyServerActor::ReplaceAnyServerActor(ParticipantId newServer)
 
 auto ReplaceAnyServerActor::step(AgencyState const& agency) const
     -> std::vector<AgencyTransition> {
-  if (!agency.replicatedState) {
+  if (!agency.replicatedLog) {
     return {};
   }
 
-  auto const& target = agency.replicatedState->target;
+  auto const& target = agency.replicatedLog->target;
   TRI_ASSERT(!target.participants.contains(newServer));
   auto result = std::vector<AgencyTransition>{};
   result.reserve(target.participants.size());
@@ -329,17 +303,18 @@ auto ReplaceAnyServerActor::step(AgencyState const& agency) const
 
   return result;
 }
+
 ReplaceSpecificServerActor::ReplaceSpecificServerActor(ParticipantId oldServer,
                                                        ParticipantId newServer)
     : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
 
 auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
     -> std::vector<AgencyTransition> {
-  if (!agency.replicatedState) {
+  if (!agency.replicatedLog) {
     return {};
   }
 
-  auto const& target = agency.replicatedState->target;
+  auto const& target = agency.replicatedLog->target;
   TRI_ASSERT(!target.participants.contains(newServer));
   TRI_ASSERT(target.participants.contains(oldServer));
 

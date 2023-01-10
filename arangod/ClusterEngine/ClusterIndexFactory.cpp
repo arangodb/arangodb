@@ -31,6 +31,7 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedClusterIndex.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
