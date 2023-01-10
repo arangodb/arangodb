@@ -6,7 +6,8 @@
 
 @HINTS
 {% hint 'warning' %}
-This endpoint is deprecated in favor its functionally equivalent POST counterpart.
+This endpoint is deprecated in favor of the functionally equivalent
+`POST /_api/cursor/{cursor-identifier}`.
 {% endhint %}
 
 @RESTURLPARAMETERS

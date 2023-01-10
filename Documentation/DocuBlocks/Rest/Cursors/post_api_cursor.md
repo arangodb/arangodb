@@ -19,11 +19,11 @@ To make this operation a part of a Stream Transaction, set this header to the
 transaction ID returned by the `POST /_api/transaction/begin` call.
 
 @RESTBODYPARAM{query,string,required,string}
-contains the query string to be executed
+Contains the query string to be executed.
 
 @RESTBODYPARAM{count,boolean,optional,}
-indicates whether the number of documents in the result set should be returned in
-the "count" attribute of the result.
+Indicates whether the number of documents in the result set should be returned in
+the `count` attribute of the result.
 Calculating the "count" attribute might have a performance impact for some queries
 in the future so this option is turned off by default, and "count"
 is only returned when requested.
@@ -31,56 +31,56 @@ is only returned when requested.
 @RESTBODYPARAM{batchSize,integer,optional,int64}
 maximum number of result documents to be transferred from
 the server to the client in one roundtrip. If this attribute is
-not set, a server-controlled default value will be used. A *batchSize* value of
-*0* is disallowed.
+not set, a server-controlled default value is used. A `batchSize` value of
+`0` is disallowed.
 
 @RESTBODYPARAM{ttl,integer,optional,int64}
 The time-to-live for the cursor (in seconds). If the result set is small enough
 (less than or equal to `batchSize`) then results are returned right away.
-Otherwise they are stored in memory and will be accessible via the cursor with
-respect to the `ttl`. The cursor will be removed on the server automatically
+Otherwise they are stored in memory and are accessible via the cursor with
+respect to the `ttl`. The cursor is removed on the server automatically
 after the specified amount of time. This is useful to ensure garbage collection
 of cursors that are not fully fetched by clients. If not set, a server-defined
-value will be used (default: 30 seconds).
+value is used (default: 30 seconds).
 
 @RESTBODYPARAM{cache,boolean,optional,}
-flag to determine whether the AQL query results cache
-shall be used. If set to *false*, then any query cache lookup will be skipped
-for the query. If set to *true*, it will lead to the query cache being checked
-for the query if the query cache mode is either *on* or *demand*.
+A flag to determine whether the AQL query results cache
+shall be used. If set to `false`, then any query cache lookup is skipped
+for the query. If set to `true`, it leads to the query cache being checked
+for the query if the query cache mode is either `on` or `demand`.
 
 @RESTBODYPARAM{memoryLimit,integer,optional,int64}
-the maximum number of memory (measured in bytes) that the query is allowed to
-use. If set, then the query will fail with error "resource limit exceeded" in
-case it allocates too much memory. A value of *0* indicates that there is no
+The maximum number of memory (measured in bytes) that the query is allowed to
+use. If set, then the query fails with error "resource limit exceeded" in
+case it allocates too much memory. A value of `0` indicates that there is no
 memory limit.
 
 @RESTBODYPARAM{bindVars,array,optional,object}
-key/value pairs representing the bind parameters.
+Key/value pairs representing the bind parameters.
 
 @RESTBODYPARAM{options,object,optional,post_api_cursor_opts}
-key/value object with extra options for the query.
+Key/value object with extra options for the query.
 
 @RESTSTRUCT{fullCount,post_api_cursor_opts,boolean,optional,}
-if set to *true* and the query contains a *LIMIT* clause, then the
-result will have an *extra* attribute with the sub-attributes *stats*
-and *fullCount*, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
-The *fullCount* attribute will contain the number of documents in the result before the
+If set to `true` and the query contains a `LIMIT` clause, then the
+result has an `extra` attribute with the sub-attributes `stats`
+and `fullCount`, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
+The `fullCount` attribute contains the number of documents in the result before the
 last top-level LIMIT in the query was applied. It can be used to count the number of
 documents that match certain filter criteria, but only return a subset of them, in one go.
-It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
-will disable a few LIMIT optimizations and may lead to more documents being processed,
-and thus make queries run longer. Note that the *fullCount* attribute may only
+It is thus similar to MySQL's `SQL_CALC_FOUND_ROWS` hint. Note that setting the option
+disables a few LIMIT optimizations and may lead to more documents being processed,
+and thus make queries run longer. Note that the `fullCount` attribute may only
 be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
 @RESTSTRUCT{fillBlockCache,post_api_cursor_opts,boolean,optional,}
-if set to *true* or not specified, this will make the query store the data it 
+If set to `true` or not specified, this makes the query store the data it 
 reads via the RocksDB storage engine in the RocksDB block cache. This is usually 
-the desired behavior. The option can be set to *false* for queries that are
+the desired behavior. The option can be set to `false` for queries that are
 known to either read a lot of data which would thrash the block cache, or for queries
 that read data which are known to be outside of the hot set. By setting the option
-to *false*, data read by the query will not make it into the RocksDB block cache if
+to `false`, data read by the query does not make it into the RocksDB block cache if
 not already in there, thus leaving more room for the actual hot set.
 
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
@@ -95,24 +95,24 @@ This option is only useful for testing and debugging and normally does not need
 any adjustment.
 
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
-Limits the maximum number of warnings a query will return. The number of warnings
-a query will return is limited to 10 by default, but that number can be increased
+Limits the maximum number of warnings a query returns. The number of warnings
+a query returns is limited to `10` by default, but that number can be increased
 or decreased by setting this attribute.
 
 @RESTSTRUCT{failOnWarning,post_api_cursor_opts,boolean,optional,}
-When set to *true*, the query will throw an exception and abort instead of producing
+When set to `true`, the query throws an exception and abort instead of producing
 a warning. This option should be used during development to catch potential issues
-early. When the attribute is set to *false*, warnings will not be propagated to
-exceptions and will be returned with the query result.
+early. When the attribute is set to `false`, warnings are not propagated to
+exceptions and returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
-default value for *failOnWarning* so it does not need to be set on a per-query level.
+default value for `failOnWarning` so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
-Can be enabled to execute the query lazily. If set to *true*, then the query is
+Can be enabled to execute the query lazily. If set to `true`, then the query is
 executed as long as necessary to produce up to `batchSize` results. These
 results are returned immediately and the query is suspended until the client
 asks for the next batch (if there are more results). Depending on the query
-this can mean that the first results will be available much faster and that
+this can mean that the first results are available much faster and that
 less memory is needed because the server only needs to store a subset of
 results at a time. Read-only queries can benefit the most, unless `SORT`
 without index or `COLLECT` are involved that make it necessary to process all
@@ -120,11 +120,11 @@ documents before a partial result can be returned. It is advisable to only use
 this option for queries without exclusive locks.
 
 Remarks:
-- The query will hold resources until it ends (such as RocksDB snapshots, which
-  prevents compaction to some degree). Writes will be in memory until the query
+- The query holds resources until it ends (such as RocksDB snapshots, which
+  prevents compaction to some degree). Writes are in memory until the query
   is committed.
 - If existing documents are modified, then write locks are held on these
-  documents and other queries trying to modify the same documents will fail
+  documents and other queries trying to modify the same documents fail
   because of this conflict.
 - A streaming query may fail late because of a conflict or for other reasons
   after some batches were already returned successfully, possibly rendering the
@@ -134,11 +134,11 @@ Remarks:
 - Query statistics, profiling data and warnings are delivered as part of the
   last batch.
 
-If the `stream` option is *false* (default), then the complete result of the
+If the `stream` option is `false` (default), then the complete result of the
 query is calculated before any of it is returned to the client. The server
 stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
-will fail before it returns results in case of a conflict.
+fails before it returns results in case of a conflict.
 
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
@@ -374,7 +374,7 @@ Whether the query contains write operations.
 @RESTREPLYBODY{cached,boolean,required,}
 A boolean flag indicating whether the query result was served
 from the query cache or not. If the query result is served from the query
-cache, the `extra` return attribute will not contain any `stats` sub-attribute
+cache, the `extra` return attribute does not contain any `stats` sub-attribute
 and no `profile` sub-attribute.
 
 @RESTRETURNCODE{400}
@@ -382,41 +382,41 @@ is returned if the JSON representation is malformed or the query specification i
 missing from the request.
 
 If the JSON representation is malformed or the query specification is
-missing from the request, the server will respond with *HTTP 400*.
+missing from the request, the server responds with *HTTP 400*.
 
-The body of the response will contain a JSON object with additional error
+The body of the response contains a JSON object with additional error
 details. The object has the following attributes:
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate that an error occurred (`true` in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
-the HTTP status code
+An HTTP status code.
 
 @RESTREPLYBODY{errorNum,integer,required,int64}
-the server error number
+A server error number.
 
 @RESTREPLYBODY{errorMessage,string,required,string}
 A descriptive error message.
 
-If the query specification is complete, the server will process the query. If an
-error occurs during query processing, the server will respond with *HTTP 400*.
-Again, the body of the response will contain details about the error.
+If the query specification is complete, the server processes the query. If an
+error occurs during query processing, the server responds with *HTTP 400*.
+Again, the body of the response contains details about the error.
 
 @RESTRETURNCODE{404}
-The server will respond with *HTTP 404* in case a non-existing collection is
+The server responds with *HTTP 404* in case a non-existing collection is
 accessed in the query.
 
 @RESTRETURNCODE{405}
-The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+The server responds with *HTTP 405* if an unsupported HTTP method is used.
 
 @RESTRETURNCODE{410}
-The server will respond with *HTTP 410* if a server which processes the query
+The server responds with *HTTP 410* if a server which processes the query
 or is the leader for a shard which is used in the query stops responding, but 
 the connection has not been closed.
 
 @RESTRETURNCODE{503}
-The server will respond with *HTTP 503* if a server which processes the query
+The server responds with *HTTP 503* if a server which processes the query
 or is the leader for a shard which is used in the query is down, either for 
 going through a restart, a failure or connectivity issues.
 
@@ -562,7 +562,7 @@ modified documents
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Execute a data-modification query with option *ignoreErrors*
+Execute a data-modification query with the `ignoreErrors` option:
 
 @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteIgnore}
     var cn = "products";

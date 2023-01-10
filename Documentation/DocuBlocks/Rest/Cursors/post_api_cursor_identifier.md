@@ -10,48 +10,72 @@
 The name of the cursor
 
 @RESTDESCRIPTION
-If the cursor is still alive, returns an object with the following
-attributes:
-
-- *id*: a *cursor-identifier*
-- *result*: a list of documents for the current batch
-- *hasMore*: *false* if this was the last batch
-- *count*: if present the total number of elements
-- *code*: an HTTP status code
-- *error*: a boolean flag to indicate whether an error occurred
-- *errorNum*: a server error number (if *error* is *true*)
-- *errorMessage*: a descriptive error message (if *error* is *true*)
-- *extra*: an object with additional information about the query result, with
-  the nested objects *stats* and *warnings*. Only delivered as part of the last
-  batch in case of a cursor with the *stream* option enabled.
-
-Note that even if *hasMore* returns *true*, the next call might
-still return no documents. If, however, *hasMore* is *false*, then
-the cursor is exhausted.  Once the *hasMore* attribute has a value of
-*false*, the client can stop.
+If the cursor is still alive, returns an object with a batch of query results.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-The server will respond with *HTTP 200* in case of success.
+The server responds with *HTTP 200* in case of success.
+
+@RESTREPLYBODY{error,boolean,required,}
+A flag to indicate that an error occurred (`false` in this case).
+
+@RESTREPLYBODY{code,integer,required,integer}
+The HTTP status code.
+
+@RESTREPLYBODY{result,array,optional,}
+An array of result documents for the current batch.
+
+@RESTREPLYBODY{hasMore,boolean,required,}
+A boolean indicator whether there are more results available for the cursor on
+the server. `false` if this is the last batch.
+
+Note that even if `hasMore` returns `true`, the next call might still return no
+documents. If, however, `hasMore` is `false`, then the cursor is exhausted.
+Once the `hasMore` attribute has a value of `false`, the client can stop.
+
+@RESTREPLYBODY{count,integer,optional,int64}
+The total number of result documents available (only
+available if the query was executed with the `count` attribute set).
+
+@RESTREPLYBODY{id,string,optional,string}
+The ID of the cursor for fetching more result batches.
+
+@RESTREPLYBODY{extra,object,optional,}
+An optional JSON object with extra information about the query result. It can
+have the attributes `stats`, `warnings`, `plan`, and `profile` with nested
+objects, like the initial cursor response. Every batch can include `warnings`.
+The other attributes are only delivered as part of the last batch in case of a
+cursor with the `stream` option enabled.
 
 @RESTRETURNCODE{400}
-If the cursor identifier is omitted, the server will respond with *HTTP 404*.
+If the cursor identifier is omitted, the server responds with *HTTP 404*.
+
+@RESTREPLYBODY{error,boolean,required,}
+A flag to indicate that an error occurred (`false` in this case).
+
+@RESTREPLYBODY{code,integer,required,integer}
+The HTTP status code.
+
+@RESTREPLYBODY{errorNum,integer,required,int64}
+A server error number (if `error` is `true`).
+
+@RESTREPLYBODY{errorMessage,string,required,string}
+A descriptive error message (if `error` is `true`).
 
 @RESTRETURNCODE{404}
-If no cursor with the specified identifier can be found, the server will respond
+If no cursor with the specified identifier can be found, the server responds
 with *HTTP 404*.
 
 @RESTRETURNCODE{410}
-The server will respond with *HTTP 410* if a server which processes the query
+The server responds with *HTTP 410* if a server which processes the query
 or is the leader for a shard which is used in the query stops responding, but 
 the connection has not been closed.
 
 @RESTRETURNCODE{503}
-The server will respond with *HTTP 503* if a server which processes the query
+The server responds with *HTTP 503* if a server which processes the query
 or is the leader for a shard which is used in the query is down, either for 
 going through a restart, a failure or connectivity issues.
-
 
 @EXAMPLES
 
