@@ -15,7 +15,7 @@ jobs:
           name: Checkout
           command: |
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
-            git reset --hard "$CIRCLECI_SHA1"
+            git reset --hard "$CIRCLE_SHA1"
       - run:
           name: Print CCache Settings
           command: ccache -p
