@@ -53,7 +53,7 @@ TEST(GeoOptionsTest, options) {
 }
 
 TEST(GeoBench, sizes) {
-  GTEST_SKIP();
+  GTEST_SKIP() << "It's just for check sizes, not comment out to allow compile";
   GeoVPackAnalyzer::Options vpackOptions;
   vpackOptions.legacy = false;
   GeoVPackAnalyzer vpackAnalyzer{vpackOptions};
