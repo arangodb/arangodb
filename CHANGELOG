@@ -1,6 +1,11 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
 * Allow cluster database servers to start even when there are existing databases
   that would violate the settings `--cluster.min-replication-factor` or
   `--cluster.max-replication-factor`.
