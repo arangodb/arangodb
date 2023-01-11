@@ -587,7 +587,7 @@ struct VPackLoadInspectorImpl
   Status processMap(T& map) {
     for (auto&& pair : VPackObjectIterator(_slice)) {
       auto ff = make(pair.value);
-      typename T::mapped_type val;
+      typename T::mapped_type val{}; // this fixed maybe-uninitialized for gcc
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), "'" + pair.key.copyString() + "'",
                 Status::ArrayTag{}};

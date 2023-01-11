@@ -87,6 +87,14 @@
       "cacheVariables": {
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
       }
+    },
+    {
+      "name": "pr-replication-2-pure",
+      "inherits": "community-developer",
+      "displayName": "Preset used for replication 2 CI Tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     }
   ],
   "buildPresets": [
@@ -121,6 +129,10 @@
     {
       "name": "enterprise-developer-asan",
       "configurePreset": "enterprise-developer-asan-ubsan"
+    },
+    {
+      "name": "pr-replication-2-pure",
+      "configurePreset": "pr-replication-2-pure"
     }
   ],
   "testPresets": [
