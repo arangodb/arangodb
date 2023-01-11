@@ -89,7 +89,7 @@ Valid request for next batch
     assert(response.code === 200);
 
     logJsonResponse(response);
-    db._drop(cn);
+  ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Missing identifier

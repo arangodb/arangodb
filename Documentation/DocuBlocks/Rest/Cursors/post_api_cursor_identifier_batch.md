@@ -67,12 +67,6 @@ A flag to indicate that an error occurred (`false` in this case).
 @RESTREPLYBODY{code,integer,required,integer}
 The HTTP status code.
 
-@RESTREPLYBODY{errorNum,integer,required,int64}
-A server error number (if `error` is `true`).
-
-@RESTREPLYBODY{errorMessage,string,required,string}
-A descriptive error message (if `error` is `true`).
-
 @RESTRETURNCODE{404}
 If no cursor with the specified identifier can be found, or if the requested
 batch isn't available, the server responds with *HTTP 404*.
