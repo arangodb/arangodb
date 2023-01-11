@@ -13,7 +13,7 @@ jobs:
     steps:
       - run:
           name: Checkout
-          command: git clone --branch $CIRCLECI_SHA1 --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
+          command: git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
       - run:
           name: Print CCache Settings
           command: ccache -p
