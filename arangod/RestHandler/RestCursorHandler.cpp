@@ -643,7 +643,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
       builder.add(StaticStrings::ErrorMessage, VPackValue(r.errorMessage()));
       builder.add(StaticStrings::ErrorNum, VPackValue(r.errorNumber()));
       builder.close();
-      _cursor->setLastQueryBatchObject(builder.buffer());
+      _cursor->setLastQueryBatchObject(builder.steal());
     }
     // builder can be in a broken state here. simply return the error
     generateError(r);
