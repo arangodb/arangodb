@@ -93,19 +93,8 @@ Request the second batch (again):
 
 @EXAMPLE_ARANGOSH_RUN{RestCursorPostBatch}
     var url = "/_api/cursor";
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn);
-
-    db.products.save({"hello1":"world1"});
-    db.products.save({"hello2":"world1"});
-    db.products.save({"hello3":"world1"});
-    db.products.save({"hello4":"world1"});
-    db.products.save({"hello5":"world1"});
-
-    var url = "/_api/cursor";
     var body = {
-      query: "FOR p IN products LIMIT 5 RETURN p",
+      query: "FOR i IN 1..5 RETURN i",
       count: true,
       batchSize: 2,
       options: {
@@ -113,12 +102,17 @@ Request the second batch (again):
       }
     };
     var response = logCurlRequest('POST', url, body);
+    var secondBatchId = response.parsedBody.nextBatchId;
+    assert(response.code === 201);
     logJsonResponse(response);
 
-    var body = JSON.parse(response.body.replace(/\\/g, ''));
-    response = logCurlRequest('POST', url + '/' + body.id + '/' + body.nextBatchId, '');
+    response = logCurlRequest('POST', url + '/' + response.parsedBody.id, '');
     assert(response.code === 200);
-
     logJsonResponse(response);
-    db._drop(cn);
+
+    response = logCurlRequest('POST', url + '/' + response.parsedBody.id + '/' + secondBatchId, '');
+    assert(response.code === 200);
+    logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+@endDocuBlock
+

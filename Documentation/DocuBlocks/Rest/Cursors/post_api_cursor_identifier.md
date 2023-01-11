@@ -85,13 +85,11 @@ Valid request for next batch
     };
     var response = logCurlRequest('POST', url, body);
 
-    var body = response.body.replace(/\\/g, '');
-    var _id = JSON.parse(body).id;
-    response = logCurlRequest('POST', url + '/' + _id, '');
+    response = logCurlRequest('POST', url + '/' + response.parsedBody.id, '');
     assert(response.code === 200);
 
     logJsonResponse(response);
-  ~ db._drop(cn);
+    db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Missing identifier
