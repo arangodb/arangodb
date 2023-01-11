@@ -276,7 +276,7 @@ struct S2ShapeParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     Decoder decoder{value.data(), value.size()};
-    [[maybe_unused]] auto r = shape.Decode(decoder);
+    auto r = shape.Decode(decoder);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
     return r;
@@ -290,7 +290,7 @@ struct S2CentroidParser {
     auto& point =
         basics::downCast<S2PointRegion>(*const_cast<S2Region*>(shape.region()));
     Decoder decoder{value.data(), value.size()};
-    [[maybe_unused]] auto r = geo::decodePoint(decoder, point);
+    auto r = geo::decodePoint(decoder, point);
     TRI_ASSERT(r);
     TRI_ASSERT(decoder.avail() == 0);
     return r;

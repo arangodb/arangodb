@@ -89,9 +89,9 @@ Result getBool(velocypack::Slice object, std::string_view name, bool& output) {
 
 Result fromVelocyPack(velocypack::Slice object, GeoOptions& options) {
   if (!object.isObject()) {
-    return {
-        TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("Cannot parse '", kOptionsParam, "' not from Object.")};
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Failed to parse '", kOptionsParam,
+                         "', expected Object.")};
   }
   auto get = [&]<typename T>(auto name, auto min, auto max,
                              T& output) -> Result {

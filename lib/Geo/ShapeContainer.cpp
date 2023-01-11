@@ -48,8 +48,8 @@ static S2Polygon toPolygon(S2LatLngRect const& rect) {
   std::array<S2Point, 4> v{
       rect.GetVertex(0).ToPoint(), rect.GetVertex(1).ToPoint(),
       rect.GetVertex(2).ToPoint(), rect.GetVertex(3).ToPoint()};
-  auto loop = std::make_unique<S2Loop>(v);
-  return S2Polygon{std::move(loop)};
+  auto loop = std::make_unique<S2Loop>(v, S2Debug::DISABLE);
+  return S2Polygon{std::move(loop), S2Debug::DISABLE};
 }
 
 static bool contains(S2LatLngRect const& rect, S2Polyline const& polyline) {
@@ -560,6 +560,7 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
 
 double ShapeContainer::distanceFromCentroid(S2Point const& other,
                                             Ellipsoid const& e) const noexcept {
+  TRI_ASSERT(false);
   return utils::geodesicDistance(S2LatLng{centroid()}, S2LatLng{other}, e);
 }
 

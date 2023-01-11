@@ -157,7 +157,7 @@ class GeoJsonAnalyzerBase : public GeoAnalyzer {
 };
 
 /// The analyzer capable of breaking up a valid GeoJson input
-/// into a set of tokens for further indexing. Store vpack.
+/// into a set of tokens for further indexing. Stores vpack.
 class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
  public:
   struct Options : OptionsBase {
@@ -182,7 +182,7 @@ class GeoVPackAnalyzer final : public GeoJsonAnalyzerBase {
 };
 
 /// The analyzer capable of breaking up a valid GeoJson input
-/// into a set of tokens for further indexing. Store S2 geometry.
+/// into a set of tokens for further indexing. Stores S2 geometry.
 class GeoS2Analyzer final : public GeoJsonAnalyzerBase {
  public:
   struct Options : OptionsBase {

@@ -146,27 +146,41 @@ class QueryGeoDistance : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_DISTANCE(d.geometry, origin) < 300
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        // TODO(MBkkt) Should be BAD_PARAMETER,
+        //  but now we fallback on filterExpression
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED)
+            << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_DISTANCE(origin, d.geometry) < 300
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        // TODO(MBkkt) Should be BAD_PARAMETER,
+        //  but now we fallback on filterExpression
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED)
+            << kQueryStr;
+      }
     }
   }
 

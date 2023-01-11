@@ -174,29 +174,37 @@ class QueryGeoInRange : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
   }
 
@@ -562,29 +570,37 @@ class QueryGeoInRange : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     //
     {
@@ -851,29 +867,37 @@ class QueryGeoInRange : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
         SORT d.id ASC
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     //
     {

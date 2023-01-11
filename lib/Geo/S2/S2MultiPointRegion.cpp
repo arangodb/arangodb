@@ -95,7 +95,7 @@ bool S2MultiPointRegion::Decode(Decoder* const decoder) {
     return false;
   }
   _impl = impl.Decode();
-  return false;
+  return true;
 }
 
 }  // namespace arangodb::geo

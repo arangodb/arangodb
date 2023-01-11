@@ -773,6 +773,9 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/) {
+  SCOPED_TRACE(testing::Message("assertExpressionFilter failed for query: <")
+               << queryString << ">");
+
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
@@ -862,42 +865,46 @@ void assertExpressionFilter(
   }
 }
 
-void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
-  EXPECT_EQ(expected.boost(), actual.boost());
-
+static bool assertFilterBoostImpl(irs::filter const& expected,
+                                  irs::filter const& actual) {
+  if (expected.boost() != actual.boost()) {
+    return false;
+  }
   auto* expectedBooleanFilter =
       dynamic_cast<irs::boolean_filter const*>(&expected);
-
   if (expectedBooleanFilter) {
     auto* actualBooleanFilter =
         dynamic_cast<irs::boolean_filter const*>(&actual);
-    ASSERT_NE(nullptr, actualBooleanFilter);
-    ASSERT_EQ(expectedBooleanFilter->size(), actualBooleanFilter->size());
+    if (actualBooleanFilter == nullptr ||
+        expectedBooleanFilter->size() != actualBooleanFilter->size()) {
+      return false;
+    }
 
     auto expectedBegin = expectedBooleanFilter->begin();
     auto expectedEnd = expectedBooleanFilter->end();
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      assertFilterBoost(*expectedBegin, *actualBegin);
+      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+        return false;
+      }
       ++expectedBegin;
       ++actualBegin;
     }
 
-    return;  // we're done
+    return true;
   }
-
   auto* expectedNegationFilter = dynamic_cast<irs::Not const*>(&expected);
-
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    ASSERT_NE(nullptr, actualNegationFilter);
-
-    assertFilterBoost(*expectedNegationFilter->filter(),
-                      *actualNegationFilter->filter());
-
-    return;  // we're done
+    return actualNegationFilter != nullptr &&
+           assertFilterBoostImpl(*expectedNegationFilter->filter(),
+                                 *actualNegationFilter->filter());
   }
+  return true;
+}
+void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
+  EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
 }
 
 void buildActualFilter(
@@ -1094,10 +1101,14 @@ void assertFilter(
         .query = ctx, .contextAnalyzer = analyzer};
     auto r = arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
                                                         *filterNode);
-    EXPECT_EQ(execOk, r.ok());
     if (execOk) {
-      EXPECT_EQ(expected, actual) << r.errorMessage();
-      assertFilterBoost(expected, actual);
+      EXPECT_TRUE(r.ok()) << r.errorMessage();
+      if (r.ok()) {
+        EXPECT_EQ(expected, actual);
+        EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
+      }
+    } else {
+      EXPECT_FALSE(r.ok());
     }
   }
 }
