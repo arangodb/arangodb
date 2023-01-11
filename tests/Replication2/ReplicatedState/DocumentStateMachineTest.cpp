@@ -24,6 +24,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 #include "Inspection/VPack.h"
+#include "Mocks/Death_Test.h"
 #include "Replication2/Mocks/DocumentStateMocks.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
@@ -76,6 +77,15 @@ struct DocumentStateMachineTest : testing::Test {
           std::make_shared<testing::NiceMock<MockDocumentStateHandlersFactory>>(
               collectionReaderFactoryMock);
   MockTransactionManager transactionManagerMock;
+
+  void addEntry(std::vector<DocumentLogEntry>& entries, OperationType op,
+                TransactionId trxId) {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+    auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
+    entries.emplace_back(std::move(entry));
+  }
 
   void SetUp() override {
     using namespace testing;
@@ -551,6 +561,17 @@ TEST_F(DocumentStateMachineTest, test_applyEntry_handle_errors) {
   EXPECT_TRUE(result.ok()) << result;
   Mock::VerifyAndClearExpectations(transactionMock.get());
 
+  // DOCUMENT_NOT_FOUND error, should not fail
+  EXPECT_CALL(*transactionMock, apply(_))
+      .WillOnce([](DocumentLogEntry const& entry) {
+        auto opRes = OperationResult{Result{}, OperationOptions{}};
+        opRes.countErrorCodes[TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND] = 1;
+        return opRes;
+      });
+  result = transactionHandler.applyEntry(doc);
+  EXPECT_TRUE(result.ok()) << result;
+  Mock::VerifyAndClearExpectations(transactionMock.get());
+
   // An error inside countErrorCodes, transaction should fail
   EXPECT_CALL(*transactionMock, apply(_))
       .WillOnce([](DocumentLogEntry const& entry) {
@@ -663,6 +684,149 @@ TEST_F(DocumentStateMachineTest,
   acquireSnapshotCalled.wait(false);
   std::move(*follower).resign();
   t.join();
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_applyEntries_encounters_AbortAllOngoingTrx_and_aborts_all_trx) {
+  using namespace testing;
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{14});
+  addEntry(entries, OperationType::kAbortAllOngoingTrx, TransactionId{0});
+
+  // AbortAllOngoingTrx should count towards the release index
+  auto expectedReleaseIndex = LogIndex{4};
+  addEntry(entries, OperationType::kInsert, TransactionId{18});
+  addEntry(entries, OperationType::kInsert, TransactionId{22});
+
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index, expectedReleaseIndex);
+  });
+  follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_applyEntries_applies_transactions_but_does_not_release) {
+  using namespace testing;
+
+  auto transactionHandlerMock =
+      handlersFactoryMock->makeRealTransactionHandler(globalId);
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
+      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
+            transactionHandlerMock);
+      });
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{14});
+
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+
+  // We only call release on commit or abort
+  EXPECT_CALL(*stream, release).Times(0);
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(3);
+  follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_applyEntries_dies_if_transaction_fails) {
+  using namespace testing;
+
+  auto transactionHandlerMock =
+      handlersFactoryMock->makeRealTransactionHandler(globalId);
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
+      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
+            transactionHandlerMock);
+      });
+  ON_CALL(*transactionHandlerMock, applyEntry(_))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_applyEntries_commit_and_abort_calls_release) {
+  using namespace testing;
+
+  auto transactionHandlerMock =
+      handlersFactoryMock->makeRealTransactionHandler(globalId);
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_))
+      .WillByDefault([&](GlobalLogIdentifier const& gid) {
+        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
+            transactionHandlerMock);
+      });
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  // First commit then abort
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{10});
+  addEntry(entries, OperationType::kCommit, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{14});
+  addEntry(entries, OperationType::kInsert, TransactionId{18});
+  addEntry(entries, OperationType::kAbort, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{22});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index.value, 3);
+  });
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(7);
+  follower->applyEntries(std::move(entryIterator));
+  Mock::VerifyAndClearExpectations(stream.get());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
+
+  // First abort then commit
+  follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+  entries.clear();
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{10});
+  addEntry(entries, OperationType::kAbort, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{14});
+  addEntry(entries, OperationType::kInsert, TransactionId{18});
+  addEntry(entries, OperationType::kCommit, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{22});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*stream, release).WillOnce([&](LogIndex index) {
+    EXPECT_EQ(index.value, 3);
+  });
+  EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(7);
+  follower->applyEntries(std::move(entryIterator));
 }
 
 TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {
@@ -791,21 +955,12 @@ TEST_F(DocumentStateMachineTest,
   using namespace testing;
 
   std::vector<DocumentLogEntry> entries;
-
-  auto addEntry = [&entries, this](OperationType op, TransactionId trxId) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.close();
-    auto entry = DocumentLogEntry{shardId, op, builder.sharedSlice(), trxId};
-    entries.emplace_back(std::move(entry));
-  };
-
   // Transaction IDs are of follower type, as if they were replicated.
-  addEntry(OperationType::kInsert, TransactionId{6});
-  addEntry(OperationType::kInsert, TransactionId{10});
-  addEntry(OperationType::kInsert, TransactionId{14});
-  addEntry(OperationType::kAbort, TransactionId{6});
-  addEntry(OperationType::kCommit, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{6});
+  addEntry(entries, OperationType::kInsert, TransactionId{10});
+  addEntry(entries, OperationType::kInsert, TransactionId{14});
+  addEntry(entries, OperationType::kAbort, TransactionId{6});
+  addEntry(entries, OperationType::kCommit, TransactionId{10});
 
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
@@ -818,7 +973,7 @@ TEST_F(DocumentStateMachineTest,
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, insert).WillOnce([&](auto const& entry) {
-    EXPECT_EQ(entry.shardId, "s1");
+    EXPECT_EQ(entry.shardId, shardId);
     EXPECT_EQ(entry.operation, OperationType::kAbortAllOngoingTrx);
     return LogIndex{entries.size() + 1};
   });
@@ -834,6 +989,31 @@ TEST_F(DocumentStateMachineTest,
 
   Mock::VerifyAndClearExpectations(&transactionManagerMock);
   Mock::VerifyAndClearExpectations(transactionMock.get());
+}
+
+TEST_F(DocumentStateMachineTest,
+       leader_should_not_replicate_unknown_transactions) {
+  using namespace testing;
+
+  DocumentFactory factory =
+      DocumentFactory(handlersFactoryMock, transactionManagerMock);
+
+  auto core = factory.constructCore(globalId, coreParams);
+  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
+  leaderState->setStream(stream);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.close();
+  auto operation = OperationType::kCommit;
+  auto logIndex =
+      leaderState
+          ->replicateOperation(builder.sharedSlice(), operation,
+                               TransactionId{5}, ReplicationOptions{})
+          .get();
+  EXPECT_CALL(*stream, insert).Times(0);
+  EXPECT_EQ(logIndex, LogIndex{});
 }
 
 TEST(SnapshotIdTest, parse_snapshot_id_successfully) {
@@ -859,10 +1039,20 @@ TEST(SnapshotIdTest, parse_snapshot_id_error_overflow) {
   ASSERT_TRUE(id.fail());
 }
 
-TEST(SnapshotStatusTest, serialize_snapshot_status) {
+TEST(SnapshotStatusTest, serialize_snapshot_statistics) {
   auto state = state::Ongoing{};
   document::SnapshotStatus status(state, document::SnapshotStatistics{});
   ASSERT_EQ(velocypack::serialize(status).get("state").stringView(), "ongoing");
+}
+
+TEST(SnapshotStatusTest, serialize_snapshot_batch) {
+  document::SnapshotBatch batch{SnapshotId{1234}, "s123", false,
+                                velocypack::SharedSlice()};
+  auto s = velocypack::serialize(batch);
+  auto d = velocypack::deserialize<document::SnapshotBatch>(s.slice());
+  ASSERT_EQ(d.snapshotId, batch.snapshotId);
+  ASSERT_EQ(d.shardId, batch.shardId);
+  ASSERT_EQ(d.hasMore, batch.hasMore);
 }
 
 TEST(ActiveTransactionsQueueTest,

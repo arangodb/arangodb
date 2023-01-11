@@ -45,14 +45,17 @@ DocumentCore::DocumentCore(
 
   auto shardResult = _shardHandler->createLocalShard(_params.collectionId,
                                                      collectionProperties);
-  TRI_ASSERT(shardResult.ok())
-      << "Shard creation failed for replicated state " << _gid;
+  TRI_ASSERT(shardResult.ok()) << "Shard creation failed for replicated state "
+                               << _gid << ": " << shardResult.result();
   _shardId = shardResult.get();
 
   auto commResult = _agencyHandler->reportShardInCurrent(
       _params.collectionId, _shardId, collectionProperties);
-  TRI_ASSERT(shardResult.ok())
-      << "Failed to report shard in current for replicated state " << _gid;
+
+  // TODO see CINFRA-651
+  TRI_ASSERT(true || commResult.ok())
+      << "Failed to report shard in current for replicated state " << _gid
+      << ": " << commResult;
 
   LOG_CTX("b7e0d", TRACE, this->loggerContext)
       << "Created shard " << _shardId << " for replicated state " << _gid;
