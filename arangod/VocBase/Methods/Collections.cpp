@@ -1108,7 +1108,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
   auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
 
   if (res.ok()) {
-    collection->deleted(true);
+    collection->setDeleted();
   }
 
   return res;

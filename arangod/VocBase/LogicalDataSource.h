@@ -64,13 +64,14 @@ class LogicalDataSource {
     return _deleted.load(std::memory_order_relaxed);
   }
 
-  void deleted(bool deleted) noexcept {
-    TRI_ASSERT(deleted);
-    // intentionally do not use memory_order_relaxed here, as
-    // the deleted(true) call will only happen once in the lifetime
-    // of a data source, and it is not necessary to optimize the
-    // performance of it.
-    _deleted.store(deleted);
+  void setDeleted() noexcept {
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && !__has_feature(thread_sanitizer)
+    TRI_ASSERT(!_deleted.exchange(true));
+#else
+    // relaxed here and in load ok because we don't need
+    // happens before between them.
+    _deleted.store(true, std::memory_order_relaxed);
+#endif
   }
 
   virtual Result drop() = 0;
@@ -111,6 +112,12 @@ class LogicalDataSource {
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
  protected:
+  // revert a setDeleted() call later. currently only used by LogicalView.
+  // TODO: should be removed
+  void setUndeleted() noexcept {
+    _deleted.store(false, std::memory_order_seq_cst);
+  }
+
   template<typename DataSource, typename... Args>
   explicit LogicalDataSource(DataSource const& /*self*/, Args&&... args)
       : LogicalDataSource{DataSource::category(), std::forward<Args>(args)...} {

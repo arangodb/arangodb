@@ -879,7 +879,7 @@ arangodb::Result TRI_vocbase_t::dropCollectionWorker(
 
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  collection.deleted(true);
+  collection.setDeleted();
 
   VPackBuilder builder;
   engine.getCollectionInfo(*this, collection.id(), builder, false, 0);

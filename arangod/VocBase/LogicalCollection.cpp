@@ -586,7 +586,7 @@ Result LogicalCollection::drop() {
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  deleted(true);
+  setDeleted();
   _physical->drop();
 
   return {};
