@@ -28,7 +28,6 @@
 #include <string>
 
 #include "Basics/Result.h"
-#include "Assertions/Assert.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
@@ -67,8 +66,7 @@ class LogicalDataSource {
   void setDeleted() noexcept {
     // relaxed here and in load ok because we don't need
     // happens before between them.
-    bool wasDeleted = _deleted.exchange(true, std::memory_order_relaxed);
-    TRI_ASSERT(!wasDeleted);
+    _deleted.store(true, std::memory_order_relaxed);
   }
 
   virtual Result drop() = 0;
