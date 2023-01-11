@@ -30,7 +30,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -231,9 +230,10 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
-  static std::unordered_map<int, std::string const> const Operators;
-  static std::unordered_map<int, std::string const> const TypeNames;
-  static std::unordered_map<int, std::string const> const ValueTypeNames;
+  /// @brief array values with at least this number of members that
+  /// are in IN or NOT IN lookups will be sorted, so that we can use
+  /// a binary sort to do lookups
+  static constexpr size_t kSortNumberThreshold = 8;
 
   /// @brief create the node
   explicit AstNode(AstNodeType);
@@ -246,9 +246,6 @@ struct AstNode {
 
   /// @brief destroy the node
   ~AstNode();
-
- public:
-  static constexpr size_t SortNumberThreshold = 8;
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
@@ -281,10 +278,10 @@ struct AstNode {
   void sort();
 
   /// @brief return the type name of a node
-  std::string const& getTypeString() const;
+  std::string_view getTypeString() const;
 
   /// @brief return the value type name of a node
-  std::string const& getValueTypeString() const;
+  std::string_view getValueTypeString() const;
 
   /// @brief stringify the AstNode
   static std::string toString(AstNode const*);
@@ -600,7 +597,7 @@ struct AstNode {
 };
 
 template<bool resolveAttributeAccess = true>
-int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
+int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 
 struct AstNodeValueHash {
   size_t operator()(AstNode const* value) const noexcept;

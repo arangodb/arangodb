@@ -252,7 +252,8 @@ void RestAdminServerHandler::handleMode() {
 }
 
 void RestAdminServerHandler::handleDatabaseDefaults() {
-  auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
+  auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice(),
+                                    /*strictValidation*/ false);
   VPackBuilder builder;
 
   builder.openObject();
