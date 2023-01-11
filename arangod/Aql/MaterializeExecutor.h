@@ -50,7 +50,7 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 
 // two storage varians as we need
-// collection name to be sotred only
+// collection name to be stored only
 // when needed.
 class NoCollectionNameHolder {};
 class StringCollectionNameHolder {
@@ -58,24 +58,25 @@ class StringCollectionNameHolder {
   StringCollectionNameHolder(std::string const& name)
       : _collectionSource(name) {}
 
+  auto collectionSource() const { return _collectionSource; }
+
  protected:
   std::string const& _collectionSource;
 };
 
 template<typename T>
-class MaterializerExecutorInfos
-    : private std::conditional_t<std::is_same_v<T, std::string const&>,
-                                 StringCollectionNameHolder,
-                                 NoCollectionNameHolder> {
+using MaterializerExecutorInfosBase =
+    std::conditional_t<std::is_same_v<T, std::string const&>,
+                       StringCollectionNameHolder, NoCollectionNameHolder>;
+
+template<typename T>
+class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
  public:
-  using Base =
-      std::conditional_t<std::is_same_v<T, std::string const&>,
-                         StringCollectionNameHolder, NoCollectionNameHolder>;
 
   template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
                             aql::QueryContext& query, _Types&&... Args)
-      : Base(Args...),
+      : MaterializerExecutorInfosBase<T>(Args...),
         _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query) {}
@@ -95,13 +96,7 @@ class MaterializerExecutorInfos
 
   aql::QueryContext& query() const { return _query; }
 
-  template<typename Source = T>
-  std::enable_if_t<std::is_same_v<Source, std::string const&>, Source>
-  collectionSource() const {
-    return StringCollectionNameHolder::_collectionSource;
-  }
-
- private:
+private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document

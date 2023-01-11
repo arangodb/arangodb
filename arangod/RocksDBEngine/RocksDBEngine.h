@@ -448,9 +448,9 @@ class RocksDBEngine final : public StorageEngine {
   }
 #endif
 
-  class RocksDBSnapshot : public StorageSnapshot {
+  class RocksDBSnapshot final : public StorageSnapshot {
    public:
-    RocksDBSnapshot(rocksdb::DB* db) : _snapshot(db) {}
+    explicit RocksDBSnapshot(rocksdb::DB& db) noexcept : _snapshot(&db) {}
 
     TRI_voc_tick_t tick() const noexcept {
       return _snapshot.snapshot()->GetSequenceNumber();

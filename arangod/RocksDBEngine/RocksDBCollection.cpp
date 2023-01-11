@@ -985,7 +985,7 @@ Result RocksDBCollection::readFromSnapshot(
 
   return lookupDocumentVPack(
       trx, token, cb, /*withCache*/ true, readOwnWrites,
-      arangodb::basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
+      basics::downCast<RocksDBEngine::RocksDBSnapshot>(&snapshot));
 }
 
 Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,

@@ -60,9 +60,9 @@ MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
       TRI_ASSERT(ctx._inputRow);
       TRI_ASSERT(ctx._inputRow->isInitialized());
       TRI_ASSERT(ctx._infos);
-      arangodb::aql::AqlValue a{arangodb::aql::AqlValueHintSliceCopy(doc)};
+      AqlValue a{AqlValueHintSliceCopy(doc)};
       bool mustDestroy = true;
-      arangodb::aql::AqlValueGuard guard{a, mustDestroy};
+      AqlValueGuard guard{a, mustDestroy};
       ctx._outputRow->moveValueInto(
           ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
       return true;
@@ -73,7 +73,7 @@ MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
 }
 
 template<typename T>
-arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
+MaterializeExecutor<T>::MaterializeExecutor(
     MaterializeExecutor<T>::Fetcher& /*fetcher*/, Infos& infos)
     : _trx(infos.query().newTrxContext()),
       _readDocumentContext(infos),
@@ -85,7 +85,7 @@ arangodb::aql::MaterializeExecutor<T>::MaterializeExecutor(
 }
 
 template<typename T>
-void arangodb::aql::MaterializeExecutor<T>::fillBuffer(
+void MaterializeExecutor<T>::fillBuffer(
     AqlItemBlockInputRange& inputRange) {
   if constexpr (!isSingleCollection) {
     _bufferedDocs.clear();
@@ -198,7 +198,7 @@ void arangodb::aql::MaterializeExecutor<T>::fillBuffer(
 
 template<typename T>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-arangodb::aql::MaterializeExecutor<T>::produceRows(
+MaterializeExecutor<T>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   MaterializeStats stats;
 
@@ -281,7 +281,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
 
 template<typename T>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
+MaterializeExecutor<T>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   size_t skipped = 0;
 
@@ -301,8 +301,8 @@ arangodb::aql::MaterializeExecutor<T>::skipRowsRange(
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class ::arangodb::aql::MaterializeExecutor<void>;
-template class ::arangodb::aql::MaterializeExecutor<std::string const&>;
+template class MaterializeExecutor<void>;
+template class MaterializeExecutor<std::string const&>;
 
-template class ::arangodb::aql::MaterializerExecutorInfos<void>;
-template class ::arangodb::aql::MaterializerExecutorInfos<std::string const&>;
+template class MaterializerExecutorInfos<void>;
+template class MaterializerExecutorInfos<std::string const&>;

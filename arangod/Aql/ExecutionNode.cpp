@@ -2824,9 +2824,9 @@ ExecutionNode* AsyncNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 namespace {
-const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
-const char* MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
-const char* MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
+constexpr std::string_view MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
+constexpr std::string_view MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
+constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(

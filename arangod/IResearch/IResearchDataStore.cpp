@@ -1319,10 +1319,17 @@ Result IResearchDataStore::initDataStore(
 
   if (pathExists) {
     try {
+      auto engineSnapshot = _engine->currentSnapshot();
+      if (ADB_UNLIKELY(!engineSnapshot)) {
+        return {TRI_ERROR_INTERNAL,
+                absl::StrCat("failed to get storage snapshot while "
+                             "initializing ArangoSearch index '",
+                             index().id().id(), "'")};
+      }
       _dataStore._snapshot = std::make_shared<DataSnapshot>(
           irs::directory_reader::open(*(_dataStore._directory), nullptr,
                                       readerOptions),
-          _engine->currentSnapshot());
+          engineSnapshot);
 
       if (!readTick(_dataStore._snapshot->_reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
@@ -1444,10 +1451,17 @@ Result IResearchDataStore::initDataStore(
 
   if (!_dataStore._snapshot) {
     _dataStore._writer->commit();  // initialize 'store'
+    auto engineSnapshot = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!engineSnapshot)) {
+      return {TRI_ERROR_INTERNAL,
+              absl::StrCat("Failed to get engine snapshot while initializing "
+                           "ArangoSearch index '",
+                           index().id().id(), "'")};
+    }
     _dataStore._snapshot = std::make_shared<DataSnapshot>(
         irs::directory_reader::open(*(_dataStore._directory), _format,
                                     readerOptions),
-        _engine->currentSnapshot());
+        engineSnapshot);
   }
 
   if (!_dataStore._snapshot) {

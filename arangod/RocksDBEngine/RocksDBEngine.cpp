@@ -3620,7 +3620,11 @@ auto RocksDBEngine::createReplicatedState(
 }
 
 std::shared_ptr<StorageSnapshot> RocksDBEngine::currentSnapshot() {
-  return std::make_shared<RocksDBSnapshot>(_db);
+  if (ADB_LIKELY(_db)) {
+    return std::make_shared<RocksDBSnapshot>(*_db);
+  } else {
+    return nullptr;
+  }
 }
 
 }  // namespace arangodb

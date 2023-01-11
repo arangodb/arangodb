@@ -77,7 +77,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
                                   rocksdb::Slice const&,
                                   rocksdb::PinnableSlice*, ReadOwnWrites,
-                                  rocksdb::Snapshot const*) override;
+                                  rocksdb::Snapshot const*) final;
 
   void PutLogData(rocksdb::Slice const&) override;
 
