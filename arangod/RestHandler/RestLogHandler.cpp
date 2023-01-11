@@ -106,6 +106,10 @@ RestStatus RestLogHandler::handlePostRequest(
     namespace paths = ::arangodb::cluster::paths;
     auto& agencyCache =
         _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    if (auto result = agencyCache.waitForLatestCommitIndex().get();
+        result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
     auto path = paths::aliases::target()
                     ->replicatedLogs()
                     ->database(_vocbase.name())
