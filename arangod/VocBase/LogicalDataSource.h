@@ -65,13 +65,10 @@ class LogicalDataSource {
   }
 
   void setDeleted() noexcept {
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && !__has_feature(thread_sanitizer)
-    TRI_ASSERT(!_deleted.exchange(true));
-#else
     // relaxed here and in load ok because we don't need
     // happens before between them.
-    _deleted.store(true, std::memory_order_relaxed);
-#endif
+    bool wasDeleted = _deleted.exchange(true, std::memory_order_relaxed);
+    TRI_ASSERT(!wasDeleted);
   }
 
   virtual Result drop() = 0;
