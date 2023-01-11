@@ -724,15 +724,14 @@ RestStatus RestCursorHandler::showLatestBatch() {
   _cursor->setWakeupHandler(withLogContext(
       [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-  std::shared_ptr<transaction::Context> ctx = _cursor->context();
-
   std::string const& batchId = suffixes[1];
   auto const [buffer, r] = _cursor->getLastBatchResult(batchId);
 
   if (r.ok()) {
+    TRI_ASSERT(buffer != nullptr);
     _response->setContentType(rest::ContentType::JSON);
     generateResult(rest::ResponseCode::OK, VPackSlice(buffer->data()),
-                   std::move(ctx));
+                   _cursor->context());
   } else {
     // no Buffer available here
     generateError(r);
