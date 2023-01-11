@@ -28,13 +28,15 @@
 #include <numeric>
 #include <string>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackWithErrorT.h>
 #include <Inspection/Transformers.h>
-
-#include <Cluster/ClusterTypes.h>
 
 #include <Pregel/Common.h>
 #include <Pregel/Status/Status.h>
+
+namespace arangodb {
+typedef std::string ServerID;         // ID of a server
+}
 
 namespace arangodb::pregel {
 
