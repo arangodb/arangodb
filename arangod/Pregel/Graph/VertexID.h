@@ -22,11 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+#include "PregelShard.h"
 
 namespace arangodb::pregel {
-
-typedef uint16_t PregelShard;
-const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
   std::string key;    // std::string 24
