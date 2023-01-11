@@ -12,7 +12,9 @@ jobs:
       GIT_SSH_COMMAND: ssh -v
     steps:
       - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
-      - run: git checkout $CIRCLECI_SHA1
+      - run:
+          name: Checkout
+          command: git checkout $CIRCLECI_SHA1
       - run:
           name: Print CCache Settings
           command: ccache -p
