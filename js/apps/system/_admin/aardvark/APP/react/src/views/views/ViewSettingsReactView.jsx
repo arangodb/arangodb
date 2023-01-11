@@ -67,6 +67,15 @@ const ViewSettingsReactView = ({ name }) => {
   const PrimarySortContent = () => {
     return (<table>
       <tbody>
+        <tr className="tableRow" id={"row_" + (formState.primarySortCompression)}>
+          <th className="collectionTh">
+            Primary Sort Compression:
+          </th>
+          <th className="collectionTh">
+          <Textbox type={'text'} disabled={true} required={false}
+            value={formState.primarySortCompression} />
+          </th>
+        </tr>
       {
         formState.primarySort.map (item =>(
           <tr className="tableRow" id={"row_" + (item.field)}>
