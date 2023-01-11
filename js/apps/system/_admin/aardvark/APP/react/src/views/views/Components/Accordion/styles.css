@@ -129,8 +129,8 @@
   margin: 0em;
   padding: 1.14285714rem 1.71428571rem;
   border: 1px solid #e6e6e6;
-  border-radius: 0.5em;
-
+  border-radius: 0 0 0.5em 0.5em;
+  border-top: 0px;
 }
 
 .ui.styled.accordion .accordion .content {
@@ -155,6 +155,8 @@
 .ui.styled.accordion .active.title {
   background: transparent;
   color: rgba(0, 0, 0, 0.95);
+  border-bottom: 0px !important;
+  border-radius: 0.5em 0.5em 0 0;
 }
 
 .ui.styled.accordion .accordion .active.title {
