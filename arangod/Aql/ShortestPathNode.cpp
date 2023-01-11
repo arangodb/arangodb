@@ -327,6 +327,12 @@ RegIdSet ShortestPathNode::_buildVariableInformation() const {
 // 2. or SingleServerProvider<SingleServerProviderStep>
 // 3. or ClusterProvider<ClusterProviderStep>
 
+template<typename ShortestPathRefactored>
+using RegisterMapping = std::unordered_map<
+    typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputName,
+    RegisterId,
+    typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputNameHash>;
+
 template<typename ShortestPathRefactored, typename Provider,
          typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
@@ -334,11 +340,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
     PathValidatorOptions validatorOptions,
-    std::unordered_map<
-        typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputName,
-        RegisterId,
-        typename ShortestPathExecutorInfos<
-            ShortestPathRefactored>::OutputNameHash>&& outputRegisterMapping,
+    RegisterMapping<ShortestPathRefactored>&& outputRegisterMapping,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
   auto shortestPathFinder = std::make_unique<ShortestPathRefactored>(
@@ -349,11 +351,10 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());
 
-  ShortestPathExecutorInfos<ShortestPathRefactored> executorInfos =
-      ShortestPathExecutorInfos(engine.getQuery(),
-                                std::move(shortestPathFinder),
-                                std::move(outputRegisterMapping),
-                                std::move(sourceInput), std::move(targetInput));
+  auto executorInfos = ShortestPathExecutorInfos(
+      engine.getQuery(), std::move(shortestPathFinder),
+      std::move(outputRegisterMapping), std::move(sourceInput),
+      std::move(targetInput));
 
   return std::make_unique<
       ExecutionBlockImpl<ShortestPathExecutor<ShortestPathRefactored>>>(
