@@ -374,7 +374,7 @@ ValueType const& IndexReadBuffer<ValueType, copyStored>::getValue(
     const IndexReadBufferEntry bufferEntry) const noexcept {
   assertSizeCoherence();
   TRI_ASSERT(bufferEntry._keyIdx < _keyBuffer.size());
-  return _keyBuffer[bufferEntry._keyIdx].first;
+  return _keyBuffer[bufferEntry._keyIdx].value;
 }
 
 template<typename ValueType, bool copyStored>
@@ -388,7 +388,7 @@ template<typename ValueType, bool copySorted>
 template<typename... Args>
 void IndexReadBuffer<ValueType, copySorted>::pushValue(
     StorageSnapshot const& snapshot, Args&&... args) {
-  _keyBuffer.emplace_back(ValueType{std::forward<Args>(args)...}, &snapshot);
+  _keyBuffer.emplace_back(snapshot, std::forward<Args>(args)...);
 }
 
 template<typename ValueType, bool copySorted>
@@ -415,7 +415,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
-    _keyBuffer[_rows.back()] = BufferValueType{std::move(value), &snapshot};
+    _keyBuffer[_rows.back()] = BufferValueType{snapshot, std::move(value)};
     auto const base = _rows.back() * _numScoreRegisters;
     size_t i{0};
     auto bufferIt = _scoreBuffer.begin() + base;
@@ -430,7 +430,7 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     }
     std::push_heap(_rows.begin(), _rows.end(), sortContext);
   } else {
-    _keyBuffer.emplace_back(std::move(value), &snapshot);
+    _keyBuffer.emplace_back(snapshot, std::move(value));
     size_t i = 0;
     for (; i < count; ++i) {
       _scoreBuffer.emplace_back(scores[i]);
@@ -562,7 +562,6 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
   upstreamCall.fullCount = output.getClientCall().fullCount;
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool documentWritten = false;
-
     while (!documentWritten) {
       if (!_inputRow.isInitialized()) {
         std::tie(std::ignore, _inputRow) = inputRange.peekDataRow();
@@ -843,13 +842,12 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     TRI_ASSERT(collection);
     TRI_ASSERT(documentId.isSet());
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(
-            !collection->getPhysical()
-                 ->readFromSnapshot(&_trx, documentId, ctx.callback,
-                                    ReadOwnWrites::no,
-                                    *this->_indexReadBuffer.getSnapshot(
-                                        bufferEntry.getKeyIdx()))
-                 .ok())) {
+    if (ADB_UNLIKELY(!collection->getPhysical()
+                          ->readFromSnapshot(&_trx, documentId, ctx.callback,
+                                             ReadOwnWrites::no,
+                                             this->_indexReadBuffer.getSnapshot(
+                                                 bufferEntry.getKeyIdx()))
+                          .ok())) {
       return false;
     }
   }

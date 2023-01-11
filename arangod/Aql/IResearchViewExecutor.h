@@ -242,13 +242,13 @@ class IndexReadBuffer {
 
   ValueType& getValue(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
-    return _keyBuffer[idx].first;
+    return _keyBuffer[idx].value;
   }
 
-  auto const* getSnapshot(size_t idx) noexcept {
+  StorageSnapshot const& getSnapshot(size_t idx) noexcept {
     TRI_ASSERT(_keyBuffer.size() > idx);
-    TRI_ASSERT(_keyBuffer[idx].second);
-    return _keyBuffer[idx].second;
+    TRI_ASSERT(_keyBuffer[idx].snapshot);
+    return *_keyBuffer[idx].snapshot;
   }
 
   iresearch::SearchDoc const& getSearchDoc(size_t idx) noexcept {
@@ -366,7 +366,15 @@ class IndexReadBuffer {
   //   _keyBuffer[i / getNumScoreRegisters()]
   // .
 
-  using BufferValueType = std::pair<ValueType, StorageSnapshot const*>;
+  struct BufferValueType {
+    template<typename... Args>
+    BufferValueType(StorageSnapshot const& s, Args&&... args)
+        : snapshot(&s), value(std::forward<Args>(args)...) {}
+    // have to keep it pointer as we need this struct
+    // to be assignable for HeapSort optimization
+    StorageSnapshot const* snapshot;
+    ValueType value;
+  };
   std::vector<BufferValueType> _keyBuffer;
   // FIXME(gnusi): compile time
   std::vector<iresearch::SearchDoc> _searchDocs;
