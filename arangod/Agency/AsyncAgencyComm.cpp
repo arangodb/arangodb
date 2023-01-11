@@ -434,8 +434,8 @@ namespace arangodb {
 
 futures::Future<consensus::index_t> AsyncAgencyComm::getCurrentCommitIndex()
     const {
-  auto future = sendWithFailover(fuerte::RestVerb::Get, "_api/agency/config",
-                                 120s, RequestType::CUSTOM, {});
+  auto future = sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config",
+                                 120s, RequestType::READ, {});
   return std::move(future).thenValue([](AsyncAgencyCommResult&& response) {
     if (auto result = response.asResult(); result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
