@@ -28,7 +28,7 @@
 #include <string>
 
 #include "Basics/Result.h"
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
