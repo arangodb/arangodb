@@ -643,7 +643,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
       builder.add(StaticStrings::ErrorMessage, VPackValue(r.errorMessage()));
       builder.add(StaticStrings::ErrorNum, VPackValue(r.errorNumber()));
       builder.close();
-      _cursor->setLastQueryBatchObject(builder.buffer());
+      _cursor->setLastQueryBatchObject(builder.steal());
     }
     // builder can be in a broken state here. simply return the error
     generateError(r);
@@ -724,17 +724,16 @@ RestStatus RestCursorHandler::showLatestBatch() {
   _cursor->setWakeupHandler(withLogContext(
       [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-  std::shared_ptr<transaction::Context> ctx = _cursor->context();
-
   std::string const& batchId = suffixes[1];
   auto const [buffer, r] = _cursor->getLastBatchResult(batchId);
 
   if (r.ok()) {
+    TRI_ASSERT(buffer != nullptr);
     _response->setContentType(rest::ContentType::JSON);
     generateResult(rest::ResponseCode::OK, VPackSlice(buffer->data()),
-                   std::move(ctx));
+                   _cursor->context());
   } else {
-    // builder can be in a broken state here. simply return the error
+    // no Buffer available here
     generateError(r);
   }
 
