@@ -142,22 +142,23 @@ void setupAllTypedFilter(irs::Or& disjunction, FilterContext const& ctx,
   allDocs.boost(ctx.boost);
 }
 
-bool setupGeoFilter(FieldMeta::Analyzer const& a,
-                    GeoFilterOptionsBase& options) {
+Result setupGeoFilter(FieldMeta::Analyzer const& a,
+                      GeoFilterOptionsBase& options) {
   if (!a._pool) {
-    return false;
+    return {TRI_ERROR_INTERNAL, "Malformed analyzer pool."};
   }
   auto& pool = *a._pool;
   if (!kludge::isGeoAnalyzer(pool.type())) {
-    return false;
+    return {TRI_ERROR_BAD_PARAMETER, absl::StrCat("Analyzer '", pool.type(),
+                                                  "' is not a geo analyzer.")};
   }
   auto stream = pool.get();
   if (!stream) {
-    return false;
+    return {TRI_ERROR_INTERNAL, "Malformed geo analyzer stream."};
   }
   auto const& impl = basics::downCast<GeoAnalyzer>(*stream);
   impl.prepare(options);
-  return true;
+  return {};
 }
 
 Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
@@ -816,11 +817,10 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    /*auto r = */ setupGeoFilter(analyzer, *options);
-    // TODO(MBkkt) Uncomment this, now it's identity for some reason
-    // if (!r) {
-    //   return {TRI_ERROR_INTERNAL, "Malformed analyzer"};
-    // }
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->origin = centroid.ToPoint();
     if (minDistance != 0.) {
       options->range.min = minDistance;
@@ -928,11 +928,10 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    /*auto r = */ setupGeoFilter(analyzer, *options);
-    // TODO(MBkkt) Uncomment this, now it's identity for some reason
-    // if (!r) {
-    //   return {TRI_ERROR_INTERNAL, "Malformed analyzer"};
-    // }
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->origin = centroid.ToPoint();
     switch (node.cmp) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
@@ -3845,11 +3844,10 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
-    /*auto r = */ setupGeoFilter(analyzer, *options);
-    // TODO(MBkkt) Uncomment this, now it's identity for some reason
-    // if (!r) {
-    //   return {TRI_ERROR_INTERNAL, "Malformed analyzer"};
-    // }
+    auto r = setupGeoFilter(analyzer, *options);
+    if (!r.ok()) {
+      return r;
+    }
     options->type = GEO_INTERSECT_FUNC == funcName
                         ? GeoFilterType::INTERSECTS
                         : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS

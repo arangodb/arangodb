@@ -182,11 +182,7 @@ class QueryGeoContains : public QueryTest {
   void queryTestsGeoJson() {
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -195,17 +191,18 @@ class QueryGeoContains : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_CONTAINS(d.geometry, box)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected = std::vector{_insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -214,8 +211,16 @@ class QueryGeoContains : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_CONTAINS(box, d.geometry)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // EXISTS will also work
     {
@@ -347,12 +352,7 @@ class QueryGeoContains : public QueryTest {
   void queryTestsGeoCentroid() {
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice(),
-                    _insertedDocs[28].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -361,8 +361,16 @@ class QueryGeoContains : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_CONTAINS(box, d.geometry)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice(),
+                        _insertedDocs[28].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     // EXISTS will also work
     {
@@ -421,11 +429,7 @@ class QueryGeoContains : public QueryTest {
   void queryTestsGeoPoint() {
     // test missing analyzer
     {
-      std::vector<velocypack::Slice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET box = GEO_POLYGON([
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
           [37.602682, 55.706853],
           [37.613025, 55.706853],
           [37.613025, 55.711906],
@@ -434,8 +438,15 @@ class QueryGeoContains : public QueryTest {
         ])
         FOR d IN testView
         SEARCH GEO_CONTAINS(box, d.geometry)
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
     //
     {
