@@ -193,6 +193,10 @@
     {
       "name": "community-developer",
       "configurePreset": "community-developer"
+    },
+    {
+      "name": "community-pr",
+      "configurePreset": "community-pr"
     }
   ]
 }
