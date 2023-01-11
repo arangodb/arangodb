@@ -27,6 +27,43 @@ import AccordionView from './Components/Accordion/Accordion';
 
 const ViewSettingsReactView = ({ name }) => {
 
+  const [editName, setEditName] = useState(false);
+
+  const handleEditName = () => {
+    setEditName(true);
+  };
+
+  const closeEditName = () => {
+    setEditName(false);
+  };
+
+  const EditableViewName = () => {
+    return (<div>
+      {!editName ? (
+        <>
+          <div style={{
+            color: '#717d90',
+            fontWeight: 600,
+            fontSize: '12.5pt',
+            padding: 10,
+            float: 'left'
+          }}>
+            {formState.name}
+          </div>
+          {!frontendConfig.isCluster ?
+            <i class="fa fa-edit" onClick={handleEditName} style={{paddingTop: '14px'}}></i> :
+            null}
+          </>
+      ) : (
+        <>
+          <Textbox type={'text'} value={formState.name} onChange={updateName}
+              required={true} disabled={nameEditDisabled}/> <i class="fa fa-check" onClick={closeEditName} style={{paddingTop: '14px'}}></i>
+        </>
+      )}
+      </div>
+    )
+  };
+
   const PrimarySortContent = () => {
     return (<table>
       <tbody>
@@ -235,7 +272,7 @@ const ViewSettingsReactView = ({ name }) => {
   }, [view, name]);
 
   useNavbar(name, isAdminUser, changed, 'Settings');
-const [linkName, setLinkName] = useState('')
+  const [linkName, setLinkName] = useState('')
   const updateName = (event) => {
     dispatch({
       type: 'setField',
@@ -269,14 +306,7 @@ const [linkName, setLinkName] = useState('')
 
   return <>
       <div id="viewsheader">
-        <div style={{
-          color: '#717d90',
-          fontWeight: 600,
-          fontSize: '12.5pt',
-          padding: 10
-        }}>
-          {name}
-        </div>
+        <EditableViewName />
         {
           isAdminUser && views.length
             ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
