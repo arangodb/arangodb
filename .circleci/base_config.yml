@@ -1,0 +1,153 @@
+version: 2.1
+
+jobs:
+  compile-linux-community:
+    parameters:
+      preset:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1s
+    resource_class: xlarge
+    environment:
+      GIT_SSH_COMMAND: ssh -v
+    steps:
+      - run: git clone --depth 1 https://github.com/arangodb/arangodb.git -b "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
+      - run: git checkout $CIRCLECI_SHA1
+      - run:
+          name: Print CCache Settings
+          command: ccache -p
+      - restore_cache:
+          keys:
+            - ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+            - ccache-v1-docker-{{ .Branch }}-
+            - ccache-v1-docker
+      - run:
+          name: Zero CCache Statistics
+          command: ccache -z
+      - run:
+          name: Configure
+          command: |
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+      - run:
+          name: Build
+          command: |
+            cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
+      - run:
+          command: |
+            rm build/<< parameters.preset >>/bin/*.a
+      - run:
+          name: CCache Statistics
+          command: ccache -s
+      - store_artifacts:
+          path: build/<< parameters.preset >>/bin/arango*
+      - save_cache:
+          when: always
+          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /root/.cache/ccache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - build/<< parameters.preset >>/bin
+            - scripts/
+            - js/
+            - etc/
+            - tests/js
+            - utils
+            - UnitTests
+
+  run-gtest-executable-linux:
+    parameters:
+      executable:
+        type: string
+      filter:
+        type: string
+    docker:
+      - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl1.1.1s
+    resource_class: large
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run GTest
+          command: |
+            << parameters.executable >> --gtest_filter=<< parameters.filter >> --gtest_output=xml
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          path: /tmp/core_dumps
+      - store_test_results:
+          path: test_detail.xml
+
+  run-js-tests:
+    docker:
+      - image: cimg/base:2022.12
+    parameters:
+      suiteName:
+        type: string
+      suites:
+        type: string
+      size:
+        type: string
+      extraArgs:
+        type: string
+        default: ""
+      buckets:
+        type: integer
+        default: 1
+      cluster:
+        type: boolean
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Run << parameters.suiteName >> tests
+          command: |
+            scripts/unittest << parameters.suites >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> << parameters.extraArgs >>
+      # - run:
+      #     command: |
+      #       mkdir test-results && cp ./out/*.xml test-results
+      - run:
+          command: |
+            mkdir -p /tmp/core_dumps
+            cp core.* /tmp/core_dumps
+          when: on_fail
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./out/
+      - store_test_results:
+          path: ./out/
+
+workflows:
+  devel-pr:
+    when:
+      matches:
+        pattern: /^(bug-fix|feature|chore)\/.*$/
+        value: << pipeline.git.branch >>
+    jobs:
+      - compile-linux-community:
+          name: build-community-pr
+          preset: community-pr
+      # - run-gtest-executable-linux:
+      #     name: arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "-*_LongRunning"
+      #     requires:
+      #       - build-community-pr
+      # - run-gtest-executable-linux:
+      #     name: iresearch arangodbtests linux
+      #     executable: "build/community-pr/bin/arangodbtests"
+      #     filter: "IResearch*"
+      #     requires:
+      #       - build-community-pr

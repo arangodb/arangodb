@@ -4,10 +4,7 @@
 
 
 # Single Server only Tests
-BackupAuthNoSysTests single
-BackupAuthSysTests single
-BackupNoAuthNoSysTests single
-BackupNoAuthSysTests single
+BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests,arangosh,arangobench,permissions,paths_server,version,active_failover single name=single_server_only
 
 # Single Server Replication Tests
 replication_fuzz priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
@@ -21,17 +18,11 @@ shell_replication parallelity=3 single
 http_replication priority=500 parallelity=3 single
 
 # Misc single server tests
-active_failover parallelity=3 single
 agency priority=350 parallelity=4 single -- --dumpAgencyOnError true
 agency-restart priority=250 parallelity=3 single
-arangobench parallelity=2 priority=1000 single
-arangosh single
 authentication priority=1000 single
 endpoints single -- --skipEndpointsIpv6 true
-paths_server priority=500 single
-permissions priority=500 single
 recovery priority=2000 buckets=4 parallelity=5 single
-version single
 
 shell_v8 priority=500 single -- $EncryptionAtRest
 shell_server_v8 priority=500 single -- $EncryptionAtRest
@@ -108,7 +99,7 @@ hot_backup !windows -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=2 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 cluster buckets=5 -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 -- --dumpAgencyOnError true
 server_secrets priority=500 -- --dumpAgencyOnError true
 
