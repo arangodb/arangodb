@@ -1,6 +1,9 @@
 devel
 -----
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
 * Use more compact and efficient representation for arrays and objects during
   AQL AST serialization and deserialization. This can help to reduce the size
   of messages exchanged between coordinator and database servers during query
