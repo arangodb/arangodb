@@ -1172,8 +1172,9 @@ void PhysicalCollectionMock::getPropertiesVPack(
 }
 
 arangodb::Result PhysicalCollectionMock::insert(
-    arangodb::transaction::Methods& trx, arangodb::RevisionId newRevisionId,
-    arangodb::velocypack::Slice newDocument,
+    arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
+    arangodb::RevisionId newRevisionId, arangodb::velocypack::Slice newDocument,
     arangodb::OperationOptions const& options) {
   before();
 
@@ -1377,6 +1378,7 @@ arangodb::Result PhysicalCollectionMock::lookupDocument(
 
 arangodb::Result PhysicalCollectionMock::remove(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId previousDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
@@ -1405,6 +1407,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
 arangodb::Result PhysicalCollectionMock::update(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId newDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
@@ -1417,6 +1420,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
 arangodb::Result PhysicalCollectionMock::replace(
     arangodb::transaction::Methods& trx,
+    arangodb::IndexesSnapshot const& /*indexesSnapshot*/,
     arangodb::LocalDocumentId newDocumentId,
     arangodb::RevisionId previousRevisionId,
     arangodb::velocypack::Slice previousDocument,
@@ -1898,32 +1902,18 @@ arangodb::Result StorageEngineMock::flushWal(bool waitForSync,
   TRI_ASSERT(false);
   return arangodb::Result();
 }
-
-auto StorageEngineMock::createReplicatedLog(TRI_vocbase_t& vocbase,
-                                            arangodb::replication2::LogId id)
-    -> arangodb::ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-auto StorageEngineMock::dropReplicatedLog(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&
-        ptr) -> arangodb::Result {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-arangodb::Result StorageEngineMock::updateReplicatedState(
-    TRI_vocbase_t& vocbase,
-    const arangodb::replication2::replicated_state::PersistedStateInfo& info) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 arangodb::Result StorageEngineMock::dropReplicatedState(
-    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id) {
+    TRI_vocbase_t& vocbase,
+    std::unique_ptr<
+        arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+arangodb::ResultT<std::unique_ptr<
+    arangodb::replication2::replicated_state::IStorageEngineMethods>>
+StorageEngineMock::createReplicatedState(
+    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+    const arangodb::replication2::replicated_state::PersistedStateInfo& info) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

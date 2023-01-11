@@ -62,7 +62,6 @@
 #include "Aql/Range.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
-#include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
@@ -169,7 +168,7 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
                   char const* funcName, size_t argIdx) {
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {  // [lng, lat] is valid input
-      if (value.size() < 2) {
+      if (value.size() != 2) {
         return error::failedToEvaluate(funcName, argIdx);
       }
 
@@ -180,28 +179,29 @@ Result getLatLong(ScopedAqlValue const& value, S2LatLng& point,
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      double_t lat, lon;
+      double lat, lon;
 
       if (!latValue.getDouble(lat) || !lonValue.getDouble(lon)) {
         return error::failedToEvaluate(funcName, argIdx);
       }
 
-      point = S2LatLng::FromDegrees(lat, lon);
+      point = S2LatLng::FromDegrees(lat, lon).Normalized();
       return {};
     }
     case SCOPED_VALUE_TYPE_OBJECT: {
       VPackSlice const json = value.slice();
       geo::ShapeContainer shape;
       Result res;
-      if (json.isArray() && json.length() >= 2) {
-        res = shape.parseCoordinates(json, /*GeoJson*/ true);
+      if (json.isArray()) {
+        res = geo::json::parseCoordinates<true>(json, shape, /*geoJson=*/true);
       } else {
-        res = geo::geojson::parseRegion(json, shape, false);
+        res = geo::json::parseRegion(json, shape, /*legacy=*/false);
       }
       if (res.fail()) {
         return res;
       }
       point = S2LatLng(shape.centroid());
+      TRI_ASSERT(point.is_valid());
       return {};
     }
     default: {
@@ -312,8 +312,8 @@ Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
   if (!nameFromAttributeAccess(name, attribute, filterCtx.query,
                                filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Failed to generate field name from node "s.append(
-                aql::AstNode::toString(&attribute))};
+            absl::StrCat("Failed to generate field name from node ",
+                         aql::AstNode::toString(&attribute))};
   }
 
   return byTerm(filter, std::move(name), value, filterCtx);
@@ -358,8 +358,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, attribute, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Failed to generate field name from node "s.append(
-                aql::AstNode::toString(&attribute))};
+            absl::StrCat("Failed to generate field name from node ",
+                         aql::AstNode::toString(&attribute))};
   }
 
   TRI_ASSERT(filter);
@@ -395,8 +395,8 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, attributeNode, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Failed to generate field name from node "s.append(
-                aql::AstNode::toString(&attributeNode))};
+            absl::StrCat("Failed to generate field name from node ",
+                         aql::AstNode::toString(&attributeNode))};
   }
 
   switch (min.type()) {
@@ -681,8 +681,8 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *node.attribute, ctx, filter != nullptr)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Failed to generate field name from node "s.append(
-                aql::AstNode::toString(node.attribute))};
+            absl::StrCat("Failed to generate field name from node ",
+                         aql::AstNode::toString(node.attribute))};
   }
   auto value = ScopedAqlValue(*node.value);
   if (!value.isConstant()) {
@@ -733,10 +733,11 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
 
   if (!checkAttributeAccess(fieldNode, *ctx.ref, !ctx.isSearchQuery)) {
     if (!checkAttributeAccess(centroidNode, *ctx.ref, !ctx.isSearchQuery)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName).append(
-                  "' AQL function: Unable to find argument denoting an "
-                  "attribute identifier")};
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("'", funcName,
+                       "' AQL function: Unable to find argument denoting an "
+                       "attribute identifier")};
     }
 
     std::swap(fieldNode, centroidNode);
@@ -897,16 +898,17 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
   if (filter || distanceValue.isConstant()) {
     if (!distanceValue.execute(ctx)) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "Failed to evaluate an argument denoting a distance near '"s +
-                  GEO_DISTANCE_FUNC + "' function"};
+              absl::StrCat(
+                  "Failed to evaluate an argument denoting a distance near '",
+                  GEO_DISTANCE_FUNC, "' function")};
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != distanceValue.type() ||
         !distanceValue.getDouble(distance)) {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          "Failed to parse an argument denoting a distance as a number near '"s +
-              GEO_DISTANCE_FUNC + "' function"};
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("Failed to parse an argument denoting a distance as "
+                           "a number near '",
+                           GEO_DISTANCE_FUNC, "' function")};
     }
   }
 
@@ -1010,8 +1012,8 @@ Result fromBinaryEq(irs::boolean_filter* filter, FilterContext const& filterCtx,
 
     auto rv = fromExpression(filter, filterCtx, node);
     return rv.withError([&](arangodb::result::Error& err) {
-      err.resetErrorMessage(arangodb::basics::StringUtils::concatT(
-          "in from binary equation", rv.errorMessage()));
+      err.resetErrorMessage(
+          absl::StrCat("in from binary equation", rv.errorMessage()));
     });
   }
 
@@ -1031,11 +1033,11 @@ Result fromRange(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_RANGE == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
-    return rv.reset(TRI_ERROR_BAD_PARAMETER,
-                    arangodb::basics::StringUtils::concatT(
-                        "wrong number of arguments in range expression: ",
-                        rv.errorMessage()));
+    auto rv = error::malformedNode(node);
+    return rv.reset(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("wrong number of arguments in range expression: ",
+                     rv.errorMessage()));
   }
 
   // ranges are always true
@@ -1058,14 +1060,14 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
   if (quantifierType == aql::Quantifier::Type::kAtLeast) {
     constexpr std::string_view kFuncName = "AT LEAST";
     if (quantifierNode->numMembers() != 1) {
-      return {Result(TRI_ERROR_INTERNAL, "Malformed AT LEAST node"),
+      return {Result{TRI_ERROR_INTERNAL, "Malformed AT LEAST node"},
               aql::AstNodeType::NODE_TYPE_ROOT};
     }
     auto const& ctx = filterCtx.query;
     auto number = quantifierNode->getMemberUnchecked(0);
     if (!ctx.isSearchQuery && !number->isConstant()) {
-      return {Result(TRI_ERROR_NOT_IMPLEMENTED,
-                     "Non const AT LEAST is not supported for FILTER"),
+      return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                     "Non const AT LEAST is not supported for FILTER"},
               aql::AstNodeType::NODE_TYPE_ROOT};
     }
     ScopedAqlValue atLeastCountValue;
@@ -1086,7 +1088,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
       if (filter) {
         append<irs::empty>(*filter, filterCtx);
       }
-      return {Result(), aql::NODE_TYPE_ROOT};
+      return {Result{}, aql::NODE_TYPE_ROOT};
     } else if (static_cast<size_t>(atLeastCount) == arraySize) {
       quantifierType = aql::Quantifier::Type::kAll;
     } else if (arrayComparison != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN &&
@@ -1122,10 +1124,9 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         break;
       default:
         TRI_ASSERT(false);  // new qualifier added ?
-        return std::make_pair(
-            Result(TRI_ERROR_NOT_IMPLEMENTED,
-                   "Unknown qualifier in Array comparison operator"),
-            aql::AstNodeType::NODE_TYPE_ROOT);
+        return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                       "Unknown qualifier in Array comparison operator"},
+                aql::AstNodeType::NODE_TYPE_ROOT};
     }
   } else {
     // NONE is inverted ALL so do conversion
@@ -1154,10 +1155,9 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           break;
         default:
           TRI_ASSERT(false);  // new array comparison operator?
-          return std::make_pair(
-              Result(TRI_ERROR_NOT_IMPLEMENTED,
-                     "Unknown Array NONE comparison operator"),
-              aql::AstNodeType::NODE_TYPE_ROOT);
+          return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                         "Unknown Array NONE comparison operator"},
+                  aql::AstNodeType::NODE_TYPE_ROOT};
       }
     }
     switch (quantifierType) {
@@ -1206,10 +1206,9 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             break;
           default:
             TRI_ASSERT(false);  // new array comparison operator?
-            return std::make_pair(
-                Result(TRI_ERROR_NOT_IMPLEMENTED,
-                       "Unknown Array ALL/NONE comparison operator"),
-                aql::AstNodeType::NODE_TYPE_ROOT);
+            return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                           "Unknown Array ALL/NONE comparison operator"},
+                    aql::AstNodeType::NODE_TYPE_ROOT};
         }
         break;
       case aql::Quantifier::Type::kAny: {
@@ -1259,10 +1258,9 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             break;
           default:
             TRI_ASSERT(false);  // new array comparison operator?
-            return std::make_pair(
-                Result(TRI_ERROR_NOT_IMPLEMENTED,
-                       "Unknown Array ANY/AT LEAST comparison operator"),
-                aql::AstNodeType::NODE_TYPE_ROOT);
+            return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                           "Unknown Array ANY/AT LEAST comparison operator"},
+                    aql::AstNodeType::NODE_TYPE_ROOT};
         }
         break;
       }
@@ -1278,18 +1276,16 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             break;
           default:
             TRI_ASSERT(false);  // new array comparison operator?
-            return std::make_pair(
-                Result(TRI_ERROR_NOT_IMPLEMENTED,
-                       "Unknown Array AT LEAST comparison operator"),
-                aql::AstNodeType::NODE_TYPE_ROOT);
+            return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                           "Unknown Array AT LEAST comparison operator"},
+                    aql::AstNodeType::NODE_TYPE_ROOT};
         }
         break;
       default:
         TRI_ASSERT(false);  // new qualifier added ?
-        return std::make_pair(
-            Result(TRI_ERROR_NOT_IMPLEMENTED,
-                   "Unknown qualifier in Array comparison operator"),
-            aql::AstNodeType::NODE_TYPE_ROOT);
+        return {Result{TRI_ERROR_NOT_IMPLEMENTED,
+                       "Unknown qualifier in Array comparison operator"},
+                aql::AstNodeType::NODE_TYPE_ROOT};
     }
   }
   return std::make_pair(TRI_ERROR_NO_ERROR, expansionNodeType);
@@ -1386,11 +1382,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type ||
              aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
-    auto rv = error::malformedNode(node.type);
-    return rv.reset(
-        rv.errorNumber(),
-        arangodb::basics::StringUtils::concatT(
-            "error in Array comparison operator: ", rv.errorMessage()));
+    auto rv = error::malformedNode(node);
+    return rv.reset(rv.errorNumber(),
+                    absl::StrCat("error in Array comparison operator: ",
+                                 rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(0);
@@ -1485,17 +1480,17 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         // not supported by IResearch, but could be handled by ArangoDB
         auto rv = fromExpression(filter, subFilterCtx, std::move(exprNode));
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(),
-                          arangodb::basics::StringUtils::concatT(
-                              "while getting array: ", rv.errorMessage()));
+          return rv.reset(
+              rv.errorNumber(),
+              absl::StrCat("while getting array: ", rv.errorMessage()));
         }
       } else {
         auto rv =
             SubFilterFactory::byNodeSubFilter(filter, normalized, subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(rv.errorNumber(),
-                          arangodb::basics::StringUtils::concatT(
-                              "while getting array: ", rv.errorMessage()));
+          return rv.reset(
+              rv.errorNumber(),
+              absl::StrCat("while getting array: ", rv.errorMessage()));
         }
       }
     }
@@ -1554,10 +1549,9 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
             filter, fieldName, value.at(i), arrayExpansionNodeType,
             subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(
-              rv.errorNumber(),
-              arangodb::basics::StringUtils::concatT(
-                  "failed to create filter because: ", rv.errorMessage()));
+          return rv.reset(rv.errorNumber(),
+                          absl::StrCat("failed to create filter because: ",
+                                       rv.errorMessage()));
         }
       }
       return {};
@@ -1684,9 +1678,8 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
       // not supported by IResearch, but could be handled by ArangoDB
       auto rv = fromExpression(filter, subFilterCtx, std::move(exprNode));
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(),
-                        arangodb::basics::StringUtils::concatT(
-                            "while getting array: ", rv.errorMessage()));
+        return rv.reset(rv.errorNumber(), absl::StrCat("while getting array: ",
+                                                       rv.errorMessage()));
       }
     } else {
       auto* termFilter =
@@ -1694,9 +1687,8 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
 
       auto rv = byTerm(termFilter, normalized, subFilterCtx);
       if (rv.fail()) {
-        return rv.reset(rv.errorNumber(),
-                        arangodb::basics::StringUtils::concatT(
-                            "while getting array: ", rv.errorMessage()));
+        return rv.reset(rv.errorNumber(), absl::StrCat("while getting array: ",
+                                                       rv.errorMessage()));
       }
     }
   }
@@ -1710,10 +1702,9 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
              aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
-                    arangodb::basics::StringUtils::concatT("error in from In",
-                                                           rv.errorMessage()));
+                    absl::StrCat("error in from In", rv.errorMessage()));
   }
 
   auto const* valueNode = node.getMemberUnchecked(1);
@@ -1811,10 +1802,9 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
         auto rv = byTerm(&append<irs::by_term>(*filter, filterCtx),
                          *attributeNode, value.at(i), subFilterCtx);
         if (rv.fail()) {
-          return rv.reset(
-              rv.errorNumber(),
-              arangodb::basics::StringUtils::concatT(
-                  "failed to create filter because: ", rv.errorMessage()));
+          return rv.reset(rv.errorNumber(),
+                          absl::StrCat("failed to create filter because: ",
+                                       rv.errorMessage()));
         }
       }
 
@@ -1848,10 +1838,9 @@ Result fromNegation(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_OPERATOR_UNARY_NOT == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
+    auto rv = error::malformedNode(node);
     return rv.reset(rv.errorNumber(),
-                    arangodb::basics::StringUtils::concatT(
-                        "Bad node in negation", rv.errorMessage()));
+                    absl::StrCat("Bad node in negation", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);
@@ -1893,7 +1882,7 @@ bool rangeFromBinaryAnd(irs::boolean_filter* filter,
              aql::NODE_TYPE_OPERATOR_NARY_AND == node.type);
 
   if (node.numMembers() != 2) {
-    logMalformedNode(node.type);
+    logMalformedNode(node);
     return false;  // wrong number of members
   }
 
@@ -2103,8 +2092,7 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
 
   if (rv.fail()) {
     return {rv.errorNumber(),
-            arangodb::basics::StringUtils::concatT(
-                "error in sub-filter context: ", rv.errorMessage())};
+            absl::StrCat("error in sub-filter context: ", rv.errorMessage())};
   }
 
   return {};
@@ -2221,26 +2209,26 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
 
     if (filter || argValue.isConstant()) {  // arg is constant
       std::string strArg(arg);
-      basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
+      std::transform(strArg.begin(), strArg.end(), strArg.begin(), ::tolower);
 
       auto const typeHandler = kTypeHandlers.find(strArg);
 
       if (kTypeHandlers.end() == typeHandler) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "'"s.append("' AQL function: 2nd argument must be equal to one "
-                            "of the following: "
-                            "'string', 'type', 'analyzer', 'numeric', 'bool', "
-                            "'boolean', 'null', but got '")
-                    .append(arg.data())
-                    .append("'")};
+        return {
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("'", funcName,
+                         "' AQL function: 2nd argument must be equal to one of "
+                         "the following: 'string', 'type', 'analyzer', "
+                         "'numeric', 'bool', 'boolean', 'null', but got '",
+                         arg, "'")};
       }
 
       if (argc > 2) {
         if (kTypeAnalyzer.data() != typeHandler->first.data()) {
           return {TRI_ERROR_BAD_PARAMETER,
-                  "'"s.append(funcName).append(
-                      "' AQL function: 3rd argument is intended to be used "
-                      "with 'analyzer' type only")};
+                  absl::StrCat("'", funcName,
+                               "' AQL function: 3rd argument is intended to be "
+                               "used with 'analyzer' type only")};
         }
 
         rv = extractAnalyzerFromArg(analyzer, funcName, filter, args, 2, ctx);
@@ -2327,13 +2315,11 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
     auto subFilterExpression = args.getMemberUnchecked(i);
 
     if (!subFilterExpression) {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append(
-                  "' AQL function: Failed to evaluate argument at position '")
-              .append(std::to_string(i))
-              .append("'")};
+      return {TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat(
+                  "'", funcName,
+                  "' AQL function: Failed to evaluate argument at position '",
+                  i, "'")};
     }
 
     irs::boolean_filter* subFilter =
@@ -2342,12 +2328,10 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
     rv = makeFilter(subFilter, subFilterCtx, *subFilterExpression);
     if (rv.fail()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Failed to instantiate sub-filter "
-                          "for argument at position '")
-                  .append(std::to_string(i))
-                  .append("': ")
-                  .append(rv.errorMessage())};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Failed to instantiate sub-filter "
+                           "for argument at position '",
+                           i, "': ", rv.errorMessage())};
     }
   }
 
@@ -2462,7 +2446,7 @@ class ArgsTraits<VPackSlice> {
 
   static bool getValueString(ValueType v, std::string_view& str) {
     if (v.isString()) {
-      str = ::getStringRef(v);
+      str = v.stringView();
       return true;
     }
     return false;
@@ -2497,14 +2481,13 @@ class ArgsTraits<VPackSlice> {
 
     if (!args.isArray() || args.length() <= i) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: invalid argument index ")
-                  .append(std::to_string(i))};
+              absl::StrCat("'", funcName,
+                           "' AQL function: invalid argument index ", i)};
     }
     value = args.at(i);
     if constexpr (std::is_same<T, std::string_view>::value) {
       if (value.isString()) {
-        out = getStringRef(value);
+        out = value.stringView();
         return {};
       }
     } else if constexpr (std::is_same<T, int64_t>::value) {
@@ -2522,13 +2505,10 @@ class ArgsTraits<VPackSlice> {
         return {};
       }
     }
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: argument at position '")
-                .append(std::to_string(i + 1))
-                .append("' has invalid type '")
-                .append(value.typeName())
-                .append("'")};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("'", funcName, "' AQL function: argument at position '",
+                     i + 1, "' has invalid type '", value.typeName(), "'")};
   }
 };
 
@@ -2540,10 +2520,8 @@ using ConversionPhraseHandler = Result (*)(char const*, size_t, char const*,
 
 std::string getSubFuncErrorSuffix(char const* funcName,
                                   size_t const funcArgumentPosition) {
-  return " (in '"s.append(funcName)
-      .append("' AQL function at position '")
-      .append(std::to_string(funcArgumentPosition + 1))
-      .append("')");
+  return absl::StrCat(" (in '", funcName, "' AQL function at position '",
+                      funcArgumentPosition + 1, "')");
 }
 
 Result oneArgumentfromFuncPhrase(char const* funcName,
@@ -2564,7 +2542,7 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
                                SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(actualArg));
   }
-  term = getStringRef(actualArg);
+  term = actualArg.stringView();
   return {};
 }
 
@@ -2641,7 +2619,7 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                aql::AstNode const** field,
                                typename ElementTraits::ValueType& targetValue,
                                irs::by_edit_distance_options& opts,
-                               std::string const& errorSuffix = std::string()) {
+                               std::string const& errorSuffix = {}) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
         [&](arangodb::result::Error& err) {
@@ -2700,12 +2678,11 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
   }
 
   if (maxDistance < 0) {
-    return {
-        TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName)
-            .append(
-                "' AQL function: max distance must be a non-negative number")
-            .append(errorSuffix)};
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat(
+                "'", funcName,
+                "' AQL function: max distance must be a non-negative number",
+                errorSuffix)};
   }
 
   // optional (3 - First) argument defines transpositions
@@ -2723,21 +2700,18 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
 
   if (!withTranspositions && maxDistance > kMaxLevenshteinDistance) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: max Levenshtein distance must be a "
-                        "number in range [0, ")
-                .append(std::to_string(kMaxLevenshteinDistance))
-                .append("]")
-                .append(errorSuffix)};
+            absl::StrCat("'", funcName,
+                         "' AQL function: max Levenshtein distance must be a "
+                         "number in range [0, ",
+                         kMaxLevenshteinDistance, "]", errorSuffix)};
   } else if (withTranspositions &&
              maxDistance > kMaxDamerauLevenshteinDistance) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: max Damerau-Levenshtein distance must "
-                        "be a number in range [0, ")
-                .append(std::to_string(kMaxDamerauLevenshteinDistance))
-                .append("]")
-                .append(errorSuffix)};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("'", funcName,
+                     "' AQL function: max Damerau-Levenshtein distance must "
+                     "be a number in range [0, ",
+                     kMaxDamerauLevenshteinDistance, "]", errorSuffix)};
   }
 
   // optional (4 - First) argument defines terms limit
@@ -2785,12 +2759,9 @@ Result fromFuncPhraseLevenshteinMatch(
     irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: '")
-                .append(subFuncName)
-                .append("' arguments must be in an array at position '")
-                .append(std::to_string(funcArgumentPosition + 1))
-                .append("'")};
+            absl::StrCat("'", funcName, "' AQL function: '", subFuncName,
+                         "' arguments must be in an array at position '",
+                         funcArgumentPosition + 1, "'")};
   }
 
   VPackSlice targetValue;
@@ -2851,12 +2822,9 @@ Result fromFuncPhraseTerms(char const* funcName, size_t funcArgumentPosition,
                            irs::analysis::analyzer* analyzer = nullptr) {
   if (!array.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: '")
-                .append(subFuncName)
-                .append("' arguments must be in an array at position '")
-                .append(std::to_string(funcArgumentPosition + 1))
-                .append("'")};
+            absl::StrCat("'", funcName, "' AQL function: '", subFuncName,
+                         "' arguments must be in an array at position '",
+                         funcArgumentPosition + 1, "'")};
   }
 
   if (!ElementTraits::isDeterministic(array)) {
@@ -2922,7 +2890,7 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
                            bool& minInclude,
                            typename ElementTraits::ValueType& max,
                            bool& maxInclude, bool& ret,
-                           std::string const& errorSuffix = std::string()) {
+                           std::string const& errorSuffix = {}) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
         [&](arangodb::result::Error& err) {
@@ -2997,10 +2965,10 @@ Result getInRangeArguments(char const* funcName, bool isFilter,
   }
 
   if (ElementTraits::scopedType(min) != ElementTraits::scopedType(max)) {
-    return {
-        TRI_ERROR_BAD_PARAMETER,
-        "Failed to build range query, lower boundary mismatches upper boundary. "s
-            .append(errorSuffix)};
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("Failed to build range query, lower boundary "
+                         "mismatches upper boundary. ",
+                         errorSuffix)};
   }
   return {};
 }
@@ -3014,12 +2982,9 @@ Result fromFuncPhraseInRange(char const* funcName,
                              irs::analysis::analyzer* /*analyzer*/ = nullptr) {
   if (!array.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: '")
-                .append(subFuncName)
-                .append("' arguments must be in an array at position '")
-                .append(std::to_string(funcArgumentPosition + 1))
-                .append("'")};
+            absl::StrCat("'", funcName, "' AQL function: '", subFuncName,
+                         "' arguments must be in an array at position '",
+                         funcArgumentPosition + 1, "'")};
   }
 
   std::string const errorSuffix =
@@ -3043,7 +3008,7 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  std::string_view const minStrValue = getStringRef(min);
+  auto const minStrValue = min.stringView();
 
   if (!max.isString()) {
     return error::typeMismatch(subFuncName, 2, SCOPED_VALUE_TYPE_STRING,
@@ -3052,7 +3017,7 @@ Result fromFuncPhraseInRange(char const* funcName,
           err.appendErrorMessage(errorSuffix);
         });
   }
-  std::string_view const maxStrValue = getStringRef(max);
+  auto const maxStrValue = max.stringView();
 
   if (filter) {
     auto& opts = filter->mutable_options()->push_back<irs::by_range_options>(
@@ -3090,32 +3055,27 @@ Result processPhraseArgObjectType(char const* funcName,
     auto value = itr.value();
     if (!key.isString()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Unexpected object key type '"
-                          "' at position '")
-                  .append(std::to_string(funcArgumentPosition + 1))
-                  .append("'")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unexpected object key type '",
+                           key.typeName(), "' at position '",
+                           funcArgumentPosition + 1, "'")};
     }
-    auto name = key.copyString();
-    basics::StringUtils::toupperInPlace(name);
+    std::string name{key.stringView()};
+    std::transform(name.begin(), name.end(), name.begin(), ::toupper);
     auto const entry = kFCallSystemConversionPhraseHandlers.find(name);
     if (kFCallSystemConversionPhraseHandlers.cend() == entry) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Unknown '")
-                  .append(key.copyString())
-                  .append("' at position '")
-                  .append(std::to_string(funcArgumentPosition + 1))
-                  .append("'")};
+              absl::StrCat("'", funcName, "' AQL function: Unknown '",
+                           key.stringView(), "' at position '",
+                           funcArgumentPosition + 1, "'")};
     }
     return entry->second(funcName, funcArgumentPosition, entry->first.data(),
                          filter, filterCtx, value, firstOffset, analyzer);
   } else {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: empty object at position '")
-                .append(std::to_string(funcArgumentPosition + 1))
-                .append("'")};
+            absl::StrCat("'", funcName,
+                         "' AQL function: empty object at position '",
+                         funcArgumentPosition + 1, "'")};
   }
 }
 
@@ -3209,10 +3169,9 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
 
       return {
           TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Unable to parse argument at position ")
-              .append(std::to_string(idx))
-              .append(expectedValue)};
+          absl::StrCat("'", funcName,
+                       "' AQL function: Unable to parse argument at position ",
+                       idx, expectedValue)};
     }
 
     if (phrase) {
@@ -3227,10 +3186,9 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
                            // no term to apply offset to
     return {
         TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName)
-            .append("' AQL function : Unable to parse argument at position ")
-            .append(std::to_string(valueArgsEnd - 1))
-            .append("as a value")};
+        absl::StrCat("'", funcName,
+                     "' AQL function : Unable to parse argument at position ",
+                     valueArgsEnd - 1, "as a value")};
   }
   return {};
 }
@@ -3321,9 +3279,9 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
     analyzer = analyzerPool->get();
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL,
-              "'"s.append("' AQL function: Unable to instantiate analyzer '")
-                  .append(analyzerPool->name())
-                  .append("'")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unable to instantiate analyzer '",
+                           analyzerPool->name(), "'")};
     }
 
     kludge::mangleField(name, ctx.isOldMangling, analyzerPool);
@@ -3423,26 +3381,21 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
       } else {
         return {
             TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: argument at position '")
-                .append(std::to_string(3))
-                .append("' has invalid type '")
-                .append(ScopedAqlValue::typeString(tmpValue.type()).data())
-                .append("' ('")
-                .append(
-                    ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_DOUBLE).data())
-                .append("' or '")
-                .append(
-                    ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_STRING).data())
-                .append("' expected)")};
+            absl::StrCat(
+                "'", funcName,
+                "' AQL function: argument at position '3' has invalid type '",
+                ScopedAqlValue::typeString(tmpValue.type()), "' ('",
+                ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_DOUBLE), "' or '",
+                ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_STRING),
+                "' expected)")};
       }
     }
   }
 
   if (threshold <= 0 || threshold > 1) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName).append(
-                "' AQL function: threshold must be between 0 and 1")};
+            absl::StrCat("'", funcName,
+                         "' AQL function: threshold must be between 0 and 1")};
   }
 
   // 4th optional argument defines an analyzer
@@ -3482,10 +3435,9 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     auto analyzer = analyzerPool->get();
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL,
-              "'"s.append(funcName)
-                  .append("' AQL function: Unable to instantiate analyzer '")
-                  .append(analyzerPool->name())
-                  .append("'")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unable to instantiate analyzer '",
+                           analyzerPool->name(), "'")};
     }
 
     auto& ngramFilter = append<irs::by_ngram_similarity>(*filter, filterCtx);
@@ -3700,8 +3652,8 @@ Result fromFuncInRange(char const* funcName, irs::boolean_filter* filter,
 
   res = ::byRange(filter, *field, min, minInclude, max, maxInclude, filterCtx);
   if (res.fail()) {
-    return {res.errorNumber(), arangodb::basics::StringUtils::concatT(
-                                   "error in byRange: ", res.errorMessage())};
+    return {res.errorNumber(),
+            absl::StrCat("error in byRange: ", res.errorMessage())};
   }
   return {};
 }
@@ -3832,9 +3784,9 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   if (!checkAttributeAccess(fieldNode, *ctx.ref, !ctx.isSearchQuery)) {
     if (!checkAttributeAccess(shapeNode, *ctx.ref, !ctx.isSearchQuery)) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName).append(
-                  "' AQL function: Unable to find argument denoting an "
-                  "attribute identifier")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unable to find argument denoting "
+                           "an attribute identifier")};
     }
 
     std::swap(fieldNode, shapeNode);
@@ -3859,40 +3811,19 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
 
     Result res;
-    if (shapeValue.isObject()) {
-      res = geo::geojson::parseRegion(shapeValue.slice(), shape, false);
-    } else if (shapeValue.isArray()) {
-      auto const slice = shapeValue.slice();
-
-      if (slice.isArray() && slice.length() >= 2) {
-        res = shape.parseCoordinates(slice, /*geoJson*/ true);
-      }
+    if (auto const slice = shapeValue.slice(); slice.isArray()) {
+      res = geo::json::parseCoordinates<true>(slice, shape, /*geoJson=*/true);
     } else {
-      return {
-          TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(shapeNodeIdx))
-              .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(shapeValue.type()).data())
-              .append("' ('")
-              .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_OBJECT).data())
-              .append("' or '")
-              .append(
-                  ScopedAqlValue::typeString(SCOPED_VALUE_TYPE_ARRAY).data())
-              .append("' expected)")};
+      res = geo::json::parseRegion(slice, shape, /*legacy=*/false);
     }
 
     if (res.fail()) {
       return {
           TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: failed to parse argument at position '")
-              .append(std::to_string(shapeNodeIdx))
-              .append("' due to the following error '")
-              .append(res.errorMessage())
-              .append("'")};
+          absl::StrCat("'", funcName,
+                       "' AQL function: failed to parse argument at position '",
+                       shapeNodeIdx, "' due to the following error '",
+                       res.errorMessage(), "'")};
     }
   }
 
@@ -3933,7 +3864,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
   TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   auto const* args = getNode(node, 0, aql::NODE_TYPE_ARRAY);
@@ -3957,9 +3888,8 @@ Result fromFCallUser(irs::boolean_filter* filter,
 
   if (!args->isDeterministic()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Unable to handle non-deterministic function '"s
-                .append(name.data(), name.size())
-                .append("' arguments")};
+            absl::StrCat("Unable to handle non-deterministic function '", name,
+                         "' arguments")};
   }
 
   return entry->second(entry->first.data(), filter, filterCtx, *args);
@@ -3994,7 +3924,7 @@ Result fromFCall(irs::boolean_filter* filter, FilterContext const& filterCtx,
   auto const* fn = static_cast<aql::Function*>(node.getData());
 
   if (!fn || node.numMembers() != 1) {
-    return error::malformedNode(node.type);
+    return error::malformedNode(node);
   }
 
   if (!isFilter(*fn)) {
@@ -4012,8 +3942,8 @@ Result fromFCall(irs::boolean_filter* filter, FilterContext const& filterCtx,
 
   if (!args) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Unable to parse arguments of system function '"s.append(fn->name)
-                .append("' as an array'")};
+            absl::StrCat("Unable to parse arguments of system function '",
+                         fn->name, "' as an array'")};
   }
 
   return entry->second(entry->first.data(), filter, filterCtx, *args);
@@ -4024,10 +3954,10 @@ Result fromFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   TRI_ASSERT(aql::NODE_TYPE_FILTER == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = error::malformedNode(node.type);
-    return rv.reset(rv.errorNumber(),
-                    arangodb::basics::StringUtils::concatT(
-                        "wrong number of parameters: ", rv.errorMessage()));
+    auto rv = error::malformedNode(node);
+    return rv.reset(
+        rv.errorNumber(),
+        absl::StrCat("wrong number of parameters: ", rv.errorMessage()));
   }
 
   auto const* member = node.getMemberUnchecked(0);

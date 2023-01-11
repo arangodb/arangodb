@@ -129,11 +129,31 @@
       }
     },
     {
+      "name": "community-developer-tsan",
+      "inherits": "community-developer",
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
       "name": "enterprise-developer-tsan",
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
+      "name": "community-developer-asan-ubsan",
+      "inherits": "community-developer",
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
       }
     },
     {
@@ -141,7 +161,9 @@
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
       }
     }
   ],
@@ -167,23 +189,15 @@
       "configurePreset": "community-developer-tsan"
     },
     {
-      "name": "community-developer-asan-uban",
-      "configurePreset": "community-developer-asan-ubsan"
-    },
-    {
-      "name": "enterprise",
-      "configurePreset": "enterprise"
-    },
-    {
-      "name": "enterprise-developer",
-      "configurePreset": "enterprise-developer"
-    },
-    {
       "name": "enterprise-developer-tsan",
       "configurePreset": "enterprise-developer-tsan"
     },
     {
-      "name": "enterprise-developer-asan",
+      "name": "community-developer-asan-ubsan",
+      "configurePreset": "community-developer-asan-ubsan"
+    },
+    {
+      "name": "enterprise-developer-asan-ubsan",
       "configurePreset": "enterprise-developer-asan-ubsan"
     }
   ],

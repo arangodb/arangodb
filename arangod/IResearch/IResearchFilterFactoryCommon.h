@@ -135,137 +135,109 @@ struct IsExactValue<ExactValue<Value>> : std::true_type {};
 template<typename RangeType>
 Result invalidArgsCount(char const* funcName) {
   if constexpr (IsRange<RangeType>::value) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: Invalid number of arguments passed "
-                        "(expected >= ")
-                .append(std::to_string(RangeType::MIN))
-                .append(" and <= ")
-                .append(std::to_string(RangeType::MAX))
-                .append(")")};
+    return {
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat(
+            "'", funcName,
+            "' AQL function: Invalid number of arguments passed (expected >= ",
+            RangeType::MIN, " and <= ", RangeType::MAX, ")")};
   } else if constexpr (IsOpenRange<RangeType>::value) {
     if constexpr (RangeType::MAX_BOUND) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "'"s.append(funcName)
-                  .append("' AQL function: Invalid number of arguments passed "
-                          "(expected <= ")
-                  .append(std::to_string(RangeType::VALUE))
-                  .append(")")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Invalid number of arguments passed "
+                           "(expected <= ",
+                           RangeType::VALUE, ")")};
     }
 
-    return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append(funcName)
-                .append("' AQL function: Invalid number of arguments passed "
-                        "(expected >= ")
-                .append(std::to_string(RangeType::VALUE))
-                .append(")")};
-  } else if constexpr (IsExactValue<RangeType>::value) {
     return {
         TRI_ERROR_BAD_PARAMETER,
-        "'"s.append(funcName)
-            .append(
-                "' AQL function: Invalid number of arguments passed (expected ")
-            .append(std::to_string(RangeType::VALUE))
-            .append(")")};
+        absl::StrCat(
+            "'", funcName,
+            "' AQL function: Invalid number of arguments passed (expected >= ",
+            RangeType::VALUE, ")")};
+  } else if constexpr (IsExactValue<RangeType>::value) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat(
+                "'", funcName,
+                "' AQL function: Invalid number of arguments passed (expected ",
+                RangeType::VALUE, ")")};
   }
 
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName).append(
-              "' AQL function: Invalid number of arguments passed")};
+          absl::StrCat("'", funcName,
+                       "' AQL function: Invalid number of arguments passed")};
 }
 
 inline Result negativeNumber(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' must be a positive number")};
+          absl::StrCat("'", funcName, "' AQL function: argument at position '",
+                       i, "' must be a positive number")};
 }
 
 inline Result nondeterministicArgs(char const* funcName) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "Unable to handle non-deterministic arguments for '"s.append(funcName)
-              .append("' function")};
+          absl::StrCat("Unable to handle non-deterministic arguments for '",
+                       funcName, "' function")};
 }
 
 inline Result nondeterministicArg(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' is intended to be deterministic")};
+          absl::StrCat("'", funcName, "' AQL function: argument at position '",
+                       i, "' is intended to be deterministic")};
 }
 
 inline Result invalidAttribute(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Unable to parse argument at position '")
-              .append(std::to_string(i))
-              .append("' as an attribute identifier")};
+          absl::StrCat("'", funcName,
+                       "' AQL function: Unable to parse argument at position '",
+                       i, "' as an attribute identifier")};
 }
 
 inline Result invalidArgument(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' is invalid")};
+          absl::StrCat("'", funcName, "' AQL function: argument at position '",
+                       i, "' is invalid")};
 }
 
 inline Result failedToEvaluate(const char* funcName, size_t i) {
   return {
       TRI_ERROR_BAD_PARAMETER,
-      "'"s.append(funcName)
-          .append("' AQL function: Failed to evaluate argument at position '")
-          .append(std::to_string(i))
-          .append(("'"))};
+      absl::StrCat("'", funcName,
+                   "' AQL function: Failed to evaluate argument at position '",
+                   i, "'")};
 }
 
 inline Result typeMismatch(const char* funcName, size_t i,
                            ScopedValueType expectedType,
                            ScopedValueType actualType) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: argument at position '")
-              .append(std::to_string(i))
-              .append("' has invalid type '")
-              .append(ScopedAqlValue::typeString(actualType).data())
-              .append("' ('")
-              .append(ScopedAqlValue::typeString(expectedType).data())
-              .append("' expected)")};
+          absl::StrCat(
+              "'", funcName, "' AQL function: argument at position '", i,
+              "' has invalid type '", ScopedAqlValue::typeString(actualType),
+              "' ('", ScopedAqlValue::typeString(expectedType), "' expected)")};
 }
 
 inline Result failedToParse(char const* funcName, size_t i,
                             ScopedValueType expectedType) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Unable to parse argument at position '")
-              .append(std::to_string(i))
-              .append("' as ")
-              .append(ScopedAqlValue::typeString(expectedType).data())};
+          absl::StrCat("'", funcName,
+                       "' AQL function: Unable to parse argument at position '",
+                       i, "' as ", ScopedAqlValue::typeString(expectedType))};
 }
 
 inline Result failedToGenerateName(char const* funcName, size_t i) {
   return {TRI_ERROR_BAD_PARAMETER,
-          "'"s.append(funcName)
-              .append("' AQL function: Failed to generate field name from the "
-                      "argument at position '")
-              .append(std::to_string(i))
-              .append("'")};
+          absl::StrCat("'", funcName,
+                       "' AQL function: Failed to generate field name from the "
+                       "argument at position '",
+                       i, "'")};
 }
 
-inline Result malformedNode(aql::AstNodeType type) {
-  auto const* typeName = getNodeTypeName(type);
-
-  std::string message("Can't process malformed AstNode of type '");
-  if (typeName) {
-    message += *typeName;
-  } else {
-    message += std::to_string(type);
-  }
-  message += "'";
-
-  return {TRI_ERROR_BAD_PARAMETER, message};
+inline Result malformedNode(aql::AstNode const& node) {
+  return {TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("Can't process malformed AstNode of type '",
+                       node.getTypeString(), "'")};
 }
 
 }  // namespace error
@@ -337,10 +309,9 @@ inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
   auto& server = ctx.trx->vocbase().server();
   if (!server.hasFeature<IResearchAnalyzerFeature>()) {
     return {TRI_ERROR_INTERNAL,
-            "'"s.append(IResearchAnalyzerFeature::name())
-                .append("' feature is not registered, unable to evaluate '")
-                .append(funcName)
-                .append("' function")};
+            absl::StrCat("'", IResearchAnalyzerFeature::name(),
+                         "' feature is not registered, unable to evaluate '",
+                         funcName, "' function")};
   }
 
   auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
@@ -350,9 +321,9 @@ inline Result getAnalyzerByName(FieldMeta::Analyzer& out,
                                  ctx.trx->state()->analyzersRevision());
   if (!analyzer) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "'"s.append("' AQL function: Unable to load requested analyzer '")
-                .append(analyzerId.data(), analyzerId.size())
-                .append("'")};
+            absl::StrCat("'", funcName,
+                         "' AQL function: Unable to load requested analyzer '",
+                         analyzerId, "'")};
   }
 
   shortName = IResearchAnalyzerFeature::normalize(

@@ -25,16 +25,15 @@
 
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
-#include "IResearchLink.h"
+#include "IResearch/IResearchLink.h"
 #include "Indexes/IndexFactory.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
+struct IndexTypeFactory;
 
-}  // namespace arangodb
-namespace arangodb::iresearch {
+namespace iresearch {
 
 class IResearchViewCoordinator;
 
@@ -42,14 +41,23 @@ class IResearchViewCoordinator;
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView on a coordinator in cluster
 ////////////////////////////////////////////////////////////////////////////////
-class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
-                                       public IResearchLink {
+class IResearchLinkCoordinator final : public Index, public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
+  IResearchLinkCoordinator(IndexId id, LogicalCollection& collection);
+
+  ~IResearchLinkCoordinator() final {
+    // should be in final dtor, otherwise its vtable already destroyed
+    unload();
+  }
+
+  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize from the specified definition used in make(...)
@@ -57,24 +65,26 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   ////////////////////////////////////////////////////////////////////////////////
   Result init(velocypack::Slice definition);
 
-  bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
+  bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
 
-  arangodb::Result drop() final { return IResearchLink::drop(); }
+  Result drop() final {
+    unload();
+    return {};
+  }
 
   bool hasSelectivityEstimate() const final {
-    return IResearchLink::hasSelectivityEstimate();
+    return IResearchDataStore::hasSelectivityEstimate();
   }
 
   bool isHidden() const final {
     return true;  // always hide links
   }
 
-  // IResearch does not provide a fixed default sort order
   bool isSorted() const final { return IResearchLink::isSorted(); }
 
-  void load() final { IResearchLink::load(); }
+  void load() final {}
 
-  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const final {
+  bool matchesDefinition(velocypack::Slice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
   }
 
@@ -88,24 +98,16 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
   void toVelocyPack(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::Index::Serialize>::type flags) const final;
+      velocypack::Builder& builder,
+      std::underlying_type<Index::Serialize>::type flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  IndexType type() const final { return IResearchLink::type(); }
+  char const* typeName() const final { return oldtypeName(); }
 
-  char const* typeName() const final { return IResearchLink::typeName(); }
-
-  void unload() final {
-    auto res = IResearchLink::unload();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
+  void unload() final /*noexcept*/ { _asyncSelf->reset(); }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearchLinkCoordinator-specific implementation of an
@@ -132,4 +134,5 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
   static std::shared_ptr<IndexFactory> createFactory(ArangodServer&);
 };
 
-}  // namespace arangodb::iresearch
+}  // namespace iresearch
+}  // namespace arangodb

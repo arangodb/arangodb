@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Cluster/ClusterTypes.h"
 
 namespace arangodb::network {
@@ -32,8 +33,7 @@ class ConnectionPool;
 
 namespace arangodb::replication2::replicated_log {
 
-struct NetworkAttachedFollower
-    : arangodb::replication2::replicated_log::AbstractFollower {
+struct NetworkAttachedFollower : AbstractFollower {
   explicit NetworkAttachedFollower(network::ConnectionPool* pool,
                                    ParticipantId id, DatabaseID database,
                                    LogId logId);
@@ -45,6 +45,21 @@ struct NetworkAttachedFollower
  private:
   network::ConnectionPool* pool;
   ParticipantId id;
+  DatabaseID database;
+  LogId logId;
+};
+
+struct NetworkLeaderCommunicator : ILeaderCommunicator {
+  explicit NetworkLeaderCommunicator(network::ConnectionPool* pool,
+                                     ParticipantId leader, DatabaseID database,
+                                     LogId logId);
+  auto getParticipantId() const noexcept -> ParticipantId const& override;
+  auto reportSnapshotAvailable(MessageId) noexcept
+      -> futures::Future<Result> override;
+
+ private:
+  network::ConnectionPool* pool;
+  ParticipantId leader;
   DatabaseID database;
   LogId logId;
 };

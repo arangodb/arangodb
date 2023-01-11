@@ -1,6 +1,63 @@
 devel
 -----
 
+* Use more compact and efficient representation for arrays and objects during
+  AQL AST serialization and deserialization. This can help to reduce the size
+  of messages exchanged between coordinator and database servers during query
+  setup, and also reduce the time needed for parsing these messages. This 
+  especially helps when there are large bind parameter values that are arrays
+  or objects.
+  The more efficient format is used also inside an AQL query's "explain" and 
+  "profile" methods, and thus any callers that process the return values of
+  explain and profile operations may now receive the new format. All callers
+  inside the ArangoDB code have been adjusted, but any external callers that
+  process the JSON response values of AQL query explain or profile operations
+  may need to be adjusted to handle the new format.
+
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
+* Added new stage "instantiating executors" to the query profiling output.
+  The time spent in "instantiating executors" is the time needed to create
+  the query executors from the final query execution time. In cluster mode,
+  this stage also includes the time needed for physically distributing the 
+  query snippets to the participating database servers.
+  Previously, the time spent for instantiating executors and the physical
+  distribution was contained in the "optimizing plan" stage, which was
+  misleading.
+
+* Removed constant values for query variables from query plan serialization 
+  in cases they were not needed. Previously, constant values of query variables
+  were always serialized for all occurrences of a variable in a query plan.
+  If the constant values were large, this contributed to higher serialization
+  and thus query setup times. Now the constant values are only serialized
+  for relevant parts of query execution plans.
+
+* BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from 
+  server start, and remove setting this variable from startup scripts. 
+  The reason is that the environment variable only controls the behavior of
+  programs linked against glibc, but our release builds are linked to libmusl.
+
+* Make the cache_oblivious option of jemalloc configurable from the
+  environment and set its default to `false`. This helps to save
+  4096 bytes of RAM for every allocation which is at least 16384 bytes
+  large. This is particularly beneficial for the RocksDB buffer cache.
+
+* Updated ArangoDB Starter to 0.15.6-preview-1.
+
+* Acquire a snapshot of the (list of) indexes when starting document insert, 
+  update/replace and remove operations, and use that snapshot throughout the 
+  operation. Previously, the list of indexes was acquired multiple times during
+  a write operation, and it was (at least in theory) possible that the list of
+  indexes changed between the individual acquistions.
+  The PR also contains an optimization to not fetch the full document from the 
+  storage engine for remove and replace operations in case the full document is
+  not needed to process the operation. This is the case when the collection 
+  does not contain any secondary indexes and `returnOld` is not used.
+
 * Added experimental startup option `--rocksdb.block-cache-jemalloc-allocator`.
   This option defaults to `false`. When set to `true`, a jemalloc-based memory 
   allocator will be used to allocate memory for the RocksDB block cache. 

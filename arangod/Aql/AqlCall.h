@@ -121,22 +121,6 @@ struct AqlCall {
                    /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
   }
 
-  // TODO Remove me, this will not be necessary later
-  static bool IsSkipSomeCall(AqlCall const& call) noexcept {
-    return call.getOffset() > 0;
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static bool IsGetSomeCall(AqlCall const& call) noexcept {
-    return call.getLimit() > 0 && call.getOffset() == 0;
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static bool IsFullCountCall(AqlCall const& call) noexcept {
-    return call.hasHardLimit() && call.getLimit() == 0 &&
-           call.getOffset() == 0 && call.needsFullCount();
-  }
-
   static bool IsFastForwardCall(AqlCall const& call) noexcept {
     return call.hasHardLimit() && call.getLimit() == 0 &&
            call.getOffset() == 0 && !call.needsFullCount();

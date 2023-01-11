@@ -667,11 +667,13 @@ TEST_F(IResearchLinkTest, test_drop) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link0.get()) == *logicalView)));
+    EXPECT_EQ(dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get())
+                  ->getViewId(),
+              logicalView->guid());
     EXPECT_TRUE((link0->drop().ok()));
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link0.get()) == *logicalView)));
+    EXPECT_EQ(dynamic_cast<arangodb::iresearch::IResearchLink*>(link0.get())
+                  ->getViewId(),
+              logicalView->guid());
 
     // collection not in view after
     {
@@ -776,11 +778,13 @@ TEST_F(IResearchLinkTest, test_unload) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link.get()) == *logicalView)));
+    EXPECT_EQ(dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get())
+                  ->getViewId(),
+              logicalView->guid());
     link->unload();
-    EXPECT_TRUE((true == (*dynamic_cast<arangodb::iresearch::IResearchLink*>(
-                              link.get()) == *logicalView)));
+    EXPECT_EQ(dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get())
+                  ->getViewId(),
+              logicalView->guid());
 
     // collection in view after unload
     {

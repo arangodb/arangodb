@@ -58,6 +58,7 @@ template<class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
+  ReadLocker& operator=(ReadLocker&& other) = delete;
 
  public:
   /// @brief acquires a read-lock
@@ -79,6 +80,15 @@ class ReadLocker {
         _isLocked = tryLock();
       }
     }
+  }
+
+  ReadLocker(ReadLocker&& other) noexcept
+      : _readWriteLock(other._readWriteLock),
+        _file(other._file),
+        _line(other._line),
+        _isLocked(other._isLocked) {
+    // make only ourselves responsible for unlocking
+    other.steal();
   }
 
   /// @brief releases the read-lock

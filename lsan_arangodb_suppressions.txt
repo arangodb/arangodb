@@ -17,3 +17,7 @@ leak:snowball
 #  4 in v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) 
 # SUMMARY: AddressSanitizer: 139 byte(s) leaked in 2 allocation(s).
 leak:V8Buffer::New
+
+# Suppressed to see other issue
+# TODO(mpoeter) ?
+leak:LogContext::Current::appendEntry

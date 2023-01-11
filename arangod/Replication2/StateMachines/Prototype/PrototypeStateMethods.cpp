@@ -34,6 +34,7 @@
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/Methods.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -44,7 +45,6 @@
 #include "PrototypeLeaderState.h"
 #include "PrototypeStateMachine.h"
 #include "PrototypeStateMethods.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Inspection/VPack.h"
 
 using namespace arangodb;
@@ -80,7 +80,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
@@ -116,7 +116,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       -> futures::Future<Result> override {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
@@ -179,7 +179,7 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
       -> std::shared_ptr<PrototypeLeaderState> {
     auto stateMachine =
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
+            _vocbase.getReplicatedStateById(id).get());
     if (stateMachine == nullptr) {
       using namespace fmt::literals;
       throw basics::Exception::fmt(
@@ -418,9 +418,8 @@ struct PrototypeStateMethodsCoordinator final
   }
 
   auto drop(LogId id) const -> futures::Future<Result> override {
-    auto methods =
-        replication2::ReplicatedStateMethods::createInstance(_vocbase);
-    return methods->deleteReplicatedState(id);
+    auto methods = replication2::ReplicatedLogMethods::createInstance(_vocbase);
+    return methods->deleteReplicatedLog(id);
   }
 
   auto waitForApplied(LogId id, LogIndex waitForIndex) const
@@ -435,61 +434,6 @@ struct PrototypeStateMethodsCoordinator final
         .thenValue([](network::Response&& resp) -> Result {
           return resp.combinedResult();
         });
-  }
-
-  void fillCreateOptions(CreateOptions& options) const {
-    if (!options.id.has_value()) {
-      options.id = LogId{_clusterInfo.uniqid()};
-    }
-
-    auto dbservers = _clusterInfo.getCurrentDBServers();
-    std::size_t expectedNumberOfServers =
-        std::min(dbservers.size(), std::size_t{3});
-    if (options.numberOfServers.has_value()) {
-      expectedNumberOfServers = *options.numberOfServers;
-    } else if (!options.servers.empty()) {
-      expectedNumberOfServers = options.servers.size();
-    }
-
-    if (!options.config.has_value()) {
-      options.config = arangodb::replication2::agency::LogTargetConfig{
-          2, expectedNumberOfServers, false};
-    }
-
-    if (expectedNumberOfServers > dbservers.size()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-    }
-
-    if (options.servers.size() < expectedNumberOfServers) {
-      auto newEnd = dbservers.end();
-      if (!options.servers.empty()) {
-        newEnd = std::remove_if(
-            dbservers.begin(), dbservers.end(),
-            [&](ParticipantId const& server) {
-              return std::find(options.servers.begin(), options.servers.end(),
-                               server) != options.servers.end();
-            });
-      }
-
-      std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
-      std::copy_n(dbservers.begin(),
-                  expectedNumberOfServers - options.servers.size(),
-                  std::back_inserter(options.servers));
-    }
-  }
-
-  static auto stateTargetFromCreateOptions(CreateOptions const& opts)
-      -> replication2::replicated_state::agency::Target {
-    auto target = replicated_state::agency::Target{};
-    target.id = opts.id.value();
-    target.properties.implementation.type = "prototype";
-    target.config = opts.config.value();
-    target.version = 1;
-    for (auto const& server : opts.servers) {
-      target.participants[server];
-    }
-    return target;
   }
 
   auto status(LogId id) const
@@ -512,42 +456,27 @@ struct PrototypeStateMethodsCoordinator final
 
   auto createState(CreateOptions options) const
       -> futures::Future<ResultT<CreateResult>> override {
-    fillCreateOptions(options);
-    TRI_ASSERT(options.id.has_value());
-    auto target = stateTargetFromCreateOptions(options);
-    auto methods =
-        replication2::ReplicatedStateMethods::createInstance(_vocbase);
+    using LogMethods = replication2::ReplicatedLogMethods;
+    auto methods = LogMethods::createInstance(_vocbase);
 
-    return methods->createReplicatedState(std::move(target))
+    auto forwardOptions = replication2::ReplicatedLogMethods::CreateOptions{};
+    forwardOptions.waitForReady = options.waitForReady;
+    forwardOptions.config = options.config;
+    forwardOptions.id = options.id;
+    forwardOptions.servers = options.servers;
+    forwardOptions.numberOfServers = options.numberOfServers;
+    forwardOptions.spec.type = "prototype";
+
+    return methods->createReplicatedLog(std::move(forwardOptions))
         .thenValue([options = std::move(options), methods,
-                    self = shared_from_this()](auto&& result) mutable
+                    self = shared_from_this()](
+                       ResultT<LogMethods::CreateResult>&& result) mutable
                    -> futures::Future<ResultT<CreateResult>> {
-          auto response = CreateResult{*options.id, std::move(options.servers)};
-          if (!result.ok()) {
-            return {result};
+          if (result.fail()) {
+            return result.result();
           }
-
-          if (options.waitForReady) {
-            // wait for the state to be ready
-            return methods->waitForStateReady(*options.id, 1)
-                .thenValue([self,
-                            resp = std::move(response)](auto&& result) mutable
-                           -> futures::Future<ResultT<CreateResult>> {
-                  if (result.fail()) {
-                    return {result.result()};
-                  }
-                  return self->_clusterInfo
-                      .fetchAndWaitForPlanVersion(std::chrono::seconds{240})
-                      .thenValue([resp = std::move(resp)](auto&& result) mutable
-                                 -> ResultT<CreateResult> {
-                        if (result.fail()) {
-                          return {result};
-                        }
-                        return std::move(resp);
-                      });
-                });
-          }
-          return response;
+          auto& res = result.get();
+          return CreateResult{.id = res.id, .servers = std::move(res.servers)};
         });
   }
 
