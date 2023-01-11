@@ -734,7 +734,7 @@ RestStatus RestCursorHandler::showLatestBatch() {
     generateResult(rest::ResponseCode::OK, VPackSlice(buffer->data()),
                    std::move(ctx));
   } else {
-    // builder can be in a broken state here. simply return the error
+    // no Buffer available here
     generateError(r);
   }
 
