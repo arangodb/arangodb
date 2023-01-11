@@ -1,13 +1,13 @@
 
 @startDocuBlock post_api_cursor_identifier
-@brief return the next results from an existing cursor
+@brief Return the next results from an existing cursor
 
 @RESTHEADER{POST /_api/cursor/{cursor-identifier}, Read next batch from cursor, modifyQueryCursorPost}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{cursor-identifier,string,required}
-The name of the cursor
+The ID of the cursor.
 
 @RESTDESCRIPTION
 If the cursor is still alive, returns an object with a batch of query results.
