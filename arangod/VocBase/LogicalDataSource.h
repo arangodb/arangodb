@@ -24,11 +24,12 @@
 #pragma once
 
 #include <atomic>
-#include <string_view>
+#include <cstdint>
+#include <string>
 
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-#include "voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -36,6 +37,7 @@ namespace arangodb {
 namespace velocypack {
 
 class Builder;
+class Slice;
 
 }  // namespace velocypack
 
@@ -57,16 +59,28 @@ class LogicalDataSource {
   virtual ~LogicalDataSource() = default;
 
   Category category() const noexcept { return _category; }
+
   [[nodiscard]] bool deleted() const noexcept {
     return _deleted.load(std::memory_order_relaxed);
   }
+
   void deleted(bool deleted) noexcept {
-    _deleted.store(deleted, std::memory_order_relaxed);
+    TRI_ASSERT(deleted);
+    // intentionally do not use memory_order_relaxed here, as
+    // the deleted(true) call will only happen once in the lifetime
+    // of a data source, and it is not necessary to optimize the
+    // performance of it.
+    _deleted.store(deleted);
   }
+
   virtual Result drop() = 0;
+
   std::string const& guid() const noexcept { return _guid; }
+
   DataSourceId id() const noexcept { return _id; }
+
   std::string const& name() const noexcept { return _name; }
+
   DataSourceId planId() const noexcept { return _planId; }
 
   enum class Serialization : uint8_t {

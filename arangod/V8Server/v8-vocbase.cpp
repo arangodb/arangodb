@@ -1406,13 +1406,11 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
             .FromMaybe(v8::Local<v8::Object>());
     auto* collection = UnwrapCollection(isolate, value);
 
-    // check if the collection is from the same database
+    // check if the collection is from the same database and
+    // hasn't been deleted
     if (!ServerState::instance()->isCoordinator() && collection &&
-        &(collection->vocbase()) == &vocbase) {
-      auto cid = collection->id();
-
-      // check if the collection is still alive
-      if (!collection->deleted() && cid.isSet()) {
+        &(collection->vocbase()) == &vocbase && !collection->deleted()) {
+      if (auto cid = collection->id(); cid.isSet()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           DataSourceId cachedCid{TRI_ObjectToUInt64(
