@@ -185,7 +185,7 @@ You may use the following shorthand notations on index creation instead of
 an array of objects. The default compression and cache settings are used in
 this case:
 
-- An array of string, like `["attr1", "attr2"]`, to place each attribute into
+- An array of strings, like `["attr1", "attr2"]`, to place each attribute into
   a separate column of the index (introduced in v3.10.3).
 
 - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
