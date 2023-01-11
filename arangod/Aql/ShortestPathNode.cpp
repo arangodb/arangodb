@@ -270,22 +270,14 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 template<typename ShortestPathEnumeratorType>
-std::pair<RegIdSet,
-          std::unordered_map<typename ShortestPathExecutorInfos<
-                                 ShortestPathEnumeratorType>::OutputName,
-                             RegisterId,
-                             typename ShortestPathExecutorInfos<
-                                 ShortestPathEnumeratorType>::OutputNameHash>>
+std::pair<RegIdSet, typename ShortestPathExecutorInfos<
+                        ShortestPathEnumeratorType>::RegisterMapping>
 ShortestPathNode::_buildOutputRegisters() const {
   auto outputRegisters = RegIdSet{};
   auto& varInfo = getRegisterPlan()->varInfo;
 
-  std::unordered_map<typename ShortestPathExecutorInfos<
-                         ShortestPathEnumeratorType>::OutputName,
-                     RegisterId,
-                     typename ShortestPathExecutorInfos<
-                         ShortestPathEnumeratorType>::OutputNameHash>
-      outputRegisterMapping;
+  typename ShortestPathExecutorInfos<
+      ShortestPathEnumeratorType>::RegisterMapping outputRegisterMapping;
   if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
@@ -327,12 +319,6 @@ RegIdSet ShortestPathNode::_buildVariableInformation() const {
 // 2. or SingleServerProvider<SingleServerProviderStep>
 // 3. or ClusterProvider<ClusterProviderStep>
 
-template<typename ShortestPathRefactored>
-using RegisterMapping = std::unordered_map<
-    typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputName,
-    RegisterId,
-    typename ShortestPathExecutorInfos<ShortestPathRefactored>::OutputNameHash>;
-
 template<typename ShortestPathRefactored, typename Provider,
          typename ProviderOptions>
 std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
@@ -340,7 +326,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
     PathValidatorOptions validatorOptions,
-    RegisterMapping<ShortestPathRefactored>&& outputRegisterMapping,
+    typename ShortestPathExecutorInfos<
+        ShortestPathRefactored>::RegisterMapping&& outputRegisterMapping,
     ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
     RegisterInfos registerInfos) const {
   auto shortestPathFinder = std::make_unique<ShortestPathRefactored>(
@@ -351,7 +338,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
       std::move(enumeratorOptions), std::move(validatorOptions),
       opts->query().resourceMonitor());
 
-  auto executorInfos = ShortestPathExecutorInfos(
+  auto executorInfos = ShortestPathExecutorInfos<ShortestPathRefactored>(
       engine.getQuery(), std::move(shortestPathFinder),
       std::move(outputRegisterMapping), std::move(sourceInput),
       std::move(targetInput));
@@ -558,34 +545,19 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             sourceInput, targetInput, registerInfos);
       }
     } else {
-      LOG_DEVEL << "TRACING TODO IMPLEMENT";
-      // Tracing // TODO CHECK TRACING in ClusterProvider Tracer(?enabled?)
-      /*
       auto [outputRegisters, outputRegisterMapping] =
           _buildOutputRegisters<ShortestPathClusterTracer>();
       auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                std::move(outputRegisters));
 
       return _makeExecutionBlockImpl<
-          TracedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
-          ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                      std::move(backwardProviderOptions),
-                                      enumeratorOptions, validatorOptions,
-                                      std::move(outputRegisterMapping),
-    engine, sourceInput, targetInput, registerInfos);
-    }*/
+          TracedShortestPathEnumerator<ClusterProvider>,
+          ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+          opts, std::move(forwardProviderOptions),
+          std::move(backwardProviderOptions), enumeratorOptions,
+          validatorOptions, std::move(outputRegisterMapping), engine,
+          sourceInput, targetInput, registerInfos);
     }
-
-    // END: New Shortest Path implementation using Graph Refactor
-
-    // TRI_ASSERT(finder != nullptr);
-    /*auto executorInfos = ShortestPathExecutorInfos<ShortestPath>(  // TODO
-    TRACING std::move(finder), std::move(outputRegisterMapping),
-        std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<
-        ExecutionBlockImpl<ShortestPathExecutor<ShortestPath>>>(  // TODO
-    TRACING &engine, this, std::move(registerInfos),
-    std::move(executorInfos));*/
   }
   TRI_ASSERT(false);
 }

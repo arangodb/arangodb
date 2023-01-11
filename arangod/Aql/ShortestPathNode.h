@@ -175,12 +175,8 @@ class ShortestPathNode : public virtual GraphNode {
   RegIdSet _buildVariableInformation() const;
 
   template<typename ShortestPathEnumeratorType>
-  std::pair<RegIdSet,
-            std::unordered_map<typename ShortestPathExecutorInfos<
-                                   ShortestPathEnumeratorType>::OutputName,
-                               RegisterId,
-                               typename ShortestPathExecutorInfos<
-                                   ShortestPathEnumeratorType>::OutputNameHash>>
+  std::pair<RegIdSet, typename ShortestPathExecutorInfos<
+                          ShortestPathEnumeratorType>::RegisterMapping>
   _buildOutputRegisters() const;
 
   template<typename ShortestPathRefactored, typename Provider,
@@ -190,12 +186,8 @@ class ShortestPathNode : public virtual GraphNode {
       ProviderOptions backwardProviderOptions,
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
       arangodb::graph::PathValidatorOptions validatorOptions,
-      std::unordered_map<typename ShortestPathExecutorInfos<
-                             ShortestPathRefactored>::OutputName,
-                         RegisterId,
-                         typename ShortestPathExecutorInfos<
-                             ShortestPathRefactored>::OutputNameHash>&&
-          outputRegister,
+      typename ShortestPathExecutorInfos<
+          ShortestPathRefactored>::RegisterMapping&& outputRegister,
       ExecutionEngine& engine, InputVertex sourceInput, InputVertex targetInput,
       RegisterInfos registerInfos) const;
 };

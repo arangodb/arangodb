@@ -54,9 +54,8 @@ static bool isValidId(VPackSlice id) {
 template<class FinderType>
 ShortestPathExecutorInfos<FinderType>::ShortestPathExecutorInfos(
     QueryContext& query, std::unique_ptr<FinderType>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash>&&
-        registerMapping,
-    GraphNode::InputVertex&& source, GraphNode::InputVertex&& target)
+    RegisterMapping&& registerMapping, GraphNode::InputVertex&& source,
+    GraphNode::InputVertex&& target)
     : _query(query),
       _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),

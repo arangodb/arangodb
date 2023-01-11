@@ -62,13 +62,14 @@ class ShortestPathExecutorInfos {
   struct OutputNameHash {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
+  using RegisterMapping =
+      std::unordered_map<OutputName, RegisterId, OutputNameHash>;
 
-  ShortestPathExecutorInfos(
-      QueryContext& query, std::unique_ptr<FinderType>&& finder,
-      std::unordered_map<OutputName, RegisterId, OutputNameHash>&&
-          registerMapping,
-      arangodb::aql::GraphNode::InputVertex&& source,
-      GraphNode::InputVertex&& target);
+  ShortestPathExecutorInfos(QueryContext& query,
+                            std::unique_ptr<FinderType>&& finder,
+                            RegisterMapping&& registerMapping,
+                            arangodb::aql::GraphNode::InputVertex&& source,
+                            GraphNode::InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
 
