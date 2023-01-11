@@ -746,9 +746,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
       << ", current commit index = " << _commitIndex
       << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
       << ", current lci = " << _lowestIndexToKeep;
-  if (follower->nextPrevLogIndex == lastAvailableIndex.index) {  // &&
-    //_commitIndex == follower->lastAckedCommitIndex &&
-    //_lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
+  if (follower->nextPrevLogIndex == lastAvailableIndex.index &&
+      _commitIndex == follower->lastAckedCommitIndex &&
+      _lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
   }

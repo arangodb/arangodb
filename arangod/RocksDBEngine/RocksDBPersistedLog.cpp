@@ -272,7 +272,7 @@ auto RocksDBAsyncLogWriteBatcher::queue(AsyncLogWriteContext& ctx,
         lane._pendingPersistRequests.emplace_back(ctx, std::move(action));
     bool const wantNewThread = lane._activePersistorThreads == 0 ||
                                (lane._pendingPersistRequests.size() > 100 &&
-                                lane._activePersistorThreads < 5);
+                                lane._activePersistorThreads < 2);
     if (wantNewThread) {
       lane._activePersistorThreads += 1;
     }
