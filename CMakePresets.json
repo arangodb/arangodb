@@ -99,22 +99,6 @@
       "displayName": "PR Build ArangoDB Community Edition (ARM)"
     },
     {
-      "name": "community-developer-tsan",
-      "inherits": "community-developer",
-      "displayName": "Build ArangoDB Community Edition (TSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
-      }
-    },
-    {
-      "name": "community-developer-asan-ubsan",
-      "inherits": "community-developer",
-      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
-      }
-    },
-    {
       "name": "enterprise-developer",
       "inherits": "enterprise",
       "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
