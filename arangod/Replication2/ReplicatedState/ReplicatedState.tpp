@@ -438,7 +438,7 @@ auto LeaderStateManager<S>::GuardedData::resign() && noexcept
 template<typename S>
 void FollowerStateManager<S>::updateCommitIndex(LogIndex commitIndex) {
   auto maybeFuture =
-      _guardedData.getLockedGuard()->updateCommitIndex(commitIndex);
+      _guardedData.getLockedGuard()->updateCommitIndex(commitIndex, _metrics);
   // note that we release the lock before calling "then"
 
   // we get a future iff applyEntries was called
@@ -462,6 +462,9 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
     auto guard = _guardedData.getLockedGuard();
     if (res.ok()) {
       ADB_PROD_ASSERT(guard->_applyEntriesIndexInFlight.has_value());
+      _metrics->replicatedStateApplyDebt->operator-=(
+          guard->_applyEntriesIndexInFlight->value -
+          guard->_lastAppliedIndex.value);
       auto const index = guard->_lastAppliedIndex =
           *guard->_applyEntriesIndexInFlight;
       // TODO
@@ -502,7 +505,7 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
         << " Unexpected error returned by apply entries: " << res;
 
     if (res.fail() || guard->_commitIndex > guard->_lastAppliedIndex) {
-      return guard->maybeScheduleApplyEntries();
+      return guard->maybeScheduleApplyEntries(_metrics);
     }
     return std::nullopt;
   }();
@@ -521,34 +524,63 @@ void FollowerStateManager<S>::handleApplyEntriesResult(arangodb::Result res) {
 
 template<typename S>
 auto FollowerStateManager<S>::GuardedData::updateCommitIndex(
-    LogIndex commitIndex) -> std::optional<futures::Future<Result>> {
+    LogIndex commitIndex,
+    std::shared_ptr<ReplicatedStateMetrics> const& metrics)
+    -> std::optional<futures::Future<Result>> {
   LOG_DEVEL_IF(false) << "updating commit index from " << _commitIndex << " to "
                       << commitIndex;
   if (_stream == nullptr) {
     return std::nullopt;
   }
+  ADB_PROD_ASSERT(commitIndex > _commitIndex);
+  metrics->replicatedStateApplyDebt->operator+=(commitIndex.value -
+                                                _commitIndex.value);
   _commitIndex = std::max(_commitIndex, commitIndex);
-  return maybeScheduleApplyEntries();
+  return maybeScheduleApplyEntries(metrics);
 }
 
 template<typename S>
-auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries()
+auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
+    std::shared_ptr<ReplicatedStateMetrics> const& metrics)
     -> std::optional<futures::Future<Result>> {
   if (_stream == nullptr) {
     return std::nullopt;
   }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
-    // TODO MeasureTimeGuard rttGuard(_metrics->replicatedStateApplyEntriesRtt);
     auto log = _stream->methods().getLogSnapshot();
-    _applyEntriesIndexInFlight = _commitIndex;
+    // Apply at most 1000 entries at once, so we have a smoother progression.
+    _applyEntriesIndexInFlight =
+        std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
     auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
                                         *_applyEntriesIndexInFlight + 1);
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
-    return _followerState->applyEntries(std::move(deserializedIter));
+    auto promise = futures::Promise<Result>();
+    auto future = promise.getFuture();
+    auto& scheduler = *SchedulerFeature::SCHEDULER;
+    auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
+    // As applyEntries is currently synchronous, we have to post it on the
+    // scheduler to avoid blocking the current appendEntries request from
+    // returning. By using _applyEntriesIndexInFlight we make sure not to call
+    // it multiple time in parallel.
+    scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                    [promise = std::move(promise),
+                     deserializedIter = std::move(deserializedIter),
+                     followerState = _followerState,
+                     rttGuard = std::move(rttGuard)]() mutable {
+                      followerState->applyEntries(std::move(deserializedIter))
+                          .thenFinal([promise = std::move(promise),
+                                      rttGuard = std::move(rttGuard)](
+                                         auto&& tryResult) mutable {
+                            rttGuard.fire();
+                            promise.setTry(std::move(tryResult));
+                          });
+                    });
+
+    return future;
   } else {
     return std::nullopt;
   }
@@ -671,7 +703,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
   MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
-      _metrics->replicatedStateNumberWaitingForSnapshot);
+      *_metrics->replicatedStateNumberWaitingForSnapshot);
   auto fut = _guardedData.doUnderLock([&](auto& self) {
     return self._followerState->acquireSnapshot(leader, index);
   });

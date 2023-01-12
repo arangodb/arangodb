@@ -48,8 +48,7 @@ struct MeasureTimeGuard {
 };
 
 struct GaugeScopedCounter {
-  explicit GaugeScopedCounter(
-      std::shared_ptr<metrics::Gauge<std::uint64_t>>) noexcept;
+  explicit GaugeScopedCounter(metrics::Gauge<std::uint64_t>&) noexcept;
   GaugeScopedCounter(GaugeScopedCounter const&) = delete;
   GaugeScopedCounter(GaugeScopedCounter&&) noexcept = default;
   GaugeScopedCounter& operator=(GaugeScopedCounter const&) = delete;
@@ -59,7 +58,11 @@ struct GaugeScopedCounter {
   void fire() noexcept;
 
  private:
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> _metric;
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
+  std::unique_ptr<metrics::Gauge<std::uint64_t>, noop> _metric;
 };
 
 }  // namespace arangodb::replication2

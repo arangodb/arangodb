@@ -259,6 +259,7 @@ struct IScheduler {
       std::string_view name, std::chrono::steady_clock::duration delay,
       fu2::unique_function<void(bool canceled)> handler) noexcept
       -> WorkItemHandle = 0;
+  virtual void queue(fu2::unique_function<void()>) noexcept = 0;
 };
 
 struct DefaultParticipantsFactory : IParticipantsFactory {

@@ -176,7 +176,7 @@ auto delayedFuture(replicated_log::IScheduler* sched,
 }  // namespace
 
 void replicated_log::LogLeader::handleResolvedPromiseSet(
-    ResolvedPromiseSet resolvedPromises,
+    replicated_log::IScheduler* sched, ResolvedPromiseSet resolvedPromises,
     std::shared_ptr<ReplicatedLogMetrics> const& logMetrics) {
   auto const commitTp = InMemoryLogEntry::clock::now();
 
@@ -188,7 +188,10 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
 
   for (auto& promise : resolvedPromises._set) {
     TRI_ASSERT(promise.second.valid());
-    promise.second.setValue(resolvedPromises.result);
+    sched->queue([promise = std::move(promise.second),
+                  result = resolvedPromises.result]() mutable {
+      promise.setValue(result);
+    });
   }
 }
 
@@ -295,7 +298,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                       return {};
                     });
 
-                handleResolvedPromiseSet(std::move(resolvedPromises),
+                handleResolvedPromiseSet(self->_scheduler.get(),
+                                         std::move(resolvedPromises),
                                          logMetrics);
                 executeAppendEntriesRequests(std::move(preparedRequests),
                                              logMetrics,
@@ -1599,7 +1603,7 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
       << "Follower snapshot " << participantId << " completed.";
   auto promises = guard->checkCommitIndex();
   guard.unlock();
-  handleResolvedPromiseSet(std::move(promises), _logMetrics);
+  handleResolvedPromiseSet(_scheduler.get(), std::move(promises), _logMetrics);
   return {};
 }
 

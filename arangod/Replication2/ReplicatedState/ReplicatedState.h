@@ -245,9 +245,11 @@ struct FollowerStateManager
   auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
   void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
-    [[nodiscard]] auto updateCommitIndex(LogIndex index)
+    [[nodiscard]] auto updateCommitIndex(
+        LogIndex index, std::shared_ptr<ReplicatedStateMetrics> const& metrics)
         -> std::optional<futures::Future<Result>>;
-    [[nodiscard]] auto maybeScheduleApplyEntries()
+    [[nodiscard]] auto maybeScheduleApplyEntries(
+        std::shared_ptr<ReplicatedStateMetrics> const& metrics)
         -> std::optional<futures::Future<Result>>;
     [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
         -> WaitForQueue;

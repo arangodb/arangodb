@@ -433,6 +433,11 @@ struct arangodb::VocBaseLogManager {
           };
           return std::make_shared<MyWorkItem>(std::move(handle));
         }
+
+        void queue(fu2::unique_function<void()> cb) noexcept override {
+          SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                             std::move(cb));
+        }
       };
 
       auto sched = std::make_shared<MyScheduler>();

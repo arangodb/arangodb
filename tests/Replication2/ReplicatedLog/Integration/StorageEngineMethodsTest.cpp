@@ -105,6 +105,37 @@ struct StorageEngineMethodsTest : ::testing::Test {
 
 namespace arangodb::replication2::test {
 
+struct RocksDBAsyncLogWriteBatcherMetricsMock
+    : RocksDBAsyncLogWriteBatcherMetrics {
+  RocksDBAsyncLogWriteBatcherMetricsMock() {
+    numWorkerThreadsWaitForSync =
+        makeMetric<arangodb_replication2_rocksdb_num_persistor_worker>();
+    numWorkerThreadsNoWaitForSync =
+        makeMetric<arangodb_replication2_rocksdb_num_persistor_worker>();
+    queueLength = makeMetric<arangodb_replication2_rocksdb_queue_length>();
+    writeBatchSize =
+        makeMetric<arangodb_replication2_rocksdb_write_batch_size>();
+    rocksdbWriteTimeInUs =
+        makeMetric<arangodb_replication2_rocksdb_write_time_us>();
+    rocksdbSyncTimeInUs =
+        makeMetric<arangodb_replication2_rocksdb_sync_time_us>();
+    operationLatencyInsert =
+        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+    operationLatencyRemoveFront =
+        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+    operationLatencyRemoveBack =
+        makeMetric<arangodb_replication2_storage_operation_latency_us>();
+  }
+
+  template<typename Builder>
+  auto makeMetric() -> typename Builder::MetricT* {
+    static std::vector<std::shared_ptr<typename Builder::MetricT>> metrics;
+    auto ptr =
+        std::dynamic_pointer_cast<typename Builder::MetricT>(Builder{}.build());
+    return metrics.emplace_back(ptr).get();
+  }
+};
+
 struct RocksDBFactory {
   static void SetUp() {
     rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
@@ -126,15 +157,17 @@ struct RocksDBFactory {
       std::uint64_t objectId, std::uint64_t vocbaseId, LogId logId,
       std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
       -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
+    auto metrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsMock>();
+
     std::shared_ptr<RocksDBAsyncLogWriteBatcher> writeBatcher =
         std::make_shared<RocksDBAsyncLogWriteBatcher>(
             rocksdb->getDatabase()->DefaultColumnFamily(),
-            rocksdb->getDatabase(), std::move(executor), settings);
+            rocksdb->getDatabase(), std::move(executor), settings, metrics);
 
     return std::make_unique<RocksDBLogStorageMethods>(
         objectId, vocbaseId, logId, writeBatcher, rocksdb->getDatabase(),
         rocksdb->getDatabase()->DefaultColumnFamily(),
-        rocksdb->getDatabase()->DefaultColumnFamily());
+        rocksdb->getDatabase()->DefaultColumnFamily(), metrics);
   }
 
   static std::shared_ptr<test::RocksDBInstance> rocksdb;

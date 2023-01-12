@@ -45,8 +45,8 @@ void MeasureTimeGuard::fire() {
 MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
 
 GaugeScopedCounter::GaugeScopedCounter(
-    std::shared_ptr<metrics::Gauge<std::uint64_t>> metric) noexcept
-    : _metric(std::move(metric)) {
+    metrics::Gauge<std::uint64_t>& metric) noexcept
+    : _metric(&metric) {
   _metric->fetch_add(1);
 }
 

@@ -61,6 +61,7 @@
 #include "RestServer/FlushFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
+#include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -779,6 +780,41 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   exit(EXIT_SUCCESS);
 }
 
+namespace {
+
+struct RocksDBAsyncLogWriteBatcherMetricsImpl
+    : RocksDBAsyncLogWriteBatcherMetrics {
+  explicit RocksDBAsyncLogWriteBatcherMetricsImpl(
+      metrics::MetricsFeature* metricsFeature) {
+    numWorkerThreadsWaitForSync = &metricsFeature->add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel("ws",
+                                                                       "true"));
+    numWorkerThreadsNoWaitForSync = &metricsFeature->add(
+        arangodb_replication2_rocksdb_num_persistor_worker{}.withLabel(
+            "ws", "false"));
+
+    queueLength =
+        &metricsFeature->add(arangodb_replication2_rocksdb_queue_length{});
+    writeBatchSize =
+        &metricsFeature->add(arangodb_replication2_rocksdb_write_batch_size{});
+    rocksdbWriteTimeInUs =
+        &metricsFeature->add(arangodb_replication2_rocksdb_write_time_us{});
+    rocksdbSyncTimeInUs =
+        &metricsFeature->add(arangodb_replication2_rocksdb_sync_time_us{});
+
+    operationLatencyInsert = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+            "op", "insert"));
+    operationLatencyRemoveFront = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+            "op", "remove-front"));
+    operationLatencyRemoveBack = &metricsFeature->add(
+        arangodb_replication2_storage_operation_latency_us{}.withLabel(
+            "op", "remove-back"));
+  }
+};
+}  // namespace
+
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
   TRI_ASSERT(isEnabled());
@@ -1078,11 +1114,14 @@ void RocksDBEngine::start() {
     Scheduler* _scheduler;
   };
 
+  _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
+      &server().getFeature<metrics::MetricsFeature>());
+
   _logPersistor = std::make_shared<RocksDBAsyncLogWriteBatcher>(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs),
       _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
-      server().getFeature<ReplicatedLogFeature>().options());
+      server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
 
   _settingsManager->retrieveInitialValues();
 
@@ -2854,7 +2893,8 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
         RocksDBColumnFamilyManager::get(
             RocksDBColumnFamilyManager::Family::Definitions),
         RocksDBColumnFamilyManager::get(
-            RocksDBColumnFamilyManager::Family::ReplicatedLogs));
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+        _logMetrics);
     registerReplicatedState(vocbase, info.stateId, std::move(methods));
   }
 }
@@ -3615,7 +3655,8 @@ auto RocksDBEngine::createReplicatedState(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Definitions),
       RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs));
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+      _logMetrics);
   methods->updateMetadata(info);
   return {std::move(methods)};
 }
