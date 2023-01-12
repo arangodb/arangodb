@@ -104,7 +104,7 @@ add_library(arango_tests_replication2_pure OBJECT
         #ReplicatedState/ReplicatedStateTest.cpp
         #ReplicatedState/StateCleanupTest.cpp
         #ReplicatedState/StateMachines/MyStateMachine.cpp
-        )
+        ReplicatedLog/Algorithms/TermIndexMapping.cpp)
 
 target_sources(arango_tests_replication2_pure PRIVATE
         Mocks/ReplicatedLogMetricsMock.cpp

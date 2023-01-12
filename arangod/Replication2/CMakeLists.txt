@@ -31,7 +31,7 @@ add_library(arango_replication2_pure STATIC
 		ReplicatedLog/NetworkMessages.cpp
 		ReplicatedLog/Algorithms.cpp
         ReplicatedLog/ILogInterfaces.cpp
-		)
+        ReplicatedLog/TermIndexMapping.cpp)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight
 		velocypack immer fmt arango_metrics_base arango_futures)
