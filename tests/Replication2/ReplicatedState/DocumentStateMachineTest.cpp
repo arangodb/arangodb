@@ -130,6 +130,8 @@ struct DocumentStateMachineTest : testing::Test {
           ON_CALL(*shardHandlerMock, createLocalShard)
               .WillByDefault(Return(ResultT<std::string>::success(
                   DocumentStateShardHandler::stateIdToShardId(gid.id))));
+          ON_CALL(*shardHandlerMock, dropLocalShard(collectionId))
+              .WillByDefault(Return(Result{}));
           return shardHandlerMock;
         });
 
@@ -819,6 +821,58 @@ TEST_F(DocumentStateMachineTest,
   });
   EXPECT_CALL(*transactionHandlerMock, applyEntry(_)).Times(7);
   follower->applyEntries(std::move(entryIterator));
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_applyEntries_creates_and_drops_shard) {
+  using namespace testing;
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+  EXPECT_CALL(*stream, release).Times(0);
+
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
+  follower->applyEntries(std::move(entryIterator));
+
+  entries.clear();
+  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(collectionId)).Times(1);
+  follower->applyEntries(std::move(entryIterator));
+
+  Mock::VerifyAndClearExpectations(stream.get());
+}
+
+TEST_F(DocumentStateMachineTest,
+       follower_dies_if_shard_creation_or_deletion_fails) {
+  using namespace testing;
+
+  auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto follower = std::make_shared<DocumentFollowerStateWrapper>(
+      factory.constructCore(globalId, coreParams), handlersFactoryMock);
+  auto stream = std::make_shared<MockProducerStream>();
+  follower->setStream(stream);
+
+  std::vector<DocumentLogEntry> entries;
+  addEntry(entries, OperationType::kCreateShard, TransactionId{0});
+  auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ON_CALL(*shardHandlerMock, createLocalShard(collectionId, _))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
+
+  entries.clear();
+  addEntry(entries, OperationType::kDropShard, TransactionId{0});
+  entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
+  ON_CALL(*shardHandlerMock, dropLocalShard(collectionId))
+      .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
+  ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 }
 
 TEST_F(DocumentStateMachineTest, leader_manipulates_snapshot_successfully) {

@@ -44,6 +44,7 @@ struct DocumentCore {
 
   auto getShardId() -> std::string_view;
   auto getGid() -> GlobalLogIdentifier;
+  auto getCollectionId() -> std::string const&;
 
   void drop();
 

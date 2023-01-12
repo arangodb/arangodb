@@ -65,6 +65,10 @@ auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
 
+auto DocumentCore::getCollectionId() -> std::string const& {
+  return _params.collectionId;
+}
+
 void DocumentCore::drop() {
   auto result = _shardHandler->dropLocalShard(_params.collectionId);
   if (result.fail()) {
