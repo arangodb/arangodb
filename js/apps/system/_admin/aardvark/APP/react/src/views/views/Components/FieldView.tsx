@@ -5,7 +5,6 @@ import { FormState, ViewContext } from "../constants";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { useRouteMatch } from "react-router-dom";
 import { get, last } from "lodash";
-import { SaveButton } from "../Actions";
 
 type FieldViewProps = {
   disabled: boolean | undefined;
@@ -48,13 +47,6 @@ const FieldView = ({ disabled, name }: FieldViewProps) => {
       </tr>
       </tbody>
     </ArangoTable>
-    {
-      isAdminUser && changed
-        ? <div className="tab-pane tab-pane-modal active" id="Save">
-          <SaveButton view={formState as FormState} setChanged={setChanged} oldName={name}/>
-        </div>
-        : null
-    }
   </ViewLinkLayout>;
 };
 
