@@ -155,6 +155,9 @@ struct FakeLogLeader : replicated_log::ILogLeader {
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+  auto waitForLeadership() -> WaitForFuture override {
+    return {replicated_log::WaitForResult{}};
+  }
   auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
