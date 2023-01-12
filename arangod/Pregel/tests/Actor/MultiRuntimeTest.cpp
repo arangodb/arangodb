@@ -69,29 +69,74 @@ TEST(MultiRuntimeTest, ping_pong_game) {
   auto dispatcher =
       std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
 
-  // // Runtime 1
-  auto serverID1 = ServerID{"A"};
-  runtimes.emplace(serverID1,
-                   std::make_shared<MockRuntime>(serverID1, "RuntimeTest-1",
+  // Runtime A with pong actor
+  auto serverIDA = ServerID{"A"};
+  runtimes.emplace(serverIDA,
+                   std::make_shared<MockRuntime>(serverIDA, "RuntimeTest-A",
                                                  scheduler, dispatcher));
-  auto pong_actor = runtimes[serverID1]->spawn<pong_actor::Actor>(
+  auto pong_actor = runtimes[serverIDA]->spawn<pong_actor::Actor>(
       pong_actor::State{}, pong_actor::Start{});
 
-  // Runtime 2
-  auto serverID2 = ServerID{"B"};
-  runtimes.emplace(serverID2,
-                   std::make_shared<MockRuntime>(serverID2, "RuntimeTest-2",
+  // Runtime B with ping actor: sends pong message
+  auto serverIDB = ServerID{"B"};
+  runtimes.emplace(serverIDB,
+                   std::make_shared<MockRuntime>(serverIDB, "RuntimeTest-B",
                                                  scheduler, dispatcher));
-  auto ping_actor = runtimes[serverID2]->spawn<ping_actor::Actor>(
+  auto ping_actor = runtimes[serverIDB]->spawn<ping_actor::Actor>(
       ping_actor::State{},
       ping_actor::Start{.pongActor =
-                            ActorPID{.server = serverID1, .id = pong_actor}});
+                            ActorPID{.server = serverIDA, .id = pong_actor}});
 
   auto ping_actor_state =
-      runtimes[serverID2]->getActorStateByID<ping_actor::Actor>(ping_actor);
+      runtimes[serverIDB]->getActorStateByID<ping_actor::Actor>(ping_actor);
   ASSERT_EQ(ping_actor_state,
             (ping_actor::State{.called = 2, .message = "hello world"}));
   auto pong_actor_state =
-      runtimes[serverID1]->getActorStateByID<pong_actor::Actor>(pong_actor);
+      runtimes[serverIDA]->getActorStateByID<pong_actor::Actor>(pong_actor);
   ASSERT_EQ(pong_actor_state, (pong_actor::State{.called = 2}));
+}
+
+TEST(MultiRuntimeTest,
+     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
+  struct SomeMessage {};
+  struct SomeMessages : std::variant<SomeMessage> {
+    using std::variant<SomeMessage>::variant;
+  };
+
+  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
+
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher =
+      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+
+  // Runtime A with trivial actor
+  auto serverIDA = ServerID{"A"};
+  runtimes.emplace(serverIDA,
+                   std::make_shared<MockRuntime>(serverIDA, "RuntimeTest-A",
+                                                 scheduler, dispatcher));
+  auto trivial_actor = runtimes[serverIDA]->spawn<TrivialActor>(
+      TrivialState{.state = "foo"}, TrivialMessage0{});
+
+  // Runtime B with ping actor: sends pong message to trivial actor
+  auto serverIDB = ServerID{"B"};
+  runtimes.emplace(serverIDB,
+                   std::make_shared<MockRuntime>(serverIDB, "RuntimeTest-B",
+                                                 scheduler, dispatcher));
+  auto ping_actor = runtimes[serverIDB]->spawn<ping_actor::Actor>(
+      ping_actor::State{},
+      ping_actor::Start{
+          .pongActor = ActorPID{.server = serverIDA, .id = trivial_actor}});
+
+  // trivial actor was called once (with an for it unknown message type pong
+  // message)
+  ASSERT_EQ(runtimes[serverIDA]->getActorStateByID<TrivialActor>(trivial_actor),
+            (TrivialState{.state = "foo", .called = 1}));
+  // ping actor received an unknown message error after it sent wrong message
+  // type to trivial actor
+  ASSERT_EQ(
+      runtimes[serverIDB]->getActorStateByID<ping_actor::Actor>(ping_actor),
+      (ping_actor::State{
+          .called = 2,
+          .message = "sent unknown message",
+      }));
 }

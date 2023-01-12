@@ -130,9 +130,30 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
 }
 
-// TEST(RuntimeTest, sends_message_with_wrong_type_to_an_actor) {
-//   // TODO what happens then? currently aborts
-// }
+TEST(RuntimeTest,
+     actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
+  struct SomeMessage {};
+  struct SomeMessages : std::variant<SomeMessage> {
+    using std::variant<SomeMessage>::variant;
+  };
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
+                                               scheduler, dispatcher);
+  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                            TrivialMessage0{});
+
+  runtime->dispatch(
+      ActorPID{.server = "PRMR-1234", .id = actor},
+      ActorPID{.server = "PRMR-1234", .id = actor},
+      std::make_unique<MessagePayload<SomeMessages>>(SomeMessage()));
+
+  // received an unknown message error afte rit sent wrong message type to
+  // itself
+  auto state = runtime->getActorStateByID<TrivialActor>(actor);
+  ASSERT_EQ(state,
+            (TrivialState{.state = "sent unknown message", .called = 2}));
+}
 
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};

@@ -85,6 +85,12 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
+  auto operator()(UnknownMessage rest) -> std::unique_ptr<TrivialState> {
+    this->state->called++;
+    this->state->state = "sent unknown message";
+    return std::move(this->state);
+  }
+
   auto operator()(auto&& rest) -> std::unique_ptr<TrivialState> {
     fmt::print(stderr, "TrivialActor: handles rest\n");
     return std::move(this->state);

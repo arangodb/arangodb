@@ -95,32 +95,42 @@ struct Actor : ActorBase {
   void process(ActorPID sender,
                std::unique_ptr<MessagePayloadBase> msg) override {
     auto* ptr = msg.release();
-    auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
-    if (m == nullptr) {
-      // TODO possibly send an information back to the runtime
-      fmt::print(stderr,
-                 "Actor {} recieved a message it could not handle from {}", pid,
-                 sender);
-      std::abort();
+    if (auto* m = dynamic_cast<MessagePayload<typename Config::Message>*>(ptr);
+        m != nullptr) {
+      push(sender, std::move(m->payload));
+      delete m;
+    } else if (auto* n = dynamic_cast<MessagePayload<ActorError>*>(ptr);
+               n != nullptr) {
+      push(sender, std::move(n->payload));
+      delete n;
+    } else {
+      runtime->dispatch(pid, sender,
+                        std::make_unique<MessagePayload<ActorError>>(
+                            UnknownMessage{.sender = sender, .receiver = pid}));
+      delete ptr;
     }
-    inbox.push(std::make_unique<InternalMessage>(
-        sender, std::make_unique<MessageOrError<typename Config::Message>>(
-                    std::move(m->payload))));
-    delete m;
     kick();
   }
   void process(ActorPID sender, velocypack::SharedSlice msg) override {
-    auto m = inspection::deserializeWithErrorT<typename Config::Message>(msg);
-
-    if (m.ok()) {
-      process(
-          sender,
-          std::make_unique<MessagePayload<typename Config::Message>>(m.get()));
+    if (auto m =
+            inspection::deserializeWithErrorT<typename Config::Message>(msg);
+        m.ok()) {
+      push(sender, std::move(m.get()));
+    } else if (auto n = inspection::deserializeWithErrorT<ActorError>(msg);
+               n.ok()) {
+      push(sender, std::move(n.get()));
     } else {
-      fmt::print(stderr, "Actor {} cannot deserialize message {}", pid,
-                 msg.toJson());
-      std::abort();
+      auto error =
+          ActorError{UnknownMessage{.sender = sender, .receiver = pid}};
+      auto payload = inspection::serializeWithErrorT(error);
+      if (payload.ok()) {
+        runtime->dispatch(pid, sender, payload.get());
+      } else {
+        fmt::print("Error serializing UnknownMessage");
+        std::abort();
+      }
     }
+    kick();
   }
 
   auto serialize() -> velocypack::SharedSlice override {
@@ -129,6 +139,17 @@ struct Actor : ActorBase {
       std::abort();
     }
     return res.get();
+  }
+
+  void push(ActorPID sender, typename Config::Message&& msg) {
+    inbox.push(std::make_unique<InternalMessage>(
+        sender,
+        std::make_unique<MessageOrError<typename Config::Message>>(msg)));
+  }
+  void push(ActorPID sender, ActorError&& msg) {
+    inbox.push(std::make_unique<InternalMessage>(
+        sender,
+        std::make_unique<MessageOrError<typename Config::Message>>(msg)));
   }
 
   void kick() {
