@@ -118,6 +118,11 @@ struct Handler : HandlerBase<Runtime, State> {
     this->state->message = msg.text;
     return std::move(this->state);
   }
+
+  auto operator()(auto&& rest) -> std::unique_ptr<State> {
+    fmt::print(stderr, "PingActor: handles rest\n");
+    return std::move(this->state);
+  }
 };
 
 struct Actor {
@@ -152,6 +157,11 @@ struct Handler : HandlerBase<Runtime, State> {
     this->template dispatch<ping_actor::Actor::Message>(
         this->sender, ping_actor::Pong{.text = msg.text});
     this->state->called++;
+    return std::move(this->state);
+  }
+
+  auto operator()(auto&& rest) -> std::unique_ptr<State> {
+    fmt::print(stderr, "PongActor: handles rest\n");
     return std::move(this->state);
   }
 };

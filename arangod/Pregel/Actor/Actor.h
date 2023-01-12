@@ -104,8 +104,8 @@ struct Actor : ActorBase {
       std::abort();
     }
     inbox.push(std::make_unique<InternalMessage>(
-        sender,
-        std::make_unique<typename Config::Message>(std::move(m->payload))));
+        sender, std::make_unique<MessageOrError<typename Config::Message>>(
+                    std::move(m->payload))));
     delete m;
     kick();
   }
@@ -161,11 +161,12 @@ struct Actor : ActorBase {
 
   struct InternalMessage
       : arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage>::Node {
-    InternalMessage(ActorPID sender,
-                    std::unique_ptr<typename Config::Message>&& payload)
+    InternalMessage(
+        ActorPID sender,
+        std::unique_ptr<MessageOrError<typename Config::Message>>&& payload)
         : sender(sender), payload(std::move(payload)) {}
     ActorPID sender;
-    std::unique_ptr<typename Config::Message> payload;
+    std::unique_ptr<MessageOrError<typename Config::Message>> payload;
   };
   template<typename Inspector>
   auto inspect(Inspector& f, InternalMessage& x) {

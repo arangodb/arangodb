@@ -84,6 +84,11 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     this->state->state += msg.store;
     return std::move(this->state);
   }
+
+  auto operator()(auto&& rest) -> std::unique_ptr<TrivialState> {
+    fmt::print(stderr, "TrivialActor: handles rest\n");
+    return std::move(this->state);
+  }
 };
 
 struct TrivialActor {

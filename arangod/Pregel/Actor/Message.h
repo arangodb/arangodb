@@ -31,6 +31,17 @@
 #include "ActorPID.h"
 #include "MPSCQueue.h"
 
+namespace {
+// helper type for the visitor
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+}  // namespace
+
 namespace arangodb::pregel::actor {
 
 struct MessagePayloadBase {
@@ -61,8 +72,56 @@ auto inspect(Inspector& f, NetworkMessage& x) {
                             f.field("payload", x.payload));
 }
 
+struct UnknownMessage {
+  ActorPID sender;
+  ActorPID receiver;
+  // std::unique_ptr<MessagePayloadBase> message;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, UnknownMessage& x) {
+  return f.object(x).fields(f.field("sender", x.sender),
+                            f.field("receiver", x.receiver));
+}
+
+template<typename T, typename U>
+struct concatenator;
+template<typename... Args0, typename... Args1>
+struct concatenator<std::variant<Args0...>, std::variant<Args1...>>
+    : std::variant<Args0..., Args1...> {
+  using std::variant<Args0..., Args1...>::variant;
+  concatenator(std::variant<Args0...> a) {
+    std::visit(overloaded{[this](auto&& arg) { *this = arg; }}, a);
+  }
+  concatenator(std::variant<Args1...> b) {
+    std::visit(overloaded{[this](auto&& arg) { *this = arg; }}, b);
+  }
+};
+
+struct ActorError : std::variant<UnknownMessage> {
+  using std::variant<UnknownMessage>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ActorError& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<UnknownMessage>("UnknownMessage"));
+}
+
+template<typename T>
+struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {
+  using concatenator<typename T::variant, ActorError::variant>::concatenator;
+};
+template<typename T, typename Inspector>
+auto inspect(Inspector& f, MessageOrError<T>& x) {
+  // TODO
+  // return f.variant(x).unqualified().embedFields;
+  return f.object(x).fields();
+}
+
 }  // namespace arangodb::pregel::actor
 
 template<typename Payload>
 struct fmt::formatter<arangodb::pregel::actor::MessagePayload<Payload>>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::actor::UnknownMessage>
     : arangodb::inspection::inspection_formatter {};

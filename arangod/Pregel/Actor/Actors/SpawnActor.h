@@ -85,6 +85,11 @@ struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
     this->state->state += msg.message;
     return std::move(this->state);
   }
+
+  auto operator()(auto&& rest) -> std::unique_ptr<SpawnState> {
+    fmt::print(stderr, "Spawn actor: handles rest\n");
+    return std::move(this->state);
+  }
 };
 
 struct SpawnActor {
