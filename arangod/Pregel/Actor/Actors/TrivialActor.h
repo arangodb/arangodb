@@ -85,9 +85,16 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
-  auto operator()(UnknownMessage rest) -> std::unique_ptr<TrivialState> {
+  auto operator()(UnknownMessage unknown) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state = "sent unknown message";
+    return std::move(this->state);
+  }
+
+  auto operator()(ActorNotFound notFound) -> std::unique_ptr<TrivialState> {
+    this->state->called++;
+    this->state->state =
+        fmt::format("recieving actor {} not found", notFound.actor);
     return std::move(this->state);
   }
 

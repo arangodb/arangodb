@@ -125,6 +125,13 @@ struct Handler : HandlerBase<Runtime, State> {
     return std::move(this->state);
   }
 
+  auto operator()(ActorNotFound notFound) -> std::unique_ptr<State> {
+    this->state->called++;
+    this->state->message =
+        fmt::format("recieving actor {} not found", notFound.actor);
+    return std::move(this->state);
+  }
+
   auto operator()(auto&& rest) -> std::unique_ptr<State> {
     fmt::print(stderr, "PingActor: handles rest\n");
     return std::move(this->state);

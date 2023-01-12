@@ -155,6 +155,29 @@ TEST(RuntimeTest,
             (TrivialState{.state = "sent unknown message", .called = 2}));
 }
 
+TEST(
+    RuntimeTest,
+    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
+  auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
+                                               scheduler, dispatcher);
+  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                            TrivialMessage0{});
+
+  auto unknownActorPID = ActorPID{.server = "PRMR-1234", .id = {999}};
+  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
+                    unknownActorPID,
+                    std::make_unique<MessagePayload<TrivialActor::Message>>(
+                        TrivialMessage1("baz")));
+
+  auto state = runtime->getActorStateByID<TrivialActor>(actor);
+  ASSERT_EQ(state,
+            (TrivialState{.state = fmt::format("recieving actor {} not found",
+                                               unknownActorPID),
+                          .called = 2}));
+}
+
 TEST(RuntimeTest, ping_pong_game) {
   auto serverID = ServerID{"PRMR-1234"};
   auto scheduler = std::make_shared<MockScheduler>();

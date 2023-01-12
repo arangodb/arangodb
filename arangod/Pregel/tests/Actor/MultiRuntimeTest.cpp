@@ -47,11 +47,18 @@ struct MockExternalDispatcher {
       : runtimes(runtimes) {}
   auto operator()(ActorPID sender, ActorPID receiver,
                   arangodb::velocypack::SharedSlice msg) -> void {
-    if (runtimes.contains(receiver.server)) {
-      runtimes[receiver.server]->dispatch(sender, receiver, msg);
+    auto receiving_runtime = runtimes.find(receiver.server);
+    if (receiving_runtime != std::end(runtimes)) {
+      receiving_runtime->second->dispatch(sender, receiver, msg);
     } else {
-      std::cerr << "cannot find server " << receiver.server << std::endl;
-      std::abort();
+      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto payload = inspection::serializeWithErrorT(error);
+      if (payload.ok()) {
+        runtimes[sender.server]->dispatch(receiver, sender, payload.get());
+      } else {
+        fmt::print("Error serializing ActorNotFound");
+        std::abort();
+      }
     }
   }
   std::unordered_map<ServerID, std::shared_ptr<Runtime>>& runtimes;
@@ -139,4 +146,66 @@ TEST(MultiRuntimeTest,
           .called = 2,
           .message = "sent unknown message",
       }));
+}
+
+TEST(
+    MultiRuntimeTest,
+    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor_on_another_server) {
+  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
+
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher =
+      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+
+  // Runtime A with no actors
+  auto serverIDA = ServerID{"A"};
+  runtimes.emplace(serverIDA,
+                   std::make_shared<MockRuntime>(serverIDA, "RuntimeTest-A",
+                                                 scheduler, dispatcher));
+
+  // Runtime B with ping actor: sends pong message to unknown actor in runtime A
+  auto serverIDB = ServerID{"B"};
+  runtimes.emplace(serverIDB,
+                   std::make_shared<MockRuntime>(serverIDB, "RuntimeTest-B",
+                                                 scheduler, dispatcher));
+  auto unknownActorPID = ActorPID{.server = "A", .id = {999}};
+  auto ping_actor = runtimes[serverIDB]->spawn<ping_actor::Actor>(
+      ping_actor::State{}, ping_actor::Start{.pongActor = unknownActorPID});
+
+  // ping actor received an actor not known message error after it message
+  // to non-existing actor in other runtime
+  ASSERT_EQ(
+      runtimes[serverIDB]->getActorStateByID<ping_actor::Actor>(ping_actor),
+      (ping_actor::State{.called = 2,
+                         .message = fmt::format("recieving actor {} not found",
+                                                unknownActorPID)}));
+}
+
+// TODO extra type of error: ServerNotFound?
+TEST(
+    MultiRuntimeTest,
+    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_server) {
+  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
+
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher =
+      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+
+  // Runtime i with ping actor: sends pong message to unknown actor on another
+  // server
+  auto unknownActorPID = ActorPID{.server = "B", .id = {999}};
+  auto serverIDA = ServerID{"A"};
+  runtimes.emplace(serverIDA,
+                   std::make_shared<MockRuntime>(serverIDA, "RuntimeTest-B",
+                                                 scheduler, dispatcher));
+  auto ping_actor = runtimes[serverIDA]->spawn<ping_actor::Actor>(
+      ping_actor::State{}, ping_actor::Start{.pongActor = unknownActorPID});
+
+  // ping actor received an actor not known message error after it message
+  // to non-existing runtime
+  ASSERT_EQ(
+      runtimes[serverIDA]->getActorStateByID<ping_actor::Actor>(ping_actor),
+      (ping_actor::State{.called = 2,
+                         .message = fmt::format("recieving actor {} not found",
+                                                unknownActorPID)}));
 }

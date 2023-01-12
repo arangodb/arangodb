@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <cstdint>
 #include <memory>
@@ -93,12 +94,23 @@ struct Runtime
     return res;
   }
 
+  auto findActorLocally(ActorID receiver)
+      -> std::optional<std::reference_wrapper<ActorMap::mapped_type>> {
+    auto a = actors.find(receiver);
+    if (a == std::end(actors)) {
+      return std::nullopt;
+    }
+    auto& [_, actor] = *a;
+    return actor;
+  }
+
   template<typename ActorConfig>
   auto getActorStateByID(ActorID id)
       -> std::optional<typename ActorConfig::State> {
-    if (actors.contains(id)) {
+    auto actorBase = findActorLocally(id);
+    if (actorBase.has_value()) {
       auto* actor =
-          dynamic_cast<Actor<Runtime, ActorConfig>*>(actors[id].get());
+          dynamic_cast<Actor<Runtime, ActorConfig>*>(actorBase->get().get());
       if (actor != nullptr && actor->state != nullptr) {
         return *actor->state;
       }
@@ -108,8 +120,8 @@ struct Runtime
 
   auto getSerializedActorByID(ActorID id)
       -> std::optional<velocypack::SharedSlice> {
-    if (actors.contains(id)) {
-      auto& actor = actors[id];
+    auto actor = findActorLocally(id);
+    if (actor.has_value()) {
       if (actor != nullptr) {
         return actor->serialize();
       }
@@ -117,52 +129,44 @@ struct Runtime
     return std::nullopt;
   }
 
-  auto process(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
-      -> void {
-    if (receiver.server != myServerID) {
-      fmt::print(stderr, "received message for receiver {}, this is not me: {}",
-                 receiver, myServerID);
-      std::abort();
-    }
-
-    auto a = actors.find(receiver.id);
-    if (a == std::end(actors)) {
-      fmt::print(
-          stderr,
-          "received message for receiver {}, but the actor could not be found.",
-          receiver);
-      std::abort();
-    }
-
-    auto& [_, actor] = *a;
-    actor->process(sender, msg);
-  }
-
-  auto findActorLocally(ActorPID receiver) -> ActorMap::mapped_type& {
-    if (receiver.server != myServerID) {
-      std::abort();
-      // TODO
-    }
-    auto a = actors.find(receiver.id);
-    if (a == std::end(actors)) {
-      std::abort();
-    }
-    auto& [_, actor] = *a;
-    return actor;
-  }
-
   auto dispatch(ActorPID sender, ActorPID receiver,
                 std::unique_ptr<MessagePayloadBase> payload) -> void {
-    auto& actor = findActorLocally(receiver);
-    actor->process(sender, std::move(payload));
+    if (receiver.server != myServerID) {
+      // TODO
+      dispatch(receiver, sender,
+               std::make_unique<MessagePayload<ActorError>>(
+                   ActorNotFound{.actor = receiver}));
+    }
+
+    auto actor = findActorLocally(receiver.id);
+    if (actor.has_value()) {
+      actor->get()->process(sender, std::move(payload));
+    } else {
+      dispatch(receiver, sender,
+               std::make_unique<MessagePayload<ActorError>>(
+                   ActorNotFound{.actor = receiver}));
+    }
   }
+
   auto dispatch(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
-    if (receiver.server == myServerID) {
-      auto& actor = findActorLocally(receiver);
-      actor->process(sender, msg);
-    } else {
+    if (receiver.server != myServerID) {
       (*externalDispatcher)(sender, receiver, msg);
+      return;
+    }
+
+    auto actor = findActorLocally(receiver.id);
+    if (actor.has_value()) {
+      actor->get()->process(sender, msg);
+    } else {
+      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto payload = inspection::serializeWithErrorT(error);
+      if (payload.ok()) {
+        dispatch(receiver, sender, payload.get());
+      } else {
+        fmt::print("Error serializing ActorNotFound");
+        std::abort();
+      }
     }
   }
 
