@@ -1157,18 +1157,22 @@
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
     checkEnabledStatistics: function () {
-      if (!frontendConfig.statisticsEnabled || frontendConfig.db !== '_system') {
+      if (frontendConfig.statisticsEnabled && frontendConfig.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
-            '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+            '<div style="color: red">Server statistics for target (' + this.server + ') are disabled in this database. Log into "_system" database to show statistics.</div>'
           );
         } else {
           $(this.el).append(
-            '<div style="color: red">Server statistics are disabled.</div>'
+            '<div style="color: red">Server statistics are disabled in this database. Log into "_system" database to show statistics.</div>'
           );
         }
-        return false;
+      } else if (!frontendConfig.statisticsEnabled) {
+        $(this.el).html('');
+        $(this.el).append(
+          '<div style="color: red">Server statistics are currently disabled.</div>'
+        );
       } else {
         return true;
       }
