@@ -394,6 +394,7 @@ const ViewSettingsReactView = ({ name }) => {
                 <HashRouter basename={`view/${name}`} hashType={'noslash'}>
                   <Switch>
                     <Route path={'/:link'}>
+                      <LinkList name={name}/>
                       <LinkPropertiesForm name={name}/>
                     </Route>
                     <Route exact path={'/'}>

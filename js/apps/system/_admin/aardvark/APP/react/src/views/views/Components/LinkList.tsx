@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompleteMultiSelect";
 import { Cell, Grid } from "../../../components/pure-css/grid";
-import { Link, useRouteMatch } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const LinkList = ({ name }: ViewProps) => {
   const { dispatch, formState: fs, isAdminUser } = useContext(ViewContext);
@@ -14,7 +14,6 @@ const LinkList = ({ name }: ViewProps) => {
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState<string[]>([]);
-  const match = useRouteMatch();
 
   useEffect(() => {
     if (data) {
@@ -51,12 +50,9 @@ const LinkList = ({ name }: ViewProps) => {
     setOptions(options.concat([link as string]).sort());
   };
 
-  console.log("formState.links: ", formState.links);
-  console.log("match: ", match);
-  console.log("match.url: ", match.url);
   const validLinks = chain(formState.links).toPairs().filter(pair => pair[1] !== null).map(pair => ({
     key: pair[0],
-    value: <Link to={`${match.url}${pair[0]}`}>{pair[0]}</Link>
+    value: <Link to={`/${pair[0]}`}>{pair[0]}</Link>
   })).value();
 
   return <div id="modal-dialog" style={{
