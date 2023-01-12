@@ -1,6 +1,11 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Change the request lane for replication catchup requests that leaders in
+  active failover receive from their followers from medium to high. This
+  will give catchup requests from followers highest priority, so that the
+  leader will preferrably execute them compared to regular requests.
+
 * Allow cluster database servers to start even when there are existing databases
   that would violate the settings `--cluster.min-replication-factor` or
   `--cluster.max-replication-factor`.
