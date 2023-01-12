@@ -72,7 +72,6 @@ using MaterializerExecutorInfosBase =
 template<typename T>
 class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
  public:
-
   template<class... _Types>
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
                             aql::QueryContext& query, _Types&&... Args)
@@ -96,7 +95,7 @@ class MaterializerExecutorInfos : public MaterializerExecutorInfosBase<T> {
 
   aql::QueryContext& query() const { return _query; }
 
-private:
+ private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document

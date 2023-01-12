@@ -38,7 +38,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-
 template<typename T>
 arangodb::IndexIterator::DocumentCallback
 MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext& ctx) {
@@ -75,8 +74,7 @@ MaterializeExecutor<T>::MaterializeExecutor(
 }
 
 template<typename T>
-void MaterializeExecutor<T>::fillBuffer(
-    AqlItemBlockInputRange& inputRange) {
+void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
   if constexpr (!isSingleCollection) {
     _bufferedDocs.clear();
     auto const block = inputRange.getBlock();
@@ -188,8 +186,8 @@ void MaterializeExecutor<T>::fillBuffer(
 
 template<typename T>
 std::tuple<ExecutorState, MaterializeStats, AqlCall>
-MaterializeExecutor<T>::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+MaterializeExecutor<T>::produceRows(AqlItemBlockInputRange& inputRange,
+                                    OutputAqlItemRow& output) {
   MaterializeStats stats;
 
   AqlCall upstreamCall{};
@@ -271,8 +269,8 @@ MaterializeExecutor<T>::produceRows(
 
 template<typename T>
 std::tuple<ExecutorState, MaterializeStats, size_t, AqlCall>
-MaterializeExecutor<T>::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+MaterializeExecutor<T>::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                      AqlCall& call) {
   size_t skipped = 0;
 
   // hasDataRow may only occur during fullCount due to previous overfetching

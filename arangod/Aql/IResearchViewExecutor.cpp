@@ -117,8 +117,6 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   return collection->collection();
 }
 
-
-
 [[maybe_unused]] inline void reset(ColumnIterator& column,
                                    irs::doc_iterator::ptr&& itr) noexcept {
   TRI_ASSERT(itr);

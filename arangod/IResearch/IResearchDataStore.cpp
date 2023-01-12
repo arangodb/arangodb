@@ -989,8 +989,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
       auto reader = _dataStore.loadSnapshot()->_reader;
-      _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-                            std::move(reader), engineSnapshot));
+      _dataStore.storeSnapshot(
+          std::make_shared<DataSnapshot>(std::move(reader), engineSnapshot));
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1062,9 +1062,8 @@ Result IResearchDataStore::commitUnsafeImpl(
     auto const docsCount = reader->docs_count();
     auto const liveDocsCount = reader->live_docs_count();
 
-    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-                          std::move(reader), engineSnapshot));
-
+    _dataStore.storeSnapshot(
+        std::make_shared<DataSnapshot>(std::move(reader), engineSnapshot));
 
     // update stats
     updateStatsUnsafe();
@@ -1076,10 +1075,9 @@ Result IResearchDataStore::commitUnsafeImpl(
 
     LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
         << "successful sync of ArangoSearch index '" << index().id()
-        << "', segments '" << readerSize << "', docs count '"
-        << docsCount << "', live docs count '"
-        << liveDocsCount << "', last operation tick low '"
-        << _lastCommittedTickOne << "'"
+        << "', segments '" << readerSize << "', docs count '" << docsCount
+        << "', live docs count '" << liveDocsCount
+        << "', last operation tick low '" << _lastCommittedTickOne << "'"
         << "', last operation tick high '" << _lastCommittedTickTwo << "'";
   } catch (basics::Exception const& e) {
     return {
@@ -1338,8 +1336,7 @@ Result IResearchDataStore::initDataStore(
 
       auto reader = _dataStore.loadSnapshot()->_reader;
 
-      if (!readTick(reader.meta().meta.payload(),
-                    _dataStore._recoveryTickLow,
+      if (!readTick(reader.meta().meta.payload(), _dataStore._recoveryTickLow,
                     _dataStore._recoveryTickHigh)) {
         return {TRI_ERROR_INTERNAL,
                 absl::StrCat("failed to get last committed tick while "
@@ -1349,12 +1346,10 @@ Result IResearchDataStore::initDataStore(
       LOG_TOPIC("7e028", TRACE, TOPIC)
           << "successfully opened existing data store data store reader for "
           << "ArangoSearch index '" << index().id() << "', docs count '"
-          << reader->docs_count()
-          << "', live docs count '"
-          << reader->live_docs_count()
-          << "', recovery tick low '" << _dataStore._recoveryTickLow
-          << "' and recovery tick high '" << _dataStore._recoveryTickHigh
-          << "'";
+          << reader->docs_count() << "', live docs count '"
+          << reader->live_docs_count() << "', recovery tick low '"
+          << _dataStore._recoveryTickLow << "' and recovery tick high '"
+          << _dataStore._recoveryTickHigh << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }

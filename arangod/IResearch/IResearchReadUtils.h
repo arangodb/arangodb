@@ -27,7 +27,6 @@
 #include <index/index_reader.hpp>
 #include <analysis/token_attributes.hpp>
 
-
 namespace arangodb::iresearch {
 
 extern const irs::payload NoPayload;
