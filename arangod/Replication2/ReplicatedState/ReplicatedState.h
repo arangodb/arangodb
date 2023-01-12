@@ -227,7 +227,7 @@ struct FollowerStateManager
       std::shared_ptr<ReplicatedStateMetrics> metrics,
       std::shared_ptr<IReplicatedFollowerState<S>> followerState,
       std::shared_ptr<StreamImpl> stream);
-  void acquireSnapshot(ServerID leader, LogIndex index);
+  void acquireSnapshot(ServerID leader, LogIndex index, std::uint64_t);
   void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
       -> std::pair<std::unique_ptr<CoreType>,
@@ -308,7 +308,8 @@ struct ReplicatedStateManager : replicated_log::IReplicatedStateHandle {
                          std::unique_ptr<CoreType> logCore,
                          std::shared_ptr<Factory> factory);
 
-  void acquireSnapshot(ServerID leader, LogIndex index) override;
+  void acquireSnapshot(ServerID leader, LogIndex index,
+                       std::uint64_t version) override;
 
   void updateCommitIndex(LogIndex index) override;
 

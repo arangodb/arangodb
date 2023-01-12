@@ -55,7 +55,7 @@ struct StateHandleManagerMock : IStateHandleManager {
               (noexcept, override));
   MOCK_METHOD(std::unique_ptr<IReplicatedStateHandle>, resign, (),
               (noexcept, override));
-  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&),
+  MOCK_METHOD(void, acquireSnapshot, (ParticipantId const&, std::uint64_t),
               (noexcept, override));
 };
 

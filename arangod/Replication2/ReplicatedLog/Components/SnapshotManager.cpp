@@ -41,8 +41,18 @@ auto SnapshotManager::invalidateSnapshotState() -> arangodb::Result {
   return updateSnapshotState(SnapshotState::MISSING);
 }
 
-auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
+auto SnapshotManager::updateSnapshotState(SnapshotState state,
+                                          std::uint64_t version) -> Result {
   if (auto guard = guardedData.getLockedGuard(); guard->state != state) {
+    if (state == SnapshotState::AVAILABLE) {
+      if (guard->lastSnapshotVersion != version) {
+        LOG_CTX("b2c65", INFO, loggerContext)
+            << "snapshot for version " << version
+            << " completed, but already at " << guard->lastSnapshotVersion;
+        return {};  // silently ignore
+      }
+    }
+
     auto trx = guard->storage.beginMetaInfoTrx();
     trx->get().snapshot.status =
         state == SnapshotState::AVAILABLE
@@ -58,9 +68,13 @@ auto SnapshotManager::updateSnapshotState(SnapshotState state) -> Result {
     guard->state = state;
     ADB_PROD_ASSERT(termInfo->leader.has_value());
     auto& stateHandle = guard->stateHandle;
-    guard.unlock();
     if (state == SnapshotState::MISSING) {
-      stateHandle.acquireSnapshot(*termInfo->leader);
+      ADB_PROD_ASSERT(version == 0);
+      auto newVersion = ++guard->lastSnapshotVersion;
+      guard.unlock();
+      LOG_CTX("a5f6f", DEBUG, loggerContext)
+          << "acquiring new snapshot with version " << newVersion;
+      stateHandle.acquireSnapshot(*termInfo->leader, newVersion);
     }
   }
   return {};
@@ -86,10 +100,10 @@ SnapshotManager::SnapshotManager(
           loggerContext.with<logContextKeyLogComponent>("snapshot-man")),
       guardedData(storage, stateHandle) {}
 
-auto SnapshotManager::setSnapshotStateAvailable(
-    arangodb::replication2::replicated_log::MessageId msgId)
+auto SnapshotManager::setSnapshotStateAvailable(MessageId msgId,
+                                                std::uint64_t version)
     -> arangodb::Result {
-  auto result = updateSnapshotState(SnapshotState::AVAILABLE);
+  auto result = updateSnapshotState(SnapshotState::AVAILABLE, version);
   leaderComm->reportSnapshotAvailable(msgId).thenFinal(
       [lctx = loggerContext](auto&& tryResult) {
         auto result = basics::catchToResult([&] { return tryResult.get(); });

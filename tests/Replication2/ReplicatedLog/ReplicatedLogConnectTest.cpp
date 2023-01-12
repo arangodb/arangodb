@@ -154,7 +154,7 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
               (std::unique_ptr<IReplicatedLogLeaderMethods>), (override));
   MOCK_METHOD(void, becomeFollower,
               (std::unique_ptr<IReplicatedLogFollowerMethods>), (override));
-  MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex),
+  MOCK_METHOD(void, acquireSnapshot, (ServerID leader, LogIndex, std::uint64_t),
               (noexcept, override));
   MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
   MOCK_METHOD(void, dropEntries, (), (override));

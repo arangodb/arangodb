@@ -45,8 +45,12 @@ struct SnapshotManager : ISnapshotManager {
   auto invalidateSnapshotState() -> Result override;
   auto checkSnapshotState() noexcept -> SnapshotState override;
 
-  auto updateSnapshotState(SnapshotState state) -> Result;
-  auto setSnapshotStateAvailable(MessageId msgId) -> Result;
+  auto setSnapshotStateAvailable(MessageId msgId, std::uint64_t version)
+      -> Result;
+
+ private:
+  auto updateSnapshotState(SnapshotState state, std::uint64_t version = 0)
+      -> Result;
 
   struct GuardedData {
     explicit GuardedData(IStorageManager& storage,
@@ -54,6 +58,7 @@ struct SnapshotManager : ISnapshotManager {
     IStorageManager& storage;
     IStateHandleManager& stateHandle;
     SnapshotState state;
+    std::uint64_t lastSnapshotVersion{0};
   };
   std::shared_ptr<ILeaderCommunicator> const leaderComm;
   std::shared_ptr<FollowerTermInformation const> const termInfo;

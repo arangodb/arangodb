@@ -64,7 +64,8 @@ ReplicatedStateManager<S>::ReplicatedStateManager(
 
 template<typename S>
 void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
-                                                LogIndex commitIndex) {
+                                                LogIndex commitIndex,
+                                                std::uint64_t version) {
   auto guard = _guarded.getLockedGuard();
 
   std::visit(overload{
@@ -72,7 +73,7 @@ void ReplicatedStateManager<S>::acquireSnapshot(ServerID leader,
                    LOG_CTX("52a11", DEBUG, _loggerContext)
                        << "try to acquire a new snapshot, starting at "
                        << commitIndex;
-                   manager->acquireSnapshot(leader, commitIndex);
+                   manager->acquireSnapshot(leader, commitIndex, version);
                  },
                  [](auto&) {
                    ADB_PROD_ASSERT(false)
@@ -699,7 +700,8 @@ void FollowerStateManager<S>::GuardedData::clearSnapshotErrors() noexcept {
 }
 
 template<typename S>
-void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
+void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
+                                              std::uint64_t version) {
   LOG_CTX("c4d6b", DEBUG, _loggerContext) << "calling acquire snapshot";
   MeasureTimeGuard rttGuard(*_metrics->replicatedStateAcquireSnapshotRtt);
   GaugeScopedCounter snapshotCounter(
@@ -718,13 +720,13 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
                                                   snapshotCounter = std::move(
                                                       snapshotCounter),
                                                   leader = std::move(leader),
-                                                  index]() mutable {
+                                                  index, version]() mutable {
     std::move(fut).thenFinal([weak = std::move(weak),
                               rttGuard = std::move(rttGuard),
                               snapshotCounter = std::move(snapshotCounter),
-                              leader = std::move(leader),
-                              index](futures::Try<Result>&&
-                                         tryResult) mutable noexcept {
+                              leader = std::move(leader), index,
+                              version](futures::Try<Result>&&
+                                           tryResult) mutable noexcept {
       rttGuard.fire();
       snapshotCounter.fire();
       if (auto self = weak.lock(); self != nullptr) {
@@ -740,7 +742,7 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
           auto res =
               basics::downCast<replicated_log::IReplicatedLogFollowerMethods>(
                   guard->_stream->methods())
-                  .snapshotCompleted();
+                  .snapshotCompleted(version);
           // TODO (How) can we handle this more gracefully?
           ADB_PROD_ASSERT(res.ok());
         } else {
@@ -749,14 +751,15 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index) {
               << " - retry scheduled";
           self->registerSnapshotError(std::move(result));
           self->backOffSnapshotRetry().thenFinal(
-              [weak = std::move(weak), leader = std::move(leader), index](
+              [weak = std::move(weak), leader = std::move(leader), index,
+               version](
                   futures::Try<futures::Unit>&& x) mutable noexcept -> void {
                 auto const result = basics::catchVoidToResult([&] { x.get(); });
                 ADB_PROD_ASSERT(result.ok())
                     << "Unexpected error when backing off snapshot retry: "
                     << result;
                 if (auto self = weak.lock(); self != nullptr) {
-                  self->acquireSnapshot(std::move(leader), index);
+                  self->acquireSnapshot(std::move(leader), index, version);
                 }
               });
         }
@@ -980,8 +983,9 @@ auto ReplicatedState<S>::createStateHandle(
         override {
       return manager.becomeFollower(std::move(ptr));
     }
-    void acquireSnapshot(ServerID leader, LogIndex index) override {
-      return manager.acquireSnapshot(std::move(leader), index);
+    void acquireSnapshot(ServerID leader, LogIndex index,
+                         std::uint64_t version) override {
+      return manager.acquireSnapshot(std::move(leader), index, version);
     }
     void updateCommitIndex(LogIndex index) override {
       return manager.updateCommitIndex(index);

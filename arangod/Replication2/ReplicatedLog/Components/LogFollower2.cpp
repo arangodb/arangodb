@@ -58,9 +58,9 @@ struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
     return follower.commit->waitForIterator(index);
   }
 
-  auto snapshotCompleted() -> Result override {
+  auto snapshotCompleted(std::uint64_t version) -> Result override {
     return follower.snapshot->setSnapshotStateAvailable(
-        follower.appendEntriesManager->getLastReceivedMessageId());
+        follower.appendEntriesManager->getLastReceivedMessageId(), version);
   }
 
  private:

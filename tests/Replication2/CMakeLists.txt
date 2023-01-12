@@ -110,7 +110,6 @@ target_sources(arango_tests_replication2_pure PRIVATE
         Mocks/ReplicatedLogMetricsMock.cpp
         Mocks/FakeStorageEngineMethods.cpp
         Mocks/FakeAsyncExecutor.cpp
-        Mocks/LogEventRecorder.cpp
         Helper/ModelChecker/Actors.cpp
         Helper/ModelChecker/AgencyTransition.cpp
 
