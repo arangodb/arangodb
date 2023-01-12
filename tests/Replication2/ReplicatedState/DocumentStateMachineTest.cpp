@@ -128,9 +128,8 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*handlersFactoryMock, createShardHandler)
         .WillByDefault([&](GlobalLogIdentifier const& gid) {
           ON_CALL(*shardHandlerMock, createLocalShard)
-              .WillByDefault(Return(ResultT<std::string>::success(
-                  DocumentStateShardHandler::stateIdToShardId(gid.id))));
-          ON_CALL(*shardHandlerMock, dropLocalShard(collectionId))
+              .WillByDefault(Return(Result{}));
+          ON_CALL(*shardHandlerMock, dropLocalShard)
               .WillByDefault(Return(Result{}));
           return shardHandlerMock;
         });
@@ -173,7 +172,7 @@ struct DocumentStateMachineTest : testing::Test {
   static constexpr LogId logId = LogId{1};
   const std::string dbName = "testDB";
   const GlobalLogIdentifier globalId{dbName, logId};
-  const ShardID shardId = DocumentStateShardHandler::stateIdToShardId(logId);
+  const ShardID shardId = "s1";
   const document::DocumentCoreParameters coreParams{collectionId, dbName};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();
   const std::string leaderId = "leader";
@@ -189,7 +188,8 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(*agencyHandlerMock,
               reportShardInCurrent(collectionId, shardId, _))
       .Times(1);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+      .Times(1);
   auto core = factory.constructCore(globalId, coreParams);
 
   Mock::VerifyAndClearExpectations(agencyHandlerMock.get());
@@ -205,7 +205,8 @@ TEST_F(DocumentStateMachineTest, shard_is_dropped_during_cleanup) {
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
   auto core = factory.constructCore(globalId, coreParams);
-  EXPECT_CALL(*shardHandlerMock, dropLocalShard(collectionId)).Times(1);
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
   auto cleanupHandler = factory.constructCleanupHandler();
   cleanupHandler->drop(std::move(core));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -838,13 +839,15 @@ TEST_F(DocumentStateMachineTest,
   std::vector<DocumentLogEntry> entries;
   addEntry(entries, OperationType::kCreateShard, TransactionId{0});
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, createLocalShard(collectionId, _)).Times(1);
+  EXPECT_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
+      .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
   entries.clear();
   addEntry(entries, OperationType::kDropShard, TransactionId{0});
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  EXPECT_CALL(*shardHandlerMock, dropLocalShard(collectionId)).Times(1);
+  EXPECT_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
+      .Times(1);
   follower->applyEntries(std::move(entryIterator));
 
   Mock::VerifyAndClearExpectations(stream.get());
@@ -863,14 +866,14 @@ TEST_F(DocumentStateMachineTest,
   std::vector<DocumentLogEntry> entries;
   addEntry(entries, OperationType::kCreateShard, TransactionId{0});
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  ON_CALL(*shardHandlerMock, createLocalShard(collectionId, _))
+  ON_CALL(*shardHandlerMock, createLocalShard(shardId, collectionId, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 
   entries.clear();
   addEntry(entries, OperationType::kDropShard, TransactionId{0});
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
-  ON_CALL(*shardHandlerMock, dropLocalShard(collectionId))
+  ON_CALL(*shardHandlerMock, dropLocalShard(shardId, collectionId))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(follower->applyEntries(std::move(entryIterator)), "");
 }

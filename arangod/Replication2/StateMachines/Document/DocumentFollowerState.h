@@ -45,7 +45,7 @@ struct DocumentFollowerState
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
   ~DocumentFollowerState() override;
 
-  ShardID const shardId;
+  ShardID const shardId;  // TODO we have to get rid of this member
   LoggerContext const loggerContext;
 
   // unprotected for gtests. TODO think about whether there's a better way

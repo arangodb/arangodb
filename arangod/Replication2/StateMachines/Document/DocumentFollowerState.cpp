@@ -111,12 +111,12 @@ auto DocumentFollowerState::applyEntries(
                   std::make_shared<velocypack::Builder>(doc.data.slice());
               auto const& collectionId = data.core->getCollectionId();
               auto res = self->_shardHandler->createLocalShard(
-                  collectionId, collectionProperties);
+                  self->shardId, collectionId, collectionProperties);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
                     << "Failed to create shard " << self->shardId
                     << " of collection " << self->shardId
-                    << " with error: " << res.result();
+                    << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
               LOG_CTX("d82d5", TRACE, self->loggerContext)
@@ -124,7 +124,8 @@ auto DocumentFollowerState::applyEntries(
                   << " of collection " << collectionId;
             } else if (doc.operation == OperationType::kDropShard) {
               auto const& collectionId = data.core->getCollectionId();
-              auto res = self->_shardHandler->dropLocalShard(collectionId);
+              auto res = self->_shardHandler->dropLocalShard(self->shardId,
+                                                             collectionId);
               if (res.fail()) {
                 LOG_CTX("d82d4", FATAL, self->loggerContext)
                     << "Failed to drop shard " << self->shardId
