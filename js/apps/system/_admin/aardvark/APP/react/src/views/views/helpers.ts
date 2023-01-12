@@ -4,7 +4,7 @@ import { formSchema, FormState, linksSchema } from './constants';
 import { useEffect, useMemo, useState } from 'react';
 import { DispatchArgs, State } from '../../utils/constants';
 import { getPath } from '../../utils/helpers';
-import { chain, cloneDeep, escape, get, isNull, merge, omit, set, truncate } from 'lodash';
+import { chain, cloneDeep, escape, get, isNull, merge, omit, set, truncate, uniqueId } from 'lodash';
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
@@ -87,6 +87,10 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
     window.sessionStorage.setItem(oldName, JSON.stringify(state.formState));
     window.sessionStorage.setItem(`${oldName}-changed`, "true");
     setChanged(true);
+  }
+
+  if (['setField', 'unsetField'].includes(action.type)) {
+    state.renderKey = uniqueId('force_re-render_');
   }
 };
 
