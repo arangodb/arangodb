@@ -88,7 +88,7 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
     }
     auto const tracked = _memoryTracker.tracked();
     auto const required =
-        numDataRows * sizeof(decltype(_bufferedDocs)::value_type);
+        numDataRows * sizeof(decltype(_bufferedDocs)::template value_type);
     if (required > tracked) {
       _memoryTracker.increase(required - tracked);
     }
@@ -98,7 +98,7 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
           _readDocumentContext._infos->inputNonMaterializedDocRegId();
       LogicalCollection const* lastCollection{nullptr};
       auto lastSourceId = DataSourceId::none();
-      for (size_t i = 0, j = 0; i < numRows; ++i) {
+      for (size_t i = 0; i < numRows; ++i) {
         if constexpr (HasShadowRows) {
           if (block->isShadowRow(i)) {
             continue;
@@ -115,7 +115,7 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
             auto transactionCollection =
                 _trx.state()->collection(std::get<0>(*searchDoc.segment()),
                                          arangodb::AccessMode::Type::READ);
-            if (ADB_LIKELY(!transactionCollection)) {
+            if (ADB_LIKELY(transactionCollection)) {
               lastCollection =
                   _collection
                       .emplace(docSourceId,
@@ -137,9 +137,9 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
     };
 
     if (block->hasShadowRows()) {
-      readInputDocs.operator()<false>();
+      readInputDocs.template operator()<false>();
     } else {
-      readInputDocs.operator()<true>();
+      readInputDocs.template operator()<true>();
     }
     std::vector<size_t> readOrder(_bufferedDocs.size(), 0);
     std::iota(readOrder.begin(), readOrder.end(), 0);
@@ -289,8 +289,8 @@ MaterializeExecutor<T>::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), MaterializeStats{}, skipped, call};
 }
 
-template class MaterializeExecutor<void>;
-template class MaterializeExecutor<std::string const&>;
+template class arangodb::aql::MaterializeExecutor<void>;
+template class arangodb::aql::MaterializeExecutor<std::string const&>;
 
-template class MaterializerExecutorInfos<void>;
-template class MaterializerExecutorInfos<std::string const&>;
+template class arangodb::aql::MaterializerExecutorInfos<void>;
+template class arangodb::aql::MaterializerExecutorInfos<std::string const&>;
