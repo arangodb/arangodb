@@ -105,6 +105,14 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
     while (auto entry = ptr->next()) {
       auto doc = entry->second;
+      if (doc.operation == OperationType::kCreateShard ||
+          doc.operation == OperationType::kDropShard) {
+        // TODO
+        // If the maintenance sees that shards are missing, it is going to
+        // create them on the leader.
+        // Perhaps we should check that they're already created.
+        continue;
+      }
       auto res = transactionHandler->applyEntry(doc);
       if (res.fail()) {
         return res;
