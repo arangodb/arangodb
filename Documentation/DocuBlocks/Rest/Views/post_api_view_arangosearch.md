@@ -97,7 +97,16 @@ Each object is expected in the following form:
 
   - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
     attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
-    to place each attribute into a separate column.
+    to place each attribute into a separate column. You can also mix it with the
+  the full form:
+  
+  ```json
+  [
+    ["attr1"],
+    ["attr2", "attr3"],
+    { "fields": ["attr4", "attr5"], "cache": true }
+  ]
+  ```
 
 The `storedValues` option is not to be confused with the `storeValues` option,
 which allows to store meta data about attribute values in the View index.
