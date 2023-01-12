@@ -127,19 +127,19 @@ auto DocumentFollowerState::applyEntries(
               auto res = self->_shardHandler->dropLocalShard(self->shardId,
                                                              collectionId);
               if (res.fail()) {
-                LOG_CTX("d82d4", FATAL, self->loggerContext)
+                LOG_CTX("8c7a0", FATAL, self->loggerContext)
                     << "Failed to drop shard " << self->shardId
                     << " of collection " << collectionId
                     << " with error: " << res;
                 FATAL_ERROR_EXIT();
               }
-              LOG_CTX("d82d5", TRACE, self->loggerContext)
+              LOG_CTX("cdc44", TRACE, self->loggerContext)
                   << "Dropped local shard " << self->shardId
                   << " of collection " << collectionId;
             } else {
               auto res = self->_transactionHandler->applyEntry(doc);
               if (res.fail()) {
-                LOG_CTX("d82d4", FATAL, self->loggerContext)
+                LOG_CTX("1b08f", FATAL, self->loggerContext)
                     << "Failed to apply entry " << entry->first
                     << " to local shard " << self->shardId
                     << " with error: " << res;
