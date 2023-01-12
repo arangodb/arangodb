@@ -284,11 +284,11 @@ function multiCollectionTestSuite() {
           internal.sleep(0.2);
           let stats = pregel.status(pid);
           if (stats.state !== "loading" && stats.state !== "running" && stats.state !== "storing") {
-            assertTrue(stats.gss <= 25);
+            assertTrue(stats.gss <= 25, stats);
             assertEqual(stats.vertexCount, numComponents * n, stats);
             assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-            assertTrue(stats.hasOwnProperty("parallelism"));
-            assertEqual(parallelism, stats.parallelism);
+            assertTrue(stats.hasOwnProperty("parallelism"), stats);
+            assertEqual(parallelism, stats.parallelism, stats);
 
             let mySet = new Set();
             for (let j = 0; j < cn; ++j) {
