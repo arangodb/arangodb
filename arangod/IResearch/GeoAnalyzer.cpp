@@ -456,12 +456,11 @@ irs::bytes_view GeoS2Analyzer::store(irs::token_stream* ctx,
   TRI_ASSERT(ctx != nullptr);
   auto& impl = basics::downCast<GeoS2Analyzer>(*ctx);
   impl._encoder.Resize(0);
-  if (impl._type == Type::CENTROID) {
-    TRI_ASSERT(!impl._shape.empty());
+  if (impl._type == Type::SHAPE) {
+    impl._shape.Encode(impl._encoder, impl._hint);
+  } else {
     auto const centroid = impl._shape.centroid();
     geo::encodePoint(impl._encoder, centroid, impl._hint);
-  } else {
-    impl._shape.Encode(impl._encoder, impl._hint);
   }
   return irs::bytes_view{
       reinterpret_cast<const unsigned char*>(impl._encoder.base()),
@@ -480,9 +479,9 @@ bool GeoS2Analyzer::reset(std::string_view value) {
 
 void GeoS2Analyzer::prepare(GeoFilterOptionsBase& options) const {
   options.options = _indexer.options();
-  options.stored = _type == GeoJsonAnalyzerBase::Type::CENTROID
-                       ? StoredType::S2Centroid
-                       : StoredType::S2Shape;
+  options.stored = _type == GeoJsonAnalyzerBase::Type::SHAPE
+                       ? StoredType::S2Shape
+                       : StoredType::S2Point;
 }
 
 bool GeoPointAnalyzer::normalize(std::string_view args, std::string& out) {
