@@ -159,8 +159,6 @@ auto DocumentLeaderState::replicateOperation(velocypack::SharedSlice payload,
                         // returning a dummy index
   }
 
-  // TODO there is a race here, what happens if the leader resigns after this
-  // point? (CINFRA-613)
   auto const& stream = getStream();
   auto entry =
       DocumentLogEntry{std::string(shardId), operation, std::move(payload),
