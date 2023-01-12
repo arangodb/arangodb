@@ -71,7 +71,7 @@ inline S2Cap fromPoint(S2Point const& origin) {
   return S2Cap{origin, S1Angle::Radians(kSingletonCapEps)};
 }
 
-struct S2CentroidParser;
+struct S2PointParser;
 
 template<typename Parser, typename Acceptor>
 class GeoIterator final : public irs::doc_iterator {
@@ -99,7 +99,7 @@ class GeoIterator final : public irs::doc_iterator {
       score = irs::CompileScore(order.buckets(), reader, field, query_stats,
                                 *this, boost);
     }
-    if constexpr (std::is_same_v<std::decay_t<Parser>, S2CentroidParser>) {
+    if constexpr (std::is_same_v<std::decay_t<Parser>, S2PointParser>) {
       // random, stub value but it should be unit length because assert
       _shape.reset(S2Point{1, 0, 0});
     }
@@ -283,7 +283,7 @@ struct S2ShapeParser {
   }
 };
 
-struct S2CentroidParser {
+struct S2PointParser {
   bool operator()(irs::bytes_view value, geo::ShapeContainer& shape) const {
     TRI_ASSERT(!value.empty());
     TRI_ASSERT(shape.type() == geo::ShapeContainer::Type::S2_POINT);
@@ -340,9 +340,9 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
       return irs::memory::make_managed<GeoQuery<S2ShapeParser, Acceptor>>(
           std::move(states), std::move(stats), S2ShapeParser{},
           std::forward<Acceptor>(acceptor), boost);
-    case StoredType::S2Centroid:
-      return irs::memory::make_managed<GeoQuery<S2CentroidParser, Acceptor>>(
-          std::move(states), std::move(stats), S2CentroidParser{},
+    case StoredType::S2Point:
+      return irs::memory::make_managed<GeoQuery<S2PointParser, Acceptor>>(
+          std::move(states), std::move(stats), S2PointParser{},
           std::forward<Acceptor>(acceptor), boost);
   }
   TRI_ASSERT(false);
