@@ -88,7 +88,7 @@ void MaterializeExecutor<T>::fillBuffer(AqlItemBlockInputRange& inputRange) {
     }
     auto const tracked = _memoryTracker.tracked();
     auto const required =
-        numDataRows * sizeof(decltype(_bufferedDocs)::template value_type);
+        numDataRows * sizeof(typename decltype(_bufferedDocs)::value_type);
     if (required > tracked) {
       _memoryTracker.increase(required - tracked);
     }
