@@ -61,7 +61,7 @@ const LinkList = ({ name }: ViewProps) => {
     marginRight: 'auto'
   }}>
     <div className="modal-body" style={{
-      minHeight: 300,
+      minHeight: 150,
       border: 'none',
       height: 'fit-content'
     }}>
