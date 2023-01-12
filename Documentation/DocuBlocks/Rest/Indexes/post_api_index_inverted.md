@@ -190,7 +190,16 @@ this case:
 
 - An array of arrays of strings, like `[["attr1", "attr2"]]`, to place the
   attributes into a single column of the index, or `[["attr1"], ["attr2"]]`
-  to place each attribute into a separate column.
+  to place each attribute into a separate column. You can also mix it with the
+  the full form:
+  
+  ```json
+  [
+    ["attr1"],
+    ["attr2", "attr3"],
+    { "fields": ["attr4", "attr5"], "cache": true }
+  ]
+  ```
 
 @RESTSTRUCT{fields,post_api_index_inverted_storedvalues,array,required,string}
 A list of attribute paths. The `.` character denotes sub-attributes.
