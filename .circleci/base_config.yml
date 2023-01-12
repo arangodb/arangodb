@@ -10,6 +10,8 @@ jobs:
     resource_class: xlarge
     environment:
       GIT_SSH_COMMAND: ssh -v
+      SCCACHE_ERROR_LOG: /tmp/sccache.log
+      SCCACHE_LOG: info,sccache::cache=debug
     steps:
       - run:
           name: Checkout
@@ -17,37 +19,39 @@ jobs:
             git clone --depth 1 https://github.com/arangodb/arangodb.git --branch "$CIRCLE_BRANCH" --recurse-submodules --shallow-submodules -j 8 /root/project
             git reset --hard "$CIRCLE_SHA1"
       - run:
-          name: Print CCache Settings
-          command: ccache -p
-      - restore_cache:
-          keys:
-            - ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
-            - ccache-v1-docker-{{ .Branch }}-
-            - ccache-v1-docker
-      - run:
-          name: Zero CCache Statistics
-          command: ccache -z
+          name: Print SCCache Settings
+          command: sccache -s
+      # - restore_cache:
+      #     keys:
+      #       - ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+      #       - ccache-v1-docker-{{ .Branch }}-
+      #       - ccache-v1-docker
+      # - run:
+      #     name: Zero CCache Statistics
+      #     command: ccache -z
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
       - run:
           name: Build
           command: |
             cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
+            cat /tmp/sccache.log
       - run:
           command: |
             rm build/<< parameters.preset >>/bin/*.a
+            ls -la build/<< parameters.preset >>/bin/
       - run:
-          name: CCache Statistics
-          command: ccache -s
+          name: SCCache Statistics
+          command: sccache -s
       - store_artifacts:
           path: build/<< parameters.preset >>/bin/arango*
-      - save_cache:
-          when: always
-          key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
-          paths:
-            - /root/.cache/ccache
+      # - save_cache:
+      #     when: always
+      #     key: ccache-v1-docker-{{ .Branch }}-{{ .Revision }}
+      #     paths:
+      #       - /root/.cache/ccache
       - persist_to_workspace:
           root: .
           paths:
@@ -149,8 +153,8 @@ workflows:
           requires:
             - build-community-pr
       - run-ctest:
-           name: arangodbtests-iresearch
-           preset: community-pr
-           filter: "arangodbtests-iresearch"
-           requires:
-             - build-community-pr
+          name: arangodbtests-iresearch
+          preset: community-pr
+          filter: "arangodbtests-iresearch"
+          requires:
+            - build-community-pr
