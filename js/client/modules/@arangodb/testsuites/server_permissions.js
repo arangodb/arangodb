@@ -258,9 +258,10 @@ function server_permissions(options) {
     tu.scanTestPaths(testPaths.server_permissions, options));
 }
 
-function server_parameters(options) {
-  return new permissionsRunner(options, "server_parameters").run(
-    tu.scanTestPaths(testPaths.server_parameters, options));
+function server_parameters(options) {  
+  let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
+  testCases = tu.splitBuckets(options, testCases);
+  return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 
 function server_secrets(options) {
