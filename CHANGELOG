@@ -6,6 +6,11 @@ devel
 
 * Upgrade bundled version of RocksDB to 7.9.
 
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
 * Use more compact and efficient representation for arrays and objects during
   AQL AST serialization and deserialization. This can help to reduce the size
   of messages exchanged between coordinator and database servers during query
