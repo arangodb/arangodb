@@ -64,24 +64,24 @@ struct DocumentFollowerState
   auto populateLocalShard(velocypack::SharedSlice slice) -> Result;
   auto handleSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
-      LogIndex waitForIndex, std::uint64_t snapshotsCount,
+      LogIndex waitForIndex, std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<Result>;
 
  private:
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+        : core(std::move(core)), currentSnapshotVersion{0} {};
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::uint64_t currentSnapshotVersion;
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> _networkHandler;
   std::unique_ptr<IDocumentStateTransactionHandler> _transactionHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   ActiveTransactionsQueue _activeTransactions;
-  std::atomic<std::uint64_t> _snapshotsCount;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

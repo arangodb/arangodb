@@ -43,8 +43,7 @@ DocumentFollowerState::DocumentFollowerState(
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
-      _guardedData(std::move(core)),
-      _snapshotsCount(0) {}
+      _guardedData(std::move(core)) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -61,21 +60,21 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto snapshotsCount = _guardedData.doUnderLock(
+  auto snapshotVersion = _guardedData.doUnderLock(
       [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        auto count = ++self->_snapshotsCount;
+        auto count = ++data.currentSnapshotVersion;
         if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
           return truncateRes;
         }
         return count;
       });
 
-  if (snapshotsCount.fail()) {
-    return snapshotsCount.result();
+  if (snapshotVersion.fail()) {
+    return snapshotVersion.result();
   }
 
   // A follower may request a snapshot before leadership has been
@@ -83,7 +82,7 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   auto leader = _networkHandler->getLeaderInterface(destination);
   auto fut = leader->startSnapshot(waitForIndex);
   return handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                snapshotsCount.get(), std::move(fut));
+                                snapshotVersion.get(), std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
@@ -191,12 +190,12 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex, std::uint64_t snapshotsCount,
+    LogIndex waitForIndex, std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
   return std::move(snapshotFuture)
       .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
-             snapshotsCount](
+             snapshotVersion](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
@@ -220,7 +219,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 
         auto& docs = snapshotRes->payload;
         auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
-                                                         snapshotsCount](
+                                                         snapshotVersion](
                                                             auto& data)
                                                             -> Result {
           if (data.didResign()) {
@@ -233,7 +232,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
           // snapshot transfer is not yet completed before another one is
           // requested. Before populating the shard, we have to make sure
           // there's no new snapshot transfer in progress.
-          if (self->_snapshotsCount.load() != snapshotsCount) {
+          if (data.currentSnapshotVersion != snapshotVersion) {
             return {
                 TRI_ERROR_INTERNAL,
                 "Snapshot transfer cancelled because a new one was started!"};
@@ -255,7 +254,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         if (snapshotRes->hasMore) {
           auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
           return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                              snapshotsCount, std::move(fut));
+                                              snapshotVersion, std::move(fut));
         }
 
         return leader->finishSnapshot(snapshotRes->snapshotId);
