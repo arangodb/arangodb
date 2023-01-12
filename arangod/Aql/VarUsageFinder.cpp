@@ -61,8 +61,8 @@ auto mergeInto(VarSet& target, VarSet const& source) {
 template<class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
-  en->plan()->increaseCounter(en->getType());
-
+  TRI_ASSERT(en);
+  en->plan()->increaseCounter(*en);
   en->invalidateVarUsage();
   en->setVarsUsedLater(_usedLaterStack);
   switch (en->getType()) {

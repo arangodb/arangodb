@@ -27,6 +27,8 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/WorkerConfig.h"
 
 struct TRI_vocbase_t;
@@ -55,10 +57,6 @@ class Utils {
   static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
-  static std::string const startRecoveryPath;
-  static std::string const continueRecoveryPath;
-  static std::string const finishedRecoveryPath;
-  static std::string const finalizeRecoveryPath;
   static std::string const storeCheckpointPath;
   static std::string const aqlResultsPath;
 
@@ -71,10 +69,8 @@ class Utils {
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
-  static std::string const asyncModeKey;
   static std::string const useMemoryMapsKey;
   static std::string const parallelismKey;
-  static std::string const activateAllKey;
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
@@ -95,9 +91,6 @@ class Utils {
   /// sender cluster id
   static std::string const senderKey;
   static std::string const payloadKey;
-
-  /// Recovery method name
-  static std::string const recoveryMethodKey;
 
   /// Tells workers to store the result into the collections
   /// otherwise dicard results
@@ -131,10 +124,6 @@ class Utils {
   /// Used to track number of messages send during the last
   /// superstep (bookkeeping)
   static std::string const sendCountKey;
-
-  /// Used to communicate to enter the next phase
-  /// only send by the conductor
-  static std::string const enterNextGSSKey;
 
   /// Algorithms parameters
   static std::string const maxGSS;

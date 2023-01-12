@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -621,7 +622,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return {};
 }
 
-ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
+void LogicalCollection::close() { getPhysical()->close(); }
 
 Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -753,7 +754,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // TODO is this still releveant or redundant in keyGenerator?
   build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
 
-  // keyoptions
+  // keyOptions
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   keyGenerator().toVelocyPack(build);
   build.close();
@@ -1088,21 +1089,21 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(IndexId iid) {
+Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
-  bool result = _physical->dropIndex(iid);
+  Result res = _physical->dropIndex(iid);
 
-  if (result) {
+  if (res.ok()) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("drop index");
     }
   }
 
-  return result;
+  return res;
 }
 
 /// @brief Persist the connected physical collection.
@@ -1261,9 +1262,20 @@ auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;
+  auto maybeState = vocbase().getReplicatedStateById(shardIdToStateId(name()));
+  // Note that while we assert this for now, I am not sure that we can rely on
+  // it. I don't know of any mechanism (I also haven't checked thoroughly) that
+  // would prevent the state of a collection being deleted while this function
+  // is called.
+  // TODO Check whether this assert is sensible, or whether we might have to
+  //      either return a nullptr or throw an exception instead.
+  // TODO If we have to remove the assert, we must make sure that the caller (or
+  //      callers) are prepared for that (they currently aren't).
+  ADB_PROD_ASSERT(maybeState.ok())
+      << "Missing document state in shard " << name();
   auto stateMachine =
-      std::dynamic_pointer_cast<ReplicatedState<document::DocumentState>>(
-          vocbase().getReplicatedStateById(shardIdToStateId(name())));
+      basics::downCast<ReplicatedState<document::DocumentState>>(
+          std::move(maybeState).get());
   ADB_PROD_ASSERT(stateMachine != nullptr)
       << "Missing document state in shard " << name();
   return stateMachine;
@@ -1304,7 +1316,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
                      shardIdToStateId(name()), vocbase().name(), name(),
-                     to_string(leaderStatus->managerState.state));
+                     /* to_string(leaderStatus->managerState.state) */ "n/a");
   }
 
   return leader;

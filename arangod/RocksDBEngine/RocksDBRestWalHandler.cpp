@@ -127,7 +127,7 @@ void RocksDBRestWalHandler::flush() {
         _request->parsedValue("waitForCollector", flushColumnFamilies);
   }
 
-  auto res = TRI_ERROR_NO_ERROR;
+  Result res;
   if (ServerState::instance()->isCoordinator()) {
     auto& feature = server().getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
@@ -137,7 +137,7 @@ void RocksDBRestWalHandler::flush() {
     }
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,

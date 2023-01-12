@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/SortedRowsStorageBackend.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SortExecutor.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace arangodb::aql {
@@ -49,6 +49,12 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   void seal() final;
   void spillOver(SortedRowsStorageBackend& other) final;
 
+  // uint32_t in this vector is a reasonable trade-off between performance and
+  // amount of data. With this values we can sort up to ~ 4.000.000.000 times
+  // 1000 elements in memory. Anything beyond that has a questionable runtime on
+  // nowadays hardware anyways.
+  using RowIndex = std::pair<uint32_t, uint32_t>;
+
  private:
   void doSorting();
   size_t currentMemoryUsage() const noexcept;
@@ -56,7 +62,7 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   SortExecutorInfos& _infos;
 
   std::vector<SharedAqlItemBlockPtr> _inputBlocks;
-  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
+  std::vector<RowIndex> _rowIndexes;
 
   size_t _returnNext;
   size_t _memoryUsageForInputBlocks;

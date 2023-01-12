@@ -63,7 +63,6 @@ Finding TransactionalCache<Hasher>::find(void const* key,
       recordStat(Stat::findMiss);
       result.reportError(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     }
-    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
   }
   return result;
 }

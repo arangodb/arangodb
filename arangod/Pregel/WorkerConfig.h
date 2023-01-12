@@ -29,6 +29,8 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
@@ -53,13 +55,11 @@ class WorkerConfig {
   // get effective parallelism from Pregel feature and params
   static size_t parallelism(PregelFeature& feature, VPackSlice params);
 
-  inline uint64_t executionNumber() const { return _executionNumber; }
+  ExecutionNumber executionNumber() const { return _executionNumber; }
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
 
   inline uint64_t localSuperstep() const { return _localSuperstep; }
-
-  inline bool asynchronousMode() const { return _asynchronousMode; }
 
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
@@ -135,15 +135,13 @@ class WorkerConfig {
   PregelID documentIdToPregel(std::string const& documentID) const;
 
  private:
-  uint64_t _executionNumber = 0;
+  ExecutionNumber _executionNumber{};
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
 
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
 
-  /// Let async
-  bool _asynchronousMode = false;
   // use memory mapping? will be updated by config later
   bool _useMemoryMaps = true;
   // parallelism. will be updated by config later

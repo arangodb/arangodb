@@ -121,7 +121,6 @@ template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
-  bool _enterNextGSS = false;
   ReportManager _reports;
 
  public:
@@ -142,17 +141,6 @@ class VertexComputation : public VertexContext<V, E, M> {
     for (; edges.hasMore(); ++edges) {
       Edge<E> const* edge = *edges;
       _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
-    }
-  }
-
-  /// Causes messages to be available in GSS+1.
-  /// Only valid in async mode, a no-op otherwise
-  void enterNextGlobalSuperstep() {
-    // _enterNextGSS is true when we are not in async mode
-    // making this a no-op
-    if (!_enterNextGSS) {
-      _enterNextGSS = true;
-      _cache->sendToNextGSS(true);
     }
   }
 

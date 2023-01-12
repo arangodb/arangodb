@@ -134,18 +134,10 @@ inline bool isCompactArrayOrObject(VPackSlice slice) {
 //////////////////////////////////////////////////////////////////////////////
 inline std::string_view getStringRef(VPackSlice slice) {
   if (slice.isNull()) {
-    return std::string_view{};
+    return {};
   }
-
   TRI_ASSERT(slice.isString());
-
-  velocypack::ValueLength size;
-  auto const* str = slice.getString(size);
-
-  static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
-                "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
-
-  return std::string_view(str, size);
+  return slice.stringView();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -153,16 +145,9 @@ inline std::string_view getStringRef(VPackSlice slice) {
 ///        must be a string
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::bytes_view getBytesRef(VPackSlice const& slice) {
+inline irs::bytes_view getBytesRef(VPackSlice slice) {
   TRI_ASSERT(slice.isString());
-
-  velocypack::ValueLength size;
-  auto const* str = slice.getString(size);
-
-  static_assert(sizeof(velocypack::ValueLength) == sizeof(size_t),
-                "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
-
-  return irs::bytes_view(reinterpret_cast<irs::byte_type const*>(str), size);
+  return irs::ViewCast<irs::byte_type>(slice.stringView());
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -199,15 +184,13 @@ template<typename T>
 inline bool getNumber(T& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       T fallback) noexcept {
-  seen = slice.hasKey(fieldName.data(), fieldName.length());
-
+  auto field = slice.get(fieldName);
+  seen = !field.isNone();
   if (!seen) {
     buf = fallback;
-
     return true;
   }
-
-  return getNumber(buf, slice.get(fieldName));
+  return getNumber(buf, field);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -217,22 +200,16 @@ inline bool getNumber(T& buf, velocypack::Slice const& slice,
 inline bool getString(std::string& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       std::string const& fallback) noexcept {
-  seen = slice.hasKey(fieldName.data(), fieldName.length());
-
+  auto field = slice.get(fieldName);
+  seen = !field.isNone();
   if (!seen) {
     buf = fallback;
-
     return true;
   }
-
-  auto field = slice.get(fieldName);
-
   if (!field.isString()) {
     return false;
   }
-
-  buf = field.copyString();
-
+  buf = field.stringView();
   return true;
 }
 
@@ -243,22 +220,16 @@ inline bool getString(std::string& buf, velocypack::Slice const& slice,
 inline bool getString(std::string_view& buf, velocypack::Slice const& slice,
                       std::string_view fieldName, bool& seen,
                       std::string_view fallback) noexcept {
-  seen = slice.hasKey(fieldName.data(), fieldName.length());
-
+  auto field = slice.get(fieldName);
+  seen = !field.isNone();
   if (!seen) {
     buf = fallback;
-
     return true;
   }
-
-  auto field = slice.get(fieldName);
-
   if (!field.isString()) {
     return false;
   }
-
-  buf = getStringRef(field);
-
+  buf = field.stringView();
   return true;
 }
 

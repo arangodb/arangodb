@@ -265,6 +265,45 @@ static void JS_Insert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_Ping(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("ping([message])");
+  }
+
+  std::optional<std::string> message;
+
+  if (args.Length() > 0) {
+    VPackBuilder builder;
+    TRI_V8ToVPack(isolate, builder, args[0], false, false);
+    message = builder.slice().copyString();
+  }
+
+  auto result = ReplicatedLogMethods::createInstance(vocbase)
+                    ->ping(id, std::move(message))
+                    .get();
+  VPackBuilder response;
+  {
+    VPackObjectBuilder ob(&response);
+    response.add("index", VPackValue(result.first));
+    response.add(VPackValue("result"));
+    result.second.toVelocyPack(response);
+  }
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_MultiInsert(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -585,6 +624,31 @@ static void JS_Release(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapReplicatedLog(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to replicated log '") + to_string(id) + "'");
+  }
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("compact()");
+  }
+
+  auto result =
+      ReplicatedLogMethods::createInstance(vocbase)->compact(id).get();
+
+  VPackBuilder response;
+  arangodb::velocypack::serialize(response, result);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   auto db = v8::Local<v8::ObjectTemplate>::New(isolate, v8g->VocbaseTempl);
   TRI_AddMethodVocbase(isolate, db,
@@ -608,6 +672,8 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
                        JS_Drop);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"),
                        JS_Insert);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "ping"),
+                       JS_Ping);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "multiInsert"),
                        JS_MultiInsert);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"),
@@ -624,6 +690,8 @@ void TRI_InitV8ReplicatedLogs(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "at"), JS_At);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "release"),
                        JS_Release);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"),
+                       JS_Compact);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "poll"),
                        JS_Poll);
 

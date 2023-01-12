@@ -116,6 +116,9 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
+    if (scheduler->server().isStopping()) {
+      return false;
+    }
     try {
       scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
       return true;

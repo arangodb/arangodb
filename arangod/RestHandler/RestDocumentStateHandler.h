@@ -28,7 +28,10 @@ namespace arangodb {
 
 namespace replication2 {
 struct DocumentStateMethods;
+namespace replicated_state::document {
+struct SnapshotParams;
 }
+}  // namespace replication2
 
 class RestDocumentStateHandler : public RestVocbaseBaseHandler {
  public:
@@ -39,10 +42,26 @@ class RestDocumentStateHandler : public RestVocbaseBaseHandler {
 
  private:
   RestStatus executeByMethod(replication2::DocumentStateMethods const& methods);
+
   RestStatus handleGetRequest(
       replication2::DocumentStateMethods const& methods);
-  RestStatus handleGetSnapshot(
+  auto parseGetSnapshotParams()
+      -> ResultT<replication2::replicated_state::document::SnapshotParams>;
+
+  RestStatus handlePostRequest(
+      replication2::DocumentStateMethods const& methods);
+  auto parsePostSnapshotParams()
+      -> ResultT<replication2::replicated_state::document::SnapshotParams>;
+
+  RestStatus handleDeleteRequest(
+      replication2::DocumentStateMethods const& methods);
+  auto parseDeleteSnapshotParams()
+      -> ResultT<replication2::replicated_state::document::SnapshotParams>;
+
+  RestStatus processSnapshotRequest(
       replication2::DocumentStateMethods const& methods,
-      replication2::LogId logId);
+      replication2::LogId const& logId,
+      ResultT<replication2::replicated_state::document::SnapshotParams>&&
+          params);
 };
 }  // namespace arangodb

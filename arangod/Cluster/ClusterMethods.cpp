@@ -43,6 +43,7 @@
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -89,10 +90,7 @@
 #include <random>
 #include <vector>
 
-#include "ClusterEngine/ClusterEngine.h"
-#include "ClusterEngine/Common.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "Metrics/Types.h"
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -800,7 +798,8 @@ static std::shared_ptr<ShardMap> CloneShardDistribution(
 namespace arangodb {
 
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
-                             VPackSlice value, VPackBuilder& builder) {
+                             velocypack::Slice value,
+                             velocypack::Builder& builder) {
   TRI_ASSERT(value.isObject());
   TRI_ASSERT(builder.slice().isObject());
   TRI_ASSERT(builder.isClosed());
@@ -2743,12 +2742,9 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
       });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flush Wal on all DBservers
-////////////////////////////////////////////////////////////////////////////////
-
-::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
-                                   bool flushColumnFamilies) {
+/// @brief flush WAL on all DBservers
+Result flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
+                              bool flushColumnFamilies) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2776,17 +2772,66 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
-    if (r.fail()) {
-      return network::fuerteToArangoErrorCode(r);
-    }
-    if (r.statusCode() != fuerte::StatusOK) {
-      auto code = network::errorCodeFromBody(r.slice());
-      if (code != TRI_ERROR_NO_ERROR) {
-        return code;
-      }
+    if (r.fail() || r.statusCode() != fuerte::StatusOK) {
+      return r.combinedResult();
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return {};
+}
+
+// recalculate counts on all DB servers
+Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
+                                       std::string_view dbname,
+                                       std::string_view collname) {
+  // Set a few variables needed for our work:
+  NetworkFeature const& nf = feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  std::string const baseUrl = "/_api/collection/";
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
+  network::Headers headers;
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(600.0);
+
+  // now we notify all leader and follower shards
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
+                        "/recalculateCount";
+      auto f = network::sendRequestRetry(pool, "server:" + serverId,
+                                         fuerte::RestVerb::Put, std::move(uri),
+                                         body, options, headers);
+      futures.emplace_back(std::move(f));
+    }
+  }
+
+  auto responses = futures::collectAll(futures).get();
+  for (auto const& r : responses) {
+    Result res = r.get().combinedResult();
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  return {};
 }
 
 /// @brief compact the database on all DB servers
