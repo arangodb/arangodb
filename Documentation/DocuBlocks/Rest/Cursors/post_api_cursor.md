@@ -107,7 +107,7 @@ exceptions and will be returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
-@RESTSTRUCT{retriable,post_api_cursor_opts,boolean,optional,}
+@RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
 Set this option to `true` to make it possible to retry fetching the latest batch
 from a cursor.
 
@@ -283,7 +283,7 @@ available if the query was executed with the `count` attribute set).
 The ID of a temporary cursor created on the server for fetching more result batches.
 
 @RESTREPLYBODY{nextBatchId,string,optional,string}
-Only set if the `retriable` query option is enabled.
+Only set if the `allowRetry` query option is enabled.
 
 The ID of the batch after the current one. The first batch has an ID of `1` and
 the value is incremented by 1 with every batch. You can remember and use this

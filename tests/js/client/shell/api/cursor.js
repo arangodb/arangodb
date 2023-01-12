@@ -1260,7 +1260,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_non_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "retriable": true}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "allowRetry": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1346,7 +1346,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "retriable": true}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "allowRetry": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1431,7 +1431,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_stream_request_non_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "retriable": false}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "allowRetry": false}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1459,14 +1459,14 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       internal.debugClearFailAt();
       // as the `batchId` field starts with 1 for the first batch, we assume the next batch id would be 2 for
       // the failing request to send another request to retrieve its result, knowing it would fail because
-      // the flag `retriable`is false
+      // the flag `allowRetry`is false
       cmd = api + `/${cursorId}/2`;
       doc = arango.POST_RAW(cmd, "");
       assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
-      assertEqual(doc.parsedBody['errorMessage'], 'expecting retriable option to be true');
+      assertEqual(doc.parsedBody['errorMessage'], 'expecting allowRetry option to be true');
       assertUndefined(doc.parsedBody['id']);
       assertUndefined(doc.parsedBody['nextBatchId']);
     },
@@ -1474,7 +1474,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
     test_cursor_non_stream_retriable: function () {
       const stmt = db._createStatement({
         query: `FOR u IN ${cn} RETURN u`,
-        options: {stream: false, retriable: true},
+        options: {stream: false, allowRetry: true},
         batchSize: 100
       });
       let cursor = stmt.execute();
@@ -1498,7 +1498,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
     test_cursor_stream_retriable: function () {
       const stmt = db._createStatement({
         query: `FOR u IN ${cn} RETURN u`,
-        options: {stream: true, retriable: true},
+        options: {stream: true, allowRetry: true},
         batchSize: 100
       });
       let cursor = stmt.execute();

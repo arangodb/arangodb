@@ -3,7 +3,7 @@ devel
 
 * APM-592: In batched query results, when executing requests for `/_api/cursor`, 
   there might be a connection error and the user might not be able to retrieve
-  the latest batch from the cursor. For that, a query option flag `retriable` was
+  the latest batch from the cursor. For that, a query option flag `allowRetry` was
   added. When set to `true`, if the latest batch response object wasn't
   successfully received, the user can send a retry request to receive it with 
   a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch

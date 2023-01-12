@@ -202,7 +202,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
-  if (value = slice.get("retriable"); value.isBool()) {
+  if (value = slice.get("allowRetry"); value.isBool()) {
     retriable = value.isTrue();
   }
   if (value = slice.get("silent"); value.isBool()) {
@@ -296,7 +296,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
-  builder.add("retriable", VPackValue(retriable));
+  builder.add("allowRetry", VPackValue(retriable));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));

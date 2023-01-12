@@ -36,7 +36,7 @@ the cursor is exhausted.  Once the *hasMore* attribute has a value of
 The server will respond with *HTTP 200* in case of success.
 
 @RESTREPLYBODY{nextBatchId,string,optional,string}
-Only set if the `retriable` query option is enabled.
+Only set if the `allowRetry` query option is enabled.
 
 The ID of the batch after the current one. The first batch has an ID of `1` and
 the value is incremented by 1 with every batch. You can remember and use this

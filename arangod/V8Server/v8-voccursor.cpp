@@ -55,7 +55,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "CREATE_CURSOR(<data>, <batchSize>, <ttl>, <retriable>)");
+        "CREATE_CURSOR(<data>, <batchSize>, <ttl>, <allowRetry>)");
   }
 
   if (!args[0]->IsArray()) {
@@ -329,7 +329,7 @@ struct V8Cursor final {
         options.slice(), "batchSize", 1000);
 
     bool isRetriable =
-        VelocyPackHelper::getBooleanValue(options.slice(), "retriable", false);
+        VelocyPackHelper::getBooleanValue(options.slice(), "allowRetry", false);
 
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);

@@ -209,7 +209,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(
       opts, "ttl", _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
-  bool retriable = VelocyPackHelper::getBooleanValue(opts, "retriable", false);
+  bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   // simon: access mode can always be write on the coordinator
   const AccessMode::Type mode = AccessMode::Type::WRITE;
@@ -312,7 +312,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
       VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
-  bool retriable = VelocyPackHelper::getBooleanValue(opts, "retriable", false);
+  bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
 
   _response->setContentType(rest::ContentType::JSON);
   size_t const n = static_cast<size_t>(qResult.length());
@@ -717,7 +717,7 @@ RestStatus RestCursorHandler::showLatestBatch() {
   }
   if (!_cursor->isRetriable()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting retriable option to be true");
+                  "expecting allowRetry option to be true");
     return RestStatus::DONE;
   }
 

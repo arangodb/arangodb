@@ -16,7 +16,7 @@ Earlier batches are not kept on the server-side.
 
 @RESTDESCRIPTION
 You can use this endpoint to retry fetching the latest batch from a cursor.
-The endpoint requires the `retriable` query option to be enabled for the cursor.
+The endpoint requires the `allowRetry` query option to be enabled for the cursor.
 
 If the cursor is still alive, returns an object with a batch of query results.
 Calling this endpoint does not advance the cursor.
@@ -67,6 +67,12 @@ A flag to indicate that an error occurred (`false` in this case).
 @RESTREPLYBODY{code,integer,required,integer}
 The HTTP status code.
 
+@RESTREPLYBODY{errorNum,integer,required,int64}
+A server error number (if `error` is `true`).
+
+@RESTREPLYBODY{errorMessage,string,required,string}
+A descriptive error message (if `error` is `true`).
+
 @RESTRETURNCODE{404}
 If no cursor with the specified identifier can be found, or if the requested
 batch isn't available, the server responds with *HTTP 404*.
@@ -92,7 +98,7 @@ Request the second batch (again):
       count: true,
       batchSize: 2,
       options: {
-        retriable: true
+        allowRetry: true
       }
     };
     var response = logCurlRequest('POST', url, body);

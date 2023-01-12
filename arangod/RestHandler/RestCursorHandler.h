@@ -154,7 +154,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus deleteQueryCursor();
 
   ///////////////////////////////////////////////////////////////////////////////////////
-  /// @brief show last batch on retry if `retriable` flag is true, doesn't
+  /// @brief show last batch on retry if `allowRetry` flag is true, doesn't
   /// advance cursor
   ///////////////////////////////////////////////////////////////////////////////////////
 
