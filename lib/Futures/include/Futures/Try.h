@@ -71,7 +71,6 @@ class Try {
   explicit Try(std::exception_ptr e) noexcept
       : _exception(std::move(e)), _content(Content::Exception) {}
 
-
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
