@@ -560,7 +560,6 @@ bool ShapeContainer::equals(ShapeContainer const& other) const {
 
 double ShapeContainer::distanceFromCentroid(S2Point const& other,
                                             Ellipsoid const& e) const noexcept {
-  TRI_ASSERT(false);
   return utils::geodesicDistance(S2LatLng{centroid()}, S2LatLng{other}, e);
 }
 
