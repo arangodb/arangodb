@@ -46,7 +46,7 @@ auto SnapshotManager::updateSnapshotState(SnapshotState state,
   if (auto guard = guardedData.getLockedGuard(); guard->state != state) {
     if (state == SnapshotState::AVAILABLE) {
       if (guard->lastSnapshotVersion != version) {
-        LOG_CTX("b2c65", INFO, loggerContext)
+        LOG_CTX("b72c5", INFO, loggerContext)
             << "snapshot for version " << version
             << " completed, but already at " << guard->lastSnapshotVersion;
         return {};  // silently ignore
