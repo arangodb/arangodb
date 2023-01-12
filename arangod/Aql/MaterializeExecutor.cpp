@@ -30,7 +30,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchReadUtils.h"
 #include <formats/formats.hpp>
 #include <index/index_reader.hpp>
 #include <search/boolean_filter.hpp>
@@ -38,16 +38,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-// TODO Make it common!
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader =
-      segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
-
-  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
-}
-
-}  // namespace
 
 template<typename T>
 arangodb::IndexIterator::DocumentCallback
@@ -172,7 +162,7 @@ void MaterializeExecutor<T>::fillBuffer(
       auto& searchDoc = std::get<0>(document);
       if (lastSegment != searchDoc.segment()) {
         lastSegment = searchDoc.segment();
-        pkReader = ::pkColumn(*std::get<1>(*lastSegment));
+        pkReader = iresearch::pkColumn(*std::get<1>(*lastSegment));
         if (ADB_LIKELY(pkReader)) {
           docValue = irs::get<irs::payload>(*pkReader);
         } else {

@@ -37,6 +37,7 @@
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchMetricStats.h"
+#include "IResearch/IResearchReadUtils.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 
@@ -130,14 +131,6 @@ bool supportsFilterNode(
       << "Failed to build filter with error'" << rv.errorMessage()
       << "' Skipping index " << id.id();
   return rv.ok();
-}
-
-const irs::payload NoPayload;
-
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
-  auto const* reader = segment.column(DocumentPrimaryKey::PK());
-
-  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
 /// @brief  Struct represents value of a Projections[i]

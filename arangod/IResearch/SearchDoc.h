@@ -28,24 +28,10 @@
 
 #include "Aql/AqlValue.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "ViewSnapshot.h"
 #include "utils/type_limits.hpp"
 
-namespace irs {
-
-struct sub_reader;
-
-}
-
-namespace arangodb {
-class StorageSnapshot;
-}
-
 namespace arangodb::iresearch {
-
-// FIXME (Dronplane) move all using to some common header and have all forward
-// decls/includes there
-using ViewSegment =
-    std::tuple<DataSourceId, ::irs::sub_reader const*, StorageSnapshot const&>;
 
 constexpr size_t kSearchDocBufSize =
     sizeof(ViewSegment const*) + sizeof(irs::doc_id_t);

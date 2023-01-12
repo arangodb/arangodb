@@ -36,6 +36,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchReadUtils.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -65,8 +66,6 @@ using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
 namespace {
-
-const irs::payload NoPayload;
 
 [[maybe_unused]] size_t calculateSkipAllCount(CountApproximate approximation,
                                               size_t currentPos,
@@ -118,19 +117,7 @@ lookupCollection(arangodb::transaction::Methods& trx, DataSourceId cid,
   return collection->collection();
 }
 
-[[maybe_unused]] inline irs::doc_iterator::ptr pkColumn(
-    irs::sub_reader const& segment) {
-  auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
-  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
-}
-
-[[maybe_unused]] inline irs::doc_iterator::ptr sortColumn(
-    irs::sub_reader const& segment) {
-  auto const* reader = segment.sort();
-
-  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
-}
 
 [[maybe_unused]] inline void reset(ColumnIterator& column,
                                    irs::doc_iterator::ptr&& itr) noexcept {
