@@ -763,8 +763,9 @@ IResearchDataStore::DataSnapshotPtr IResearchDataStore::reader(
     LinkLock const& linkLock) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
-  TRI_ASSERT(linkLock->_dataStore._snapshot);
-  return std::atomic_load(&linkLock->_dataStore._snapshot);
+  auto snapshot = linkLock->_dataStore.loadSnapshot();
+  TRI_ASSERT(snapshot);
+  return snapshot;
 }
 
 void IResearchDataStore::scheduleCommit(std::chrono::milliseconds delay) {
@@ -987,10 +988,9 @@ Result IResearchDataStore::commitUnsafeImpl(
       _lastCommittedTickOne = lastTickBeforeCommitOne;
       _lastCommittedTickTwo = lastTickBeforeCommitOne;
       impl.tick(_lastCommittedTickOne);
-      auto reader = _dataStore._snapshot->_reader;
-      std::atomic_store(&_dataStore._snapshot,
-                        std::make_shared<DataSnapshot>(
-                            std::move(reader), std::move(engineSnapshot)));
+      auto reader = _dataStore.loadSnapshot()->_reader;
+      _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+                            std::move(reader), engineSnapshot));
       return {};
     } else {
       code = CommitResult::DONE;
@@ -1043,7 +1043,8 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 #endif
     // get new reader
-    auto reader = _dataStore._snapshot->_reader.reopen(_format);
+    // TODO: Get the reader from writer once new iresearch is merged
+    auto reader = _dataStore.loadSnapshot()->_reader.reopen(_format);
 
     if (!reader) {
       // nothing more to do
@@ -1056,10 +1057,14 @@ Result IResearchDataStore::commitUnsafeImpl(
     }
 
     // update reader
-    TRI_ASSERT(_dataStore._snapshot->_reader != reader);
-    std::atomic_store(&_dataStore._snapshot,
-                      std::make_shared<DataSnapshot>(
-                          std::move(reader), std::move(engineSnapshot)));
+    TRI_ASSERT(_dataStore.loadSnapshot()->_reader != reader);
+    auto const readerSize = reader->size();
+    auto const docsCount = reader->docs_count();
+    auto const liveDocsCount = reader->live_docs_count();
+
+    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+                          std::move(reader), engineSnapshot));
+
 
     // update stats
     updateStatsUnsafe();
@@ -1071,9 +1076,9 @@ Result IResearchDataStore::commitUnsafeImpl(
 
     LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
         << "successful sync of ArangoSearch index '" << index().id()
-        << "', segments '" << reader->size() << "', docs count '"
-        << reader->docs_count() << "', live docs count '"
-        << reader->live_docs_count() << "', last operation tick low '"
+        << "', segments '" << readerSize << "', docs count '"
+        << docsCount << "', live docs count '"
+        << liveDocsCount << "', last operation tick low '"
         << _lastCommittedTickOne << "'"
         << "', last operation tick high '" << _lastCommittedTickTwo << "'";
   } catch (basics::Exception const& e) {
@@ -1326,12 +1331,14 @@ Result IResearchDataStore::initDataStore(
                              "initializing ArangoSearch index '",
                              index().id().id(), "'")};
       }
-      _dataStore._snapshot = std::make_shared<DataSnapshot>(
+      _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
           irs::directory_reader::open(*(_dataStore._directory), nullptr,
                                       readerOptions),
-          engineSnapshot);
+          engineSnapshot));
 
-      if (!readTick(_dataStore._snapshot->_reader.meta().meta.payload(),
+      auto reader = _dataStore.loadSnapshot()->_reader;
+
+      if (!readTick(reader.meta().meta.payload(),
                     _dataStore._recoveryTickLow,
                     _dataStore._recoveryTickHigh)) {
         return {TRI_ERROR_INTERNAL,
@@ -1342,9 +1349,9 @@ Result IResearchDataStore::initDataStore(
       LOG_TOPIC("7e028", TRACE, TOPIC)
           << "successfully opened existing data store data store reader for "
           << "ArangoSearch index '" << index().id() << "', docs count '"
-          << _dataStore._snapshot->_reader->docs_count()
+          << reader->docs_count()
           << "', live docs count '"
-          << _dataStore._snapshot->_reader->live_docs_count()
+          << reader->live_docs_count()
           << "', recovery tick low '" << _dataStore._recoveryTickLow
           << "' and recovery tick high '" << _dataStore._recoveryTickHigh
           << "'";
@@ -1434,7 +1441,7 @@ Result IResearchDataStore::initDataStore(
   };
 
   auto openFlags = irs::OM_APPEND;
-  if (!_dataStore._snapshot) {
+  if (!_dataStore.loadSnapshot()) {
     openFlags |= irs::OM_CREATE;
   }
 
@@ -1449,7 +1456,7 @@ Result IResearchDataStore::initDataStore(
                          index().id().id(), "'")};
   }
 
-  if (!_dataStore._snapshot) {
+  if (!_dataStore.loadSnapshot()) {
     _dataStore._writer->commit();  // initialize 'store'
     auto engineSnapshot = _engine->currentSnapshot();
     if (ADB_UNLIKELY(!engineSnapshot)) {
@@ -1458,13 +1465,14 @@ Result IResearchDataStore::initDataStore(
                            "ArangoSearch index '",
                            index().id().id(), "'")};
     }
-    _dataStore._snapshot = std::make_shared<DataSnapshot>(
+    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
         irs::directory_reader::open(*(_dataStore._directory), _format,
                                     readerOptions),
-        engineSnapshot);
+        engineSnapshot));
   }
 
-  if (!_dataStore._snapshot) {
+  auto snapshot = _dataStore.loadSnapshot();
+  if (!snapshot) {
     _dataStore._writer.reset();
 
     return {TRI_ERROR_INTERNAL,
@@ -1474,7 +1482,7 @@ Result IResearchDataStore::initDataStore(
                          index().id().id(), "'")};
   }
 
-  if (!readTick(_dataStore._snapshot->_reader.meta().meta.payload(),
+  if (!readTick(snapshot->_reader.meta().meta.payload(),
                 _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh)) {
     return {TRI_ERROR_INTERNAL,
             absl::StrCat("failed to get last committed tick while initializing "
@@ -1963,9 +1971,13 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _lastCommittedTickTwo = _lastCommittedTickOne;
 
     // get new reader
-    auto oldSnapshot = _dataStore._snapshot->_snapshot;
+    auto oldSnapshot = _dataStore.loadSnapshot();
+    // we reuse storage snapshot. Technikally this is not
+    // right as old storage snapshot is most likely outdated.
+    // but index is empty so it makes no sense as we will not
+    // materialize anything anyway.
     auto reader = std::make_shared<DataSnapshot>(
-        _dataStore._snapshot->_reader.reopen(_format), std::move(oldSnapshot));
+        oldSnapshot->_reader.reopen(_format), oldSnapshot->_snapshot);
 
     if (!reader) {
       // nothing more to do
@@ -1977,7 +1989,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     }
 
     // update reader
-    std::atomic_store(&_dataStore._snapshot, reader);
+    _dataStore.storeSnapshot(reader);
 
     updateStatsUnsafe();
 
@@ -2017,7 +2029,7 @@ IResearchDataStore::Stats IResearchDataStore::stats() const {
 IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   TRI_ASSERT(_dataStore);
   // copy of 'reader' is important to hold reference to the current snapshot
-  auto reader = _dataStore._snapshot->_reader;
+  auto reader = _dataStore.loadSnapshot()->_reader;
   if (!reader) {
     return {};
   }

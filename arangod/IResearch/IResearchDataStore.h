@@ -100,7 +100,7 @@ class IResearchDataStore {
   // TODO Refactor irs::directory_reader ctor, now it doesn't have move
   struct DataSnapshot {
     DataSnapshot(irs::directory_reader&& index,
-                 std::shared_ptr<StorageSnapshot>&& db)
+                 std::shared_ptr<StorageSnapshot> db)
         : _reader(std::move(index)), _snapshot(std::move(db)) {}
     irs::directory_reader _reader;
     std::shared_ptr<StorageSnapshot> _snapshot;
@@ -300,7 +300,6 @@ class IResearchDataStore {
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
-    DataSnapshotPtr _snapshot;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
@@ -311,10 +310,22 @@ class IResearchDataStore {
 
     void resetDataStore() noexcept {
       // reset all underlying readers to release file handles
-      _snapshot.reset();
+      storeSnapshot(nullptr);
       _writer.reset();
       _directory.reset();
     }
+
+    [[nodiscard]] DataSnapshotPtr loadSnapshot() const noexcept {
+      return std::atomic_load_explicit(&_snapshot, std::memory_order_acquire);
+    }
+
+    void storeSnapshot(DataSnapshotPtr snapshot) {
+      std::atomic_store_explicit(&_snapshot, snapshot,
+                                 std::memory_order_release);
+    }
+
+   private:
+    DataSnapshotPtr _snapshot;
   };
 
   struct UnsafeOpResult {
