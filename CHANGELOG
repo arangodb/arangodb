@@ -1,6 +1,9 @@
 v3.9.7 (XXXX-XX-XX)
 -------------------
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
 * Allow cluster database servers to start even when there are existing databases
   that would violate the settings `--cluster.min-replication-factor` or
   `--cluster.max-replication-factor`.
