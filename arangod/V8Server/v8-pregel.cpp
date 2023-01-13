@@ -30,7 +30,7 @@
 #include "Cluster/ServerState.h"
 
 #include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 

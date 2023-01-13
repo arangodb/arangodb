@@ -60,7 +60,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
