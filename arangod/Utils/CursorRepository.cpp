@@ -148,7 +148,8 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 
 Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
                                                 size_t batchSize, double ttl,
-                                                bool hasCount) {
+                                                bool hasCount,
+                                                bool isRetriable) {
   TRI_ASSERT(result.data != nullptr);
 
   if (_softShutdownOngoing != nullptr &&
@@ -159,7 +160,7 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
   }
 
   auto cursor = std::make_unique<aql::QueryResultCursor>(
-      _vocbase, std::move(result), batchSize, ttl, hasCount);
+      _vocbase, std::move(result), batchSize, ttl, hasCount, isRetriable);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -173,7 +174,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
 //////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createQueryStream(
-    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable) {
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
@@ -181,8 +183,8 @@ Cursor* CursorRepository::createQueryStream(
                                    "Coordinator soft shutdown ongoing.");
   }
 
-  auto cursor =
-      std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(
+      std::move(q), batchSize, ttl, isRetriable);
   cursor->use();
 
   return addCursor(std::move(cursor));
