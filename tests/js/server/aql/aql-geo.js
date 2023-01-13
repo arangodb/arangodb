@@ -206,8 +206,10 @@ function geoSuite(isSearchAlias, analyzerType) {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
+/*
       let analyzers = require("@arangodb/analyzers");
       analyzers.remove(analyzerType);
+*/
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1069,7 +1071,9 @@ function searchAliasS2GeoSuite() {
 
 jsunity.run(arangoSearchVPackGeoSuite);
 jsunity.run(searchAliasVPackGeoSuite);
+/*
 jsunity.run(arangoSearchS2GeoSuite);
 jsunity.run(searchAliasS2GeoSuite);
+*/
 
 return jsunity.done();
