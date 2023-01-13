@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_state_leader_recover_entries_rt
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Histogram of the duration of recoverEntries calls in microseconds.
 unit: us
