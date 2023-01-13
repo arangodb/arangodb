@@ -821,7 +821,14 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    w->prepareGlobalStep(body, outBuilder);
+    auto message = inspection::deserializeWithErrorT<PrepareGlobalSuperStep>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot deserialize PrepareGlobalSuperStep message");
+    }
+    w->prepareGlobalStep(message.get(), outBuilder);
   } else if (path == Utils::startGSSPath) {
     w->startGlobalStep(body);
   } else if (path == Utils::messagesPath) {

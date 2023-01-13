@@ -188,14 +188,6 @@ bool Conductor::_startGlobalStep() {
   }
 
   _callbackMutex.assertLockedByCurrentThread();
-  // send prepare GSS notice
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-  b.close();
 
   /// collect the aggregators
   _aggregators->resetValues();
@@ -203,10 +195,21 @@ bool Conductor::_startGlobalStep() {
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
 
+  auto prepareGss = PrepareGlobalSuperStep{.executionNumber = _executionNumber,
+                                           .gss = _globalSuperstep,
+                                           .vertexCount = _totalVerticesCount,
+                                           .edgeCount = _totalEdgesCount};
+  auto serialized = inspection::serializeWithErrorT(prepareGss);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Cannot serialize PrepareGlobalSuperStep");
+  }
+
   // we are explicitly expecting an response containing the aggregated
   // values as well as the count of active vertices
   auto prepareRes = _sendToAllDBServers(
-      Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+      Utils::prepareGSSPath, VPackBuilder(serialized.get().slice()),
+      [&](VPackSlice const& payload) {
         _aggregators->aggregateValues(payload);
 
         _statistics.accumulateActiveCounts(payload);
@@ -266,7 +269,7 @@ bool Conductor::_startGlobalStep() {
     }
   }
 
-  b.clear();
+  VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));

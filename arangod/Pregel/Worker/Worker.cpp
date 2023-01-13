@@ -190,7 +190,7 @@ void Worker<V, E, M>::setupWorker() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
+void Worker<V, E, M>::prepareGlobalStep(PrepareGlobalSuperStep const& data,
                                         VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
@@ -202,26 +202,22 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
         TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG_PREGEL("f16f2", DEBUG) << "Received prepare GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  if (!gssSlice.isInteger()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
-                                  "Invalid gss in %s:%d", __FILE__, __LINE__);
-  }
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
+  LOG_PREGEL("f16f2", DEBUG) << fmt::format("Received prepare GSS: {}", data);
+  const uint64_t gss = data.gss;
   if (_expectedGSS != gss) {
-    THROW_ARANGO_EXCEPTION_FORMAT(
+    THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "Seems like this worker missed a gss, expected %u. Data = %s ",
-        _expectedGSS, data.toJson().c_str());
+        fmt::format(
+            "Seems like this worker missed a gss, expected {}. Data = {} ",
+            _expectedGSS, data));
   }
 
   // initialize worker context
   if (_workerContext && gss == 0 && _config.localSuperstep() == 0) {
     _workerContext->_readAggregators = _conductorAggregators.get();
     _workerContext->_writeAggregators = _workerAggregators.get();
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
+    _workerContext->_vertexCount = data.vertexCount;
+    _workerContext->_edgeCount = data.edgeCount;
     _workerContext->preApplication();
   }
 

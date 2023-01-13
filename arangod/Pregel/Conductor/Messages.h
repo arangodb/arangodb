@@ -24,6 +24,7 @@
 
 #include <map>
 
+#include "Inspection/Format.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Utils.h"
 
@@ -59,16 +60,17 @@ auto inspect(Inspector& f, CreateWorker& x) {
 }
 
 struct PrepareGlobalSuperStep {
+  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, PrepareGlobalSuperStep& x) {
-  return f.object(x).fields(f.field(Utils::globalSuperstepKey, x.gss),
-                            f.field("vertexCount", x.vertexCount),
-                            f.field("edgeCount", x.edgeCount));
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
 struct RunGlobalSuperStep {
@@ -109,3 +111,7 @@ auto inspect(Inspector& f, CollectPregelResults& x) {
 }
 
 }  // namespace arangodb::pregel
+
+template<>
+struct fmt::formatter<arangodb::pregel::PrepareGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};

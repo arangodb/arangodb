@@ -51,7 +51,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
   virtual void setupWorker() = 0;
-  virtual void prepareGlobalStep(VPackSlice const& data,
+  virtual void prepareGlobalStep(PrepareGlobalSuperStep const& data,
                                  VPackBuilder& result) = 0;
   virtual void startGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
@@ -149,7 +149,8 @@ class Worker : public IWorker {
 
   // ====== called by rest handler =====
   void setupWorker() override;
-  void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) override;
+  void prepareGlobalStep(PrepareGlobalSuperStep const& data,
+                         VPackBuilder& result) override;
   void startGlobalStep(VPackSlice const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;
