@@ -48,7 +48,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
