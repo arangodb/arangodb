@@ -99,9 +99,7 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
     auto newLog = guard->spearheadLog.append(slice);
     auto mapping = guard->spearheadMapping;
     auto sliceMapping = slice.computeTermIndexMap();
-    for (auto [term, range] : sliceMapping.getTermIndexMap()) {
-      mapping.insert(range, term);
-    }
+    mapping.append(sliceMapping);
     return scheduleOperation(
         std::move(newLog), std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter)](

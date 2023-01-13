@@ -47,12 +47,12 @@ struct TermIndexMapping {
   void insert(LogRange, LogTerm) noexcept;
   void insert(LogIndex, LogTerm) noexcept;
 
-  using ContainerType = std::map<LogTerm, LogRange>;
-
-  auto getTermIndexMap() const -> ContainerType const& { return _mapping; }
+  void append(TermIndexMapping const&) noexcept;
 
  private:
+  using ContainerType = std::map<LogTerm, LogRange>;
   ContainerType _mapping;
 };
+
 }  // namespace replicated_log
 }  // namespace arangodb::replication2

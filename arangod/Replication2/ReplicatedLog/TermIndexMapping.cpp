@@ -135,3 +135,10 @@ void TermIndexMapping::insert(LogIndex idx, LogTerm term) noexcept {
   ADB_PROD_ASSERT(iter->second.to == idx);
   iter->second.to = idx + 1;
 }
+
+void TermIndexMapping::append(TermIndexMapping const& other) noexcept {
+  // TODO optimize
+  for (auto [term, range] : other._mapping) {
+    insert(range, term);
+  }
+}

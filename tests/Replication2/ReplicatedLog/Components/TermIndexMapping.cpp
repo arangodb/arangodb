@@ -124,3 +124,13 @@ TEST_F(TermIndexMappingTest, get_last_and_first_index) {
   EXPECT_EQ(mapping.getFirstIndex(), (TermIndexPair{4_T, 10_Lx}));
   EXPECT_EQ(mapping.getLastIndex(), (TermIndexPair{5_T, 59_Lx}));
 }
+
+TEST_F(TermIndexMappingTest, insert_single_entry) {
+  mapping.insert(1_Lx, 1_T);
+  mapping.insert(2_Lx, 2_T);
+  mapping.insert(3_Lx, 2_T);
+  mapping.insert(4_Lx, 3_T);
+
+  EXPECT_EQ(mapping.getFirstIndex(), (TermIndexPair{1_T, 1_Lx}));
+  EXPECT_EQ(mapping.getLastIndex(), (TermIndexPair{3_T, 4_Lx}));
+}
