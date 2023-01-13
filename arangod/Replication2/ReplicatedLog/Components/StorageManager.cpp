@@ -213,6 +213,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         req.promise.setValue(std::move(result));
         guard = self->guardedData.getLockedGuard();
         guard->onDiskLog = std::move(req.logResult);
+        guard->onDiskMapping = std::move(req.mappingResult);
       } else {
         LOG_CTX("77587", ERR, self->loggerContext)
             << "failed to commit storage operation: " << result;
