@@ -28,7 +28,6 @@
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-
 auto TermIndexMapping::getTermRange(LogTerm t) const noexcept
     -> std::optional<LogRange> {
   if (auto iter = _mapping.find(t); iter != _mapping.end()) {
@@ -77,9 +76,8 @@ void TermIndexMapping::removeFront(LogIndex stop) noexcept {
 }
 
 void TermIndexMapping::removeBack(LogIndex start) noexcept {
-  auto keep = std::find_if(_mapping.rbegin(), _mapping.rend(), [&](auto pair) {
-    return pair.second.from < start;
-  });
+  auto keep = std::find_if(_mapping.rbegin(), _mapping.rend(),
+                           [&](auto pair) { return pair.second.from < start; });
 
   ADB_PROD_ASSERT(_mapping.rbegin().base() == _mapping.end());
 
@@ -88,4 +86,52 @@ void TermIndexMapping::removeBack(LogIndex start) noexcept {
   }
 
   _mapping.erase(keep.base(), _mapping.end());
+}
+
+auto TermIndexMapping::getTermOfIndex(LogIndex idx) const noexcept
+    -> std::optional<LogTerm> {
+  auto term = std::find_if(_mapping.begin(), _mapping.end(), [&](auto pair) {
+    return pair.second.contains(idx);
+  });
+
+  if (term != _mapping.end()) {
+    return term->first;
+  }
+  return std::nullopt;
+}
+
+auto TermIndexMapping::getLastIndex() const noexcept
+    -> std::optional<TermIndexPair> {
+  if (not _mapping.empty()) {
+    auto [term, range] = *_mapping.rbegin();
+    return TermIndexPair{term, range.to.saturatedDecrement()};
+  }
+  return std::nullopt;
+}
+
+auto TermIndexMapping::getFirstIndex() const noexcept
+    -> std::optional<TermIndexPair> {
+  if (not _mapping.empty()) {
+    auto [term, range] = *_mapping.begin();
+    return TermIndexPair{term, range.from};
+  }
+  return std::nullopt;
+}
+
+void TermIndexMapping::insert(LogIndex idx, LogTerm term) noexcept {
+  auto iter = std::invoke([&] {
+    if (_mapping.empty()) {
+      return _mapping.emplace(term, LogRange{idx, idx}).first;
+    } else if (auto iter = _mapping.rbegin(); iter->first != term) {
+      ADB_PROD_ASSERT(iter->first < term);
+      ADB_PROD_ASSERT(iter->second.to == idx);
+
+      return _mapping.emplace(term, LogRange{idx, idx}).first;
+    } else {
+      return std::prev(_mapping.end());
+    }
+  });
+
+  ADB_PROD_ASSERT(iter->second.to == idx);
+  iter->second.to = idx + 1;
 }

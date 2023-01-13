@@ -192,9 +192,9 @@ template<typename S>
 auto ReplicatedStateManager<S>::getStatus() const
     -> std::optional<StateStatus> {
   auto guard = _guarded.getLockedGuard();
-  auto status = std::visit(
-      overload{[](auto const& manager) { return manager->getStatus(); }},
-      guard->_currentManager);
+  auto status =
+      std::visit([](auto const& manager) { return manager->getStatus(); },
+                 guard->_currentManager);
 
   return status;
 }

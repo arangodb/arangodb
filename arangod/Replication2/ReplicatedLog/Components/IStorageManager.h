@@ -38,7 +38,7 @@ struct LogRange;
 struct LogIndex;
 namespace replicated_log {
 struct InMemoryLog;
-struct InMemoryLogSlice;
+struct TermIndexMapping;
 
 inline namespace comp {
 
@@ -65,6 +65,8 @@ struct IStateInfoTransaction {
 struct IStorageManager {
   virtual ~IStorageManager() = default;
   virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
+  [[nodiscard]] virtual auto getTermIndexMapping() const
+      -> TermIndexMapping = 0;
   [[nodiscard]] virtual auto getCommittedLog() const -> InMemoryLog = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo = 0;

@@ -25,6 +25,7 @@
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Futures/Promise.h"
 #include <deque>
 
@@ -42,6 +43,7 @@ struct StorageManager : IStorageManager,
   auto resign() -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLog() const -> InMemoryLog override;
+  auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
       -> Result override;
@@ -59,18 +61,21 @@ struct StorageManager : IStorageManager,
   struct StorageRequest {
     std::unique_ptr<StorageOperation> operation;
     InMemoryLog logResult;
+    TermIndexMapping mappingResult;
     futures::Promise<Result> promise;
 
     ~StorageRequest();
     StorageRequest(StorageRequest&&) noexcept = default;
     explicit StorageRequest(std::unique_ptr<StorageOperation> op,
-                            InMemoryLog logResult);
+                            InMemoryLog logResult,
+                            TermIndexMapping mappingResult);
   };
 
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
     InMemoryLog onDiskLog, spearheadLog;
+    TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;
     std::deque<StorageRequest> queue;
     replicated_state::PersistedStateInfo info;
@@ -81,10 +86,12 @@ struct StorageManager : IStorageManager,
   LoggerContext const loggerContext;
 
   auto scheduleOperation(GuardType&&, InMemoryLog result,
+                         TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
       -> futures::Future<Result>;
   template<typename F>
-  auto scheduleOperationLambda(GuardType&&, InMemoryLog result, F&&)
+  auto scheduleOperationLambda(GuardType&&, InMemoryLog result,
+                               TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
 };

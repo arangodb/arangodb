@@ -30,6 +30,7 @@ namespace arangodb::replication2 {
 struct LogTerm;
 struct LogRange;
 struct LogIndex;
+struct TermIndexPair;
 
 namespace replicated_log {
 
@@ -37,13 +38,21 @@ struct TermIndexMapping {
   auto getFirstIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;
   auto getTermRange(LogTerm) const noexcept -> std::optional<LogRange>;
+  auto getTermOfIndex(LogIndex) const noexcept -> std::optional<LogTerm>;
+  auto getLastIndex() const noexcept -> std::optional<TermIndexPair>;
+  auto getFirstIndex() const noexcept -> std::optional<TermIndexPair>;
 
   void removeFront(LogIndex stop) noexcept;
   void removeBack(LogIndex start) noexcept;
   void insert(LogRange, LogTerm) noexcept;
+  void insert(LogIndex, LogTerm) noexcept;
+
+  using ContainerType = std::map<LogTerm, LogRange>;
+
+  auto getTermIndexMap() const -> ContainerType const& { return _mapping; }
 
  private:
-  std::map<LogTerm, LogRange> _mapping;
+  ContainerType _mapping;
 };
 }  // namespace replicated_log
 }  // namespace arangodb::replication2

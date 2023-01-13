@@ -52,7 +52,7 @@ struct IStorageEngineMethods;
 }
 
 namespace arangodb::replication2::replicated_log {
-struct LogCore;
+struct TermIndexMapping;
 class ReplicatedLogIterator;
 
 /**
@@ -144,6 +144,7 @@ struct InMemoryLog {
   [[nodiscard]] auto removeFront(LogIndex stop) const -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
+  [[nodiscard]] auto computeTermIndexMap() const -> TermIndexMapping;
 
   // helpful for debugging
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;

@@ -28,7 +28,6 @@
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-
 namespace {
 auto operator"" _Lx(unsigned long long x) -> LogIndex { return LogIndex{x}; }
 auto operator"" _T(unsigned long long x) -> LogTerm { return LogTerm{x}; }
@@ -103,4 +102,25 @@ TEST_F(TermIndexMappingTest, get_first_index_of_term) {
   EXPECT_EQ(mapping.getFirstIndexOfTerm(4_T), 10_Lx);
   EXPECT_EQ(mapping.getFirstIndexOfTerm(5_T), 40_Lx);
   EXPECT_EQ(mapping.getFirstIndexOfTerm(6_T), std::nullopt);
+}
+
+TEST_F(TermIndexMappingTest, get_term_of_index) {
+  mapping.insert({10_Lx, 40_Lx}, 4_T);
+  mapping.insert({40_Lx, 60_Lx}, 5_T);
+
+  EXPECT_EQ(mapping.getTermOfIndex(8_Lx), std::nullopt);
+  EXPECT_EQ(mapping.getTermOfIndex(15_Lx), 4_T);
+  EXPECT_EQ(mapping.getTermOfIndex(59_Lx), 5_T);
+  EXPECT_EQ(mapping.getTermOfIndex(60_Lx), std::nullopt);
+}
+
+TEST_F(TermIndexMappingTest, get_last_and_first_index) {
+  EXPECT_EQ(mapping.getFirstIndex(), std::nullopt);
+  EXPECT_EQ(mapping.getLastIndex(), std::nullopt);
+
+  mapping.insert({10_Lx, 50_Lx}, 4_T);
+  mapping.insert({50_Lx, 60_Lx}, 5_T);
+
+  EXPECT_EQ(mapping.getFirstIndex(), (TermIndexPair{4_T, 10_Lx}));
+  EXPECT_EQ(mapping.getLastIndex(), (TermIndexPair{5_T, 59_Lx}));
 }

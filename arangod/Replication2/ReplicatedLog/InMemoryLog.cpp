@@ -27,6 +27,7 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 #include <Basics/Exceptions.h>
 #include <Basics/StringUtils.h>
@@ -342,6 +343,16 @@ auto replicated_log::InMemoryLog::release(LogIndex stop) const
 
 auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
   return _log;
+}
+
+auto replicated_log::InMemoryLog::computeTermIndexMap() const
+    -> replicated_log::TermIndexMapping {
+  // TODO dirty hack - refactor later
+  TermIndexMapping mapping;
+  for (auto const& ent : _log) {
+    mapping.insert(ent.entry().logIndex(), ent.entry().logTerm());
+  }
+  return mapping;
 }
 
 auto replicated_log::InMemoryLog::back() const noexcept
