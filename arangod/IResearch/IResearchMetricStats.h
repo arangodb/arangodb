@@ -121,7 +121,7 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
   };
 
   static constexpr std::array<std::string_view, kSize> kType = {
-      "gauge", "gauge", "gauge", "gauge", "gauge",
+      "gauge", "gauge", "gauge", "gauge", "gauge", "gauge",
   };
 };
 

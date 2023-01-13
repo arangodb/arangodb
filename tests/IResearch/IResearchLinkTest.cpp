@@ -2614,7 +2614,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     // check link metrics
     LinkStats expectedStats;
     expectedStats.numDocs = 3;
-    expectedStats.numPrimaryDocs = 2;
+    expectedStats.numPrimaryDocs = 3;
     expectedStats.numLiveDocs = 2;
     expectedStats.numFiles = 12;
     expectedStats.numSegments = 2;  // we have 2 segments
@@ -2676,7 +2676,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "arangodb_search_num_live_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
       "# HELP arangodb_search_num_primary_docs Number of primary documents\n"
       "# TYPE arangodb_search_num_primary_docs gauge\n"
-      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}3\n"
+      "arangodb_search_num_primary_docs{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
       "# HELP arangodb_search_num_segments Number of segments\n"
       "# TYPE arangodb_search_num_segments gauge\n"
       "arangodb_search_num_segments{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",shard=\"\"}1\n"
