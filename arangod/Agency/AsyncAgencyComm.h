@@ -40,6 +40,7 @@
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
+#include "AgencyCommon.h"
 
 namespace arangodb {
 
@@ -200,6 +201,9 @@ class AsyncAgencyComm final {
       std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureResult poll(network::Timeout timeout,
                                   uint64_t index) const;
+
+  [[nodiscard]] futures::Future<consensus::index_t> getCurrentCommitIndex()
+      const;
 
   template<typename T>
   [[nodiscard]] FutureResult setValue(

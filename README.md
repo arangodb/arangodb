@@ -41,10 +41,6 @@ Key Features in ArangoDB
 - **Transactions**: Easy application development keeping your data consistent
   and safe. No hassle in your client.
 
-Here is an AQL query that makes use of all those features:
-
-![AQL Query Example](https://www.arangodb.com/docs/assets/aql_query_with_traversal.png)
-
 Joins and transactions are key features for flexible, secure data designs,
 widely used in relational databases but lacking in many NoSQL products. However,
 there is no need to forgo them in ArangoDB. You decide how and when to use joins
