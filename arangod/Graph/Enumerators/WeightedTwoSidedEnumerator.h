@@ -234,8 +234,8 @@ class WeightedTwoSidedEnumerator {
   // We always start with two vertices (start- and end vertex)
   // Initially, we want to fetch both and then decide based on the
   // initial results, where to continue our search.
-  bool _leftInitialFetch{false};
-  bool _rightInitialFetch{false};
+  bool _leftInitialFetch{false};   // TODO: Put this into the ball?
+  bool _rightInitialFetch{false};  // TODO: Put this into the ball?
   // Bool to check whether we've verified our initial fetched steps
   // or not. This is an optimization. Only during our initial _left and
   // _right fetch it may be possible that we find matches, which are valid

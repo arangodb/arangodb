@@ -86,6 +86,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::clear() {
+  _visitedNodes.clear();
+
   _queue.clear();
   _interior.reset();  // PathStore
 
@@ -331,7 +333,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   auto position = _visitedNodes.at(otherStep.getVertex().getID().toString());
   auto ourStep = _interior.getStepReference(position);
 
-  // TODO: Check Prune + Filter - Currenty, not supported, but could be (!)
+  // TODO: Check Prune + Filter - Currently, not supported, but could be (!)
   // auto res = _validator.validatePath(ourStep, otherSideValidator);
   // TRI_ASSERT(!res.isFiltered());
   // if (!res.isFiltered()) {
@@ -406,8 +408,12 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::clear() {
   // Order is important here, please do not change.
-  // 1.) Remove current results
+  // 1.) Remove current results & state
   _candidates.clear();
+  _bestCandidateLength = -1.0;
+  _leftInitialFetch = false;
+  _rightInitialFetch = false;
+  _handledInitialFetch = false;
 
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
@@ -446,8 +452,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::reset(VertexRef source,
                                                       VertexRef target,
                                                       size_t depth) {
-  _candidates.clear();
-  _bestCandidateLength = -1.0;
+  clear();
 
   _left.reset(source, 0);
   _right.reset(target, 0);
