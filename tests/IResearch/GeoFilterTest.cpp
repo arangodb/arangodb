@@ -530,7 +530,7 @@ TEST(GeoFilterTest, query) {
     std::vector<S2Point> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -546,7 +546,7 @@ TEST(GeoFilterTest, query) {
     std::vector<S2Point> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -562,7 +562,7 @@ TEST(GeoFilterTest, query) {
     std::vector<S2Point> cache;
     ASSERT_TRUE(arangodb::iresearch::parseShape<
                 arangodb::iresearch::Parsing::OnlyPoint>(
-        origin.get("geometry"), q.mutable_options()->shape, cache));
+        origin.get("geometry"), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -588,13 +588,14 @@ TEST(GeoFilterTest, query) {
     std::vector<S2Point> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache));
+            shapeJson->slice(), shape, cache, false));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache));
+                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache,
+                                                           false));
       if (!shape.contains(point)) {
         continue;
       }
@@ -608,7 +609,7 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::CONTAINS;
     q.mutable_options()->options.set_index_contains_points_only(true);
 
@@ -634,13 +635,14 @@ TEST(GeoFilterTest, query) {
     std::vector<S2Point> cache;
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), shape, cache));
+            shapeJson->slice(), shape, cache, false));
     std::set<std::string> expected;
     for (auto doc : VPackArrayIterator(docs->slice())) {
       auto geo = doc.get("geometry");
       ASSERT_TRUE(geo.isObject());
       ASSERT_TRUE(arangodb::iresearch::parseShape<
-                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache));
+                  arangodb::iresearch::Parsing::OnlyPoint>(geo, point, cache,
+                                                           false));
       if (!shape.contains(point)) {
         continue;
       }
@@ -654,7 +656,7 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::INTERSECTS;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));
@@ -683,7 +685,7 @@ TEST(GeoFilterTest, query) {
     *q.mutable_field() = "geometry";
     ASSERT_TRUE(
         arangodb::iresearch::parseShape<arangodb::iresearch::Parsing::GeoJson>(
-            shapeJson->slice(), q.mutable_options()->shape, cache));
+            shapeJson->slice(), q.mutable_options()->shape, cache, false));
     q.mutable_options()->type = GeoFilterType::IS_CONTAINED;
 
     EXPECT_EQ(expected, executeQuery(q, {18, 18}));

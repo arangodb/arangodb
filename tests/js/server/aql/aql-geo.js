@@ -56,7 +56,7 @@ function makePolyOutside(lon, lat) {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function geoSuite(isSearchAlias) {
+function geoSuite(isSearchAlias, analyzerType) {
 
   let collWithoutIndex = "UnitTestsGeoWithoutIndex";
   let collWithIndex = "UnitTestsGeoWithIndex";
@@ -180,7 +180,7 @@ function geoSuite(isSearchAlias) {
       withIndex.ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
       withView = db._create(collWithView);
       let analyzers = require("@arangodb/analyzers");
-      let a = analyzers.save("geo_json", "geojson", {}, ["frequency", "norm", "position"]);
+      analyzers.save("geo_json", analyzerType, {}, ["frequency", "norm", "position"]);
       if (isSearchAlias) {
         let i = db.UnitTestsGeoWithView.ensureIndex({type: "inverted", fields: [{name: "geo", analyzer: "geo_json"}]});
         view = db._createView(viewName, "search-alias", {
@@ -206,6 +206,8 @@ function geoSuite(isSearchAlias) {
       db._drop(collWithoutIndex);
       db._drop(collWithIndex);
       db._drop(collWithView);
+      let analyzers = require("@arangodb/analyzers");
+      analyzers.remove(analyzerType);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1025,28 +1027,49 @@ function geoSuite(isSearchAlias) {
   };
 }
 
-function arangoSearchGeoSuite() {
+function arangoSearchVPackGeoSuite() {
   let suite = {};
   deriveTestSuite(
-    geoSuite(false),
+    geoSuite(false, "geojson"),
     suite,
-    "_arangosearch"
+    "_vpack_arangosearch"
   );
   return suite;
 }
 
-function searchAliasGeoSuite() {
+function searchAliasVPackGeoSuite() {
   let suite = {};
   deriveTestSuite(
-    geoSuite(true),
+    geoSuite(true, "geojson"),
     suite,
-    "_search-alias"
+    "_vpack_search-alias"
   );
   return suite;
 }
 
-jsunity.run(arangoSearchGeoSuite);
-jsunity.run(searchAliasGeoSuite);
+function arangoSearchS2GeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(false, "geojson-s2"),
+    suite,
+    "_s2_arangosearch"
+  );
+  return suite;
+}
 
+function searchAliasS2GeoSuite() {
+  let suite = {};
+  deriveTestSuite(
+    geoSuite(true, "geojson-s2"),
+    suite,
+    "_s2_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(arangoSearchVPackGeoSuite);
+jsunity.run(searchAliasVPackGeoSuite);
+jsunity.run(arangoSearchS2GeoSuite);
+jsunity.run(searchAliasS2GeoSuite);
 
 return jsunity.done();

@@ -29,6 +29,7 @@
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
+#include <s2/encoded_s2point_vector.h>
 
 namespace arangodb::geo {
 
@@ -81,6 +82,20 @@ bool S2MultiPointRegion::Contains(S2Point const& p) const {
     }
   }
   return false;
+}
+
+void S2MultiPointRegion::Encode(Encoder* const encoder,
+                                s2coding::CodingHint hint) const {
+  s2coding::EncodeS2PointVector(_impl, hint, encoder);
+}
+
+bool S2MultiPointRegion::Decode(Decoder* const decoder) {
+  s2coding::EncodedS2PointVector impl;
+  if (!impl.Init(decoder)) {
+    return false;
+  }
+  _impl = impl.Decode();
+  return true;
 }
 
 }  // namespace arangodb::geo
