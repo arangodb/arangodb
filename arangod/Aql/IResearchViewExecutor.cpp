@@ -45,6 +45,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
 #include <search/score.hpp>
@@ -1316,12 +1317,12 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
         auto collection = lookupCollection(this->_trx, cid, query);
 
         if (!collection) {
-          std::stringstream msg;
-          msg << "failed to find collection while reading document from "
-                 "arangosearch view, cid '"
-              << cid.id() << "'";
           query.warnings().registerWarning(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              absl::StrCat(
+                  "failed to find collection while reading document from "
+                  "arangosearch view, cid '",
+                  cid.id(), "'"));
 
           // We don't have a collection, skip the current reader.
           reset();
@@ -1543,12 +1544,11 @@ void IResearchViewExecutor<ExecutionTraits>::saveCollection() {
     auto collection = lookupCollection(this->_trx, cid, query);
 
     if (!collection) {
-      std::stringstream msg;
-      msg << "failed to find collection while reading document from "
-             "arangosearch view, cid '"
-          << cid.id() << "'";
-      query.warnings().registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                       msg.str());
+      query.warnings().registerWarning(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat("failed to find collection while reading document from "
+                       "arangosearch view, cid '",
+                       cid.id(), "'"));
 
       // We don't have a collection, skip the current reader.
       ++_readerOffset;

@@ -1233,7 +1233,7 @@ class MaterializeSingleNode : public MaterializeNode,
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base);
+                                       arangodb::velocypack::Slice const base);
 
 }  // namespace materialize
 }  // namespace aql

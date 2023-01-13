@@ -101,7 +101,11 @@ class IResearchDataStore {
   struct DataSnapshot {
     DataSnapshot(irs::directory_reader&& index,
                  std::shared_ptr<StorageSnapshot> db)
-        : _reader(std::move(index)), _snapshot(std::move(db)) {}
+        : _reader(std::move(index)), _snapshot(std::move(db)) {
+      TRI_ASSERT(_reader);
+      // for now we require that each index has its own snapshot
+      TRI_ASSERT(_snapshot);
+    }
     irs::directory_reader _reader;
     std::shared_ptr<StorageSnapshot> _snapshot;
   };
@@ -319,8 +323,8 @@ class IResearchDataStore {
       return std::atomic_load_explicit(&_snapshot, std::memory_order_acquire);
     }
 
-    void storeSnapshot(DataSnapshotPtr snapshot) {
-      std::atomic_store_explicit(&_snapshot, snapshot,
+    void storeSnapshot(DataSnapshotPtr snapshot) noexcept {
+      std::atomic_store_explicit(&_snapshot, std::move(snapshot),
                                  std::memory_order_release);
     }
 

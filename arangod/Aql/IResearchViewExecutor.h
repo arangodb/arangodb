@@ -627,10 +627,10 @@ class IResearchViewExecutor
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ExecutionTraits>> {
   using IndexBufferValueType =
-      typename std::conditional<(ExecutionTraits::MaterializeType &
+      std::conditional_t<(ExecutionTraits::MaterializeType &
                                  iresearch::MaterializeType::LateMaterialize) ==
                                     iresearch::MaterializeType::LateMaterialize,
-                                iresearch::SearchDoc, LocalDocumentId>::type;
+                                iresearch::SearchDoc, LocalDocumentId>;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -716,12 +716,12 @@ class IResearchViewMergeExecutor
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<ExecutionTraits>> {
-  using IndexBufferValueType = typename std::conditional<
+  using IndexBufferValueType = std::conditional_t<
       (ExecutionTraits::MaterializeType &
        iresearch::MaterializeType::LateMaterialize) ==
           iresearch::MaterializeType::LateMaterialize,
       iresearch::SearchDoc,
-      std::pair<LocalDocumentId, LogicalCollection const*>>::type;
+      std::pair<LocalDocumentId, LogicalCollection const*>>;
   static constexpr bool ExplicitScanned = false;
 };
 

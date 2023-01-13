@@ -223,7 +223,7 @@ class ClusterEngine final : public StorageEngine {
     // noop
   }
 
-  std::shared_ptr<StorageSnapshot> currentSnapshot() override {
+  std::shared_ptr<StorageSnapshot> currentSnapshot() final {
     return nullptr;
   }
 

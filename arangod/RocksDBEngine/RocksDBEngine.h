@@ -452,11 +452,11 @@ class RocksDBEngine final : public StorageEngine {
    public:
     explicit RocksDBSnapshot(rocksdb::DB& db) noexcept : _snapshot(&db) {}
 
-    TRI_voc_tick_t tick() const noexcept {
+    TRI_voc_tick_t tick() const noexcept override{
       return _snapshot.snapshot()->GetSequenceNumber();
     }
 
-    auto getSnapshot() const { return _snapshot.snapshot(); }
+    decltype(auto) getSnapshot() const { return _snapshot.snapshot(); }
 
    private:
     mutable rocksdb::ManagedSnapshot _snapshot;

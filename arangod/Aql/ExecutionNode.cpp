@@ -2830,7 +2830,7 @@ constexpr std::string_view MATERIALIZE_NODE_MULTI_NODE_PARAM = "multiNode";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice const& base) {
+    ExecutionPlan* plan, arangodb::velocypack::Slice const base) {
   if (base.hasKey(MATERIALIZE_NODE_MULTI_NODE_PARAM)) {
     return new MaterializeMultiNode(plan, base);
   }

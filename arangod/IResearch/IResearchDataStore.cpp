@@ -1062,8 +1062,21 @@ Result IResearchDataStore::commitUnsafeImpl(
     auto const docsCount = reader->docs_count();
     auto const liveDocsCount = reader->live_docs_count();
 
-    _dataStore.storeSnapshot(
-        std::make_shared<DataSnapshot>(std::move(reader), engineSnapshot));
+    // For now we want to retain old behaviour that
+    // storage snapshot is not older than iresearch snapshot
+    // TODO: Remove this as soon as index_writer will start accepting limiting
+    // tick for commit
+    auto engineSnapshotAfterCommit = _engine->currentSnapshot();
+    if (ADB_UNLIKELY(!engineSnapshotAfterCommit)) {
+      return {
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("Failed to get engine snapshot while finishig commit "
+                       "ArangoSearch index '",
+                       index().id().id(), "'")};
+    }
+
+    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+        std::move(reader), engineSnapshotAfterCommit));
 
     // update stats
     updateStatsUnsafe();
@@ -1329,13 +1342,14 @@ Result IResearchDataStore::initDataStore(
                              "initializing ArangoSearch index '",
                              index().id().id(), "'")};
       }
-      _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-          irs::directory_reader::open(*(_dataStore._directory), nullptr,
-                                      readerOptions),
-          engineSnapshot));
-
-      auto reader = _dataStore.loadSnapshot()->_reader;
-
+      auto reader = irs::directory_reader::open(*(_dataStore._directory),
+                                                _format, readerOptions);
+      if (!reader) {
+        return {TRI_ERROR_INTERNAL,
+                absl::StrCat("failed to open index while "
+                             "initializing ArangoSearch index '",
+                             index().id().id(), "'")};
+      }
       if (!readTick(reader.meta().meta.payload(), _dataStore._recoveryTickLow,
                     _dataStore._recoveryTickHigh)) {
         return {TRI_ERROR_INTERNAL,
@@ -1343,13 +1357,18 @@ Result IResearchDataStore::initDataStore(
                              "initializing ArangoSearch index '",
                              index().id().id(), "'")};
       }
+      auto const docCount = reader->docs_count();
+      auto const liveDocsCount = reader->live_docs_count();
+      _dataStore.storeSnapshot(
+          std::make_shared<DataSnapshot>(std::move(reader), engineSnapshot));
+
       LOG_TOPIC("7e028", TRACE, TOPIC)
           << "successfully opened existing data store data store reader for "
           << "ArangoSearch index '" << index().id() << "', docs count '"
-          << reader->docs_count() << "', live docs count '"
-          << reader->live_docs_count() << "', recovery tick low '"
-          << _dataStore._recoveryTickLow << "' and recovery tick high '"
-          << _dataStore._recoveryTickHigh << "'";
+          << docCount << "', live docs count '" << liveDocsCount
+          << "', recovery tick low '" << _dataStore._recoveryTickLow
+          << "' and recovery tick high '" << _dataStore._recoveryTickHigh
+          << "'";
     } catch (irs::index_not_found const&) {
       // NOOP
     }
@@ -1460,10 +1479,16 @@ Result IResearchDataStore::initDataStore(
                            "ArangoSearch index '",
                            index().id().id(), "'")};
     }
+    auto reader = irs::directory_reader::open(*(_dataStore._directory), _format,
+                                              readerOptions);
+    if (ADB_UNLIKELY(!reader)) {
+      return {TRI_ERROR_INTERNAL,
+              absl::StrCat("Failed to open new index while initializing "
+                           "ArangoSearch index '",
+                           index().id().id(), "'")};
+    }
     _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
-        irs::directory_reader::open(*(_dataStore._directory), _format,
-                                    readerOptions),
-        engineSnapshot));
+        std::move(reader), std::move(engineSnapshot)));
   }
 
   auto snapshot = _dataStore.loadSnapshot();
@@ -1971,9 +1996,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     // right as old storage snapshot is most likely outdated.
     // but index is empty so it makes no sense as we will not
     // materialize anything anyway.
-    auto reader = std::make_shared<DataSnapshot>(
-        oldSnapshot->_reader.reopen(_format), oldSnapshot->_snapshot);
 
+    auto reader = oldSnapshot->_reader.reopen(_format);
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("1c2c1", WARN, iresearch::TOPIC)
@@ -1984,7 +2008,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     }
 
     // update reader
-    _dataStore.storeSnapshot(reader);
+    _dataStore.storeSnapshot(std::make_shared<DataSnapshot>(
+        std::move(reader), oldSnapshot->_snapshot));
 
     updateStatsUnsafe();
 
