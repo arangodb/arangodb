@@ -28,8 +28,10 @@
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/karney/geodesic.h"
+#include "Basics/application-exit.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <s2/s1angle.h>
 #include <s2/s2latlng.h>
@@ -38,6 +40,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
 
+#include <bit>
 #include <cmath>
 
 namespace arangodb::geo {
@@ -214,9 +217,15 @@ bool intersectsRect(S2Region const& r1, S2Region const& r2) {
   return rect::intersects(rhs, lhs);
 }
 
-template<uint8_t Version = 1>
+void ensureLittleEndian() {
+  if constexpr (std::endian::native == std::endian::big) {
+    LOG_TOPIC("ab9de", FATAL, Logger::FIXME)
+        << "Geo serialization is not implemented on big-endian architectures";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 constexpr uint8_t serialize(ShapeContainer::Type t) noexcept {
-  static_assert(Version == 1);
   return static_cast<uint8_t>(t);
 }
 
@@ -676,6 +685,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
 }
 
 void ShapeContainer::Encode(Encoder& encoder, s2coding::CodingHint hint) const {
+  ensureLittleEndian();
   TRI_ASSERT(encoder.avail() >= sizeof(uint8_t));
   encoder.put8(serialize(_type));
   switch (_type) {
@@ -731,6 +741,9 @@ bool ShapeContainer::DecodeImpl(Decoder& decoder) {
 }
 
 bool ShapeContainer::Decode(Decoder& decoder) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return false;
+  }
   if (decoder.avail() < sizeof(uint8_t)) {
     return false;
   }
@@ -754,6 +767,7 @@ bool ShapeContainer::Decode(Decoder& decoder) {
 
 void encodePoint(Encoder& encoder, S2Point const& point,
                  s2coding::CodingHint hint) {
+  ensureLittleEndian();
   TRI_ASSERT(S2::IsUnitLength(point));
   static_assert(sizeof(S2Point) >= sizeof(double) * 2);
   TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + sizeof(S2Point));
@@ -771,6 +785,9 @@ void encodePoint(Encoder& encoder, S2Point const& point,
 }
 
 bool decodePoint(Decoder& decoder, S2PointRegion& region) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return false;
+  }
   if (decoder.avail() < sizeof(uint8_t) + 2 * sizeof(double)) {
     return false;
   }
