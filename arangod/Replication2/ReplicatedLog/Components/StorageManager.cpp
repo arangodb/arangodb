@@ -314,6 +314,12 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
+auto StorageManager::getCommittedLogIterator(LogRange range) const
+    -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> {
+  return guardedData.getLockedGuard()->onDiskLog.getIteratorRange(range.from,
+                                                                  range.to);
+}
+
 StorageManager::StorageRequest::StorageRequest(
     std::unique_ptr<StorageOperation> op, InMemoryLog logResult,
     TermIndexMapping mappingResult)

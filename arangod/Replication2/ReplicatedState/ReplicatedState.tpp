@@ -549,13 +549,12 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
   }
   if (_commitIndex > _lastAppliedIndex and
       not _applyEntriesIndexInFlight.has_value()) {
-    auto log = _stream->methods().getLogSnapshot();
     // Apply at most 1000 entries at once, so we have a smoother progression.
     _applyEntriesIndexInFlight =
         std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = log.getIteratorRange(_lastAppliedIndex + 1,
-                                        *_applyEntriesIndexInFlight + 1);
+    auto logIter = _stream->methods().getLogIterator(
+        {_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1});
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));
