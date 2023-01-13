@@ -80,7 +80,7 @@ struct SpawnHandler : HandlerBase<Runtime, SpawnState> {
   }
 
   auto operator()(SpawnMessage msg) -> std::unique_ptr<SpawnState> {
-    this->template spawn<TrivialActor>(TrivialState{}, TrivialMessage0{});
+    this->template spawn<TrivialActor>(TrivialState{}, TrivialStart{});
     this->state->called++;
     this->state->state += msg.message;
     return std::move(this->state);

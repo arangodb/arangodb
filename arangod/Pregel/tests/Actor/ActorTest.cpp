@@ -75,8 +75,9 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
-  auto message = std::make_unique<MessagePayload<TrivialMessage>>(
-      TrivialMessage1{"Hello"});
+
+  auto message = std::make_unique<MessagePayload<TrivialMessages>>(
+      TrivialMessage{"Hello"});
   actor.process(ActorPID{.server = "A", .id = {5}}, std::move(message));
   ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));
 }
@@ -90,7 +91,8 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
       ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
-  auto message = TrivialMessage{TrivialMessage1{"Hello"}};
+
+  auto message = TrivialMessages{TrivialMessage{"Hello"}};
   actor.process(ActorPID{.server = "A", .id = {5}},
                 arangodb::inspection::serializeWithErrorT(message).get());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "Hello", .called = 1}));

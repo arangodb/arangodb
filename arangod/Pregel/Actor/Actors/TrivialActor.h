@@ -46,40 +46,40 @@ auto inspect(Inspector& f, TrivialState& x) {
                             f.field("called", x.called));
 }
 
-struct TrivialMessage0 {};
+struct TrivialStart {};
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage0& x) {
+auto inspect(Inspector& f, TrivialStart& x) {
   return f.object(x).fields();
 }
 
-struct TrivialMessage1 {
-  TrivialMessage1() = default;
-  TrivialMessage1(std::string value) : store(std::move(value)) {}
+struct TrivialMessage {
+  TrivialMessage() = default;
+  TrivialMessage(std::string value) : store(std::move(value)) {}
   std::string store;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage1& x) {
+auto inspect(Inspector& f, TrivialMessage& x) {
   return f.object(x).fields(f.field("store", x.store));
 }
 
-struct TrivialMessage : std::variant<TrivialMessage0, TrivialMessage1> {
-  using std::variant<TrivialMessage0, TrivialMessage1>::variant;
+struct TrivialMessages : std::variant<TrivialStart, TrivialMessage> {
+  using std::variant<TrivialStart, TrivialMessage>::variant;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TrivialMessage& x) {
+auto inspect(Inspector& f, TrivialMessages& x) {
   return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<TrivialMessage0>("msg0"),
-      arangodb::inspection::type<TrivialMessage1>("msg1"));
+      arangodb::inspection::type<TrivialStart>("msg0"),
+      arangodb::inspection::type<TrivialMessage>("msg1"));
 }
 
 template<typename Runtime>
 struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
-  auto operator()(TrivialMessage0 msg) -> std::unique_ptr<TrivialState> {
+  auto operator()(TrivialStart msg) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     return std::move(this->state);
   }
 
-  auto operator()(TrivialMessage1 msg) -> std::unique_ptr<TrivialState> {
+  auto operator()(TrivialMessage msg) -> std::unique_ptr<TrivialState> {
     this->state->called++;
     this->state->state += msg.store;
     return std::move(this->state);
@@ -87,7 +87,8 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
 
   auto operator()(UnknownMessage unknown) -> std::unique_ptr<TrivialState> {
     this->state->called++;
-    this->state->state = "sent unknown message";
+    this->state->state =
+        fmt::format("sent unknown message to {}", unknown.receiver);
     return std::move(this->state);
   }
 
@@ -106,7 +107,7 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
 
 struct TrivialActor {
   using State = TrivialState;
-  using Message = TrivialMessage;
+  using Message = TrivialMessages;
   template<typename Runtime>
   using Handler = TrivialHandler<Runtime>;
   static constexpr auto typeName() -> std::string_view {
@@ -119,5 +120,5 @@ template<>
 struct fmt::formatter<arangodb::pregel::actor::test::TrivialState>
     : arangodb::inspection::inspection_formatter {};
 template<>
-struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessage>
+struct fmt::formatter<arangodb::pregel::actor::test::TrivialMessages>
     : arangodb::inspection::inspection_formatter {};

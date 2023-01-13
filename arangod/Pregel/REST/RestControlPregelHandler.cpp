@@ -164,7 +164,7 @@ void RestControlPregelHandler::getExecutionStatus() {
       auto actor =
           _pregel.actorRuntime()->spawn<pregel::actor::test::TrivialActor>(
               pregel::actor::test::TrivialState{.state = "foo"},
-              pregel::actor::test::TrivialMessage1{"bar"});
+              pregel::actor::test::TrivialMessage{"bar"});
       auto state =
           _pregel.actorRuntime()
               ->getActorStateByID<pregel::actor::test::TrivialActor>(actor);
@@ -188,8 +188,8 @@ void RestControlPregelHandler::getExecutionStatus() {
         auto receiver = pregel::actor::ActorPID{
             .server = coordinator, .id = {0}, .databaseName = "_system"};
 
-        auto msg = pregel::actor::test::TrivialMessage{
-            pregel::actor::test::TrivialMessage1("hello")};
+        auto msg = pregel::actor::test::TrivialMessages{
+            pregel::actor::test::TrivialMessage("hello")};
         auto slice = inspection::serializeWithErrorT(msg);
         _pregel.actorNetworkTransport()(sender, receiver, slice.get());
       }

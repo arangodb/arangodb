@@ -74,7 +74,7 @@ TEST(RuntimeTest, spawns_actor) {
                                                scheduler, dispatcher);
 
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                            TrivialMessage0());
+                                            TrivialStart());
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foo", .called = 1}));
@@ -87,7 +87,7 @@ TEST(RuntimeTest, sends_initial_message_when_spawning_actor) {
                                                scheduler, dispatcher);
 
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                            TrivialMessage1("bar"));
+                                            TrivialMessage("bar"));
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobar", .called = 1}));
@@ -102,9 +102,9 @@ TEST(RuntimeTest, gives_all_existing_actor_ids) {
   ASSERT_TRUE(runtime->getActorIDs().empty());
 
   auto actor_foo = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                                TrivialMessage0());
+                                                TrivialStart());
   auto actor_bar = runtime->spawn<TrivialActor>(TrivialState{.state = "bar"},
-                                                TrivialMessage0());
+                                                TrivialStart());
 
   auto allActorIDs = runtime->getActorIDs();
   ASSERT_EQ(allActorIDs.size(), 2);
@@ -119,11 +119,11 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
                                                scheduler, dispatcher);
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                            TrivialMessage0{});
+                                            TrivialStart{});
 
   runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
                     ActorPID{.server = "PRMR-1234", .id = actor},
-                    TrivialActor::Message{TrivialMessage1("baz")});
+                    TrivialActor::Message{TrivialMessage("baz")});
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
@@ -148,18 +148,16 @@ TEST(RuntimeTest,
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
                                                scheduler, dispatcher);
-  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                            TrivialMessage0{});
+  auto actor_id = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                               TrivialStart{});
+  auto actor = ActorPID{.server = "PRMR-1234", .id = actor_id};
 
-  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
-                    ActorPID{.server = "PRMR-1234", .id = actor},
-                    SomeMessages{SomeMessage{}});
+  runtime->dispatch(actor, actor, SomeMessages{SomeMessage{}});
 
-  // received an unknown message error afte rit sent wrong message type to
-  // itself
-  auto state = runtime->getActorStateByID<TrivialActor>(actor);
-  ASSERT_EQ(state,
-            (TrivialState{.state = "sent unknown message", .called = 2}));
+  ASSERT_EQ(
+      runtime->getActorStateByID<TrivialActor>(actor_id),
+      (TrivialState{.state = fmt::format("sent unknown message to {}", actor),
+                    .called = 2}));
 }
 
 TEST(
@@ -169,18 +167,17 @@ TEST(
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
                                                scheduler, dispatcher);
-  auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
-                                            TrivialMessage0{});
+  auto actor_id = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
+                                               TrivialStart{});
+  auto actor = ActorPID{.server = "PRMR-1234", .id = actor_id};
 
-  auto unknownActorPID = ActorPID{.server = "PRMR-1234", .id = {999}};
-  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
-                    unknownActorPID,
-                    TrivialActor::Message{TrivialMessage1{"baz"}});
+  auto unknown_actor = ActorPID{.server = "PRMR-1234", .id = {999}};
+  runtime->dispatch(actor, unknown_actor,
+                    TrivialActor::Message{TrivialMessage{"baz"}});
 
-  auto state = runtime->getActorStateByID<TrivialActor>(actor);
-  ASSERT_EQ(state,
+  ASSERT_EQ(runtime->getActorStateByID<TrivialActor>(actor_id),
             (TrivialState{.state = fmt::format("recieving actor {} not found",
-                                               unknownActorPID),
+                                               unknown_actor),
                           .called = 2}));
 }
 
@@ -221,9 +218,7 @@ TEST(RuntimeTest, spawn_game) {
                     ActorPID{.server = serverID, .id = spawn_actor},
                     SpawnActor::Message{SpawnMessage{"baz"}});
 
-  auto allActors = runtime->getActorIDs();
-  ASSERT_EQ(allActors.size(), 2);
-
-  auto spawn_actor_state = runtime->getActorStateByID<SpawnActor>(spawn_actor);
-  ASSERT_EQ(spawn_actor_state, (SpawnState{.called = 2, .state = "baz"}));
+  ASSERT_EQ(runtime->getActorIDs().size(), 2);
+  ASSERT_EQ(runtime->getActorStateByID<SpawnActor>(spawn_actor),
+            (SpawnState{.called = 2, .state = "baz"}));
 }

@@ -142,6 +142,7 @@ struct Actor : ActorBase {
     return res.get();
   }
 
+ private:
   void push(ActorPID sender, typename Config::Message&& msg) {
     inbox.push(std::make_unique<InternalMessage>(
         sender,
@@ -196,6 +197,7 @@ struct Actor : ActorBase {
                              f.field("payload", x.payload));
   }
 
+ public:
   ActorPID pid;
   std::atomic<bool> busy;
   arangodb::pregel::mpscqueue::MPSCQueue<InternalMessage> inbox;
