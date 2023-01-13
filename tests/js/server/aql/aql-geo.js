@@ -1067,12 +1067,9 @@ function searchAliasS2GeoSuite() {
   return suite;
 }
 
-/*
 jsunity.run(arangoSearchVPackGeoSuite);
 jsunity.run(searchAliasVPackGeoSuite);
-*/
 jsunity.run(arangoSearchS2GeoSuite);
 jsunity.run(searchAliasS2GeoSuite);
-
 
 return jsunity.done();
