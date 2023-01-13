@@ -121,21 +121,29 @@ TEST(RuntimeTest, sends_message_to_an_actor) {
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage0{});
 
-  runtime->dispatch(ActorPID{.server = "Foo", .id = actor},
+  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
                     ActorPID{.server = "PRMR-1234", .id = actor},
-                    std::make_unique<MessagePayload<TrivialActor::Message>>(
-                        TrivialMessage1("baz")));
+                    TrivialActor::Message{TrivialMessage1("baz")});
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
 }
 
+struct SomeMessage {};
+template<typename Inspector>
+auto inspect(Inspector& f, SomeMessage& x) {
+  return f.object(x).fields();
+}
+struct SomeMessages : std::variant<SomeMessage> {
+  using std::variant<SomeMessage>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SomeMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<SomeMessage>("someMessage"));
+}
 TEST(RuntimeTest,
      actor_receiving_wrong_message_type_sends_back_unknown_error_message) {
-  struct SomeMessage {};
-  struct SomeMessages : std::variant<SomeMessage> {
-    using std::variant<SomeMessage>::variant;
-  };
   auto scheduler = std::make_shared<MockScheduler>();
   auto dispatcher = std::make_shared<EmptyExternalDispatcher>();
   auto runtime = std::make_shared<MockRuntime>("PRMR-1234", "RuntimeTest",
@@ -143,10 +151,9 @@ TEST(RuntimeTest,
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialMessage0{});
 
-  runtime->dispatch(
-      ActorPID{.server = "PRMR-1234", .id = actor},
-      ActorPID{.server = "PRMR-1234", .id = actor},
-      std::make_unique<MessagePayload<SomeMessages>>(SomeMessage()));
+  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
+                    ActorPID{.server = "PRMR-1234", .id = actor},
+                    SomeMessages{SomeMessage{}});
 
   // received an unknown message error afte rit sent wrong message type to
   // itself
@@ -168,8 +175,7 @@ TEST(
   auto unknownActorPID = ActorPID{.server = "PRMR-1234", .id = {999}};
   runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
                     unknownActorPID,
-                    std::make_unique<MessagePayload<TrivialActor::Message>>(
-                        TrivialMessage1("baz")));
+                    TrivialActor::Message{TrivialMessage1{"baz"}});
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state,
@@ -213,8 +219,7 @@ TEST(RuntimeTest, spawn_game) {
 
   runtime->dispatch(ActorPID{.server = serverID, .id = spawn_actor},
                     ActorPID{.server = serverID, .id = spawn_actor},
-                    std::make_unique<MessagePayload<SpawnActor::Message>>(
-                        SpawnMessage("baz")));
+                    SpawnActor::Message{SpawnMessage{"baz"}});
 
   auto allActors = runtime->getActorIDs();
   ASSERT_EQ(allActors.size(), 2);

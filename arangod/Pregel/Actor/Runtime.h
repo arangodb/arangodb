@@ -72,10 +72,7 @@ struct Runtime
     actors.emplace(newId, std::move(newActor));
 
     // Send initial message to newly created actor
-    auto initialPayload =
-        std::make_unique<MessagePayload<typename ActorConfig::Message>>(
-            initialMessage);
-    dispatch(address, address, std::move(initialPayload));
+    dispatch(address, address, initialMessage);
 
     return newId;
   }
@@ -92,16 +89,6 @@ struct Runtime
     }
 
     return res;
-  }
-
-  auto findActorLocally(ActorID receiver)
-      -> std::optional<std::reference_wrapper<ActorMap::mapped_type>> {
-    auto a = actors.find(receiver);
-    if (a == std::end(actors)) {
-      return std::nullopt;
-    }
-    auto& [_, actor] = *a;
-    return actor;
   }
 
   template<typename ActorConfig>
@@ -129,32 +116,8 @@ struct Runtime
     return std::nullopt;
   }
 
-  auto dispatch(ActorPID sender, ActorPID receiver,
-                std::unique_ptr<MessagePayloadBase> payload) -> void {
-    if (receiver.server != myServerID) {
-      // TODO
-      dispatch(receiver, sender,
-               std::make_unique<MessagePayload<ActorError>>(
-                   ActorNotFound{.actor = receiver}));
-    }
-
-    auto actor = findActorLocally(receiver.id);
-    if (actor.has_value()) {
-      actor->get()->process(sender, std::move(payload));
-    } else {
-      dispatch(receiver, sender,
-               std::make_unique<MessagePayload<ActorError>>(
-                   ActorNotFound{.actor = receiver}));
-    }
-  }
-
-  auto dispatch(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
+  auto receive(ActorPID sender, ActorPID receiver, velocypack::SharedSlice msg)
       -> void {
-    if (receiver.server != myServerID) {
-      (*externalDispatcher)(sender, receiver, msg);
-      return;
-    }
-
     auto actor = findActorLocally(receiver.id);
     if (actor.has_value()) {
       actor->get()->process(sender, msg);
@@ -170,6 +133,16 @@ struct Runtime
     }
   }
 
+  template<typename ActorMessage>
+  auto dispatch(ActorPID sender, ActorPID receiver, ActorMessage const& message)
+      -> void {
+    if (receiver.server == sender.server) {
+      dispatchLocally(sender, receiver, message);
+    } else {
+      dispatchExternally(sender, receiver, message);
+    }
+  }
+
   ServerID myServerID;
   std::string const runtimeID;
 
@@ -179,6 +152,42 @@ struct Runtime
   std::atomic<size_t> uniqueActorIDCounter{0};
 
   ActorMap actors;
+
+ private:
+  template<typename ActorMessage>
+  auto dispatchLocally(ActorPID sender, ActorPID receiver,
+                       ActorMessage const& message) -> void {
+    auto actor = findActorLocally(receiver.id);
+    if (actor.has_value()) {
+      actor->get()->process(
+          sender,
+          std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
+    } else {
+      dispatch(receiver, sender, ActorError{ActorNotFound{.actor = receiver}});
+    }
+  }
+
+  template<typename ActorMessage>
+  auto dispatchExternally(ActorPID sender, ActorPID receiver,
+                          ActorMessage const& message) -> void {
+    auto payload = inspection::serializeWithErrorT(message);
+    if (payload.ok()) {
+      (*externalDispatcher)(sender, receiver, payload.get());
+    } else {
+      fmt::print("Error serializing message");
+      std::abort();
+    }
+  }
+
+  auto findActorLocally(ActorID receiver)
+      -> std::optional<std::reference_wrapper<ActorMap::mapped_type>> {
+    auto a = actors.find(receiver);
+    if (a == std::end(actors)) {
+      return std::nullopt;
+    }
+    auto& [_, actor] = *a;
+    return actor;
+  }
 };
 template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,
          typename Inspector>

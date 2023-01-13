@@ -104,13 +104,14 @@ struct Actor : ActorBase {
       push(sender, std::move(n->payload));
       delete n;
     } else {
-      runtime->dispatch(pid, sender,
-                        std::make_unique<MessagePayload<ActorError>>(
-                            UnknownMessage{.sender = sender, .receiver = pid}));
+      runtime->dispatch(
+          pid, sender,
+          ActorError{UnknownMessage{.sender = sender, .receiver = pid}});
       delete ptr;
     }
     kick();
   }
+
   void process(ActorPID sender, velocypack::SharedSlice msg) override {
     if (auto m =
             inspection::deserializeWithErrorT<typename Config::Message>(msg);

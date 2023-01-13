@@ -49,7 +49,7 @@ struct MockExternalDispatcher {
                   arangodb::velocypack::SharedSlice msg) -> void {
     auto receiving_runtime = runtimes.find(receiver.server);
     if (receiving_runtime != std::end(runtimes)) {
-      receiving_runtime->second->dispatch(sender, receiver, msg);
+      receiving_runtime->second->receive(sender, receiver, msg);
     } else {
       auto error = ActorError{ActorNotFound{.actor = receiver}};
       auto payload = inspection::serializeWithErrorT(error);

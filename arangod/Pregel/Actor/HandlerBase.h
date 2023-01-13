@@ -39,19 +39,7 @@ struct HandlerBase {
 
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage message) -> void {
-    if (receiver.server == self.server) {
-      runtime->dispatch(
-          self, receiver,
-          std::make_unique<MessagePayload<ActorMessage>>(std::move(message)));
-    } else {
-      auto payload = inspection::serializeWithErrorT(message);
-      if (payload.ok()) {
-        runtime->dispatch(self, receiver, payload.get());
-      } else {
-        fmt::print("HandlerBase error serializing message");
-        std::abort();
-      }
-    }
+    runtime->dispatch(self, receiver, message);
   }
 
   template<typename ActorConfig>
