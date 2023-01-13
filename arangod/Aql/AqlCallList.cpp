@@ -24,29 +24,23 @@
 #include "AqlCallList.h"
 
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Enumerate.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+#include <array>
 #include <iostream>
-#include <map>
 #include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-namespace {
-// hack for MSVC
-auto getStringView(VPackSlice slice) -> std::string_view {
-  std::string_view ref = slice.stringView();
-  return std::string_view(ref.data(), ref.size());
-}
-}  // namespace
 
 AqlCallList::AqlCallList(AqlCall const& call) : _specificCalls{call} {
   // We can never create a new CallList with existing skipCounter
@@ -66,7 +60,7 @@ AqlCallList::AqlCallList(AqlCall const& specificCall,
   if (!_specificCalls.empty()) {
     // We only implemented for a single given call.
     TRI_ASSERT(_specificCalls.size() == 1);
-    auto res = _specificCalls.back();
+    auto res = std::move(_specificCalls.back());
     _specificCalls.pop_back();
     return res;
   }
@@ -121,9 +115,13 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
                       slice.typeName());
   }
 
-  auto expectedPropertiesFound = std::map<std::string_view, bool>{};
-  expectedPropertiesFound.emplace(StaticStrings::AqlCallListSpecific, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlCallListDefault, false);
+  // we only have 2 different keys to check. using an std::map requires
+  // dynamic memory allocation and would be wasteful. instead, use a simple
+  // std::array here to get rid of any allocations
+  auto expectedPropertiesFound =
+      std::array<std::pair<std::string_view, bool>, 2>{
+          {{StaticStrings::AqlCallListSpecific, false},
+           {StaticStrings::AqlCallListDefault, false}}};
 
   auto const readSpecific =
       [](velocypack::Slice slice) -> ResultT<std::vector<AqlCall>> {
@@ -137,7 +135,7 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
     }
     std::vector<AqlCall> res;
     res.reserve(slice.length());
-    for (VPackSlice const c : VPackArrayIterator(slice)) {
+    for (VPackSlice c : VPackArrayIterator(slice)) {
       auto maybeAqlCall = AqlCall::fromVelocyPack(c);
       if (ADB_UNLIKELY(maybeAqlCall.fail())) {
         auto message = std::string{"When deserializing AqlCallList: entry "};
@@ -146,14 +144,17 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
         message += maybeAqlCall.errorMessage();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
-      res.emplace_back(maybeAqlCall.get());
+      res.emplace_back(std::move(maybeAqlCall.get()));
     }
     return res;
   };
 
   auto const readDefault =
       [](velocypack::Slice slice) -> ResultT<std::optional<AqlCall>> {
-    if (ADB_UNLIKELY(!slice.isObject() && !slice.isNull())) {
+    if (slice.isNull()) {
+      return {std::nullopt};
+    }
+    if (ADB_UNLIKELY(!slice.isObject())) {
       auto message =
           std::string{"When deserializating AqlCallList: When reading " +
                       StaticStrings::AqlCallListDefault +
@@ -161,9 +162,6 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
                       "Unexpected type "};
       message += slice.typeName();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
-    }
-    if (slice.isNull()) {
-      return {std::nullopt};
     }
     auto maybeAqlCall = AqlCall::fromVelocyPack(slice);
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
@@ -177,20 +175,13 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
   AqlCallList result{AqlCall{}};
 
   for (auto const it : velocypack::ObjectIterator(slice)) {
-    auto const keySlice = it.key;
-    if (ADB_UNLIKELY(!keySlice.isString())) {
-      return Result(TRI_ERROR_TYPE_ERROR,
-                    "When deserializating AqlCallList: Key is not a string");
-    }
-    auto const key = getStringView(keySlice);
+    auto key = it.key.stringView();
 
-    if (auto propIt = expectedPropertiesFound.find(key);
+    if (auto propIt = std::find_if(
+            expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
+            [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
-        return Result(
-            TRI_ERROR_TYPE_ERROR,
-            "When deserializating AqlCallList: Encountered duplicate key");
-      }
+      TRI_ASSERT(!propIt->second);
       propIt->second = true;
     }
 

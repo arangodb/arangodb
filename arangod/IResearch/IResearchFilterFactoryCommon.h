@@ -234,13 +234,10 @@ inline Result failedToGenerateName(char const* funcName, size_t i) {
                        i, "'")};
 }
 
-inline Result malformedNode(aql::AstNodeType type) {
-  auto const* typeName = getNodeTypeName(type);
-  return {
-      TRI_ERROR_BAD_PARAMETER,
-      absl::StrCat(
-          "Can't process malformed AstNode of type '",
-          (typeName ? absl::AlphaNum{*typeName} : absl::AlphaNum{type}), "'")};
+inline Result malformedNode(aql::AstNode const& node) {
+  return {TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("Can't process malformed AstNode of type '",
+                       node.getTypeString(), "'")};
 }
 
 }  // namespace error

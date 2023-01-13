@@ -86,6 +86,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
@@ -279,8 +280,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
-  Zkd/Conversion.cpp
-  Zkd/Library.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)
@@ -313,6 +312,7 @@ target_link_libraries(arangodbtests
   arango_tests_replication2
   arango_tests_graph
   arango_tests_futures
+  arango_tests_zkd
   arango_agency
   arango_cluster_engine
   arango_rocksdb

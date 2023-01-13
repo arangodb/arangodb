@@ -249,7 +249,7 @@ bool sortOrs(aql::Ast* ast, aql::AstNode* root, aql::Variable const* variable,
 
         if (ll != nullptr && lr != nullptr) {
           // both lower bounds are set
-          res = CompareAstNodes(ll, lr, true);
+          res = compareAstNodes(ll, lr, true);
 
           if (res != 0) {
             return res < 0;

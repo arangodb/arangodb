@@ -1,6 +1,24 @@
 devel
 -----
 
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
+* Use more compact and efficient representation for arrays and objects during
+  AQL AST serialization and deserialization. This can help to reduce the size
+  of messages exchanged between coordinator and database servers during query
+  setup, and also reduce the time needed for parsing these messages. This 
+  especially helps when there are large bind parameter values that are arrays
+  or objects.
+  The more efficient format is used also inside an AQL query's "explain" and 
+  "profile" methods, and thus any callers that process the return values of
+  explain and profile operations may now receive the new format. All callers
+  inside the ArangoDB code have been adjusted, but any external callers that
+  process the JSON response values of AQL query explain or profile operations
+  may need to be adjusted to handle the new format.
+
 * Allow cluster database servers to start even when there are existing databases
   that would violate the settings `--cluster.min-replication-factor` or
   `--cluster.max-replication-factor`.
@@ -16,7 +34,7 @@ devel
   distribution was contained in the "optimizing plan" stage, which was
   misleading.
 
-* Remove constant values for query variables from query plan serialization 
+* Removed constant values for query variables from query plan serialization 
   in cases they were not needed. Previously, constant values of query variables
   were always serialized for all occurrences of a variable in a query plan.
   If the constant values were large, this contributed to higher serialization

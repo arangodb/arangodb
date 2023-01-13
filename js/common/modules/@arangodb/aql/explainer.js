@@ -919,6 +919,37 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
+  var buildRaw = function (node) {
+    if (Array.isArray(node)) {
+      // array
+      if (node.length > maxMembersToPrint) {
+        // print only the first few values from the array
+        return '[ ' + node.slice(0, maxMembersToPrint).map(buildRaw).join(', ') + ', ... ]';
+      }
+      return '[ ' + node.map(buildRaw).join(', ') + ' ]';
+    } else if (typeof node === 'object' && node !== null) {
+      // object
+      let keys = Object.keys(node);
+      let r = '{';
+      keys.slice(0, maxMembersToPrint).forEach((k, i) => {
+        if (i === 0) {
+          r += ' ';
+        } else {
+          r += ', ';
+        }
+        r += value(JSON.stringify(k)) + ' : ' + buildRaw(node[k]);
+      });
+      if (keys.length > maxMembersToPrint) {
+        r += ', ...';
+      }
+      r += ' }';
+      return r;
+    }
+
+    // anything else
+    return value(JSON.stringify(node));
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
@@ -970,6 +1001,9 @@ function processQuery(query, explain, planIndex) {
       case 'value':
         return value(JSON.stringify(node.value));
       case 'object':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the object
@@ -983,6 +1017,9 @@ function processQuery(query, explain, planIndex) {
       case 'calculated object element':
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the array

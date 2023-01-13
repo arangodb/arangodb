@@ -41,6 +41,7 @@
 #include <atomic>
 #include <exception>
 #include <mutex>
+#include <string_view>
 #include <thread>
 
 #include <boost/core/demangle.hpp>
@@ -159,7 +160,7 @@ void appendNullTerminatedString(char const* src, size_t maxLength, char*& dst) {
 /// If the value is 0x0 itself, prints one zero character.
 void appendHexValue(unsigned char const* src, size_t len, char*& dst,
                     bool stripLeadingZeros) {
-  char chars[] = "0123456789abcdef";
+  constexpr char chars[] = "0123456789abcdef";
   unsigned char const* e = src + len;
   while (--e >= src) {
     unsigned char c = *e;
@@ -316,7 +317,7 @@ void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
   size_t length = buildLogMessage(p, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)
-      << arangodb::Logger::CHARS(&buffer[0], length);
+      << std::string_view(&buffer[0], length);
 } catch (...) {
   // we better not throw an exception from inside a signal handler
 }
@@ -350,7 +351,7 @@ void logBacktrace() try {
     appendNullTerminatedString("]", p);
 
     LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH)
-        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        << std::string_view(&buffer[0], p - &buffer[0]);
   }
 
   // log backtrace, of up to maxFrames depth
@@ -398,7 +399,7 @@ void logBacktrace() try {
 
           size_t length = p - &buffer[0];
           LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH)
-              << arangodb::Logger::CHARS(&buffer[0], length);
+              << std::string_view(&buffer[0], length);
           break;
         }
 
@@ -448,7 +449,7 @@ void logBacktrace() try {
 
           size_t length = p - &buffer[0];
           LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH)
-              << arangodb::Logger::CHARS(&buffer[0], length);
+              << std::string_view(&buffer[0], length);
         }
       } while (++frame < (maxFrames + skipFrames + 1) && unw_step(&cursor) > 0);
       // flush logs as early as possible
@@ -483,7 +484,7 @@ void logProcessInfo() {
                                            p);
 
   LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH)
-      << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+      << std::string_view(&buffer[0], p - &buffer[0]);
 }
 
 /// @brief Logs the reception of a signal to the logfile.
@@ -570,7 +571,7 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
     appendNullTerminatedString("Could not open minidump file: ", p);
     p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
     LOG_TOPIC("ba80e", WARN, arangodb::Logger::CRASH)
-        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        << std::string_view(&buffer[0], p - &buffer[0]);
     return;
   }
 
@@ -690,13 +691,13 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
     appendNullTerminatedString("Wrote minidump: ", p);
     appendNullTerminatedString(filename, p);
     LOG_TOPIC("93315", INFO, arangodb::Logger::CRASH)
-        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        << std::string_view(&buffer[0], p - &buffer[0]);
   } else {
     char* p = &buffer[0];
     appendNullTerminatedString("Failed to write minidump: ", p);
     p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
     LOG_TOPIC("af06b", WARN, arangodb::Logger::CRASH)
-        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        << std::string_view(&buffer[0], p - &buffer[0]);
   }
 
   CloseHandle(hFile);
@@ -716,7 +717,7 @@ LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
     appendNullTerminatedString(" in thread ", p);
     appendHexValue(GetCurrentThreadId(), p, true);
     LOG_TOPIC("87ff4", INFO, arangodb::Logger::CRASH)
-        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        << std::string_view(&buffer[0], p - &buffer[0]);
   }
   createMiniDump(pointers);
   return EXCEPTION_CONTINUE_SEARCH;
