@@ -805,7 +805,7 @@ void State::dropCollection(std::string const& colName) {
     if (col == nullptr) {
       return;
     }
-    auto res = _vocbase->dropCollection(col->id(), false, -1.0);
+    auto res = _vocbase->dropCollection(col->id(), false);
     if (res.fail()) {
       LOG_TOPIC("ba841", FATAL, Logger::AGENCY)
           << "unable to drop collection '" << colName
