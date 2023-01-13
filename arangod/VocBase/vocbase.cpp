@@ -594,9 +594,6 @@ void TRI_vocbase_t::registerCollection(
     guard1.cancel();
     guard2.cancel();
     guard3.cancel();
-
-    // TODO should be noexcept?
-    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
   }
 }
 
@@ -715,16 +712,6 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief drops a collection
 /*static */ bool TRI_vocbase_t::dropCollectionCallback(
     arangodb::LogicalCollection& collection) {
-  {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection.statusLock());
-
-    if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
-      LOG_TOPIC("57377", ERR, arangodb::Logger::FIXME)
-          << "someone resurrected the collection '" << collection.name() << "'";
-      return false;
-    }
-  }  // release status lock
-
   // remove from list of collections
   auto& vocbase = collection.vocbase();
 
@@ -789,7 +776,6 @@ void TRI_vocbase_t::persistCollection(
   registerCollection(basics::ConditionalLocking::DoNotLock, collection);
 
   try {
-    collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
     // set collection version to latest version, as the collection is just
     // created
     collection->setVersion(LogicalCollection::currentVersion());
@@ -819,45 +805,41 @@ arangodb::Result TRI_vocbase_t::loadCollection(
   }
 
   // read lock
-  // check if the collection is already loaded
   READ_LOCKER_EVENTUAL(locker, collection.statusLock());
-  TRI_vocbase_col_status_e status = collection.status();
 
-  if (status == TRI_VOC_COL_STATUS_LOADED) {
-    // DO NOT release the lock
-    locker.steal();
-    return {};
-  }
-
-  if (status == TRI_VOC_COL_STATUS_DELETED) {
+  if (collection.deleted()) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             std::string("collection '") + collection.name() + "' not found"};
   }
 
-  if (status == TRI_VOC_COL_STATUS_CORRUPTED) {
-    return {TRI_ERROR_ARANGO_CORRUPTED_COLLECTION};
-  }
-
-  TRI_ASSERT(false);
-  return {TRI_ERROR_INTERNAL, "unknwon collection status"};
+  // DO NOT release the lock
+  locker.steal();
+  return {};
 }
 
 /// @brief drops a collection, worker function
-ErrorCode TRI_vocbase_t::dropCollectionWorker(
-    arangodb::LogicalCollection* collection, DropState& state, double timeout) {
-  state = DROP_EXIT;
-  std::string const colName(collection->name());
+arangodb::Result TRI_vocbase_t::dropCollectionWorker(
+    arangodb::LogicalCollection& collection) {
+  std::string const colName(collection.name());
+  std::string const& dbName = _info.getName();
+
+  arangodb::Result res;
+
+  auto guard = scopeGuard([&res, &colName, &dbName]() noexcept {
+    try {
+      events::DropCollection(dbName, colName, res.errorNumber());
+    } catch (...) {
+    }
+  });
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.prepareDropCollection(*this, *collection);
-
-  double endTime = TRI_microtime() + timeout;
+  engine.prepareDropCollection(*this, collection);
 
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock,
                                _dataSourceLockWriteOwner,
                                basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->statusLock(),
+  CONDITIONAL_WRITE_LOCKER(locker, collection.statusLock(),
                            basics::ConditionalLocking::DoNotLock);
 
   while (true) {
@@ -881,16 +863,11 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
     TRI_ASSERT(!writeLocker.isLocked());
     TRI_ASSERT(!locker.isLocked());
 
-    if (timeout > 0.0 && TRI_microtime() > endTime) {
-      events::DropCollection(name(), colName, TRI_ERROR_LOCK_TIMEOUT);
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-
     if (_server.isStopping()) {
-      return TRI_ERROR_SHUTTING_DOWN;
+      return res.reset(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    engine.prepareDropCollection(*this, *collection);
+    engine.prepareDropCollection(*this, collection);
 
     // sleep for a while
     std::this_thread::yield();
@@ -901,50 +878,23 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(
   TRI_ASSERT(locker.isLocked());
 
   arangodb::aql::QueryCache::instance()->invalidate(this);
-  std::string const& dbName = _info.getName();
 
-  switch (collection->status()) {
-    case TRI_VOC_COL_STATUS_DELETED: {
-      // collection already deleted
-      // mark collection as deleted
-      unregisterCollection(*collection);
-      break;
-    }
-    case TRI_VOC_COL_STATUS_LOADED: {
-      // collection is loaded
-      collection->deleted(true);
+  collection.setDeleted();
 
-      VPackBuilder builder;
+  VPackBuilder builder;
+  engine.getCollectionInfo(*this, collection.id(), builder, false, 0);
 
-      engine.getCollectionInfo(*this, collection->id(), builder, false, 0);
+  res = collection.properties(builder.slice().get("parameters"));
 
-      auto res = collection->properties(builder.slice().get("parameters"));
+  if (res.ok()) {
+    unregisterCollection(collection);
 
-      if (!res.ok()) {
-        // TODO: Here we're only returning the errorNumber. The errorMessage is
-        // being ignored here. Needs refactor.
-        events::DropCollection(dbName, colName, res.errorNumber());
-        return res.errorNumber();
-      }
+    locker.unlock();
+    writeLocker.unlock();
 
-      collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
-      unregisterCollection(*collection);
-
-      locker.unlock();
-      writeLocker.unlock();
-
-      engine.dropCollection(*this, *collection);
-      state = DROP_PERFORM;
-      break;
-    }
-    default: {
-      // unknown status
-      events::DropCollection(dbName, colName, TRI_ERROR_INTERNAL);
-      return TRI_ERROR_INTERNAL;
-    }
+    engine.dropCollection(*this, collection);
   }
-  events::DropCollection(dbName, colName, TRI_ERROR_NO_ERROR);
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 /// @brief stop operations in this vocbase. must be called prior to
@@ -1094,9 +1044,8 @@ void TRI_vocbase_t::inventory(
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->statusLock());
 
-    if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
-        collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
-      // we do not need to care about deleted or corrupted collections
+    if (collection->deleted()) {
+      // we do not need to care about deleted collections
       continue;
     }
 
@@ -1417,8 +1366,7 @@ TRI_vocbase_t::createCollections(
 
 /// @brief drops a collection
 arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
-                                               bool allowDropSystem,
-                                               double timeout) {
+                                               bool allowDropSystem) {
   auto collection = lookupCollection(cid);
   std::string const& dbName = _info.getName();
 
@@ -1432,7 +1380,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
   if (!allowDropSystem && collection->system() && !engine.inRecovery()) {
     // prevent dropping of system collections
     events::DropCollection(dbName, collection->name(), TRI_ERROR_FORBIDDEN);
-    return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    return TRI_ERROR_FORBIDDEN;
   }
 
   if (ServerState::instance()->isDBServer()) {  // maybe unconditionally ?
@@ -1443,41 +1391,22 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
     }
   }
 
-  while (true) {
-    DropState state = DROP_EXIT;
-    ErrorCode res = TRI_ERROR_NO_ERROR;
-    {
-      READ_LOCKER(readLocker, _inventoryLock);
-      res = dropCollectionWorker(collection.get(), state, timeout);
-    }
-
-    if (state == DROP_PERFORM) {
-      if (engine.inRecovery()) {
-        dropCollectionCallback(*collection);
-      } else {
-        collection->deferDropCollection(dropCollectionCallback);
-      }
-
-      auto& df = server().getFeature<DatabaseFeature>();
-      if (df.versionTracker() != nullptr) {
-        df.versionTracker()->track("drop collection");
-      }
-    }
-
-    if (state == DROP_PERFORM || state == DROP_EXIT) {
-      events::DropCollection(dbName, collection->name(), res);
-      return res;
-    }
-
-    if (_server.isStopping()) {
-      return TRI_ERROR_SHUTTING_DOWN;
-    }
-
-    // try again in next iteration
-    TRI_ASSERT(state == DROP_AGAIN);
-    std::this_thread::sleep_for(
-        std::chrono::microseconds(collectionStatusPollInterval()));
+  arangodb::Result res;
+  {
+    READ_LOCKER(readLocker, _inventoryLock);
+    res = dropCollectionWorker(*collection);
   }
+
+  if (res.ok()) {
+    collection->deferDropCollection(dropCollectionCallback);
+
+    auto& df = server().getFeature<DatabaseFeature>();
+    if (df.versionTracker() != nullptr) {
+      df.versionTracker()->track("drop collection");
+    }
+  }
+
+  return res;
 }
 
 arangodb::Result TRI_vocbase_t::validateCollectionParameters(

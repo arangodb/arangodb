@@ -2820,7 +2820,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
-        auto res = vocbase->dropCollection(collection->id(), true, -1);
+        auto res = vocbase->dropCollection(collection->id(), true);
         EXPECT_TRUE(res.ok());
       }
 
@@ -2880,7 +2880,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
+        vocbase->dropCollection(collection->id(), true);
       }
 
       collection =
@@ -2956,7 +2956,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
+        vocbase->dropCollection(collection->id(), true);
       }
 
       collection =
@@ -3007,7 +3007,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
-        vocbase->dropCollection(collection->id(), true, -1);
+        vocbase->dropCollection(collection->id(), true);
       }
 
       collection =
@@ -3114,7 +3114,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
     if (collection) {
-      vocbase->dropCollection(collection->id(), true, -1);
+      vocbase->dropCollection(collection->id(), true);
     }
 
     collection =
