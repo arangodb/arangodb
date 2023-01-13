@@ -27,7 +27,6 @@
 #include "Cluster/Maintenance.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/DropCollection.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -35,15 +34,9 @@ DocumentStateShardHandler::DocumentStateShardHandler(
     GlobalLogIdentifier gid, MaintenanceFeature& maintenanceFeature)
     : _gid(std::move(gid)), _maintenanceFeature(maintenanceFeature) {}
 
-auto DocumentStateShardHandler::stateIdToShardId(LogId logId) -> std::string {
-  return fmt::format("s{}", logId);
-}
-
 auto DocumentStateShardHandler::createLocalShard(
-    std::string const& collectionId,
-    std::shared_ptr<velocypack::Builder> const& properties)
-    -> ResultT<std::string> {
-  auto shardId = stateIdToShardId(_gid.id);
+    ShardID const& shardId, std::string const& collectionId,
+    std::shared_ptr<velocypack::Builder> const& properties) -> Result {
   auto serverId = ServerState::instance()->getId();
 
   maintenance::ActionDescription actionDescription(
@@ -61,16 +54,17 @@ auto DocumentStateShardHandler::createLocalShard(
                                                   actionDescription);
   bool work = collectionCreator.first();
   if (work) {
-    return ResultT<std::string>::error(
-        TRI_ERROR_INTERNAL, fmt::format("Cannot create shard ID {}", shardId));
+    return {TRI_ERROR_INTERNAL,
+            fmt::format("Cannot create shard ID {}", shardId)};
   }
 
-  return ResultT<std::string>::success(std::move(shardId));
+  // TODO add dirty
+
+  return {};
 }
 
 Result DocumentStateShardHandler::dropLocalShard(
-    const std::string& collectionId) {
-  auto shardId = stateIdToShardId(_gid.id);
+    ShardID const& shardId, const std::string& collectionId) {
   auto serverId = ServerState::instance()->getId();
 
   maintenance::ActionDescription actionDescription(
