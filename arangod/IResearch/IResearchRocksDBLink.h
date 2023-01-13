@@ -109,9 +109,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const final;
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type_t<Index::Serialize> flags) const final;
 
   void toVelocyPackFigures(velocypack::Builder& builder) const final {
     IResearchDataStore::toVelocyPackStats(builder);
