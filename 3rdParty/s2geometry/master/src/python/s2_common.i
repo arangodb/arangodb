@@ -922,7 +922,7 @@ public:
   %extend type {
     std::string __str__() {
       std::ostringstream output;
-      output << *$self << std::ends;
+      output << *$self;
       return output.str();
     }
   }
