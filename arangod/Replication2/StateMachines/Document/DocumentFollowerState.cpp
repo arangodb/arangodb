@@ -89,14 +89,8 @@ auto DocumentFollowerState::applyEntries(
         }
 
         if (self->_transactionHandler == nullptr) {
-          return Result{
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-              fmt::format(
-                  "Transaction handler is missing from "
-                  "DocumentFollowerState during applyEntries "
-                  "{}! This happens if the vocbase cannot be found during "
-                  "DocumentState construction.",
-                  to_string(data.core->getGid()))};
+          // TODO this is a temporary fix, see CINFRA-588
+          return Result{};
         }
 
         return basics::catchToResultT([&]() -> std::optional<LogIndex> {
@@ -161,6 +155,10 @@ auto DocumentFollowerState::applyEntries(
 auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
                                                   velocypack::SharedSlice slice)
     -> Result {
+  if (_transactionHandler == nullptr) {
+    // TODO this is a temporary fix, see CINFRA-588
+    return Result{};
+  }
   auto trxId = TransactionId::createFollower();
   auto doc =
       DocumentLogEntry{std::string(shardId), opType, std::move(slice), trxId};
