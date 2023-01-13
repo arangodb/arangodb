@@ -75,19 +75,39 @@ auto inspect(Inspector& f, NetworkMessage& x) {
 struct UnknownMessage {
   ActorPID sender;
   ActorPID receiver;
-  // std::unique_ptr<MessagePayloadBase> message;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, UnknownMessage& x) {
   return f.object(x).fields(f.field("sender", x.sender),
                             f.field("receiver", x.receiver));
 }
+
 struct ActorNotFound {
   ActorPID actor;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorNotFound& x) {
   return f.object(x).fields(f.field("actor", x.actor));
+}
+
+struct ServerNotFound {
+  ServerID server;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ServerNotFound& x) {
+  return f.object(x).fields(f.field("server", x.server));
+}
+
+struct ActorError
+    : std::variant<UnknownMessage, ActorNotFound, ServerNotFound> {
+  using std::variant<UnknownMessage, ActorNotFound, ServerNotFound>::variant;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ActorError& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<UnknownMessage>("UnknownMessage"),
+      arangodb::inspection::type<ActorNotFound>("ActorNotFound"),
+      arangodb::inspection::type<ServerNotFound>("ServerNotFound"));
 }
 
 template<typename T, typename U>
@@ -103,16 +123,6 @@ struct concatenator<std::variant<Args0...>, std::variant<Args1...>>
     std::visit(overloaded{[this](auto&& arg) { *this = arg; }}, b);
   }
 };
-
-struct ActorError : std::variant<UnknownMessage, ActorNotFound> {
-  using std::variant<UnknownMessage, ActorNotFound>::variant;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ActorError& x) {
-  return f.variant(x).unqualified().alternatives(
-      arangodb::inspection::type<UnknownMessage>("UnknownMessage"),
-      arangodb::inspection::type<ActorNotFound>("ActorNotFound"));
-}
 
 template<typename T>
 struct MessageOrError : concatenator<typename T::variant, ActorError::variant> {

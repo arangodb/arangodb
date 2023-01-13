@@ -47,12 +47,12 @@ struct MockExternalDispatcher {
       : runtimes(runtimes) {}
   auto operator()(ActorPID sender, ActorPID receiver,
                   arangodb::velocypack::SharedSlice msg) -> void {
-    // a timeout error would come here
+    // a timeout error would go here
     auto receiving_runtime = runtimes.find(receiver.server);
     if (receiving_runtime != std::end(runtimes)) {
       receiving_runtime->second->receive(sender, receiver, msg);
     } else {
-      auto error = ActorError{ActorNotFound{.actor = receiver}};
+      auto error = ActorError{ServerNotFound{.server = receiver.server}};
       auto payload = inspection::serializeWithErrorT(error);
       if (payload.ok()) {
         runtimes[sender.server]->dispatch(receiver, sender, payload.get());
@@ -179,44 +179,9 @@ TEST(MultiRuntimeTest,
           .called = 2}));
 }
 
-// TODO extra type of error: ServerNotFound?
 TEST(
     MultiRuntimeTest,
-    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_server) {
-  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
-  auto scheduler = std::make_shared<MockScheduler>();
-  auto dispatcher =
-      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
-
-  // Sending Runtime
-  auto sending_server = ServerID{"A"};
-  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
-                                       sending_server, "RuntimeTest-sending",
-                                       scheduler, dispatcher));
-  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
-      TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor =
-      ActorPID{.server = sending_server, .id = sending_actor_id};
-
-  // send
-  auto actor_in_non_existing_runtime = ActorPID{.server = "B", .id = {999}};
-  runtimes[sending_server]->dispatch(
-      sending_actor, actor_in_non_existing_runtime,
-      TrivialActor::Message{TrivialMessage("baz")});
-
-  // sending actor received an actor not known message error after it messaged
-  // to non-existing runtime
-  ASSERT_EQ(
-      runtimes[sending_server]->getActorStateByID<TrivialActor>(
-          sending_actor_id),
-      (TrivialActor::State{.state = fmt::format("recieving actor {} not found",
-                                                actor_in_non_existing_runtime),
-                           .called = 2}));
-}
-
-TEST(
-    MultiRuntimeTest,
-    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor_on_another_server) {
+    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_actor) {
   std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
   auto scheduler = std::make_shared<MockScheduler>();
   auto dispatcher =
@@ -252,6 +217,40 @@ TEST(
           sending_actor_id),
       (TrivialActor::State{
           .state = fmt::format("recieving actor {} not found", unknown_actor),
+          .called = 2}));
+}
+
+TEST(
+    MultiRuntimeTest,
+    actor_receives_actor_not_found_message_after_trying_to_send_message_to_non_existent_server) {
+  std::unordered_map<ServerID, std::shared_ptr<MockRuntime>> runtimes;
+  auto scheduler = std::make_shared<MockScheduler>();
+  auto dispatcher =
+      std::make_shared<MockExternalDispatcher<MockRuntime>>(runtimes);
+
+  // Sending Runtime
+  auto sending_server = ServerID{"A"};
+  runtimes.emplace(sending_server, std::make_shared<MockRuntime>(
+                                       sending_server, "RuntimeTest-sending",
+                                       scheduler, dispatcher));
+  auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
+      TrivialState{.state = "foo"}, TrivialStart{});
+  auto sending_actor =
+      ActorPID{.server = sending_server, .id = sending_actor_id};
+
+  // send
+  auto unknown_server = ServerID{"B"};
+  runtimes[sending_server]->dispatch(
+      sending_actor, ActorPID{.server = unknown_server, .id = {999}},
+      TrivialActor::Message{TrivialMessage("baz")});
+
+  // sending actor received a server not known message error after it messaged
+  // to non-existing server
+  ASSERT_EQ(
+      runtimes[sending_server]->getActorStateByID<TrivialActor>(
+          sending_actor_id),
+      (TrivialActor::State{
+          .state = fmt::format("recieving server {} not found", unknown_server),
           .called = 2}));
 }
 

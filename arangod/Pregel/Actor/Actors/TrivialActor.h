@@ -99,6 +99,13 @@ struct TrivialHandler : HandlerBase<Runtime, TrivialState> {
     return std::move(this->state);
   }
 
+  auto operator()(ServerNotFound notFound) -> std::unique_ptr<TrivialState> {
+    this->state->called++;
+    this->state->state =
+        fmt::format("recieving server {} not found", notFound.server);
+    return std::move(this->state);
+  }
+
   auto operator()(auto&& rest) -> std::unique_ptr<TrivialState> {
     fmt::print(stderr, "TrivialActor: handles rest\n");
     return std::move(this->state);
