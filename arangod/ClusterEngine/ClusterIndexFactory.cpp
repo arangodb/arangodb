@@ -217,8 +217,8 @@ ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server,
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
 /// "hash") used to display storage engine capabilities
-std::unordered_map<std::string, std::string> ClusterIndexFactory::indexAliases()
-    const {
+std::vector<std::pair<std::string_view, std::string_view>>
+ClusterIndexFactory::indexAliases() const {
   auto* ae = _engine.actualEngine();
   if (!ae) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

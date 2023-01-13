@@ -43,9 +43,9 @@ class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
 class DatabaseInitialSyncer : public InitialSyncer {
-  friend ::arangodb::Result handleSyncKeysRocksDB(
-      DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-      std::string const& keysId);
+  friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
+                                                  LogicalCollection* col,
+                                                  std::string const& keysId);
   friend ::arangodb::Result syncChunkRocksDB(
       DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
       ReplicationMetricsFeature::InitialSyncStats& stats,
@@ -109,7 +109,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result runWithInventory(bool incremental, velocypack::Slice collections,
                           char const* context = nullptr);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice slice) override {
     return &_config.vocbase;
   }
 
@@ -158,7 +158,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   double batchUpdateTime() const { return _config.batch.updateTime; }
 
   /// @brief fetch the server's inventory, public method
-  Result getInventory(arangodb::velocypack::Builder& builder);
+  Result getInventory(velocypack::Builder& builder);
 
   /// @brief return information about the leader
   replutils::LeaderInfo leaderInfo() const;
@@ -185,23 +185,20 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-                      std::string const& baseUrl,
-                      arangodb::LogicalCollection* coll,
+                      std::string const& baseUrl, LogicalCollection* coll,
                       std::string const& leaderColl, int batch,
                       TRI_voc_tick_t fromTick, uint64_t chunkSize);
 
   /// @brief fetch the server's inventory
-  Result fetchInventory(arangodb::velocypack::Builder& builder);
+  Result fetchInventory(velocypack::Builder& builder);
 
   /// @brief set a progress message
   void setProgress(std::string const& msg);
 
   /// @brief handle a single dump marker
   // TODO worker-safety
-  Result parseCollectionDumpMarker(transaction::Methods&,
-                                   arangodb::LogicalCollection*,
-                                   arangodb::velocypack::Slice,
-                                   FormatHint& hint);
+  Result parseCollectionDumpMarker(transaction::Methods&, LogicalCollection*,
+                                   velocypack::Slice, FormatHint& hint);
 
   /// @brief apply the data from a collection dump
   // TODO worker-safety
@@ -209,63 +206,60 @@ class DatabaseInitialSyncer : public InitialSyncer {
                              httpclient::SimpleHttpResult*, uint64_t&);
 
   /// @brief whether or not the collection has documents
-  bool hasDocuments(arangodb::LogicalCollection const& col);
+  bool hasDocuments(LogicalCollection const& col);
 
   /// @brief incrementally fetch data from a collection
   // TODO worker safety
-  Result fetchCollectionDump(arangodb::LogicalCollection*,
-                             std::string const& leaderColl, TRI_voc_tick_t);
+  Result fetchCollectionDump(LogicalCollection*, std::string const& leaderColl,
+                             TRI_voc_tick_t);
 
   /// @brief incrementally fetch data from a collection using keys as the
   /// primary document identifier
   // TODO worker safety
-  Result fetchCollectionSync(arangodb::LogicalCollection*,
-                             std::string const& leaderColl, TRI_voc_tick_t);
+  Result fetchCollectionSync(LogicalCollection*, std::string const& leaderColl,
+                             TRI_voc_tick_t);
 
   /// @brief incrementally fetch data from a collection using keys as the
   /// primary document identifier
   // TODO worker safety
-  Result fetchCollectionSyncByKeys(arangodb::LogicalCollection*,
+  Result fetchCollectionSyncByKeys(LogicalCollection*,
                                    std::string const& leaderColl,
                                    TRI_voc_tick_t);
 
   void fetchRevisionsChunk(
       std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
-      std::string const& baseUrl, arangodb::LogicalCollection* coll,
+      std::string const& baseUrl, LogicalCollection* coll,
       std::string const& leaderColl, std::string const& requestPayload,
       RevisionId requestResume);
 
   /// @brief incrementally fetch data from a collection using revisions as the
   /// primary document identifier, not supported by all engines/collections
   // TODO worker safety
-  Result fetchCollectionSyncByRevisions(arangodb::LogicalCollection*,
+  Result fetchCollectionSyncByRevisions(LogicalCollection*,
                                         std::string const& leaderColl,
                                         TRI_voc_tick_t);
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
-  Result changeCollection(arangodb::LogicalCollection*,
-                          arangodb::velocypack::Slice const&);
+  Result changeCollection(LogicalCollection*, velocypack::Slice slice);
 
   /// @brief handle the information about a collection
   // TODO worker-safety
-  Result handleCollection(arangodb::velocypack::Slice const&,
-                          arangodb::velocypack::Slice const&, bool incremental,
+  Result handleCollection(velocypack::Slice parameters,
+                          velocypack::Slice indexes, bool incremental,
                           SyncPhase);
 
   /// @brief handle the inventory response of the leader
-  Result handleCollectionsAndViews(arangodb::velocypack::Slice const& colls,
-                                   arangodb::velocypack::Slice const& views,
-                                   bool incremental);
+  Result handleCollectionsAndViews(velocypack::Slice colls,
+                                   velocypack::Slice views, bool incremental);
 
   /// @brief iterate over all collections from an array and apply an action
   Result iterateCollections(
-      std::vector<std::pair<arangodb::velocypack::Slice,
-                            arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<velocypack::Slice, velocypack::Slice>> const&,
       bool incremental, SyncPhase);
 
   /// @brief create non-existing views locally
-  Result handleViewCreation(VPackSlice views, std::string_view type);
+  Result handleViewCreation(velocypack::Slice views, std::string_view type);
 
   /// @brief send a "start batch" command
   /// @param patchCount (optional)

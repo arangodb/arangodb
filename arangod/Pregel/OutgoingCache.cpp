@@ -34,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -205,9 +206,6 @@ void CombiningOutCache<M>::flushMessages() {
   }
 
   uint64_t gss = this->_config->globalSuperstep();
-  if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
-    gss += 1;
-  }
   VPackOptions options = VPackOptions::Defaults;
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;

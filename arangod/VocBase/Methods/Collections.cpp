@@ -1175,7 +1175,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  ExecContext const& exec = ExecContext::current();
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
@@ -1187,15 +1187,16 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  Result res;
+  StorageEngine& engine =
+      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+
   auto idxs = coll.getIndexes();
-  for (auto& idx : idxs) {
-    res = idx->scheduleWarmup();
-    if (res.fail()) {
-      break;
+  for (auto const& idx : idxs) {
+    if (idx->canWarmup()) {
+      engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
     }
   }
-  return futures::makeFuture(res);
+  return futures::makeFuture(Result());
 }
 
 futures::Future<OperationResult> Collections::revisionId(

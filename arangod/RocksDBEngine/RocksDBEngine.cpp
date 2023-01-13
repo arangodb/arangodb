@@ -76,6 +76,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -1062,6 +1063,9 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
+      if (_scheduler->server().isStopping()) {
+        return;
+      }
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 
@@ -1081,7 +1085,7 @@ void RocksDBEngine::start() {
       std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager";
+        << "could not start rocksdb counter manager thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -1220,7 +1224,7 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder,
 
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
-    LogicalCollection& collection, velocypack::Slice const& info) {
+    LogicalCollection& collection, velocypack::Slice info) {
   return std::make_unique<RocksDBCollection>(collection, info);
 }
 
@@ -1712,9 +1716,13 @@ void RocksDBEngine::processTreeRebuilds() {
       return;
     }
 
+    if (server().isStopping()) {
+      return;
+    }
+
     scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, candidate]() {
       if (!server().isStopping()) {
-        TRI_vocbase_t* vocbase = nullptr;
+        VocbasePtr vocbase;
         try {
           auto& df = server().getFeature<DatabaseFeature>();
           vocbase = df.useDatabase(candidate.first);
@@ -1773,10 +1781,6 @@ void RocksDBEngine::processTreeRebuilds() {
         } catch (...) {
           LOG_TOPIC("0bcbf", WARN, Logger::ENGINES)
               << "caught unknown exception during tree rebuilding";
-        }
-
-        if (vocbase != nullptr) {
-          vocbase->release();
         }
       }
 
@@ -2931,6 +2935,21 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   return vocbase;
 }
 
+void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // simply forward...
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.scheduleFullIndexRefill(database, collection, iid);
+}
+
+void RocksDBEngine::syncIndexCaches() {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.waitForCatchup();
+}
+
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
               "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
@@ -3317,15 +3336,15 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
     vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
-
   builder.close();  // base
 
-  return Result{};
+  return {};
 }
 
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
+
   Result res = rocksutils::convertStatus(s);
   if (res.fail()) {
     return res;
@@ -3354,21 +3373,22 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
     builder.close();
   }
   builder.close();
-  return Result{};
+
+  return {};
 }
 
 Result RocksDBEngine::firstTick(uint64_t& tick) {
-  Result res{};
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
 
+  Result res;
   if (!s.ok()) {
     res = rocksutils::convertStatus(s);
-    return res;
-  }
-  // read minium possible tick
-  if (!walFiles.empty()) {
-    tick = walFiles[0]->StartSequence();
+  } else {
+    // read minium possible tick
+    if (!walFiles.empty()) {
+      tick = walFiles[0]->StartSequence();
+    }
   }
   return res;
 }

@@ -364,7 +364,7 @@ void MockServer::stopFeatures() {
 TRI_vocbase_t& MockServer::getSystemDatabase() const {
   TRI_ASSERT(_server.hasFeature<DatabaseFeature>());
   auto& database = _server.getFeature<DatabaseFeature>();
-  auto system = database.useDatabase(StaticStrings::SystemDatabase);
+  auto system = database.lookupDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(system != nullptr);
   return *system;
 }

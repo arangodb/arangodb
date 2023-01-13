@@ -56,6 +56,7 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
@@ -400,8 +401,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///         EMPTY == system vocbase
   ///         NIL == unprefixed analyzer name, i.e. active vocbase
   ////////////////////////////////////////////////////////////////////////////////
-  static AnalyzerName splitAnalyzerName(
-      std::string_view const& analyzer) noexcept;
+  static AnalyzerName splitAnalyzerName(std::string_view analyzer) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
@@ -480,7 +480,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param name analyzer name (already normalized)
   /// @param force remove even if the analyzer is actively referenced
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(std::string_view const& name, bool force = false);
+  Result remove(std::string_view name, bool force = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
@@ -527,14 +527,14 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
   using Analyzers =
-      std::unordered_map<irs::hashed_string_view, AnalyzerPool::ptr>;
+      containers::FlatHashMap<irs::hashed_string_view, AnalyzerPool::ptr>;
   using EmplaceAnalyzerResult = std::pair<Analyzers::iterator, bool>;
 
   // all analyzers known to this feature (including static)
   // (names are stored with expanded vocbase prefixes)
   Analyzers _analyzers;
   // last revision for database was loaded
-  std::unordered_map<std::string, AnalyzersRevision::Revision> _lastLoad;
+  containers::FlatHashMap<std::string, AnalyzersRevision::Revision> _lastLoad;
   // for use with member '_analyzers', '_lastLoad'
   mutable basics::ReadWriteLock _mutex;
 

@@ -132,7 +132,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
       arangodb::transaction::StandaloneContext::Create(vocbase),
       arangodb::transaction::Options());
   Result res = transaction::helpers::newObjectForInsert(
-      *trx, *collection, doc->slice(), revisionId, builder, options,
+      *trx, *collection, "dummy", doc->slice(), revisionId, builder, options,
       batchOptions);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(revisionId.isSet());
@@ -141,17 +141,18 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   EXPECT_TRUE(slice.hasKey("_key"));
   EXPECT_TRUE(slice.get("_key").isString());
+  EXPECT_EQ("dummy", slice.get("_key").stringView());
   EXPECT_TRUE(slice.hasKey("_id"));
   EXPECT_TRUE(slice.get("_id").isCustom());
   EXPECT_TRUE(slice.hasKey("_rev"));
   EXPECT_TRUE(slice.get("_rev").isString());
 
   EXPECT_TRUE(slice.get("doc1").isString());
-  EXPECT_EQ("test1", slice.get("doc1").copyString());
+  EXPECT_EQ("test1", slice.get("doc1").stringView());
   EXPECT_TRUE(slice.get("doc100").isString());
-  EXPECT_EQ("test2", slice.get("doc100").copyString());
+  EXPECT_EQ("test2", slice.get("doc100").stringView());
   EXPECT_TRUE(slice.get("doc2").isString());
-  EXPECT_EQ("test3", slice.get("doc2").copyString());
+  EXPECT_EQ("test3", slice.get("doc2").stringView());
 
   EXPECT_TRUE(slice.hasKey("z"));
   EXPECT_TRUE(slice.get("z").isNumber());

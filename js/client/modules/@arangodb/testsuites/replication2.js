@@ -72,15 +72,14 @@ function replication2Server(options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
   testFns.replication2_server = replication2Server;
   for (const [key, value] of Object.entries(functionsDocumentation)) {
     fnDocs[key] = value;
   }
-  defaultFns.push('replication2_client');
-  defaultFns.push('replication2_server');
+
   for (let i = 0; i < optionsDocumentation.length; i++) {
     optionsDoc.push(optionsDocumentation[i]);
   }

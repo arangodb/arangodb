@@ -169,6 +169,10 @@ class Supervision : public arangodb::Thread {
 
   void setDelayFailedFollower(uint64_t d) noexcept { _delayFailedFollower = d; }
 
+  void setFailedLeaderAddsFollower(bool b) noexcept {
+    _failedLeaderAddsFollower = b;
+  }
+
   /// @brief notifies the supervision and triggers a new run
   void notify() noexcept;
 
@@ -196,6 +200,9 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
+
+  /// @brief Check undo-leader-change-actions
+  void checkUndoLeaderChangeActions();
 
   /// @brief Check for orphaned index creations, which have been successfully
   /// built
@@ -244,20 +251,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
-  /// @brief Move shard from one db server to other db server
-  bool moveShard(std::string const& from, std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool replicateShard(std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool removeShard(std::string const& from);
-
   /// @brief Check machines in agency
   std::vector<check_t> check(std::string const&);
-
-  // @brief Check shards in agency
-  std::vector<check_t> checkShards();
 
   /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
@@ -318,6 +313,7 @@ class Supervision : public arangodb::Thread {
   double _okThreshold;
   uint64_t _delayAddFollower;
   uint64_t _delayFailedFollower;
+  bool _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;

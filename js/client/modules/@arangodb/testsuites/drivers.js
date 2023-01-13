@@ -167,7 +167,7 @@ function driver (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   opts.driverScript = 'run_tests.sh';
   opts.driverScriptInterpreter = '/bin/bash';

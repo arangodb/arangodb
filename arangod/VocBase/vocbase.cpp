@@ -936,13 +936,15 @@ void TRI_vocbase_t::stop() {
   } catch (...) {
     // we are calling this on shutdown, and always want to go on from here
   }
+
+  _logManager->resignStates();
+  _logManager->resignAll();
 }
 
 /// @brief closes a database and all collections
 void TRI_vocbase_t::shutdown() {
   this->stop();
 
-  _logManager->resignStates();
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
@@ -977,7 +979,6 @@ void TRI_vocbase_t::shutdown() {
   }
 
   _collections.clear();
-  _logManager->resignAll();
 }
 
 /// @brief returns names of all known (document) collections

@@ -403,17 +403,17 @@ struct TRI_vocbase_t {
   arangodb::Result validateCollectionParameters(
       arangodb::velocypack::Slice parameters);
 
-  /// @brief locks a collection for usage by id
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-  /// when you are done with the collection.
+  /// @brief locks a collection for usage by id.
+  /// note: when the collection is not used anymore, the caller *must*
+  /// call vocbase::releaseCollection() to decrease the reference
+  /// counter for this collection
   std::shared_ptr<arangodb::LogicalCollection> useCollection(
       arangodb::DataSourceId cid, bool checkPermissions);
 
-  /// @brief locks a collection for usage by name
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-  /// when you are done with the collection.
+  /// @brief locks a collection for usage by name.
+  /// note: when the collection is not used anymore, the caller *must*
+  /// call vocbase::releaseCollection() to decrease the reference
+  /// counter for this collection
   std::shared_ptr<arangodb::LogicalCollection> useCollection(
       std::string const& name, bool checkPermissions);
 
@@ -422,8 +422,7 @@ struct TRI_vocbase_t {
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue
-  /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
-  /// @return visitation compleated successfully
+  /// @return visitation completed successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)>
       dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor);

@@ -17,6 +17,7 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Futures)
 
 # ----------------------------------------
 # Link directories
@@ -214,9 +215,6 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
-  Futures/FutureTest.cpp
-  Futures/PromiseTest.cpp
-  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
@@ -315,6 +313,7 @@ target_link_libraries(arangodbtests
   arango_tests_basics
   arango_tests_replication2
   arango_tests_graph
+  arango_tests_futures
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -340,20 +339,6 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
-
-
-if(MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-    # There's a warning about /MP being unused if compiling only a single file
-    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
-  endif()
-endif()
-
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-endif()
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
