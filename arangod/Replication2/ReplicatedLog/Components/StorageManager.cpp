@@ -316,8 +316,40 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
 
 auto StorageManager::getCommittedLogIterator(LogRange range) const
     -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> {
-  return guardedData.getLockedGuard()->onDiskLog.getIteratorRange(range.from,
-                                                                  range.to);
+  // return guardedData.getLockedGuard()->onDiskLog.getIteratorRange(range.from,
+  //                                                                range.to);
+
+  auto guard = guardedData.getLockedGuard();
+  range = intersect(range, guard->onDiskLog.getIndexRange());
+  auto diskIter = guard->methods->read(range.from);
+
+  struct Iterator : TypedLogRangeIterator<LogEntryView> {
+    explicit Iterator(LogRange range,
+                      std::unique_ptr<PersistedLogIterator> disk)
+        : _range(range), _disk(std::move(disk)) {}
+
+    auto range() const noexcept -> LogRange override { return _range; }
+    auto next() -> std::optional<LogEntryView> override {
+      while (true) {
+        _entry = _disk->next();
+        if (not _entry) {
+          return std::nullopt;
+        }
+        if (not _range.contains(_entry->logIndex())) {
+          return std::nullopt;  // end of range
+        }
+        if (_entry->hasPayload()) {
+          return LogEntryView{_entry->logIndex(), *_entry->logPayload()};
+        }
+      }
+    }
+
+    LogRange _range;
+    std::unique_ptr<PersistedLogIterator> _disk;
+    std::optional<PersistingLogEntry> _entry;
+  };
+
+  return std::make_unique<Iterator>(range, std::move(diskIter));
 }
 
 StorageManager::StorageRequest::StorageRequest(
