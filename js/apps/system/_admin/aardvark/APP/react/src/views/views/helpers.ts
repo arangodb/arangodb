@@ -108,18 +108,18 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
     Settings: {
       route: defaultRoute
     },
-    Links: {
-      route: `${defaultRoute}/links`
-    },
+    //Links: {
+    //  route: `${defaultRoute}/links`
+    //},
     // 'Consolidation Policy': {
     //   route: `${defaultRoute}/consolidation`
     // },
     // Info: {
     //   route: `${defaultRoute}/info`
     // },
-    JSON: {
-      route: `${defaultRoute}/json`
-    }
+    //JSON: {
+    //  route: `${defaultRoute}/json`
+    //}
   };
 
   menus[activeKey].active = true;
