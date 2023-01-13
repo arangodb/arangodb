@@ -58,8 +58,6 @@ namespace graph {
 class WeightedTwoSidedFinderTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using WeightedFinder = WeightedShortestPathEnumerator<MockGraphProvider>;
-  // using WeightedTwoSidedPathFinder =
-  // TwoSidedEnumeratorWithProviderWeighted<MockGraphProvider>;
 
   static constexpr size_t minDepth = 0;
   static constexpr size_t maxDepth = std::numeric_limits<size_t>::max();
@@ -344,11 +342,11 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V1_V3) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 3x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 6U);
+    EXPECT_EQ(stats.getScannedIndex(), 13U);
   }
 
   {
-    // Make sure stats are stolen and resettet
+    // Make sure stats are stolen and reset
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     EXPECT_EQ(stats.getScannedIndex(), 0U);
@@ -394,12 +392,11 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_V4_V9) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    // TODO: Implement check scanned
-    EXPECT_EQ(stats.getScannedIndex(), 7U);
+    EXPECT_EQ(stats.getScannedIndex(), 19U);
   }
 
   {
-    // Make sure stats are stolen and resettet
+    // Make sure stats are stolen and reset
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     EXPECT_EQ(stats.getScannedIndex(), 0U);
@@ -446,12 +443,11 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_outbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    // TODO: Implement check scanned
-    EXPECT_EQ(stats.getScannedIndex(), 7U);
+    EXPECT_EQ(stats.getScannedIndex(), 18U);
   }
 
   {
-    // Make sure stats are stolen and resettet
+    // Make sure stats are stolen and reset
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     EXPECT_EQ(stats.getScannedIndex(), 0U);
@@ -498,12 +494,11 @@ TEST_P(WeightedTwoSidedFinderTest, shortest_path_A_F_inbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    // TODO: Implement check scanned
-    EXPECT_EQ(stats.getScannedIndex(), 7U);
+    EXPECT_EQ(stats.getScannedIndex(), 18U);
   }
 
   {
-    // Make sure stats are stolen and resettet
+    // Make sure stats are stolen and reset
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     EXPECT_EQ(stats.getScannedIndex(), 0U);
