@@ -56,57 +56,6 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   return *this;
 }
 
-// print a hex representation of the binary data
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::BINARY const& binary) noexcept {
-  try {
-    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-    uint8_t const* end = ptr + binary.size;
-
-    while (ptr < end) {
-      uint8_t n = *ptr;
-
-      uint8_t n1 = n >> 4;
-      uint8_t n2 = n & 0x0F;
-
-      _out << "\\x"
-           << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-      ++ptr;
-    }
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-// print a character array
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::CHARS const& data) noexcept {
-  try {
-    _out.write(data.data, data.size);
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::RANGE const& range) noexcept {
-  try {
-    _out << range.baseAddress << " - "
-         << static_cast<void const*>(
-                static_cast<char const*>(range.baseAddress) + range.size)
-         << " (" << range.size << " bytes)";
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
 LoggerStreamBase& LoggerStreamBase::operator<<(
     Logger::FIXED const& value) noexcept {
   try {
