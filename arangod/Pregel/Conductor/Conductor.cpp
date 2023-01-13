@@ -258,7 +258,6 @@ bool Conductor::_startGlobalStep() {
     return false;
   }
 
-  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -269,26 +268,30 @@ bool Conductor::_startGlobalStep() {
     }
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
-  b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
-
-  if (!toWorkerMessages.slice().isNone()) {
-    b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
+  VPackBuilder agg;
+  {
+    VPackObjectBuilder ob(&agg);
+    _aggregators->serializeValues(agg);
   }
-  _aggregators->serializeValues(b);
+  auto runGss = RunGlobalSuperStep{.executionNumber = _executionNumber,
+                                   .gss = _globalSuperstep,
+                                   .vertexCount = _totalVerticesCount,
+                                   .edgeCount = _totalEdgesCount,
+                                   .aggregators = agg};
 
-  b.close();
-
-  LOG_PREGEL("d98de", DEBUG) << b.slice().toJson();
+  LOG_PREGEL("d98de", DEBUG) << fmt::format("Start gss: {}", runGss);
   _timing.gss.emplace_back(Duration{._start = std::chrono::steady_clock::now(),
                                     ._finish = std::nullopt});
 
   // start vertex level operations, does not get a response
-  auto startRes = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  auto serializedRun = inspection::serializeWithErrorT(runGss);
+  if (!serializedRun.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "Cannot serialize RunGlobalSuperStep");
+  }
+  auto startRes = _sendToAllDBServers(
+      Utils::startGSSPath,
+      VPackBuilder(serializedRun.get().slice()));  // call me maybe
   if (startRes != TRI_ERROR_NO_ERROR) {
     updateState(ExecutionState::FATAL_ERROR);
     LOG_PREGEL("f34bb", ERR)

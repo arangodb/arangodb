@@ -270,7 +270,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
 
 /// @brief Setup next superstep
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
+void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -279,23 +279,18 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
-  LOG_PREGEL("d5e44", DEBUG) << "Starting GSS: " << data.toJson();
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  const uint64_t gss = (uint64_t)gssSlice.getUInt();
-  if (gss != _config.globalSuperstep()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Wrong GSS");
-  }
+  LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
   _workerAggregators->resetValues();
-  _conductorAggregators->setAggregatedValues(data);
+  _conductorAggregators->setAggregatedValues(data.aggregators.slice());
   // execute context
   if (_workerContext) {
-    _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
-    _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
-    _workerContext->preGlobalSuperstep(gss);
+    _workerContext->_vertexCount = data.vertexCount;
+    _workerContext->_edgeCount = data.edgeCount;
+    _workerContext->preGlobalSuperstep(data.gss);
   }
 
-  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << gss;
+  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << data.gss;
   _startProcessing();  // sets _state = COMPUTING;
 }
 

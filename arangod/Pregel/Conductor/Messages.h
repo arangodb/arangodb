@@ -74,19 +74,20 @@ auto inspect(Inspector& f, PrepareGlobalSuperStep& x) {
 }
 
 struct RunGlobalSuperStep {
+  ExecutionNumber executionNumber;
   uint64_t gss;
   uint64_t vertexCount;
   uint64_t edgeCount;
-  uint64_t sendCount;
   VPackBuilder aggregators;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, RunGlobalSuperStep& x) {
   return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
       f.field(Utils::globalSuperstepKey, x.gss),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("sendCount", x.sendCount), f.field("aggregators", x.aggregators));
+      f.field("aggregators", x.aggregators));
 }
 
 struct Store {};
@@ -114,4 +115,7 @@ auto inspect(Inspector& f, CollectPregelResults& x) {
 
 template<>
 struct fmt::formatter<arangodb::pregel::PrepareGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::RunGlobalSuperStep>
     : arangodb::inspection::inspection_formatter {};
