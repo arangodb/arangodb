@@ -128,7 +128,8 @@ class GeoDistanceFilter final
     : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
-    return "arangodb::iresearch::GeoDistanceFilter";
+    // Don't change it!
+    return "arangodb::iresearch::GeoFilter";
   }
 
   using filter::prepare;
