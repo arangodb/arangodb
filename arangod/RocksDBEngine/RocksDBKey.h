@@ -82,12 +82,6 @@ class RocksDBKey {
                            DataSourceId collectionId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified replicated log key
-  //////////////////////////////////////////////////////////////////////////////
-  void constructReplicatedLog(TRI_voc_tick_t databaseId,
-                              arangodb::replication2::LogId logId);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified replicated state key
   //////////////////////////////////////////////////////////////////////////////
   void constructReplicatedState(TRI_voc_tick_t databaseId,
@@ -349,7 +343,7 @@ class RocksDBKey {
       case RocksDBEntryType::IndexEstimateValue:
       case RocksDBEntryType::KeyGeneratorValue:
       case RocksDBEntryType::View:
-      case RocksDBEntryType::ReplicatedLog:
+      case RocksDBEntryType::ReplicatedState:
         return type;
       default:
         return RocksDBEntryType::Placeholder;

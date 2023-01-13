@@ -37,10 +37,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
-#include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1218,7 +1214,8 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string path(collection->getPhysical()->path());
+  // always empty
+  std::string path;
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);

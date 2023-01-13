@@ -1485,6 +1485,23 @@ uint64_t uint64(std::string_view value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
 }
 
+ResultT<uint64_t> try_uint64(char const* value, size_t size) noexcept {
+  uint64_t result = 0;
+  auto [ptr, ec] = std::from_chars(value, value + size, result, 10);
+  if (ec == std::errc()) {
+    if (ptr != value + size) {
+      return ResultT<uint64_t>::error(TRI_ERROR_ILLEGAL_NUMBER);
+    }
+    return ResultT<uint64_t>::success(result);
+  }
+  return ResultT<uint64_t>::error(TRI_ERROR_ILLEGAL_NUMBER,
+                                  make_error_condition(ec).message());
+}
+
+ResultT<uint64_t> try_uint64(std::string_view value) noexcept {
+  return StringUtils::try_uint64(value.data(), value.size());
+}
+
 uint64_t uint64_trusted(char const* value, size_t length) noexcept {
   uint64_t result = 0;
 

@@ -11,7 +11,7 @@ add_library(arango_replication2 STATIC
 
 target_link_libraries(arango_replication2
   arango
-	arango_network
+  arango_network
   arangoserver
   fmt
   immer)

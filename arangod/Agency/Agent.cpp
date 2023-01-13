@@ -151,13 +151,6 @@ Agent::Agent(ArangodServer& server, config_t const& config)
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
                                    notifySupervision);
-
-  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedStates",
-                                   notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedStates",
-                                   notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedStates",
-                                   notifySupervision);
 }
 
 /// Dtor shuts down thread
@@ -2529,6 +2522,14 @@ void Agent::updateSomeConfigValues(velocypack::Slice data) {
         << "Updating delayFailedFollower to " << u;
     _config.setSupervisionDelayFailedFollower(u);
     _supervision->setDelayFailedFollower(u);
+  }
+  slice = data.get("failedLeaderAddsFollower");
+  if (slice.isBool()) {
+    bool b = slice.getBool();
+    LOG_TOPIC("12345", DEBUG, Logger::SUPERVISION)
+        << "Updating failedLeaderAddsFollower to " << b;
+    _config.setSupervisionFailedLeaderAddsFollower(b);
+    _supervision->setFailedLeaderAddsFollower(b);
   }
 }
 

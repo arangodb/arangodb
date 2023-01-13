@@ -99,14 +99,6 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any versioning information
     return std::string();
   }
-  std::string dataPath() const override {
-    // the cluster engine does not have any data path
-    return std::string();
-  }
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
-    // the cluster engine does not have any database path
-    return std::string();
-  }
 
   void cleanupReplicationContexts() override {}
 
@@ -169,8 +161,6 @@ class ClusterEngine final : public StorageEngine {
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&& info, ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
@@ -203,23 +193,16 @@ class ClusterEngine final : public StorageEngine {
   arangodb::Result compactAll(bool changeLevel,
                               bool compactBottomMostLevel) override;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result override;
-
-  auto updateReplicatedState(
+  auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      replication2::replicated_state::PersistedStateInfo const& info)
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr)
       -> Result override;
-  auto dropReplicatedState(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id) -> Result override;
+  auto createReplicatedState(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+      const replication2::replicated_state::PersistedStateInfo& info)
+      -> ResultT<std::unique_ptr<arangodb::replication2::replicated_state::
+                                     IStorageEngineMethods>> override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;

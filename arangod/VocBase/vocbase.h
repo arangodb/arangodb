@@ -61,6 +61,11 @@ class LogId;
 struct LogIndex;
 struct LogTerm;
 struct LogPayload;
+namespace agency {
+struct LogPlanSpecification;
+struct LogPlanTermSpecification;
+struct ParticipantsConfig;
+}  // namespace agency
 namespace replicated_log {
 class LogLeader;
 class LogFollower;
@@ -74,13 +79,17 @@ namespace replicated_state {
 struct ReplicatedStateBase;
 struct StateStatus;
 struct PersistedStateInfo;
+struct IStorageEngineMethods;
 }  // namespace replicated_state
 }  // namespace replication2
 namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-
+namespace futures {
+template<typename T>
+class Future;
+}
 class CursorRepository;
 struct DatabaseJavaScriptCache;
 class DatabaseReplicationApplier;
@@ -108,7 +117,7 @@ constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
+  TRI_vocbase_t(arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -132,7 +141,6 @@ struct TRI_vocbase_t {
 
   arangodb::CreateDatabaseInfo _info;
 
-  TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   bool _isOwnAppsDirectory;
 
@@ -167,49 +175,43 @@ struct TRI_vocbase_t {
 
  public:
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
-  [[nodiscard]] auto getReplicatedLogById(
-      arangodb::replication2::LogId id) const
-      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
-  [[nodiscard]] auto getReplicatedLogLeaderById(
-      arangodb::replication2::LogId id) const
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
-  [[nodiscard]] auto getReplicatedLogFollowerById(
-      arangodb::replication2::LogId id) const
-      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
-  [[nodiscard]] auto getReplicatedLogs() const
-      -> std::unordered_map<arangodb::replication2::LogId,
-                            arangodb::replication2::replicated_log::LogStatus>;
-  [[nodiscard]] auto getReplicatedLogsQuickStatus() const -> std::unordered_map<
-      arangodb::replication2::LogId,
-      arangodb::replication2::replicated_log::QuickLogStatus>;
-  [[nodiscard]] auto createReplicatedLog(
-      arangodb::replication2::LogId id,
-      std::optional<std::string> const& collectionName)
-      -> arangodb::ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::ReplicatedLog>>;
-  [[nodiscard]] auto dropReplicatedLog(arangodb::replication2::LogId id)
-      -> arangodb::Result;
-  auto ensureReplicatedLog(arangodb::replication2::LogId id,
-                           std::optional<std::string> const& collectionName)
-      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
 
  public:
   auto createReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type)
+                             std::string_view type,
+                             arangodb::velocypack::Slice parameter)
       -> arangodb::ResultT<std::shared_ptr<
           arangodb::replication2::replicated_state::ReplicatedStateBase>>;
-  auto dropReplicatedState(arangodb::replication2::LogId id)
+  auto dropReplicatedState(arangodb::replication2::LogId id) noexcept
       -> arangodb::Result;
-  auto ensureReplicatedState(arangodb::replication2::LogId id,
-                             std::string_view type)
-      -> std::shared_ptr<
-          arangodb::replication2::replicated_state::ReplicatedStateBase>;
-  [[nodiscard]] auto getReplicatedStateStatus() const -> std::unordered_map<
-      arangodb::replication2::LogId,
-      std::optional<arangodb::replication2::replicated_state::StateStatus>>;
-  [[nodiscard]] auto getReplicatedStateById(arangodb::replication2::LogId id)
-      const -> std::shared_ptr<
-          arangodb::replication2::replicated_state::ReplicatedStateBase>;
+
+  auto getReplicatedStateById(arangodb::replication2::LogId id)
+      -> arangodb::ResultT<std::shared_ptr<
+          arangodb::replication2::replicated_state::ReplicatedStateBase>>;
+
+  auto updateReplicatedState(
+      arangodb::replication2::LogId id,
+      arangodb::replication2::agency::LogPlanTermSpecification const& spec,
+      arangodb::replication2::agency::ParticipantsConfig const&)
+      -> arangodb::Result;
+
+  [[nodiscard]] auto getReplicatedStatesQuickStatus() const
+      -> std::unordered_map<
+          arangodb::replication2::LogId,
+          arangodb::replication2::replicated_log::QuickLogStatus>;
+
+  [[nodiscard]] auto getReplicatedStatesStatus() const
+      -> std::unordered_map<arangodb::replication2::LogId,
+                            arangodb::replication2::replicated_log::LogStatus>;
+
+ public:
+  // Old Replicated Log API. Still there for compatibility. To be removed.
+  auto getReplicatedLogById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::ReplicatedLog>;
+  auto getReplicatedLogLeaderById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogLeader>;
+  auto getReplicatedLogFollowerById(arangodb::replication2::LogId id)
+      -> std::shared_ptr<arangodb::replication2::replicated_log::LogFollower>;
 
  public:
   arangodb::basics::DeadlockDetector<arangodb::TransactionId,
@@ -232,7 +234,6 @@ struct TRI_vocbase_t {
   arangodb::replication::Version replicationVersion() const;
   std::string const& sharding() const;
   bool isOneShard() const;
-  TRI_vocbase_type_e type() const { return _type; }
 
   void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
@@ -491,13 +492,12 @@ struct TRI_vocbase_t {
   /// This function is called when a view is dropped.
   bool unregisterView(arangodb::LogicalView const& view);
 
-  /// @brief adds a new replicated log with given log id
-  void registerReplicatedLog(
-      arangodb::replication2::LogId,
-      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>);
-  /// @brief adds a new replicated log with given log id
+  /// @brief adds a new replicated state given its log id and providing
+  /// methods to access the storage engine
   void registerReplicatedState(
-      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
+      arangodb::replication2::LogId,
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>);
 };
 
 /// @brief sanitize an object, given as slice, builder must contain an

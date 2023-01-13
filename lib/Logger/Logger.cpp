@@ -233,7 +233,7 @@ void Logger::setLogStructuredParams(
     std::unordered_map<std::string, bool> const& paramsAndValues) {
   WRITE_LOCKER(guard, Logger::_structuredParamsLock);
   for (const auto& [paramName, value] : paramsAndValues) {
-    if (auto it = allowList.find({paramName.data(), paramName.size()});
+    if (auto it = allowList.find(std::string_view{paramName});
         it == allowList.end()) {
       continue;
     }
