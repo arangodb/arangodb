@@ -1995,7 +1995,11 @@ IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
 #ifdef USE_ENTERPRISE
-  stats.numPrimaryDocs = getPrimaryDocsCount(reader);
+  if (hasNestedFields()) {
+    stats.numPrimaryDocs = getPrimaryDocsCount(reader);
+  } else {
+    stats.numPrimaryDocs = stats.numDocs;
+  }
 #else
   stats.numPrimaryDocs = stats.numDocs;
 #endif
