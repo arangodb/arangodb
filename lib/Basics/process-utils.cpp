@@ -315,6 +315,14 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     arangodb::signals::unmaskAllSignals();
 
     // execute worker
+    char** env = environ;
+    LOG_TOPIC("a0066", INFO, Logger::FIXME)
+        << "starting process " << external->_executable << " with env:\n";
+    while (*env != NULL) {
+      LOG_TOPIC("8260a", INFO, Logger::FIXME) << *env << "\n";
+      env = env + 1;
+    }
+
     execvp(external->_executable.c_str(), external->_arguments);
 
     _exit(1);

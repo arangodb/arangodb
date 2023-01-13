@@ -216,6 +216,13 @@ int main(int argc, char* argv[]) {
   }
 #endif
 
+  char** env = environ;
+  std::cout << "starting process with env:\n";
+  while (*env != NULL) {
+    std::cout << *env << "\n";
+    env = env + 1;
+  }
+
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
