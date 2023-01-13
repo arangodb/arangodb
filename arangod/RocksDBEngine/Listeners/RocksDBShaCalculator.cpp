@@ -320,10 +320,15 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(
         // creation event.
         std::string tempPath =
             basics::FileUtils::buildFilename(pathname, *iter);
-        int64_t now = ::time(nullptr);
         int64_t modTime = 0;
         auto r = TRI_MTimeFile(tempPath.c_str(), &modTime);
-        if (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge) {
+        // note: calculate current time only _after_ filemtime was calculated.
+        // otherwise there is a potential race between the file being modified
+        // after we have taken the current time, so the difference between
+        // now and modTime could be negative.
+        int64_t now = ::time(nullptr);
+        if (r == TRI_ERROR_NO_ERROR &&
+            (requireAge == 0 || (now - modTime) >= requireAge)) {
           LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
               << "checkMissingShaFiles:"
                  " Computing checksum for "
