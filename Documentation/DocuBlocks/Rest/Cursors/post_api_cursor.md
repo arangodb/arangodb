@@ -107,6 +107,20 @@ exceptions and will be returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
+@RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
+Set this option to `true` to make it possible to retry fetching the latest batch
+from a cursor.
+
+If retrieving a result batch fails because of a connection issue, you can ask
+for that batch again using the `POST /_api/cursor/<cursor-id>/<batch-id>`
+endpoint. The first batch has an ID of `1` and the value is incremented by 1
+with every batch. Every result response except the last one also includes a
+`nextBatchId` attribute, indicating the ID of the batch after the current.
+You can remember and use this batch ID should retrieving the next batch fail.
+
+You can only request the latest batch again. Earlier batches are not kept on the
+server-side.
+
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Can be enabled to execute the query lazily. If set to *true*, then the query is
 executed as long as necessary to produce up to `batchSize` results. These
@@ -267,6 +281,14 @@ available if the query was executed with the `count` attribute set).
 
 @RESTREPLYBODY{id,string,optional,string}
 The ID of a temporary cursor created on the server for fetching more result batches.
+
+@RESTREPLYBODY{nextBatchId,string,optional,string}
+Only set if the `allowRetry` query option is enabled.
+
+The ID of the batch after the current one. The first batch has an ID of `1` and
+the value is incremented by 1 with every batch. You can remember and use this
+batch ID should retrieving the next batch fail. Use the
+`POST /_api/cursor/<cursor-id>/<batch-id>` endpoint to ask for the batch again.
 
 @RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
 An optional JSON object with extra information about the query result.

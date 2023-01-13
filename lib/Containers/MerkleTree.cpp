@@ -1325,8 +1325,8 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   }
   node.hash ^= value;
 
-  TRI_ASSERT(node.count > 0 || node.hash == 0);
-
+  TRI_ASSERT(node.count > 0 || node.hash == 0)
+      << "node count: " << node.count << ", hash: " << node.hash;
   return true;
 }
 
@@ -1716,7 +1716,8 @@ void MerkleTree<Hasher, BranchingBits>::serializeNodes(std::string& output,
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
     Node const& src = this->node(index);
-    TRI_ASSERT(src.count > 0 || src.hash == 0);
+    TRI_ASSERT(src.count > 0 || src.hash == 0)
+        << "node count: " << src.count << ", hash: " << src.hash;
 
     // serialize only the non-zero buckets
     if (src.count == 0 && !all) {

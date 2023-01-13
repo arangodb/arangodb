@@ -1,6 +1,14 @@
 devel
 -----
 
+* APM-592: In batched query results, when executing requests for `/_api/cursor`, 
+  there might be a connection error and the user might not be able to retrieve
+  the latest batch from the cursor. For that, a query option flag `allowRetry` was
+  added. When set to `true`, if the latest batch response object wasn't
+  successfully received, the user can send a retry request to receive it with 
+  a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch
+  is cached, meaning former batches cannot be retrieved again later.
+
 * Change the request lane for replication catchup requests that leaders in
   active failover receive from their followers from medium to high. This
   will give catchup requests from followers highest priority, so that the
