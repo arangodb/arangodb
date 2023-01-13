@@ -1161,7 +1161,7 @@
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
-            '<div style="color: red">Server statistics for target (' + this.server + ') are disabled in this database. Log into "_system" database to show statistics.</div>'
+            '<div style="color: red">Server statistics for node (' + this.server + ') are disabled in this database. Log into "_system" database to show statistics.</div>'
           );
         } else {
           $(this.el).append(
