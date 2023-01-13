@@ -142,7 +142,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
                         "Cannot use pregel on system collection"};
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll->deleted()) {
           return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
       } catch (...) {
@@ -151,8 +151,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
-          coll->deleted()) {
+      if (coll == nullptr || coll->deleted()) {
         return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else {
@@ -195,7 +194,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
           }
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll->deleted()) {
           return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
 
