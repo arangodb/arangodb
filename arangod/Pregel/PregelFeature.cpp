@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "PregelFeature.h"
+#include <velocypack/SharedSlice.h>
 
 #include <atomic>
 #include <unordered_set>
@@ -38,13 +39,14 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Graph/GraphManager.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
@@ -791,8 +793,15 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
+    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
+        velocypack::SharedSlice({}, body));
+    if (!createWorker.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot deserialize CreateWorker message");
+    }
 
-    addWorker(AlgoRegistry::createWorker(vocbase, body, *this), exeNum);
+    addWorker(AlgoRegistry::createWorker(vocbase, createWorker.get(), *this),
+              exeNum);
     worker(exeNum)->setupWorker();  // will call conductor
 
     return;

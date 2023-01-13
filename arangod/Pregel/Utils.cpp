@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

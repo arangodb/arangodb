@@ -1,3 +1,4 @@
+#include "Pregel/Conductor/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -67,18 +68,16 @@ using namespace arangodb::pregel;
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig, PregelFeature& feature)
+                        CreateWorker const& parameters, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(&vocbase),
       _algorithm(algo) {
-  _config.updateConfig(_feature, initConfig);
+  _config.updateConfig(_feature, parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 
-  VPackSlice userParams = initConfig.get(Utils::userParametersKey);
-
-  _workerContext.reset(algo->workerContext(userParams));
+  _workerContext.reset(algo->workerContext(parameters.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);

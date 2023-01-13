@@ -37,6 +37,7 @@
 #include "Pregel/Status/ExecutionStatus.h"
 
 #include <chrono>
+#include <set>
 
 namespace arangodb {
 namespace pregel {
