@@ -58,18 +58,6 @@ enum TRI_col_type_e : std::uint32_t {
   TRI_COL_TYPE_EDGE = 3
 };
 
-/// @brief status of a collection
-/// note: the following status existed before, but are now obosolete:
-/// - TRI_VOC_COL_STATUS_NEW_BORN = 1
-/// - TRI_VOC_COL_STATUS_UNLOADED = 2
-/// - TRI_VOC_COL_STATUS_UNLOADING = 4
-/// - TRI_VOC_COL_STATUS_LOADING = 6
-enum TRI_vocbase_col_status_e : int {
-  TRI_VOC_COL_STATUS_CORRUPTED = 0,
-  TRI_VOC_COL_STATUS_LOADED = 3,
-  TRI_VOC_COL_STATUS_DELETED = 5,
-};
-
 namespace arangodb {
 
 enum class ViewType {
