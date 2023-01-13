@@ -94,6 +94,11 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         self->_handlersFactory->createTransactionHandler(self->gid);
     if (transactionHandler == nullptr) {
       // TODO this is a temporary fix, see CINFRA-588
+      LOG_CTX("cfd76", ERR, self->loggerContext) << fmt::format(
+          "Transaction handler is missing from "
+          "DocumentLeaderState {}! This happens if the vocbase cannot be "
+          "found during DocumentState construction.",
+          self->shardId);
       return Result{};
     }
 

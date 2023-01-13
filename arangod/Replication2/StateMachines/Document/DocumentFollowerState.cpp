@@ -90,6 +90,11 @@ auto DocumentFollowerState::applyEntries(
 
         if (self->_transactionHandler == nullptr) {
           // TODO this is a temporary fix, see CINFRA-588
+          LOG_CTX("cfd76", ERR, self->loggerContext) << fmt::format(
+              "Transaction handler is missing from "
+              "DocumentFollowerState {}! This happens if the vocbase cannot be "
+              "found during DocumentState construction.",
+              self->shardId);
           return Result{};
         }
 
@@ -157,6 +162,11 @@ auto DocumentFollowerState::forceLocalTransaction(OperationType opType,
     -> Result {
   if (_transactionHandler == nullptr) {
     // TODO this is a temporary fix, see CINFRA-588
+    LOG_CTX("cfd76", ERR, loggerContext) << fmt::format(
+        "Transaction handler is missing from "
+        "DocumentFollowerState {}! This happens if the vocbase cannot be found "
+        "during DocumentState construction.",
+        shardId);
     return Result{};
   }
   auto trxId = TransactionId::createFollower();
