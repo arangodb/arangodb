@@ -22,7 +22,7 @@ import {
 } from '../../utils/helpers';
 import { DeleteButton, SaveButton } from './Actions';
 import ConsolidationPolicyForm from './forms/ConsolidationPolicyForm';
-import { postProcessor, useNavbar, useView } from './helpers';
+import { postProcessor, useView } from './helpers';
 import AccordionView from './Components/Accordion/Accordion';
 
 const ViewSettingsReactView = ({ name }) => {
@@ -280,7 +280,6 @@ const ViewSettingsReactView = ({ name }) => {
     });
   }, [view, name]);
 
-  useNavbar(name, isAdminUser, changed, 'Settings');
   const [linkName, setLinkName] = useState('')
   const updateName = (event) => {
     dispatch({
