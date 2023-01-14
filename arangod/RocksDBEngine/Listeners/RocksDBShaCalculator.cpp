@@ -253,9 +253,6 @@ std::string RocksDBShaCalculatorThread::getRocksDBPath() {
 ///        `requireAge` seconds.
 void RocksDBShaCalculatorThread::checkMissingShaFiles(
     std::string const& pathname, int64_t requireAge, bool force) {
-  // if force is set, then requireAge must be == 0
-  TRI_ASSERT(!force || requireAge == 0);
-
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
   // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
