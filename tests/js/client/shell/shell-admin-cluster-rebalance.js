@@ -138,7 +138,11 @@ function clusterRebalanceSuite() {
       }
 
       result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves});
-      assertEqual(result.code, 202);
+      if (moves.length > 0) {
+        assertEqual(result.code, 202);
+      } else {
+        assertEqual(result.code, 200);
+      }
       assertEqual(result.error, false);
 
       // empty set of moves
@@ -339,7 +343,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
     },
 
 
-    testCalcRebalanceAfterUnbalanced: function() {
+    testCalcRebalanceAfterUnbalanced: function () {
       const start = internal.time();
       const end = start + 300;
       for (let i = 1; i <= 3; ++i) {
