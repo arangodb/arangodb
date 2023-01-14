@@ -3,6 +3,7 @@
 import { cloneDeep, isEqual, uniqueId, times } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import "./split-pane-styles.css";
+import "./viewsheader.css";
 import SplitPane from "react-split-pane";
 import useSWR from 'swr';
 import Textarea from '../../components/pure-css/form/Textarea';
@@ -313,7 +314,7 @@ const ViewSettingsReactView = ({ name }) => {
   }
 
   return <>
-      <div id="viewsheader">
+      <div class="viewsstickyheader">
         <EditableViewName />
         {
           isAdminUser && views.length
@@ -337,115 +338,117 @@ const ViewSettingsReactView = ({ name }) => {
             : null
         }
       </div>
-      <SplitPane
-        paneStyle={{ overflow: 'scroll' }}
-        defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
-        onChange={(size) => localStorage.setItem('splitPos', size)}
-        style={{ borderTop: '2px solid #7a7a7a', paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
-        <div style={{ marginRight: '15px' }}>
-          <AccordionView
-            allowMultipleOpen
-            accordionConfig={[
-              {
-                index: 0,
-                content: (
-                  <div>
-                    <GeneralContent />
-                  </div>
-                ),
-                label: "General",
-                testID: "accordionItem1"
-              },
-              {
-                index: 1,
-                content: (
-                  <div>
-                    <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
-                                        disabled={!isAdminUser}/>
-                  </div>
-                ),
-                label: "Consolidation Policy",
-                testID: "accordionItem2"
-              },
-              {
-                index: 2,
-                content: <div><PrimarySortContent /></div>,
-                label: "Primary Sort",
-                testID: "accordionItem3"
-              },
-              {
-                index: 3,
-                content: <div><StoredValuesContent /></div>,
-                label: "Stored Values",
-                testID: "accordionItem4"
-              },
-              {
-                index: 4,
-                content: <div><ViewContext.Provider
-                value={{
-                  formState,
-                  dispatch,
-                  isAdminUser,
-                  changed,
-                  setChanged
-                }}
-              >
-                <HashRouter basename={`view/${name}`} hashType={'noslash'}>
-                  <Switch>
-                    <Route path={'/:link'}>
-                      <LinkList name={name}/>
-                      <LinkPropertiesForm name={name}/>
-                    </Route>
-                    <Route exact path={'/'}>
-                      <LinkList name={name}/>
-                    </Route>
-                  </Switch>
-                </HashRouter>
-              </ViewContext.Provider></div>,
-                label: "Links",
-                testID: "accordionItem5",
-                defaultActive: true
-              }
-            ]}
-          />
-        </div>
-        <div style={{ marginLeft: '15px' }}>
-          <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-                  aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
-            marginLeft: 'auto',
-            marginRight: 'auto'
-          }}>
-            <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
-              <div className={'tab-content'} style={{ display: 'unset' }}>
-                <div className="tab-pane tab-pane-modal active" id="JSON">
-                  <Grid>
-                    {
-                      /*
-                      isAdminUser && views.length
-                        ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                          <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-                        </Cell>
-                        : null
-                      */
-                    }
-
-                    <Cell size={'1'}>
+      <section>
+        <SplitPane
+          paneStyle={{ overflow: 'scroll' }}
+          defaultSize={parseInt(localStorage.getItem('splitPos'), 10)}
+          onChange={(size) => localStorage.setItem('splitPos', size)}
+          style={{ paddingTop: '15px', marginTop: '10px', marginLeft: '15px', marginRight: '15px' }}>
+          <div style={{ marginRight: '15px' }}>
+            <AccordionView
+              allowMultipleOpen
+              accordionConfig={[
+                {
+                  index: 0,
+                  content: (
+                    <div>
+                      <GeneralContent />
+                    </div>
+                  ),
+                  label: "General",
+                  testID: "accordionItem1"
+                },
+                {
+                  index: 1,
+                  content: (
+                    <div>
+                      <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
+                                          disabled={!isAdminUser}/>
+                    </div>
+                  ),
+                  label: "Consolidation Policy",
+                  testID: "accordionItem2"
+                },
+                {
+                  index: 2,
+                  content: <div><PrimarySortContent /></div>,
+                  label: "Primary Sort",
+                  testID: "accordionItem3"
+                },
+                {
+                  index: 3,
+                  content: <div><StoredValuesContent /></div>,
+                  label: "Stored Values",
+                  testID: "accordionItem4"
+                },
+                {
+                  index: 4,
+                  content: <div><ViewContext.Provider
+                  value={{
+                    formState,
+                    dispatch,
+                    isAdminUser,
+                    changed,
+                    setChanged
+                  }}
+                >
+                  <HashRouter basename={`view/${name}`} hashType={'noslash'}>
+                    <Switch>
+                      <Route path={'/:link'}>
+                        <LinkList name={name}/>
+                        <LinkPropertiesForm name={name}/>
+                      </Route>
+                      <Route exact path={'/'}>
+                        <LinkList name={name}/>
+                      </Route>
+                    </Switch>
+                  </HashRouter>
+                </ViewContext.Provider></div>,
+                  label: "Links",
+                  testID: "accordionItem5",
+                  defaultActive: true
+                }
+              ]}
+            />
+          </div>
+          <div style={{ marginLeft: '15px' }}>
+            <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+                    aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+              marginLeft: 'auto',
+              marginRight: 'auto'
+            }}>
+              <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
+                <div className={'tab-content'} style={{ display: 'unset' }}>
+                  <div className="tab-pane tab-pane-modal active" id="JSON">
+                    <Grid>
                       {
-                        isAdminUser
-                          ? <JsonForm formState={formState} dispatch={dispatch}
-                          renderKey={state.renderKey}/>
-                          : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
-                                      rows={jsonRows}
-                                      style={{ cursor: 'text' }}/>
+                        /*
+                        isAdminUser && views.length
+                          ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+                            <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+                          </Cell>
+                          : null
+                        */
                       }
-                    </Cell>
-                  </Grid>
+
+                      <Cell size={'1'}>
+                        {
+                          isAdminUser
+                            ? <JsonForm formState={formState} dispatch={dispatch}
+                            renderKey={state.renderKey}/>
+                            : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                                        rows={jsonRows}
+                                        style={{ cursor: 'text' }}/>
+                        }
+                      </Cell>
+                    </Grid>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </SplitPane>
+        </SplitPane>
+      </section>
   </>;
 };
 window.ViewSettingsReactView = ViewSettingsReactView;
