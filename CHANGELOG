@@ -1,6 +1,12 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* BTS-1192: fix a potential race during hot backup creation, which could result
+  in error messages such as
+  `{backup} Source file engine_rocksdb/002516.sst does not have a hash file.`
+  during hot backup creation. However, despite the error message being logged,
+  the hot backup was still complete.
+
 * Change the request lane for replication catchup requests that leaders in
   active failover receive from their followers from medium to high. This will
   give catchup requests from followers highest priority, so that the leader will
