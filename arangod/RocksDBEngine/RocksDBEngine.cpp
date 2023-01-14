@@ -3558,9 +3558,9 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
 }
 
 void RocksDBEngine::checkMissingShaFiles(std::string const& pathname,
-                                         int64_t requireAge) {
+                                         int64_t requireAge, bool force) {
   if (_shaListener != nullptr) {
-    _shaListener->checkMissingShaFiles(pathname, requireAge);
+    _shaListener->checkMissingShaFiles(pathname, requireAge, force);
   }
 }
 

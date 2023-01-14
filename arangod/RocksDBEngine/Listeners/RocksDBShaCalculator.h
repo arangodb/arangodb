@@ -59,7 +59,8 @@ class RocksDBShaCalculatorThread : public arangodb::Thread {
   // return [success, hash]
   static std::pair<bool, std::string> shaCalcFile(std::string const& filename);
 
-  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge,
+                            bool force);
 
   void signalLoop();
 
@@ -107,7 +108,8 @@ class RocksDBShaCalculator : public rocksdb::EventListener {
   void OnCompactionCompleted(rocksdb::DB* db,
                              const rocksdb::CompactionJobInfo& ci) override;
 
-  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
+  void checkMissingShaFiles(std::string const& pathname, int64_t requireAge,
+                            bool force);
 
   void beginShutdown() { _shaThread.beginShutdown(); }
 
