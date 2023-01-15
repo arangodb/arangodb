@@ -56,7 +56,7 @@ const LinkList = ({ name }: ViewProps) => {
   })).value();
 
   return <div id="modal-dialog" style={{
-    width: 1024,
+    width: '100%',
     marginLeft: 'auto',
     marginRight: 'auto'
   }}>
