@@ -46,7 +46,7 @@ void CurrentWatcher::addWatchPath(
 
 void CurrentWatcher::addReport(std::string identifier, Result result) {
   _results.doUnderLock([identifier = std::move(identifier),
-                        result = std::move(result)](auto& lists) {
+                        result = std::move(result)](auto& lists) mutable {
     if (lists.find(identifier) == lists.end()) {
       lists.emplace(std::move(identifier), std::move(result));
     }

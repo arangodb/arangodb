@@ -58,7 +58,7 @@ Result DistributeShardsLike::planShardsOnServers(
   }
 
   // Sharding Okay, take it
-  _shardToServerMapping = nextSharding.get();
+  _shardToServerMapping = std::move(nextSharding.get());
   return {TRI_ERROR_NO_ERROR};
 }
 

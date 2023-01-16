@@ -67,39 +67,5 @@ ClusteringConstantProperties::validateDatabaseConfiguration(
     }
   }
 
-  if (!shardKeys.has_value()) {
-    // ShardKeys should be auto-generated if not given
-    // However if something fails here cluster assumptions
-    // would be violated so better return an error.
-    TRI_ASSERT(false);
-    return {TRI_ERROR_BAD_PARAMETER, "ShardKeys not defined"};
-  } else {
-    auto const& keys = shardKeys.value();
-
-    if (keys.empty() || keys.size() > 8) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "invalid number of shard keys for collection"};
-    }
-    for (auto const& sk : keys) {
-      auto key = std::string_view{sk};
-      // remove : char at the beginning or end (for enterprise)
-      std::string_view stripped;
-      if (!key.empty()) {
-        if (key.front() == ':') {
-          stripped = key.substr(1);
-        } else if (key.back() == ':') {
-          stripped = key.substr(0, key.size() - 1);
-        } else {
-          stripped = key;
-        }
-      }
-      // system attributes are not allowed (except _key, _from and _to)
-      if (stripped == StaticStrings::IdString ||
-          stripped == StaticStrings::RevString) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "_id or _rev cannot be used as shard keys"};
-      }
-    }
-  }
   return {TRI_ERROR_NO_ERROR};
 }

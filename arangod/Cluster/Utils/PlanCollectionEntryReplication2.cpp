@@ -36,7 +36,7 @@ using namespace arangodb;
 PlanCollectionEntryReplication2::PlanCollectionEntryReplication2(
     UserInputCollectionProperties col, ShardDistribution shardDistribution,
     AgencyIsBuildingFlags isBuildingFlags)
-    : _properties({col}),
+    : _properties{std::move(col)},
       _buildingFlags{std::move(isBuildingFlags)},
       _indexProperties(
           CollectionIndexesProperties::defaultIndexesForCollectionType(
