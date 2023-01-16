@@ -41,8 +41,10 @@ jobs:
             cmake --build --preset << parameters.preset >> --parallel 8 --target arangodbtests arangod arangosh arangoimport arangoexport arangodump arangorestore arangobench fuertetest
             cat /tmp/sccache.log
       - run:
+          name: Cleanup build directory
           command: |
-            rm build/<< parameters.preset >>/bin/*.a
+            find build/<< parameters.preset >> -iname *.a -delete
+            find build/<< parameters.preset >> -iname *.o -delete
             ls -la build/<< parameters.preset >>/bin/
       - run:
           name: SCCache Statistics
