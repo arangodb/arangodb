@@ -963,7 +963,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     if (v8g == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          std::string("no V8 context available when executing call to ") +
+          std::string(
+              "no V8 context available when executing call to function ") +
               jsName);
     }
 

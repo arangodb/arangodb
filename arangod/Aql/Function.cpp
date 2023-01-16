@@ -58,6 +58,8 @@ Function::Function(std::string const& name, char const* arguments,
   // currently being able to run on a DB server in cluster always includes being able to run
   // on a DB server in OneShard mode. this may change at some point in the future.
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) || hasFlag(Flags::CanRunOnDBServerOneShard));
+  
+  TRI_ASSERT(hasCxxImplementation() || name == "V8");
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
