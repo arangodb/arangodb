@@ -195,10 +195,12 @@ void ChecksumHelper::checkMissingShaFiles() {
     std::string::size_type shaIndex = it->find(".sha.");
 
     if (shaIndex != std::string::npos) {
+      // found .sha file
       std::string baseName = it->substr(0, shaIndex);
       auto nextIt = it + 1;
       if (nextIt != fileList.end() &&
           (*nextIt == baseName + ".sst" || *nextIt == baseName + ".blob")) {
+        // .sha file is followed by either an .sst file or a .blob file...
         std::string full = baseName;
         if (isSstFile(*nextIt)) {
           full.append(".sst");
@@ -209,38 +211,36 @@ void ChecksumHelper::checkMissingShaFiles() {
         }
         TRI_ASSERT(it->size() >= shaIndex + 64);
         std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
+        // skip following .sst or .blob file
         it = nextIt;
         MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
         _fileNamesToHashes.try_emplace(std::move(full), std::move(hash));
       } else {
+        // .sha file is not followed by .sst or .blob file - remove it
         std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
         LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES)
             << "checkMissingShaFiles: Deleting file " << tempPath;
         TRI_UnlinkFile(tempPath.data());
+
+        // remove hash values from hash table
         MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
         _fileNamesToHashes.erase(baseName + ".sst");
         _fileNamesToHashes.erase(baseName + ".blob");
       }
     } else if (isSstFile(*it) || isBlobFile(*it)) {
-      bool isHashKnown = false;
-      {
-        MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-        isHashKnown = _fileNamesToHashes.contains(*it);
-      }
-      if (!isHashKnown) {
-        std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
-        LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
-            << "checkMissingShaFiles: Computing checksum for " << tempPath;
-        auto checksumCalc = ChecksumCalculator();
-        if (TRI_ProcessFile(
-                tempPath.c_str(),
-                [&checksumCalc](char const* buffer, size_t n) noexcept {
-                  checksumCalc.updateEVPWithContent(buffer, n);
-                  return true;
-                })) {
-          checksumCalc.computeFinalChecksum();
-          writeShaFile(tempPath, checksumCalc.getChecksum());
-        }
+      // we have a .sst or .blob file which was not preceeded by a .hash file.
+      // this means we need to recalculate the sha hash for it!
+      std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
+      LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
+          << "checkMissingShaFiles: Computing checksum for " << tempPath;
+      auto checksumCalc = ChecksumCalculator();
+      if (TRI_ProcessFile(tempPath.c_str(), [&checksumCalc](char const* buffer,
+                                                            size_t n) noexcept {
+            checksumCalc.updateEVPWithContent(buffer, n);
+            return true;
+          })) {
+        checksumCalc.computeFinalChecksum();
+        writeShaFile(tempPath, checksumCalc.getChecksum());
       }
     }
   }
