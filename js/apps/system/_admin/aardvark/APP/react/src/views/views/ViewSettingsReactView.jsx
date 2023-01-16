@@ -65,19 +65,16 @@ const ViewSettingsReactView = ({ name }) => {
     )
   };
 
+  const PrimarySortTitle = () => {
+    const compressionInfo = formState.primarySortCompression !== 'none' ? `(compression: ${formState.primarySortCompression})` : '';
+    return (
+      `Primary Sort ${compressionInfo}`
+    )
+  };
+
   const PrimarySortContent = () => {
     return (<table>
       <tbody>
-        <tr className="tableRow" id={"row_" + (formState.primarySortCompression)}>
-          <th className="collectionTh">
-            Primary Sort Compression:
-          </th>
-          <th className="collectionTh">
-          <Textbox type={'text'} disabled={true} required={false}
-            value={formState.primarySortCompression} />
-          </th>
-          <th className="collectionTh"></th>
-        </tr>
       {
         formState.primarySort.map (item =>(
           <tr className="tableRow" id={"row_" + (item.field)}>
@@ -235,13 +232,6 @@ const ViewSettingsReactView = ({ name }) => {
   </tbody>
 </table>)};
 
-/*
-  const panels = times(3, (i) => ({
-    key: `panel-${i}`,
-    title: `General`,
-    content: GeneralContent
-  }));
-  */
   const initialState = useRef({
     formState: { name },
     formCache: { name },
@@ -361,7 +351,7 @@ const ViewSettingsReactView = ({ name }) => {
                 {
                   index: 2,
                   content: <div><PrimarySortContent /></div>,
-                  label: "Primary Sort",
+                  label: <PrimarySortTitle />,
                   testID: "accordionItem3"
                 },
                 {
