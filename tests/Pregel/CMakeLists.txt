@@ -11,6 +11,7 @@ target_include_directories(arango_tests_pregel
   ${PROJECT_SOURCE_DIR}/lib)
 
 target_link_libraries(arango_tests_pregel
+  PRIVATE
   gtest
   date_interface
   velocypack
