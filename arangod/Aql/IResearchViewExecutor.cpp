@@ -1898,9 +1898,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(
   if constexpr (Base::isLateMaterialized) {
     return Base::writeRow(ctx, bufferEntry, id, nullptr);
   } else {
-    LocalDocumentId const& documentId = id.first;
+    auto const [documentId, collection] = id;
     TRI_ASSERT(documentId.isSet());
-    LogicalCollection const* collection = id.second;
     TRI_ASSERT(collection);
 
     return Base::writeRow(ctx, bufferEntry, documentId, collection);

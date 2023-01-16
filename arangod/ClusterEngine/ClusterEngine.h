@@ -223,9 +223,7 @@ class ClusterEngine final : public StorageEngine {
     // noop
   }
 
-  std::shared_ptr<StorageSnapshot> currentSnapshot() final {
-    return nullptr;
-  }
+  std::shared_ptr<StorageSnapshot> currentSnapshot() final { return nullptr; }
 
  public:
   static std::string const EngineName;

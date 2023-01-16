@@ -452,7 +452,7 @@ class RocksDBEngine final : public StorageEngine {
    public:
     explicit RocksDBSnapshot(rocksdb::DB& db) noexcept : _snapshot(&db) {}
 
-    TRI_voc_tick_t tick() const noexcept override{
+    TRI_voc_tick_t tick() const noexcept override {
       return _snapshot.snapshot()->GetSequenceNumber();
     }
 

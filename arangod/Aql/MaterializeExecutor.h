@@ -55,13 +55,12 @@ class SingleRowFetcher;
 class NoCollectionNameHolder {};
 class StringCollectionNameHolder {
  public:
-  StringCollectionNameHolder(std::string const& name)
-      : _collectionSource(name) {}
+  StringCollectionNameHolder(std::string_view name) : _collectionSource(name) {}
 
   auto collectionSource() const { return _collectionSource; }
 
  protected:
-  std::string const& _collectionSource;
+  std::string_view _collectionSource;
 };
 
 template<typename T>
