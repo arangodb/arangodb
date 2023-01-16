@@ -1,5 +1,5 @@
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
 # https://github.com/arangodb/oskar#testing
-shell_client priority=250 single --test shell-index-geo.js -- $EncryptionAtRest
-shell_server priority=1000 single --test shell-index-geo.js
+shell_client priority=250 single -- $EncryptionAtRest
+shell_server priority=1000 single
