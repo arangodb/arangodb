@@ -628,9 +628,9 @@ template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ExecutionTraits>> {
   using IndexBufferValueType =
       std::conditional_t<(ExecutionTraits::MaterializeType &
-                                 iresearch::MaterializeType::LateMaterialize) ==
-                                    iresearch::MaterializeType::LateMaterialize,
-                                iresearch::SearchDoc, LocalDocumentId>;
+                          iresearch::MaterializeType::LateMaterialize) ==
+                             iresearch::MaterializeType::LateMaterialize,
+                         iresearch::SearchDoc, LocalDocumentId>;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -716,12 +716,12 @@ class IResearchViewMergeExecutor
 template<typename ExecutionTraits>
 struct IResearchViewExecutorTraits<
     IResearchViewMergeExecutor<ExecutionTraits>> {
-  using IndexBufferValueType = std::conditional_t<
-      (ExecutionTraits::MaterializeType &
-       iresearch::MaterializeType::LateMaterialize) ==
-          iresearch::MaterializeType::LateMaterialize,
-      iresearch::SearchDoc,
-      std::pair<LocalDocumentId, LogicalCollection const*>>;
+  using IndexBufferValueType =
+      std::conditional_t<(ExecutionTraits::MaterializeType &
+                          iresearch::MaterializeType::LateMaterialize) ==
+                             iresearch::MaterializeType::LateMaterialize,
+                         iresearch::SearchDoc,
+                         std::pair<LocalDocumentId, LogicalCollection const*>>;
   static constexpr bool ExplicitScanned = false;
 };
 
@@ -847,7 +847,10 @@ struct IsSearchExecutor<IResearchViewMergeExecutor<ExecutionTraits>>
 
 template<typename ExecutionTraits>
 struct IsSearchExecutor<IResearchViewHeapSortExecutor<ExecutionTraits>>
-    : std::true_type {};
+    : std::enable_if_t<(ExecutionTraits::MaterializeType &
+                        iresearch::MaterializeType::LateMaterialize) ==
+                           iresearch::MaterializeType::Undefined,
+                       std::true_type> {};
 
 }  // namespace aql
 }  // namespace arangodb

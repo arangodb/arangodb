@@ -942,19 +942,31 @@ constexpr Executor kExecutors[] = {
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<
-          aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
-              copyStored, false, false, materializeType>>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+      if constexpr ((materializeType & MaterializeType::LateMaterialize) ==
+                    MaterializeType::Undefined) {
+        return std::make_unique<aql::ExecutionBlockImpl<
+            aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
+                copyStored, false, false, materializeType>>>>(
+            engine, viewNode, std::move(registerInfos),
+            std::move(executorInfos));
+      }
+      TRI_ASSERT(false);
+      return nullptr;
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<
-          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
-              aql::ExecutionTraits<copyStored, true, false, materializeType>>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+      if constexpr ((materializeType & MaterializeType::LateMaterialize) ==
+                    iresearch::MaterializeType::Undefined) {
+        return std::make_unique<aql::ExecutionBlockImpl<
+            aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
+                copyStored, true, false, materializeType>>>>(
+            engine, viewNode, std::move(registerInfos),
+            std::move(executorInfos));
+      }
+      TRI_ASSERT(false);
+      return nullptr;
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
@@ -996,19 +1008,31 @@ constexpr Executor kExecutors[] = {
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<
-          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
-              aql::ExecutionTraits<copyStored, false, true, materializeType>>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+      if constexpr ((materializeType & MaterializeType::LateMaterialize) ==
+                    iresearch::MaterializeType::Undefined) {
+        return std::make_unique<aql::ExecutionBlockImpl<
+            aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
+                copyStored, false, true, materializeType>>>>(
+            engine, viewNode, std::move(registerInfos),
+            std::move(executorInfos));
+      }
+      TRI_ASSERT(false);
+      return nullptr;
     },
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
         -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<
-          aql::ExecutionBlockImpl<aql::IResearchViewHeapSortExecutor<
-              aql::ExecutionTraits<copyStored, true, true, materializeType>>>>(
-          engine, viewNode, std::move(registerInfos), std::move(executorInfos));
+      if constexpr ((materializeType & MaterializeType::LateMaterialize) ==
+                    iresearch::MaterializeType::Undefined) {
+        return std::make_unique<aql::ExecutionBlockImpl<
+            aql::IResearchViewHeapSortExecutor<aql::ExecutionTraits<
+                copyStored, true, true, materializeType>>>>(
+            engine, viewNode, std::move(registerInfos),
+            std::move(executorInfos));
+      }
+      TRI_ASSERT(false);
+      return nullptr;
     }};
 
 constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort,
@@ -1848,6 +1872,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       for (auto const& fieldsVars : columnFieldsVars.second) {
         auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
         auto const it = varInfos.find(fieldsVars.var->id);
+
         TRI_ASSERT(it != varInfos.cend());
         auto const regId = it->second.registerId;
         writableOutputRegisters.emplace(regId);

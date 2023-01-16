@@ -1085,16 +1085,11 @@ template<typename ExecutionTraits>
 bool IResearchViewHeapSortExecutor<ExecutionTraits>::writeRow(
     IResearchViewHeapSortExecutor::ReadContext& ctx,
     IndexReadBufferEntry bufferEntry) {
-  if constexpr (!Base::isLateMaterialized) {
-    auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
-    return Base::writeRow(ctx, bufferEntry, val.documentId(),
-                          val.collectionPtr());
-  } else {
-    // heap-sort optimization superceeds
-    // late materialization
-    TRI_ASSERT(false);
-    return false;
-  }
+  static_assert(!Base::isLateMaterialized,
+                "HeapSort superseeds LateMaterialization");
+  auto const& val = this->_indexReadBuffer.getValue(bufferEntry);
+  return Base::writeRow(ctx, bufferEntry, val.documentId(),
+                        val.collectionPtr());
 }
 
 template<typename ExecutionTraits>
@@ -2075,67 +2070,44 @@ template class ::arangodb::aql::IResearchViewMergeExecutor<ExecutionTraits<
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     false, false, false,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    false, false, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, false, true, MaterializeType::Materialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     false, false, true,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    false, false, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, false, false,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    true, false, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+// template class
+// ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
+//    true, false, false,
+//    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, false, true,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    true, false, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, true, false, MaterializeType::Materialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     false, true, false,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    false, true, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<
-    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<
     ExecutionTraits<false, true, true, MaterializeType::Materialize>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     false, true, true,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    false, true, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 // stored values copying implementation should be used only when stored values
 // are used
@@ -2143,14 +2115,8 @@ template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, true, false,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    true, true, false,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
     true, true, true,
     MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-    true, true, true,
-    MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewExecutor<
@@ -2486,10 +2452,6 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
     ExecutionTraits<false, false, false, MaterializeType::NotMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
-        ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>,
-    ExecutionTraits<false, false, false, MaterializeType::LateMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, false, false, MaterializeType::Materialize>>,
     ExecutionTraits<false, false, false, MaterializeType::Materialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
@@ -2500,20 +2462,9 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
                     MaterializeType::NotMaterialize |
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        false, false, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<false, false, false,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>,
     ExecutionTraits<false, false, true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>,
-    ExecutionTraits<false, false, true, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, false, true, MaterializeType::Materialize>>,
@@ -2527,25 +2478,10 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        false, false, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<false, false, true,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
         true, false, false,
         MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
     ExecutionTraits<true, false, false,
                     MaterializeType::NotMaterialize |
-                        MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        true, false, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<true, false, false,
-                    MaterializeType::LateMaterialize |
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
@@ -2554,22 +2490,10 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
     ExecutionTraits<true, false, true,
                     MaterializeType::NotMaterialize |
                         MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        true, false, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<true, false, true,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>,
     ExecutionTraits<false, true, false, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>,
-    ExecutionTraits<false, true, false, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, true, false, MaterializeType::Materialize>>,
@@ -2582,20 +2506,9 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
                     MaterializeType::NotMaterialize |
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        false, true, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<false, true, false,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>,
     ExecutionTraits<false, true, true, MaterializeType::NotMaterialize>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<
-        ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>,
-    ExecutionTraits<false, true, true, MaterializeType::LateMaterialize>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<
         ExecutionTraits<false, true, true, MaterializeType::Materialize>>,
@@ -2609,14 +2522,6 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        false, true, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<false, true, true,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
         true, true, false,
         MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
     ExecutionTraits<true, true, false,
@@ -2624,22 +2529,8 @@ template class ::arangodb::aql::IResearchViewExecutorBase<
                         MaterializeType::UseStoredValues>>;
 template class ::arangodb::aql::IResearchViewExecutorBase<
     ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        true, true, false,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<true, true, false,
-                    MaterializeType::LateMaterialize |
-                        MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
         true, true, true,
         MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>,
     ExecutionTraits<true, true, true,
                     MaterializeType::NotMaterialize |
-                        MaterializeType::UseStoredValues>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<
-    ::arangodb::aql::IResearchViewHeapSortExecutor<ExecutionTraits<
-        true, true, true,
-        MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>,
-    ExecutionTraits<true, true, true,
-                    MaterializeType::LateMaterialize |
                         MaterializeType::UseStoredValues>>;
