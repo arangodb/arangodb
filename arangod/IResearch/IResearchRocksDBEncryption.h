@@ -29,7 +29,7 @@
 namespace arangodb::iresearch {
 class RocksDBCipherStream final : public irs::encryption::stream {
  public:
-  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
+  using StreamPtr = std::unique_ptr<rocksdb::BlockAccessCipherStream>;
 
   explicit RocksDBCipherStream(StreamPtr&& stream) noexcept;
 
