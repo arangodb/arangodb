@@ -50,14 +50,14 @@ inline constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
-// inline constexpr double kEarthRadiusInMeters = 6'378'137;
+// constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
-inline constexpr double kEarthRadiusInMeters = 6'371'000;
+inline constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
 inline constexpr double kMaxDistanceBetweenPoints =
     kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 
 constexpr double metersToRadians(double distanceInMeters) noexcept {
-  return std::clamp(0.0, distanceInMeters / kEarthRadiusInMeters, M_PI);
+  return std::max(0.0, std::min(distanceInMeters / kEarthRadiusInMeters, M_PI));
 }
 
 enum class FilterType {
