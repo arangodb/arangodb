@@ -840,7 +840,14 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   } else if (path == Utils::messagesPath) {
     w->receivedMessages(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
+    auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "Cannot deserialize FinalizeExecution message");
+    }
+    w->finalizeExecution(message.get(),
+                         [this, exeNum]() { cleanupWorker(exeNum); });
   } else if (path == Utils::aqlResultsPath) {
     bool withId = false;
     if (body.isObject()) {

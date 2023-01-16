@@ -607,13 +607,14 @@ ErrorCode Conductor::_finalizeWorkers() {
   }
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
-  b.add(Utils::storeResultsKey, VPackValue(store));
-  b.close();
-  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+  auto finalize =
+      FinalizeExecution{.executionNumber = _executionNumber, .store = store};
+  auto serialized = inspection::serializeWithErrorT(finalize);
+  if (!serialized.ok()) {
+    return TRI_ERROR_FAILED;
+  }
+  return _sendToAllDBServers(Utils::finalizeExecutionPath,
+                             VPackBuilder(serialized.get().slice()));
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {

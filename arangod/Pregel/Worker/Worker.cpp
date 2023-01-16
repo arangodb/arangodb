@@ -501,7 +501,7 @@ void Worker<V, E, M>::_finishedProcessing() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
+void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                         std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
@@ -512,10 +512,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
 
-  VPackSlice store = body.get(Utils::storeResultsKey);
-  auto const doStore = store.isBool() && store.getBool() == true;
-  auto cleanup = [self = shared_from_this(), this, doStore, cb] {
-    if (doStore) {
+  auto cleanup = [self = shared_from_this(), this, msg, cb] {
+    if (msg.store) {
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
@@ -530,7 +528,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   };
 
   _state = WorkerState::DONE;
-  if (doStore) {
+  if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->storeResults(&_config, std::move(cleanup),

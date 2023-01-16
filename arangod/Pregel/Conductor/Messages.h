@@ -90,16 +90,16 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
-struct Store {};
+// TODO split into Store and Cleanup
+struct FinalizeExecution {
+  ExecutionNumber executionNumber;
+  bool store;
+};
 template<typename Inspector>
-auto inspect(Inspector& f, Store& x) {
-  return f.object(x).fields();
-}
-
-struct Cleanup {};
-template<typename Inspector>
-auto inspect(Inspector& f, Cleanup& x) {
-  return f.object(x).fields();
+auto inspect(Inspector& f, FinalizeExecution& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("store", x.store));
 }
 
 struct CollectPregelResults {
