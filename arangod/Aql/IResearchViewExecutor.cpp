@@ -1306,7 +1306,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(
 
       // CID is constant until the next resetIterator(). Save the
       // corresponding collection so we don't have to look it up every time.
-      if constexpr (!Base::isLateMaterialized) {
+      if constexpr (Base::isMaterialized) {
         DataSourceId const cid = this->_reader->cid(_readerOffset);
         aql::QueryContext& query = this->_infos.getQuery();
         auto collection = lookupCollection(this->_trx, cid, query);
@@ -1599,9 +1599,11 @@ IResearchViewMergeExecutor<ExecutionTraits>::Segment::Segment(
   TRI_ASSERT(this->score);
   TRI_ASSERT(this->sortReaderRef);
   TRI_ASSERT(this->sortValue);
-  ::reset(this->pkReader, std::move(pkReader));
-  TRI_ASSERT(this->pkReader.itr);
-  TRI_ASSERT(this->pkReader.value);
+  if constexpr (Base::isMaterialized) {
+    ::reset(this->pkReader, std::move(pkReader));
+    TRI_ASSERT(this->pkReader.itr);
+    TRI_ASSERT(this->pkReader.value);
+  }
 }
 
 template<typename ExecutionTraits>
@@ -1829,7 +1831,7 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
 
-    if (Base::isLateMaterialized || this->_indexReadBuffer.size() >= atMost) {
+    if (this->_indexReadBuffer.size() >= atMost) {
       break;
     }
   }
@@ -1899,9 +1901,10 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::writeRow(
     return Base::writeRow(ctx, bufferEntry, id, nullptr);
   } else {
     auto const [documentId, collection] = id;
-    TRI_ASSERT(documentId.isSet());
-    TRI_ASSERT(collection);
-
+    if constexpr (Base::isMaterialized) {
+      TRI_ASSERT(documentId.isSet());
+      TRI_ASSERT(collection);
+    }
     return Base::writeRow(ctx, bufferEntry, documentId, collection);
   }
 }
