@@ -58,7 +58,8 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - ./**/CMakePresets.json
+            - CMakePresets.json
+            - ./**/CTestTestfile.cmake
             - build/<< parameters.preset >>/bin
             - scripts/
             - js/
