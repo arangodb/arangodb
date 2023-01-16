@@ -1706,6 +1706,7 @@ bool AstNode::willUseV8() const {
       if (numMembers() > 0 && getMemberUnchecked(0)->isArray() &&
           getMemberUnchecked(0)->numMembers() > 0 &&
           getMemberUnchecked(0)->getMemberUnchecked(0)->isStringValue()) {
+        // calling a function with a fixed name (known an query compile time)
         if (auto s =
                 getMemberUnchecked(0)->getMemberUnchecked(0)->getStringRef();
             s.find(':') != std::string::npos) {
@@ -1713,6 +1714,19 @@ bool AstNode::willUseV8() const {
           // this will use V8
           setFlag(DETERMINED_V8, VALUE_V8);
           return true;
+        } else {
+          // a built-in function (or some invalid function name)
+          auto [normalized, isBuiltIn] =
+              Ast::normalizeFunctionName(s.data(), s.size());
+          // note: normalizeFunctionName always returns an upper-case name.
+          // we must hard-code the function name here, because we can't lookup
+          // the definition for the function s without having access to the
+          // AqlFunctionsFeature, which is not present here.
+          if (normalized == "V8") {
+            // the V8() function itself... obviously uses V8
+            setFlag(DETERMINED_V8, VALUE_V8);
+            return true;
+          }
         }
         // fallthrough intentional. additionally inspect the function call
         // parameters for CALL/APPLY
