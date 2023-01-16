@@ -33,6 +33,9 @@ namespace arangodb::iresearch {
 
 class IResearchInvertedIndexMock final : public Index,
                                          public IResearchInvertedIndex {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
   IResearchInvertedIndexMock(
       IndexId iid, arangodb::LogicalCollection& collection,
@@ -112,8 +115,6 @@ class IResearchInvertedIndexMock final : public Index,
   void unload() final;
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) final;
-
-  irs::comparer const* getComparator() const noexcept final;
 
   static std::function<irs::directory_attributes()> InitCallback;
 };

@@ -137,13 +137,6 @@ Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
                                    notifySupervision);
   _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedLogs",
                                    notifySupervision);
-
-  _spearhead.registerPrefixTrigger("/arango/Target/ReplicatedStates",
-                                   notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Plan/ReplicatedStates",
-                                   notifySupervision);
-  _spearhead.registerPrefixTrigger("/arango/Current/ReplicatedStates",
-                                   notifySupervision);
 }
 
 /// Dtor shuts down thread

@@ -221,9 +221,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedLogs();
 
-  /// @brief Check replicated logs
-  void checkReplicatedStates();
-
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
 

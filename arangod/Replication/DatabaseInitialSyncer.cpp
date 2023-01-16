@@ -53,6 +53,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -63,6 +64,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -113,6 +115,8 @@ arangodb::Result removeRevisions(
   if (!toRemove.empty()) {
     PhysicalCollection* physical = collection.getPhysical();
 
+    auto indexesSnapshot = physical->getIndexesSnapshot();
+
     arangodb::OperationOptions options;
     options.silent = true;
     options.ignoreRevs = true;
@@ -131,8 +135,8 @@ arangodb::Result removeRevisions(
                                         arangodb::ReadOwnWrites::yes);
 
       if (r.ok()) {
-        r = physical->remove(trx, documentId, rid, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, rid,
+                             tempBuilder->slice(), options);
       }
 
       if (r.ok()) {
@@ -160,7 +164,6 @@ arangodb::Result fetchRevisions(
   using arangodb::PhysicalCollection;
   using arangodb::RestReplicationHandler;
   using arangodb::Result;
-  using arangodb::basics::StringUtils::concatT;
 
   if (toFetch.empty()) {
     return Result();  // nothing to do
@@ -179,6 +182,7 @@ arangodb::Result fetchRevisions(
   }
 
   PhysicalCollection* physical = collection.getPhysical();
+  auto indexesSnapshot = physical->getIndexesSnapshot();
 
   std::string path = arangodb::replutils::ReplicationUrl + "/" +
                      RestReplicationHandler::Revisions + "/" +
@@ -207,8 +211,8 @@ arangodb::Result fetchRevisions(
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
-        r = physical->remove(trx, documentId, revisionId, tempBuilder->slice(),
-                             options);
+        r = physical->remove(trx, indexesSnapshot, documentId, revisionId,
+                             tempBuilder->slice(), options);
       }
     }
 
@@ -302,18 +306,18 @@ arangodb::Result fetchRevisions(
       stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {
-        return Result(
-            TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-            concatT("got invalid response from leader at ",
-                    config.leader.endpoint, path, ": ", res.errorMessage()));
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      absl::StrCat("got invalid response from leader at ",
+                                   config.leader.endpoint, path, ": ",
+                                   res.errorMessage()));
       }
 
       VPackSlice docs = val.slice();
       if (!docs.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      concatT("got invalid response from leader at ",
-                              config.leader.endpoint, path,
-                              ": response is not an array"));
+                      absl::StrCat("got invalid response from leader at ",
+                                   config.leader.endpoint, path,
+                                   ": response is not an array"));
       }
 
       config.progress.set("applying documents by revision for collection '" +
@@ -376,9 +380,6 @@ arangodb::Result fetchRevisions(
           }
 
           if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-            auto errorNumber = res.errorNumber();
-            res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
-                                           res.errorMessage()));
             return res;
           }
 
@@ -1028,7 +1029,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
   using basics::StringUtils::boolean;
-  using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
   using basics::StringUtils::uint64;
   using basics::StringUtils::urlEncode;
@@ -1196,8 +1196,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
     res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), concatT("unable to start transaction: ",
-                                               res.errorMessage()));
+      return Result(
+          res.errorNumber(),
+          absl::StrCat("unable to start transaction: ", res.errorMessage()));
     }
 
     double t = TRI_microtime();
@@ -1281,7 +1282,6 @@ Result DatabaseInitialSyncer::fetchCollectionSync(LogicalCollection* coll,
 Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
-  using basics::StringUtils::concatT;
   using basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
@@ -1418,8 +1418,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
       ++stats.numFailedConnects;
       return Result(
           TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-          concatT("got invalid response from leader at ",
-                  _config.leader.endpoint, url, ": ", r.errorMessage()));
+          absl::StrCat("got invalid response from leader at ",
+                       _config.leader.endpoint, url, ": ", r.errorMessage()));
     }
 
     slice = builder.slice();
@@ -1532,8 +1532,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), concatT("unable to start transaction: ",
-                                               res.errorMessage()));
+      return Result(
+          res.errorNumber(),
+          absl::StrCat("unable to start transaction: ", res.errorMessage()));
     }
 
     OperationOptions options;
@@ -1546,8 +1547,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
     if (opRes.fail()) {
       return Result(opRes.errorNumber(),
-                    concatT("unable to truncate collection '", coll->name(),
-                            "': ", TRI_errno_string(opRes.errorNumber())));
+                    absl::StrCat("unable to truncate collection '",
+                                 coll->name(), "': ", res.errorMessage()));
     }
 
     return trx.finish(opRes.result);
@@ -1652,7 +1653,6 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     LogicalCollection* coll, std::string const& leaderColl,
     TRI_voc_tick_t maxTick) {
-  using basics::StringUtils::concatT;
   using basics::StringUtils::urlEncode;
   using transaction::Hints;
 
@@ -1734,7 +1734,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       if (!res.ok()) {
         return Result(
             res.errorNumber(),
-            concatT("unable to start transaction: ", res.errorMessage()));
+            absl::StrCat("unable to start transaction: ", res.errorMessage()));
       }
 
       OperationOptions options;
@@ -1747,8 +1747,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
       if (opRes.fail()) {
         return Result(opRes.errorNumber(),
-                      concatT("unable to truncate collection '", coll->name(),
-                              "': ", TRI_errno_string(opRes.errorNumber())));
+                      absl::StrCat("unable to truncate collection '",
+                                   coll->name(), "': ", opRes.errorMessage()));
       }
 
       return trx.finish(opRes.result);
@@ -1786,19 +1786,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
         context, *coll, AccessMode::Type::EXCLUSIVE, options);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      bool locked = false;
-      TRI_vocbase_col_status_e status = coll->tryFetchStatus(locked);
-      if (!locked) {
-        // fall back to unsafe method as last resort
-        status = coll->status();
-      }
-      if (status == TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED) {
+      if (coll->deleted()) {
         // TODO handle
         setAborted(true);  // probably wrong?
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
     }
-    return Result(ex.code());
+    return Result(ex.code(), ex.what());
   }
 
   // we must be able to read our own writes here - otherwise the end result
@@ -1809,8 +1803,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);
   Result res = trx->begin();
   if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  concatT("unable to start transaction: ", res.errorMessage()));
+    return Result(
+        res.errorNumber(),
+        absl::StrCat("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard([trx = trx.get()]() noexcept {
     auto res = basics::catchToResult([&]() -> Result {
@@ -1963,10 +1958,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
             replutils::parseResponse(responseBuilder, chunkResponse.get());
         if (r.fail()) {
           ++stats.numFailedConnects;
-          return Result(
-              TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-              concatT("got invalid response from leader at ",
-                      _config.leader.endpoint, url, ": ", r.errorMessage()));
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        absl::StrCat("got invalid response from leader at ",
+                                     _config.leader.endpoint, url, ": ",
+                                     r.errorMessage()));
         }
         slice = responseBuilder.slice();
       }
@@ -2213,7 +2208,6 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
                                                velocypack::Slice indexes,
                                                bool incremental,
                                                SyncPhase phase) {
-  using basics::StringUtils::concatT;
   using basics::StringUtils::itoa;
 
   if (isAborted()) {
@@ -2281,10 +2275,9 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise
         try {
-          auto res =
-              vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
+          auto res = vocbase().dropCollection(col->id(), true);
 
-          if (res == TRI_ERROR_NO_ERROR) {
+          if (res.ok()) {
             col = nullptr;
           }
         } catch (...) {
@@ -2318,8 +2311,8 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
 
             if (!res.ok()) {
               return Result(res.errorNumber(),
-                            concatT("unable to truncate ", collectionMsg, ": ",
-                                    res.errorMessage()));
+                            absl::StrCat("unable to truncate ", collectionMsg,
+                                         ": ", res.errorMessage()));
             }
 
             OperationOptions options;
@@ -2332,16 +2325,16 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
 
             if (opRes.fail()) {
               return Result(opRes.errorNumber(),
-                            concatT("unable to truncate ", collectionMsg, ": ",
-                                    TRI_errno_string(opRes.errorNumber())));
+                            absl::StrCat("unable to truncate ", collectionMsg,
+                                         ": ", opRes.errorMessage()));
             }
 
             res = trx.finish(opRes.result);
 
             if (!res.ok()) {
               return Result(res.errorNumber(),
-                            concatT("unable to truncate ", collectionMsg, ": ",
-                                    res.errorMessage()));
+                            absl::StrCat("unable to truncate ", collectionMsg,
+                                         ": ", res.errorMessage()));
             }
           } else {
             // drop a regular collection
@@ -2352,12 +2345,12 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
             }
             _config.progress.set("dropping " + collectionMsg);
 
-            auto res =
-                vocbase().dropCollection(col->id(), true, -1.0).errorNumber();
+            auto res = vocbase().dropCollection(col->id(), true);
 
-            if (res != TRI_ERROR_NO_ERROR) {
-              return Result(res, concatT("unable to drop ", collectionMsg, ": ",
-                                         TRI_errno_string(res)));
+            if (res.fail()) {
+              return Result(res.errorNumber(),
+                            absl::StrCat("unable to drop ", collectionMsg, ": ",
+                                         res.errorMessage()));
             }
           }
         }
@@ -2389,9 +2382,9 @@ Result DatabaseInitialSyncer::handleCollection(velocypack::Slice parameters,
 
     if (r.fail()) {
       return Result(r.errorNumber(),
-                    concatT("unable to create ", collectionMsg, ": ",
-                            TRI_errno_string(r.errorNumber()),
-                            ". Collection info ", parameters.toJson()));
+                    absl::StrCat("unable to create ", collectionMsg, ": ",
+                                 r.errorMessage(), ". Collection info ",
+                                 parameters.toJson()));
     }
 
     return r;

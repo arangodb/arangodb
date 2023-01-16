@@ -70,6 +70,7 @@ namespace replication2 {
 class LogId;
 namespace agency {
 struct LogPlanSpecification;
+struct LogTarget;
 }  // namespace agency
 namespace replicated_state::agency {
 struct Target;
@@ -952,7 +953,7 @@ class ClusterInfo final {
                                       std::vector<std::string> const& serverIds,
                                       ClusterCollectionCreationInfo const& info,
                                       std::string const& databaseName)
-      -> replication2::replicated_state::agency::Target;
+      -> replication2::agency::LogTarget;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a future which can be used to wait for the successful
@@ -960,8 +961,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   auto waitForReplicatedStatesCreation(
       std::string const& databaseName,
-      std::vector<replication2::replicated_state::agency::Target> const&
-          replicatedStates) -> futures::Future<Result>;
+      std::vector<replication2::agency::LogTarget> const& replicatedStates)
+      -> futures::Future<Result>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes replicated states corresponding to shards

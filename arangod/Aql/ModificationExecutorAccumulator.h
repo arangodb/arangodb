@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
@@ -49,23 +48,31 @@ class ModificationExecutorAccumulator {
     return _accumulator.slice();
   }
 
-  void add(VPackSlice const& doc) {
+  void add(VPackSlice doc) {
     TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.add(doc);
+    ++_nrOfDocuments;
   }
 
   void reset() {
     _accumulator.clear();
-    _accumulator.openArray();
+    _accumulator.openArray(/*unindexed*/ true);
+    _nrOfDocuments = 0;
   }
 
-  [[nodiscard]] size_t nrOfDocuments() const {
+  [[nodiscard]] size_t nrOfDocuments() const noexcept {
     TRI_ASSERT(_accumulator.isClosed());
-    return _accumulator.slice().length();
+    return _nrOfDocuments;
   }
 
  private:
   VPackBuilder _accumulator{};
+  // storing the number of documents separately allows us
+  // to return the value without having to call slice().length()
+  // on the Builder. it also allows us to use a compact velocypack
+  // array inside the Builder without an index table (smaller
+  // size, less overhead when closing the array).
+  size_t _nrOfDocuments{0};
 };
 
 }  // namespace arangodb::aql

@@ -89,6 +89,7 @@ auto PrototypeFollowerState::resign() && noexcept
     -> std::unique_ptr<PrototypeCore> {
   return _guardedData.doUnderLock([](auto& core) {
     TRI_ASSERT(core != nullptr);
+    core->resetOngoingStates();
     return std::move(core);
   });
 }

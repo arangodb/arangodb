@@ -196,8 +196,7 @@ class V8ViewsTest
 TEST_F(V8ViewsTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -347,8 +346,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -488,8 +486,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -627,8 +624,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -824,8 +820,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -1039,8 +1034,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -1198,8 +1192,7 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
@@ -1374,8 +1367,7 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
     auto logicalView2 = vocbase.createView(createView2Json->slice(), false);

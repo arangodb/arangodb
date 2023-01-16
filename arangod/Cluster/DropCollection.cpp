@@ -81,7 +81,7 @@ bool DropCollection::first() {
         TRI_ASSERT(coll);
         LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
             << "Dropping local collection " + shard;
-        result(Collections::drop(*coll, false, 2.5));
+        result(Collections::drop(*coll, false));
 
         // it is safe here to clear our replication failure statistics even
         // if the collection could not be dropped. the drop attempt alone

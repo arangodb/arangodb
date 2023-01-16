@@ -31,6 +31,7 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchInvertedClusterIndex.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -329,7 +330,10 @@ void ClusterIndexFactory::prepareIndexes(
     }
 
     if (basics::VelocyPackHelper::getBooleanValue(
-            v, StaticStrings::IndexIsBuilding, false)) {
+            v, StaticStrings::IndexIsBuilding, false) &&
+        !(basics::VelocyPackHelper::getStringView(v, StaticStrings::IndexType,
+                                                  {}) ==
+          iresearch::StaticStrings::ViewArangoSearchType)) {
       // This index is still being built. Do not add.
       continue;
     }

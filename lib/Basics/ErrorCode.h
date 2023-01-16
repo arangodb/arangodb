@@ -48,6 +48,9 @@ class ErrorCode {
     return _value;
   }
 
+  /// @brief return the document id
+  [[nodiscard]] ValueType value() const noexcept;
+
   // This could also be constexpr, but we'd have to include
   // <velocypack/Value.h>, and I'm unsure whether that's worth it, and rather
   // rely on IPO here.

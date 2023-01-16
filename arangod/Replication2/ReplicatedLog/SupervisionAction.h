@@ -89,16 +89,18 @@ struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
   AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
-                     LogPlanConfig config,
-                     std::optional<LogPlanTermSpecification::Leader> leader)
+                     LogPlanConfig config, Properties properties,
+                     std::optional<ServerInstanceReference> leader)
       : _id(id),
         _participants(std::move(participants)),
         _config(std::move(config)),
+        _properties(std::move(properties)),
         _leader(std::move(leader)){};
   LogId _id;
   ParticipantsFlagsMap _participants;
   LogPlanConfig _config;
-  std::optional<LogPlanTermSpecification::Leader> _leader;
+  Properties _properties;
+  std::optional<ServerInstanceReference> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
     auto newPlan = LogPlanSpecification(
@@ -106,6 +108,7 @@ struct AddLogToPlanAction {
         ParticipantsConfig{
             .generation = 1, .participants = _participants, .config = _config});
     newPlan.owner = "target";
+    newPlan.properties = _properties;
     ctx.setValue<LogPlanSpecification>(std::move(newPlan));
 
     ctx.modifyOrCreate<LogCurrentSupervision>(
@@ -129,10 +132,10 @@ auto inspect(Inspector& f, AddLogToPlanAction& x) {
 struct SwitchLeaderAction {
   static constexpr std::string_view name = "SwitchLeaderAction";
 
-  SwitchLeaderAction(LogPlanTermSpecification::Leader const& leader)
+  explicit SwitchLeaderAction(ServerInstanceReference const& leader)
       : _leader{leader} {};
 
-  LogPlanTermSpecification::Leader _leader;
+  ServerInstanceReference _leader;
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
@@ -173,7 +176,7 @@ auto inspect(Inspector& f, WriteEmptyTermAction& x) {
 struct LeaderElectionAction {
   static constexpr std::string_view name = "LeaderElectionAction";
 
-  LeaderElectionAction(LogPlanTermSpecification::Leader electedLeader,
+  LeaderElectionAction(ServerInstanceReference electedLeader,
                        size_t effectiveWriteConcern, size_t assumedWriteConcern,
                        LogCurrentSupervisionElection const& electionReport)
       : _electedLeader{electedLeader},
@@ -181,7 +184,7 @@ struct LeaderElectionAction {
         _assumedWriteConcern{assumedWriteConcern},
         _electionReport(electionReport){};
 
-  LogPlanTermSpecification::Leader _electedLeader;
+  ServerInstanceReference _electedLeader;
   size_t _effectiveWriteConcern;
   size_t _assumedWriteConcern;
   LogCurrentSupervisionElection _electionReport;
@@ -201,6 +204,7 @@ struct LeaderElectionAction {
         });
   }
 };
+
 template<typename Inspector>
 auto inspect(Inspector& f, LeaderElectionAction& x) {
   auto hack = std::string{x.name};

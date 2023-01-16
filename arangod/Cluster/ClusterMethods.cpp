@@ -90,6 +90,8 @@
 #include <random>
 #include <vector>
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;
@@ -3033,7 +3035,6 @@ ClusterMethods::persistCollectionsInAgency(
           StaticStrings::DataSourceGuid,   "count",
           StaticStrings::DataSourcePlanId, StaticStrings::Version,
           StaticStrings::ObjectId};
-      col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(
           ignoreKeys, LogicalDataSource::Serialization::List);
 

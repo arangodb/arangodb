@@ -81,7 +81,7 @@ void AqlCallStack::pushCall(AqlCallList const& call) {
   _operations.emplace_back(call);
 }
 
-auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice)
+auto AqlCallStack::fromVelocyPack(velocypack::Slice slice)
     -> ResultT<AqlCallStack> {
   if (ADB_UNLIKELY(!slice.isArray())) {
     using namespace std::string_literals;
@@ -95,25 +95,22 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice const slice)
   }
 
   auto stack = std::vector<AqlCallList>{};
-  auto i = std::size_t{0};
   stack.reserve(slice.length());
-  for (auto const entry : VPackArrayIterator(slice)) {
+  for (auto entry : VPackArrayIterator(slice)) {
     auto maybeAqlCall = AqlCallList::fromVelocyPack(entry);
 
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
       auto message = std::string{"When deserializing AqlCallStack: entry "};
-      message += std::to_string(i);
+      message += std::to_string(stack.size());
       message += ": ";
       message += std::move(maybeAqlCall).errorMessage();
       return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
 
-    stack.emplace_back(maybeAqlCall.get());
-
-    ++i;
+    stack.emplace_back(std::move(maybeAqlCall.get()));
   }
 
-  TRI_ASSERT(i > 0);
+  TRI_ASSERT(!stack.empty());
 
   return AqlCallStack{std::move(stack)};
 }

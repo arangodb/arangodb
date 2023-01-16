@@ -46,7 +46,6 @@ add_library(arangoserver STATIC
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
   Cluster/UpdateReplicatedLogAction.cpp
-  Cluster/UpdateReplicatedStateAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
@@ -101,7 +100,6 @@ add_library(arangoserver STATIC
   RestHandler/RestLicenseHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
-  RestHandler/RestReplicatedStateHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -172,6 +170,7 @@ add_library(arangoserver STATIC
   Transaction/Context.cpp
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
+  Transaction/IndexesSnapshot.cpp
   Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
   Transaction/ManagerFeature.cpp

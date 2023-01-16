@@ -42,7 +42,6 @@ namespace aql {
 template<BlockPassthrough>
 class SingleRowFetcher;
 
-class AqlItemMatrix;
 class ConstrainedLessThan;
 class RegisterInfos;
 class InputAqlItemRow;

@@ -80,15 +80,15 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(
     RegisterInfos registerInfos, typename Executor::Infos executorInfos)
     : ExecutionBlock(engine, ep),
       BlocksWithClients(),
-      _nrClients(executorInfos.nrClients()),
       _type(ScatterNode::ScatterType::SHARD),
       _registerInfos(std::move(registerInfos)),
       _executorInfos(std::move(executorInfos)),
       _executor{_executorInfos},
       _clientBlockData{} {
-  _shardIdMap.reserve(_nrClients);
+  size_t nrClients = executorInfos.nrClients();
+  _shardIdMap.reserve(nrClients);
   auto const& shardIds = _executorInfos.clientIds();
-  for (size_t i = 0; i < _nrClients; i++) {
+  for (size_t i = 0; i < nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
 
@@ -271,30 +271,6 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack)
   }
 
   return state;
-}
-
-/// @brief getSomeForShard
-/// @deprecated
-template<class Executor>
-std::pair<ExecutionState, SharedAqlItemBlockPtr>
-BlocksWithClientsImpl<Executor>::getSomeForShard(size_t atMost,
-                                                 std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)});
-  auto [state, skipped, block] = executeForClient(std::move(stack), shardId);
-  TRI_ASSERT(skipped.nothingSkipped());
-  return {state, std::move(block)};
-}
-
-/// @brief skipSomeForShard
-/// @deprecated
-template<class Executor>
-std::pair<ExecutionState, size_t>
-BlocksWithClientsImpl<Executor>::skipSomeForShard(size_t atMost,
-                                                  std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)});
-  auto [state, skipped, block] = executeForClient(std::move(stack), shardId);
-  TRI_ASSERT(block == nullptr);
-  return {state, skipped.getSkipCount()};
 }
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;

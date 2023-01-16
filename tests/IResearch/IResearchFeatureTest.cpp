@@ -117,7 +117,7 @@ class IResearchFeatureTest
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
-  };
+  }
 
   // version 1 data-source path
   std::filesystem::path getPersistedPath1(
@@ -126,12 +126,12 @@ class IResearchFeatureTest
     std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath += std::to_string(link.index().collection().vocbase().id());
     dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id().id());
+    dataPath += std::to_string(link.index().collection().id().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id().id());
+    dataPath += std::to_string(link.index().id().id());
     return dataPath;
   }
 };
@@ -1814,7 +1814,7 @@ TEST_F(IResearchFeatureTest, test_start) {
   for (auto& entry : expected) {
     auto* function = arangodb::iresearch::getFunction(functions, entry.first);
     EXPECT_EQ(nullptr, function);
-  };
+  }
 
   functions.prepare();
   iresearch.prepare();
@@ -1838,7 +1838,7 @@ TEST_F(IResearchFeatureTest, test_start) {
                  arangodb::iresearch::isFilter(*function)) ||
                 (entry.second.second == FunctionType::SCORER &&
                  arangodb::iresearch::isScorer(*function)));
-  };
+  }
 
   iresearch.stop();
 
@@ -1892,8 +1892,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_NE(logicalCollection, nullptr);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -1935,8 +1934,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
       *logicalCollection, *logicalView1);
-  ASSERT_NE(nullptr, link1);            // ensure link present after upgrade
-  EXPECT_NE(link0->id(), link1->id());  // ensure new link
+  ASSERT_NE(nullptr, link1);  // ensure link present after upgrade
+  EXPECT_NE(link0->index().id(), link1->index().id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
   EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
               result);  // ensure link directory created after upgrade
@@ -2000,8 +1999,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
       StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView0 = vocbase.createView(viewJson->slice(), false);
@@ -2044,8 +2042,8 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
       *logicalCollection, *logicalView1);
-  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
-  EXPECT_NE(link0->id(), link1->id());  // ensure new link
+  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_NE(link0->index().id(), link1->index().id());  // ensure new link
   linkDataPath = getPersistedPath1(*link1);
   EXPECT_TRUE(irs::file_utils::exists(result, linkDataPath.c_str()) &&
               result);  // ensure link directory created after upgrade
@@ -2640,8 +2638,8 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   EXPECT_EQ(logicalView0->id(), logicalView1->id());  // ensure same id for view
   auto link1 = arangodb::iresearch::IResearchLinkHelper::find(
       *logicalCollection2, *logicalView1);
-  EXPECT_FALSE(!link1);                 // ensure link present after upgrade
-  EXPECT_EQ(link0->id(), link1->id());  // ensure new link
+  EXPECT_FALSE(!link1);  // ensure link present after upgrade
+  EXPECT_EQ(link0->index().id(), link1->index().id());  // ensure new link
   builder.clear();
   builder.openObject();
   EXPECT_TRUE(
@@ -2692,7 +2690,7 @@ class IResearchFeatureTestDBServer
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
-  };
+  }
 
   // version 1 data-source path
   std::filesystem::path getPersistedPath1(
@@ -2701,12 +2699,12 @@ class IResearchFeatureTestDBServer
     std::filesystem::path dataPath(dbPathFeature.directory());
     dataPath /= "databases";
     dataPath /= "database-";
-    dataPath += std::to_string(link.collection().vocbase().id());
+    dataPath += std::to_string(link.index().collection().vocbase().id());
     dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
-    dataPath += std::to_string(link.collection().id().id());
+    dataPath += std::to_string(link.index().collection().id().id());
     dataPath += "_";
-    dataPath += std::to_string(link.id().id());
+    dataPath += std::to_string(link.index().id().id());
     return dataPath;
   }
 
@@ -2715,7 +2713,6 @@ class IResearchFeatureTestDBServer
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ(name, vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
   }
 };
 
@@ -2765,8 +2762,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);
@@ -2864,8 +2860,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
   auto logicalView = vocbase.createView(viewJson->slice(), false);

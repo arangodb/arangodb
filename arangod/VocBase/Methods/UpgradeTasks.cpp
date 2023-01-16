@@ -508,8 +508,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
   auto res = arangodb::methods::Collections::lookup(
       vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
-    res = arangodb::methods::Collections::drop(
-        *col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+    res = arangodb::methods::Collections::drop(*col, true);
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -572,7 +571,7 @@ bool UpgradeTasks::addDefaultUserOther(
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  std::string const path = vocbase.engine().databasePath(&vocbase);
+  std::string const path = vocbase.engine().databasePath();
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
       path, "REPLICATION-APPLIER-STATE");

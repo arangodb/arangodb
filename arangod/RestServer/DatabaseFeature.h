@@ -39,6 +39,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <memory>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -124,9 +126,9 @@ class DatabaseFeature : public ArangodFeature {
   void unprepare() override final;
   void prepare() override final;
 
-  // used by catch tests
+  // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
+  ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif

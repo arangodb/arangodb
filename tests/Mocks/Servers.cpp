@@ -786,7 +786,6 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid",     "globallyUniqueId", "count",
       "planId",        "version", "objectId"};
-  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = dummy.toVelocyPackIgnore(
       ignoreKeys, LogicalDataSource::Serialization::List);
   injectCollectionToAgency(dbName, velocy, dummy.planId(),

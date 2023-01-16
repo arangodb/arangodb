@@ -54,6 +54,10 @@ operation raises an error, an array with the error object(s) is returned.
 You can use this option to save network traffic but you cannot map any errors
 to the inputs of your request.
 
+@RESTQUERYPARAM{refillIndexCaches,boolean,optional}
+Whether to update existing entries in in-memory index caches if document updates
+affect the edge index or cache-enabled persistent indexes.
+
 @RESTDESCRIPTION
 Partially updates documents, the documents to update are specified
 by the `_key` attributes in the body objects. The body of the

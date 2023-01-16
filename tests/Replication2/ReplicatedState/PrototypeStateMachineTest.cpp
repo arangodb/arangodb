@@ -140,7 +140,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -153,7 +153,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
@@ -200,7 +200,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -213,7 +213,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
@@ -357,7 +357,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", leaderLog,
+          feature->createReplicatedState("prototype-state", dbName, leaderLog,
                                          statePersistor));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
@@ -370,7 +370,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
 
   auto followerReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-          feature->createReplicatedState("prototype-state", followerLog,
+          feature->createReplicatedState("prototype-state", dbName, followerLog,
                                          statePersistor));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(

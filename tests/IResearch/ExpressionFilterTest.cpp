@@ -280,8 +280,7 @@ struct IResearchExpressionFilterTest
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(
-        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
         false);  // required for IResearchAnalyzerFeature
@@ -427,8 +426,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
 
   // create view
   {

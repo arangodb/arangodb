@@ -85,10 +85,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
 }
 
-std::string const& RocksDBMetaCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
-}
-
 void RocksDBMetaCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const&) {
   TRI_ASSERT(!_logicalCollection.syncByRevision());

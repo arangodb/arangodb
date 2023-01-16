@@ -31,6 +31,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -126,7 +127,9 @@ void DatabaseManagerThread::run() {
 
   while (true) {
     try {
-      TRI_vocbase_t* database = nullptr;
+      // if we find a database to delete, it will be automatically deleted at
+      // the end of this scope
+      std::unique_ptr<TRI_vocbase_t> database;
       {
         std::lock_guard lock{_databaseFeature._databasesMutex};
         auto& dropped = _databaseFeature._droppedDatabases;
@@ -134,18 +137,19 @@ void DatabaseManagerThread::run() {
         for (auto it = dropped.begin(), end = dropped.end(); it != end; ++it) {
           TRI_ASSERT(*it != nullptr);
           if ((*it)->isDangling()) {
-            database = *it;
+            // found a database to delete
+            // now move the to-be-deleted database from _droppedDatabases
+            // into the unique_ptr
+            auto* p = *it;
             dropped.erase(it);
-            break;  // found a database to delete
+            database.reset(p);
+            break;
           }
         }
       }
 
       if (database != nullptr) {
-        if (database->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
-          // regular database
-          // ---------------------------
-
+        if (!ServerState::instance()->isCoordinator()) {
           TRI_ASSERT(!database->isSystem());
 
           if (_dealer.isEnabled()) {
@@ -179,6 +183,14 @@ void DatabaseManagerThread::run() {
             }
           }
 
+          auto shutdownRes = basics::catchVoidToResult(
+              [&database]() { database->shutdown(); });
+          if (shutdownRes.fail()) {
+            LOG_TOPIC("b3db4", ERR, Logger::FIXME)
+                << "failed to shutdown database '" << database->name()
+                << "': " << shutdownRes.errorMessage();
+          }
+
           // destroy all items in the QueryRegistry for this database
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
@@ -210,8 +222,6 @@ void DatabaseManagerThread::run() {
                 << "dropping database '" << database->name() << "' failed";
           }
         }
-
-        delete database;
 
         // directly start next iteration
       } else {  // if (database != nullptr)
@@ -525,8 +535,8 @@ void DatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
-  calculationVocbase = std::make_unique<TRI_vocbase_t>(
-      TRI_VOCBASE_TYPE_NORMAL, createExpressionVocbaseInfo(server));
+  calculationVocbase =
+      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server));
 }
 
 void DatabaseFeature::start() {
@@ -636,6 +646,10 @@ void DatabaseFeature::stop() {
 
   _engine->cleanupReplicationContexts();
 
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
   std::unique_lock lock{_databasesMutex};
   auto databases = _databases.load();
 
@@ -649,10 +663,6 @@ void DatabaseFeature::stop() {
   auto stopVocbase = [](TRI_vocbase_t* vocbase) {
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
-      return;
-    }
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // i am here for debugging only.
     currentVocbase = vocbase;
@@ -689,6 +699,7 @@ void DatabaseFeature::stop() {
   for (auto& vocbase : _droppedDatabases) {
     stopVocbase(vocbase);
   }
+
   lock.unlock();
 
   // flush again so we are sure no query is left in the cache here
@@ -779,15 +790,16 @@ void DatabaseFeature::recoveryDone() {
 
   _pendingRecoveryCallbacks.clear();
 
+  if (ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
   auto databases = _databases.load();
 
   for (auto& p : *databases) {
     TRI_vocbase_t* vocbase = p.second;
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
-    if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
-      continue;
-    }
 
     if (vocbase->replicationApplier() && _replicationFeature) {
       _replicationFeature->startApplier(vocbase);
@@ -858,13 +870,10 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     // createDatabase must return a valid database or throw
-    auto status = TRI_ERROR_NO_ERROR;
-
-    vocbase = _engine->createDatabase(std::move(info), status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
+    vocbase = _engine->createDatabase(std::move(info));
     TRI_ASSERT(vocbase != nullptr);
 
-    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
+    if (!ServerState::instance()->isCoordinator()) {
       try {
         vocbase->addReplicationApplier();
       } catch (basics::Exception const& ex) {
@@ -897,7 +906,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     if (!_engine->inRecovery()) {
-      if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL && _replicationFeature) {
+      if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
         _replicationFeature->startApplier(vocbase.get());
       }
 
@@ -906,20 +915,14 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
       TRI_ASSERT(result);
     }
 
-    try {
-      std::lock_guard lock{_databasesMutex};
-      auto prev = _databases.load();
+    std::lock_guard lock{_databasesMutex};
+    auto prev = _databases.load();
 
-      auto next = _databases.make(prev);
-      next->insert(std::make_pair(name, vocbase.get()));
+    auto next = _databases.make(prev);
+    next->insert(std::make_pair(name, vocbase.get()));
 
-      _databases.store(std::move(next));
-      waitUnique(prev);
-    } catch (...) {
-      LOG_TOPIC("34825", ERR, arangodb::Logger::FIXME)
-          << "Out of memory for putting new database into list!";
-      // This is bad, but at least we do not crash!
-    }
+    _databases.store(std::move(next));
+    waitUnique(prev);
   }  // release _databaseCreateLock
 
   // write marker into log
@@ -946,70 +949,69 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  TRI_voc_tick_t id = 0;
   auto res = TRI_ERROR_NO_ERROR;
   {
     std::lock_guard lock{_databasesMutex};
 
     auto prev = _databases.load();
     decltype(_databases.create()) next;
-    TRI_vocbase_t* vocbase = nullptr;
-    try {
-      auto it = prev->find(name);
 
-      if (it == prev->end()) {
-        return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-      }
+    auto it = prev->find(name);
 
-      vocbase = it->second;
-      id = vocbase->id();
-      // mark as deleted
-
-      // call LogicalDataSource::drop() to allow instances to clean up
-      // internal state (e.g. for LogicalView implementations)
-      TRI_vocbase_t::dataSourceVisitor visitor =
-          [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
-        // skip LogicalCollection since their internal state is always in the
-        // StorageEngine (optimization)
-        if (arangodb::LogicalDataSource::Category::kCollection ==
-            dataSource.category()) {
-          return true;
-        }
-
-        auto result = dataSource.drop();
-
-        if (!result.ok()) {
-          res = result.errorNumber();
-          LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
-              << "failed to drop DataSource '" << dataSource.name()
-              << "' while dropping database '" << vocbase->name()
-              << "': " << result.errorNumber() << " " << result.errorMessage();
-        }
-
-        return true;  // try next DataSource
-      };
-
-      // acquires a write lock to avoid potential deadlocks
-      vocbase->visitDataSources(visitor);
-
-      if (TRI_ERROR_NO_ERROR != res) {
-        return res;
-      }
-
-      next = _databases.make(prev);
-      next->erase(name);
-      _droppedDatabases.insert(vocbase);
-    } catch (...) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+    if (it == prev->end()) {
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
 
+    TRI_vocbase_t* vocbase = it->second;
+
+    // call LogicalDataSource::drop() to allow instances to clean up
+    // internal state (e.g. for LogicalView implementations)
+    TRI_vocbase_t::dataSourceVisitor visitor =
+        [&res, &name](arangodb::LogicalDataSource& dataSource) -> bool {
+      // skip LogicalCollection since their internal state is always in the
+      // StorageEngine (optimization)
+      if (arangodb::LogicalDataSource::Category::kCollection ==
+          dataSource.category()) {
+        return true;
+      }
+
+      auto result = dataSource.drop();
+
+      if (!result.ok()) {
+        res = result.errorNumber();
+        LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
+            << "failed to drop DataSource '" << dataSource.name()
+            << "' while dropping database '" << name
+            << "': " << result.errorNumber() << " " << result.errorMessage();
+      }
+
+      return true;  // try next DataSource
+    };
+
+    // acquires a write lock to avoid potential deadlocks
+    vocbase->visitDataSources(visitor);
+
+    if (TRI_ERROR_NO_ERROR != res) {
+      return res;
+    }
+
+    next = _databases.make(prev);
+    next->erase(name);
+
+    _droppedDatabases.insert(vocbase);
+
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(id != 0);
+    TRI_ASSERT(vocbase->id() != 0);
 
     _databases.store(std::move(next));
     waitUnique(prev);
 
     TRI_ASSERT(!vocbase->isSystem());
+    // mark as deleted
+    // it is fine to do this here already, because the vocbase cannot be deleted
+    // while we are still holding the _databasesMutex. the DatabaseManagerThread
+    // can only pick a database for deletion once it is in _droppedDatabases
+    // *AND* it has acquired the _databasesMutex.
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
@@ -1251,7 +1253,6 @@ std::string DatabaseFeature::translateCollectionName(
   TRI_ASSERT(vocbase != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
     CollectionNameResolver resolver(*vocbase);
 
     return resolver.getCollectionNameCluster(
@@ -1259,7 +1260,6 @@ std::string DatabaseFeature::translateCollectionName(
             collectionName.data(),
             collectionName.data() + collectionName.size())});
   } else {
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
     auto collection = vocbase->lookupCollection(collectionName);
 
     return collection ? collection->name() : std::string();
@@ -1295,7 +1295,7 @@ void DatabaseFeature::stopAppliers() {
   for (auto& p : *databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
+    if (!ServerState::instance()->isCoordinator()) {
       _replicationFeature->stopApplier(vocbase);
     }
   }
@@ -1423,79 +1423,80 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
-  try {
-    for (VPackSlice it : VPackArrayIterator(databases)) {
-      TRI_ASSERT(it.isObject());
-      LOG_TOPIC("95f68", TRACE, Logger::FIXME)
-          << "processing database: " << it.toJson();
+  for (VPackSlice it : VPackArrayIterator(databases)) {
+    TRI_ASSERT(it.isObject());
+    LOG_TOPIC("95f68", TRACE, Logger::FIXME)
+        << "processing database: " << it.toJson();
 
-      VPackSlice deleted = it.get("deleted");
-      if (deleted.isBoolean() && deleted.getBoolean()) {
-        // ignore deleted databases here
-        continue;
-      }
-
-      std::string const databaseName = it.get("name").copyString();
-      std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
-      std::string const dirName = ::getDatabaseDirName(databaseName, id);
-
-      // create app directory for database if it does not exist
-      res = createApplicationDirectory(dirName, appPath, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        break;
-      }
-
-      // open the database and scan collections in it
-
-      // try to open this database
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
-      auto res = info.load(it, VPackSlice::emptyArraySlice());
-      if (res.fail()) {
-        if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
-          // special case: if we find an invalid database name during startup,
-          // we will give the user some hint how to fix it
-          std::string errorMsg(res.errorMessage());
-          errorMsg.append(": '").append(databaseName).append("'");
-          // check if the name would be allowed when using extended names
-          if (DatabaseNameValidator::isAllowedName(
-                  /*isSystem*/ false, /*extendedNames*/ true, databaseName)) {
-            errorMsg.append(
-                ". This database name would be allowed when using the "
-                "extended naming convention for databases, which is "
-                "currently disabled. The extended naming convention can "
-                "be enabled via the startup option "
-                "`--database.extended-names-databases true`");
-          }
-          res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID,
-                    std::move(errorMsg));
-        }
-        THROW_ARANGO_EXCEPTION(res);
-      }
-
-      auto database = _engine->openDatabase(std::move(info), _upgrade);
-
-      if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
-        try {
-          database->addReplicationApplier();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("ff848", FATAL, arangodb::Logger::FIXME)
-              << "initializing replication applier for database '"
-              << database->name() << "' failed: " << ex.what();
-          FATAL_ERROR_EXIT();
-        }
-      }
-      next->insert(std::make_pair(database->name(), database.get()));
-      database.release();
+    VPackSlice deleted = it.get("deleted");
+    if (deleted.isBoolean() && deleted.getBoolean()) {
+      // ignore deleted databases here
+      continue;
     }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("c7dc0", FATAL, arangodb::Logger::FIXME)
-        << "cannot start database: " << ex.what();
-    FATAL_ERROR_EXIT();
-  } catch (...) {
-    LOG_TOPIC("79053", FATAL, arangodb::Logger::FIXME)
-        << "cannot start database: unknown exception";
-    FATAL_ERROR_EXIT();
+
+    std::string const databaseName = it.get("name").copyString();
+    std::string const id = VelocyPackHelper::getStringValue(it, "id", "");
+    std::string const dirName = ::getDatabaseDirName(databaseName, id);
+
+    // create app directory for database if it does not exist
+    res = createApplicationDirectory(dirName, appPath, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      break;
+    }
+
+    // open the database and scan collections in it
+
+    // try to open this database
+    CreateDatabaseInfo info(server(), ExecContext::current());
+    // set strict validation for database options to false.
+    // we don't want the server start to fail here in case some
+    // invalid settings are present
+    info.strictValidation(false);
+    auto res = info.load(it, VPackSlice::emptyArraySlice());
+
+    if (res.fail()) {
+      std::string errorMsg;
+      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+        // special case: if we find an invalid database name during startup,
+        // we will give the user some hint how to fix it
+        errorMsg.append(res.errorMessage());
+        errorMsg.append(": '").append(databaseName).append("'");
+        // check if the name would be allowed when using extended names
+        if (DatabaseNameValidator::isAllowedName(
+                /*isSystem*/ false, /*extendedNames*/ true, databaseName)) {
+          errorMsg.append(
+              ". This database name would be allowed when using the "
+              "extended naming convention for databases, which is "
+              "currently disabled. The extended naming convention can "
+              "be enabled via the startup option "
+              "`--database.extended-names-databases true`");
+        }
+      } else {
+        errorMsg.append("when opening database '")
+            .append(databaseName)
+            .append("': ");
+        errorMsg.append(res.errorMessage());
+      }
+
+      res.reset(res.errorNumber(), std::move(errorMsg));
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
+    auto database = _engine->openDatabase(std::move(info), _upgrade);
+
+    if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
+      try {
+        database->addReplicationApplier();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("ff848", FATAL, arangodb::Logger::FIXME)
+            << "initializing replication applier for database '"
+            << database->name() << "' failed: " << ex.what();
+        FATAL_ERROR_EXIT();
+      }
+    }
+    next->insert(std::make_pair(database->name(), database.get()));
+    database.release();
   }
 
   _databases.store(std::move(next));
@@ -1507,22 +1508,23 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 /// @brief close all dropped databases
 void DatabaseFeature::closeDroppedDatabases() {
   std::unique_lock lock{_databasesMutex};
+  // take a copy
   auto dropped = std::move(_droppedDatabases);
+  _droppedDatabases.clear();
   lock.unlock();
-  // Now it is safe to destroy the old dropped databases:
-  for (auto* vocbase : dropped) {
-    TRI_ASSERT(vocbase != nullptr);
 
-    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
-      vocbase->shutdown();
-      delete vocbase;
-    } else if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-      delete vocbase;
-    } else {
-      LOG_TOPIC("b8b0e", ERR, arangodb::Logger::FIXME)
-          << "unknown database type " << vocbase->type() << " "
-          << vocbase->name() << " - close doing nothing.";
+  auto guard = scopeGuard([&dropped]() noexcept {
+    for (auto p : dropped) {
+      delete p;
     }
+  });
+
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
+  for (auto p : dropped) {
+    p->shutdown();
   }
 }
 

@@ -83,7 +83,7 @@ that read data which are known to be outside of the hot set. By setting the opti
 to *false*, data read by the query will not make it into the RocksDB block cache if
 not already in there, thus leaving more room for the actual hot set.
 
-@RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
+@RESTSTRUCT{maxNumberOfPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
 @RESTSTRUCT{maxNodesPerCallstack,post_api_cursor_opts,integer,optional,int64}
@@ -106,6 +106,20 @@ early. When the attribute is set to *false*, warnings will not be propagated to
 exceptions and will be returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
 default value for *failOnWarning* so it does not need to be set on a per-query level.
+
+@RESTSTRUCT{allowRetry,post_api_cursor_opts,boolean,optional,}
+Set this option to `true` to make it possible to retry fetching the latest batch
+from a cursor.
+
+If retrieving a result batch fails because of a connection issue, you can ask
+for that batch again using the `POST /_api/cursor/<cursor-id>/<batch-id>`
+endpoint. The first batch has an ID of `1` and the value is incremented by 1
+with every batch. Every result response except the last one also includes a
+`nextBatchId` attribute, indicating the ID of the batch after the current.
+You can remember and use this batch ID should retrieving the next batch fail.
+
+You can only request the latest batch again. Earlier batches are not kept on the
+server-side.
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Can be enabled to execute the query lazily. If set to *true*, then the query is
@@ -139,6 +153,45 @@ query is calculated before any of it is returned to the client. The server
 stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
 will fail before it returns results in case of a conflict.
+
+@RESTSTRUCT{spillOverThresholdMemoryUsage,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the amount of memory used (in bytes) exceeds the specified value.
+This is used for decreasing the memory usage during the query execution.
+
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: 128MB.
+
+**Note**:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
+
+@RESTSTRUCT{spillOverThresholdNumRows,post_api_cursor_opts,integer,optional,}
+This option allows queries to store intermediate and final results temporarily
+on disk if the number of rows produced by the query exceeds the specified value.
+This is used for decreasing the memory usage during the query execution. In a
+query that iterates over a collection that contains documents, each row is a
+document, and in a query that iterates over temporary values 
+(i.e. `FOR i IN 1..100`), each row is one of such temporary values.
+
+This option only has an effect on queries that use the `SORT` operation but
+without a `LIMIT`, and if you enable the spillover feature by setting a path
+for the directory to store the temporary data in with the
+`--temp.intermediate-results-path` startup option.
+
+Default value: `5000000` rows.
+
+**Note**:
+Spilling data from RAM onto disk is an experimental feature and is turned off 
+by default. The query results are still built up entirely in RAM on Coordinators
+and single servers for non-streaming queries. To avoid the buildup of
+the entire query result in RAM, use a streaming query (see the `stream` option).
 
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
@@ -187,6 +240,18 @@ results by changing the access rights of users on collections.
 
 This feature is only available in the Enterprise Edition.
 
+@RESTSTRUCT{allowDirtyReads,post_api_cursor_opts,boolean,optional,}
+If you set this option to `true` and execute the query against a cluster
+deployment, then the Coordinator is allowed to read from any shard replica and
+not only from the leader.
+
+You may observe data inconsistencies (dirty reads) when reading from followers,
+namely obsolete revisions of documents because changes have not yet been
+replicated to the follower, as well as changes to documents before they are
+officially committed on the leader.
+
+This feature is only available in the Enterprise Edition.
+
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
 bind parameters. These values need to be passed in a JSON representation in
@@ -216,6 +281,14 @@ available if the query was executed with the `count` attribute set).
 
 @RESTREPLYBODY{id,string,optional,string}
 The ID of a temporary cursor created on the server for fetching more result batches.
+
+@RESTREPLYBODY{nextBatchId,string,optional,string}
+Only set if the `allowRetry` query option is enabled.
+
+The ID of the batch after the current one. The first batch has an ID of `1` and
+the value is incremented by 1 with every batch. You can remember and use this
+batch ID should retrieving the next batch fail. Use the
+`POST /_api/cursor/<cursor-id>/<batch-id>` endpoint to ask for the batch again.
 
 @RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
 An optional JSON object with extra information about the query result.

@@ -37,10 +37,6 @@
 #include "Cluster/ClusterInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
-#include "Pregel/AggregatorHandler.h"
-#include "Pregel/Conductor.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1007,7 +1003,6 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   PREVENT_EMBEDDED_TRANSACTION();
 
   bool allowDropSystem = false;
-  double timeout = -1.0;  // forever, unless specified otherwise
 
   if (args.Length() > 0) {
     // options
@@ -1020,20 +1015,13 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
             isolate, optionsObject->Get(context, IsSystemKey)
                          .FromMaybe(v8::Local<v8::Value>()));
       }
-      TRI_GET_GLOBAL_STRING(TimeoutKey);
-      if (TRI_HasProperty(context, isolate, optionsObject, TimeoutKey)) {
-        timeout =
-            TRI_ObjectToDouble(isolate, optionsObject->Get(context, TimeoutKey)
-                                            .FromMaybe(v8::Local<v8::Value>()));
-      }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(isolate, args[0]);
     }
   }
 
   try {
-    auto res =
-        methods::Collections::drop(*collection, allowDropSystem, timeout);
+    auto res = methods::Collections::drop(*collection, allowDropSystem);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1218,7 +1206,8 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string path(collection->getPhysical()->path());
+  // always empty
+  std::string path;
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);
@@ -2086,6 +2075,7 @@ static void JS_StatusVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
+  bool ok = false;
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
@@ -2095,17 +2085,19 @@ static void JS_StatusVocbaseCol(
                   .clusterInfo()
                   .getCollectionNT(databaseName,
                                    std::to_string(collection->id().id()));
-    if (ci != nullptr) {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
-    } else {
-      TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
+    if (ci != nullptr && !ci->deleted()) {
+      ok = true;
     }
+  } else if (!collection->deleted()) {
+    ok = true;
   }
-  // intentionally falls through
 
-  auto status = collection->status();
+  if (ok) {
+    TRI_V8_RETURN(v8::Number::New(isolate, /*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  } else {
+    TRI_V8_RETURN(v8::Number::New(isolate, /*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
   TRI_V8_TRY_CATCH_END
 }
 

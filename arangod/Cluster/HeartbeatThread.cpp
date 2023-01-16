@@ -1358,13 +1358,18 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
+      CreateDatabaseInfo info(server(), ExecContext::current());
+      // set strict validation for database options to false.
+      // we don't want the heartbeat thread to fail here in case some
+      // invalid settings are present
+      info.strictValidation(false);
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
       if (infoResult.fail()) {
         LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
-            << "In agency database plan" << infoResult.errorMessage();
+            << "in agency database plan for database " << options.value.toJson()
+            << ": " << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
 
