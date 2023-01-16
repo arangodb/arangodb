@@ -76,6 +76,7 @@ const ViewSettingsReactView = ({ name }) => {
           <Textbox type={'text'} disabled={true} required={false}
             value={formState.primarySortCompression} />
           </th>
+          <th className="collectionTh"></th>
         </tr>
       {
         formState.primarySort.map (item =>(
@@ -101,9 +102,13 @@ const ViewSettingsReactView = ({ name }) => {
         formState.storedValues.map (item =>(
           <tr className="tableRow" id={"row_" + (item.fields)}>
             <th className="collectionTh">
-            <Textbox type={'text'} disabled={true} required={false}
-              value={item.fields} /> {item.compression}
+              {item.fields.join(', ')}:
             </th>
+            <th className="collectionTh">
+              <Textbox type={'text'} disabled={true} required={false}
+                value={item.compression} />  
+            </th>
+            <th className="collectionTh"></th>
           </tr>
         ))
       }
