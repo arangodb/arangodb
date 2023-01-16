@@ -119,24 +119,6 @@ const ViewSettingsReactView = ({ name }) => {
   const GeneralContent = () => {
   return( <table>
   <tbody>
-  <tr className="tableRow" id="row_change-view-name">
-    <th className="collectionTh">
-      Name*:
-    </th>
-    <th className="collectionTh">
-      <Textbox type={'text'} value={formState.name} onChange={updateName}
-              required={true} disabled={nameEditDisabled}/>
-    </th>
-    <th className="collectionTh">
-    
-      <ToolTip
-          title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
-          setArrow={true}
-        >
-          <span className="arangoicon icon_arangodb_info" style={{fontSize: '18px', color: 'rgb(85, 85, 85)'}}></span>
-        </ToolTip>
-    </th>
-  </tr>
 
   <tr className="tableRow" id="row_change-view-writebufferIdle">
     <th className="collectionTh">
