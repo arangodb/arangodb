@@ -1,6 +1,6 @@
 /* global frontendConfig */
 
-import { cloneDeep, isEqual, uniqueId, times } from 'lodash';
+import { cloneDeep, isEqual, uniqueId } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import "./split-pane-styles.css";
 import "./viewsheader.css";
@@ -235,11 +235,13 @@ const ViewSettingsReactView = ({ name }) => {
   </tbody>
 </table>)};
 
+/*
   const panels = times(3, (i) => ({
     key: `panel-${i}`,
     title: `General`,
     content: GeneralContent
   }));
+  */
   const initialState = useRef({
     formState: { name },
     formCache: { name },
@@ -408,16 +410,6 @@ const ViewSettingsReactView = ({ name }) => {
                 <div className={'tab-content'} style={{ display: 'unset' }}>
                   <div className="tab-pane tab-pane-modal active" id="JSON">
                     <Grid>
-                      {
-                        /*
-                        isAdminUser && views.length
-                          ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                            <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-                          </Cell>
-                          : null
-                        */
-                      }
-
                       <Cell size={'1'}>
                         {
                           isAdminUser
