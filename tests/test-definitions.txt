@@ -16,7 +16,7 @@ replication_ongoing_frompresent parallelity=3 single -- --extraArgs:log.level re
 replication_ongoing_global priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 single -- --extraArgs:log.level replication=trace
 replication_static priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
-replication_sync priority=500 parallelity=3 single -- --extraArgs:log.level replication=trace
+replication_sync priority=8000 buckets=2 parallelity=3 single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 single 
 http_replication priority=500 parallelity=3 single
 
@@ -33,12 +33,21 @@ permissions priority=500 single
 recovery priority=2000 buckets=4 parallelity=5 single
 version single
 
-shell_api priority=500 single suffix=http -- $EncryptionAtRest
-shell_api priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+shell_v8 priority=500 single -- $EncryptionAtRest
+shell_server_v8 priority=500 single -- $EncryptionAtRest
+
+shell_api priority=500 single -- $EncryptionAtRest
+
+shell_api_multi priority=500 single suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+
 # Shell client tests Single Server; distribute evenly
-shell_client priority=250 parallelity=2 single suffix=http -- $EncryptionAtRest
-shell_client priority=1500 parallelity=2 single suffix=http2 -- --http2 true
-shell_client priority=2500 parallelity=2 single suffix=vst -- --vst true
+shell_client priority=250 parallelity=2 single -- $EncryptionAtRest
+shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
+shell_client_multi priority=1500 parallelity=2 single suffix=http
+shell_client_multi priority=2500 parallelity=2 single suffix=vst -- --vst true
+
+
 shell_client_transaction priority=750 single suffix=http -- $EncryptionAtRest
 shell_client_transaction priority=1750 single suffix=http2 -- --http2 true
 shell_client_transaction priority=2750 single suffix=vst -- --vst true
@@ -74,20 +83,20 @@ load_balancing priority=500 cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 cluster -- --dumpAgencyOnError true
 
 replication2_client cluster
-replication2_server cluster -- --dumpAgencyOnError true
+replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 cluster -- --dumpAgencyOnError true
 resilience_failover priority=750 cluster -- --dumpAgencyOnError true
 resilience_move priority=600 cluster -- --dumpAgencyOnError true
 resilience_sharddist cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 cluster buckets=8 -- --test search
+recovery_cluster priority=2000 cluster buckets=8
 
 # different number of buckets in cluster
 shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 buckets=5 -- --dumpAgencyOnError true
-#shell_client_replication2_recovery priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_client_replication2_recovery priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 
 # Common Tests

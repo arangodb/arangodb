@@ -177,7 +177,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
           }
         }
 #endif
-        res = methods::Collections::drop(*coll, false, -1.0);
+        res = methods::Collections::drop(*coll, false);
         if (res.fail()) {
           res = trx.finish(result.result);
           return OperationResult(res, options);
@@ -502,7 +502,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
-        res = methods::Collections::drop(*coll, false, -1.0);
+        res = methods::Collections::drop(*coll, false);
       }
       if (res.fail()) {
         return OperationResult(res, options);

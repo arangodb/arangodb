@@ -24,11 +24,11 @@
 #pragma once
 
 #include <atomic>
-#include <string_view>
+#include <cstdint>
+#include <string>
 
 #include "Basics/Result.h"
 #include "VocBase/Identifiers/DataSourceId.h"
-#include "voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -36,6 +36,7 @@ namespace arangodb {
 namespace velocypack {
 
 class Builder;
+class Slice;
 
 }  // namespace velocypack
 
@@ -57,13 +58,25 @@ class LogicalDataSource {
   virtual ~LogicalDataSource() = default;
 
   Category category() const noexcept { return _category; }
-  bool deleted() const noexcept {
+
+  [[nodiscard]] bool deleted() const noexcept {
     return _deleted.load(std::memory_order_relaxed);
   }
+
+  void setDeleted() noexcept {
+    // relaxed here and in load ok because we don't need
+    // happens before between them.
+    _deleted.store(true, std::memory_order_relaxed);
+  }
+
   virtual Result drop() = 0;
+
   std::string const& guid() const noexcept { return _guid; }
+
   DataSourceId id() const noexcept { return _id; }
+
   std::string const& name() const noexcept { return _name; }
+
   DataSourceId planId() const noexcept { return _planId; }
 
   enum class Serialization : uint8_t {
@@ -94,6 +107,12 @@ class LogicalDataSource {
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
  protected:
+  // revert a setDeleted() call later. currently only used by LogicalView.
+  // TODO: should be removed
+  void setUndeleted() noexcept {
+    _deleted.store(false, std::memory_order_seq_cst);
+  }
+
   template<typename DataSource, typename... Args>
   explicit LogicalDataSource(DataSource const& /*self*/, Args&&... args)
       : LogicalDataSource{DataSource::category(), std::forward<Args>(args)...} {
@@ -106,9 +125,6 @@ class LogicalDataSource {
     return {};
   }
 
-  void deleted(bool deleted) noexcept {
-    _deleted.store(deleted, std::memory_order_relaxed);
-  }
   void name(std::string&& name) noexcept { _name = std::move(name); }
 
  private:

@@ -49,8 +49,6 @@ class ClusterCollection final : public PhysicalCollection {
   explicit ClusterCollection(LogicalCollection& collection,
                              ClusterEngineType engineType,
                              velocypack::Slice info);
-  ClusterCollection(LogicalCollection& collection,
-                    PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
 
@@ -63,12 +61,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates() override;
 
-  std::string const& path() const override;
-
   Result updateProperties(velocypack::Slice slice) override;
-
-  virtual PhysicalCollection* clone(
-      LogicalCollection& collection) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
@@ -77,9 +70,6 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options) override;
 
-  /// @brief closes an open collection
-  ErrorCode close() override;
-
   RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
@@ -87,13 +77,9 @@ class ClusterCollection final : public PhysicalCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  void prepareIndexes(velocypack::Slice indexesSlice) override;
-
   std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
                                      bool& created) override;
 
-  /// @brief Drop an index with the given iid.
-  bool dropIndex(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
@@ -116,6 +102,10 @@ class ClusterCollection final : public PhysicalCollection {
                    std::pair<LocalDocumentId, RevisionId>& result,
                    ReadOwnWrites) const override;
 
+  Result lookupKeyForUpdate(
+      transaction::Methods* trx, std::string_view key,
+      std::pair<LocalDocumentId, RevisionId>& result) const override;
+
   Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb,
               ReadOwnWrites) const override;
@@ -129,23 +119,30 @@ class ClusterCollection final : public PhysicalCollection {
                         bool fillCache,
                         ReadOwnWrites readOwnWrites) const override;
 
-  Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                velocypack::Slice newDocument,
+  Result insert(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                RevisionId newRevisionId, velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result update(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result update(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument, RevisionId newRevisionId,
                 velocypack::Slice newDocument,
                 OperationOptions const& options) override;
 
-  Result replace(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result replace(transaction::Methods& trx,
+                 IndexesSnapshot const& indexesSnapshot,
+                 LocalDocumentId previousDocumentId,
                  RevisionId previousRevisionId,
                  velocypack::Slice previousDocument, RevisionId newRevisionId,
                  velocypack::Slice newDocument,
                  OperationOptions const& options) override;
 
-  Result remove(transaction::Methods& trx, LocalDocumentId previousDocumentId,
+  Result remove(transaction::Methods& trx,
+                IndexesSnapshot const& indexesSnapshot,
+                LocalDocumentId previousDocumentId,
                 RevisionId previousRevisionId,
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
@@ -155,8 +152,6 @@ class ClusterCollection final : public PhysicalCollection {
   void figuresSpecific(bool details, velocypack::Builder&) override;
 
  private:
-  void addIndex(std::shared_ptr<Index> idx);
-
   // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;

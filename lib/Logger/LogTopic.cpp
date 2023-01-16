@@ -23,7 +23,9 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include "LogTopic.h"
 
@@ -140,8 +142,8 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
-LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::DEBUG);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);

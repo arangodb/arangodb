@@ -49,6 +49,8 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -209,7 +211,7 @@ bool Expression::findInArray(AqlValue const& left, AqlValue const& right,
 
   size_t const n = right.length();
 
-  if (n >= AstNode::SortNumberThreshold &&
+  if (n >= AstNode::kSortNumberThreshold &&
       (node->getMember(1)->isSorted() ||
        ((node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN) &&
@@ -462,10 +464,10 @@ AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
       return executeSimpleExpressionNaryAndOr(ctx, node, mustDestroy);
     case NODE_TYPE_COLLECTION:
     case NODE_TYPE_VIEW:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     std::string("node type '") +
-                                         node->getTypeString() +
-                                         "' is not supported in expressions");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          absl::StrCat("node type '", node->getTypeString(),
+                       "' is not supported in expressions"));
 
     default:
       std::string msg("unhandled type '");
@@ -916,8 +918,8 @@ AqlValue Expression::invokeV8Function(
           .FromMaybe(v8::Local<v8::Value>());
 
   try {
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-  } catch (arangodb::basics::Exception const& ex) {
+    V8Executor::handleV8Error(tryCatch, result);
+  } catch (basics::Exception const& ex) {
     if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
       throw;
     }

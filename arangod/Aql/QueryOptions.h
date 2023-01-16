@@ -95,6 +95,7 @@ struct QueryOptions {
   // add even more detail (internals) to query execution plans
   bool explainInternals;
   bool stream;
+  bool retriable;
   // do not return query results
   bool silent;
   // make the query fail if a warning is produced

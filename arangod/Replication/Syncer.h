@@ -33,6 +33,10 @@
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -48,7 +52,6 @@ namespace velocypack {
 class Slice;
 }
 
-class Endpoint;
 class LogicalCollection;
 
 class Syncer : public std::enable_shared_from_this<Syncer> {
@@ -196,43 +199,40 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   Result applyCollectionDumpMarker(transaction::Methods&,
                                    LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&,
+                                   velocypack::Slice slice,
                                    std::string& conflictingDocumentKey);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
-  Result createCollection(TRI_vocbase_t& vocbase,
-                          arangodb::velocypack::Slice const& slice,
-                          arangodb::LogicalCollection** dst);
+  Result createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
+                          LogicalCollection** dst);
 
   /// @brief drops a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase
-  Result dropCollection(arangodb::velocypack::Slice const&, bool reportError);
+  Result dropCollection(velocypack::Slice slice, bool reportError);
 
   /// @brief creates an index, based on the VelocyPack provided
-  Result createIndex(arangodb::velocypack::Slice const&);
+  Result createIndex(velocypack::Slice slice);
 
   /// @brief creates an index, or returns the existing matching index if there
   /// is one
-  void createIndexInternal(arangodb::velocypack::Slice const&,
-                           LogicalCollection&);
+  void createIndexInternal(velocypack::Slice idxDef, LogicalCollection&);
 
   /// @brief drops an index, based on the VelocyPack provided
-  Result dropIndex(arangodb::velocypack::Slice const&);
+  Result dropIndex(velocypack::Slice slice);
 
   /// @brief creates a view, based on the VelocyPack provided
-  Result createView(TRI_vocbase_t& vocbase,
-                    arangodb::velocypack::Slice const& slice);
+  Result createView(TRI_vocbase_t& vocbase, velocypack::Slice slice);
 
   /// @brief drops a view, based on the VelocyPack provided
-  Result dropView(arangodb::velocypack::Slice const&, bool reportError);
+  Result dropView(velocypack::Slice slice, bool reportError);
 
   // TODO worker safety
-  virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
+  virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice slice);
 
   // TODO worker safety
-  std::shared_ptr<LogicalCollection> resolveCollection(
-      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice);
+  std::shared_ptr<LogicalCollection> resolveCollection(TRI_vocbase_t& vocbase,
+                                                       velocypack::Slice slice);
 
   // TODO worker safety
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {

@@ -49,6 +49,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"

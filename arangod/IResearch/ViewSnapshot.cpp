@@ -24,7 +24,7 @@
 #include "IResearch/ViewSnapshot.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
-#include "Containers/FlatHashMap.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 
 #include <absl/strings/str_cat.h>
@@ -103,7 +103,7 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   }
   _segments.reserve(segments);
   for (size_t i = 0; i != _links.size(); ++i) {
-    auto const cid = _links[i]->collection().id();
+    auto const cid = _links[i]->index().collection().id();
     auto const& reader = _readers[i];
     for (auto const& segment : reader) {
       _segments.emplace_back(cid, &segment);
@@ -180,7 +180,7 @@ ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
       // link is out of sync, we cannot use it for querying
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          absl::StrCat("link ", std::to_string(link->id().id()),
+          absl::StrCat("link ", link->index().id().id(),
                        " has been marked as failed and needs to be recreated"));
     }
   }

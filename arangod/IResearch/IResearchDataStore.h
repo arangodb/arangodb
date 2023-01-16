@@ -78,9 +78,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     TRI_ASSERT(_removals.empty());
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value,
-              bool nested) {
-    _ctx.remove(_removals.emplace(engine, value, nested));
+  void remove(LocalDocumentId value, bool nested) {
+    _ctx.remove(_removals.emplace(value, nested));
   }
 };
 
@@ -126,7 +125,7 @@ class IResearchDataStore {
     irs::directory_reader _reader;
   };
 
-  IResearchDataStore(IndexId iid, LogicalCollection& collection);
+  explicit IResearchDataStore(ArangodServer& server);
 
   virtual ~IResearchDataStore();
 
@@ -144,24 +143,20 @@ class IResearchDataStore {
   Snapshot snapshot() const;
   static irs::directory_reader reader(LinkLock const& linkLock);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the identifier for this link/index
-  //////////////////////////////////////////////////////////////////////////////
-  IndexId id() const noexcept { return _id; }
+  [[nodiscard]] virtual Index& index() noexcept = 0;
+  [[nodiscard]] virtual Index const& index() const noexcept = 0;
+  [[nodiscard]] StorageEngine* engine() const noexcept { return _engine; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the associated collection
-  /// @note arangodb::Index override
-  //////////////////////////////////////////////////////////////////////////////
-  LogicalCollection& collection() const noexcept { return _collection; }
-  StorageEngine* engine() const noexcept { return _engine; }
+  // valid for a link to be dropped from an ArangoSearch view
+  static constexpr bool canBeDropped() noexcept { return true; }
 
-  static bool hasSelectivityEstimate();  // arangodb::Index override
+  // selectivity can only be determined per query
+  // since multiple fields are indexed
+  static constexpr bool hasSelectivityEstimate() noexcept { return false; }
 
   bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     transaction::Methods* trx);  // arangodb::Index override
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief give derived class chance to fine-tune iresearch storage
@@ -191,7 +186,7 @@ class IResearchDataStore {
     return _dataStore._recoveryTickHigh;
   }
 
-  bool exists(Snapshot const& snapshot, LocalDocumentId documentId, bool nested,
+  bool exists(Snapshot const& snapshot, LocalDocumentId documentId,
               uint64_t const* recoveryTick) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +219,7 @@ class IResearchDataStore {
   struct Stats {
     uint64_t numDocs{};
     uint64_t numLiveDocs{};
+    uint64_t numPrimaryDocs{};
     uint64_t numSegments{};
     uint64_t numFiles{};
     uint64_t indexSize{};
@@ -398,8 +394,8 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result deleteDataStore() noexcept;
 
- public:  // TODO(MBkkt) public only for tests, make protected
-  // These methods only for tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get numbers of failed commit cleanup consolidation
   ////////////////////////////////////////////////////////////////////////////////
@@ -409,7 +405,7 @@ class IResearchDataStore {
   /// @brief get average time of commit cleanuo consolidation
   ////////////////////////////////////////////////////////////////////////////////
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
-
+#endif
  protected:
   enum class DataStoreError : uint8_t {
     // data store has no issues
@@ -440,7 +436,7 @@ class IResearchDataStore {
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
-  virtual irs::comparer const* getComparator() const noexcept = 0;
+  virtual irs::Comparer const* getComparator() const noexcept = 0;
 
   StorageEngine* _engine{nullptr};
 
@@ -451,9 +447,6 @@ class IResearchDataStore {
   // 'this' for the lifetime of the link (for use with asynchronous calls)
   AsyncLinkPtr _asyncSelf;
 
-  // the linked collection
-  LogicalCollection& _collection;
-
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
@@ -462,7 +455,6 @@ class IResearchDataStore {
 
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
-  IndexId const _id;
   bool _hasNestedFields{false};
 
   // protected by _commitMutex
@@ -478,6 +470,8 @@ class IResearchDataStore {
   // for insert(...)/remove(...)
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
+
+  irs::format::ptr _format;
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};

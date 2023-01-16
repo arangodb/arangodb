@@ -251,16 +251,8 @@ function recovery (options) {
       status: false
     };
   }
-  
-  if (!options.cluster) {
-    return {
-      recovery: {
-        status: false,
-        message: 'cluster_recovery suite need cluster option to be set to true!'
-      },
-      status: false
-    };
-  }
+  options.cluster = true;
+
   let results = {
     status: true
   };
@@ -272,7 +264,9 @@ function recovery (options) {
     }
   }
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options
+                                       // At the moment only view-tests supported by cluster recovery tests:
+                                      ).filter(testname => testname.search('search') >= 0);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
@@ -340,8 +334,6 @@ function recovery (options) {
       );
       params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
-//        the instance manager destructor cleans this out:
-//        fs.removeDirectoryRecursive(params.rootDir, true);
         if (params.keyDir !== "") {
           fs.removeDirectoryRecursive(params.keyDir);
         }
@@ -370,7 +362,7 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_cluster'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

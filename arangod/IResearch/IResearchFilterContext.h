@@ -27,6 +27,7 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 namespace arangodb {
 
@@ -49,7 +50,7 @@ struct QueryContext {
   transaction::Methods* trx{};
   aql::Ast* ast{};
   aql::ExpressionContext* ctx{};
-  ::iresearch::index_reader const* index{};
+  ::irs::index_reader const* index{};
   aql::Variable const* ref{};
   // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};

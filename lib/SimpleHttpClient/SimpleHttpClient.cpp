@@ -23,10 +23,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -558,7 +560,9 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.clear();
 
   // append method
-  GeneralRequest::appendMethod(method, &_writeBuffer);
+  std::string_view mth = GeneralRequest::translateMethod(method);
+  _writeBuffer.appendText(mth.data(), mth.size());
+  _writeBuffer.appendChar(' ');
 
   // append location
   std::string const* l = &location;

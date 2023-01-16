@@ -31,6 +31,7 @@
 
 #include "Job.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
@@ -46,7 +47,6 @@
 #include "Random/RandomGenerator.h"
 #include "Helpers.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
@@ -69,10 +69,8 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
-std::string const planRepLogPrefix = "/Plan/ReplicatedLogs/";
-std::string const targetRepLogPrefix = "/Target/ReplicatedLogs/";
-std::string const targetRepStatePrefix = "/Target/ReplicatedStates/";
-std::string const planRepStatePrefix = "/Plan/ReplicatedStates/";
+std::string const targetRepStatePrefix = "/Target/ReplicatedLogs/";
+std::string const planRepStatePrefix = "/Plan/ReplicatedLogs/";
 std::string const planDBPrefix = "/Plan/Databases/";
 std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -86,6 +84,7 @@ std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
+std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 
 write_ret_t singleWriteTransaction(AgentInterface* _agent,
                                    velocypack::Builder const& transaction,
@@ -1157,32 +1156,18 @@ bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
   return false;
 }
 
-std::optional<arangodb::replication2::replicated_state::agency::Target>
-Job::readStateTarget(Node const& snap, std::string const& db,
-                     replication2::LogId stateId) {
-  auto targetPath = "/Target/ReplicatedStates/" + db + "/" + to_string(stateId);
+std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
+    Node const& snap, std::string const& db, replication2::LogId stateId) {
+  using namespace arangodb::cluster::paths::aliases;
+  auto targetPath = target()->replicatedLogs()->database(db)->log(stateId);
   auto targetNode = snap.get(targetPath);
   if (not targetNode.has_value()) {
     return std::nullopt;
   }
-  auto target = velocypack::deserialize<
-      arangodb::replication2::replicated_state::agency::Target>(
-      targetNode->get().toBuilder().slice());
+  auto target =
+      velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
+          targetNode->get().toBuilder().slice());
   return target;
-}
-
-std::optional<arangodb::replication2::replicated_state::agency::Plan>
-Job::readStatePlan(Node const& snap, std::string const& db,
-                   replication2::LogId stateId) {
-  auto planPath = "/Plan/ReplicatedStates/" + db + "/" + to_string(stateId);
-  auto planNode = snap.get(planPath);
-  if (not planNode.has_value()) {
-    return std::nullopt;
-  }
-  auto plan = velocypack::deserialize<
-      arangodb::replication2::replicated_state::agency::Plan>(
-      planNode->get().toBuilder().slice());
-  return plan;
 }
 
 std::optional<arangodb::replication2::agency::LogPlanSpecification>

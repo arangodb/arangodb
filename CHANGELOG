@@ -3,6 +3,271 @@ devel
 
 * FE-174: Change ViewsUI layout to single-page instead of tabs.
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
+* APM-592: In batched query results, when executing requests for `/_api/cursor`, 
+  there might be a connection error and the user might not be able to retrieve
+  the latest batch from the cursor. For that, a query option flag `allowRetry` was
+  added. When set to `true`, if the latest batch response object wasn't
+  successfully received, the user can send a retry request to receive it with 
+  a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch
+  is cached, meaning former batches cannot be retrieved again later.
+
+* Change the request lane for replication catchup requests that leaders in
+  active failover receive from their followers from medium to high. This
+  will give catchup requests from followers highest priority, so that the
+  leader will preferrably execute them compared to regular requests.
+
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
+* Use more compact and efficient representation for arrays and objects during
+  AQL AST serialization and deserialization. This can help to reduce the size
+  of messages exchanged between coordinator and database servers during query
+  setup, and also reduce the time needed for parsing these messages. This 
+  especially helps when there are large bind parameter values that are arrays
+  or objects.
+  The more efficient format is used also inside an AQL query's "explain" and 
+  "profile" methods, and thus any callers that process the return values of
+  explain and profile operations may now receive the new format. All callers
+  inside the ArangoDB code have been adjusted, but any external callers that
+  process the JSON response values of AQL query explain or profile operations
+  may need to be adjusted to handle the new format.
+
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
+* Added new stage "instantiating executors" to the query profiling output.
+  The time spent in "instantiating executors" is the time needed to create
+  the query executors from the final query execution time. In cluster mode,
+  this stage also includes the time needed for physically distributing the 
+  query snippets to the participating database servers.
+  Previously, the time spent for instantiating executors and the physical
+  distribution was contained in the "optimizing plan" stage, which was
+  misleading.
+
+* Removed constant values for query variables from query plan serialization 
+  in cases they were not needed. Previously, constant values of query variables
+  were always serialized for all occurrences of a variable in a query plan.
+  If the constant values were large, this contributed to higher serialization
+  and thus query setup times. Now the constant values are only serialized
+  for relevant parts of query execution plans.
+
+* BTS-199: remove check for environment variable `GLIBCXX_FORCE_NEW` from 
+  server start, and remove setting this variable from startup scripts. 
+  The reason is that the environment variable only controls the behavior of
+  programs linked against glibc, but our release builds are linked to libmusl.
+
+* Make the cache_oblivious option of jemalloc configurable from the
+  environment and set its default to `false`. This helps to save
+  4096 bytes of RAM for every allocation which is at least 16384 bytes
+  large. This is particularly beneficial for the RocksDB buffer cache.
+
+* Updated ArangoDB Starter to 0.15.6-preview-1.
+
+* Acquire a snapshot of the (list of) indexes when starting document insert, 
+  update/replace and remove operations, and use that snapshot throughout the 
+  operation. Previously, the list of indexes was acquired multiple times during
+  a write operation, and it was (at least in theory) possible that the list of
+  indexes changed between the individual acquistions.
+  The PR also contains an optimization to not fetch the full document from the 
+  storage engine for remove and replace operations in case the full document is
+  not needed to process the operation. This is the case when the collection 
+  does not contain any secondary indexes and `returnOld` is not used.
+
+* Added experimental startup option `--rocksdb.block-cache-jemalloc-allocator`.
+  This option defaults to `false`. When set to `true`, a jemalloc-based memory 
+  allocator will be used to allocate memory for the RocksDB block cache. 
+  This allocator will also mark the memory of the block cache to be excluded 
+  from coredumps, potentially reducing coredump size a lot.
+
+* Use intermediate commits in old shard synchronization protocol. This avoids
+  overly large RocksDB transactions when syncing large shards, which is a
+  remedy for OOM kills during restarts.
+
+* Remove async mode from pregel.
+
+* Added a configuration option (for the agency):
+    --agency.supervision-failed-leader-adds-follower
+  with a default of `true` (behavior as before). If set to `false`,
+  a `FailedLeader` job does not automatically configure a new shard
+  follower, thereby preventing unnecessary network traffic, CPU and IO load
+  for the case that the server comes back quickly. If the server is
+  permanently failed, an `AddFollower` job will be created anyway eventually.
+
+* Print the pid of the process which sent a SIGABRT or other fatal 
+  signal that shuts down ArangoDB ungracefully.
+
+* Avoid write-write conflicts for single document operations performed via the
+  document REST API (i.e., no AQL, but also no streaming transactions). This is
+  achieved by locking the key of each document before performing the actual
+  modification. This lock acquisition effectively serializes all operations on
+  the same document. To avoid starvation, the lock acquisition is limited to
+  one second. This lock timeout value is currently hardcoded but will be made
+  configurable in the future. If the lock cannot be acquired within this time,
+  the operation fails with a write-write conflict error as before.
+
+  Performing changes to a unique index entry also requires us to lock that
+  index entry to ensure uniqueness. This lock acquisition is subject to the
+  same lock timeout as locking the document key.
+
+  We are planning to generalize this for multi-document operations as well as
+  AQL and streaming transactions in the future.
+
+  In case we cannot acquire the lock on the key of the document we want to
+  insert/modify, the error message will be
+  `Timeout waiting to lock key - in index primary of type primary over '_key'; conflicting key: <key>`
+  where `<key>` corresponds to the key of the document we tried to modify.
+  In addition, the error object will contain `_key`, `_id` and `_rev` fields.
+  The `_key` and `_id` correspond to the document we tried to insert/modify,
+  and `_rev` will correspond to the current revision of the document from the
+  DB if available, and otherwise empty.
+
+  In case we cannot acquire the lock on a unique index entry, the error
+  message will be
+  `Timeout waiting to lock key - in index <indexName> of type persistent over '<fields>'; document key: <key>; indexed values: [<values>]`
+  where `<indexName>` is the name of the index in which we tried to lock the
+  entry, `<fields>` is the list of fields included in that index, `<key>`
+  corresponds to the key of the document we tried to insert/modify, and
+  `<values>` corresponds to the indexed values from our document.
+  In addition, the error object will contain `_key`, `_id` and `_rev` fields.
+  The `_key` and `_id` correspond to the document we tried to insert/modify,
+  and `_rev` will correspond to the current revision of the document from the
+  DB if available, and otherwise empty.
+
+  This addresses Github issue #9702 and APM-522
+
+* Added a feature to the ResignLeadership job. By default, it will now
+  undo the leader changes automatically after the server is restarted,
+  unless the option `undoMoves` is set to `false`. This will help to
+  make rolling upgrades and restarts less troublesome, since the shard
+  leaderships will not get unbalanced.
+
+* Disallow creating new databases with a `replicationFactor` value set to
+  a value lower than `--cluster.min-replication-factor` or higher than
+  `--cluster.max-replication-factor`. Previously the `replicationFactor`
+  settings for new databases were not bounds-checked, only for new
+  collections.
+
+* BTS-1141: Changed the default value of startup option 
+  `--rocksdb.enforce-block-cache-size-limit` from `true` to `false`. 
+  This change prevents RocksDB from going into read-only mode when an internal
+  operation tries to insert some value into the block cache, but can't do so
+  because the block cache's capacity limit is reached.
+
+* Fixed BTS-418: Suboptimal index range calculation with redundant conditions.
+
+* Don't log Boost ASIO warnings such as `asio IO error: 'stream truncated'`
+  when a peer closes an SSL/TLS connection without performing a proper
+  connection shutdown.
+
+* Added new per-operation option `refillIndexCaches` to write operations,
+  namely:
+
+  - AQL INSERT/UPDATE/REPLACE/REMOVE modification operations
+  - single-document insert, update, replace and remove operations
+  - multi-document insert, update, replace and remove operations
+
+  If the option is set to `true` every currently running transaction will 
+  keep track of which in-memory index cache entries were invalidated by 
+  the transaction, and will try to (re-)fill them later.
+  Currently edge indexes and velocypack-based indexes (persistent, hash, 
+  sklipist index) are supported. For velocypack-based indexes, the refilling
+  will only happen if the index was set up with an in-memory cache (i.e. the
+  `cacheEnabled` flag was set during index creation).
+
+  Example usages:
+  - `db.<collection>.insert({ _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
+  - `db.<collection>.update(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
+  - `db.<collection>.replace(key, { _from: ..., _to: ..., ... }, { refillIndexCaches: true });`
+  - `db.<collection>.remove(key, { refillIndexCaches: true });`
+  - `INSERT { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `UPDATE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `REPLACE { ... } WITH { ... } INTO <collection> OPTIONS { refillIndexCaches: true }`
+  - `REMOVE { ... } IN <collection> OPTIONS { refillIndexCaches: true }`
+
+  The refilling of the in-memory caches for indexes is performed by a 
+  background thread, so that the foreground write operation shouldn't be 
+  slowed down a lot. The background thread may however cause additional 
+  I/O for looking up the data in RocksDB and for repopulating the caches.
+
+  The background refilling is done in a best-effort way and is not guaranteed 
+  to always succeed, e.g. if there is no memory available for the cache 
+  subsystem, or when an in-memory cache table is currently in a migration phase
+  (grow/shrink operation).
+
+  There is a new startup option `--rocksdb.auto-refill-index-caches-on-modify`
+  for DB-Servers and single servers, which currently defaults to `false`. If 
+  it is set to `true`, the cache refilling will be turned on automatically for
+  all insert/update/replace/remove operations, so that it doesn't need to be 
+  specified on the per-operation/per-query level.
+
+  The new startup option `--rocksdb.auto-refill-index-caches-queue-capacity`
+  can be used to limit the number of index cache entries that the background 
+  thread will queue. This is a safeguard to keep the memory usage at bay in 
+  case the background thread is slower than concurrent threads that perform 
+  ingestions.
+
+  There are also new startup options to control whether or not the in-memory 
+  caches should automatically be seeded upon server restart.
+  The option `--rocksdb.auto-fill-index-caches-on-startup` for DB-Servers and 
+  single servers enables this functionality. It currently defaults to `false`.
+  If it is set to `true`, the in-memory caches of all eligible indexes will be
+  automatically pre-seeded after the server startup. Note that this may cause 
+  additional CPU and I/O load.
+  The option `--rocksdb.max-concurrent-index-fill-tasks` is available to limit
+  the impact of the automatic index filling at startup. It controls how many 
+  full index filling operations can execute concurrently. The lower this number
+  is, the lower the impact of cache filling, but the longer it will take. 
+  The default value for this option depends on the number of available cores, 
+  and is at least `1`. A value of `0` cannot be used. 
+  This option is only relevant if `--rocksdb.auto-fill-index-caches-on-startup` 
+  is set to `true`.
+
+  The PR also adds the following metrics:
+  - `rocksdb_cache_auto_refill_loaded_total`: Total number of queued items for 
+    in-memory index caches refilling. It will always report a value of zero on 
+    coordinators.
+  - `rocksdb_cache_auto_refill_dropped_total`: Total number of dropped items 
+    for in-memory index caches refilling (because number of queued items would 
+    exceed the value of `--rocksdb.auto-refill-index-caches-queue-capacity`). 
+    It will always report a value of zero on coordinators.
+  - `rocksdb_cache_full_index_refills_total`: Total number of in-memory index
+    caches refill operations for entire indexes. The counter gets increased for
+    every index automatically loaded (because startup option 
+    `--rocksdb.auto-fill-index-caches-on-startup` is set to `true`) or when
+    full indexes are loaded into memory manually. 
+    In cluster deployments the counter will be increased once per eligible 
+    index per shard. It will always report a value of zero on coordinators.
+
+* Add missing metrics for user traffic: Histograms:
+    `arangodb_client_user_connection_statistics_bytes_received`
+    `arangodb_client_user_connection_statistics_bytes_sent`
+  These numbers were so far only published via the statistics API.
+  This is needed for Oasis traffic accounting.
+
+* BTS-128: Fixed http request not working when content-type is velocypack.
+
+* Fixed Github issue #16451: In certain situations, a LIMIT inside a subquery
+  could erroneously reduce the number of results of the containing (sub)query.
+
+* Added agency options
+    --agency.supervision-delay-add-follower
+  and
+    --agency.supervision-delay-failed-follower
+  to delay supervision actions for a configurable amount of seconds. This is
+  desirable in case a DBServer fails and comes back quickly, because it gives
+  the cluster a chance to get in sync and fully resilient without deploying
+  additional shard replicas and thus without causing any data imbalance.
+
+* Deleted customizable Pregel (AIR) and Greenspun library.
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 

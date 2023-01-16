@@ -24,6 +24,8 @@
 #include "ApplicationFeatures/OptionsCheckFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Logger/LogMacros.h"
 

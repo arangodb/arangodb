@@ -61,7 +61,8 @@
       "inherits": "community-developer",
       "displayName": "Build ArangoDB Community Edition (TSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
       }
     },
     {
@@ -69,7 +70,8 @@
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread"
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
       }
     },
     {
@@ -77,7 +79,9 @@
       "inherits": "community-developer",
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
       }
     },
     {
@@ -85,7 +89,9 @@
       "inherits": "enterprise-developer",
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fno-sanitize-address-use-after-scope -fno-sanitize=alignment -fno-var-tracking-assignments -fno-sanitize=vptr"
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
       }
     }
   ],
@@ -115,11 +121,11 @@
       "configurePreset": "enterprise-developer-tsan"
     },
     {
-      "name": "community-developer-asan-uban",
+      "name": "community-developer-asan-ubsan",
       "configurePreset": "community-developer-asan-ubsan"
     },
     {
-      "name": "enterprise-developer-asan",
+      "name": "enterprise-developer-asan-ubsan",
       "configurePreset": "enterprise-developer-asan-ubsan"
     }
   ],
@@ -127,6 +133,10 @@
     {
       "name": "enterprise-developer",
       "configurePreset": "enterprise-developer"
+    },
+    {
+      "name": "community-developer",
+      "configurePreset": "community-developer"
     }
   ]
 }

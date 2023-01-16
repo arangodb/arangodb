@@ -79,17 +79,29 @@ static void EnvGetter(v8::Local<v8::Name> property,
   }
 #else  // _WIN32
   v8::String::Value key(isolate, property);
-  WCHAR buffer[32767];  // The maximum size allowed for environment variables.
+  // static buffer. should be ok for most cases
+  WCHAR buffer[8192];
+  DWORD bufferSize{static_cast<DWORD>(std::size(buffer))};
+  std::vector<WCHAR> dynamicBuffer;
+  WCHAR* buffer_ptr = buffer;
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
-                                         buffer, sizeof(buffer));
+                                         buffer_ptr, bufferSize);
 
+  if (result > bufferSize) {
+    // static was small. We will go dynamic
+    dynamicBuffer.resize(result);
+    bufferSize = result;
+    buffer_ptr = dynamicBuffer.data();
+    result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
+                                     buffer_ptr, bufferSize);
+  }
   // ERROR_ENVVAR_NOT_FOUND is possibly returned.
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
-  if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
-      result < sizeof(buffer)) {
-    uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
+  if ((result > 0 || GetLastError() == ERROR_SUCCESS) && result < bufferSize) {
+    uint16_t const* two_byte_buffer =
+        reinterpret_cast<uint16_t const*>(buffer_ptr);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif

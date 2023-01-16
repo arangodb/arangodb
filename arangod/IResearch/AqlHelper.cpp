@@ -37,8 +37,7 @@
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#include <absl/strings/str_cat.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -146,7 +145,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_VALUE: {
-      return 0 == aql::CompareAstNodes(lhs, rhs, true);
+      return 0 == aql::compareAstNodes(lhs, rhs, true);
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
@@ -191,7 +190,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(static_cast<const void*>(typeString.c_str()),
+  hash = fasthash64(static_cast<const void*>(typeString.data()),
                     typeString.size(), hash);
 
   // hash node members
@@ -353,17 +352,6 @@ void visitReferencedVariables(
 }
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
-
-/*static*/ std::string_view ScopedAqlValue::typeString(
-    ScopedValueType type) noexcept {
-  static std::string_view constexpr kTypeNames[] = {
-      "invalid", "null",  "boolean", "double",
-      "string",  "array", "range",   "object"};
-
-  TRI_ASSERT(size_t(type) < std::size(kTypeNames));
-
-  return kTypeNames[size_t(type)];
-}
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {
@@ -718,18 +706,19 @@ bool nameFromAttributeAccess(
       }
     }
 
-    void append(std::string_view const& value) {
+    void append(std::string_view value) {
       if (!_str.empty()) {
-        _str += NESTING_LEVEL_DELIMITER;
+        _str.push_back(NESTING_LEVEL_DELIMITER);
       }
-      _str.append(value.data(), value.size());
+      _str.append(value);
     }
 
     void append(int64_t value) {
-      _str += NESTING_LIST_OFFSET_PREFIX;
-      auto const written = sprintf(_buf, "%" PRIu64, value);
-      _str.append(_buf, written);
-      _str += NESTING_LIST_OFFSET_SUFFIX;
+      _str.push_back(NESTING_LIST_OFFSET_PREFIX);
+      auto const len = static_cast<size_t>(
+          absl::numbers_internal::FastIntToBuffer(value, _buf) - &_buf[0]);
+      _str.append(_buf, len);
+      _str.push_back(NESTING_LIST_OFFSET_SUFFIX);
     }
 
    private:

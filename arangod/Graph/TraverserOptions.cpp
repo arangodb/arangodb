@@ -737,8 +737,7 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 void TraverserOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {

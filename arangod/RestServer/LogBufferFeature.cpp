@@ -33,6 +33,7 @@
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Metrics/CounterBuilder.h"

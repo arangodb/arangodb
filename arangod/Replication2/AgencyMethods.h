@@ -25,11 +25,9 @@
 #include <Agency/TransactionBuilder.h>
 #include <Basics/ResultT.h>
 #include <Cluster/ClusterTypes.h>
+#include <Futures/Future.h>
 #include <Replication2/ReplicatedLog/AgencyLogSpecification.h>
 #include <optional>
-
-#include "Futures/Future.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 namespace arangodb {
 class Result;
@@ -85,12 +83,6 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
-auto createReplicatedState(DatabaseID const& database,
-                           replicated_state::agency::Target const& spec)
-    -> futures::Future<ResultT<uint64_t>>;
-auto deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
-                              DatabaseID const& database, LogId id)
-    -> arangodb::agency::envelope;
 auto deleteReplicatedState(DatabaseID const& database, LogId)
     -> futures::Future<ResultT<uint64_t>>;
 auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)

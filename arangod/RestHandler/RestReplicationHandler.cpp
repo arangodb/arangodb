@@ -43,6 +43,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -266,7 +267,7 @@ RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase.type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
@@ -1105,7 +1106,7 @@ Result RestReplicationHandler::processRestoreCollection(
               .removeAllAnalyzers(_vocbase);
         }
 
-        auto dropResult = methods::Collections::drop(*col, true, 300.0, true);
+        auto dropResult = methods::Collections::drop(*col, true, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
               dropResult.is(
@@ -2804,7 +2805,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
-  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
+  if (col->deleted()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");

@@ -78,14 +78,9 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
       meth = asio_ns::ssl::context::method::tlsv12_server;
       break;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
-      // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
-      // openssl version number format is
-      // MNNFFPPS: major minor fix patch status
       meth = asio_ns::ssl::context::method::tlsv13_server;
       break;
-#endif
 
     case TLS_GENERIC:
       meth = asio_ns::ssl::context::method::tls_server;
@@ -123,9 +118,6 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read key from keyfile");
   }
-#if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  sslctx.set_verify_depth(1);
-#endif
 
   return sslctx;
 }
@@ -151,10 +143,8 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     case TLS_V12:
       return "TLSv12";
 
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
       return "TLSv13";
-#endif
 
     case TLS_GENERIC:
       return "TLS";
@@ -167,31 +157,17 @@ std::string arangodb::protocolName(SslProtocol protocol) {
 std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
   // openssl version number format is
   // MNNFFPPS: major minor fix patch status
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   // TLS 1.3, only support from OpenSSL 1.1.1 onwards
   return std::unordered_set<uint64_t>{
       SslProtocol::SSL_V2,  // unsupported!
       SslProtocol::SSL_V23, SslProtocol::SSL_V3,  SslProtocol::TLS_V1,
       SslProtocol::TLS_V12, SslProtocol::TLS_V13, SslProtocol::TLS_GENERIC};
-#else
-  // no support for TLS 1.3
-  return std::unordered_set<uint64_t>{
-      SslProtocol::SSL_V2,  // unsupported!
-      SslProtocol::SSL_V23, SslProtocol::SSL_V3,     SslProtocol::TLS_V1,
-      SslProtocol::TLS_V12, SslProtocol::TLS_GENERIC};
-#endif
 }
 
 std::string arangodb::availableSslProtocolsDescription() {
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   return "The SSL protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, "
          "9 = generic TLS (negotiated))";
-#else
-  return "The SSL protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
-         "(negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, "
-         "9 = generic TLS (negotiated))";
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -26,7 +26,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "IResearch/ViewSnapshot.h"
@@ -36,6 +35,7 @@
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -46,6 +46,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 
@@ -61,9 +63,10 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
                           ? definition
                           : velocypack::Slice::emptyObjectSlice();
     // if no 'info' then assume defaults
-    auto links = properties.hasKey(StaticStrings::LinksField)
-                     ? properties.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+    auto links = properties.get(StaticStrings::LinksField);
+    if (links.isNone()) {
+      links = velocypack::Slice::emptyObjectSlice();
+    }
     auto r = engine.inRecovery()
                  ? Result{}  // do not validate if in recovery
                  : IResearchLinkHelper::validateLinks(vocbase, links);
@@ -103,16 +106,16 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
       }
       events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
       return {TRI_ERROR_INTERNAL,
-              "failure during instantiation while creating arangosearch View "
-              "in database '" +
-                  vocbase.name() + "'"};
+              absl::StrCat("failure during instantiation while creating "
+                           "arangosearch View in database '",
+                           vocbase.name(), "'")};
     }
 
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
       // only we have access to *impl, so don't need lock
-      std::unordered_set<DataSourceId> collections;  // TODO remove
+      containers::FlatHashSet<DataSourceId> collections;  // TODO remove
       r = IResearchLinkHelper::updateLinks(collections, *impl, links,
                                            getDefaultVersion(isUserRequest));
       if (!r.ok()) {
@@ -131,7 +134,7 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
       LOG_TOPIC("eddb2", WARN, TOPIC)
           << "caught exception while creating links while creating "
              "arangosearch view '"
-          << impl->name() << "': " << e.code() << " " << e.what();
+          << impl->name() << "': " << e.code() << " " << e.message();
     } catch (std::exception const& e) {
       std::string name;
       if (definition.isObject()) {
@@ -173,14 +176,15 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
         // init metaState for SingleServer
         || (ServerState::instance()->isSingleServer() &&
             !metaState.init(definition, error))) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              error.empty()
-                  ? (std::string("failed to initialize arangosearch View from "
-                                 "definition: ") +
-                     definition.toString())
-                  : (std::string("failed to initialize arangosearch View from "
-                                 "definition, error in attribute '") +
-                     error + "': " + definition.toString())};
+      return {
+          TRI_ERROR_BAD_PARAMETER,
+          error.empty()
+              ? absl::StrCat(
+                    "failed to initialize arangosearch View from definition: ",
+                    definition.toString())
+              : absl::StrCat("failed to initialize arangosearch View from "
+                             "definition, error in attribute '",
+                             error, "': ", definition.toString())};
     }
 
     auto impl = std::shared_ptr<IResearchView>(
@@ -276,10 +280,11 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
         !mergeSliceSkipKeys(
             build, sanitizedBuild.close().slice(),
             *(persistence ? persistenceAccept : propertiesAccept))) {
-      return {TRI_ERROR_INTERNAL,
-              "failure to generate definition while generating properties jSON "
-              "for arangosearch View in database '" +
-                  vocbase().name() + "'"};
+      return {
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("failure to generate definition while generating "
+                       "properties jSON for arangosearch View in database '",
+                       vocbase().name(), "'")};
     }
     if (persistence) {
       IResearchViewMetaState metaState;
@@ -320,9 +325,9 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
     auto* state = trx.state();
     if (!state) {
       return {TRI_ERROR_INTERNAL,
-              "failed to get transaction state while generating json for "
-              "arangosearch view '" +
-                  name() + "'"};
+              absl::StrCat("failed to get transaction state while generating "
+                           "json for arangosearch view '",
+                           name(), "'")};
     }
     velocypack::Builder linksBuild;
     auto const accept = [](std::string_view key) noexcept {
@@ -344,7 +349,8 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
       if (!link->properties(linkBuild, ctx == Serialization::Inventory).ok()) {
         // link definitions are not output if forPersistence
         LOG_TOPIC("713ad", WARN, TOPIC)
-            << "failed to generate json for arangosearch link '" << link->id()
+            << "failed to generate json for arangosearch link '"
+            << link->index().id()
             << "' while generating json for arangosearch view '" << name()
             << "'";
         return true;  // skip invalid link definitions
@@ -353,10 +359,11 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
                      velocypack::Value(velocypack::ValueType::Object));
       if (!mergeSliceSkipKeys(linksBuild, linkBuild.close().slice(), accept)) {
         r = {TRI_ERROR_INTERNAL,
-             "failed to generate arangosearch link '" +
-                 std::to_string(link->id().id()) +
-                 "' definition while generating json for arangosearch view '" +
-                 name() + "'"};
+             absl::StrCat(
+                 "failed to generate arangosearch link '",
+                 link->index().id().id(),
+                 "' definition while generating json for arangosearch view '",
+                 name(), "'")};
         return false;  // terminate generation
       }
       linksBuild.close();
@@ -371,18 +378,24 @@ Result IResearchView::appendVPackImpl(velocypack::Builder& build,
     r = trx.commit();
     build.add(StaticStrings::LinksField, linksBuild.slice());
     return r;
-  } catch (basics::Exception& e) {
-    return {e.code(),
-            "caught exception while generating json for arangosearch view '" +
-                name() + "': " + e.what()};
+  } catch (basics::Exception const& e) {
+    return {
+        e.code(),
+        absl::StrCat(
+            "caught exception while generating json for arangosearch view '",
+            name(), "': ", e.message())};
   } catch (std::exception const& e) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while generating json for arangosearch view '" +
-                name() + "': " + e.what()};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "caught exception while generating json for arangosearch view '",
+            name(), "': ", e.what())};
   } catch (...) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while generating json for arangosearch view '" +
-                name() + "'"};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "caught exception while generating json for arangosearch view '",
+            name(), "'")};
   }
 }
 
@@ -393,8 +406,8 @@ bool IResearchView::apply(transaction::Methods& trx) {
 
 Result IResearchView::dropImpl() {
   // drop all known links
-  std::unordered_set<DataSourceId> collections;
-  std::unordered_set<DataSourceId> stale;
+  containers::FlatHashSet<DataSourceId> collections;
+  containers::FlatHashSet<DataSourceId> stale;
   {
     std::shared_lock lock{_mutex};
     for (auto& entry : _links) {
@@ -417,7 +430,7 @@ Result IResearchView::dropImpl() {
     std::unique_lock lock{_updateLinksLock, std::try_to_lock};
     if (!lock.owns_lock()) {
       return {TRI_ERROR_FAILED,  // FIXME use specific error code
-              "failed to remove arangosearch view '" + name()};
+              absl::StrCat("failed to remove arangosearch view '", name())};
     }
     auto r = IResearchLinkHelper::updateLinks(
         collections, *this, velocypack::Slice::emptyObjectSlice(),
@@ -426,8 +439,9 @@ Result IResearchView::dropImpl() {
         stale);
     if (!r.ok()) {
       return {r.errorNumber(),
-              "failed to remove links while removing arangosearch view '" +
-                  name() + "': " + std::string{r.errorMessage()}};
+              absl::StrCat(
+                  "failed to remove links while removing arangosearch view '",
+                  name(), "': ", r.errorMessage())};
     }
   }
   _asyncSelf->reset();
@@ -446,9 +460,10 @@ Result IResearchView::dropImpl() {
   }
   // ArangoDB global consistency check, no known dangling links
   if (collectionsCount) {
-    return {TRI_ERROR_INTERNAL,
-            "links still present while removing arangosearch view '" +
-                std::to_string(id().id()) + "'"};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("links still present while removing arangosearch view '",
+                     id().id(), "'")};
   }
   return ServerState::instance()->isSingleServer()
              ? storage_helper::drop(*this)
@@ -464,19 +479,19 @@ arangodb::ViewFactory const& IResearchView::factory() {
 Result IResearchView::link(AsyncLinkPtr const& link) {
   if (!link) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "invalid link parameter while emplacing collection into "
-            "arangosearch View '" +
-                name() + "'"};
+            absl::StrCat("invalid link parameter while emplacing collection "
+                         "into arangosearch View '",
+                         name(), "'")};
   }
   // prevent the link from being deallocated
   auto linkLock = link->lock();
   if (!linkLock) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "failed to acquire link while emplacing collection into "
-            "arangosearch View '" +
-                name() + "'"};
+            absl::StrCat("failed to acquire link while emplacing collection "
+                         "into arangosearch View '",
+                         name(), "'")};
   }
-  auto const cid = linkLock->collection().id();
+  auto const cid = linkLock->index().collection().id();
   std::lock_guard lock{_mutex};
   auto it = _links.find(cid);
   if (it == _links.end()) {
@@ -493,9 +508,8 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
     return {};
   } else {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-            std::string("duplicate entry while emplacing collection '") +
-                std::to_string(cid.id()) + "' into arangosearch View '" +
-                name() + "'"};
+            absl::StrCat("duplicate entry while emplacing collection '",
+                         cid.id(), "' into arangosearch View '", name(), "'")};
   }
   if (ServerState::instance()->isSingleServer()) {
     if (auto r = storage_helper::properties(*this, true); !r.ok()) {
@@ -548,25 +562,24 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
             << "failed to persist logical view while unlinking collection '"
             << cid << "' from arangosearch view '" << name()
             << "': " << r.errorMessage();  // noexcept
-        _links.insert(move(link));         // noexcept
+        _links.insert(std::move(link));    // noexcept
         return r;
       }
     }
   } catch (basics::Exception const& e) {
-    return {e.code(), "caught exception while unlinking collection '" +
-                          std::to_string(cid.id()) +
-                          "' from arangosearch view '" + name() +
-                          "': " + e.what()};
+    return {
+        e.code(),
+        absl::StrCat("caught exception while unlinking collection '", cid.id(),
+                     "' from arangosearch view '", name(), "': ", e.message())};
   } catch (std::exception const& e) {
-    return {TRI_ERROR_INTERNAL,
-            "caught exception while unlinking collection '" +
-                std::to_string(cid.id()) + "' from arangosearch view '" +
-                name() + "': " + e.what()};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("caught exception while unlinking collection '", cid.id(),
+                     "' from arangosearch view '", name(), "': ", e.what())};
   } catch (...) {
     return {TRI_ERROR_INTERNAL,
-            "caught exception while unlinking collection '" +
-                std::to_string(cid.id()) + "' from arangosearch view '" +
-                name() + "'"};
+            absl::StrCat("caught exception while unlinking collection '",
+                         cid.id(), "' from arangosearch view '", name(), "'")};
   }
   return {};
 }
@@ -574,9 +587,10 @@ Result IResearchView::unlink(DataSourceId cid) noexcept {
 Result IResearchView::updateProperties(velocypack::Slice slice,
                                        bool isUserRequest, bool partialUpdate) {
   try {
-    auto links = slice.hasKey(StaticStrings::LinksField)
-                     ? slice.get(StaticStrings::LinksField)
-                     : velocypack::Slice::emptyObjectSlice();
+    auto links = slice.get(StaticStrings::LinksField);
+    if (links.isNone()) {
+      links = velocypack::Slice::emptyObjectSlice();
+    }
     auto r = _inRecovery ? Result{}  // do not validate if in recovery
                          : IResearchLinkHelper::validateLinks(vocbase(), links);
     if (!r.ok()) {
@@ -592,8 +606,9 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
                 vocbase().name(), collection->name(), auth::Level::RO)) {
           return {
               TRI_ERROR_FORBIDDEN,
-              "while updating arangosearch definition, error: collection '" +
-                  collection->name() + "' not authorized for read access"};
+              absl::StrCat(
+                  "while updating arangosearch definition, error: collection '",
+                  collection->name(), "' not authorized for read access")};
         }
       }
     }
@@ -603,11 +618,13 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     auto& defaults = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
     if (!meta.init(slice, error, defaults)) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "failed to update arangosearch view '" + name() +
-                  "' from definition" +
-                  (error.empty() ? ": "
-                                 : (", error in attribute '" + error + "': ")) +
-                  slice.toString()};
+              absl::StrCat(
+                  "failed to update arangosearch view '", name(),
+                  "' from definition",
+                  (error.empty()
+                       ? ": "
+                       : absl::StrCat(", error in attribute '", error, "': ")),
+                  slice.toString())};
     }
     _meta.storePartial(std::move(meta));
     boost::shared_lock sharedLock{std::move(uniqueLock)};
@@ -628,8 +645,8 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     // it's also possible for links to be simultaneously modified via a
     // different callflow (e.g. from collections)
     // ...........................................................................
-    std::unordered_set<DataSourceId> collections;
-    std::unordered_set<DataSourceId> stale;
+    containers::FlatHashSet<DataSourceId> collections;
+    containers::FlatHashSet<DataSourceId> stale;
     if (!partialUpdate) {
       for (auto& entry : _links) {
         stale.emplace(entry.first);
@@ -639,25 +656,23 @@ Result IResearchView::updateProperties(velocypack::Slice slice,
     std::lock_guard lock{_updateLinksLock};
     return IResearchLinkHelper::updateLinks(
         collections, *this, links, getDefaultVersion(isUserRequest), stale);
-  } catch (basics::Exception& e) {
-    LOG_TOPIC("74705", WARN, TOPIC)
-        << "caught exception while updating properties for arangosearch view '"
-        << name() << "': " << e.code() << " " << e.what();
-    return {e.code(),
-            "error updating properties for arangosearch view '" + name() + "'"};
+  } catch (basics::Exception const& e) {
+    auto message =
+        absl::StrCat("error updating properties for arangosearch view '",
+                     name(), "':", e.message());
+    LOG_TOPIC("74705", WARN, TOPIC) << message;
+    return {e.code(), std::move(message)};
   } catch (std::exception const& e) {
-    LOG_TOPIC("27f54", WARN, TOPIC)
-        << "caught exception while updating properties for arangosearch view '"
-        << name() << "': " << e.what();
-
-    return {TRI_ERROR_BAD_PARAMETER,
-            "error updating properties for arangosearch view '" + name() + "'"};
+    auto message =
+        absl::StrCat("error updating properties for arangosearch view '",
+                     name(), "':", e.what());
+    LOG_TOPIC("27f54", WARN, TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, std::move(message)};
   } catch (...) {
-    LOG_TOPIC("99bbe", WARN, TOPIC)
-        << "caught exception while updating properties for arangosearch view '"
-        << name() << "'";
-    return {TRI_ERROR_BAD_PARAMETER,
-            "error updating properties for arangosearch view '" + name() + "'"};
+    auto message = absl::StrCat(
+        "error updating properties for arangosearch view '", name(), "'");
+    LOG_TOPIC("99bbe", WARN, TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, std::move(message)};
   }
 }
 
@@ -670,6 +685,18 @@ bool IResearchView::visitCollections(
     }
   }
   return true;
+}
+
+bool IResearchView::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _links) {
+    auto linkLock = entry.second->lock();
+    if (linkLock &&
+        basics::downCast<IResearchLink>(linkLock.get())->isBuilding()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 LinkLock IResearchView::linkLock(

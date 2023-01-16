@@ -382,10 +382,8 @@ void Ast::clearMost() noexcept { _resources.clearMost(); }
 
 /// @brief convert the AST into VelocyPack
 void Ast::toVelocyPack(VPackBuilder& builder, bool verbose) const {
-  {
-    VPackArrayBuilder guard(&builder);
-    _root->toVelocyPack(builder, verbose);
-  }
+  VPackArrayBuilder guard(&builder);
+  _root->toVelocyPack(builder, verbose);
 }
 
 /// @brief add an operation to the AST
@@ -1346,10 +1344,7 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_INT);
   node->setIntValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1367,10 +1362,7 @@ AstNode* Ast::createNodeValueDouble(double value) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -1403,10 +1395,7 @@ AstNode* Ast::createNodeValueString(char const* value, size_t length) {
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value, length);
-  node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-  node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-  node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+  node->setConstantFlags();
   return node;
 }
 
@@ -3029,7 +3018,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     for (size_t i = 1; i < n; ++i) {
       VPackSlice rhs = node->getMemberUnchecked(i)->computeValue(&temp);
 
-      if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
+      if (basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
         break;
       }
@@ -3045,10 +3034,10 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 
   // TODO: sort values in place first and compare two adjacent members each
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(n, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(n, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -3431,7 +3420,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
   bool const lhsIsConst = lhs->isConstant();
 
   if (!lhsIsConst) {
-    if (rhs->numMembers() >= AstNode::SortNumberThreshold &&
+    if (rhs->numMembers() >= AstNode::kSortNumberThreshold &&
         rhs->type == NODE_TYPE_ARRAY &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
@@ -3966,7 +3955,7 @@ AstNode* Ast::optimizeObject(AstNode* node) {
 /// sure then that string values are valid through the query lifetime.
 AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
   if (slice.isBoolean()) {
-    return createNodeValueBool(slice.getBoolean());
+    return createNodeValueBool(slice.isTrue());
   }
 
   if (slice.isNumber()) {
@@ -4008,16 +3997,12 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
   if (slice.isObject()) {
     VPackObjectIterator it(slice, true);
-
     auto node = createNodeObject();
     node->members.reserve(static_cast<size_t>(it.size()));
 
@@ -4037,10 +4022,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice slice, bool copyStringValues) {
       it.next();
     }
 
-    node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-
+    node->setConstantFlags();
     return node;
   }
 
@@ -4369,6 +4351,7 @@ AstNode* Ast::endSubQuery() {
 }
 
 bool Ast::isInSubQuery() const { return (_queries.size() > 1); }
+
 std::unordered_set<std::string> Ast::bindParameters() const {
   return std::unordered_set<std::string>(_bindParameters);
 }

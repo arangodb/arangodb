@@ -83,7 +83,7 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 }
 
 /// @brief upgrade the access type to exclusive
-void Collection::setExclusiveAccess() {
+void Collection::setExclusiveAccess() noexcept {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(_accessType));
   _accessType = AccessMode::Type::EXCLUSIVE;
 }
@@ -223,15 +223,19 @@ std::string const& Collection::smartJoinAttribute() const {
   return getCollection()->smartJoinAttribute();
 }
 
-TRI_vocbase_t* Collection::vocbase() const { return _vocbase; }
+TRI_vocbase_t* Collection::vocbase() const noexcept { return _vocbase; }
 
-AccessMode::Type Collection::accessType() const { return _accessType; }
+AccessMode::Type Collection::accessType() const noexcept { return _accessType; }
 
-void Collection::accessType(AccessMode::Type type) { _accessType = type; }
+void Collection::accessType(AccessMode::Type type) noexcept {
+  _accessType = type;
+}
 
-bool Collection::isReadWrite() const { return _isReadWrite; }
+bool Collection::isReadWrite() const noexcept { return _isReadWrite; }
 
-void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+void Collection::isReadWrite(bool isReadWrite) noexcept {
+  _isReadWrite = isReadWrite;
+}
 
 std::string const& Collection::name() const {
   if (!_currentShard.empty()) {

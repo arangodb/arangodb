@@ -360,7 +360,7 @@ void MockServer::stopFeatures() {
 TRI_vocbase_t& MockServer::getSystemDatabase() const {
   TRI_ASSERT(_server.hasFeature<DatabaseFeature>());
   auto& database = _server.getFeature<DatabaseFeature>();
-  auto system = database.useDatabase(StaticStrings::SystemDatabase);
+  auto system = database.lookupDatabase(StaticStrings::SystemDatabase);
   TRI_ASSERT(system != nullptr);
   return *system;
 }
@@ -772,7 +772,6 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   std::unordered_set<std::string> const ignoreKeys{
       "allowUserKeys", "cid",     "globallyUniqueId", "count",
       "planId",        "version", "objectId"};
-  dummy.setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = dummy.toVelocyPackIgnore(
       ignoreKeys, LogicalDataSource::Serialization::List);
   injectCollectionToAgency(dbName, velocy, dummy.planId(),

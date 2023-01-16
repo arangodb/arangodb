@@ -31,10 +31,13 @@
 #include "RestServer/arangod.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -107,7 +110,7 @@ class StorageEngine : public ArangodFeature {
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) = 0;
+      LogicalCollection& collection, velocypack::Slice info) = 0;
 
   // status functionality
   // --------------------
@@ -142,11 +145,8 @@ class StorageEngine : public ArangodFeature {
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
-  // return the path for the actual data
-  virtual std::string dataPath() const = 0;
-
   // return the path for a database
-  virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
+  virtual std::string databasePath() const { return std::string(); }
 
   // database, collection and index management
   // -----------------------------------------
@@ -176,9 +176,9 @@ class StorageEngine : public ArangodFeature {
   // storage engine is required to fully clean up the creation and throw only
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
-  // "createDatabase" returns no way to acquire id within this function?!
+  // "createDatabase"
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&&, ErrorCode& status) = 0;
+      arangodb::CreateDatabaseInfo&&);
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
@@ -207,23 +207,17 @@ class StorageEngine : public ArangodFeature {
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> = 0;
-
-  virtual auto dropReplicatedLog(
+  virtual auto dropReplicatedState(
       TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>&)
       -> Result = 0;
 
-  virtual auto updateReplicatedState(
-      TRI_vocbase_t&, replication2::replicated_state::PersistedStateInfo const&)
-      -> Result = 0;
-
-  virtual auto dropReplicatedState(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId) -> Result = 0;
+  virtual auto createReplicatedState(
+      TRI_vocbase_t&, arangodb::replication2::LogId,
+      arangodb::replication2::replicated_state::PersistedStateInfo const&)
+      -> ResultT<std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>> = 0;
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -359,6 +353,12 @@ class StorageEngine : public ArangodFeature {
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
 
+  virtual void scheduleFullIndexRefill(std::string const& database,
+                                       std::string const& collection,
+                                       IndexId iid);
+
+  virtual void syncIndexCaches();
+
  protected:
   void registerCollection(
       TRI_vocbase_t& vocbase,
@@ -367,14 +367,10 @@ class StorageEngine : public ArangodFeature {
   void registerView(TRI_vocbase_t& vocbase,
                     std::shared_ptr<arangodb::LogicalView> const& view);
 
-  static void registerReplicatedLog(
-      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
-          log);
-
   static void registerReplicatedState(
-      TRI_vocbase_t& vocbase,
-      arangodb::replication2::replicated_state::PersistedStateInfo const& info);
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId,
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;
