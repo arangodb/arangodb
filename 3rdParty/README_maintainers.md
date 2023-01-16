@@ -66,6 +66,40 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 Only used on Linux/Mac, still uses autofoo.
 
+The following change has been made to jemalloc compared to upstream commit
+54eaed1d8b56b1aa528be3bdd1877e59c56fa90c:
+
+```diff
+diff --git a/3rdParty/jemalloc/CMakeLists.txt b/3rdParty/jemalloc/CMakeLists.txt
+index add5b967e2e..3ef8b0d6e39 100644
+--- a/3rdParty/jemalloc/CMakeLists.txt
++++ b/3rdParty/jemalloc/CMakeLists.txt
+@@ -28,7 +28,7 @@ if (LINUX OR DARWIN)
+   else ()
+     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
+     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
+-    set(JEMALLOC_CONFIG "background_thread:true")
++    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
+   endif ()
+
+   if (USE_JEMALLOC_PROF)
+diff --git a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
+index 7655de4e2f3..9e1c8a37627 100644
+--- a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
++++ b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
+@@ -1220,6 +1220,7 @@ malloc_conf_init_helper(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
+
+                        CONF_HANDLE_BOOL(opt_abort, "abort")
+                        CONF_HANDLE_BOOL(opt_abort_conf, "abort_conf")
++                       CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
+                        CONF_HANDLE_BOOL(opt_trust_madvise, "trust_madvise")
+                        if (strncmp("metadata_thp", k, klen) == 0) {
+                                int m;
+```
+This change will become irrelevant when upgrading to a newer version of
+jemalloc, because it is already contained in upstream jemalloc.
+
+
 ## libunwind
 
 Only used on Linux, still uses autofoo. The "aux" directory has been removed from the

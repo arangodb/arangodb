@@ -40,6 +40,10 @@ function checkMetrics(metrics) {
   assertEqual(metrics["arangodb_search_num_live_docs"]["foo1"], 1000);
   assertEqual(metrics["arangodb_search_num_live_docs"]["foo2"], 1001);
   assertEqual(metrics["arangodb_search_num_live_docs"]["foo3"], 1002);
+  
+  assertEqual(metrics["arangodb_search_num_primary_docs"]["foo1"], 1000);
+  assertEqual(metrics["arangodb_search_num_primary_docs"]["foo2"], 1001);
+  assertEqual(metrics["arangodb_search_num_primary_docs"]["foo3"], 1002);
 
   assertEqual(metrics["arangodb_search_num_segments"]["foo1"], 9);
   assertEqual(metrics["arangodb_search_num_segments"]["foo2"], 12);
