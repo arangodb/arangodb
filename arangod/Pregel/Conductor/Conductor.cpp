@@ -486,7 +486,6 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
   std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
-  // int64_t vertexCount = 0, edgeCount = 0;
   std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
