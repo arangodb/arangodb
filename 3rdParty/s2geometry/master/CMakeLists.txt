@@ -68,6 +68,12 @@ if (WITH_GFLAGS)
     add_definitions(-DS2_USE_GFLAGS)
 endif()
 
+# If we already have abseil we don't need to find it, for an example:
+# add_subdirectory(absl-submbodule)
+# add_subdirectory(s2-submodule)
+if (NOT TARGET absl::base)
+    find_package(absl REQUIRED)
+endif()
 find_package(OpenSSL REQUIRED)
 # pthreads isn't used directly, but this is still required for std::thread.
 find_package(Threads REQUIRED)
@@ -254,7 +260,7 @@ endif()
 # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
 # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
 # target_link_libraries(<target_name> s2)
-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Add version information to the target
 set_target_properties(s2 PROPERTIES

@@ -1871,7 +1871,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // (NOTE: The above fails can only occur on full HDD or Machine dying. No
   // write conflicts possible)
 
-  TRI_ASSERT(coll.status() == TRI_VOC_COL_STATUS_DELETED);
+  TRI_ASSERT(coll.deleted());
 
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
