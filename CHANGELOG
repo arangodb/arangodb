@@ -1,3 +1,19 @@
+v3.9.8 (XXXX-XX-XX)
+-------------------
+
+* Fix coordinator segfault in AQL queries in which the query is invoked from
+  within a JavaScript context (e.g. from Foxx or from the server's console
+  mode) **and** the query has multiple coordinator snippets of which except
+  the outermost one invokes a JavaScript function.
+  Instead of crashing, coordinators will now respond with the exception 
+  "no v8 context available to enter for current transaction context".
+  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with
+  a fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
+  correctly that no JavaScript is needed, except if the fixed function name
+  is the name of a user-defined function.
+  This fixes an issue described in OASIS-24962.
+
+
 v3.9.7 (2023-01-10)
 -------------------
 
