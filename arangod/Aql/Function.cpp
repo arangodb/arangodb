@@ -70,6 +70,10 @@ Function::Function(std::string const& name, char const* arguments,
   // functions that read documents are not usable in analyzers.
   TRI_ASSERT(!hasFlag(Flags::CanReadDocuments) ||
              !hasFlag(Flags::CanUseInAnalyzer));
+
+  // only the V8 function does not have a C++ implementation.
+  // don't ever change this!
+  TRI_ASSERT(hasCxxImplementation() || name == "V8");
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

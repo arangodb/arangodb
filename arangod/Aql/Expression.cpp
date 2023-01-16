@@ -978,8 +978,9 @@ AqlValue Expression::executeSimpleExpressionFCallJS(ExpressionContext& ctx,
     if (v8g == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          absl::StrCat("no V8 context available when executing call to ",
-                       jsName));
+          absl::StrCat(
+              "no V8 context available when executing call to function ",
+              jsName));
     }
 
     VPackOptions const& options = ctx.trx().vpackOptions();
