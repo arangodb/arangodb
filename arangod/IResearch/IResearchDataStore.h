@@ -63,23 +63,23 @@ using LinkLock = AsyncLinkHandle::Value;
 struct IResearchTrxState final : public TransactionState::Cookie {
   // prevent data-store deallocation (lock @ AsyncSelf)
   LinkLock _linkLock;  // should be first field to destroy last
-  irs::index_writer::documents_context _ctx;
+  irs::IndexWriter::Transaction _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
   bool _wasCommit = false;
 
-  IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
+  IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer) noexcept
+      : _linkLock{std::move(linkLock)}, _ctx{writer.GetBatch()} {}
 
   ~IResearchTrxState() final {
     if (!_wasCommit) {
       _removals.clear();
-      _ctx.reset();
+      _ctx.Reset();
     }
     TRI_ASSERT(_removals.empty());
   }
 
   void remove(LocalDocumentId value, bool nested) {
-    _ctx.remove(_removals.emplace(value, nested));
+    _ctx.Remove(_removals.emplace(value, nested));
   }
 };
 
@@ -103,7 +103,7 @@ class IResearchDataStore {
     Snapshot& operator=(Snapshot const&) = delete;
     Snapshot() = default;
     ~Snapshot() = default;
-    Snapshot(LinkLock&& lock, irs::directory_reader&& reader) noexcept
+    Snapshot(LinkLock&& lock, irs::DirectoryReader&& reader) noexcept
         : _lock{std::move(lock)}, _reader{std::move(reader)} {}
     Snapshot(Snapshot&& rhs) noexcept
         : _lock{std::move(rhs._lock)}, _reader{std::move(rhs._reader)} {}
@@ -122,7 +122,7 @@ class IResearchDataStore {
    private:
     // lock preventing data store deallocation
     LinkLock _lock;
-    irs::directory_reader _reader;
+    irs::DirectoryReader _reader;
   };
 
   explicit IResearchDataStore(ArangodServer& server);
@@ -141,7 +141,7 @@ class IResearchDataStore {
   ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-  static irs::directory_reader reader(LinkLock const& linkLock);
+  static irs::DirectoryReader reader(LinkLock const& linkLock);
 
   [[nodiscard]] virtual Index& index() noexcept = 0;
   [[nodiscard]] virtual Index const& index() const noexcept = 0;
@@ -289,8 +289,8 @@ class IResearchDataStore {
     // for use with member '_meta'
     basics::ReadWriteLock _mutex;
     std::filesystem::path _path;
-    irs::directory_reader _reader;
-    irs::index_writer::ptr _writer;
+    irs::IndexWriter::ptr _writer;
+    irs::DirectoryReader _reader;
     // the tick at which data store was recovered
     uint64_t _recoveryTickLow{0};
     uint64_t _recoveryTickHigh{0};
@@ -300,7 +300,7 @@ class IResearchDataStore {
 
     void resetDataStore() noexcept {
       // reset all underlying readers to release file handles
-      _reader.reset();
+      _reader = {};
       _writer.reset();
       _directory.reset();
     }
@@ -322,9 +322,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(
-      bool wait, irs::index_writer::progress_report_callback const& progress,
-      CommitResult& code);
+  UnsafeOpResult commitUnsafe(bool wait,
+                              irs::ProgressReportCallback const& progress,
+                              CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -332,7 +332,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult consolidateUnsafe(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::merge_writer::flush_progress_t const& progress,
+      irs::MergeWriter::FlushProgress const& progress,
       bool& emptyConsolidation);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -346,9 +346,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(
-      bool wait, irs::index_writer::progress_report_callback const& progress,
-      CommitResult& code);
+  Result commitUnsafeImpl(bool wait,
+                          irs::ProgressReportCallback const& progress,
+                          CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -356,7 +356,7 @@ class IResearchDataStore {
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafeImpl(
       IResearchDataStoreMeta::ConsolidationPolicy const& policy,
-      irs::merge_writer::flush_progress_t const& progress,
+      irs::MergeWriter::FlushProgress const& progress,
       bool& emptyConsolidation);
 
   void initAsyncSelf();
@@ -369,7 +369,7 @@ class IResearchDataStore {
       bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
       irs::type_info::type_id primarySortCompression,
-      irs::index_reader_options const& readerOptions);
+      irs::IndexReaderOptions const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job

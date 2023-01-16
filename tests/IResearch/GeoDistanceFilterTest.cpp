@@ -441,7 +441,7 @@ TEST(GeoDistanceFilterTest, query) {
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX);
     auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
     GeoField geoField;
     geoField.fieldName = "geometry";
@@ -948,7 +948,7 @@ TEST(GeoDistanceFilterTest, checkScorer) {
         arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX);
     auto codec = irs::formats::get(formatId);
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
     GeoField geoField;
     geoField.fieldName = "geometry";

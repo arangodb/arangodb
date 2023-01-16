@@ -2539,12 +2539,12 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
 
   struct DataStore {
     irs::memory_directory dir;
-    irs::directory_reader reader;
-    irs::index_writer::ptr writer;
+    irs::DirectoryReader reader;
+    irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->commit();
 
@@ -2716,12 +2716,12 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
 
   struct DataStore {
     irs::memory_directory dir;
-    irs::directory_reader reader;
-    irs::index_writer::ptr writer;
+    irs::DirectoryReader reader;
+    irs::IndexWriter::ptr writer;
 
     DataStore() {
-      writer = irs::index_writer::make(dir, irs::formats::get("1_0"),
-                                       irs::OM_CREATE);
+      writer =
+          irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
       EXPECT_TRUE(writer);
       writer->commit();
 

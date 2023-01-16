@@ -408,7 +408,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     } storedField;
 
     auto writer =
-        irs::index_writer::make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
+        irs::IndexWriter::Make(dir, irs::formats::get("1_0"), irs::OM_CREATE);
     ASSERT_TRUE(writer);
 
     for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {

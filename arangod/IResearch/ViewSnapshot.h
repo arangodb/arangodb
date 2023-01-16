@@ -46,10 +46,10 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
 //////////////////////////////////////////////////////////////////////////////
-class ViewSnapshot : public irs::index_reader {
+class ViewSnapshot : public irs::IndexReader {
  public:
   using Links = std::vector<LinkLock>;
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
+  using Segments = std::vector<std::pair<DataSourceId, irs::SubReader const*>>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -93,7 +93,7 @@ class ViewSnapshotView final : public ViewSnapshot {
     return _segments[i].first;
   }
 
-  [[nodiscard]] irs::sub_reader const& operator[](
+  [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
     return *(_segments[i].second);
