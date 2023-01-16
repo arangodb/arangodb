@@ -1666,15 +1666,19 @@ bool AstNode::willUseV8() const {
     
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
-      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
-        auto s = getMemberUnchecked(0)->getStringRef();
-        if (s.find(':') != std::string::npos) {
+      if (numMembers() > 0 && getMemberUnchecked(0)->isArray() &&
+          getMemberUnchecked(0)->numMembers() > 0 &&
+          getMemberUnchecked(0)->getMemberUnchecked(0)->isStringValue()) {
+        if (auto s =
+                getMemberUnchecked(0)->getMemberUnchecked(0)->getStringRef();
+            s.find(':') != std::string::npos) {
           // a user-defined function.
           // this will use V8
           setFlag(DETERMINED_V8, VALUE_V8);
           return true;
         }
-        // fallthrough intentional
+        // fallthrough intentional. additionally inspect the function call
+        // parameters for CALL/APPLY
       } else {
         // we are unsure about what function will be called by 
         // CALL and APPLY. We cannot rule out user-defined functions,
@@ -1686,6 +1690,7 @@ bool AstNode::willUseV8() const {
 
   }
 
+  // inspect all subnodes
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {

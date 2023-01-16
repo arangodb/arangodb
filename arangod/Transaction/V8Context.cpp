@@ -27,9 +27,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8/v8-globals.h"
 
 #include <v8.h>
-#include "V8/v8-globals.h"
 
 using namespace arangodb;
 
@@ -103,6 +103,11 @@ CollectionNameResolver const& transaction::V8Context::resolver() {
 void transaction::V8Context::enterV8Context() {
   // registerTransaction
   auto v8g = getV8State();
+  if (v8g == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "no v8 context available to enter for current transaction context");
+  }
   TRI_ASSERT(v8g != nullptr);
   
   TRI_ASSERT(_currentTransaction != nullptr);

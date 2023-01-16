@@ -949,7 +949,23 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
+
+    std::string jsName;
+    if (node->type == NODE_TYPE_FCALL_USER) {
+      jsName = "FCALL_USER";
+    } else {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+      TRI_ASSERT(func->hasV8Implementation());
+      jsName = "AQL_" + func->name;
+    }
+
+    if (v8g == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          std::string("no V8 context available when executing call to ") +
+              jsName);
+    }
 
     VPackOptions const& options = _expressionContext->trx().vpackOptions();
 
@@ -957,15 +973,15 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     v8g->_expressionContext = _expressionContext;
     TRI_DEFER(v8g->_expressionContext = old);
 
-    std::string jsName;
     size_t const n = member->numMembers();
     size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
     if (node->type == NODE_TYPE_FCALL_USER) {
       // a call to a user-defined function
-      jsName = "FCALL_USER";
-      v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
+      auto context = TRI_IGETC;
+      v8::Handle<v8::Array> params =
+          v8::Array::New(isolate, static_cast<int>(n));
 
       for (size_t i = 0; i < n; ++i) {
         auto arg = member->getMemberUnchecked(i);
@@ -987,7 +1003,6 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
       TRI_ASSERT(func->hasV8Implementation());
-      jsName = "AQL_" + func->name;
 
       for (size_t i = 0; i < n; ++i) {
         auto arg = member->getMemberUnchecked(i);
