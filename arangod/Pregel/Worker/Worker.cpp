@@ -1,3 +1,4 @@
+#include "Cluster/ServerState.h"
 #include "Pregel/Conductor/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -159,8 +160,8 @@ void Worker<V, E, M>::setupWorker() {
                     .edgeCount = _graphStore->localEdgeCount()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
-      THROW_ARANGO_EXCEPTION(
-          Result{TRI_ERROR_FAILED, "Cannot serialize GraphLoaded message"});
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                     "Cannot serialize GraphLoaded message");
     }
     _callConductor(Utils::finishedStartupPath,
                    VPackBuilder(serialized.get().slice()));
@@ -640,18 +641,16 @@ auto Worker<V, E, M>::_observeStatus() -> Status const {
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
   return [self = shared_from_this(), this] {
-    VPackBuilder statusUpdateMsg;
-    {
-      auto ob = VPackObjectBuilder(&statusUpdateMsg);
-      statusUpdateMsg.add(Utils::senderKey,
-                          VPackValue(ServerState::instance()->getId()));
-      statusUpdateMsg.add(Utils::executionNumberKey,
-                          VPackValue(_config.executionNumber().value));
-      statusUpdateMsg.add(VPackValue(Utils::payloadKey));
-      auto update = _observeStatus();
-      serialize(statusUpdateMsg, update);
+    auto update = StatusUpdated{.executionNumber = _config._executionNumber,
+                                .sender = ServerState::instance()->getId(),
+                                .status = _observeStatus()};
+    auto serialized = inspection::serializeWithErrorT(update);
+    if (!serialized.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                     "Cannot serialize StatusUpdated message");
     }
-    _callConductor(Utils::statusUpdatePath, statusUpdateMsg);
+    _callConductor(Utils::statusUpdatePath,
+                   VPackBuilder(serialized.get().slice()));
   };
 }
 

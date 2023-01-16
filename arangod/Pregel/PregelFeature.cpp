@@ -758,7 +758,13 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   }
 
   if (path == Utils::statusUpdatePath) {
-    co->workerStatusUpdate(body);
+    auto message = inspection::deserializeWithErrorT<StatusUpdated>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "Cannot deserialize StatusUpdated message");
+    }
+    co->workerStatusUpdate(std::move(message.get()));
   } else if (path == Utils::finishedStartupPath) {
     auto message = inspection::deserializeWithErrorT<GraphLoaded>(
         velocypack::SharedSlice({}, body));

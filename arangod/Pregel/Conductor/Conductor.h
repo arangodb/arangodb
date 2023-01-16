@@ -138,7 +138,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   void _ensureUniqueResponse(std::string const& sender);
 
   // === REST callbacks ===
-  void workerStatusUpdate(VPackSlice const& data);
+  void workerStatusUpdate(StatusUpdated&& data);
   void finishedWorkerStartup(GraphLoaded const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);

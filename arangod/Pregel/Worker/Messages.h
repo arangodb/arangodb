@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Inspection/Format.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/Graph.h"
 #include "Pregel/Statistics.h"
@@ -94,14 +95,15 @@ auto inspect(Inspector& f, CleanupFinished& x) {
 }
 
 struct StatusUpdated {
-  std::string senderId;
+  ExecutionNumber executionNumber;
+  std::string sender;
   Status status;
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, StatusUpdated& x) {
-  return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
-                            f.field("status", x.status));
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("sender", x.sender), f.field("status", x.status));
 }
 
 struct PregelResults {
@@ -128,3 +130,7 @@ auto inspect(Inspector& f, PregelMessage& x) {
 }
 
 }  // namespace arangodb::pregel
+
+template<>
+struct fmt::formatter<arangodb::pregel::StatusUpdated>
+    : arangodb::inspection::inspection_formatter {};

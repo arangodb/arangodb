@@ -317,18 +317,14 @@ bool Conductor::_startGlobalStep() {
 
 // The worker can (and should) periodically call back
 // to update its status
-void Conductor::workerStatusUpdate(VPackSlice const& data) {
+void Conductor::workerStatusUpdate(StatusUpdated&& update) {
   MUTEX_LOCKER(guard, _callbackMutex);
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  auto update = deserialize<Status>(data.get(Utils::payloadKey));
-  auto sender = data.get(Utils::senderKey).copyString();
+  LOG_PREGEL("76632", DEBUG) << fmt::format("Update received {}", update);
 
-  LOG_PREGEL("76632", DEBUG)
-      << fmt::format("Update received {}", data.toJson());
-
-  _status.updateWorkerStatus(sender, std::move(update));
+  _status.updateWorkerStatus(update.sender, std::move(update.status));
 }
 
 void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
@@ -721,8 +717,8 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
       .executionNumber = _executionNumber, .withId = withId};
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
-    THROW_ARANGO_EXCEPTION(Result{
-        TRI_ERROR_FAILED, "Cannot serialize CollectPregelResults message"});
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_FAILED, "Cannot serialize CollectPregelResults message");
   }
   // merge results from DBServers
   outBuilder.openArray();
