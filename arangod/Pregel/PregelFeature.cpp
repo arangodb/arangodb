@@ -839,8 +839,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
     w->receivedMessages(body);
-  } else if (path == Utils::cancelGSSPath) {
-    w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
     w->finalizeExecution(body, [this, exeNum]() { cleanupWorker(exeNum); });
   } else if (path == Utils::aqlResultsPath) {
