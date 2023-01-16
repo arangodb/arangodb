@@ -52,6 +52,7 @@
 #include "Metrics/Gauge.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -61,6 +62,7 @@
 
 #include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -210,11 +212,19 @@ bool Conductor::_startGlobalStep() {
   auto prepareRes = _sendToAllDBServers(
       Utils::prepareGSSPath, VPackBuilder(serialized.get().slice()),
       [&](VPackSlice const& payload) {
-        _aggregators->aggregateValues(payload);
-
-        _statistics.accumulateActiveCounts(payload);
-        _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-        _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+        auto prepared =
+            inspection::deserializeWithErrorT<GlobalSuperStepPrepared>(
+                velocypack::SharedSlice({}, payload));
+        if (!prepared.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "Cannot deserialize GlobalSuperStepPrepared message");
+        }
+        _aggregators->aggregateValues(prepared.get().aggregators.slice());
+        _statistics.accumulateActiveCounts(prepared.get().sender,
+                                           prepared.get().activeCount);
+        _totalVerticesCount += prepared.get().vertexCount;
+        _totalEdgesCount += prepared.get().edgeCount;
       });
 
   if (prepareRes != TRI_ERROR_NO_ERROR) {

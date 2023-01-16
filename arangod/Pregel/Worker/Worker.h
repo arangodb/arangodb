@@ -33,6 +33,7 @@
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Scheduler/Scheduler.h"
@@ -51,8 +52,8 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() = default;
   virtual void setupWorker() = 0;
-  virtual void prepareGlobalStep(PrepareGlobalSuperStep const& data,
-                                 VPackBuilder& result) = 0;
+  virtual GlobalSuperStepPrepared prepareGlobalStep(
+      PrepareGlobalSuperStep const& data) = 0;
   virtual void startGlobalStep(
       RunGlobalSuperStep const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
@@ -149,8 +150,8 @@ class Worker : public IWorker {
 
   // ====== called by rest handler =====
   void setupWorker() override;
-  void prepareGlobalStep(PrepareGlobalSuperStep const& data,
-                         VPackBuilder& result) override;
+  GlobalSuperStepPrepared prepareGlobalStep(
+      PrepareGlobalSuperStep const& data) override;
   void startGlobalStep(RunGlobalSuperStep const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
   void receivedMessages(VPackSlice const& data) override;

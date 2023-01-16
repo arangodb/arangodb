@@ -22,6 +22,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "Basics/voc-errors.h"
 #include "GeneralServer/RequestLane.h"
@@ -46,6 +47,7 @@
 #include "VocBase/vocbase.h"
 
 #include "Inspection/VPack.h"
+#include "Inspection/VPackWithErrorT.h"
 #include "velocypack/Builder.h"
 
 #include "fmt/core.h"
@@ -190,8 +192,8 @@ void Worker<V, E, M>::setupWorker() {
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::prepareGlobalStep(PrepareGlobalSuperStep const& data,
-                                        VPackBuilder& response) {
+GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
+    PrepareGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -237,14 +239,17 @@ void Worker<V, E, M>::prepareGlobalStep(PrepareGlobalSuperStep const& data,
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
-  response.openObject();
-  response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-  response.add(Utils::activeCountKey, VPackValue(_activeCount));
-  response.add(Utils::vertexCountKey,
-               VPackValue(_graphStore->localVertexCount()));
-  response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-  _workerAggregators->serializeValues(response);
-  response.close();
+  VPackBuilder aggregators;
+  {
+    VPackObjectBuilder ob(&aggregators);
+    _workerAggregators->serializeValues(aggregators);
+  }
+  return GlobalSuperStepPrepared{.executionNumber = _config._executionNumber,
+                                 .sender = ServerState::instance()->getId(),
+                                 .activeCount = _activeCount,
+                                 .vertexCount = _graphStore->localVertexCount(),
+                                 .edgeCount = _graphStore->localEdgeCount(),
+                                 .aggregators = aggregators};
 }
 
 template<typename V, typename E, typename M>

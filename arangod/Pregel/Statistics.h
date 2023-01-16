@@ -87,6 +87,10 @@ struct StatsManager {
     }
   }
 
+  void accumulateActiveCounts(std::string const& sender, uint64_t active) {
+    _activeStats[sender] += active;
+  }
+
   void accumulateMessageStats(VPackSlice data) {
     VPackSlice sender = data.get(Utils::senderKey);
     if (sender.isString()) {

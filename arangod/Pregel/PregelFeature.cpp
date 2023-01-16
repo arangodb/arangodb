@@ -829,7 +829,14 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Cannot deserialize PrepareGlobalSuperStep message");
     }
-    w->prepareGlobalStep(message.get(), outBuilder);
+    auto prepared = w->prepareGlobalStep(message.get());
+    auto response = inspection::serializeWithErrorT(prepared);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot serialize GlobalSuperStepPrepared message");
+    }
+    outBuilder.add(response.get().slice());
   } else if (path == Utils::startGSSPath) {
     auto message = inspection::deserializeWithErrorT<RunGlobalSuperStep>(
         velocypack::SharedSlice({}, body));
