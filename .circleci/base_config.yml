@@ -87,7 +87,7 @@ jobs:
       - run:
           name: Run CTest
           command: |
-            ctest --preset << parameters.preset >> -R << parameters.filter >>
+            ctest --preset << parameters.preset >> -R << parameters.filter >> -VV
       - run:
           command: |
             mkdir -p /tmp/core_dumps
