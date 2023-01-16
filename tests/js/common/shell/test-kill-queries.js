@@ -194,6 +194,8 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', "both"));
   testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", true, 'both', "both"));
+  testCases.push(createTestCaseEntry("RestAqlHandler::killWhileWaiting", true, 'both', "both"));
+  testCases.push(createTestCaseEntry("RestAqlHandler::killWhileWritingResult", true, 'both', "both"));
 
   const testSuite = {
     setUpAll: function () {
