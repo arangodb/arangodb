@@ -25,6 +25,7 @@
 
 #include <s2/s2region.h>
 #include <s2/s2point.h>
+#include <s2/s2shape.h>
 
 #include <exception>
 #include <vector>
@@ -54,6 +55,9 @@ class S2MultiPointRegion final : public S2Region {
   bool Contains(S2Cell const& cell) const final;
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
+
+  void Encode(Encoder* const encoder, s2coding::CodingHint hint) const;
+  bool Decode(Decoder* const decoder);
 
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }
