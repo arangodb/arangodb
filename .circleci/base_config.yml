@@ -23,11 +23,11 @@ jobs:
       - run:
           name: Print SCCache Settings
           command: sccache -s
-      # - restore_cache:
-      #     keys:
-      #       #- sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
-      #       - sccache-v1-<< parameters.edition >>-{{ .Branch }}
-      #       - sccache-v1-<< parameters.edition >>
+      - restore_cache:
+          keys:
+            - sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
+            - sccache-v1-<< parameters.edition >>-{{ .Branch }}
+            - sccache-v1-<< parameters.edition >>
       # - run:
       #     name: Zero CCache Statistics
       #     command: ccache -z
@@ -49,11 +49,12 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: build/<< parameters.preset >>/bin/arango*
-      # - save_cache:
-      #     when: always
-      #     key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ checksum "build/<< parameters.preset >>/bin/arangod" }}
-      #     paths:
-      #       - /root/.cache/sccache
+      - save_cache:
+          when: always
+          key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
+          #key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ checksum "build/<< parameters.preset >>/bin/arangod" }}
+          paths:
+            - /root/.cache/sccache
       - persist_to_workspace:
           root: .
           paths:
