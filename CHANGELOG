@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-174: Change ViewsUI layout to single-page instead of tabs.
+
 * Add support for terabyte units (t, tb, T, TB, tib, TiB, TIB) in startup 
   options.
 
