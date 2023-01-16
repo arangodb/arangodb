@@ -43,7 +43,6 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
