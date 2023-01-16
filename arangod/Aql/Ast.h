@@ -605,10 +605,11 @@ class Ast {
   static void traverseReadOnly(AstNode const*,
                                std::function<void(AstNode const*)> const&);
 
- private:
   /// @brief normalize a function name
-  std::pair<std::string, bool> normalizeFunctionName(std::string_view name);
+  static std::pair<std::string, bool> normalizeFunctionName(
+      std::string_view name);
 
+ private:
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
 
