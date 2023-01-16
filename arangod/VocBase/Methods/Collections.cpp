@@ -712,6 +712,10 @@ Collections::create(         // create collection
     results = vocbase.createCollections(
         collections, allowEnterpriseCollectionsOnSingleServer);
     if (results.fail()) {
+      for (auto const& info : collections) {
+        events::CreateCollection(vocbase.name(), info.name,
+                                 results.errorNumber());
+      }
       return results;
     }
   }
