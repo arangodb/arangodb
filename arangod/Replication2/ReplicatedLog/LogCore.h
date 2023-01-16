@@ -27,14 +27,18 @@
 #include <mutex>
 
 #include <Basics/Result.h>
+#include <Basics/ResultT.h>
 #include <Basics/UnshackledMutex.h>
 #include <Futures/Future.h>
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedState/StateCommon.h"
 
+namespace arangodb::replication2::replicated_state {
+struct IStorageEngineMethods;
+}
 namespace arangodb::replication2::replicated_log {
-struct PersistedLog;
 
 /**
  * @brief The persistent core of a replicated log. There must only ever by one
@@ -48,7 +52,7 @@ struct PersistedLog;
  * during startup, the LogCore is held by a LogUnconfiguredParticipant instance.
  */
 struct alignas(64) LogCore {
-  explicit LogCore(std::shared_ptr<PersistedLog> persistedLog);
+  explicit LogCore(replicated_state::IStorageEngineMethods& storage);
 
   // There must only be one LogCore per physical log
   LogCore() = delete;
@@ -59,19 +63,18 @@ struct alignas(64) LogCore {
 
   auto insertAsync(std::unique_ptr<PersistedLogIterator> iter, bool waitForSync)
       -> futures::Future<Result>;
-  auto insert(PersistedLogIterator& iter, bool waitForSync) -> Result;
   [[nodiscard]] auto read(LogIndex first) const
       -> std::unique_ptr<PersistedLogIterator>;
   auto removeBack(LogIndex first) -> Result;
   auto removeFront(LogIndex stop) -> futures::Future<Result>;
 
-  auto releasePersistedLog() && -> std::shared_ptr<PersistedLog>;
-
   auto logId() const noexcept -> LogId;
-  auto gid() const noexcept -> GlobalLogIdentifier const&;
+
+  auto updateSnapshotState(replicated_state::SnapshotStatus) -> Result;
+  auto getSnapshotState() -> ResultT<replicated_state::SnapshotStatus>;
 
  private:
-  std::shared_ptr<PersistedLog> _persistedLog;
+  replicated_state::IStorageEngineMethods& _storage;
   mutable basics::UnshackledMutex _operationMutex;
 };
 

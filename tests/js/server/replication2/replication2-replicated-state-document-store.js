@@ -138,22 +138,22 @@ const getDocumentEntries = function (entries, type, document) {
   if (document === undefined) {
     let matchingType = [];
     for (const entry of entries) {
-      if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type) {
+      if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
         matchingType.push(entry);
       }
     }
     return matchingType;
   }
   for (const entry of entries) {
-    if (entry.hasOwnProperty("payload") && entry.payload[1].operation === type) {
+    if (entry.hasOwnProperty("payload") && entry.payload.operation === type) {
       // replication entries can contain an array of documents (batch op)
-      if (Array.isArray(entry.payload[1].data)) {
+      if (Array.isArray(entry.payload.data)) {
         // in this case try to find the document in the batch
-        let res = entry.payload[1].data.filter((doc) => doc._key === document._key);
+        let res = entry.payload.data.filter((doc) => doc._key === document._key);
         if (res.length === 1) {
           return entry;
         }
-      } else if (entry.payload[1].data._key === document._key) {
+      } else if (entry.payload.data._key === document._key) {
         // single document operation was replicated
         return entry;
       }
@@ -174,7 +174,7 @@ const searchDocs = function(logs, docs, opType) {
   for (const doc of docs) {
     let entry = getDocumentEntries(allEntries, opType, doc);
     assertNotNull(entry);
-    assertEqual(entry.payload[1].operation, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
+    assertEqual(entry.payload.operation, opType, `Dumping combined log entries: ${JSON.stringify(allEntries)}`);
   }
 };
 
@@ -183,9 +183,9 @@ const searchDocs = function(logs, docs, opType) {
  */
 const getArrayElements = function(logs, opType, name) {
   let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
-      .filter(entry => entry.hasOwnProperty("payload") && entry.payload[1].operation === opType
-          && Array.isArray(entry.payload[1].data))
-      .reduce((previous, current) => previous.concat(current.payload[1].data), []);
+      .filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation === opType
+          && Array.isArray(entry.payload.data))
+      .reduce((previous, current) => previous.concat(current.payload.data), []);
   if (name === undefined) {
     return entries;
   }
@@ -223,7 +223,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
       for (const shard of collection.shards()) {
-        let {target, plan, current} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
+        let {target, plan, current} = lh.readReplicatedLogAgency(database, lh.shardIdToLogId(shard));
         let shardPlan = colPlan.shards[shard];
         let shardCurrent = colCurrent[shard];
 
@@ -232,11 +232,11 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         assertTrue(lh.sortedArrayEqualOrError(Object.keys(target.participants)), _.sortBy(shardPlan));
 
         // Check if the replicated state in Plan and the shard in Plan match
-        assertTrue(lh.sortedArrayEqualOrError(Object.keys(plan.participants)), _.sortBy(shardPlan));
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(plan.participantsConfig.participants)), _.sortBy(shardPlan));
 
         // Check if the replicated state in Current and the shard in Current match
         assertEqual(target.leader, shardCurrent.servers[0]);
-        assertTrue(lh.sortedArrayEqualOrError(Object.keys(current.participants)), _.sortBy(shardCurrent.servers));
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(current.localStatus)), _.sortBy(shardCurrent.servers));
       }
     },
 
@@ -291,8 +291,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     testReplicateOperationsModify: function() {
       const opType = "Update";
 
+      // Choose two distinct random numbers
+      const numDocs = 2;
+      const nums = new Set();
+      while(nums.size !== numDocs) {
+        nums.add(_.random(1000));
+      }
+
       // Update single document
-      let documents = [{_key: `test${_.random(1000)}`}, {_key: `test${_.random(1000)}`}];
+      const documents = [...nums].map(i => ({_key: `test${i}`}));
       let docHandles = [];
       documents.forEach(doc => {
         let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
@@ -362,15 +369,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let found = [];
       let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1010)), []);
       for (const entry of allEntries) {
-        if (entry.hasOwnProperty("payload") && entry.payload[1].operation === opType) {
-          let colName = entry.payload[1].data.collection;
+        if (entry.hasOwnProperty("payload") && entry.payload.operation === opType) {
+          let colName = entry.payload.data.collection;
           assertTrue(shards.includes(colName) && !found.includes(colName));
           found.push(colName);
         }
       }
       assertEqual(found.length, 2, `Dumping combined log entries (excluding inserts): ` +
         JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
-          entry.hasOwnProperty("payload") && entry.payload[1].operation !== "Insert")));
+          entry.hasOwnProperty("payload") && entry.payload.operation !== "Insert")));
     }
   };
 };
@@ -424,7 +431,6 @@ const replicatedStateIntermediateCommitsSuite = function() {
       FOR i in 0..2000 
       INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`,
         {}, {intermediateCommitCount: 1});
-
       let keys = [];
       for (let i = 0; i <= 2000; ++i) {
         keys.push(`test${i}`);
@@ -432,7 +438,6 @@ const replicatedStateIntermediateCommitsSuite = function() {
 
       // Wait for the last key to be applied on all servers
       checkFollowersValue(servers, shardId, `test2000`, 2000, true);
-
       // Check that all keys are applied on all servers
       for (let server of Object.values(servers)) {
         let bulk = sh.getBulkDocuments(server, database, shardId, keys);
@@ -674,7 +679,7 @@ const replicatedStateRecoverySuite = function () {
         if (entry.logTerm !== newTerm || entry.payload === undefined) {
           return false;
         }
-        return entry.payload[1].operation === "AbortAllOngoingTrx";
+        return entry.payload.operation === "AbortAllOngoingTrx";
       });
       assertTrue(abortAllEntryFound, `Log contents for ${shardId}: ${JSON.stringify(logContents)}`);
 
@@ -839,6 +844,9 @@ const replicatedStateSnapshotTransferSuite = function () {
       // Trigger compaction intentionally.
       log.compact();
 
+      // TODO this is not safe, we might loose already committed log entries.
+      //      either force the leader in the first place, or make sure a leader
+      //      election is done (by deleting the current leader when increasing the term)
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
       let checkKeys = documents.map(doc => doc._key);

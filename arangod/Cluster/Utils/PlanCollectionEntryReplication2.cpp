@@ -22,7 +22,7 @@
 
 #include "PlanCollectionEntryReplication2.h"
 #include "Inspection/VPack.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/LogicalCollection.h"
@@ -64,13 +64,13 @@ PlanShardToServerMapping PlanCollectionEntryReplication2::getShardMapping()
   return _shardDistribution.getDistributionForShards();
 }
 
-[[nodiscard]] replication2::replicated_state::agency::Target
-PlanCollectionEntryReplication2::getReplicatedStateForTarget(
+[[nodiscard]] replication2::agency::LogTarget
+PlanCollectionEntryReplication2::getReplicatedLogForTarget(
     ShardID const& shardId, ResponsibleServerList const& serverIds,
     std::string_view databaseName) const {
   using namespace replication2::replicated_state;
 
-  replication2::replicated_state::agency::Target spec;
+  replication2::agency::LogTarget spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
@@ -83,9 +83,7 @@ PlanCollectionEntryReplication2::getReplicatedStateForTarget(
   spec.leader = serverIds.getLeader();
 
   for (auto const& serverId : serverIds.servers) {
-    spec.participants.emplace(
-        serverId,
-        replication2::replicated_state::agency::Target::Participant{});
+    spec.participants.emplace(serverId, replication2::ParticipantFlags{});
   }
 
   TRI_ASSERT(_properties.writeConcern.has_value());

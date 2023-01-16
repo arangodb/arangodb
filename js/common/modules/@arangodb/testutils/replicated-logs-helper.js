@@ -135,7 +135,18 @@ const coordinators = (function () {
  *       },
  *       plan: {
  *         id: number,
- *         participantsConfig: Object,
+ *         participantsConfig: {
+ *           participants: Object<string, {
+ *             forced: boolean,
+ *             allowedInQuorum: boolean,
+ *             allowedAsLeader: boolean
+ *           }>,
+ *           generation: number,
+ *           config: {
+ *             waitForSync: boolean,
+ *             effectiveWriteConcern: number
+ *           }
+ *         },
  *         currentTerm?: {
  *           term: number,
  *           leader: {
@@ -145,6 +156,7 @@ const coordinators = (function () {
  *         }
  *       },
  *       current: {
+ *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
  *         leader?: Object
@@ -387,6 +399,7 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
     id: logId,
     currentTerm: createTermSpecification(term, servers, leader),
     participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
+    properties: {implementation: {type: "black-hole", parameters: {}}}
   });
 
   // wait for all servers to have reported in current
@@ -407,6 +420,28 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
+};
+
+const createReplicatedLogWithState = function (database, targetConfig, stateType, replicationFactor) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(dbservers, replicationFactor);
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: stateType, parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
@@ -558,7 +593,7 @@ const dumpShardLog = function (shardId, limit=1000) {
 
 const setLeader = (database, logId, newLeader) => {
   const url = getServerUrl(_.sample(coordinators));
-  const res = request.post(`${url}/_db/${database}/_api/replicated-state/${logId}/leader/${newLeader}`);
+  const res = request.post(`${url}/_db/${database}/_api/log/${logId}/leader/${newLeader}`);
   checkRequestResult(res);
   const { json: { result } } = res;
   return result;
@@ -566,7 +601,7 @@ const setLeader = (database, logId, newLeader) => {
 
 const unsetLeader = (database, logId) => {
   const url = getServerUrl(_.sample(coordinators));
-  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}/leader`);
+  const res = request.delete(`${url}/_db/${database}/_api/log/${logId}/leader`);
   checkRequestResult(res);
   const { json: { result } } = res;
   return result;
@@ -636,4 +671,5 @@ exports.shardIdToLogId = shardIdToLogId;
 exports.dumpShardLog = dumpShardLog;
 exports.setLeader = setLeader;
 exports.unsetLeader = unsetLeader;
+exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;

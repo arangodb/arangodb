@@ -88,7 +88,7 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     auto stateMachine =
         std::dynamic_pointer_cast<replicated_state::ReplicatedState<
             replicated_state::document::DocumentState>>(
-            _vocbase.getReplicatedStateById(logId));
+            _vocbase.getReplicatedStateById(logId).get());
     if (stateMachine == nullptr) {
       return ResultT<DocumentStateType>::error(
           TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
@@ -98,8 +98,9 @@ class DocumentStateMethodsDBServer final : public DocumentStateMethods {
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
       return ResultT<DocumentStateType>::error(
-          TRI_ERROR_CLUSTER_NOT_LEADER,
-          fmt::format("Failed to get leader of DocumentState with id {}",
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
+          fmt::format("Failed to get leader of DocumentState with id {}; this "
+                      "is not a leader instance.",
                       logId));
     }
     return leader;

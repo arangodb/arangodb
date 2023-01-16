@@ -48,6 +48,7 @@
 #include <rocksdb/advanced_options.h>
 #include <rocksdb/cache.h>
 #include <rocksdb/filter_policy.h>
+#include <rocksdb/memory_allocator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
@@ -230,6 +231,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
       _blockCacheSize(::defaultBlockCacheSize()),
       _blockCacheShardBits(-1),
+      _bloomBitsPerKey(10.0),
       _tableBlockSize(std::max(
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
@@ -250,6 +252,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _formatVersion(5),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
+      _useJemallocAllocator(false),
       _prepopulateBlockCache(false),
       _reserveTableBuilderMemory(false),
       _reserveTableReaderMemory(false),
@@ -918,6 +921,19 @@ the overall size of the block cache.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
+  options
+      ->addOption(
+          "--rocksdb.bloom-filter-bits-per-key",
+          "The average number of bits to use per key in a Bloom filter.",
+          new DoubleParameter(&_bloomBitsPerKey),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31003);
+
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
       "If non-zero, bigger reads are performed when doing compaction. If you "
@@ -1067,6 +1083,25 @@ version.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
+
+  options
+      ->addOption(
+          "--rocksdb.block-cache-jemalloc-allocator",
+          "Use jemalloc-based memory allocator for RocksDB block cache.",
+          new BooleanParameter(&_useJemallocAllocator),
+          arangodb::options::makeFlags(arangodb::options::Flags::Experimental,
+                                       arangodb::options::Flags::Uncommon,
+                                       arangodb::options::Flags::OsLinux,
+                                       arangodb::options::Flags::OnAgent,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(
+          R"(The jemalloc-based memory allocator for the RocksDB block cache
+will also exclude the block cache contents from coredumps, potentially making generated 
+coredumps a lot smaller.
+In order to use this option, the executable needs to be compiled with jemalloc
+support (which is the default on Linux).)");
 
   options
       ->addOption("--rocksdb.prepopulate-block-cache",
@@ -1227,6 +1262,17 @@ void RocksDBOptionFeature::validateOptions(
 
     // TODO: hyper clock cache probably doesn't need as many shards. check this.
   }
+
+#ifndef ARANGODB_HAVE_JEMALLOC
+  // on some platforms, jemalloc is not available, because it is not compiled
+  // in by default. to make the startup of the server not fail in such
+  // environment, turn off the option automatically
+  if (_useJemallocAllocator) {
+    _useJemallocAllocator = false;
+    LOG_TOPIC("b3164", INFO, Logger::STARTUP)
+        << "disabling jemalloc allocator for RocksDB - jemalloc not compiled";
+  }
+#endif
 }
 
 void RocksDBOptionFeature::prepare() {
@@ -1303,6 +1349,7 @@ void RocksDBOptionFeature::start() {
       << ", target_file_size_multiplier: " << _targetFileSizeMultiplier
       << ", num_threads_high: " << _numThreadsHigh
       << ", num_threads_low: " << _numThreadsLow
+      << ", use_jemalloc_allocator: " << _useJemallocAllocator
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
       << ", block_cache_strict_capacity_limit: " << std::boolalpha
@@ -1322,6 +1369,7 @@ void RocksDBOptionFeature::start() {
       << ", periodic_compaction_ttl: " << _periodicCompactionTtl
       << ", checksum: " << _checksumType
       << ", format_version: " << _formatVersion
+      << ", bloom_bits_per_key: " << _bloomBitsPerKey
       << ", enable_index_compression: " << std::boolalpha
       << _enableIndexCompression
       << ", prepopulate_block_cache: " << std::boolalpha
@@ -1515,9 +1563,28 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
-    result.block_cache = rocksdb::NewLRUCache(
-        _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-        /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
+    rocksdb::LRUCacheOptions opts;
+
+    opts.capacity = _blockCacheSize;
+    opts.num_shard_bits = static_cast<int>(_blockCacheShardBits);
+    opts.strict_capacity_limit = _enforceBlockCacheSizeLimit;
+
+#ifdef ARANGODB_HAVE_JEMALLOC
+    if (_useJemallocAllocator) {
+      rocksdb::JemallocAllocatorOptions jopts;
+      std::shared_ptr<rocksdb::MemoryAllocator> allocator;
+      rocksdb::Status s =
+          rocksdb::NewJemallocNodumpAllocator(jopts, &allocator);
+      if (!s.ok()) {
+        LOG_TOPIC("004e6", FATAL, Logger::STARTUP)
+            << "unable to use jemalloc allocator for RocksDB: " << s.ToString();
+        FATAL_ERROR_EXIT();
+      }
+      opts.memory_allocator = allocator;
+    }
+#endif
+
+    result.block_cache = rocksdb::NewLRUCache(opts);
   } else {
     result.no_block_cache = true;
   }
@@ -1530,7 +1597,8 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   result.pin_top_level_index_and_filter = _pinTopLevelIndexAndFilter;
 
   result.block_size = _tableBlockSize;
-  result.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  result.filter_policy.reset(
+      rocksdb::NewBloomFilterPolicy(_bloomBitsPerKey, true));
   result.enable_index_compression = _enableIndexCompression;
   result.format_version = _formatVersion;
   result.prepopulate_block_cache =

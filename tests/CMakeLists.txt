@@ -82,7 +82,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
-  Aql/AqlItemMatrixTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
@@ -303,7 +302,7 @@ add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
 add_test(NAME arangodbtests
-	 COMMAND arangodbtests)
+  COMMAND arangodbtests)
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -341,20 +340,6 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
-
-
-if(MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-    # There's a warning about /MP being unused if compiling only a single file
-    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
-  endif()
-endif()
-
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-endif()
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp

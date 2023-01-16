@@ -250,12 +250,6 @@ void AgencyCache::handleCallbacksNoLock(
           auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(
-                            PLAN_REPLICATED_STATES) &&  // Plan/ReplicatedStates
-                   r.compare(0, strlen(PLAN_REPLICATED_STATES),
-                             PLAN_REPLICATED_STATES) == 0) {
-          auto tmp = r.substr(strlen(PLAN_REPLICATED_STATES));
-          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(
                             PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
                    r.compare(0, strlen(PLAN_COLLECTION_GROUPS),
                              PLAN_COLLECTION_GROUPS) == 0) {
@@ -301,13 +295,6 @@ void AgencyCache::handleCallbacksNoLock(
             r.compare(0, strlen(CURRENT_REPLICATED_LOGS),
                       CURRENT_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
-          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (
-            rs > strlen(
-                     CURRENT_REPLICATED_STATES) &&  // Current/ReplicatedStates
-            r.compare(0, strlen(CURRENT_REPLICATED_STATES),
-                      CURRENT_REPLICATED_STATES) == 0) {
-          auto tmp = r.substr(strlen(CURRENT_REPLICATED_STATES));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();  // "" to indicate non database
@@ -727,12 +714,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_VIEWS) + "/",
       AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/",
-      AgencyCommHelper::path(PLAN_REPLICATED_STATES) + "/",
   });
   static std::vector<std::string> const currentGoodies(
       {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
        AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
-       AgencyCommHelper::path(CURRENT_REPLICATED_STATES) + "/",
        AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;

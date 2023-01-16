@@ -30,6 +30,7 @@
 #include <Basics/application-exit.h>
 #include <Basics/Exceptions.h>
 #include <Futures/Future.h>
+#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -37,6 +38,8 @@ DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : shardId(core->getShardId()),
+      loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
+          "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->getGid())),
       _transactionHandler(
           handlersFactory->createTransactionHandler(core->getGid())),
@@ -57,15 +60,21 @@ auto DocumentFollowerState::resign() && noexcept
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
-  auto truncateRes = _guardedData.doUnderLock(
-      [self = shared_from_this()](auto& data) -> Result {
+  auto snapshotVersion = _guardedData.doUnderLock(
+      [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-        return self->truncateLocalShard();
+
+        auto count = ++data.currentSnapshotVersion;
+        if (auto truncateRes = self->truncateLocalShard(); truncateRes.fail()) {
+          return truncateRes;
+        }
+        return count;
       });
-  if (truncateRes.fail()) {
-    return truncateRes;
+
+  if (snapshotVersion.fail()) {
+    return snapshotVersion.result();
   }
 
   // A follower may request a snapshot before leadership has been
@@ -73,65 +82,78 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
   auto leader = _networkHandler->getLeaderInterface(destination);
   auto fut = leader->startSnapshot(waitForIndex);
   return handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                std::move(fut));
+                                snapshotVersion.get(), std::move(fut));
 }
 
 auto DocumentFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  return _guardedData.doUnderLock([self = shared_from_this(),
-                                   ptr = std::move(ptr)](
-                                      auto& data) -> futures::Future<Result> {
-    if (data.didResign()) {
-      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-    }
-
-    if (self->_transactionHandler == nullptr) {
-      return Result{
-          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-          fmt::format("Transaction handler is missing from "
-                      "DocumentFollowerState during applyEntries "
-                      "{}! This happens if the vocbase cannot be found during "
-                      "DocumentState construction.",
-                      to_string(data.core->getGid()))};
-    }
-
-    while (auto entry = ptr->next()) {
-      auto doc = entry->second;
-      auto res = self->_transactionHandler->applyEntry(doc);
-      if (res.fail()) {
-        LOG_TOPIC("d82d4", FATAL, Logger::REPLICATION2)
-            << "Failed to apply entry " << entry->first << " to local shard "
-            << self->shardId << " with error: " << res;
-        FATAL_ERROR_EXIT();
-      }
-
-      try {
-        if (doc.operation == OperationType::kAbortAllOngoingTrx) {
-          self->_activeTransactions.clear();
-          self->getStream()->release(
-              self->_activeTransactions.getReleaseIndex(entry->first));
-        } else if (doc.operation == OperationType::kCommit ||
-                   doc.operation == OperationType::kAbort) {
-          self->_activeTransactions.erase(doc.tid);
-          self->getStream()->release(
-              self->_activeTransactions.getReleaseIndex(entry->first));
-        } else {
-          self->_activeTransactions.emplace(doc.tid, entry->first);
+  auto result = _guardedData.doUnderLock(
+      [self = shared_from_this(),
+       ptr = std::move(ptr)](auto& data) -> ResultT<std::optional<LogIndex>> {
+        if (data.didResign()) {
+          return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
-      } catch (basics::Exception& e) {
-        return Result{e.code(), e.message()};
-      } catch (std::exception& e) {
-        return Result{
-            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-            fmt::format(
-                "replicated state {} of type {} is unavailable, exception "
-                "durin applyEntries: {}",
-                self->shardId, DocumentState::NAME, e.what())};
-      }
-    }
 
-    return {TRI_ERROR_NO_ERROR};
-  });
+        if (self->_transactionHandler == nullptr) {
+          return Result{
+              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              fmt::format(
+                  "Transaction handler is missing from "
+                  "DocumentFollowerState during applyEntries "
+                  "{}! This happens if the vocbase cannot be found during "
+                  "DocumentState construction.",
+                  to_string(data.core->getGid()))};
+        }
+
+        return basics::catchToResultT([&]() -> std::optional<LogIndex> {
+          std::optional<LogIndex> releaseIndex;
+
+          while (auto entry = ptr->next()) {
+            auto doc = entry->second;
+            auto res = self->_transactionHandler->applyEntry(doc);
+            if (res.fail()) {
+              LOG_CTX("d82d4", FATAL, self->loggerContext)
+                  << "Failed to apply entry " << entry->first
+                  << " to local shard " << self->shardId
+                  << " with error: " << res;
+              FATAL_ERROR_EXIT();
+            }
+
+            if (doc.operation == OperationType::kAbortAllOngoingTrx) {
+              self->_activeTransactions.clear();
+              releaseIndex =
+                  self->_activeTransactions.getReleaseIndex(entry->first);
+            } else if (doc.operation == OperationType::kCommit ||
+                       doc.operation == OperationType::kAbort) {
+              self->_activeTransactions.erase(doc.tid);
+              releaseIndex =
+                  self->_activeTransactions.getReleaseIndex(entry->first);
+            } else {
+              self->_activeTransactions.emplace(doc.tid, entry->first);
+            }
+          }
+
+          return releaseIndex;
+        });
+      });
+
+  if (result.fail()) {
+    return result.result();
+  }
+  if (result->has_value()) {
+    // The follower might have resigned, so we need to be careful when accessing
+    // the stream.
+    auto releaseRes = basics::catchVoidToResult([&] {
+      auto const& stream = getStream();
+      stream->release(result->value());
+    });
+    if (releaseRes.fail()) {
+      LOG_CTX("10f07", ERR, loggerContext)
+          << "Failed to get stream! " << releaseRes;
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 /**
@@ -168,11 +190,12 @@ auto DocumentFollowerState::populateLocalShard(velocypack::SharedSlice slice)
 
 auto DocumentFollowerState::handleSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
-    LogIndex waitForIndex,
+    LogIndex waitForIndex, std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<Result> {
   return std::move(snapshotFuture)
-      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex](
+      .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
+             snapshotVersion](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<Result> {
         auto self = weak.lock();
@@ -195,21 +218,43 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         TRI_ASSERT(snapshotRes->shardId == self->shardId);
 
         auto& docs = snapshotRes->payload;
-        auto insertRes = self->_guardedData.doUnderLock(
-            [&self, &docs](auto& data) -> Result {
-              if (data.didResign()) {
-                return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
-              }
-              return self->populateLocalShard(docs);
-            });
+        auto insertRes = self->_guardedData.doUnderLock([&self, &docs,
+                                                         snapshotVersion](
+                                                            auto& data)
+                                                            -> Result {
+          if (data.didResign()) {
+            return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+          }
+
+          // The user may remove and add the server again. The leader
+          // might do a compaction which the follower won't notice. Hence, a
+          // new snapshot is required. This can happen so quick, that one
+          // snapshot transfer is not yet completed before another one is
+          // requested. Before populating the shard, we have to make sure
+          // there's no new snapshot transfer in progress.
+          if (data.currentSnapshotVersion != snapshotVersion) {
+            return {
+                TRI_ERROR_INTERNAL,
+                "Snapshot transfer cancelled because a new one was started!"};
+          }
+          return self->populateLocalShard(docs);
+        });
         if (insertRes.fail()) {
+          LOG_CTX("d8b8a", ERR, self->loggerContext)
+              << "Failed to populate local shard: " << insertRes;
+          if (insertRes.isNot(
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)) {
+            // TODO return result and let the leader clear the failed snapshot
+            // itself, or send an abort instead of finish?
+            return leader->finishSnapshot(snapshotRes->snapshotId);
+          }
           return insertRes;
         }
 
         if (snapshotRes->hasMore) {
           auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
           return self->handleSnapshotTransfer(std::move(leader), waitForIndex,
-                                              std::move(fut));
+                                              snapshotVersion, std::move(fut));
         }
 
         return leader->finishSnapshot(snapshotRes->snapshotId);

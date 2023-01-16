@@ -33,7 +33,6 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.tpp"

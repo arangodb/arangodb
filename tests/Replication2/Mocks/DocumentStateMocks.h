@@ -24,6 +24,7 @@
 #include <gmock/gmock.h>
 
 #include "Replication2/StateMachines/Document/CollectionReader.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -306,4 +307,50 @@ struct DocumentLeaderStateWrapper
     return DocumentLeaderState::recoverEntries(std::move(ptr));
   }
 };
+
+struct MockProducerStream
+    : streams::ProducerStream<replicated_state::document::DocumentLogEntry> {
+  // Stream<T>
+  MOCK_METHOD(futures::Future<WaitForResult>, waitFor, (LogIndex), (override));
+  MOCK_METHOD(futures::Future<std::unique_ptr<Iterator>>, waitForIterator,
+              (LogIndex), (override));
+  MOCK_METHOD(void, release, (LogIndex), (override));
+  // ProducerStream<T>
+  MOCK_METHOD(LogIndex, insert,
+              (replicated_state::document::DocumentLogEntry const&),
+              (override));
+  MOCK_METHOD((std::pair<LogIndex, DeferredAction>), insertDeferred,
+              (replicated_state::document::DocumentLogEntry const&),
+              (override));
+
+  MockProducerStream() {
+    ON_CALL(*this, insert)
+        .WillByDefault(
+            [this](replicated_state::document::DocumentLogEntry const& doc) {
+              auto idx = current;
+              current += 1;
+              entries[idx] = doc;
+              return idx;
+            });
+  }
+
+  LogIndex current{1};
+  std::map<LogIndex, replicated_state::document::DocumentLogEntry> entries;
+};
+
+struct DocumentLogEntryIterator
+    : TypedLogRangeIterator<streams::StreamEntryView<
+          replicated_state::document::DocumentLogEntry>> {
+  DocumentLogEntryIterator(
+      std::vector<replicated_state::document::DocumentLogEntry> entries);
+
+  auto next() -> std::optional<streams::StreamEntryView<
+      replicated_state::document::DocumentLogEntry>> override;
+
+  [[nodiscard]] auto range() const noexcept -> LogRange override;
+
+  std::vector<replicated_state::document::DocumentLogEntry> entries;
+  decltype(entries)::iterator iter;
+};
+
 }  // namespace arangodb::replication2::test

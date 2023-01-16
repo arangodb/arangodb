@@ -27,7 +27,6 @@
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 
 #include <string>
 #include <variant>
@@ -76,6 +75,7 @@ struct ReplicatedLogMethods {
     std::optional<ParticipantId> leader;
     std::optional<std::size_t> numberOfServers;
     std::vector<ParticipantId> servers;
+    agency::ImplementationSpec spec;
   };
 
   struct CreateResult {
@@ -133,7 +133,11 @@ struct ReplicatedLogMethods {
       -> futures::Future<LogIndex> = 0;
 
   virtual auto release(LogId, LogIndex) const -> futures::Future<Result> = 0;
-  virtual auto compact(LogId) const -> futures::Future<Result> = 0;
+
+  using CompactionResultMap =
+      std::unordered_map<ParticipantId, replicated_log::CompactionResponse>;
+
+  virtual auto compact(LogId) const -> futures::Future<CompactionResultMap> = 0;
 
   /*
    * Wait until the supervision reports that the replicated log has converged
@@ -144,6 +148,18 @@ struct ReplicatedLogMethods {
 
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedLogMethods>;
+  static auto createInstance(DatabaseID database, ArangodServer& server)
+      -> std::shared_ptr<ReplicatedLogMethods>;
+
+  [[nodiscard]] virtual auto replaceParticipant(
+      LogId, ParticipantId const& participantToRemove,
+      ParticipantId const& participantToAdd,
+      std::optional<ParticipantId> const& currentLeader) const
+      -> futures::Future<Result> = 0;
+
+  [[nodiscard]] virtual auto setLeader(
+      LogId id, std::optional<ParticipantId> const& leaderId) const
+      -> futures::Future<Result> = 0;
 
  private:
   virtual auto createReplicatedLog(agency::LogTarget spec) const
@@ -155,6 +171,9 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
   return f.object(x).fields(
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
+      f.field("spec", x.spec)
+          .fallback(agency::ImplementationSpec{.type = "black-hole",
+                                               .parameters = {}}),
       f.field("leader", x.leader),
       f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));
@@ -163,59 +182,6 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedLogMethods::CreateResult& x) {
   return f.object(x).fields(f.field("id", x.id), f.field("servers", x.servers));
-}
-
-struct ReplicatedStateMethods {
-  virtual ~ReplicatedStateMethods() = default;
-
-  [[nodiscard]] virtual auto waitForStateReady(LogId, std::uint64_t version)
-      -> futures::Future<ResultT<consensus::index_t>> = 0;
-
-  virtual auto createReplicatedState(replicated_state::agency::Target spec)
-      const -> futures::Future<Result> = 0;
-  virtual auto deleteReplicatedState(LogId id) const
-      -> futures::Future<Result> = 0;
-
-  virtual auto getLocalStatus(LogId) const
-      -> futures::Future<replicated_state::StateStatus> = 0;
-
-  struct ParticipantSnapshotStatus {
-    replicated_state::SnapshotInfo status;
-    replicated_state::StateGeneration generation;
-  };
-
-  using GlobalSnapshotStatus =
-      std::unordered_map<ParticipantId, ParticipantSnapshotStatus>;
-
-  virtual auto getGlobalSnapshotStatus(LogId) const
-      -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
-
-  static auto createInstance(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  static auto createInstanceDBServer(TRI_vocbase_t& vocbase)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  static auto createInstanceCoordinator(ArangodServer& server,
-                                        std::string databaseName)
-      -> std::shared_ptr<ReplicatedStateMethods>;
-
-  [[nodiscard]] virtual auto replaceParticipant(
-      LogId, ParticipantId const& participantToRemove,
-      ParticipantId const& participantToAdd,
-      std::optional<ParticipantId> const& currentLeader) const
-      -> futures::Future<Result> = 0;
-
-  [[nodiscard]] virtual auto setLeader(
-      LogId id, std::optional<ParticipantId> const& leaderId) const
-      -> futures::Future<Result> = 0;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f,
-             ReplicatedStateMethods::ParticipantSnapshotStatus& x) {
-  return f.object(x).fields(f.field("status", x.status),
-                            f.field("generation", x.generation));
 }
 
 }  // namespace arangodb::replication2

@@ -22,6 +22,7 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/LoggerContext.h"
@@ -33,7 +34,16 @@ namespace {
 
 auto shouldIgnoreError(arangodb::OperationResult const& res) noexcept -> bool {
   auto ignoreError = [](ErrorCode code) {
-    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    /*
+     * These errors are ignored because the snapshot can be more recent than
+     * the applied log entries.
+     * TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED could happen during insert
+     * operations.
+     * TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND could happen during
+     * remove operations.
+     */
+    return code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+           code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   };
 
   if (res.fail() && !ignoreError(res.errorNumber())) {
@@ -57,9 +67,12 @@ auto makeResultFromOperationResult(arangodb::OperationResult const& res,
     if (e == TRI_ERROR_NO_ERROR) {
       e = TRI_ERROR_TRANSACTION_INTERNAL;
     }
-    msg << "Transaction " << tid << ": ";
+    msg << "Transaction " << tid << " error codes: ";
     for (auto const& it : res.countErrorCodes) {
       msg << it.first << ' ';
+    }
+    if (res.hasSlice()) {
+      msg << "; Full result: " << res.slice().toJson();
     }
   }
   return arangodb::Result{e, std::move(msg).str()};
@@ -132,6 +145,7 @@ auto DocumentStateTransactionHandler::applyEntry(DocumentLogEntry doc)
       }
       case OperationType::kAbortAllOngoingTrx:
         TRI_ASSERT(false);  // should never happen as it should be handled above
+        FATAL_ERROR_EXIT();
       case OperationType::kIntermediateCommit:
         return trx->intermediateCommit();
       default:

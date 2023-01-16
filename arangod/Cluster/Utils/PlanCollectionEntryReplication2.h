@@ -36,8 +36,8 @@ namespace velocypack {
 class Builder;
 }
 
-namespace replication2::replicated_state::agency {
-struct Target;
+namespace replication2::agency {
+struct LogTarget;
 }
 
 struct PlanCollectionEntryReplication2 {
@@ -56,10 +56,9 @@ struct PlanCollectionEntryReplication2 {
 
   [[nodiscard]] PlanShardToServerMapping getShardMapping() const;
 
-  [[nodiscard]] replication2::replicated_state::agency::Target
-  getReplicatedStateForTarget(ShardID const& shard,
-                              ResponsibleServerList const& servers,
-                              std::string_view databaseName) const;
+  [[nodiscard]] replication2::agency::LogTarget getReplicatedLogForTarget(
+      ShardID const& shard, ResponsibleServerList const& servers,
+      std::string_view databaseName) const;
 
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();

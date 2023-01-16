@@ -29,9 +29,9 @@
 #include "Cluster/Utils/CurrentCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntry.h"
 #include "Cluster/Utils/PlanCollectionEntryReplication2.h"
-#include "Cluster/Utils/PlanShardToServerMappping.h"
 #include "Inspection/VPack.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Logger/LogMacros.h"
@@ -53,17 +53,16 @@ inline auto pathCollectionInPlan(std::string_view databaseName) {
       std::string{databaseName});
 }
 
-inline auto pathReplicatedStateInTarget(std::string_view databaseName) {
-  return paths::target()->replicatedStates()->database(
-      std::string{databaseName});
+inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
+  return paths::target()->replicatedLogs()->database(std::string{databaseName});
 }
 
 inline auto pathCollectionInCurrent(std::string_view databaseName) {
   return paths::current()->collections()->database(std::string{databaseName});
 }
 
-inline auto pathReplicatedStateInCurrent(std::string_view databaseName) {
-  return paths::current()->replicatedStates()->database(
+inline auto pathReplicatedLogInCurrent(std::string_view databaseName) {
+  return paths::current()->replicatedLogs()->database(
       std::string{databaseName});
 }
 
@@ -84,7 +83,7 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
   // One callback per collection
   report->reserve(_collectionPlanEntries.size());
   auto const baseCollectionPath = pathCollectionInCurrent(databaseName);
-  auto const baseStatePath = pathReplicatedStateInCurrent(databaseName);
+  auto const baseStatePath = pathReplicatedLogInCurrent(databaseName);
   for (auto const& entry : _collectionPlanEntries) {
     if (entry.requiresCurrentWatcher()) {
       // Add Shards Watcher
@@ -137,9 +136,8 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
         // bit. But as we are waiting on Agency roundtrips here performance
         // should not matter too much.
         auto orderedSpec =
-            entry.getReplicatedStateForTarget(shardId, servers, databaseName);
-        auto const statePath =
-            baseStatePath->state(orderedSpec.id)->supervision();
+            entry.getReplicatedLogForTarget(shardId, servers, databaseName);
+        auto const statePath = baseStatePath->log(orderedSpec.id);
         TRI_ASSERT(orderedSpec.version.has_value());
         auto callback = [report,
                          id = basics::StringUtils::itoa(orderedSpec.id.id()),
@@ -154,10 +152,9 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
           }
 
           auto supervision = velocypack::deserialize<
-              replication2::replicated_state::agency::Current::Supervision>(
-              slice);
-          if (supervision.version.has_value() &&
-              supervision.version >= version) {
+              replication2::agency::LogCurrentSupervision>(slice);
+          if (supervision.targetVersion.has_value() &&
+              supervision.targetVersion >= version) {
             // Right now there cannot be any error on replicated states.
             // SO if they show up in correct version we just take them.
             report->addReport(id, TRI_ERROR_NO_ERROR);
@@ -188,8 +185,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
   }
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedStatesPath =
-      pathReplicatedStateInTarget(databaseName);
+  auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
 
   VPackBufferUInt8 data;
   VPackBuilder builder(data);
@@ -214,9 +210,9 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
     // Create a replicated state for each shard.
     for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
       auto spec =
-          entry.getReplicatedStateForTarget(shardId, serverIds, databaseName);
+          entry.getReplicatedLogForTarget(shardId, serverIds, databaseName);
       writes = std::move(writes).emplace_object(
-          baseReplicatedStatesPath->state(spec.id)->str(),
+          baseReplicatedLogsPath->log(spec.id)->str(),
           [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); });
     }
   }
@@ -265,8 +261,7 @@ TargetCollectionAgencyWriter::prepareUndoTransaction(
   opers.push_back(IncreaseVersion());
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
-  auto const baseReplicatedStatesPath =
-      pathReplicatedStateInTarget(databaseName);
+  auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
   for (auto& entry : _collectionPlanEntries) {
     auto const collectionPath = baseCollectionPath->collection(entry.getCID());
 
@@ -280,11 +275,10 @@ TargetCollectionAgencyWriter::prepareUndoTransaction(
 
     // Delete the replicated state for each shard.
     for (auto const& [shardId, serverIds] : entry.getShardMapping().shards) {
-      auto stateId = LogicalCollection::shardIdToStateId(shardId);
+      auto logId = LogicalCollection::shardIdToStateId(shardId);
       // Remove the ReplicatedState
-      opers.emplace_back(
-          AgencyOperation{baseReplicatedStatesPath->state(stateId),
-                          AgencySimpleOperationType::DELETE_OP});
+      opers.emplace_back(AgencyOperation{baseReplicatedLogsPath->log(logId),
+                                         AgencySimpleOperationType::DELETE_OP});
     }
   }
 

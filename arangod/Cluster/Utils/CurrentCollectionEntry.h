@@ -24,7 +24,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Cluster/Utils/ResponsibleServerList.h"
-#include "Containers/FlatHashMap.h"
+#include "Containers/NodeHashMap.h"
 
 #include <string>
 
@@ -54,7 +54,7 @@ auto inspect(Inspector& f, CurrentShardEntry& entry) {
 }
 
 struct CurrentCollectionEntry {
-  containers::FlatHashMap<ShardID, CurrentShardEntry> shards;
+  containers::NodeHashMap<ShardID, CurrentShardEntry> shards;
 
   /**
    * Quick check if any shard reported an error

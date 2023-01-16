@@ -90,7 +90,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - log core gone";
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kLostLogCore});
+        {AppendEntriesErrorReason::ErrorType::kLostLogCore},
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (data._lastRecvMessageId >= req.messageId) {
@@ -98,7 +100,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - message id out dated: " << req.messageId;
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kMessageOutdated});
+        {AppendEntriesErrorReason::ErrorType::kMessageOutdated},
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (_appendEntriesInFlight) {
@@ -106,7 +110,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << "reject append entries - previous append entry still in flight";
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight});
+        {AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight},
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (req.leaderId != _leaderId) {
@@ -115,7 +121,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << " current = " << _leaderId.value_or("<none>");
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId});
+        {AppendEntriesErrorReason::ErrorType::kInvalidLeaderId},
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   if (req.leaderTerm != _currentTerm) {
@@ -124,7 +132,9 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
         << ", current = " << _currentTerm;
     return AppendEntriesResult::withRejection(
         _currentTerm, req.messageId,
-        {AppendEntriesErrorReason::ErrorType::kWrongTerm});
+        {AppendEntriesErrorReason::ErrorType::kWrongTerm},
+        data._snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
   }
 
   // It is always allowed to replace the log entirely
@@ -133,12 +143,13 @@ auto LogFollower::appendEntriesPreFlightChecks(GuardedFollowerData const& data,
             algorithms::detectConflict(data._inMemoryLog, req.prevLogEntry);
         conflict.has_value()) {
       auto [reason, next] = *conflict;
-
       LOG_CTX("5971a", DEBUG, _loggerContext)
           << "reject append entries - prev log did not match: "
           << to_string(reason);
-      return AppendEntriesResult::withConflict(_currentTerm, req.messageId,
-                                               next);
+      return AppendEntriesResult::withConflict(
+          _currentTerm, req.messageId, next,
+          data._snapshotProgress ==
+              GuardedFollowerData::SnapshotProgress::kCompleted);
     }
   }
 
@@ -178,6 +189,23 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         cv.notify_one();
       });
 
+  bool acquireNewSnapshot = false;
+  {
+    // Invalidate snapshot status
+    if (req.prevLogEntry == TermIndexPair{} &&
+        req.entries.front().entry().logIndex() > LogIndex{1}) {
+      LOG_CTX("6262d", INFO, _loggerContext)
+          << "Log truncated - invalidating snapshot";
+      if (auto res = dataGuard->_logCore->updateSnapshotState(
+              replicated_state::SnapshotStatus::kUninitialized);
+          res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+      ADB_PROD_ASSERT(_leaderId.has_value());
+      acquireNewSnapshot = true;
+    }
+  }
+
   {
     // Transactional Code Block
     // This code removes parts of the log and makes sure that
@@ -194,8 +222,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
       if (!res.ok()) {
         LOG_CTX("f17b8", ERR, _loggerContext)
             << "failed to remove log entries after " << req.prevLogEntry.index;
-        return AppendEntriesResult::withPersistenceError(_currentTerm,
-                                                         req.messageId, res);
+        return AppendEntriesResult::withPersistenceError(
+            _currentTerm, req.messageId, res,
+            dataGuard->_snapshotProgress ==
+                GuardedFollowerData::SnapshotProgress::kCompleted);
       }
 
       // commit the deletion in memory
@@ -211,8 +241,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   if (req.entries.empty()) {
     auto action = dataGuard->checkCommitIndex(
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
-    auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
-                                              req.messageId);
+    auto result = AppendEntriesResult::withOk(
+        dataGuard->_follower._currentTerm, req.messageId,
+        dataGuard->_snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted);
     dataGuard.unlock();  // unlock here, action must be executed after
     inFlightScopeGuard.fire();
     action.fire();
@@ -239,6 +271,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   auto* core = dataGuard->_logCore.get();
   static_assert(std::is_nothrow_move_constructible_v<decltype(newInMemoryLog)>);
 
+  auto const waitForSync = req.waitForSync;
+  auto const prevLogEntry = req.prevLogEntry;
   auto checkResultAndCommitIndex =
       [self = shared_from_this(), inFlightGuard = std::move(inFlightScopeGuard),
        req = std::move(req), newInMemoryLog = std::move(newInMemoryLog),
@@ -252,6 +286,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     // This will cause deadlocks.
     decltype(inFlightGuard) inFlightGuardLocal = std::move(inFlightGuard);
     auto data = self->_guardedFollowerData.getLockedGuard();
+    if (data->didResign()) {
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+    }
 
     auto const& res = tryRes.get();
     {
@@ -263,7 +301,9 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
             << "failed to insert log entries: " << res.errorMessage();
         return std::make_pair(
             AppendEntriesResult::withPersistenceError(
-                data->_follower._currentTerm, req.messageId, res),
+                data->_follower._currentTerm, req.messageId, res,
+                data->_snapshotProgress ==
+                    GuardedFollowerData::SnapshotProgress::kCompleted),
             DeferredAction{});
       }
 
@@ -283,29 +323,38 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
         req.leaderCommit, req.lowestIndexToKeep, std::move(toBeResolved));
 
     static_assert(noexcept(AppendEntriesResult::withOk(
-        data->_follower._currentTerm, req.messageId)));
+        data->_follower._currentTerm, req.messageId,
+        dataGuard->_snapshotProgress ==
+            GuardedFollowerData::SnapshotProgress::kCompleted)));
     static_assert(std::is_nothrow_move_constructible_v<DeferredAction>);
-    return std::make_pair(AppendEntriesResult::withOk(
-                              data->_follower._currentTerm, req.messageId),
-                          std::move(action));
+    return std::make_pair(
+        AppendEntriesResult::withOk(
+            data->_follower._currentTerm, req.messageId,
+            data->_snapshotProgress ==
+                GuardedFollowerData::SnapshotProgress::kCompleted),
+        std::move(action));
   };
   static_assert(std::is_nothrow_move_constructible_v<
                 decltype(checkResultAndCommitIndex)>);
 
   // Action
-  auto f = core->insertAsync(std::move(iter), req.waitForSync);
+  auto f = core->insertAsync(std::move(iter), waitForSync);
   // Release mutex here, otherwise we might deadlock in
   // checkResultAndCommitIndex if another request arrives before the previous
   // one was processed.
+  if (acquireNewSnapshot) {
+    dataGuard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kInProgress;
+    _stateHandle->acquireSnapshot(*_leaderId, prevLogEntry.index + 1);
+  }
   dataGuard.unlock();
   return std::move(f)
       .then(std::move(checkResultAndCommitIndex))
       .then([measureTime = std::move(measureTimeGuard)](auto&& res) mutable {
         measureTime.fire();
         auto&& [result, action] = res.get();
-        // It is okay to fire here, because commitToMemoryAndResolve has
-        // released the guard already.
         action.fire();
+
         return std::move(result);
       });
 }
@@ -360,13 +409,26 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
         << newLITK << ".";
     _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
-    // std::ignore = checkCompaction();
+    std::ignore = checkCompaction();
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
     auto const oldCommitIndex = _commitIndex;
     _commitIndex =
         std::min(newCommitIndex, _inMemoryLog.back().entry().logIndex());
+
+    if (_snapshotProgress == SnapshotProgress::kUninitialized) {
+      _snapshotProgress = SnapshotProgress::kInProgress;
+      _follower._stateHandle->acquireSnapshot(*_follower._leaderId,
+                                              _commitIndex);
+    }
+
+    // Only call updateCommitIndex after the snapshot is completed. Otherwise,
+    // the state manager can trigger applyEntries calls while the snapshot
+    // is still being transferred.
+    if (_snapshotProgress == SnapshotProgress::kCompleted) {
+      _follower._stateHandle->updateCommitIndex(newCommitIndex);
+    }
     _follower._logMetrics->replicatedLogNumberCommittedEntries->count(
         _commitIndex.value - oldCommitIndex.value);
     LOG_CTX("1641d", TRACE, _follower._loggerContext)
@@ -400,6 +462,10 @@ auto replicated_log::LogFollower::getStatus() const -> LogStatus {
     status.leader = _leaderId;
     status.term = _currentTerm;
     status.lowestIndexToKeep = followerData._lowestIndexToKeep;
+    status.compactionStatus = followerData.compactionStatus;
+    status.snapshotAvailable =
+        followerData._snapshotProgress ==
+        GuardedFollowerData::SnapshotProgress::kCompleted;
     return LogStatus{std::move(status)};
   });
 }
@@ -415,18 +481,19 @@ auto replicated_log::LogFollower::getQuickStatus() const -> QuickLogStatus {
         .role = ParticipantRole::kFollower,
         .term = _currentTerm,
         .local = followerData.getLocalStatistics(),
-        .leadershipEstablished = followerData._commitIndex > kBaseIndex};
+        .leadershipEstablished = followerData._commitIndex > kBaseIndex,
+        .snapshotAvailable = followerData._snapshotProgress ==
+                             GuardedFollowerData::SnapshotProgress::kCompleted};
   });
 }
 
-auto replicated_log::LogFollower::getParticipantId() const noexcept
-    -> ParticipantId const& {
+auto LogFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _participantId;
 }
 
-auto replicated_log::LogFollower::resign() && -> std::tuple<
-    std::unique_ptr<LogCore>, DeferredAction> {
-  return _guardedFollowerData.doUnderLock(
+auto LogFollower::resign() && -> std::tuple<std::unique_ptr<LogCore>,
+                                            DeferredAction> {
+  auto result = _guardedFollowerData.doUnderLock(
       [this](GuardedFollowerData& followerData) {
         LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
         if (followerData.didResign()) {
@@ -471,6 +538,14 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
         return std::make_tuple(std::move(followerData._logCore),
                                DeferredAction{std::move(action)});
       });
+  {
+    auto methods = _stateHandle->resignCurrentState();
+    ADB_PROD_ASSERT(methods != nullptr);
+    // We *must not* use this handle any longer. Its ownership is shared with
+    // our parent ReplicatedLog, which will pass it as necessary.
+    _stateHandle = nullptr;
+  }
+  return result;
 }
 
 replicated_log::LogFollower::LogFollower(
@@ -479,7 +554,9 @@ replicated_log::LogFollower::LogFollower(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
     std::optional<ParticipantId> leaderId,
-    replicated_log::InMemoryLog inMemoryLog)
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
+    replicated_log::InMemoryLog inMemoryLog,
+    std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
     : _logMetrics(std::move(logMetrics)),
       _options(std::move(options)),
       _loggerContext(
@@ -489,7 +566,49 @@ replicated_log::LogFollower::LogFollower(
       _participantId(std::move(id)),
       _leaderId(std::move(leaderId)),
       _currentTerm(term),
+      _stateHandle(std::move(stateHandle)),
+      leaderCommunicator(std::move(leaderCommunicator)),
       _guardedFollowerData(*this, std::move(logCore), std::move(inMemoryLog)) {
+  auto guard = _guardedFollowerData.getLockedGuard();
+  auto snapshotStatus = guard->_logCore->getSnapshotState();
+  if (snapshotStatus.fail()) {
+    THROW_ARANGO_EXCEPTION(snapshotStatus.result());
+  }
+  if (snapshotStatus == replicated_state::SnapshotStatus::kCompleted) {
+    guard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kCompleted;
+  } else {
+    guard->_snapshotProgress =
+        GuardedFollowerData::SnapshotProgress::kUninitialized;
+  }
+
+  LOG_CTX("c3791", DEBUG, _loggerContext)
+      << "loaded snapshot status: " << to_string(*snapshotStatus);
+
+  struct MethodsImpl : IReplicatedLogFollowerMethods {
+    explicit MethodsImpl(LogFollower& log) : _log(log) {}
+    auto releaseIndex(LogIndex index) -> void override {
+      if (auto res = _log.release(index); res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    auto getLogSnapshot() -> InMemoryLog override {
+      return _log.copyInMemoryLog();
+    }
+    auto snapshotCompleted() -> Result override {
+      return _log.onSnapshotCompleted();
+    }
+    auto waitFor(LogIndex index) -> WaitForFuture override {
+      return _log.waitFor(index);
+    }
+    auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override {
+      return _log.waitForIterator(index);
+    }
+    LogFollower& _log;
+  };
+  LOG_CTX("f3668", DEBUG, _loggerContext)
+      << "calling becomeFollower on state handle";
+  _stateHandle->becomeFollower(std::make_unique<MethodsImpl>(*this));
   _logMetrics->replicatedLogFollowerNumber->fetch_add(1);
 }
 
@@ -572,24 +691,6 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
   });
 }
 
-auto replicated_log::LogFollower::getLogIterator(LogIndex firstIndex) const
-    -> std::unique_ptr<LogIterator> {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
-        auto const endIdx = data._inMemoryLog.getLastTermIndexPair().index + 1;
-        TRI_ASSERT(firstIndex <= endIdx);
-        return data._inMemoryLog.getIteratorFrom(firstIndex);
-      });
-}
-
-auto replicated_log::LogFollower::getCommittedLogIterator(
-    LogIndex firstIndex) const -> std::unique_ptr<LogIterator> {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData const& data) -> std::unique_ptr<LogIterator> {
-        return data.getCommittedLogIterator(firstIndex);
-      });
-}
-
 auto replicated_log::LogFollower::GuardedFollowerData::getCommittedLogIterator(
     LogIndex firstIndex) const -> std::unique_ptr<LogRangeIterator> {
   auto const endIdx = _inMemoryLog.getNextIndex();
@@ -637,25 +738,15 @@ auto LogFollower::getLeader() const noexcept
   return _leaderId;
 }
 
-auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
-  return _guardedFollowerData.getLockedGuard()->_commitIndex;
-}
-
-auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
-  auto&& [future, action] =
-      _guardedFollowerData.getLockedGuard()->waitForResign();
-
-  action.fire();
-
-  return std::move(future);
-}
-
 auto LogFollower::construct(
     LoggerContext const& loggerContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-    std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower> {
+    std::optional<ParticipantId> leaderId,
+    std::shared_ptr<IReplicatedStateHandle> stateHandle,
+    std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
+    -> std::shared_ptr<LogFollower> {
   auto log = InMemoryLog::loadFromLogCore(*logCore);
 
   auto const lastIndex = log.getLastTermIndexPair();
@@ -672,27 +763,87 @@ auto LogFollower::construct(
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
         ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-        std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog)
+        std::optional<ParticipantId> leaderId,
+        std::shared_ptr<IReplicatedStateHandle> stateHandle,
+        InMemoryLog inMemoryLog,
+        std::shared_ptr<ILeaderCommunicator> leaderCommunicator)
         : LogFollower(loggerContext, std::move(logMetrics), std::move(options),
                       std::move(id), std::move(logCore), term,
-                      std::move(leaderId), std::move(inMemoryLog)) {}
+                      std::move(leaderId), std::move(stateHandle),
+                      std::move(inMemoryLog), std::move(leaderCommunicator)) {}
   };
 
   return std::make_shared<MakeSharedWrapper>(
       loggerContext, std::move(logMetrics), std::move(options), std::move(id),
-      std::move(logCore), term, std::move(leaderId), std::move(log));
+      std::move(logCore), term, std::move(leaderId), std::move(stateHandle),
+      std::move(log), std::move(leaderCommunicator));
 }
+
 auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
   return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
 }
 
-auto LogFollower::compact() -> Result {
+Result LogFollower::onSnapshotCompleted() {
   auto guard = _guardedFollowerData.getLockedGuard();
-  auto compactionStop =
-      std::min(guard->_lowestIndexToKeep, guard->_releaseIndex + 1);
+  auto res = guard->_logCore->updateSnapshotState(
+      replicated_state::SnapshotStatus::kCompleted);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  LOG_CTX("80094", DEBUG, _loggerContext)
+      << "Snapshot status updated to completed on persistent storage";
+  ADB_PROD_ASSERT(guard->_snapshotProgress ==
+                  GuardedFollowerData::SnapshotProgress::kInProgress);
+  guard->_snapshotProgress = GuardedFollowerData::SnapshotProgress::kCompleted;
+  leaderCommunicator->reportSnapshotAvailable(guard->_lastRecvMessageId)
+      .thenFinal(
+          [self = shared_from_this()](futures::Try<Result>&& res) noexcept {
+            auto realRes = basics::catchToResult([&] { return res.get(); });
+            if (realRes.fail()) {
+              LOG_CTX("9db47", ERR, self->_loggerContext)
+                  << "failed to update snapshot status on leader";
+              FATAL_ERROR_EXIT();  // TODO this has to be more resilient
+            }
+            LOG_CTX("600de", DEBUG, self->_loggerContext)
+                << "snapshot status updated on leader";
+          });
+  return {};
+}
+
+auto LogFollower::compact() -> ResultT<CompactionResult> {
+  auto guard = _guardedFollowerData.getLockedGuard();
+  auto const& [stopIndex, reason] = guard->calcCompactionStop();
   LOG_CTX("aed29", INFO, _loggerContext)
-      << "starting explicit compaction up to index " << compactionStop;
-  return guard->runCompaction(compactionStop);
+      << "starting explicit compaction up to index " << stopIndex << "; "
+      << reason;
+  return guard->runCompaction(true);
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStopIndex()
+    const noexcept -> LogIndex {
+  return std::min(_lowestIndexToKeep, _releaseIndex + 1);
+}
+
+auto replicated_log::LogFollower::GuardedFollowerData::calcCompactionStop()
+    const noexcept -> std::pair<LogIndex, CompactionStopReason> {
+  auto const stopIndex = calcCompactionStopIndex();
+  ADB_PROD_ASSERT(stopIndex <= _inMemoryLog.getLastIndex())
+      << "stopIndex is " << stopIndex << ", releaseIndex = " << _releaseIndex
+      << ", lowestIndexToKeep = " << _lowestIndexToKeep
+      << ", last index = " << _inMemoryLog.getLastIndex();
+  if (stopIndex == _inMemoryLog.getLastIndex()) {
+    return {stopIndex, {CompactionStopReason::NothingToCompact{}}};
+  } else if (stopIndex == _releaseIndex + 1) {
+    return {stopIndex,
+            {CompactionStopReason::NotReleasedByStateMachine{_releaseIndex}}};
+  } else if (stopIndex == _lowestIndexToKeep) {
+    return {stopIndex, {CompactionStopReason::LeaderBlocksReleaseEntry{}}};
+  } else {
+    ADB_PROD_ASSERT(false) << "stopIndex is " << stopIndex
+                           << " releaseIndex = " << _releaseIndex
+                           << " lowestIndexToKeep = " << _lowestIndexToKeep;
+  }
+  std::abort();  // avoid warnings
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
@@ -706,34 +857,57 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
 }
 
 auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
-  auto const compactionStop = std::min(_lowestIndexToKeep, _releaseIndex + 1);
+  auto const compactionStop = calcCompactionStopIndex();
   LOG_CTX("080d5", TRACE, _follower._loggerContext)
       << "compaction index calculated as " << compactionStop;
-  if (compactionStop <= _inMemoryLog.getFirstIndex() +
-                            _follower._options->_thresholdLogCompaction) {
+  return runCompaction(false).result();
+}
+
+auto LogFollower::GuardedFollowerData::runCompaction(bool ignoreThreshold)
+    -> ResultT<CompactionResult> {
+  auto const nextCompactionAt = _inMemoryLog.getFirstIndex() +
+                                _follower._options->_thresholdLogCompaction;
+  if (!ignoreThreshold && _inMemoryLog.getLastIndex() <=
+                              _inMemoryLog.getFirstIndex() +
+                                  _follower._options->_thresholdLogCompaction) {
     // only do a compaction every _thresholdLogCompaction entries
     LOG_CTX("ebb9f", TRACE, _follower._loggerContext)
         << "won't trigger a compaction, not enough entries. First index = "
         << _inMemoryLog.getFirstIndex();
+    compactionStatus.stop = CompactionStopReason{
+        CompactionStopReason::CompactionThresholdNotReached{nextCompactionAt}};
     return {};
   }
-  return runCompaction(compactionStop);
-}
 
-auto LogFollower::GuardedFollowerData::runCompaction(LogIndex compactionStop)
-    -> Result {
-  auto const numberOfCompactedEntries =
-      compactionStop.value - _inMemoryLog.getFirstIndex().value;
-  auto newLog = _inMemoryLog.release(compactionStop);
-  auto res = _logCore->removeFront(compactionStop).get();
-  if (res.ok()) {
-    _inMemoryLog = std::move(newLog);
-    _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
-        numberOfCompactedEntries);
+  auto const [compactionStop, reason] = calcCompactionStop();
+  ADB_PROD_ASSERT(compactionStop >= _inMemoryLog.getFirstIndex());
+  auto const compactionRange =
+      LogRange(_inMemoryLog.getFirstIndex(), compactionStop);
+  auto const numberOfCompactedEntries = compactionRange.count();
+  auto res = Result{};
+  if (numberOfCompactedEntries > 0) {
+    auto newLog = _inMemoryLog.release(compactionStop);
+    res = _logCore->removeFront(compactionStop).get();
+    if (res.ok()) {
+      _inMemoryLog = std::move(newLog);
+      _follower._logMetrics->replicatedLogNumberCompactedEntries->count(
+          numberOfCompactedEntries);
+      compactionStatus.lastCompaction = CompactionStatus::Compaction{
+          .time = CompactionStatus::clock::now(), .range = compactionRange};
+    }
+    LOG_CTX("f1028", TRACE, _follower._loggerContext)
+        << "compaction result = " << res.errorMessage();
   }
-  LOG_CTX("f1028", TRACE, _follower._loggerContext)
-      << "compaction result = " << res.errorMessage();
-  return res;
+
+  if (res.fail()) {
+    LOG_CTX("5b57b", WARN, _follower._loggerContext)
+        << "compaction failed: " << res.errorMessage();
+    return res;
+  } else {
+    compactionStatus.stop = reason;
+    return CompactionResult{.numEntriesCompacted = numberOfCompactedEntries,
+                            .stopReason = reason};
+  }
 }
 
 auto LogFollower::GuardedFollowerData::waitForResign()

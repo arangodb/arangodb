@@ -642,9 +642,10 @@ static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto result =
       ReplicatedLogMethods::createInstance(vocbase)->compact(id).get();
-  if (result.fail()) {
-    THROW_ARANGO_EXCEPTION(result);
-  }
+
+  VPackBuilder response;
+  arangodb::velocypack::serialize(response, result);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
   TRI_V8_TRY_CATCH_END
 }
 

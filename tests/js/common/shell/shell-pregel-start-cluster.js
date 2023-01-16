@@ -227,11 +227,7 @@ function basicTestSuite() {
     },
 
     testSSSPNormal: function () {
-      testAlgo("sssp", { async: false, source: vColl + "/K", resultField: "result", store: true });
-    },
-
-    testSSSPAsync: function () {
-      testAlgo("sssp", { async: true, source: vColl + "/K", resultField: "result", store: true });
+      testAlgo("sssp", { source: vColl + "/K", resultField: "result", store: true });
     },
 
     testPageRank: function () {

@@ -80,8 +80,8 @@ template<class Inspector, class T>
 void deserialize(Inspector& inspector, T& result) {
   if (auto res = deserializeWithStatus(inspector, result); !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string{"Error while parsing VelocyPack: "} +
-                                res.error() + "\nPath: " + res.path());
+        TRI_ERROR_DESERIALIZE, std::string{"Error while parsing VelocyPack: "} +
+                                   res.error() + "\nPath: " + res.path());
   }
 }
 

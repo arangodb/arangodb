@@ -25,8 +25,7 @@
 
 #include "Basics/Common.h"
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 enum class LockerType {
   BLOCKING,  // always lock, blocking if the lock cannot be acquired instantly
@@ -39,5 +38,4 @@ static constexpr bool DoLock = true;
 static constexpr bool DoNotLock = false;
 }  // namespace ConditionalLocking
 
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics

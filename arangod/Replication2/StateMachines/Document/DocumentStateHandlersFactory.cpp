@@ -62,12 +62,9 @@ auto DocumentStateHandlersFactory::createSnapshotHandler(
     -> std::unique_ptr<IDocumentStateSnapshotHandler> {
   auto* vocbase = _databaseFeature.lookupDatabase(gid.database);
   if (vocbase == nullptr) {
-    // TODO this is a temporary fix, see CINFRA-588
-    /*
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-        fmt::format("database {} not found", gid.database));
-     */
+    LOG_TOPIC("52f26", ERR, Logger::REPLICATION2)
+        << "database " << gid.database
+        << " not found during creation of snapshot handler";
     return nullptr;
   }
   return std::make_unique<DocumentStateSnapshotHandler>(

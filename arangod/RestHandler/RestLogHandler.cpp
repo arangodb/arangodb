@@ -31,16 +31,20 @@
 #include <Network/NetworkFeature.h>
 
 #include <Cluster/ClusterFeature.h>
+#include <Cluster/AgencyCache.h>
 
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/Utilities.h"
+#include "Rest/PathMatch.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -84,6 +88,62 @@ RestStatus RestLogHandler::handlePostRequest(
 
   if (suffixes.empty()) {
     return handlePost(methods, body);
+  } else if (std::string_view logIdStr, toRemoveStr, toAddStr;
+             rest::Match(suffixes).against(&logIdStr, "participant",
+                                           &toRemoveStr, "replace-with",
+                                           &toAddStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    auto const toRemove = replication2::ParticipantId(toRemoveStr);
+    auto const toAdd = replication2::ParticipantId(toAddStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+
+    // If this wasn't a temporary API, it would be nice to be able to pass a
+    // minimum raft index to wait for here.
+    namespace paths = ::arangodb::cluster::paths;
+    auto& agencyCache =
+        _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    auto path = paths::aliases::target()
+                    ->replicatedLogs()
+                    ->database(_vocbase.name())
+                    ->log(*logId);
+    auto&& [res, raftIdx] =
+        agencyCache.get(path->str(paths::SkipComponents{1}));
+    auto stateTarget =
+        velocypack::deserialize<replication2::agency::LogTarget>(res->slice());
+
+    return waitForFuture(
+        methods.replaceParticipant(*logId, toRemove, toAdd, stateTarget.leader)
+            .thenValue([this](auto&& result) {
+              if (result.ok()) {
+                generateOk(rest::ResponseCode::OK,
+                           VPackSlice::emptyObjectSlice());
+              } else {
+                generateError(result);
+              }
+            }));
+    return RestStatus::DONE;
+  } else if (std::string_view logIdStr, newLeaderStr;
+             rest::Match(suffixes).against(&logIdStr, "leader",
+                                           &newLeaderStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    auto const newLeader = replication2::ParticipantId(newLeaderStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.setLeader(*logId, newLeader).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+          } else {
+            generateError(result);
+          }
+        }));
   }
 
   if (suffixes.size() != 2) {
@@ -223,12 +283,10 @@ RestStatus RestLogHandler::handlePostRelease(
 
 RestStatus RestLogHandler::handlePostCompact(
     ReplicatedLogMethods const& methods, replication2::LogId logId) {
-  return waitForFuture(methods.compact(logId).thenValue([this](Result&& res) {
-    if (res.fail()) {
-      generateError(res);
-    } else {
-      generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
-    }
+  return waitForFuture(methods.compact(logId).thenValue([this](auto&& res) {
+    VPackBuilder builder;
+    velocypack::serialize(builder, res);
+    generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
   }));
 }
 
@@ -289,24 +347,44 @@ RestStatus RestLogHandler::handleGetRequest(
 
 RestStatus RestLogHandler::handleDeleteRequest(
     ReplicatedLogMethods const& methods) {
-  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+  auto const& suffixes = _request->suffixes();
+  if (std::string_view logIdStr; rest::Match(suffixes).against(&logIdStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.deleteReplicatedLog(*logId).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+          } else {
+            generateError(result);
+          }
+        }));
 
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expect DELETE /_api/log/<log-id>");
+  } else if (std::string_view logIdStr;
+             rest::Match(suffixes).against(&logIdStr, "leader")) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(methods.setLeader(*logId, std::nullopt)
+                             .thenValue([this](auto&& result) {
+                               if (result.ok()) {
+                                 generateOk(rest::ResponseCode::OK,
+                                            VPackSlice::emptyObjectSlice());
+                               } else {
+                                 generateError(result);
+                               }
+                             }));
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
-
-  LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  return waitForFuture(
-      methods.deleteReplicatedLog(logId).thenValue([this](Result&& result) {
-        if (!result.ok()) {
-          generateError(result);
-        } else {
-          generateOk(rest::ResponseCode::ACCEPTED,
-                     VPackSlice::emptyObjectSlice());
-        }
-      }));
 }
 
 RestLogHandler::RestLogHandler(ArangodServer& server, GeneralRequest* req,

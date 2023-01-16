@@ -155,6 +155,12 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
 struct TestReplicatedLog : replicated_log::ReplicatedLog {
   using ReplicatedLog::becomeLeader;
   using ReplicatedLog::ReplicatedLog;
+  TestReplicatedLog()
+      : ReplicatedLog(
+            std::unique_ptr<LogCore>(), std::shared_ptr<ReplicatedLogMetrics>(),
+            std::shared_ptr<const ReplicatedLogGlobalSettings>(),
+            <#initializer #>,
+            arangodb::replication2::agency::ServerInstanceReference()) {}
   auto becomeFollower(ParticipantId const& id, LogTerm term,
                       ParticipantId leaderId)
       -> std::shared_ptr<DelayedFollowerLog>;
