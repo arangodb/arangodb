@@ -701,7 +701,15 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
 
     if (state == ExecutionState::WAITING) {
+      TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
+        auto query = _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(), TRI_ERROR_QUERY_KILLED);
+        TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed out a pointer to a query in use";
+      }
       return RestStatus::WAITING;
+    }
+    TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
+      auto query = _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(), TRI_ERROR_QUERY_KILLED);
+      TRI_ASSERT(query == nullptr) << "QueryRegistry::destroyQuery handed out a pointer to a query in use";
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
