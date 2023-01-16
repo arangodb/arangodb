@@ -28,6 +28,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/Worker/Messages.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -134,10 +135,11 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
                                 VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
+  void _ensureUniqueResponse(std::string const& sender);
 
   // === REST callbacks ===
   void workerStatusUpdate(VPackSlice const& data);
-  void finishedWorkerStartup(VPackSlice const& data);
+  void finishedWorkerStartup(GraphLoaded const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
   void finishedWorkerFinalize(VPackSlice data);
 

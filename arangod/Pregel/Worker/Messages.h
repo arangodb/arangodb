@@ -30,6 +30,21 @@
 
 namespace arangodb::pregel {
 
+struct GraphLoaded {
+  ExecutionNumber executionNumber;
+  std::string sender;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoaded& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("sender", x.sender), f.field("vertexCount", x.vertexCount),
+      f.field("edgeCount", x.edgeCount));
+}
+
 struct GlobalSuperStepPrepared {
   ExecutionNumber executionNumber;
   std::string sender;

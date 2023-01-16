@@ -152,16 +152,18 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config.executionNumber());
-    VPackBuilder package;
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber().value));
-    package.add(Utils::vertexCountKey,
-                VPackValue(_graphStore->localVertexCount()));
-    package.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
-    package.close();
-    _callConductor(Utils::finishedStartupPath, package);
+    auto graphLoaded =
+        GraphLoaded{.executionNumber = _config._executionNumber,
+                    .sender = ServerState::instance()->getId(),
+                    .vertexCount = _graphStore->localVertexCount(),
+                    .edgeCount = _graphStore->localEdgeCount()};
+    auto serialized = inspection::serializeWithErrorT(graphLoaded);
+    if (!serialized.ok()) {
+      THROW_ARANGO_EXCEPTION(
+          Result{TRI_ERROR_FAILED, "Cannot serialize GraphLoaded message"});
+    }
+    _callConductor(Utils::finishedStartupPath,
+                   VPackBuilder(serialized.get().slice()));
     _feature.metrics()->pregelWorkersLoadingNumber->fetch_sub(1);
   };
 

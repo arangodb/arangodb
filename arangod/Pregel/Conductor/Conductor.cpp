@@ -203,8 +203,8 @@ bool Conductor::_startGlobalStep() {
                                            .edgeCount = _totalEdgesCount};
   auto serialized = inspection::serializeWithErrorT(prepareGss);
   if (!serialized.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Cannot serialize PrepareGlobalSuperStep");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot serialize PrepareGlobalSuperStep message");
   }
 
   // we are explicitly expecting an response containing the aggregated
@@ -331,21 +331,22 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   _status.updateWorkerStatus(sender, std::move(update));
 }
 
-void Conductor::finishedWorkerStartup(VPackSlice const& data) {
+void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  _ensureUniqueResponse(data);
+
+  auto sender = graphLoaded.sender;
+  _ensureUniqueResponse(sender);
+
   if (_state != ExecutionState::LOADING) {
     LOG_PREGEL("10f48", WARN)
         << "We are not in a state where we expect a response";
     return;
   }
-
-  ServerID sender = data.get(Utils::senderKey).copyString();
   LOG_PREGEL("08142", WARN)
       << fmt::format("finishedWorkerStartup, got response from {}.", sender);
 
-  _totalVerticesCount += data.get(Utils::vertexCountKey).getUInt();
-  _totalEdgesCount += data.get(Utils::edgeCountKey).getUInt();
+  _totalVerticesCount += graphLoaded.vertexCount;
+  _totalEdgesCount += graphLoaded.edgeCount;
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
@@ -720,7 +721,8 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
       .executionNumber = _executionNumber, .withId = withId};
   auto serialized = inspection::serializeWithErrorT(collectResults);
   if (!serialized.ok()) {
-    THROW_ARANGO_EXCEPTION(Result{TRI_ERROR_FAILED});
+    THROW_ARANGO_EXCEPTION(Result{
+        TRI_ERROR_FAILED, "Cannot serialize CollectPregelResults message"});
   }
   // merge results from DBServers
   outBuilder.openArray();
@@ -882,6 +884,17 @@ void Conductor::_ensureUniqueResponse(VPackSlice body) {
 
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
+  if (_respondedServers.find(sender) != _respondedServers.end()) {
+    LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);
+  }
+  _respondedServers.insert(sender);
+}
+
+void Conductor::_ensureUniqueResponse(std::string const& sender) {
+  _callbackMutex.assertLockedByCurrentThread();
+
+  // check if this the only time we received this
   if (_respondedServers.find(sender) != _respondedServers.end()) {
     LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_CONFLICT);

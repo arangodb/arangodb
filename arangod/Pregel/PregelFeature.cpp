@@ -760,7 +760,13 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
   if (path == Utils::statusUpdatePath) {
     co->workerStatusUpdate(body);
   } else if (path == Utils::finishedStartupPath) {
-    co->finishedWorkerStartup(body);
+    auto message = inspection::deserializeWithErrorT<GraphLoaded>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot deserialize GraphLoaded message");
+    }
+    co->finishedWorkerStartup(message.get());
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
   } else if (path == Utils::finishedWorkerFinalizationPath) {
