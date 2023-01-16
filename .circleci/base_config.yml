@@ -59,8 +59,7 @@ jobs:
           root: .
           paths:
             - CMakePresets.json
-            - ./**/CTestTestfile.cmake
-            - build/<< parameters.preset >>/bin
+            - build/<< parameters.preset >>
             - scripts/
             - js/
             - etc/
