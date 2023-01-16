@@ -57,6 +57,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
+            - CMakePresets.json
             - build/<< parameters.preset >>/bin
             - scripts/
             - js/
