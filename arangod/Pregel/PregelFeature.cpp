@@ -849,12 +849,14 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     w->finalizeExecution(message.get(),
                          [this, exeNum]() { cleanupWorker(exeNum); });
   } else if (path == Utils::aqlResultsPath) {
-    bool withId = false;
-    if (body.isObject()) {
-      VPackSlice slice = body.get("withId");
-      withId = slice.isBoolean() && slice.getBool();
+    auto message = inspection::deserializeWithErrorT<CollectPregelResults>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot deserialize CollectPregelResults message");
     }
-    w->aqlResult(outBuilder, withId);
+    w->aqlResult(outBuilder, message.get().withId);
   }
 }
 

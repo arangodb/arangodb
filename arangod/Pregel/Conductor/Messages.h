@@ -103,12 +103,14 @@ auto inspect(Inspector& f, FinalizeExecution& x) {
 }
 
 struct CollectPregelResults {
+  ExecutionNumber executionNumber;
   bool withId;
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, CollectPregelResults& x) {
-  return f.object(x).fields(f.field("withId", x.withId).fallback(false));
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("withId", x.withId).fallback(false));
 }
 
 }  // namespace arangodb::pregel

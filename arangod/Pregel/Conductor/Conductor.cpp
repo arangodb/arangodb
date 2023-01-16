@@ -707,16 +707,17 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
     return;
   }
 
-  VPackBuilder b;
-  b.openObject();
-  b.add(Utils::executionNumberKey, VPackValue(_executionNumber.value));
-  b.add("withId", VPackValue(withId));
-  b.close();
-
+  auto collectResults = CollectPregelResults{
+      .executionNumber = _executionNumber, .withId = withId};
+  auto serialized = inspection::serializeWithErrorT(collectResults);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION(Result{TRI_ERROR_FAILED});
+  }
   // merge results from DBServers
   outBuilder.openArray();
   auto res = _sendToAllDBServers(
-      Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+      Utils::aqlResultsPath, VPackBuilder(serialized.get().slice()),
+      [&](VPackSlice const& payload) {
         if (payload.isArray()) {
           outBuilder.add(VPackArrayIterator(payload));
         }
