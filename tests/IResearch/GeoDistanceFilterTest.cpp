@@ -449,23 +449,23 @@ TEST(GeoDistanceFilterTest, query) {
     StringField nameField;
     nameField.fieldName = "name";
     {
-      auto segment0 = writer->documents();
-      auto segment1 = writer->documents();
+      auto segment0 = writer->GetBatch();
+      auto segment1 = writer->GetBatch();
       {
         size_t i = 0;
         for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
-          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          auto doc = (i++ % 2 ? segment0 : segment1).Insert();
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
         }
       }
     }
-    writer->commit();
+    writer->Commit();
     reader = writer->GetSnapshot();
   }
 
@@ -963,23 +963,23 @@ TEST(GeoDistanceFilterTest, checkScorer) {
     StringField nameField;
     nameField.fieldName = "name";
     {
-      auto segment0 = writer->documents();
-      auto segment1 = writer->documents();
+      auto segment0 = writer->GetBatch();
+      auto segment1 = writer->GetBatch();
       {
         size_t i = 0;
         for (auto docSlice : VPackArrayIterator(docs->slice())) {
           geoField.shapeSlice = docSlice.get("geometry");
           nameField.value = getStringRef(docSlice.get("name"));
 
-          auto doc = (i++ % 2 ? segment0 : segment1).insert();
+          auto doc = (i++ % 2 ? segment0 : segment1).Insert();
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(nameField));
           ASSERT_TRUE(
-              doc.insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
+              doc.Insert<irs::Action::INDEX | irs::Action::STORE>(geoField));
         }
       }
     }
-    writer->commit();
+    writer->Commit();
     reader = writer->GetSnapshot();
   }
 

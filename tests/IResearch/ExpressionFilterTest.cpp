@@ -414,13 +414,13 @@ TEST_F(IResearchExpressionFilterTest, test) {
     for (auto data : arangodb::velocypack::ArrayIterator(testDataRoot)) {
       storedField.str = arangodb::iresearch::getStringRef(data.get("name"));
 
-      auto ctx = writer->documents();
-      auto doc = ctx.insert();
-      EXPECT_TRUE(doc.insert<irs::Action::STORE>(storedField));
+      auto ctx = writer->GetBatch();
+      auto doc = ctx.Insert();
+      EXPECT_TRUE(doc.Insert<irs::Action::STORE>(storedField));
       EXPECT_TRUE(doc);
     }
 
-    writer->commit();
+    writer->Commit();
   }
 
   // setup ArangoDB database
@@ -441,7 +441,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
   }
 
   // open reader
-  auto reader = irs::DiectoryReader(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1U, reader->size());
   auto& segment = (*reader)[0];

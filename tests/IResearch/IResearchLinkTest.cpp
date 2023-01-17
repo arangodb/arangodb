@@ -879,7 +879,7 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
   bool created;
   auto link = logicalCollection->createIndex(linkJson->slice(), created);
   ASSERT_TRUE((false == !link && created));
-  auto reader = irs::DirectoryReader(dir);
+  auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
   {
     arangodb::transaction::Methods trx(
