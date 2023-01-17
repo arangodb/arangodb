@@ -63,6 +63,9 @@ class S2MultiPolyline final : public S2Region {
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
 
+  void Encode(Encoder* const encoder, s2coding::CodingHint hint) const;
+  bool Decode(Decoder* const decoder);
+
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }
 

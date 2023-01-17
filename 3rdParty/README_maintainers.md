@@ -146,166 +146,45 @@ Just update code and directory name (commit hash) and apply patch
 
 ```
 diff --git a/3rdParty/s2geometry/master/CMakeLists.txt b/3rdParty/s2geometry/master/CMakeLists.txt
-index 2cbbf68c7d7..27f57896054 100644
+index 4044cd90a00..f22895951e7 100644
 --- a/3rdParty/s2geometry/master/CMakeLists.txt
 +++ b/3rdParty/s2geometry/master/CMakeLists.txt
-@@ -68,7 +68,6 @@ if (WITH_GFLAGS)
-     add_definitions(-DS2_USE_GFLAGS)
- endif()
+@@ -260,13 +260,14 @@ endif()
+ # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
+ # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
+ # target_link_libraries(<target_name> s2)
+-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
++target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
  
--find_package(absl REQUIRED)
- find_package(OpenSSL REQUIRED)
- # pthreads isn't used directly, but this is still required for std::thread.
- find_package(Threads REQUIRED)
-diff --git a/3rdParty/s2geometry/master/src/s2/base/logging.h b/3rdParty/s2geometry/master/src/s2/base/logging.h
-index b5a26715441..5136b297c43 100644
---- a/3rdParty/s2geometry/master/src/s2/base/logging.h
-+++ b/3rdParty/s2geometry/master/src/s2/base/logging.h
-@@ -62,7 +62,7 @@ class S2LogMessage {
-     : severity_(severity), stream_(stream) {
-     if (enabled()) {
-       stream_ << file << ":" << line << " "
--              << absl::LogSeverityName(severity) << " ";
-+              << absl::LogSeverityName(severity_) << " ";
-     }
-   }
-   ~S2LogMessage() { if (enabled()) stream_ << std::endl; }
-diff --git a/3rdParty/s2geometry/master/src/s2/s2loop_measures.h b/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-index cdc8e87cd8d..fb1df468a10 100644
---- a/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-+++ b/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-@@ -226,7 +226,7 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
-   if (loop.size() < 3) return sum;
+ # Add version information to the target
+ set_target_properties(s2 PROPERTIES
+     SOVERSION ${PROJECT_VERSION_MAJOR}
+     VERSION ${PROJECT_VERSION})
  
-   S2Point origin = loop[0];
--  for (int i = 1; i + 1 < loop.size(); ++i) {
-+  for (int i = 1; i + 1 < static_cast<int>(loop.size()); ++i) {
-     // Let V_i be loop[i], let O be the current origin, and let length(A, B)
-     // be the length of edge (A, B).  At the start of each loop iteration, the
-     // "leading edge" of the triangle fan is (O, V_i), and we want to extend
++#[[
+ # We don't need to install all headers, only those
+ # transitively included by s2 headers we are exporting.
+ install(FILES src/s2/_fp_contract_off.h
+@@ -438,6 +439,7 @@ install(TARGETS ${S2_TARGETS}
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
++]]
+ 
+ message("GTEST_ROOT: ${GTEST_ROOT}")
+ if (GTEST_ROOT)
 diff --git a/3rdParty/s2geometry/master/src/s2/s2polygon.h b/3rdParty/s2geometry/master/src/s2/s2polygon.h
-index 9981ae0ff89..e77f0c96714 100644
+index 9981ae0ff89..eb8ca50e8fd 100644
 --- a/3rdParty/s2geometry/master/src/s2/s2polygon.h
 +++ b/3rdParty/s2geometry/master/src/s2/s2polygon.h
-@@ -1009,10 +1009,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
-     }
-   } else {
-     i = prev_loop_.load(std::memory_order_relaxed);
--    if (e >= start[i] && e < start[i + 1]) {
-+    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
-       // This edge belongs to the same loop as the previous call.
-     } else {
--      if (e == start[i + 1]) {
-+      if (e == static_cast<int>(start[i + 1])) {
-         // This edge immediately follows the loop from the previous call.
-         // Note that S2Polygon does not allow empty loops.
-         ++i;
-diff --git a/3rdParty/s2geometry/master/src/s2/s2region_coverer.h b/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-index 575f74c3ad4..1969b320cb7 100644
---- a/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-+++ b/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-@@ -269,7 +269,14 @@ class S2RegionCoverer {
-     S2Cell cell;
-     bool is_terminal;        // Cell should not be expanded further.
-     int num_children = 0;    // Number of children that intersect the region.
-+#ifdef _MSC_VER
-+#pragma warning(push)
-+#pragma warning(disable:4200)
-+#endif
-     Candidate* children[0];  // Actual size may be 0, 4, 16, or 64 elements.
-+#ifdef _MSC_VER
-+#pragma warning(pop)
-+#endif
-   };
+@@ -701,6 +701,7 @@ class S2Polygon final : public S2Region {
+   S2Polygon* Clone() const override;
+   S2Cap GetCapBound() const override;  // Cap surrounding rect bound.
+   S2LatLngRect GetRectBound() const override { return bound_; }
++  S2LatLngRect GetSubRegionBound() const { return subregion_bound_; }
+   void GetCellUnionBound(std::vector<S2CellId> *cell_ids) const override;
  
-   // If the cell intersects the given region, return a new candidate with no
-diff --git a/3rdParty/s2geometry/master/src/s2/util/coding/coder.h b/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-index df633a2c45d..4e230ea4789 100644
---- a/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-@@ -495,7 +495,7 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
-                 "Decoder must be trivially copy-assignable");
-   static_assert(absl::is_trivially_destructible<Decoder>::value,
-                 "Decoder must be trivially destructible");
--  std::memset(array, 0, num_decoders * sizeof(Decoder));
-+  std::memset(static_cast<void*>(array), 0, num_decoders * sizeof(Decoder));
- }
- 
- inline unsigned char Decoder::get8() {
-diff --git a/3rdParty/s2geometry/master/src/s2/util/bits/bits.h b/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-index f1d5d26cef3..ae063557aa3 100644
---- a/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-@@ -39,29 +39,29 @@ namespace Bits {
- 
- inline int FindLSBSetNonZero(uint32 n) {
-   S2_ASSUME(n != 0);
--  return absl::countr_zero(n);
-+  return static_cast<int>(absl::countr_zero(n));
- }
- 
- inline int FindLSBSetNonZero64(uint64 n) {
-   S2_ASSUME(n != 0);
--  return absl::countr_zero(n);
-+  return static_cast<int>(absl::countr_zero(n));
- }
- 
- inline int Log2FloorNonZero(uint32 n) {
-   S2_ASSUME(n != 0);
--  return absl::bit_width(n) - 1;
-+  return static_cast<int>(absl::bit_width(n)) - 1;
- }
- 
- inline int Log2FloorNonZero64(uint64 n) {
-   S2_ASSUME(n != 0);
--  return absl::bit_width(n) - 1;
-+  return static_cast<int>(absl::bit_width(n)) - 1;
- }
- 
- inline int FindMSBSetNonZero(uint32 n) { return Log2FloorNonZero(n); }
- inline int FindMSBSetNonZero64(uint64 n) { return Log2FloorNonZero64(n); }
- 
- inline int Log2Ceiling(uint32 n) {
--  int floor = absl::bit_width(n) - 1;
-+  int floor = static_cast<int>(absl::bit_width(n)) - 1;
-   if ((n & (n - 1)) == 0) {  // zero or a power of two
-     return floor;
-   } else {
-diff --git a/3rdParty/s2geometry/master/src/s2/base/port.h b/3rdParty/s2geometry/master/src/s2/base/port.h
-index 0efaba84248..328393d2ffd 100644
---- a/3rdParty/s2geometry/master/src/s2/base/port.h
-+++ b/3rdParty/s2geometry/master/src/s2/base/port.h
-@@ -59,6 +59,15 @@
- #undef ERROR
- #undef DELETE
- #undef DIFFERENCE
-+#undef S_IRUSR
-+#undef S_IWUSR
-+#undef S_IXUSR
-+#undef S_IRGRP
-+#undef S_IWGRP
-+#undef S_IXGRP
-+#undef S_IROTH
-+#undef S_IWOTH
-+#undef S_IXOTH
- #define STDIN_FILENO 0
- #define STDOUT_FILENO 1
- #define STDERR_FILENO 2
-diff --git a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-index cbc4fe9aa46..9de05c61d73 100644
---- a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-@@ -413,7 +413,9 @@ class compact_array_base {
-     value_allocator_type allocator;
- 
-     T* new_ptr = allocator.allocate(capacity());
--    memcpy(new_ptr, Array(), old_capacity * sizeof(T));
-+    if (old_capacity != 0) {
-+      memcpy(new_ptr, Array(), old_capacity * sizeof(T));
-+    }
-     allocator.deallocate(Array(), old_capacity);
- 
-     SetArray(new_ptr);
+   bool Contains(const S2Cell& cell) const override;
 ```
 
 ## snappy

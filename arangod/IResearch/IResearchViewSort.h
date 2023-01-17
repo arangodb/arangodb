@@ -38,8 +38,8 @@ class Builder;
 namespace iresearch {
 
 // FIXME would be simpler to use instead:
-//   typedef std::pair<std::vector<basics::AttributeName>, bool> SortEntry;
-//   typedef std::vector<SortEntry> Sort;
+//   using SortEntry = std::pair<std::vector<basics::AttributeName>, bool>;
+//   using Sort = std::vector<SortEntry>;
 // but currently SortCondition API is not ready for that
 class IResearchSortBase {
  public:

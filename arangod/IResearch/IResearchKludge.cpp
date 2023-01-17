@@ -22,11 +22,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchKludge.h"
-#include "IResearchDocument.h"
-#include "IResearchRocksDBLink.h"
-#include "IResearchRocksDBInvertedIndex.h"
 #include "Basics/DownCast.h"
+
+#include "IResearch/GeoAnalyzer.h"
+#include "IResearch/IResearchKludge.h"
+#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBInvertedIndex.h"
+
+#include <frozen/set.h>
 
 #include <string>
 #include <string_view>
@@ -181,5 +185,19 @@ std::string_view extractAnalyzerName(std::string_view fieldName) {
   return {};
 }
 #endif
+
+static constexpr auto kGeoAnalyzers = frozen::make_set<std::string_view>({
+    GeoVPackAnalyzer::type_name(),
+    GeoS2Analyzer::type_name(),
+    GeoPointAnalyzer::type_name(),
+});
+
+bool isGeoAnalyzer(std::string_view type) noexcept {
+  return kGeoAnalyzers.count(type) != 0;
+}
+
+bool isPrimitiveAnalyzer(std::string_view type) noexcept {
+  return !isGeoAnalyzer(type);
+}
 
 }  // namespace arangodb::iresearch::kludge

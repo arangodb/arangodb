@@ -67,7 +67,7 @@ struct FilterConstants {
   // Defaults
   static constexpr size_t DefaultScoringTermsLimit{128};
   static constexpr size_t DefaultLevenshteinTermsLimit{64};
-  static constexpr double_t DefaultNgramMatchThreshold{0.7};
+  static constexpr double DefaultNgramMatchThreshold{0.7};
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
 
