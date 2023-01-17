@@ -116,7 +116,7 @@ const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormPr
 
   return <Grid>
     <Cell size={'1'}>
-      <Editor value={formState} onChange={changeHandler} mode={'code'} history={true} key={renderKey}/>
+      <Editor value={formState} onChange={changeHandler} mode={'code'} history={true} key={renderKey} htmlElementProps={{style: {height: '80vh'}}}/>
     </Cell>
     {
       formErrors.length
