@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"

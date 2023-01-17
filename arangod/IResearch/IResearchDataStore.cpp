@@ -66,6 +66,11 @@
 using namespace std::literals;
 
 namespace arangodb::iresearch {
+
+#ifdef USE_ENTERPRISE
+size_t getPrimaryDocsCount(irs::directory_reader const& reader);
+#endif
+
 namespace {
 
 class IResearchFlushSubscription final : public FlushSubscription {
@@ -1958,6 +1963,15 @@ IResearchDataStore::Stats IResearchDataStore::updateStatsUnsafe() const {
   Stats stats;
   stats.numSegments = reader->size();
   stats.numDocs = reader->docs_count();
+#ifdef USE_ENTERPRISE
+  if (hasNestedFields()) {
+    stats.numPrimaryDocs = getPrimaryDocsCount(reader);
+  } else {
+    stats.numPrimaryDocs = stats.numDocs;
+  }
+#else
+  stats.numPrimaryDocs = stats.numDocs;
+#endif
   stats.numLiveDocs = reader->live_docs_count();
   stats.numFiles = 1;  // +1 for segments file
   for (auto const& segment : reader->Meta().index_meta.segments) {
@@ -1977,6 +1991,7 @@ void IResearchDataStore::toVelocyPackStats(VPackBuilder& builder) const {
   auto const stats = this->stats();
 
   builder.add("numDocs", VPackValue(stats.numDocs));
+  builder.add("numPrimaryDocs", VPackValue(stats.numPrimaryDocs));
   builder.add("numLiveDocs", VPackValue(stats.numLiveDocs));
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
@@ -2039,6 +2054,8 @@ void IResearchDataStore::initClusterMetrics() const {
   };
   metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
   metric.add("arangodb_search_num_live_docs", batchToCoordinator,
+             batchToPrometheus);
+  metric.add("arangodb_search_num_primary_docs", batchToCoordinator,
              batchToPrometheus);
   metric.add("arangodb_search_num_segments", batchToCoordinator,
              batchToPrometheus);

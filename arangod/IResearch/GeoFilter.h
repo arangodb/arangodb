@@ -27,60 +27,66 @@
 #include "search/search_range.hpp"
 #include "utils/type_limits.hpp"
 
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
 #include "IResearch/Geo.h"
 #include "Geo/ShapeContainer.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-class GeoFilter;
-class GeoDistanceFilter;
-
-enum class GeoFilterType : uint32_t {
-  // Check if a given shape intersects indexed data
-  INTERSECTS = 0,
-
-  // Check if a given shape fully contains indexed data
-  CONTAINS,
-
-  // Check if a given shape is fully contained within indexed data
-  IS_CONTAINED
+enum class StoredType : uint8_t {
+  // VPack but with legacy parsing to S2LatLngRect and Polygon Normalization
+  VPackLegacy = 0,
+  // Valid GeoJson as VPack or coordinates array of two S2LatLng
+  VPack,
+  // Valid ShapeContainer serialized as S2Shape
+  S2Shape,
+  // Valid S2Point serialized as S2Point
+  S2Point,
 };
 
-// Options for geo filter
-struct GeoFilterOptions {
- public:
+struct GeoFilterOptionsBase {
+  std::string prefix;
+  S2RegionTermIndexer::Options options;
+  StoredType stored{StoredType::VPack};
+};
+
+enum class GeoFilterType : uint8_t {
+  // Check if a given shape intersects indexed data
+  INTERSECTS = 0,
+  // Check if a given shape fully contains indexed data
+  CONTAINS,
+  // Check if a given shape is fully contained within indexed data
+  IS_CONTAINED,
+};
+
+class GeoFilter;
+
+struct GeoFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoFilter;
 
   bool operator==(const GeoFilterOptions& rhs) const noexcept {
     return type == rhs.type && shape.equals(rhs.shape);
   }
 
-  size_t hash() const noexcept {
-    using GeoFilterUnderlyingType = std::underlying_type_t<GeoFilterType>;
-    size_t hash = std::hash<GeoFilterUnderlyingType>()(
-        static_cast<GeoFilterUnderlyingType>(type));
-
-    auto* region = shape.region();
-    TRI_ASSERT(region);
-
+  template<typename H>
+  friend H AbslHashValue(H h, GeoFilterOptions const& self) noexcept {
+    auto* region = self.shape.region();
+    TRI_ASSERT(region != nullptr);
     std::vector<S2CellId> cells;
     region->GetCellUnionBound(&cells);
-
     for (auto cell : cells) {
-      hash = irs::hash_combine(hash, S2CellIdHash()(cell));
+      h = H::combine(std::move(h), cell);
     }
-    return hash;
+    return H::combine(std::move(h), cells.size(), self.type);
   }
 
-  geo::ShapeContainer shape;
-  std::string prefix;
-  S2RegionTermIndexer::Options options;
+  // TODO(MBkkt) remove it
+  size_t hash() const noexcept { return absl::Hash<GeoFilterOptions>{}(*this); }
+
   GeoFilterType type{GeoFilterType::INTERSECTS};
+  geo::ShapeContainer shape;
 };
 
-// User-side geo filter
 class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
@@ -92,41 +98,44 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
   prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const override;
-};  // GeoFilter
+};
 
-// Options for term filter
-class GeoDistanceFilterOptions {
- public:
+class GeoDistanceFilter;
+
+struct GeoDistanceFilterOptions : GeoFilterOptionsBase {
   using filter_type = GeoDistanceFilter;
 
-  bool operator==(const GeoDistanceFilterOptions& rhs) const noexcept {
+  bool operator==(GeoDistanceFilterOptions const& rhs) const noexcept {
     return origin == rhs.origin && range == rhs.range;
   }
 
+  template<typename H>
+  friend H AbslHashValue(H h, GeoDistanceFilterOptions const& self) noexcept {
+    // TODO(MBkkt) remove ".hash()"
+    return H::combine(std::move(h), self.range.hash(), self.origin);
+  }
+
+  // TODO(MBkkt) remove it
   size_t hash() const noexcept {
-    return irs::hash_combine(range.hash(), S2PointHash()(origin));
+    return absl::Hash<GeoDistanceFilterOptions>{}(*this);
   }
 
   S2Point origin;
-  irs::search_range<double_t> range;
-  std::string prefix;
-  S2RegionTermIndexer::Options options;
+  irs::search_range<double> range;
 };
 
-// User-side geo distance filter
 class GeoDistanceFilter final
     : public irs::filter_base<GeoDistanceFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
-    return "arangodb::iresearch::GeoFilter";
+    return "arangodb::iresearch::GeoDistanceFilter";
   }
 
   using filter::prepare;
 
-  prepared::ptr prepare(const irs::IndexReader& rdr, const irs::Order& ord,
+  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Order const& ord,
                         irs::score_t boost,
-                        const irs::attribute_provider* /*ctx*/) const override;
+                        irs::attribute_provider const* /*ctx*/) const final;
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

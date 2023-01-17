@@ -110,7 +110,14 @@ S2Loop::S2Loop(S2Loop&& b)
           b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed)),
       bound_(std::move(b.bound_)),
       subregion_bound_(std::move(b.subregion_bound_)),
-      index_(std::move(b.index_)) {}
+      index_(std::move(b.index_)) {
+  // `index_` has a pointer to an S2Loop::Shape which points to S2Loop.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->loop_ = this;
+  }
+}
 
 S2Loop& S2Loop::operator=(S2Loop&& b) {
   if (owns_vertices_) {
@@ -130,6 +137,13 @@ S2Loop& S2Loop::operator=(S2Loop&& b) {
   bound_ = std::move(b.bound_);
   subregion_bound_ = std::move(b.subregion_bound_);
   index_ = std::move(b.index_);
+
+  // `index_` has a pointer to an S2Loop::Shape which points to S2Loop.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->loop_ = this;
+  }
 
   return *this;
 }

@@ -68,4 +68,7 @@ std::string_view demangleType(std::string_view name) noexcept;
 std::string_view extractAnalyzerName(std::string_view fieldName);
 #endif
 
+bool isPrimitiveAnalyzer(std::string_view type) noexcept;
+bool isGeoAnalyzer(std::string_view type) noexcept;
+
 }  // namespace arangodb::iresearch::kludge

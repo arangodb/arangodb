@@ -28,8 +28,10 @@
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/karney/geodesic.h"
+#include "Basics/application-exit.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
+#include "Logger/LogMacros.h"
 
 #include <s2/s1angle.h>
 #include <s2/s2latlng.h>
@@ -38,6 +40,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
 
+#include <bit>
 #include <cmath>
 
 namespace arangodb::geo {
@@ -213,6 +216,21 @@ bool intersectsRect(S2Region const& r1, S2Region const& r2) {
   auto const& rhs = basics::downCast<S2LatLngRect>(r2);
   return rect::intersects(rhs, lhs);
 }
+
+void ensureLittleEndian() {
+  if constexpr (std::endian::native == std::endian::big) {
+    LOG_TOPIC("ab9de", FATAL, Logger::FIXME)
+        << "Geo serialization is not implemented on big-endian architectures";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+constexpr uint8_t serialize(ShapeContainer::Type t) noexcept {
+  return static_cast<uint8_t>(t);
+}
+
+constexpr uint8_t kCurrentLosslessEncodingVersionNumber = 1;
+constexpr uint8_t kCurrentCompressedEncodingVersionNumber = 2;
 
 }  // namespace
 
@@ -645,7 +663,6 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
       auto const& points = data.Impl();
       cover.reserve(points.size());
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       for (auto const& point : points) {
         cover.emplace_back(S2CellId{point});
       }
@@ -653,7 +670,6 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
     case Type::S2_MULTIPOLYLINE: {
       auto const& data = basics::downCast<S2MultiPolyline>(*_data);
       auto const& lines = data.Impl();
-      // TODO(MBkkt) it was, but is same S2CellId ok here?
       std::vector<S2CellId> lineCover;
       for (auto const& line : lines) {
         coverer.GetCovering(line, &lineCover);
@@ -666,6 +682,144 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer& coverer) const {
       TRI_ASSERT(false);
   }
   return cover;
+}
+
+void ShapeContainer::Encode(Encoder& encoder, s2coding::CodingHint hint) const {
+  ensureLittleEndian();
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t));
+  encoder.put8(serialize(_type));
+  switch (_type) {
+    case Type::S2_POINT: {
+      auto const& data = basics::downCast<S2PointRegion>(*_data);
+      encodePoint(encoder, data.point(), hint);
+    } break;
+    case Type::S2_POLYLINE: {
+      auto const& data = basics::downCast<S2Polyline>(*_data);
+      if (hint == s2coding::CodingHint::FAST) {
+        data.EncodeUncompressed(&encoder);
+      } else {
+        data.EncodeMostCompact(&encoder);
+      }
+    } break;
+    case Type::S2_POLYGON: {
+      auto const& data = basics::downCast<S2Polygon>(*_data);
+      if (hint == s2coding::CodingHint::FAST) {
+        data.EncodeUncompressed(&encoder);
+      } else {
+        data.Encode(&encoder);
+      }
+    } break;
+    case Type::S2_MULTIPOINT: {
+      auto const& data = basics::downCast<S2MultiPointRegion>(*_data);
+      data.Encode(&encoder, hint);
+    } break;
+    case Type::S2_MULTIPOLYLINE: {
+      auto const& data = basics::downCast<S2MultiPolyline>(*_data);
+      data.Encode(&encoder, hint);
+    } break;
+    case Type::S2_LATLNGRECT:  // not exist in non-legacy geo
+    case Type::EMPTY:
+      TRI_ASSERT(false);
+  }
+}
+
+template<ShapeContainer::Type TypeT, typename T>
+bool ShapeContainer::DecodeImpl(Decoder& decoder) {
+  if (ADB_UNLIKELY(_type != TypeT)) {
+    if constexpr (std::is_same_v<T, S2PointRegion>) {
+      _data = std::make_unique<T>(S2Point{});
+    } else {
+      _data = std::make_unique<T>();
+    }
+    _type = TypeT;
+  }
+  if constexpr (std::is_same_v<T, S2PointRegion>) {
+    return decodePoint(decoder, basics::downCast<T>(*_data));
+  } else {
+    return basics::downCast<T>(*_data).Decode(&decoder);
+  }
+}
+
+bool ShapeContainer::Decode(Decoder& decoder) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return false;
+  }
+  if (decoder.avail() < sizeof(uint8_t)) {
+    return false;
+  }
+  auto type = decoder.get8();
+  switch (type) {
+    case serialize(Type::S2_POINT):
+      return DecodeImpl<Type::S2_POINT, S2PointRegion>(decoder);
+    case serialize(Type::S2_POLYLINE):
+      return DecodeImpl<Type::S2_POLYLINE, S2Polyline>(decoder);
+    case serialize(Type::S2_POLYGON):
+      return DecodeImpl<Type::S2_POLYGON, S2Polygon>(decoder);
+    case serialize(Type::S2_MULTIPOINT):
+      return DecodeImpl<Type::S2_MULTIPOINT, S2MultiPointRegion>(decoder);
+    case serialize(Type::S2_MULTIPOLYLINE):
+      return DecodeImpl<Type::S2_MULTIPOLYLINE, S2MultiPolyline>(decoder);
+    default:
+      TRI_ASSERT(false);
+  }
+  return false;
+}
+
+void encodePoint(Encoder& encoder, S2Point const& point,
+                 s2coding::CodingHint hint) {
+  ensureLittleEndian();
+  TRI_ASSERT(S2::IsUnitLength(point));
+  static_assert(sizeof(S2Point) >= sizeof(double) * 2);
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + sizeof(S2Point));
+  // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
+  if constexpr (true) {
+    encoder.put8(kCurrentLosslessEncodingVersionNumber);
+    encoder.putn(&point, sizeof(S2Point));
+  } else {
+    encoder.put8(kCurrentCompressedEncodingVersionNumber);
+    S2LatLng const temp{point};
+    TRI_ASSERT(temp.is_valid());
+    encoder.putdouble(temp.lat().radians());
+    encoder.putdouble(temp.lng().radians());
+  }
+}
+
+bool decodePoint(Decoder& decoder, S2PointRegion& region) {
+  if constexpr (std::endian::native == std::endian::big) {
+    return false;
+  }
+  if (decoder.avail() < sizeof(uint8_t) + 2 * sizeof(double)) {
+    return false;
+  }
+  S2Point point;
+  auto const version = decoder.get8();
+  switch (version) {
+    case kCurrentLosslessEncodingVersionNumber: {
+      if (decoder.avail() < 3 * sizeof(double)) {
+        return false;
+      }
+      for (int i = 0; i < 3; ++i) {
+        point[i] = decoder.getdouble();
+      }
+    } break;
+    case kCurrentCompressedEncodingVersionNumber: {
+      // TODO(MBkkt) Make decision about using or not Point to LatLng serialize
+      if constexpr (false) {
+        auto const lat = decoder.getdouble();
+        auto const lng = decoder.getdouble();
+        auto temp = S2LatLng::FromRadians(lat, lng);
+        TRI_ASSERT(temp.is_valid());
+        point = temp.ToPoint();
+        break;
+      }
+    }
+    default:
+      TRI_ASSERT(false);
+      return false;
+  }
+  TRI_ASSERT(S2::IsUnitLength(point));
+  region = S2PointRegion{point};
+  return true;
 }
 
 }  // namespace arangodb::geo
