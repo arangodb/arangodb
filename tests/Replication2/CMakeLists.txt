@@ -77,34 +77,21 @@ add_test(NAME replication2
 
 
 add_library(arango_tests_replication2_pure OBJECT
-        ReplicatedLog/Components/CompactionManagerTest.cpp
-        ReplicatedLog/Components/StorageManagerTest.cpp
-        ReplicatedLog/Components/FollowerCommitManagerTest.cpp
-        ReplicatedLog/Components/InMemoryLogTest.cpp
-        ReplicatedLog/LogFollower/AppendEntriesTest.cpp
-        ReplicatedLog/Algorithms/LogCommonTest.cpp
-        ReplicatedLog/ReplicatedLogConnectTest.cpp
         ReplicatedLog/Algorithms/CalcCommitIndexTest.cpp
         ReplicatedLog/Algorithms/DetectConflictTest.cpp
-
-
+        ReplicatedLog/Algorithms/LogCommonTest.cpp
+        ReplicatedLog/Components/CompactionManagerTest.cpp
+        ReplicatedLog/Components/FollowerCommitManagerTest.cpp
+        ReplicatedLog/Components/InMemoryLogTest.cpp
+        ReplicatedLog/Components/SnapshotManagerTest.cpp
+        ReplicatedLog/Components/StorageManagerTest.cpp
+        ReplicatedLog/Components/TermIndexMapping.cpp
+        ReplicatedLog/LogFollower/AppendEntriesTest.cpp
+        ReplicatedLog/ReplicatedLogConnectTest.cpp
+        ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
         ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
         ReplicatedLog/Supervision/SupervisionTest.cpp
-        ReplicatedLog/Supervision/ParticipantsHealthTest.cpp
-
-        #ReplicatedState/FollowerResignTest.cpp
-        #ReplicatedState/FollowerSnapshotTest.cpp
-        #ReplicatedState/FollowerWaitForTest.cpp
-        #ReplicatedState/LeaderRecoveryTest.cpp
-        #ReplicatedState/LeaderResignTest.cpp
-        #ReplicatedState/PrototypeConcurrencyTest.cpp
-        #ReplicatedState/PrototypeStateMachineTest.cpp
-        #ReplicatedState/ReplicatedStateFeatureTest.cpp
-        #ReplicatedState/ReplicatedStateMetricsTest.cpp
-        #ReplicatedState/ReplicatedStateTest.cpp
-        #ReplicatedState/StateCleanupTest.cpp
-        #ReplicatedState/StateMachines/MyStateMachine.cpp
-        ReplicatedLog/Components/TermIndexMapping.cpp)
+)
 
 target_sources(arango_tests_replication2_pure PRIVATE
         Mocks/ReplicatedLogMetricsMock.cpp
