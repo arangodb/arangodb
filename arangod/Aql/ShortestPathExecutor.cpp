@@ -178,7 +178,6 @@ ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
       _pathLength(0),
       _sourceBuilder{},
       _targetBuilder{} {
-  LOG_DEVEL << "->>>>>>>> INITIALIZING EXECUTOR";
   if (!_infos.useRegisterForSourceInput()) {
     _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }
@@ -238,7 +237,6 @@ auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
   VPackSlice edgesSlice{
       _pathBuilder->slice().get(StaticStrings::GraphQueryEdges)};
   _pathLength = verticesSlice.length();
-  LOG_DEVEL << "pathLength is: " << verticesSlice.length();
 
   while (pathLengthAvailable() > 0 && !output.isFull()) {
     if (_infos.usesOutputRegister(
@@ -290,7 +288,6 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
   _pathBuilder->clear();
 
   while (input.hasDataRow()) {
-    LOG_DEVEL << "New output row";
     auto source = VPackSlice{};
     auto target = VPackSlice{};
     std::tie(std::ignore, _inputRow) =
@@ -299,14 +296,10 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
     // Ordering important here.
     // Read source and target vertex, then try to find a shortest path (if both
     // worked).
-    LOG_DEVEL << "Source: " << _infos.getSourceVertex().value;
-    LOG_DEVEL << "Target: " << _infos.getTargetVertex().value;
     if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder,
                     source) &&
         getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder,
                     target)) {
-      LOG_DEVEL << "S: " << source.toJson();
-      LOG_DEVEL << "T: " << target.toJson();
       _finder.reset(arangodb::velocypack::HashedStringRef(source),
                     arangodb::velocypack::HashedStringRef(target));
       if (_finder.getNextPath(*_pathBuilder.builder())) {
@@ -326,10 +319,8 @@ template<class FinderType>
 auto ShortestPathExecutor<FinderType>::produceRows(
     AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  LOG_DEVEL << "Calling produce rows:";
   while (!output.isFull()) {
     if (pathLengthAvailable() == 0) {
-      LOG_DEVEL << "fetch path in produce rows";
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), _finder.stealStats(), AqlCall{}};
@@ -351,14 +342,11 @@ auto ShortestPathExecutor<FinderType>::skipRowsRange(
     AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
-  LOG_DEVEL << "Calling skipRowsRange:";
-  LOG_DEVEL << "calling get next path (skip rowis):";
 
   while (true) {
     skipped += doSkipPath(call);
 
     if (pathLengthAvailable() == 0) {
-      LOG_DEVEL << "fetch path in skip rows range";
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), _finder.stealStats(), skipped,
