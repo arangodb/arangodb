@@ -1,0 +1,19 @@
+add_library(arango_tests_actor OBJECT
+  ActorTest.cpp
+  RuntimeTest.cpp
+  MultiRuntimeTest.cpp
+  MPSCQueueTest.cpp)
+target_include_directories(arango_tests_actor PRIVATE
+  ${PROJECT_SOURCE_DIR}/lib)
+target_link_libraries(arango_tests_actor PRIVATE
+  arango_actor
+  gtest)
+
+add_executable(arangodbtests_actor EXCLUDE_FROM_ALL)
+target_link_libraries(arangodbtests_actor
+  arango_tests_actor
+  gtest_main)
+
+add_test(
+  NAME actor
+  COMMAND arangodbtests_actor)
