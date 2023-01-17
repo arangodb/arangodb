@@ -67,8 +67,9 @@ Function::Function(std::string const& name, char const* arguments,
 
   // only the V8 function does not have a C++ implementation.
   // don't ever change this!
-  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER")
-      << "unexpected AQL function without C++ implementation: " << name;
+  // note: CUSTOMSCORER and INVALID are only used by unit tests
+  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER" ||
+             name == "INVALID")
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
