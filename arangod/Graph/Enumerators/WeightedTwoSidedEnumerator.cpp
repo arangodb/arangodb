@@ -76,7 +76,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::reset(VertexRef center,
                                                             size_t depth) {
-  LOG_DEVEL << "FINDER RESET WEIGHTED";
   clear();
   auto firstStep = _provider.startVertex(center, depth);
   _queue.append(std::move(firstStep));
@@ -222,17 +221,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::hasBeenVisited(Step const&
                                                                          step)
     -> bool {
-  LOG_DEVEL << "THIS NEEDS to be fixed properly";
-
-  if (_direction == FORWARD) {
-    LOG_DEVEL << "content of visited left is:";
-  } else {
-    LOG_DEVEL << "content of visited right is:";
-  }
-  for (auto const& peter : _visitedNodes) {
-    LOG_DEVEL << "---> " << peter.first;
-  }
-
   if (_visitedNodes.contains(step.getVertex().getID().toString())) {
     return true;
   }
@@ -250,9 +238,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
-    for (auto const& elem : looseEnds) {
-      LOG_DEVEL << "Step: " << elem->toString();
-    }
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
@@ -266,7 +251,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   if (hasBeenVisited(step)) {
     return;
   }
-  LOG_DEVEL << " - expanding: " << step.toString();
   auto previous = _interior.append(step);
 
   auto verifyStep = [&](Step currentStep) {
@@ -279,12 +263,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   };
 
-  // A -> B
-  // Step A (previous: -> null)
-  // Step B (previous: 0 (index auf A)
-
-  // (B, 2) , (B, 5)
-
   _visitedNodes.emplace(step.getVertex().getID().toString(), previous);
   if (other.hasBeenVisited(step)) {
     // Shortest Path Match
@@ -292,21 +270,10 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   _provider.expand(step, previous, [&](Step n) -> void {
-    LOG_DEVEL << "Received from Provider: " << n.toString()
-              << ", weight:" << n.getWeight();
     if (!hasBeenVisited(n)) {
       verifyStep(std::move(n));
-    } else {
-      LOG_DEVEL << "Step " << n.toString()
-                << " - has been visited already, therefore skipping!";
     }
   });
-
-  // Expand C:
-  // -> F 14
-  // -> A 2
-  // -> B 5            // init: F, A, B
-  // => A, B, F
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -315,7 +282,7 @@ void WeightedTwoSidedEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::testDepthZero(Ball& other,
                                         CandidatesMap& candidates) {
-  // TODO: FIXME
+  // TODO: Check - is this even required?
   /*for (auto const& step : _shell) {
     other.matchResultsInShell(step, candidates, _validator);
   }*/
@@ -327,21 +294,15 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesMap& candidates,
                         PathValidator const& otherSideValidator) -> double {
-  LOG_DEVEL << "========================";
-  LOG_DEVEL << "=== FOUND MATCH FOR : " << otherStep.toString() << " === ";
-
   auto position = _visitedNodes.at(otherStep.getVertex().getID().toString());
   auto ourStep = _interior.getStepReference(position);
 
-  // TODO: Check Prune + Filter - Currently, not supported, but could be (!)
+  // TODO: Check Prune + Filter - Currently, not supported, but could be (!) as
+  //  a new feature.
   // auto res = _validator.validatePath(ourStep, otherSideValidator);
   // TRI_ASSERT(!res.isFiltered());
   // if (!res.isFiltered()) {
   // }
-  LOG_DEVEL << " -> III. (path is validated)";
-  LOG_DEVEL << " -> III. Write path into result";
-  LOG_DEVEL << "Our: " << ourStep.toString();
-  LOG_DEVEL << "Oth: " << otherStep.toString();
   double fullPathLength = ourStep.getWeight() + otherStep.getWeight();
   if (_direction == FORWARD) {
     candidates.emplace(fullPathLength, std::make_pair(ourStep, otherStep));
@@ -483,16 +444,13 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::getNextPath(VPackBuilder&
                                                                 result) {
   while (!isDone()) {
-    LOG_DEVEL << "- we're not done yet (getNextPath)";
     searchMoreResults();
 
-    LOG_DEVEL << "Candidate best length: " << _bestCandidateLength;
     // TODO: As soon as we enable also KShortestPaths - this must be changed.
     //  The whole candidate structure right now is build for exactly one path
     //  and not multiple paths.
     //  This means we must calculate the second best path match as next.
     if (_bestCandidateLength >= 0 && isAlgorithmFinished()) {
-      LOG_DEVEL << "Results populated, we must be finished!";
       auto const& candidate = _candidates.at(_bestCandidateLength);
       auto const& leftVertex = candidate.first;
       auto const& rightVertex = candidate.second;
@@ -509,13 +467,11 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _candidates.erase(_bestCandidateLength);
 
       _resultPath.toVelocyPack(result);
-      LOG_DEVEL << "Final result: " << result.toJson();
 
       // At this state we've produced a valid path result. In case we're using
       // the path type "(Weighted)ShortestPath", the algorithm is finished. We
       // need to store this information.
       if (_options.onlyProduceOnePath()) {
-        LOG_DEVEL << "Set to finished!";
         setAlgorithmFinished();
       }
 
@@ -530,7 +486,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchMoreResults() {
-  LOG_DEVEL << "SearchDone State: " << std::boolalpha << searchDone();
   while (!searchDone()) {
     _resultsFetched = false;
 
@@ -557,26 +512,16 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       setAlgorithmFinished();
     }
 
-    LOG_DEVEL << "+++++++++++++++++++++++";
-    LOG_DEVEL << "++++++ CANDIDATE ++++++";
-    LOG_DEVEL << "+++++++++++++++++++++++";
     if (matchPathLength > 0) {
       // means we've found a match
       if (_bestCandidateLength < 0 || matchPathLength < _bestCandidateLength) {
-        LOG_DEVEL << " -- setting new candidate (either init or better "
-                     "candidate found)";
-        LOG_DEVEL << " -- best before: " << _bestCandidateLength;
-        LOG_DEVEL << " -- new path length: " << matchPathLength;
         _bestCandidateLength = matchPathLength;
       } else if (matchPathLength > _bestCandidateLength) {
-        LOG_DEVEL << " -- found a worse candidate, we must be finished";
         // Proven to be finished with the algorithm. Our last best score is the
         // shortest path.
         setAlgorithmFinished();
       }
     }
-
-    LOG_DEVEL << "+++++++++++++++++++++++";
   }
   setAlgorithmFinished();
 
@@ -656,45 +601,26 @@ typename WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::BallSearchLocation
 WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                            PathValidator>::getBallToContinueSearch() {
-  // TODO: Implement easy strategy way to change iteration "order" here.
-  LOG_DEVEL << "";
-  LOG_DEVEL << "Get ball to continue search";
   if (!_leftInitialFetch) {
-    LOG_DEVEL << "";
-    LOG_DEVEL << "-init left";
     _leftInitialFetch = true;
     return BallSearchLocation::LEFT;
   } else if (!_rightInitialFetch) {
-    LOG_DEVEL << "";
-    LOG_DEVEL << "-init right";
     _rightInitialFetch = true;
     return BallSearchLocation::RIGHT;
   }
 
-  LOG_DEVEL << "";
   if (!_left.isQueueEmpty() && !_right.isQueueEmpty()) {
     auto leftStep = _left.peekQueue();
     auto rightStep = _right.peekQueue();
-    LOG_DEVEL << "########### Debug Queue Information ########### ";
-    LOG_DEVEL << "    Left step is: " << leftStep.toString() << ", weight: ("
-              << leftStep.getWeight() << ")";
-    LOG_DEVEL << "    Right step is: " << rightStep.toString() << ", weight: ("
-              << rightStep.getWeight() << ")";
-
-    LOG_DEVEL << "########### Debug Queue    END ###########";
 
     if (leftStep.getWeight() <= rightStep.getWeight()) {
-      LOG_DEVEL << "-left smaller";
       return BallSearchLocation::LEFT;
     } else {
-      LOG_DEVEL << "-right smaller";
       return BallSearchLocation::RIGHT;
     }
   } else if (!_left.isQueueEmpty() && _right.isQueueEmpty()) {
-    LOG_DEVEL << "RIGHT default";
     return BallSearchLocation::RIGHT;
   } else if (_left.isQueueEmpty() && !_right.isQueueEmpty()) {
-    LOG_DEVEL << "LEFT default";
     return BallSearchLocation::LEFT;
   }
 
@@ -706,10 +632,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  LOG_DEVEL << "Left queue empty: " << std::boolalpha << _left.noPathLeft();
-  LOG_DEVEL << "Right queue empty: " << std::boolalpha << _right.noPathLeft();
-  LOG_DEVEL << "isAlgorithmFinished(): " << std::boolalpha
-            << isAlgorithmFinished();
   return _left.noPathLeft() || _right.noPathLeft() || isAlgorithmFinished();
 }
 
