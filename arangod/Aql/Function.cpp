@@ -63,7 +63,7 @@ Function::Function(std::string const& name, char const* arguments,
   // don't ever change this!
   // note: CUSTOMSCORER and INVALID are only used by unit tests
   TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER" ||
-             name == "INVALID")
+             name == "INVALID");
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
