@@ -1812,16 +1812,6 @@ function ahuacatlQueryShortestPathTestSuite() {
     },
     
     testShortestPathAtoFinboundWeightEdgeCollectionRestriction: function () {
-      //const v1 = "UnitTestsAhuacatlVertex1";
-      //const v2 = "UnitTestsAhuacatlVertex2";
-      // const v3 = "UnitTestsAhuacatlVertex3";
-
-      /*
-      const e1 = "UnitTestsAhuacatlEdge1";
-  const e2 = "UnitTestsAhuacatlEdge2"; <-- !!!!!!!!!!!!!
-  const e3 = "UnitTestsAhuacatlEdge3";
-       */
-
       var query = `
         WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
