@@ -1,3 +1,10 @@
+v3.9.8 (XXXX-XX-XX)
+-------------------
+
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
+
 v3.9.7 (2023-01-10)
 -------------------
 
