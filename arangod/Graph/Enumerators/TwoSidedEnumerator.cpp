@@ -78,7 +78,6 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::Ball::reset(VertexRef center,
                                                     size_t depth) {
   clear();
-  LOG_DEVEL << "CALLING RESET IN TWOSIEDEDENUMERATOR";
   auto firstStep = _provider.startVertex(center, depth);
   _shell.emplace(std::move(firstStep));
 }
