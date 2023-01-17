@@ -122,8 +122,7 @@ class WeightedTwoSidedEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    // TODO: HashedStringRef instead of string copy here (getID)
-    std::unordered_map<std::string, size_t> _visitedNodes;
+    std::unordered_map<typename Step::VertexType, size_t> _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
   };

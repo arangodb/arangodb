@@ -1,7 +1,6 @@
 add_library(arango_tests_graph OBJECT
   ClusterTraverserCacheTest.cpp
   TraverserCacheTest.cpp
-  #ConstantWeightShortestPathFinder.cpp # TODO [GraphRefactor]: Re-enable / re-write again.
   GenericGraphProviderTest.cpp
   GraphMockProviderInstances.cpp
   GraphTestTools.cpp

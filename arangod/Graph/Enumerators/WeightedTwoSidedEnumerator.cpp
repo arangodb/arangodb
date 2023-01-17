@@ -218,7 +218,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::hasBeenVisited(Step const&
                                                                          step)
     -> bool {
-  if (_visitedNodes.contains(step.getVertex().getID().toString())) {
+  if (_visitedNodes.contains(step.getVertex().getID())) {
     return true;
   }
   return false;
@@ -260,7 +260,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
   };
 
-  _visitedNodes.emplace(step.getVertex().getID().toString(), previous);
+  _visitedNodes.emplace(step.getVertex().getID(), previous);
   if (other.hasBeenVisited(step)) {
     // Shortest Path Match
     matchPathLength = other.matchResultsInShell(step, candidates, _validator);
@@ -291,7 +291,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesMap& candidates,
                         PathValidator const& otherSideValidator) -> double {
-  auto position = _visitedNodes.at(otherStep.getVertex().getID().toString());
+  auto position = _visitedNodes.at(otherStep.getVertex().getID());
   auto ourStep = _interior.getStepReference(position);
 
   // TODO: Check Prune + Filter - Currently, not supported, but could be (!) as

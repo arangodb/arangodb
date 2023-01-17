@@ -100,6 +100,7 @@ class MockGraphProvider {
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     using EdgeType = arangodb::velocypack::HashedStringRef;
+    using VertexType = VertexType;
 
     class Vertex {
      public:
