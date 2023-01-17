@@ -54,7 +54,7 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
 #define _GET_CLZ(x, b) _get_leading_zero_count(x, b)
 #endif /* defined(__GNUC__) */
 
-static uint32_t hashPregelId(PregelID const& pregelId) {
+static uint32_t hashPregelId(VertexID const& pregelId) {
   uint32_t h1 =
       fasthash32(pregelId.key.data(), pregelId.key.length(), 0xf007ba11UL);
   uint64_t h2 = fasthash64_uint64(pregelId.shard, 0xdefec7edUL);
@@ -62,7 +62,7 @@ static uint32_t hashPregelId(PregelID const& pregelId) {
   return h1 ^ (h3 << 1);
 }
 
-void HLLCounter::addNode(PregelID const& pregelId) {
+void HLLCounter::addNode(VertexID const& pregelId) {
   uint32_t hashid = hashPregelId(pregelId);
   // last 6 bits as bucket index
   uint32_t index = hashid >> (32 - 6);

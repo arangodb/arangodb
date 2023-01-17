@@ -132,12 +132,12 @@ struct VertexSumAggregator : public IAggregator {
   void aggregateDefaultValue(double empty) { _default += empty; }
 
   void forEach(
-      std::function<void(PregelID const& _id, double value)> func) const {
+      std::function<void(VertexID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
       std::unordered_map<std::string, double> const& vertexMap = pair.second;
       for (auto const& vertexMessage : vertexMap) {
-        func(PregelID(shard, vertexMessage.first), vertexMessage.second);
+        func(VertexID(shard, vertexMessage.first), vertexMessage.second);
       }
     }
   }

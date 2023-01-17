@@ -113,7 +113,7 @@ class VertexContext {
 
   PregelShard shard() const { return _vertexEntry->shard(); }
   std::string_view key() const { return _vertexEntry->key(); }
-  PregelID pregelId() const { return _vertexEntry->pregelId(); }
+  VertexID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
 template<typename V, typename E, typename M>
@@ -128,7 +128,7 @@ class VertexComputation : public VertexContext<V, E, M> {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
   }
 
-  void sendMessage(PregelID const& pid, M const& data) {
+  void sendMessage(VertexID const& pid, M const& data) {
     _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 

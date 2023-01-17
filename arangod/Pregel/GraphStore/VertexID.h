@@ -26,22 +26,22 @@
 
 namespace arangodb::pregel {
 
-struct PregelID {
-  std::string key;    // std::string 24
-  PregelShard shard;  // uint16_t
+struct VertexID {
+  std::string key;
+  PregelShard shard;
 
-  PregelID() : shard(InvalidPregelShard) {}
-  PregelID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
+  VertexID() : shard(InvalidPregelShard) {}
+  VertexID(PregelShard s, std::string k) : key(std::move(k)), shard(s) {}
 
-  bool operator==(const PregelID& rhs) const {
+  bool operator==(const VertexID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
 
-  bool operator!=(const PregelID& rhs) const {
+  bool operator!=(const VertexID& rhs) const {
     return shard != rhs.shard || key != rhs.key;
   }
 
-  bool operator<(const PregelID& rhs) const {
+  bool operator<(const VertexID& rhs) const {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
@@ -53,8 +53,8 @@ struct PregelID {
 }  // namespace arangodb::pregel
 namespace std {
 template<>
-struct hash<arangodb::pregel::PregelID> {
-  std::size_t operator()(const arangodb::pregel::PregelID& k) const noexcept {
+struct hash<arangodb::pregel::VertexID> {
+  std::size_t operator()(const arangodb::pregel::VertexID& k) const noexcept {
     using std::hash;
     using std::size_t;
     using std::string;

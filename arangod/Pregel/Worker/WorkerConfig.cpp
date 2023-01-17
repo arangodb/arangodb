@@ -113,7 +113,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
   return ::emptyEdgeCollectionRestrictions;
 }
 
-PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
+VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -130,5 +130,5 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
                       keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, std::string(keyPart));
+  return VertexID(source, std::string(keyPart));
 }

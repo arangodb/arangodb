@@ -138,8 +138,8 @@ class Vertex {
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
-  [[nodiscard]] PregelID pregelId() const {
-    return PregelID{_shard, std::string(_key, keyLength())};
+  [[nodiscard]] VertexID pregelId() const {
+    return VertexID{_shard, std::string(_key, keyLength())};
   }
 };
 
