@@ -24,10 +24,8 @@
 
 #include "WeightedTwoSidedEnumerator.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
-#include "Basics/voc-errors.h"
 
 #include "Futures/Future.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
@@ -43,7 +41,6 @@
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 
-#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 
