@@ -48,6 +48,8 @@
 #include "utils/log.hpp"
 #include "Basics/DownCast.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 // ----------------------------------------------------------------------------
@@ -93,14 +95,6 @@ irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     NumericStreamPool(DEFAULT_POOL_SIZE);
 std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
     irs::type<irs::granularity_prefix>::id()};
-
-// appends the specified 'value' to 'out'
-void append(std::string& out, size_t value) {
-  auto const size = out.size();  // intial size
-  out.resize(size + 21);         // enough to hold all numbers up to 64-bits
-  auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
-  out.resize(size + written);
-}
 
 bool canHandleValue(std::string const& key, VPackSlice const& value,
                     arangodb::iresearch::FieldMeta const& context) noexcept {
@@ -220,10 +214,8 @@ bool inObject(std::string& buffer,
 bool inArrayOrdered(std::string& buffer,
                     arangodb::iresearch::FieldMeta const*& context,
                     arangodb::iresearch::IteratorValue const& value) {
-  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
-  append(buffer, value.pos);
-  buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
-
+  // NESTING_LIST_OFFSET_PREFIX value.pos NESTING_LIST_OFFSET_SUFFIX
+  absl::StrAppend(&buffer, "[", value.pos, "]");
   return canHandleValue(buffer, value.value, *context);
 }
 
@@ -301,8 +293,8 @@ bool acceptAll(
       // we were expecting an array but something else were given
       // this case is just skipped. Just like regular indicies do.
       return false;
-    } else if (value.value.isObject() && !context->_includeAllFields &&
-               context->_fields.empty() &&
+    } else if (!context->_isSearchField && value.value.isObject() &&
+               !context->_includeAllFields && context->_fields.empty() &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Object)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -312,8 +304,8 @@ bool acceptAll(
           "another analyzer to process an object or exclude field '%s' "
           " from index definition",
           buffer.c_str());
-    } else if (value.value.isArray() && !context->_isArray &&
-               !context->_isSearchField &&
+    } else if (!context->_isSearchField && value.value.isArray() &&
+               !context->_isArray &&
                !context->_analyzers->front()._pool->accepts(
                    arangodb::iresearch::AnalyzerValueType::Array)) {
       THROW_ARANGO_EXCEPTION_FORMAT(
@@ -341,12 +333,11 @@ bool inArrayInverted(
         context,
     arangodb::iresearch::IteratorValue const& value) {
   if (context->_trackListPositions) {
-    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
-    append(buffer, value.pos);
-    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
+    // NESTING_LIST_OFFSET_PREFIX value.pos NESTING_LIST_OFFSET_SUFFIX
+    absl::StrAppend(&buffer, "[", value.pos, "]");
   } else {
     if (!context->_isSearchField) {
-      buffer += "[*]";
+      buffer.append("[*]");
     }
   }
   return true;
@@ -385,8 +376,7 @@ namespace iresearch {
 // --SECTION--                                             Field implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ void Field::setPkValue(Field& field,
-                                  LocalDocumentId::BaseType const& pk) {
+void Field::setPkValue(Field& field, LocalDocumentId::BaseType const& pk) {
   field._name = PK_COLUMN;
   field._indexFeatures = irs::IndexFeatures::NONE;
   field._fieldFeatures = {};
@@ -519,7 +509,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       valueType = AnalyzerValueType::Object;
     } break;
     case VPackValueType::String: {
-      valueRef = iresearch::getStringRef(value);
+      valueRef = value.stringView();
       valueType = AnalyzerValueType::String;
     } break;
     case VPackValueType::Custom: {
@@ -611,19 +601,14 @@ bool FieldIterator<IndexMetaStruct>::setValue(
       _value._name = _nameBuffer;
     } break;
   }
-  auto* storeFunc = pool->storeFunc();
-  if (storeFunc) {
-    auto const valueSlice =
-        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
-                                        : _value._analyzer.get(),
-                  value, _buffer);
-
-    if (!valueSlice.isNone()) {
-      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+  if (auto* storeFunc = pool->storeFunc(); storeFunc) {
+    TRI_ASSERT(_currentTypedAnalyzer == nullptr);
+    auto const bytes = storeFunc(_value._analyzer.get(), value);
+    if (!irs::IsNull(bytes)) {
+      _value._value = bytes;
       _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
     }
   }
-
   return true;
 }
 
@@ -850,15 +835,15 @@ void FieldIterator<IndexMetaStruct>::next() {
   return PK_COLUMN;
 }
 
-/*static*/ LocalDocumentId::BaseType DocumentPrimaryKey::encode(
+LocalDocumentId::BaseType DocumentPrimaryKey::encode(
     LocalDocumentId value) noexcept {
   return PrimaryKeyEndianness<Endianness>::hostToPk(value.id());
 }
 
 // PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >= alignof(uint64_t)
 // NOTE implementation must match implementation of operator irs::bytes_view()
-/*static*/ bool DocumentPrimaryKey::read(arangodb::LocalDocumentId& value,
-                                         irs::bytes_view const& in) noexcept {
+bool DocumentPrimaryKey::read(arangodb::LocalDocumentId& value,
+                              irs::bytes_view const& in) noexcept {
   if (sizeof(arangodb::LocalDocumentId::BaseType) != in.size()) {
     return false;
   }

@@ -99,7 +99,15 @@ RequestLane RestWalAccessHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
+  } else if (server()
+                 .getFeature<ReplicationFeature>()
+                 .isActiveFailoverEnabled()) {
+    // prioritize catch-up requests by active failover followers over other
+    // requests, so that followers have a better chance of catching up with the
+    // leader
+    return RequestLane::SERVER_REPLICATION_CATCHUP;
   }
+
   return RequestLane::SERVER_REPLICATION;
 }
 

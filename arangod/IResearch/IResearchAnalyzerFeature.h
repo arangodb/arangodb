@@ -30,7 +30,6 @@
 #include <ostream>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -56,6 +55,7 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h"  // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
@@ -173,8 +173,8 @@ class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
 
-  using StoreFunc = VPackSlice (*)(irs::token_stream const* ctx,
-                                   VPackSlice slice, VPackBuffer<uint8_t>& buf);
+  using StoreFunc = irs::bytes_view (*)(irs::token_stream* ctx,
+                                        velocypack::Slice slice);
 
   // type tags for primitive token streams
   struct NullStreamTag {};
@@ -254,7 +254,7 @@ class AnalyzerPool : private irs::util::noncopyable {
   bool init(std::string_view const& type, VPackSlice const properties,
             AnalyzersRevision::Revision revision, Features features,
             LinkVersion version);
-  void setKey(std::string_view const& type);
+  void setKey(std::string_view type);
 
   mutable CacheType _cache;  // cache of irs::analysis::analyzer
   // cached iresearch field features
@@ -400,8 +400,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///         EMPTY == system vocbase
   ///         NIL == unprefixed analyzer name, i.e. active vocbase
   ////////////////////////////////////////////////////////////////////////////////
-  static AnalyzerName splitAnalyzerName(
-      std::string_view const& analyzer) noexcept;
+  static AnalyzerName splitAnalyzerName(std::string_view analyzer) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
@@ -419,7 +418,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   ///       already have been persisted and feature administration is not
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
+  using EmplaceResult = std::pair<AnalyzerPool::ptr, bool>;
   Result emplace(EmplaceResult& result, std::string_view name,
                  std::string_view type, VPackSlice const properties,
                  Features features = {});
@@ -480,7 +479,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   /// @param name analyzer name (already normalized)
   /// @param force remove even if the analyzer is actively referenced
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(std::string_view const& name, bool force = false);
+  Result remove(std::string_view name, bool force = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
@@ -527,14 +526,14 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and
   // their associated metas
   using Analyzers =
-      std::unordered_map<irs::hashed_string_view, AnalyzerPool::ptr>;
+      containers::FlatHashMap<irs::hashed_string_view, AnalyzerPool::ptr>;
   using EmplaceAnalyzerResult = std::pair<Analyzers::iterator, bool>;
 
   // all analyzers known to this feature (including static)
   // (names are stored with expanded vocbase prefixes)
   Analyzers _analyzers;
   // last revision for database was loaded
-  std::unordered_map<std::string, AnalyzersRevision::Revision> _lastLoad;
+  containers::FlatHashMap<std::string, AnalyzersRevision::Revision> _lastLoad;
   // for use with member '_analyzers', '_lastLoad'
   mutable basics::ReadWriteLock _mutex;
 

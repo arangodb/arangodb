@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Utils/Cursor.h"
@@ -71,7 +73,8 @@ class CursorRepository {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  Cursor* createFromQueryResult(aql::QueryResult&&, size_t, double, bool);
+  Cursor* createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
+                                double ttl, bool hasCount, bool isRetriable);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
@@ -81,7 +84,7 @@ class CursorRepository {
   //////////////////////////////////////////////////////////////////////////////
 
   Cursor* createQueryStream(std::shared_ptr<arangodb::aql::Query> q,
-                            size_t batchSize, double ttl);
+                            size_t batchSize, double ttl, bool isRetriable);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id

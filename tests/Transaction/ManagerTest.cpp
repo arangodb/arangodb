@@ -74,8 +74,7 @@ class TransactionManagerTest : public ::testing::Test {
   TransactionId tid;
 
   TransactionManagerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                testDBInfo(setup.server.server())),
+      : vocbase(testDBInfo(setup.server.server())),
         mgr(transaction::ManagerFeature::manager()),
         tid(TransactionId::createLeader()) {}
 

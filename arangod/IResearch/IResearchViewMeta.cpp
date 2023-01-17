@@ -24,7 +24,6 @@
 
 #include "utils/index_utils.hpp"
 
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
@@ -35,6 +34,8 @@
 #include <velocypack/Parser.h>
 
 #include "IResearchViewMeta.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -119,7 +120,7 @@ bool IResearchViewMeta::operator!=(
   return !(*this == other);
 }
 
-/*static*/ const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
+const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
   static const IResearchViewMeta meta;
 
   return meta;
@@ -189,7 +190,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       _primarySortCompression = nullptr;
       if (field.isString()) {
         _primarySortCompression =
-            columnCompressionFromString(field.copyString());
+            columnCompressionFromString(field.stringView());
       }
       if (ADB_UNLIKELY(nullptr == _primarySortCompression)) {
         errorField += ".primarySortCompression";
@@ -348,13 +349,12 @@ bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
     // optional uint64 list
     constexpr std::string_view kFieldName{"collections"};
 
-    mask->_collections = slice.hasKey(kFieldName);
+    auto field = slice.get(kFieldName);
+    mask->_collections = !field.isNone();
 
     if (!mask->_collections) {
       _collections.clear();
     } else {
-      auto field = slice.get(kFieldName);
-
       if (!field.isArray()) {
         errorField = kFieldName;
 
@@ -367,12 +367,9 @@ bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
         decltype(_collections)::key_type value;
 
         DataSourceId::BaseType tmp;
-        if (!getNumber(
-                tmp,
-                itr.value())) {  // [ <collectionId 1> ... <collectionId N> ]
-          errorField = std::string{kFieldName} + "[" +
-                       basics::StringUtils::itoa(itr.index()) + "]";
-
+        if (!getNumber(tmp, itr.value())) {
+          // [ <collectionId 1> ... <collectionId N> ]
+          errorField = absl::StrCat(kFieldName, "[", itr.index(), "]");
           return false;
         }
         value = DataSourceId{tmp};

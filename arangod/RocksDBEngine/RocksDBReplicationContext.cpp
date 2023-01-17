@@ -93,11 +93,10 @@ bool RocksDBReplicationContext::findCollection(
     std::function<void(TRI_vocbase_t& vocbase,
                        LogicalCollection& collection)> const& cb) {
   auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
-  TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbName);
+  auto vocbase = dbfeature.useDatabase(dbName);
   if (!vocbase) {
     return false;
   }
-  auto dbGuard = scopeGuard([&]() noexcept { vocbase->release(); });
 
   std::shared_ptr<LogicalCollection> coll;
   try {
@@ -462,12 +461,9 @@ Result RocksDBReplicationContext::getInventory(
   ExecContext const& exec = ExecContext::current();
   if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
     auto collection = vocbase.lookupCollection(collectionName);
-    if (collection != nullptr) {
-      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
-          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
-        // dump inventory data for collection/shard into result
-        collection->toVelocyPackForInventory(result);
-      }
+    if (collection != nullptr && !collection->deleted()) {
+      // dump inventory data for collection/shard into result
+      collection->toVelocyPackForInventory(result);
     }
   }
 

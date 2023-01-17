@@ -47,7 +47,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -708,13 +707,6 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       ci.setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers(ci);
 
-      if (server().hasFeature<pregel::PregelFeature>()) {
-        auto& pregel = server().getFeature<pregel::PregelFeature>();
-        pregel::RecoveryManager* mngr = pregel.recoveryManager();
-        if (mngr != nullptr) {
-          mngr->updatedFailedServers(failedServers);
-        }
-      }
     } else {
       LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -1357,17 +1349,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        std::string dbName = "n/a";
-        TRI_vocbase_t* db = databaseFeature.useDatabase(id);
-        TRI_ASSERT(db);
-        if (db) {
-          try {
-            dbName = db->name();
-          } catch (...) {
-            db->release();
-            throw;
-          }
-          db->release();
+        std::string dbName;
+        if (auto db = databaseFeature.useDatabase(id); db) {
+          dbName = db->name();
+        } else {
+          TRI_ASSERT(false);
+          dbName = "n/a";
         }
         Result res = databaseFeature.dropDatabase(id, true);
         events::DropDatabase(dbName, res, ExecContext::current());
@@ -1382,23 +1369,31 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
         continue;
       }
 
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
       TRI_ASSERT(options.value.get("name").isString());
+      CreateDatabaseInfo info(server(), ExecContext::current());
+      // set strict validation for database options to false.
+      // we don't want the heartbeat thread to fail here in case some
+      // invalid settings are present
+      info.strictValidation(false);
       // when loading we allow system database names
       auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
       if (infoResult.fail()) {
         LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
-            << "In agency database plan" << infoResult.errorMessage();
+            << "in agency database plan for database " << options.value.toJson()
+            << ": " << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
 
-      auto dbName = info.getName();
-      TRI_vocbase_t* vocbase = databaseFeature.useDatabase(dbName);
-      if (vocbase == nullptr) {
+      auto const dbName = info.getName();
+
+      if (auto vocbase = databaseFeature.useDatabase(dbName);
+          vocbase == nullptr) {
         // database does not yet exist, create it now
 
         // create a local database object...
-        Result res = databaseFeature.createDatabase(std::move(info), vocbase);
+        [[maybe_unused]] TRI_vocbase_t* unused{};
+        Result res = databaseFeature.createDatabase(std::move(info), unused);
+
         events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
@@ -1415,7 +1410,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           TRI_ASSERT(vocbase->id() == 1);
           HasRunOnce.store(true, std::memory_order_release);
         }
-        vocbase->release();
       }
     }
 

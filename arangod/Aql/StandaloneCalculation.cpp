@@ -68,6 +68,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
                                                     // make ASSERTS happy
     }
   }
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] arangodb::Result beginTransaction(
       arangodb::transaction::Hints) override {
@@ -276,7 +279,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
 
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
-    if (ast->willUseV8()) {
+    if (astRoot->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("V8 usage is forbidden", errorContext)};
     }

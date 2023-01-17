@@ -82,7 +82,7 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 // GTEST printers for IResearch filters
-namespace iresearch {
+namespace irs {
 std::ostream& operator<<(std::ostream& os, filter const& filter);
 
 std::ostream& operator<<(std::ostream& os, by_range const& range) {
@@ -259,7 +259,7 @@ std::string to_string(irs::filter const& f) {
   ss << f;
   return ss.str();
 }
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -487,26 +487,26 @@ void init(bool withICU /*= false*/) {
   }
 }
 
-// @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
+/// @note once V8 is initialized all 'CATCH' errors will result in SIGILL
 void v8Init() {
-  struct init_t {
-    std::shared_ptr<v8::Platform> platform;
-    init_t() {
-      auto uniquePlatform = v8::platform::NewDefaultPlatform();
-      platform = std::shared_ptr<v8::Platform>(uniquePlatform.get(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
-      uniquePlatform.release();
-      v8::V8::InitializePlatform(
-          platform.get());   // avoid SIGSEGV duing 8::Isolate::New(...)
-      v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
+  class V8Init {
+   public:
+    V8Init() {
+      _platform = v8::platform::NewDefaultPlatform();
+      // avoid SIGSEGV during v8::Isolate::New(...)
+      v8::V8::InitializePlatform(_platform.get());
+      // avoid error: "Check failed: thread_data_table_"
+      v8::V8::Initialize();
     }
+    ~V8Init() {
+      v8::V8::Dispose();
+      v8::V8::ShutdownPlatform();
+    }
+
+   private:
+    std::unique_ptr<v8::Platform> _platform;
   };
-  static const init_t init;
-  (void)(init);
+  [[maybe_unused]] static const V8Init init;
 }
 
 bool assertRules(
@@ -773,6 +773,9 @@ void assertExpressionFilter(
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/) {
+  SCOPED_TRACE(testing::Message("assertExpressionFilter failed for query: <")
+               << queryString << ">");
+
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(
@@ -862,42 +865,46 @@ void assertExpressionFilter(
   }
 }
 
-void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
-  EXPECT_EQ(expected.boost(), actual.boost());
-
+static bool assertFilterBoostImpl(irs::filter const& expected,
+                                  irs::filter const& actual) {
+  if (expected.boost() != actual.boost()) {
+    return false;
+  }
   auto* expectedBooleanFilter =
       dynamic_cast<irs::boolean_filter const*>(&expected);
-
   if (expectedBooleanFilter) {
     auto* actualBooleanFilter =
         dynamic_cast<irs::boolean_filter const*>(&actual);
-    ASSERT_NE(nullptr, actualBooleanFilter);
-    ASSERT_EQ(expectedBooleanFilter->size(), actualBooleanFilter->size());
+    if (actualBooleanFilter == nullptr ||
+        expectedBooleanFilter->size() != actualBooleanFilter->size()) {
+      return false;
+    }
 
     auto expectedBegin = expectedBooleanFilter->begin();
     auto expectedEnd = expectedBooleanFilter->end();
 
     for (auto actualBegin = actualBooleanFilter->begin();
          expectedBegin != expectedEnd;) {
-      assertFilterBoost(*expectedBegin, *actualBegin);
+      if (!assertFilterBoostImpl(*expectedBegin, *actualBegin)) {
+        return false;
+      }
       ++expectedBegin;
       ++actualBegin;
     }
 
-    return;  // we're done
+    return true;
   }
-
   auto* expectedNegationFilter = dynamic_cast<irs::Not const*>(&expected);
-
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    ASSERT_NE(nullptr, actualNegationFilter);
-
-    assertFilterBoost(*expectedNegationFilter->filter(),
-                      *actualNegationFilter->filter());
-
-    return;  // we're done
+    return actualNegationFilter != nullptr &&
+           assertFilterBoostImpl(*expectedNegationFilter->filter(),
+                                 *actualNegationFilter->filter());
   }
+  return true;
+}
+void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
+  EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
 }
 
 void buildActualFilter(
@@ -1092,13 +1099,16 @@ void assertFilter(
         arangodb::iresearch::IResearchAnalyzerFeature::identity()};
     arangodb::iresearch::FilterContext const filterCtx{
         .query = ctx, .contextAnalyzer = analyzer};
-    EXPECT_EQ(execOk, arangodb::iresearch::FilterFactory::filter(
-                          &actual, filterCtx, *filterNode)
-                          .ok());
-
+    auto r = arangodb::iresearch::FilterFactory::filter(&actual, filterCtx,
+                                                        *filterNode);
     if (execOk) {
-      EXPECT_EQ(expected, actual);
-      assertFilterBoost(expected, actual);
+      EXPECT_TRUE(r.ok()) << r.errorMessage();
+      if (r.ok()) {
+        EXPECT_EQ(expected, actual);
+        EXPECT_TRUE(assertFilterBoostImpl(expected, actual));
+      }
+    } else {
+      EXPECT_FALSE(r.ok());
     }
   }
 }

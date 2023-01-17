@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Utils/DatabaseGuard.h"
 #include "V8/v8-globals.h"
 
 struct TRI_vocbase_t;

@@ -32,6 +32,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "ReplicatedLog.h"
 
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
@@ -54,7 +55,9 @@ class LogFollower : public ILogFollower,
       LoggerContext const&, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-      std::optional<ParticipantId> leaderId) -> std::shared_ptr<LogFollower>;
+      std::optional<ParticipantId> leaderId,
+      std::shared_ptr<IReplicatedStateHandle>,
+      std::shared_ptr<ILeaderCommunicator>) -> std::shared_ptr<LogFollower>;
 
   // follower only
   [[nodiscard]] auto appendEntries(AppendEntriesRequest)
@@ -65,32 +68,30 @@ class LogFollower : public ILogFollower,
   [[nodiscard]] auto
   resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> override;
   [[nodiscard]] auto getLeader() const noexcept
-      -> std::optional<ParticipantId> const& override;
+      -> std::optional<ParticipantId> const&;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
-  [[nodiscard]] auto waitForResign() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto getParticipantId() const noexcept
       -> ParticipantId const& override;
-  [[nodiscard]] auto getLogIterator(LogIndex firstIndex) const
-      -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
-      -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
   [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
+  auto onSnapshotCompleted() -> Result;
+  [[nodiscard]] auto compact() -> ResultT<CompactionResult> override;
 
   /// @brief Resolved when the leader has committed at least one entry.
-  auto waitForLeaderAcked() -> WaitForFuture override;
+  auto waitForLeaderAcked() -> WaitForFuture;
 
  private:
   LogFollower(LoggerContext const&,
               std::shared_ptr<ReplicatedLogMetrics> logMetrics,
               std::shared_ptr<ReplicatedLogGlobalSettings const> options,
               ParticipantId id, std::unique_ptr<LogCore> logCore, LogTerm term,
-              std::optional<ParticipantId> leaderId, InMemoryLog inMemoryLog);
+              std::optional<ParticipantId> leaderId,
+              std::shared_ptr<IReplicatedStateHandle>, InMemoryLog inMemoryLog,
+              std::shared_ptr<ILeaderCommunicator>);
 
   struct GuardedFollowerData {
     GuardedFollowerData() = delete;
@@ -102,6 +103,8 @@ class LogFollower : public ILogFollower,
     [[nodiscard]] auto getCommittedLogIterator(LogIndex firstIndex) const
         -> std::unique_ptr<LogRangeIterator>;
     [[nodiscard]] auto checkCompaction() -> Result;
+    [[nodiscard]] auto runCompaction(bool ignoreThreshold)
+        -> ResultT<CompactionResult>;
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
@@ -109,16 +112,27 @@ class LogFollower : public ILogFollower,
 
     [[nodiscard]] auto waitForResign()
         -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+    [[nodiscard]] auto calcCompactionStop() const noexcept
+        -> std::pair<LogIndex, CompactionStopReason>;
+    [[nodiscard]] auto calcCompactionStopIndex() const noexcept -> LogIndex;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
+    enum class SnapshotProgress {
+      kUninitialized,
+      kInProgress,
+      kCompleted,
+    };
+
+    SnapshotProgress _snapshotProgress{SnapshotProgress::kUninitialized};
     LogIndex _commitIndex{0};
     LogIndex _lowestIndexToKeep;
     LogIndex _releaseIndex;
     MessageId _lastRecvMessageId{0};
     Guarded<WaitForQueue, arangodb::basics::UnshackledMutex> _waitForQueue;
     WaitForBag _waitForResignQueue;
+    CompactionStatus compactionStatus;
   };
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
@@ -126,6 +140,8 @@ class LogFollower : public ILogFollower,
   ParticipantId const _participantId;
   std::optional<ParticipantId> const _leaderId;
   LogTerm const _currentTerm;
+  std::shared_ptr<IReplicatedStateHandle> _stateHandle;
+  std::shared_ptr<ILeaderCommunicator> const leaderCommunicator;
 
   // We use the unshackled mutex because guards are captured by futures.
   // When using a std::mutex we would have to release the mutex in the same
@@ -139,5 +155,102 @@ class LogFollower : public ILogFollower,
       GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept
       -> std::optional<AppendEntriesResult>;
 };
+/*
+struct LogManager {
+  void removeFront(LogIndex stop);
+  auto getLogSnapshot() -> InMemoryLog;
+};
+
+struct CompactionManager {
+  explicit CompactionManager(LogManager& storage);
+
+  void updateReleaseIndex(LogIndex);
+  void updateLargestIndexToKeep(LogIndex);
+  void compact();
+  void checkLogCompaction();
+
+  auto getCompactionStatus() const -> CompactionStatus;
+
+ private:
+  LogIndex largestIndexToKeep;
+  LogIndex releaseIndex;
+  LogManager& storage;
+  std::optional<CompactionStatus::Compaction> lastCompaction;
+};
+
+struct SnapshotManager {
+  explicit SnapshotManager(LogManager&);
+  void invalidateSnapshot();
+  void snapshotCompleted();
+
+  auto getSnapshotStatus() -> replicated_state::SnapshotStatus;
+  auto checkSnapshotStatus() -> bool;
+
+ private:
+  enum class SnapshotState {
+    kUninitialized,
+    kInProgress,
+    kCompleted,
+  };
+
+  SnapshotState state;
+  LogManager& storage;
+};
+
+struct WaitManager {
+  auto waitFor(LogIndex) -> ILogParticipant::WaitForFuture;
+  auto resolveIndex(LogIndex, futures::Try<WaitForResult>) -> DeferredAction;
+  auto resolveAll(futures::Try<WaitForResult>) -> DeferredAction;
+};
+
+struct CommitManager {
+  void reportLeaderCommitIndex(LogIndex);
+  auto getCommitIndex() const noexcept -> LogIndex;
+  auto checkCommitIndex() -> LogIndex;
+};
+
+struct FollowerManager {
+  struct GuardedData {
+    SnapshotManager snapshot;
+    CompactionManager compaction;
+    WaitManager wait;
+    LogManager log;
+  };
+
+  template<typename F>
+  auto execute(F&& f) -> std::invoke_result_t<F, GuardedData&> {
+    return _guarded.doUnderLock([&](GuardedData& data) {
+      return std::invoke(std::forward<F>(f), data);
+    });
+  }
+
+ private:
+  Guarded<GuardedData, arangodb::basics::UnshackledMutex> _guarded;
+};
+
+struct MethodsProvider : IReplicatedLogFollowerMethods {
+  auto releaseIndex(LogIndex index) -> void override {
+    manager
+  }
+
+  auto getLogSnapshot() -> InMemoryLog override { return log.getLogSnapshot(); }
+
+  auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
+    return wait.waitFor(index);
+  }
+
+  auto waitForIterator(LogIndex index)
+      -> ILogParticipant::WaitForIteratorFuture override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  auto snapshotCompleted() -> Result override {
+    snapshot.snapshotCompleted();
+    return {};
+  }
+
+ private:
+  FollowerManager& manager;
+};*/
 
 }  // namespace arangodb::replication2::replicated_log

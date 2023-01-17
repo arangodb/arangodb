@@ -73,7 +73,7 @@ const removeEntry = function (url, stateId, entry) {
 };
 
 const dropState = function (url, stateId) {
-  return request.delete({url: `${url}/_db/${database}/_api/replicated-state/${stateId}`});
+  return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
 };
 
 const removeEntries = function (url, stateId, entries) {
@@ -124,25 +124,13 @@ const replicatedStateSuite = function () {
         participants[server] = {};
       }
 
-      sh.updateReplicatedStateTarget(database, stateId,
-                                  function(target) {
-                                    return {
-                                      id: stateId,
-                                      participants: participants,
-                                      config: {
-                                        waitForSync: true,
-                                        writeConcern: 2,
-                                        softWriteConcern: 3,
-                                      },
-                                      properties: {
-                                        implementation: {
-                                          type: "prototype"
-                                        }
-                                      }
-                                    };
+      lh.replicatedLogSetTarget(database, stateId, {
+        id: stateId,
+        config: {writeConcern: 2, waitForSync: false},
+        participants: lh.getParticipantsObjectForServers(servers),
+        supervision: {maxActionsTraceLength: 20},
+        properties: {implementation: {type: "prototype", parameters: {}}},
       });
-
-      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
       lh.waitForReplicatedLogAvailable(stateId);
 
       let {leader} = lh.getReplicatedLogLeaderPlan(database, stateId);
@@ -263,7 +251,8 @@ const replicatedStateSuite = function () {
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
       assertEqual(result.json.code, 409);
 
-      dropState(coordUrl, stateId);
+      result = dropState(coordUrl, stateId);
+      lh.checkRequestResult(result);
       lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },

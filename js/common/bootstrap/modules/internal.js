@@ -50,6 +50,9 @@ global.DEFINE_MODULE('internal', (function () {
         this.code = error.code;                  // int - http status code
         this.errorNum = error.errorNum;          // int - internal arangodb error code
         this.errorMessage = error.errorMessage;  // string - error message
+        if (error.error) {
+          this.original = error;
+        }
       }
     };
 
@@ -1743,11 +1746,6 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
-
-  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
-    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
-    delete global.ENCRYPTION_KEY_RELOAD;
-  }
 
   let testsBasePaths = {};
   let testsBasePathsEnterprise = {};

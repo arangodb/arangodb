@@ -20,14 +20,15 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
+#include <gtest/gtest.h>
 
 #include "Replication2/ReplicatedLog/Algorithms.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::algorithms;
-using namespace arangodb::replication2::test;
 
 struct DetectConflictTest : ::testing::Test {};
 

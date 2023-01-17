@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cache/BinaryKeyHasher.h"
@@ -62,6 +63,8 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
+
+#include <absl/strings/str_cat.h>
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/utilities/transaction.h>
@@ -681,11 +684,12 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 /// the case for older collections
 /// in this case the caller must fetch the revision id from the actual
 /// document
-bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
-                                         std::string_view keyRef,
-                                         LocalDocumentId& documentId,
-                                         RevisionId& revisionId,
-                                         ReadOwnWrites readOwnWrites) const {
+Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
+                                           std::string_view keyRef,
+                                           LocalDocumentId& documentId,
+                                           RevisionId& revisionId,
+                                           ReadOwnWrites readOwnWrites,
+                                           bool lockForUpdate) const {
   documentId = LocalDocumentId::none();
   revisionId = RevisionId::none();
 
@@ -696,9 +700,15 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   RocksDBMethods* mthds =
       RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
-  rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+  rocksdb::Status s;
+  if (lockForUpdate) {
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::yes);
+    s = mthds->GetForUpdate(_cf, key->string(), &val);
+  } else {
+    s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
+  }
   if (!s.ok()) {
-    return false;
+    return rocksutils::convertStatus(s, rocksutils::StatusHint::document);
   }
 
   documentId = RocksDBValue::documentId(val);
@@ -706,59 +716,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   // this call will populate revisionId if the revision id value is
   // stored in the primary index
   revisionId = RocksDBValue::revisionId(val);
-  return true;
-}
-
-Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
-                                     RocksDBMethods* mthd,
-                                     RocksDBKeyLeaser const& key,
-                                     velocypack::Slice keySlice,
-                                     OperationOptions const& options,
-                                     bool insert) {
-  TRI_ASSERT(keySlice.isString());
-
-  bool const lock =
-      !RocksDBTransactionState::toState(&trx)->isOnlyExclusiveTransaction();
-
-  transaction::StringLeaser leased(&trx);
-  rocksdb::PinnableSlice ps(leased.get());
-  rocksdb::Status s;
-  if (lock) {
-    s = mthd->GetForUpdate(_cf, key->string(), &ps);
-  } else {
-    // modifications always need to observe all changes in order to validate
-    // uniqueness constraints
-    s = mthd->Get(_cf, key->string(), &ps, ReadOwnWrites::yes);
-  }
-
-  Result res;
-  if (insert) {
-    // INSERT case
-    if (s.ok()) {  // detected conflicting primary key
-      IndexOperationMode mode = options.indexOperationMode;
-      if (mode == IndexOperationMode::internal) {
-        // in this error mode, we return the conflicting document's key
-        // inside the error message string (and nothing else)!
-        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         keySlice.copyString());
-      }
-      // build a proper error message
-      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-      return addErrorMsg(res, keySlice.copyString());
-    } else if (!s.IsNotFound()) {
-      // IsBusy(), IsTimedOut() etc... this indicates a conflict
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)),
-                         keySlice.copyString());
-    }
-  } else {
-    // UPDATE/REPLACE case
-    if (!s.ok()) {
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)),
-                         keySlice.copyString());
-    }
-  }
-
-  return res;
+  return Result{};
 }
 
 Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
@@ -766,13 +724,8 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         LocalDocumentId const& /*documentId*/,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  TRI_ASSERT(keySlice.isString());
-
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
-
-  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
+  // this is already handled earlier - nothing to do here!
+  return {};
 }
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
@@ -780,13 +733,8 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          LocalDocumentId const& /*documentId*/,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
-  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-  TRI_ASSERT(keySlice.isString());
-
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
-
-  return probeKey(trx, mthd, key, keySlice, options, /*insert*/ false);
+  // this is already handled earlier - nothing to do here!
+  return {};
 }
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
@@ -803,15 +751,8 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
 
-  Result res;
-
-  if (performChecks) {
-    res = probeKey(trx, mthd, key, keySlice, options, /*insert*/ true);
-
-    if (res.fail()) {
-      return res;
-    }
-  }
+  // we do not need to perform any additional checks here since the document key
+  // is already locked at the beginning of the insert operation
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // invalidate new index cache entry to avoid caching without committing
@@ -825,10 +766,11 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   rocksdb::Status s =
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ true);
   if (!s.ok()) {
-    res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res, keySlice.copyString());
+    Result res = rocksutils::convertStatus(s, rocksutils::index);
+    addErrorMsg(res, keySlice.stringView());
+    return res;
   }
-  return res;
+  return {};
 }
 
 Result RocksDBPrimaryIndex::update(
@@ -854,7 +796,7 @@ Result RocksDBPrimaryIndex::update(
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res, keySlice.copyString());
+    addErrorMsg(res, keySlice.stringView());
   }
   return res;
 }
@@ -880,7 +822,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
   rocksdb::Status s = mthds->Delete(_cf, key.ref());
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
-    addErrorMsg(res, keySlice.copyString());
+    addErrorMsg(res, keySlice.stringView());
   }
   return res;
 }
@@ -1048,8 +990,8 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // keep lower bound
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("unhandled type for valNode: ") +
-                                  aap.value->getTypeString());
+          TRI_ERROR_INTERNAL, absl::StrCat("unhandled type for valNode: ",
+                                           aap.value->getTypeString()));
     }
 
     // strip collection name prefix from comparison value
