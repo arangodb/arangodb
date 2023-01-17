@@ -37,7 +37,6 @@ if (getOptions === true) {
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
-const time = require('internal').time;
 
 const cn = 'UnitTestsCollection';
 const n = 5000;
@@ -45,6 +44,31 @@ const n = 5000;
 const waitForPendingRefills = () => {
   // wait for pending refill operations to have finished, using an informal API
   arango.POST('/_api/index/sync-caches', {});
+};
+
+const runWithRetry = (cb) => {
+  let tries = 0;
+  while (true) {
+    try {
+      cb();
+      // return upon first successful execution of the callback function
+      return;
+    } catch (err) {
+      // if it fails, check how many failures we got. fail only if we failed
+      // 3 times in a row
+      if (tries++ === 3) {
+        throw err;
+      }
+      // attempt failed. this can happen because inserting data into
+      // the cache can fail under the following circumstances:
+      // - cache global budget exceeded
+      // - cache hash table migration in progress
+
+      // start over...
+      db[cn].truncate();
+      require("internal").sleep(2);
+    }
+  }
 };
 
 function AutoRefillIndexCachesEdge() {
@@ -122,12 +146,14 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testInsertEdgeEnabled: function() {
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+      runWithRetry(() => {
+        const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
+        const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
-      runCheck(true);
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        runCheck(true);
+      });
     },
     
     testInsertEdgeDisabled: function() {
@@ -142,14 +168,16 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testUpdateEdgeEnabled: function() {
-      insertInitialEdges();
+      runWithRetry(() => {
+        insertInitialEdges();
+      
+        const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
+        const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
-      runCheck(true);
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        runCheck(true);
+      });
     },
     
     testUpdateEdgeDisbled: function() {
@@ -166,14 +194,16 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testReplaceEdgeEnabled: function() {
-      insertInitialEdges();
+      runWithRetry(() => {
+        insertInitialEdges();
 
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
+        const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
-      runCheck(true);
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        runCheck(true);
+      });
     },
     
     testReplaceEdgeDisabled: function() {
@@ -190,14 +220,16 @@ function AutoRefillIndexCachesEdge() {
     },
     
     testRemoveEdgeEnabled: function() {
-      insertInitialEdges();
+      runWithRetry(() => {
+        insertInitialEdges();
 
-      const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
-      const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
+        const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
-      runRemoveCheck(true);
+        assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+        runRemoveCheck(true);
+      });
     },
     
     testRemoveEdgeDisabled: function() {
