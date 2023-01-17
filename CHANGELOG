@@ -1,6 +1,9 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
 * Change the request lane for replication catchup requests that leaders in
   active failover receive from their followers from medium to high. This will
   give catchup requests from followers highest priority, so that the leader will
