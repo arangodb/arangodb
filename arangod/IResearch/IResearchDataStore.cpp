@@ -68,7 +68,7 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 
 #ifdef USE_ENTERPRISE
-size_t getPrimaryDocsCount(irs::directory_reader const& reader);
+size_t getPrimaryDocsCount(irs::DirectoryReader const& reader);
 #endif
 
 namespace {
