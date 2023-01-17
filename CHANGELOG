@@ -1,6 +1,11 @@
 devel
 -----
 
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
 * Fix coordinator segfault in AQL queries in which the query is invoked from
   within a JavaScript context (e.g. from Foxx or from the server's console
   mode) **and** the query has multiple coordinator snippets of which except
