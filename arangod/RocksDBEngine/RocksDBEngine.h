@@ -43,6 +43,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <map>
+
 namespace rocksdb {
 
 class TransactionDB;
@@ -244,6 +246,15 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
+
+  /// @brief track an additional tick value, used as a lower bound for future
+  /// WAL file deletion. WAL files that contain tick values >= tick will not
+  /// be deleted until the tick is untracked again.
+  void trackLowerBoundToKeep(uint64_t tick);
+  /// @brief untrack a value tracked via trackLowerBoundToKeep.
+  void untrackLowerBoundToKeep(uint64_t tick);
+  /// @brief atomically updates a tracked tick value from old to new
+  void updateLowerBoundToKeep(uint64_t oldTick, uint64_t newTick);
 
   void scheduleTreeRebuild(TRI_voc_tick_t database, std::string const& collection);
   void processTreeRebuilds();
@@ -469,8 +480,13 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
-  /// @brief protects _prunableWalFiles
+  /// @brief protects _prunableWalFiles and _lowerBoundsToKeep
   mutable basics::ReadWriteLock _walFileLock;
+
+  /// @brief contains lower bound tick values of WAL files to keep.
+  /// maps from tick value (RocksDB seq no) to number of users of that tick.
+  /// managed by trackLowerBoundToKeep and untrackLowerBoundToKeep
+  std::map<uint64_t, size_t> _lowerBoundsToKeep;
 
   /// @brief which WAL files can be pruned when
   /// an expiration time of <= 0.0 means the file does not have expired, but

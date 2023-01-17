@@ -124,9 +124,9 @@ void RocksDBBackgroundThread::run() {
       }
 
       // only start pruning of obsolete WAL files a few minutes after
-      // server start. if we start pruning too early, replication slaves
-      // will not have a chance to reconnect to a restarted master in
-      // time so the master may purge WAL files that replication slaves
+      // server start. if we start pruning too early, replication followers
+      // will not have a chance to reconnect to a restarted leader in
+      // time, so the leader may purge WAL files that replication followers
       // would still like to peek into
       if (TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial()) {
         // determine which WAL files can be pruned
