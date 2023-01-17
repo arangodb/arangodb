@@ -40,7 +40,7 @@
 //       First step: split ClusterTypes.h into sensible bits
 //       Second step: only include the type aliases here
 namespace arangodb {
-typedef std::string ServerID;         // ID of a server
+typedef std::string ServerID;  // ID of a server
 }
 
 namespace arangodb::pregel {
