@@ -1,6 +1,9 @@
 v3.8.9 (XXXX-XX-XX)
 -------------------
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
 * Use intermediate commits in old shard synchronization protocol. This avoids
   overly large RocksDB transactions when syncing large shards, which is a remedy
   for OOM kills during restarts.
