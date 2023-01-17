@@ -31,7 +31,6 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
-#include "Pregel/Reports.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/TypedBuffer.h"
 
@@ -117,8 +116,6 @@ class GraphStore final {
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>,
                     std::function<void()> const& statusUpdateCallback);
-
-  ReportManager* _reports;
 
  private:
   void loadVertices(ShardID const& vertexShard,

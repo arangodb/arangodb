@@ -297,7 +297,6 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
   if (_workerContext) {
     _workerContext->_vertexCount = data.get(Utils::vertexCountKey).getUInt();
     _workerContext->_edgeCount = data.get(Utils::edgeCountKey).getUInt();
-    _workerContext->_reports = &this->_reports;
     _workerContext->preGlobalSuperstep(gss);
   }
 
@@ -450,7 +449,6 @@ bool Worker<V, E, M>::_processVertices(
     _activeCount += activeCount;
     _runningThreads--;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
-    _reports.append(std::move(vertexComputation->_reports));
     lastThread = _runningThreads == 0;  // should work like a join operation
   }
   return lastThread;
@@ -493,9 +491,6 @@ void Worker<V, E, M>::_finishedProcessing() {
     _state = WorkerState::IDLE;
 
     package.openObject();
-    package.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(package);
-    _reports.clear();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     package.add(Utils::executionNumberKey,
                 VPackValue(_config.executionNumber().value));
@@ -539,9 +534,6 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     body.add(Utils::executionNumberKey,
              VPackValue(_config.executionNumber().value));
-    body.add(VPackValue(Utils::reportsKey));
-    _reports.intoBuilder(body);
-    _reports.clear();
     body.close();
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
@@ -551,7 +543,6 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   if (doStore) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->_reports = &this->_reports;
     _graphStore->storeResults(&_config, std::move(cleanup),
                               _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
