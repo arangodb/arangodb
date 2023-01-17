@@ -1,6 +1,11 @@
 v3.10.3 (XXXX-XX-XX)
 --------------------
 
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
 * BTS-1192: fix a potential race during hot backup creation, which could result
   in error messages such as `{backup} Source file engine_rocksdb/002516.sst does
   not have a hash file.` during hot backup creation. However, despite the error
