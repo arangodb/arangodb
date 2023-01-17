@@ -2,16 +2,19 @@ v3.8.9 (XXXX-XX-XX)
 -------------------
 
 * Fix coordinator segfault in AQL queries in which the query is invoked from
-  within a JavaScript context (e.g. from Foxx or from the server's console
-  mode) **and** the query has multiple coordinator snippets of which except
-  the outermost one invokes a JavaScript function.
-  Instead of crashing, coordinators will now respond with the exception 
-  "no v8 context available to enter for current transaction context".
-  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with
-  a fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
-  correctly that no JavaScript is needed, except if the fixed function name
-  is the name of a user-defined function.
+  within a JavaScript context (e.g. from Foxx or from the server's console mode)
+  **and** the query has multiple coordinator snippets of which except the
+  outermost one invokes a JavaScript function.
+  Instead of crashing, coordinators will now respond with the exception "no v8
+  context available to enter for current transaction context".
+  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with a
+  fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
+  correctly that no JavaScript is needed, except if the fixed function name is
+  the name of a user-defined function.
   This fixes an issue described in OASIS-24962.
+
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
 
 * Use intermediate commits in old shard synchronization protocol. This avoids
   overly large RocksDB transactions when syncing large shards, which is a remedy
