@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+const isCluster = require("internal").isCluster();
 var errors = require("internal").errors;
 var graph = require("@arangodb/general-graph");
 var helper = require("@arangodb/aql-helper");
@@ -1930,12 +1931,21 @@ function ahuacatlQueryShortestPathTestSuite() {
       assertEqual(actual[5].v._key, "F");
       assertEqual(actual[5].e.entfernung, 11);
     },
-    
+
     testShortestPathAtoFnoPath: function () {
-      var query = `
+      let query;
+      if (!isCluster) {
+        query = `
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
+      } else {
+        query = `
+        WITH ${e1}
+        LET source = "${v1}/A"
+        LET target = "${v1}/F"
+        FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
+      }
       var actual = getQueryResults(query);
       assertEqual(actual.length, 0);
     },

@@ -1453,7 +1453,12 @@ function ahuacatlQueryShortestPathTestSuite() {
       // this item is not connected to any other
       vertexCollection.save({_key: "J", name: "J"});
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      let query;
+      if (cluster.isCluster()) {
+        query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      } else {
+        query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      }
       var actual = getQueryResults(query);
 
       assertEqual([], actual);
