@@ -55,6 +55,10 @@ class CollectionPropertiesTest : public ::testing::Test {
       } else {
         body.add(attributeName, VPackValue(attributeValue));
       }
+      if (attributeName != StaticStrings::DataSourceName) {
+        // We need to always have a Name.
+        body.add(StaticStrings::DataSourceName, VPackValue("test"));
+      }
     }
     return body;
   }
@@ -168,6 +172,48 @@ TEST_F(CollectionPropertiesTest, disallowed_autoincrement_with_many_shards) {
     auto body = prepareBody(numberOfShards);
     auto res = parseWithDefaultOptions(body.slice(), defaultDBConfig());
     EXPECT_FALSE(res.ok()) << "Let illegal properties pass: " << body.toJson();
+  }
+}
+
+TEST_F(CollectionPropertiesTest, test_atMost8ShardKeys) {
+  // We split this string up into characters, to use those as shardKey
+  // attributes Just for simplicity reasons, and to avoid having duplicates
+  std::string shardKeySelection = "abcdefghijklm";
+
+  std::vector<std::string> shardKeysToTest{};
+  for (size_t i = 0; i < 8; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+    // The first 8 have to be allowed
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+
+    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
+    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
+        << "Parsing error in " << body.toJson();
+  }
+
+  for (size_t i = 8; i < 10; ++i) {
+    // Always add one character from above string, no character is used twice
+    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
+    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
+
+    // The first 8 have to be allowed
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+
+    EXPECT_FALSE(testee.ok())
+        << "Created too many shard keys: " << shardKeysToTest.size();
+  }
+}
+
+TEST_F(CollectionPropertiesTest, test_internal_values_as_shardkeys) {
+  // Sharding by internal keys, or prefix/postfix of them is not allowed
+  for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
+    // Specific shardKey is disallowed
+    auto body = createMinimumBodyWithOneValue("shardKeys",
+                                              std::vector<std::string>{key});
+    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
+    EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
   }
 }
 

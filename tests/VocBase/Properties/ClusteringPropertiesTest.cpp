@@ -167,37 +167,6 @@ TEST_F(ClusteringPropertiesTest, test_oneShardDBCannotBeSatellite) {
       << "Configured a oneShardDB collection as 'satellite'.";
 }
 
-TEST_F(ClusteringPropertiesTest, test_atMost8ShardKeys) {
-  // We split this string up into characters, to use those as shardKey
-  // attributes Just for simplicity reasons, and to avoid having duplicates
-  std::string shardKeySelection = "abcdefghijklm";
-
-  std::vector<std::string> shardKeysToTest{};
-  for (size_t i = 0; i < 8; ++i) {
-    // Always add one character from above string, no character is used twice
-    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
-    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
-    // The first 8 have to be allowed
-    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
-
-    ASSERT_TRUE(testee.ok()) << testee.result().errorMessage();
-    EXPECT_EQ(testee->shardKeys, shardKeysToTest)
-        << "Parsing error in " << body.toJson();
-  }
-
-  for (size_t i = 8; i < 10; ++i) {
-    // Always add one character from above string, no character is used twice
-    shardKeysToTest.emplace_back(shardKeySelection.substr(i, 1));
-    auto body = createMinimumBodyWithOneValue("shardKeys", shardKeysToTest);
-
-    // The first 8 have to be allowed
-    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
-
-    EXPECT_FALSE(testee.ok())
-        << "Created too many shard keys: " << shardKeysToTest.size();
-  }
-}
-
 TEST_F(ClusteringPropertiesTest, test_shardKeyOnSatellites) {
   // We do not need any special configuration
   // default is good enough
@@ -360,17 +329,6 @@ TEST_F(ClusteringPropertiesTest, test_satellite_writeConcern_allowed) {
   ASSERT_TRUE(testee->numberOfShards.has_value());
   EXPECT_EQ(testee->numberOfShards.value(), 1ull);
   __HELPER_equalsAfterSerializeParseCircle(testee.get());
-}
-
-TEST_F(ClusteringPropertiesTest, test_internal_values_as_shardkeys) {
-  // Sharding by internal keys, or prefix/postfix of them is not allowed
-  for (auto const& key : {"_id", "_rev", ":_id", "_id:", ":_rev", "_rev:"}) {
-    // Specific shardKey is disallowed
-    auto body = createMinimumBodyWithOneValue("shardKeys",
-                                              std::vector<std::string>{key});
-    auto testee = parseWithDefaultOptions(body.slice(), defaultDBConfig());
-    EXPECT_FALSE(testee.ok()) << "Created a collection with shardkey: " << key;
-  }
 }
 
 }  // namespace arangodb::tests
