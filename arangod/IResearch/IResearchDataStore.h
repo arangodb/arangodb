@@ -219,6 +219,7 @@ class IResearchDataStore {
   struct Stats {
     uint64_t numDocs{};
     uint64_t numLiveDocs{};
+    uint64_t numPrimaryDocs{};
     uint64_t numSegments{};
     uint64_t numFiles{};
     uint64_t indexSize{};
