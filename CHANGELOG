@@ -1,6 +1,11 @@
 v3.9.8 (XXXX-XX-XX)
 -------------------
 
+* ES-1396: under some rare circumstances it was possible that background index
+  creation missed some documents in case the documents were inserted after
+  background index creation started and the corresponding WAL files with the
+  inserts were already removed before background indexing caught up.
+
 * Prevent agency configuration confusion by an agent which comes back without
   its data directory and thus without its UUID.
 

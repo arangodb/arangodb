@@ -2452,6 +2452,14 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
+  // take into account lower bound tick values from other sources (e.g.
+  // background index creation). if any such operation depends on specific WAL
+  // files, we cannot delete the files yet.
+  if (!_lowerBoundsToKeep.empty()) {
+    auto it = _lowerBoundsToKeep.begin();
+    minTickToKeep = std::min(minTickToKeep, it->first);
+  }
+
   LOG_TOPIC("4673c", TRACE, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
       << ", minTickExternal: " << minTickExternal;
@@ -2584,6 +2592,72 @@ RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
 
 RocksDBFilePurgeEnabler RocksDBEngine::startPurging() noexcept {
   return RocksDBFilePurgeEnabler(this);
+}
+
+void RocksDBEngine::trackLowerBoundToKeep(uint64_t tick) {
+  TRI_ASSERT(tick != 0);
+
+  WRITE_LOCKER(lock, _walFileLock);
+
+  auto it = _lowerBoundsToKeep.find(tick);
+  if (it == _lowerBoundsToKeep.end()) {
+    _lowerBoundsToKeep.emplace(tick, 1);
+  } else {
+    // increase counter
+    ++(it->second);
+  }
+}
+
+void RocksDBEngine::untrackLowerBoundToKeep(uint64_t tick) {
+  TRI_ASSERT(tick != 0);
+
+  WRITE_LOCKER(lock, _walFileLock);
+
+  auto it = _lowerBoundsToKeep.find(tick);
+  TRI_ASSERT(it != _lowerBoundsToKeep.end());
+  if (it != _lowerBoundsToKeep.end()) {
+    if (it->second == 1) {
+      _lowerBoundsToKeep.erase(it);
+    } else {
+      // decrease counter
+      --(it->second);
+    }
+  }
+}
+
+void RocksDBEngine::updateLowerBoundToKeep(uint64_t oldTick, uint64_t newTick) {
+  TRI_ASSERT(oldTick != 0);
+  TRI_ASSERT(newTick != 0);
+  TRI_ASSERT(newTick >= oldTick);
+
+  if (oldTick == newTick) {
+    // nothing to do
+    return;
+  }
+
+  // now execute a combination of track(new) and untrack(old), atomically under
+  // the lock
+  WRITE_LOCKER(lock, _walFileLock);
+
+  // first insert new tick. if this fails and throws, no harm is done
+  auto it = _lowerBoundsToKeep.find(newTick);
+  if (it == _lowerBoundsToKeep.end()) {
+    _lowerBoundsToKeep.emplace(newTick, 1);
+  } else {
+    // increase counter
+    ++(it->second);
+  }
+
+  it = _lowerBoundsToKeep.find(oldTick);
+  TRI_ASSERT(it != _lowerBoundsToKeep.end());
+  if (it != _lowerBoundsToKeep.end()) {
+    if (it->second == 1) {
+      _lowerBoundsToKeep.erase(it);
+    } else {
+      // decrease counter
+      --(it->second);
+    }
+  }
 }
 
 void RocksDBEngine::pruneWalFiles() {
