@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed the issue that the collection view search did not support selecting
+  everything using Ctrl + A.
+
 * Added a feature to the ResignLeadership job. By default, it will now
   undo the leader changes automatically after the server is restarted,
   unless the option `undoMoves` is set to `false`. This will help to
