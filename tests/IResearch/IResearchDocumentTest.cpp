@@ -2548,7 +2548,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
       EXPECT_TRUE(writer);
       writer->commit();
 
-      reader = irs::directory_reader::open(dir);
+      reader = irs::DirectoryReader(dir);
     }
   };
 
@@ -2725,7 +2725,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       EXPECT_TRUE(writer);
       writer->commit();
 
-      reader = irs::directory_reader::open(dir);
+      reader = irs::DirectoryReader(dir);
     }
   };
 

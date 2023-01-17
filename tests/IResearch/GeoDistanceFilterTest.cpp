@@ -434,6 +434,7 @@ TEST(GeoDistanceFilterTest, query) {
   ])");
 
   irs::memory_directory dir;
+  irs::DirectoryReader reader;
 
   // index data
   {
@@ -465,9 +466,9 @@ TEST(GeoDistanceFilterTest, query) {
       }
     }
     writer->commit();
+    reader = writer->GetSnapshot();
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2U, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
@@ -947,6 +948,7 @@ TEST(GeoDistanceFilterTest, checkScorer) {
   ])");
 
   irs::memory_directory dir;
+  irs::DirectoryReader reader;
 
   // index data
   {
@@ -978,9 +980,9 @@ TEST(GeoDistanceFilterTest, checkScorer) {
       }
     }
     writer->commit();
+    reader = writer->GetSnapshot();
   }
 
-  auto reader = irs::directory_reader::open(dir);
   ASSERT_NE(nullptr, reader);
   ASSERT_EQ(2, reader->size());
   ASSERT_EQ(docs->slice().length(), reader->docs_count());
