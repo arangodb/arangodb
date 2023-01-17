@@ -33,7 +33,7 @@
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Statistics.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 
 namespace arangodb {
