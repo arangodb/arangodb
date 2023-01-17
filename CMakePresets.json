@@ -66,6 +66,23 @@
       }
     },
     {
+      "hidden": true,
+      "name": "tsan",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
+      "hidden": true,
+      "name": "asan-ubsan",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
+      }
+    },
+    {
       "name": "enterprise",
       "inherits": "community",
       "displayName": "Build ArangoDB Enterprise Edition",
@@ -119,41 +136,23 @@
     },
     {
       "name": "community-developer-tsan",
-      "inherits": "community-developer",
-      "displayName": "Build ArangoDB Community Edition (TSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
-      }
+      "inherits": [ "tsan", "community-developer" ],
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
     },
     {
       "name": "enterprise-developer-tsan",
-      "inherits": "enterprise-developer",
-      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
-      }
+      "inherits": [ "tsan", "enterprise-developer" ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
     {
       "name": "community-developer-asan-ubsan",
-      "inherits": "community-developer",
-      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
-        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
-        "USE_JEMALLOC": "Off"
-      }
+      "inherits": [ "asan-ubsan", "community-developer" ],
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
     },
     {
       "name": "enterprise-developer-asan-ubsan",
-      "inherits": "enterprise-developer",
-      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
-        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
-        "USE_JEMALLOC": "Off"
-      }
+      "inherits": [ "asan-ubsan", "enterprise-developer" ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     }
   ],
   "buildPresets": [
