@@ -49,16 +49,16 @@ struct SnapshotManager : ISnapshotManager {
       -> Result;
 
  private:
-  auto updateSnapshotState(SnapshotState state, std::uint64_t version = 0)
-      -> Result;
-
   struct GuardedData {
     explicit GuardedData(IStorageManager& storage,
                          IStateHandleManager& stateHandle);
     IStorageManager& storage;
     IStateHandleManager& stateHandle;
     SnapshotState state;
+    // this version is volatile and resets after reboot
     std::uint64_t lastSnapshotVersion{0};
+
+    auto updatePersistedSnapshotState(SnapshotState newState) -> Result;
   };
   std::shared_ptr<ILeaderCommunicator> const leaderComm;
   std::shared_ptr<FollowerTermInformation const> const termInfo;

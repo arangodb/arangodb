@@ -110,6 +110,8 @@ TEST_F(TermIndexMappingTest, get_term_of_index) {
 
   EXPECT_EQ(mapping.getTermOfIndex(8_Lx), std::nullopt);
   EXPECT_EQ(mapping.getTermOfIndex(15_Lx), 4_T);
+  EXPECT_EQ(mapping.getTermOfIndex(39_Lx), 4_T);
+  EXPECT_EQ(mapping.getTermOfIndex(40_Lx), 5_T);
   EXPECT_EQ(mapping.getTermOfIndex(59_Lx), 5_T);
   EXPECT_EQ(mapping.getTermOfIndex(60_Lx), std::nullopt);
 }
