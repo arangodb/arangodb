@@ -31,20 +31,16 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/EnumeratePathsExecutor.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
-#include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
-// [GraphRefactor] TODO: ShortestPathOptions should be removed / clean up later.
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Indexes/Index.h"
 #include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
@@ -438,7 +434,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   const bool isAllShortestPaths =
       pathType() == arangodb::graph::PathType::Type::AllShortestPaths;
 
-  // Can only be specified in ShortestPathNode
+  // Can only be specified in ShortestPathNode.cpp - not allowed here
   TRI_ASSERT(pathType() != arangodb::graph::PathType::Type::ShortestPath);
 
   if (isKPaths or isAllShortestPaths) {
@@ -461,7 +457,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           reversedUsedIndexes{};
       reversedUsedIndexes.first = buildReverseUsedIndexes();
 
-      // TODO [GraphRefactor]: Clean this up (de-dupllicate with
+      // TODO [GraphRefactor]: Clean this up (de-duplicate with
       // SmartGraphEngine)
       SingleServerBaseProviderOptions forwardProviderOptions(
           opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
