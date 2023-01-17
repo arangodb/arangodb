@@ -75,7 +75,7 @@ class ViewSnapshot : public irs::IndexReader {
 using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 /// @note it is assumed that ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held

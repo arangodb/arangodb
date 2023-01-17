@@ -656,7 +656,7 @@ IResearchDataStore::IResearchDataStore(ArangodServer& server)
       ctx._ctx.ForceFlush();
     }
 #else
-    ctx._ctx.AddToFlush();
+    ctx._ctx.ForceFlush();
 #endif
   };
   _afterCommitCallback = [this](TransactionState& state) {
@@ -1058,10 +1058,10 @@ Result IResearchDataStore::commitUnsafeImpl(
 
     LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
         << "successful sync of ArangoSearch index '" << index().id()
-        << "', segments '" << reader->size() << "', docs count '"
-        << reader->docs_count() << "', live docs count '"
-        << reader->live_docs_count() << "', last operation tick low '"
-        << _lastCommittedTickOne << "'"
+        << "', segments '" << _dataStore._reader->size() << "', docs count '"
+        << _dataStore._reader->docs_count() << "', live docs count '"
+        << _dataStore._reader->live_docs_count()
+        << "', last operation tick low '" << _lastCommittedTickOne << "'"
         << "', last operation tick high '" << _lastCommittedTickTwo << "'";
   } catch (basics::Exception const& e) {
     return {

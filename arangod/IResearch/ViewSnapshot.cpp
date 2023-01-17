@@ -33,7 +33,7 @@ namespace arangodb::iresearch {
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 ///        the container storing the view state for a given TransactionState
 /// @note it is assumed that DBServer ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate

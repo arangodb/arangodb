@@ -272,7 +272,7 @@ struct BoostScorer : public irs::sort {
    public:
     Prepared() = default;
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
@@ -330,7 +330,7 @@ struct CustomScorer : public irs::sort {
    public:
     Prepared(float_t i) : i(i) {}
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
+    virtual void collect(irs::byte_type*, const irs::IndexReader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {
       // NOOP
