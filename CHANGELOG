@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.6-preview-2.
+
 * Fix coordinator segfault in AQL queries in which the query is invoked from
   within a JavaScript context (e.g. from Foxx or from the server's console
   mode) **and** the query has multiple coordinator snippets of which except
