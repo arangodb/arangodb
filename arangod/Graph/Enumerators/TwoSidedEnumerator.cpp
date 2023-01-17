@@ -416,6 +416,7 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // the path type "ShortestPath", the algorithm is finished. We need
       // to store this information.
       if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
         TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
         setAlgorithmFinished();
       }
@@ -495,6 +496,16 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     while (!_results.empty()) {
       // just drop one result for skipping
       _results.pop_back();
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }

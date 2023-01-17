@@ -173,9 +173,12 @@ ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
       _trx(infos.query().newTrxContext()),
       _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
-      _path{new arangodb::graph::ShortestPathResult{}},
+      _pathBuilder{&_trx},
+      _posInPath(0),
+      _pathLength(0),
       _sourceBuilder{},
       _targetBuilder{} {
+  LOG_DEVEL << "->>>>>>>> INITIALIZING EXECUTOR";
   if (!_infos.useRegisterForSourceInput()) {
     _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }
@@ -188,56 +191,93 @@ ShortestPathExecutor<FinderType>::ShortestPathExecutor(Fetcher&, Infos& infos)
 }
 
 template<class FinderType>
-auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
-    -> void {
-  transaction::BuilderLeaser tmp{&_trx};
-  tmp->clear();
+auto ShortestPathExecutor<FinderType>::doSkipPath(AqlCall& call) -> size_t {
+  auto skip = size_t{0};
 
-  bool foundPath = _finder.getNextPath(*tmp.builder());
-
-  if (foundPath) {
-    // TODO [GraphRefactor]: This can be optimized. In case we only need to
-    // write into the vertex or edge output register, we do not need to build
-    // the whole complete path (as we do now).
-    TRI_ASSERT(tmp->slice().hasKey(StaticStrings::GraphQueryVertices));
-    TRI_ASSERT(tmp->slice().get(StaticStrings::GraphQueryVertices).isArray());
-    TRI_ASSERT(tmp->slice().hasKey(StaticStrings::GraphQueryEdges));
-    TRI_ASSERT(tmp->slice().get(StaticStrings::GraphQueryEdges).isArray());
-    VPackSlice verticesSlice{
-        tmp->slice().get(StaticStrings::GraphQueryVertices)};
-    VPackSlice edgesSlice{tmp->slice().get(StaticStrings::GraphQueryEdges)};
-
-    for (size_t counter = 0; counter < verticesSlice.length(); counter++) {
-      if (_infos.usesOutputRegister(
-              ShortestPathExecutorInfos<FinderType>::VERTEX)) {
-        AqlValue v{verticesSlice.at(counter)};
-        AqlValueGuard vertexGuard{v, true};
-
-        output.moveValueInto(_infos.getOutputRegister(
-                                 ShortestPathExecutorInfos<FinderType>::VERTEX),
-                             _inputRow, vertexGuard);
-      }
-      if (_infos.usesOutputRegister(
-              ShortestPathExecutorInfos<FinderType>::EDGE)) {
-        if (counter == 0) {
-          // First Edge is defined as NULL
-          AqlValue e{AqlValueHintNull()};
-          AqlValueGuard edgeGuard{e, true};
-          output.moveValueInto(_infos.getOutputRegister(
-                                   ShortestPathExecutorInfos<FinderType>::EDGE),
-                               _inputRow, edgeGuard);
-        } else {
-          AqlValue e{edgesSlice.at(counter - 1)};
-          AqlValueGuard edgeGuard{e, true};
-
-          output.moveValueInto(_infos.getOutputRegister(
-                                   ShortestPathExecutorInfos<FinderType>::EDGE),
-                               _inputRow, edgeGuard);
-        }
-      }
-      output.advanceRow();
+  // call.getOffset() > 0 means we're in SKIP mode
+  if (call.getOffset() > 0) {
+    if (call.getOffset() < pathLengthAvailable()) {
+      skip = call.getOffset();
+    } else {
+      skip = pathLengthAvailable();
+    }
+  } else {
+    // call.getOffset() == 0, we might be in SKIP, PRODUCE, or
+    // FASTFORWARD/FULLCOUNT, but we only FASTFORWARD/FULLCOUNT if
+    // call.getLimit() == 0 as well.
+    if (call.needsFullCount() && call.getLimit() == 0) {
+      skip = pathLengthAvailable();
     }
   }
+  _posInPath += skip;
+  call.didSkip(skip);
+  return skip;
+}
+
+template<class FinderType>
+auto ShortestPathExecutor<FinderType>::getPathLength() const -> size_t {
+  TRI_ASSERT(_pathBuilder->slice().hasKey(StaticStrings::GraphQueryVertices));
+  return _pathBuilder->slice().get(StaticStrings::GraphQueryVertices).length();
+}
+
+template<class FinderType>
+auto ShortestPathExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
+    -> void {
+  // TODO [GraphRefactor]: This can be optimized. In case we only need to
+  // write into the vertex or edge output register, we do not need to build
+  // the whole complete path (as we do now). This will introduce an API change
+  // We're planning this to achieve with version 4.0.
+  TRI_ASSERT(_pathBuilder->slice().hasKey(StaticStrings::GraphQueryVertices));
+  TRI_ASSERT(
+      _pathBuilder->slice().get(StaticStrings::GraphQueryVertices).isArray());
+  TRI_ASSERT(_pathBuilder->slice().hasKey(StaticStrings::GraphQueryEdges));
+  TRI_ASSERT(
+      _pathBuilder->slice().get(StaticStrings::GraphQueryEdges).isArray());
+  VPackSlice verticesSlice{
+      _pathBuilder->slice().get(StaticStrings::GraphQueryVertices)};
+  VPackSlice edgesSlice{
+      _pathBuilder->slice().get(StaticStrings::GraphQueryEdges)};
+  _pathLength = verticesSlice.length();
+  LOG_DEVEL << "pathLength is: " << verticesSlice.length();
+
+  while (pathLengthAvailable() > 0 && !output.isFull()) {
+    if (_infos.usesOutputRegister(
+            ShortestPathExecutorInfos<FinderType>::VERTEX)) {
+      AqlValue v{verticesSlice.at(_posInPath)};
+      AqlValueGuard vertexGuard{v, true};
+
+      output.moveValueInto(_infos.getOutputRegister(
+                               ShortestPathExecutorInfos<FinderType>::VERTEX),
+                           _inputRow, vertexGuard);
+    }
+    if (_infos.usesOutputRegister(
+            ShortestPathExecutorInfos<FinderType>::EDGE)) {
+      if (_posInPath == 0) {
+        // First Edge is defined as NULL
+        AqlValue e{AqlValueHintNull()};
+        AqlValueGuard edgeGuard{e, true};
+        output.moveValueInto(_infos.getOutputRegister(
+                                 ShortestPathExecutorInfos<FinderType>::EDGE),
+                             _inputRow, edgeGuard);
+      } else {
+        AqlValue e{edgesSlice.at(_posInPath - 1)};
+        AqlValueGuard edgeGuard{e, true};
+
+        output.moveValueInto(_infos.getOutputRegister(
+                                 ShortestPathExecutorInfos<FinderType>::EDGE),
+                             _inputRow, edgeGuard);
+      }
+    }
+    output.advanceRow();
+    _posInPath++;
+  }
+}
+
+template<class FinderType>
+auto ShortestPathExecutor<FinderType>::pathLengthAvailable() -> size_t {
+  // Subtraction must not underflow
+  TRI_ASSERT(_posInPath <= _pathLength);
+  return _pathLength - _posInPath;
 }
 
 template<class FinderType>
@@ -245,6 +285,9 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
     -> bool {
   TRI_ASSERT(_finder.isDone());
   _finder.clear();
+  _posInPath = 0;
+  _pathLength = 0;
+  _pathBuilder->clear();
 
   while (input.hasDataRow()) {
     LOG_DEVEL << "New output row";
@@ -266,7 +309,11 @@ auto ShortestPathExecutor<FinderType>::fetchPath(AqlItemBlockInputRange& input)
       LOG_DEVEL << "T: " << target.toJson();
       _finder.reset(arangodb::velocypack::HashedStringRef(source),
                     arangodb::velocypack::HashedStringRef(target));
-      return true;
+      if (_finder.getNextPath(*_pathBuilder.builder())) {
+        _pathLength = getPathLength();
+        _posInPath = 0;
+        return true;
+      }
     }
   }
   // Note that we only return false if
@@ -279,8 +326,10 @@ template<class FinderType>
 auto ShortestPathExecutor<FinderType>::produceRows(
     AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  LOG_DEVEL << "Calling produce rows:";
   while (!output.isFull()) {
-    if (_finder.isDone()) {
+    if (pathLengthAvailable() == 0) {
+      LOG_DEVEL << "fetch path in produce rows";
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), _finder.stealStats(), AqlCall{}};
@@ -290,7 +339,7 @@ auto ShortestPathExecutor<FinderType>::produceRows(
     }
   }
 
-  if (_finder.isDone()) {
+  if (pathLengthAvailable() == 0) {
     return {input.upstreamState(), _finder.stealStats(), AqlCall{}};
   } else {
     return {ExecutorState::HASMORE, _finder.stealStats(), AqlCall{}};
@@ -302,30 +351,25 @@ auto ShortestPathExecutor<FinderType>::skipRowsRange(
     AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
+  LOG_DEVEL << "Calling skipRowsRange:";
+  LOG_DEVEL << "calling get next path (skip rowis):";
 
-  while (call.shouldSkip()) {
-    // _finder.isDone() == true means that there is currently no path available
-    // from the _finder, we can try calling fetchPaths to make one available,
-    // but if that fails too, we must be DONE
-    if (_finder.isDone()) {
+  while (true) {
+    skipped += doSkipPath(call);
+
+    if (pathLengthAvailable() == 0) {
+      LOG_DEVEL << "fetch path in skip rows range";
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
         return {input.upstreamState(), _finder.stealStats(), skipped,
                 AqlCall{}};
       }
     } else {
-      // TODO: Check this. Might be wrong.
-      if (_finder.skipPath()) {
-        skipped++;
-        call.didSkip(1);
-      }
+      // if we end up here there is path available, but
+      // we have skipped as much as we were asked to.
+      TRI_ASSERT(call.getOffset() == 0);
+      return {ExecutorState::HASMORE, _finder.stealStats(), skipped, AqlCall{}};
     }
-  }
-
-  if (_finder.isDone()) {
-    return {input.upstreamState(), _finder.stealStats(), skipped, AqlCall{}};
-  } else {
-    return {ExecutorState::HASMORE, _finder.stealStats(), skipped, AqlCall{}};
   }
 }
 

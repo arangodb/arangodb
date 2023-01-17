@@ -31,6 +31,7 @@
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathResult.h"
 #include "GraphNode.h"
+#include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 
@@ -179,12 +180,14 @@ class ShortestPathExecutor {
    *  internal state.
    */
   [[nodiscard]] auto fetchPath(AqlItemBlockInputRange& input) -> bool;
+  [[nodiscard]] auto pathLengthAvailable() -> size_t;
 
   /**
    *  @brief produce the output from the currently stored path until either
    *  the path is exhausted or there is no output space left.
    */
   auto doOutputPath(OutputAqlItemRow& output) -> void;
+  auto doSkipPath(AqlCall& call) -> size_t;
 
   /**
    * @brief get the id of a input vertex
@@ -199,6 +202,8 @@ class ShortestPathExecutor {
                                  arangodb::velocypack::Builder& builder,
                                  arangodb::velocypack::Slice& id) -> bool;
 
+  [[nodiscard]] auto getPathLength() const -> size_t;
+
  private:
   Infos& _infos;
   transaction::Methods _trx;
@@ -207,8 +212,12 @@ class ShortestPathExecutor {
   /// @brief the shortest path finder.
   FinderType& _finder;
 
+  /// @brief builder we tmp. store the path in
+  transaction::BuilderLeaser _pathBuilder;
   /// @brief current computed path.
-  std::unique_ptr<graph::ShortestPathResult> _path;
+  size_t _posInPath;
+  /// @brief path length based on amount of vertices
+  size_t _pathLength;
 
   /// @brief temporary memory management for source id
   arangodb::velocypack::Builder _sourceBuilder;
