@@ -347,7 +347,9 @@ auto replicated_log::InMemoryLog::copyFlexVector() const -> log_type {
 
 auto replicated_log::InMemoryLog::computeTermIndexMap() const
     -> replicated_log::TermIndexMapping {
-  // TODO dirty hack - refactor later
+  // TODO this is a quick way to implement this.
+  // However, in the future we might track this information in the InMemoryLog
+  // itself and update it as we go.
   TermIndexMapping mapping;
   for (auto const& ent : _log) {
     mapping.insert(ent.entry().logIndex(), ent.entry().logTerm());
