@@ -1,6 +1,11 @@
 v3.9.8 (XXXX-XX-XX)
 -------------------
 
+* BTS-1192: fix a potential race during hot backup creation, which could result
+  in error messages such as `{backup} Source file engine_rocksdb/002516.sst does
+  not have a hash file` during hot backup creation. However, despite the error
+  message being logged, the hot backup was still complete.
+
 * Prevent agency configuration confusion by an agent which comes back without
   its data directory and thus without its UUID.
 
