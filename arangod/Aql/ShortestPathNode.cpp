@@ -410,7 +410,6 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   waitForSatelliteIfRequired(&engine);
 #endif
 
-  // START: New Shortest Path implementation using Graph Refactor
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
       0, std::numeric_limits<size_t>::max(),
       arangodb::graph::PathType::Type::ShortestPath};
@@ -428,20 +427,16 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
         reversedUsedIndexes{};
     reversedUsedIndexes.first = buildReverseUsedIndexes();
 
-    // TODO: [GraphRefactor] added as an optimization during development
-    // check this later. Check if this is being set in ShortestPath.
-    bool produceVertices = opts->produceVertices();
-
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), produceVertices);
+        opts->getEdgeProjections(), opts->produceVertices());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        produceVertices);
+        opts->produceVertices());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
@@ -673,13 +668,10 @@ ShortestPathNode::buildReverseUsedIndexes() const {
 
 std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
     bool reverse) const {
-  // TODO [GraphRefactor]: Re-used functionality here. Move this method to a
-  // dedicated place where it can be re-used.
+  // TODO [GraphRefactor]: Re-used functionality here (Origin:
+  // EnumeratePathsNode.cpp). Move this method to a dedicated place where it can
+  // be re-used.
   size_t numEdgeColls = _edgeColls.size();
-  LOG_DEVEL << "X COLLETIONS EDGES : X";
-  for (auto const& peter : _edgeColls) {
-    LOG_DEVEL << peter->name();
-  }
   constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
