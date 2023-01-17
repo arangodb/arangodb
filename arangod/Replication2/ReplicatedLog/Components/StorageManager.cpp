@@ -316,9 +316,6 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
 
 auto StorageManager::getCommittedLogIterator(LogRange range) const
     -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> {
-  // return guardedData.getLockedGuard()->onDiskLog.getIteratorRange(range.from,
-  //                                                                range.to);
-
   auto guard = guardedData.getLockedGuard();
   range = intersect(range, guard->onDiskLog.getIndexRange());
   auto diskIter = guard->methods->read(range.from);
