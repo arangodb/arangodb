@@ -59,7 +59,9 @@ Function::Function(std::string const& name, char const* arguments,
   // on a DB server in OneShard mode. this may change at some point in the future.
   TRI_ASSERT(!hasFlag(Flags::CanRunOnDBServerCluster) || hasFlag(Flags::CanRunOnDBServerOneShard));
   
-  TRI_ASSERT(hasCxxImplementation() || name == "V8");
+  // only the V8 function does not have a C++ implementation.
+  // don't ever change this!
+  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER");
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
