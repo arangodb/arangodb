@@ -90,6 +90,8 @@ class S2LaxPolylineShape : public S2Shape {
   TypeTag type_tag() const override { return kTypeTag; }
 
  private:
+  friend S2Point GetCentroid(const S2LaxPolylineShape&) noexcept;
+
   // For clients that have many small polylines, we save some memory by
   // representing the vertices as an array rather than using std::vector.
   int32 num_vertices_;

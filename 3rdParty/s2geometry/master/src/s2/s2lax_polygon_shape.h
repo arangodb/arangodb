@@ -147,6 +147,8 @@ class S2LaxPolygonShape : public S2Shape {
   TypeTag type_tag() const override { return kTypeTag; }
 
  private:
+  friend S2Point GetCentroid(const S2LaxPolygonShape&) noexcept;
+
   // Note that the parent class has a 4-byte S2Shape::id_ field so there is no
   // wasted space in the following layout.
   int32 num_loops_;

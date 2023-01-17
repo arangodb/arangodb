@@ -43,7 +43,7 @@
 #include "Geo/GeoParams.h"
 #include "Geo/ShapeContainer.h"
 #include "Geo/S2/S2MultiPointRegion.h"
-#include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/S2/S2MultiPolylineRegion.h"
 #include "Logger/Logger.h"
 
 namespace arangodb::geo::json {
@@ -569,7 +569,7 @@ Result parseRegionImpl(velocypack::Slice vpack, ShapeContainer& region,
       if (Validation && ADB_UNLIKELY(!r.ok())) {
         return r;
       }
-      auto d = std::make_unique<S2MultiPolyline>();
+      auto d = std::make_unique<S2MultiPolylineRegion>();
       d->Impl() = std::move(lines);
       region.reset(std::move(d), toShapeType(Type::MULTI_LINESTRING));
     } break;
@@ -683,7 +683,8 @@ Result parseLinestring(velocypack::Slice vpack, S2Polyline& region) {
   return {};
 }
 
-Result parseMultiLinestring(velocypack::Slice vpack, S2MultiPolyline& region) {
+Result parseMultiLinestring(velocypack::Slice vpack,
+                            S2MultiPolylineRegion& region) {
   auto r = validate<Type::MULTI_LINESTRING>(vpack);
   if (ADB_UNLIKELY(!r.ok())) {
     return r;

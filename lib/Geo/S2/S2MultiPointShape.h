@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,51 +18,46 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Geo/Coding.h"
-
-#include <s2/s2region.h>
-#include <s2/s2point.h>
 #include <s2/s2shape.h>
+#include <s2/s2point.h>
 
 #include <exception>
 #include <vector>
 
 namespace arangodb::geo {
 
-class S2MultiPointRegion final : public S2Region {
+// We don't use S2PointVectorShape,
+// because it doesn't provide direct access to vector of S2Point
+class S2MultiPointShape final : public S2Shape {
  public:
-  ~S2MultiPointRegion() final = default;
+  ~S2MultiPointShape() final = default;
 
-  // The result is not unit length, so you may want to normalize it.
   S2Point GetCentroid() const noexcept;
 
-  template<typename Region>
-  bool Intersects(Region const& other) const noexcept {
-    for (auto const& point : _impl) {
-      if (other.Contains(point)) {
-        return true;
-      }
-    }
-    return false;
+  int num_edges() const final { return static_cast<int>(_impl.size()); }
+
+  Edge edge(int edge_id) const final;
+
+  int dimension() const final { return 0; }
+
+  ReferencePoint GetReferencePoint() const final {
+    return ReferencePoint::Contained(false);
   }
 
-  S2Region* Clone() const final;
-  S2Cap GetCapBound() const final;
-  S2LatLngRect GetRectBound() const final;
-  bool Contains(S2Cell const& cell) const final;
-  bool MayIntersect(S2Cell const& cell) const final;
-  bool Contains(S2Point const& p) const final;
+  int num_chains() const final { return static_cast<int>(_impl.size()); }
 
-  void Encode(Encoder& encoder, coding::Options options) const;
+  Chain chain(int chain_id) const final { return {chain_id, 1}; }
+
+  Edge chain_edge(int chain_id, int offset) const final;
+
+  ChainPosition chain_position(int edge_id) const final { return {edge_id, 0}; }
+
   bool Decode(Decoder& decoder, uint8_t tag);
-
-  auto& Impl() noexcept { return _impl; }
-  auto const& Impl() const noexcept { return _impl; }
 
  private:
   std::vector<S2Point> _impl;

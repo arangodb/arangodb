@@ -35,9 +35,9 @@ bool intersects(S2LatLngRect const& rect, S2Polyline const& polyline);
 
 }  // namespace rect
 
-class S2MultiPolyline final : public S2Region {
+class S2MultiPolylineRegion final : public S2Region {
  public:
-  ~S2MultiPolyline() final = default;
+  ~S2MultiPolylineRegion() final = default;
 
   // The result is not unit length, so you may want to normalize it.
   S2Point GetCentroid() const noexcept;
@@ -63,8 +63,8 @@ class S2MultiPolyline final : public S2Region {
   bool MayIntersect(S2Cell const& cell) const final;
   bool Contains(S2Point const& p) const final;
 
-  void Encode(Encoder* const encoder, s2coding::CodingHint hint) const;
-  bool Decode(Decoder* const decoder);
+  void Encode(Encoder& encoder, s2coding::CodingHint hint) const;
+  bool Decode(Decoder& decoder);
 
   auto& Impl() noexcept { return _impl; }
   auto const& Impl() const noexcept { return _impl; }

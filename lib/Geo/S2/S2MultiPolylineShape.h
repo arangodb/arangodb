@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,54 +18,51 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Geo/Coding.h"
-
-#include <s2/s2region.h>
-#include <s2/s2point.h>
 #include <s2/s2shape.h>
+#include <s2/s2point.h>
 
 #include <exception>
 #include <vector>
 
 namespace arangodb::geo {
 
-class S2MultiPointRegion final : public S2Region {
+class S2MultiPolylineShape final : public S2Shape {
  public:
-  ~S2MultiPointRegion() final = default;
+  ~S2MultiPolylineShape() final = default;
 
-  // The result is not unit length, so you may want to normalize it.
   S2Point GetCentroid() const noexcept;
 
-  template<typename Region>
-  bool Intersects(Region const& other) const noexcept {
-    for (auto const& point : _impl) {
-      if (other.Contains(point)) {
-        return true;
-      }
-    }
-    return false;
+  int num_edges() const final;
+
+  Edge edge(int edge_id) const final;
+
+  int dimension() const final { return 1; }
+
+  ReferencePoint GetReferencePoint() const final {
+    return ReferencePoint::Contained(false);
   }
 
-  S2Region* Clone() const final;
-  S2Cap GetCapBound() const final;
-  S2LatLngRect GetRectBound() const final;
-  bool Contains(S2Cell const& cell) const final;
-  bool MayIntersect(S2Cell const& cell) const final;
-  bool Contains(S2Point const& p) const final;
+  int num_chains() const final;
 
-  void Encode(Encoder& encoder, coding::Options options) const;
-  bool Decode(Decoder& decoder, uint8_t tag);
+  Chain chain(int chain_id) const final;
 
-  auto& Impl() noexcept { return _impl; }
-  auto const& Impl() const noexcept { return _impl; }
+  Edge chain_edge(int chain_id, int offset) const final;
+
+  ChainPosition chain_position(int edge_id) const final;
+
+  bool Decode(Decoder& decoder);
 
  private:
-  std::vector<S2Point> _impl;
+  int num_polylines_{0};
+  mutable int prev_polyline_{0};
+  int num_vertices_{0};
+  std::unique_ptr<S2Point[]> vertices_;
+  std::unique_ptr<uint32_t[]> polylines_starts_;
 };
 
 }  // namespace arangodb::geo

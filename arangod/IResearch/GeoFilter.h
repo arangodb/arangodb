@@ -38,8 +38,10 @@ enum class StoredType : uint8_t {
   VPackLegacy = 0,
   // Valid GeoJson as VPack or coordinates array of two S2LatLng
   VPack,
-  // Valid ShapeContainer serialized as S2Shape
-  S2Shape,
+  // Valid ShapeContainer serialized as S2Region
+  S2Region,
+  // Valid LaxShapeContainer serialized as S2Shape
+  S2LaxShape,
   // Valid S2Point serialized as S2Point
   S2Point,
 };

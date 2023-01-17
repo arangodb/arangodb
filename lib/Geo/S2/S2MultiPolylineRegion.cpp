@@ -21,40 +21,35 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Geo/S2/S2MultiPolyline.h"
+#include "Geo/S2/S2MultiPolylineRegion.h"
 #include "Basics/Exceptions.h"
 
 #include <s2/s2cap.h>
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
+#include <s2/s2polyline_measures.h>
 
 namespace arangodb::geo {
 
-S2Point S2MultiPolyline::GetCentroid() const noexcept {
-  // TODO(MBkkt) probably same issues as in S2Points
-  auto c = S2LatLng::FromDegrees(0.0, 0.0);
-  double totalWeight = 0.0;
-  for (auto const& line : _impl) {
-    totalWeight += line.GetLength().radians();
+S2Point S2MultiPolylineRegion::GetCentroid() const noexcept {
+  // copied from s2: S2Point GetCentroid(const S2Shape& shape);
+  S2Point centroid;
+  for (auto const& polyline : _impl) {
+    centroid += S2::GetCentroid(polyline.vertices_span());
   }
-  for (auto const& line : _impl) {
-    auto const weight = line.GetLength().radians() / totalWeight;
-    c = c + weight * S2LatLng{line.GetCentroid()};
-  }
-  TRI_ASSERT(c.is_valid());
-  return c.ToPoint();
+  return centroid;
 }
 
-S2Region* S2MultiPolyline::Clone() const {
+S2Region* S2MultiPolylineRegion::Clone() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-S2Cap S2MultiPolyline::GetCapBound() const {
+S2Cap S2MultiPolylineRegion::GetCapBound() const {
   return GetRectBound().GetCapBound();
 }
 
-S2LatLngRect S2MultiPolyline::GetRectBound() const {
+S2LatLngRect S2MultiPolylineRegion::GetRectBound() const {
   S2LatLngRectBounder bounder;
   for (auto const& polyline : _impl) {
     for (auto const& point : polyline.vertices_span()) {
@@ -64,9 +59,11 @@ S2LatLngRect S2MultiPolyline::GetRectBound() const {
   return bounder.GetBound();
 }
 
-bool S2MultiPolyline::Contains(S2Cell const& /*cell*/) const { return false; }
+bool S2MultiPolylineRegion::Contains(S2Cell const& /*cell*/) const {
+  return false;
+}
 
-bool S2MultiPolyline::MayIntersect(S2Cell const& cell) const {
+bool S2MultiPolylineRegion::MayIntersect(S2Cell const& cell) const {
   for (auto const& polyline : _impl) {
     if (polyline.MayIntersect(cell)) {
       return true;
@@ -75,14 +72,15 @@ bool S2MultiPolyline::MayIntersect(S2Cell const& cell) const {
   return false;
 }
 
-bool S2MultiPolyline::Contains(S2Point const& /*p*/) const {
-  // S2Polylines doesn't have a Contains(S2Point) method, because "containment"
-  // is not numerically well-defined except at the polyline vertices.
+bool S2MultiPolylineRegion::Contains(S2Point const& /*p*/) const {
+  // S2MultiPolylineRegion doesn't have a Contains(S2Point) method, because
+  // "containment" isn't numerically well-defined except at the polyline
+  // vertices.
   return false;
 }
 
-void S2MultiPolyline::Encode(Encoder* const encoder,
-                             s2coding::CodingHint hint) const {
+void S2MultiPolylineRegion::Encode(Encoder* const encoder,
+                                   s2coding::CodingHint hint) const {
   encoder->Ensure(sizeof(uint64_t));
   encoder->put64(_impl.size());
   for (auto const& polyline : _impl) {
@@ -94,7 +92,7 @@ void S2MultiPolyline::Encode(Encoder* const encoder,
   }
 }
 
-bool S2MultiPolyline::Decode(Decoder* const decoder) {
+bool S2MultiPolylineRegion::Decode(Decoder* const decoder) {
   if (decoder->avail() < sizeof(uint64_t)) {
     return false;
   }

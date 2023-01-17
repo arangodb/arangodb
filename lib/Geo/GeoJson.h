@@ -42,7 +42,7 @@ class S2Polygon;
 namespace arangodb::geo {
 
 class S2MultiPointRegion;
-class S2MultiPolyline;
+class S2MultiPolylineRegion;
 
 class ShapeContainer;
 
@@ -130,7 +130,8 @@ Result parseLinestring(velocypack::Slice vpack, S2Polyline& region);
 ///   "type": "MultiLineString",
 ///   "coordinates": [
 ///     [[lon0, lat0], [lon1, lat1], ...], ...
-Result parseMultiLinestring(velocypack::Slice vpack, S2MultiPolyline& region);
+Result parseMultiLinestring(velocypack::Slice vpack,
+                            S2MultiPolylineRegion& region);
 
 /// @brief Expects an GeoJson Polygon:
 /// Each loop should be closed, so should contains at least four points
@@ -163,6 +164,9 @@ Result parseRegion(velocypack::Slice vpack, ShapeContainer& region,
 template<bool Validation>
 Result parseCoordinates(velocypack::Slice vpack, ShapeContainer& region,
                         bool geoJson);
+
+// TODO(MBkkt)
+// parseShape -- parse LaxShapeContainer from vpack
 
 /// @brief Parse a loop (LinearRing)
 ///

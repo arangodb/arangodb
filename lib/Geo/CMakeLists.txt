@@ -1,6 +1,9 @@
 add_library(arango_geo STATIC
+  Coding.cpp
   GeoJson.cpp
   GeoParams.cpp
+  LaxShapeContainer.cpp
+  Operations.cpp
   ShapeContainer.cpp
   Utils.cpp)
 

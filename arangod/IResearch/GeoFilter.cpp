@@ -336,11 +336,15 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
       return irs::memory::make_managed<GeoQuery<VPackParser, Acceptor>>(
           std::move(states), std::move(stats), VPackParser{legacy},
           std::forward<Acceptor>(acceptor), boost);
-    case StoredType::S2Shape:
+    case StoredType::S2Region:
       return irs::memory::make_managed<GeoQuery<S2ShapeParser, Acceptor>>(
           std::move(states), std::move(stats), S2ShapeParser{},
           std::forward<Acceptor>(acceptor), boost);
     case StoredType::S2Point:
+      return irs::memory::make_managed<GeoQuery<S2PointParser, Acceptor>>(
+          std::move(states), std::move(stats), S2PointParser{},
+          std::forward<Acceptor>(acceptor), boost);
+    case StoredType::S2LaxShape:
       return irs::memory::make_managed<GeoQuery<S2PointParser, Acceptor>>(
           std::move(states), std::move(stats), S2PointParser{},
           std::forward<Acceptor>(acceptor), boost);

@@ -30,22 +30,10 @@
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
 #include <s2/encoded_s2point_vector.h>
-
 namespace arangodb::geo {
 
 S2Point S2MultiPointRegion::GetCentroid() const noexcept {
-  // TODO(MBkkt) was comment "probably broken"
-  //  It's not really broken, it's mathematically correct,
-  //  but I think it can be incorrect because of limited double precision
-  //  For example maybe Kahan summation algorithm for each coordinate
-  //  and then divide on points.size()
-  auto c = S2LatLng::FromDegrees(0.0, 0.0);
-  auto const invNumPoints = 1.0 / static_cast<double>(_impl.size());
-  for (auto const& point : _impl) {
-    c = c + invNumPoints * S2LatLng{point};
-  }
-  TRI_ASSERT(c.is_valid());
-  return c.ToPoint();
+  return getPointsCentroid(_impl);
 }
 
 S2Region* S2MultiPointRegion::Clone() const {
@@ -84,18 +72,27 @@ bool S2MultiPointRegion::Contains(S2Point const& p) const {
   return false;
 }
 
-void S2MultiPointRegion::Encode(Encoder* const encoder,
-                                s2coding::CodingHint hint) const {
-  s2coding::EncodeS2PointVector(_impl, hint, encoder);
+using namespace coding;
+
+void S2MultiPointRegion::Encode(Encoder& encoder, Options options) const {
+  if (options.multiPoint == Options::Point::S2Point) {
+    TRI_ASSERT(encoder.avail() >= 8);
+    encoder.put8(toTag<Type::kMultiPoint, Options::Point::S2Point>());
+    s2coding::EncodeS2PointVector(_impl, options.hint, &encoder);
+  } else {
+    TRI_ASSERT(options.multiPoint == Options::Point::S2LatLng);
+    auto const size = _impl.size();
+    encoder.Ensure(8 + Varint::kMax64 + size * 2 * sizeof(double));
+    encoder.put8(toTag<Type::kMultiPoint, Options::Point::S2LatLng>());
+    encoder.put_varint64(size);
+    for (auto const& point : _impl) {
+      encodePointToLatLng(encoder, point);
+    }
+  }
 }
 
-bool S2MultiPointRegion::Decode(Decoder* const decoder) {
-  s2coding::EncodedS2PointVector impl;
-  if (!impl.Init(decoder)) {
-    return false;
-  }
-  _impl = impl.Decode();
-  return true;
+bool S2MultiPointRegion::Decode(Decoder& decoder, uint8_t tag) {
+  return decodeVectorPoint(decoder, tag, _impl);
 }
 
 }  // namespace arangodb::geo

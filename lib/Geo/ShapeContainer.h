@@ -27,12 +27,12 @@
 #include <vector>
 
 #include "Basics/Result.h"
+#include "Geo/Coding.h"
 
 #include <s2/s2point.h>
 #include <s2/s2cell_id.h>
-#include <s2/s2shape.h>
+#include <s2/s2region.h>
 
-class S2Region;
 class S2Polyline;
 class S2LatLngRect;
 class S2Polygon;
@@ -49,8 +49,6 @@ struct QueryParams;
 /// checks between all supported region types
 class ShapeContainer final {
  public:
-  // Numbers used for serialization, you cannot change it,
-  // while Version 1 supported
   enum class Type : uint8_t {
     EMPTY = 0,
     S2_POINT = 1,
@@ -61,6 +59,19 @@ class ShapeContainer final {
     S2_MULTIPOINT = 5,
     S2_MULTIPOLYLINE = 6,
   };
+
+  ShapeContainer(ShapeContainer const& other) = delete;
+  ShapeContainer& operator=(ShapeContainer const& other) = delete;
+
+  ShapeContainer() noexcept = default;
+  ShapeContainer(ShapeContainer&& other) noexcept
+      : _data{std::move(other._data)},
+        _type{std::exchange(other._type, Type::EMPTY)} {}
+  ShapeContainer& operator=(ShapeContainer&& other) noexcept {
+    std::swap(_data, other._data);
+    std::swap(_type, other._type);
+    return *this;
+  }
 
   bool empty() const noexcept { return _type == Type::EMPTY; }
 
@@ -97,7 +108,7 @@ class ShapeContainer final {
   void reset(S2Point point);
 
   // Using s2 Encode/Decode
-  void Encode(Encoder& encoder, s2coding::CodingHint hint) const;
+  void Encode(Encoder& encoder, coding::Options options) const;
   bool Decode(Decoder& decoder);
 
  private:
@@ -107,10 +118,5 @@ class ShapeContainer final {
   std::unique_ptr<S2Region> _data;
   Type _type{Type::EMPTY};
 };
-
-void encodePoint(Encoder& encoder, S2Point const& point,
-                 s2coding::CodingHint hint);
-
-bool decodePoint(Decoder& decoder, S2PointRegion& region);
 
 }  // namespace arangodb::geo

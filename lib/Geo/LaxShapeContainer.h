@@ -18,54 +18,52 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Geo/Coding.h"
-
-#include <s2/s2region.h>
-#include <s2/s2point.h>
 #include <s2/s2shape.h>
-
-#include <exception>
-#include <vector>
 
 namespace arangodb::geo {
 
-class S2MultiPointRegion final : public S2Region {
+class LaxShapeContainer final {
  public:
-  ~S2MultiPointRegion() final = default;
+  enum class Type : uint8_t {
+    Empty = 0,
+    S2Point = 1,
+    S2Polyline = 2,
+    S2Polygon = 4,
+    S2MultiPoint = 5,
+    S2MultiPolyline = 6,
+  };
 
-  // The result is not unit length, so you may want to normalize it.
-  S2Point GetCentroid() const noexcept;
+  LaxShapeContainer(LaxShapeContainer const& other) = delete;
+  LaxShapeContainer& operator=(LaxShapeContainer const& other) = delete;
 
-  template<typename Region>
-  bool Intersects(Region const& other) const noexcept {
-    for (auto const& point : _impl) {
-      if (other.Contains(point)) {
-        return true;
-      }
-    }
-    return false;
+  LaxShapeContainer() noexcept = default;
+  LaxShapeContainer(LaxShapeContainer&& other) noexcept
+      : _data{std::move(other._data)},
+        _type{std::exchange(other._type, Type::Empty)} {}
+  LaxShapeContainer& operator=(LaxShapeContainer&& other) noexcept {
+    std::swap(_data, other._data);
+    std::swap(_type, other._type);
+    return *this;
   }
 
-  S2Region* Clone() const final;
-  S2Cap GetCapBound() const final;
-  S2LatLngRect GetRectBound() const final;
-  bool Contains(S2Cell const& cell) const final;
-  bool MayIntersect(S2Cell const& cell) const final;
-  bool Contains(S2Point const& p) const final;
+  bool empty() const noexcept { return _type == Type::Empty; }
 
-  void Encode(Encoder& encoder, coding::Options options) const;
-  bool Decode(Decoder& decoder, uint8_t tag);
+  S2Point centroid() const noexcept;
 
-  auto& Impl() noexcept { return _impl; }
-  auto const& Impl() const noexcept { return _impl; }
+  S2Shape const* shape() const noexcept { return _data.get(); }
+  Type type() const noexcept { return _type; }
+
+  // Using s2 Encode/Decode
+  bool Decode(Decoder& decoder);
 
  private:
-  std::vector<S2Point> _impl;
+  std::unique_ptr<S2Shape> _data{nullptr};
+  Type _type{Type::Empty};
 };
 
 }  // namespace arangodb::geo
