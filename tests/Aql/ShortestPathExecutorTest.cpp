@@ -48,7 +48,9 @@
 #include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/PathManagement/PathResult.h"
 
+#include "../Mocks/MockGraphProvider.h"
 #include "../Mocks/Servers.h"
 
 #include <string_view>
@@ -110,6 +112,12 @@ class TokenTranslator : public TraverserCache {
     return it->second;
   }
 
+  std::string_view translateVertexID(std::string_view idString) {
+    auto it = _vertices.find(idString);
+    TRI_ASSERT(it != _vertices.end());
+    return it->second.get(StaticStrings::IdString).stringView();
+  }
+
   bool appendVertex(std::string_view idString, VPackBuilder& builder) override {
     builder.add(translateVertex(idString));
     return true;
@@ -140,12 +148,40 @@ class TokenTranslator : public TraverserCache {
 // ShortestPathExecutor are the ones we expected.
 class FakePathFinder : public ShortestPathFinder {
  public:
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
   FakePathFinder(ShortestPathOptions& opts, TokenTranslator& translator)
       : ShortestPathFinder(opts), _paths(), _translator(translator) {}
 
   ~FakePathFinder() = default;
 
   void clear() override{};
+
+  aql::TraversalStats stealStats() { return {}; }
+
+  bool isDone() { return true; }
+
+  void reset(VertexRef source, VertexRef target) {
+    _tmpPathBuilder.clear();
+    _source = source;
+    _target = target;
+  }
+
+  bool getNextPath(VPackBuilder& result) {
+    VPackBuilder s;
+    s.openArray();
+    s.add(VPackValue(_source.toString()));
+    s.add(VPackValue(_target.toString()));
+    s.close();
+
+    VPackSlice sourceSlice = s.slice().at(0);
+    VPackSlice targetSlice = s.slice().at(1);
+
+    bool foundPath = shortestPath(sourceSlice, targetSlice, _result);
+    result = _tmpPathBuilder;
+
+    return foundPath;
+  }
 
   void addPath(std::vector<std::string>&& path) {
     _paths.emplace_back(std::move(path));
@@ -160,14 +196,32 @@ class FakePathFinder : public ShortestPathFinder {
 
     std::string const s = source.copyString();
     std::string const t = target.copyString();
+
     for (auto const& p : _paths) {
       if (p.front() == s && p.back() == t) {
         // Found a path
+
+        // new refactored output
+        _tmpPathBuilder.clear();
+        _tmpPathBuilder.openObject();
+        _tmpPathBuilder.add(VPackValue(StaticStrings::GraphQueryVertices));
+        _tmpPathBuilder.openArray();
         for (size_t i = 0; i < p.size() - 1; ++i) {
-          result.addVertex(_translator.makeVertex(p[i]));
-          result.addEdge(_translator.makeEdge(p[i], p[i + 1]));
+          _tmpPathBuilder.add(VPackValue(_translator.makeVertex(p[i])));
         }
-        result.addVertex(_translator.makeVertex(p.back()));
+        _tmpPathBuilder.add(VPackValue(_translator.makeVertex(p.back())));
+        _tmpPathBuilder.close();  // vertices
+
+        _tmpPathBuilder.add(VPackValue(StaticStrings::GraphQueryEdges));
+        _tmpPathBuilder.openArray();
+        for (size_t i = 0; i < p.size() - 1; ++i) {
+          _tmpPathBuilder.add(
+              VPackValue(_translator.makeEdge(p[i], p[i + 1]).vpack()));
+        }
+        _tmpPathBuilder.close();  // edges
+
+        _tmpPathBuilder.close();  // outer object
+
         return true;
       }
     }
@@ -175,18 +229,13 @@ class FakePathFinder : public ShortestPathFinder {
   }
 
   std::vector<std::string> const& findPath(
-      std::pair<std::string, std::string> const& src) const {
+      std::pair<std::string, std::string> const& src) {
     for (auto const& p : _paths) {
       if (p.front() == src.first && p.back() == src.second) {
         return p;
       }
     }
     return _theEmptyPath;
-  }
-
-  std::pair<std::string, std::string> const& calledAt(size_t index) {
-    TRI_ASSERT(index < _calledWith.size());
-    return _calledWith[index];
   }
 
   [[nodiscard]] auto getCalledWith()
@@ -200,13 +249,20 @@ class FakePathFinder : public ShortestPathFinder {
   std::vector<std::pair<std::string, std::string>> _calledWith;
   std::vector<std::string> const _theEmptyPath{};
   TokenTranslator& _translator;
+
+  VertexRef _source;
+  VertexRef _target;
+  VPackBuilder _tmpPathBuilder;
+
+  // Still there because of OLD API interface, but not required anymore. Can be
+  // deleted as soon as we drop the "ShortestPathFinder" class / interface.
+  arangodb::graph::ShortestPathResult _result;
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
   TestShortestPathOptions(Query* query) : ShortestPathOptions(*query) {
     std::unique_ptr<TraverserCache> cache =
         std::make_unique<TokenTranslator>(query, this);
-    injectTestCache(std::move(cache));
   }
 };
 
@@ -359,7 +415,10 @@ class ShortestPathExecutorTest : public ::testing::Test {
   AqlItemBlockManager itemBlockManager;
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
   TestShortestPathOptions options;
-  TokenTranslator& translator;
+  ShortestPathOptions defaultOptions;
+  std::unique_ptr<BaseOptions> dummy;
+  std::unique_ptr<TraverserCache> cache;
+  TokenTranslator translator;
 
   RegisterInfos registerInfos;
   // parameters are copied because they are const otherwise
@@ -382,7 +441,12 @@ class ShortestPathExecutorTest : public ::testing::Test {
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
-        translator(*(static_cast<TokenTranslator*>(options.cache()))),
+        defaultOptions(*fakedQuery.get()),
+        dummy(std::make_unique<ShortestPathOptions>(defaultOptions)),
+        cache(std::make_unique<TraverserCache>(
+            *fakedQuery.get(),
+            dynamic_cast<ShortestPathOptions*>(&defaultOptions))),
+        translator(fakedQuery.get(), dummy.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 4, {}, {RegIdSet{0, 1}}),
         executorInfos(*fakedQuery.get(),
@@ -453,8 +517,6 @@ class ShortestPathExecutorTest : public ::testing::Test {
 
     FakePathFinder& finder =
         static_cast<FakePathFinder&>(executorInfos.finder());
-    TokenTranslator& translator =
-        *(static_cast<TokenTranslator*>(executorInfos.cache()));
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -488,12 +550,9 @@ class ShortestPathExecutorTest : public ::testing::Test {
                 blockIndex, executorInfos.getOutputRegister(
                                 ShortestPathExecutorInfos<
                                     FakePathFinder>::OutputName::VERTEX));
-            EXPECT_TRUE(value.isObject());
-            EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
-                            value.slice(),
-                            translator.translateVertex(std::string_view(
-                                expectedRowsFound[expectedRowsIndex])),
-                            false) == 0);
+            EXPECT_TRUE(value.slice().stringView() ==
+                        translator.translateVertexID(std::string_view(
+                            expectedRowsFound[expectedRowsIndex])));
           }
           if (executorInfos.usesOutputRegister(
                   ShortestPathExecutorInfos<
@@ -646,8 +705,10 @@ INSTANTIATE_TEST_CASE_P(ShortestPathExecutorPathsTestInstance,
 }  // namespace tests
 }  // namespace arangodb
 
+#include "Aql/ShortestPathExecutor.tpp"
+
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    arangodb::tests::aql::FakePathFinder>;
+    ::arangodb::tests::aql::FakePathFinder>;
 
 template class ::arangodb::aql::ShortestPathExecutor<
-    arangodb::tests::aql::FakePathFinder>;
+    ::arangodb::tests::aql::FakePathFinder>;
