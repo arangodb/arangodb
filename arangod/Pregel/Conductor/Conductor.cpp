@@ -227,7 +227,6 @@ bool Conductor::_startGlobalStep() {
   if (_masterContext &&
       _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
-    _masterContext->_reports = &_reports;
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_PREGEL("0aa8e", DEBUG) << "Master context ended execution";
@@ -259,7 +258,6 @@ bool Conductor::_startGlobalStep() {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->_reports = &_reports;
     if (!_masterContext->preGlobalSuperstepWithResult()) {
       updateState(ExecutionState::FATAL_ERROR);
       return false;
@@ -363,10 +361,6 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     LOG_PREGEL("dc904", WARN)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
-  }
-
-  if (auto reports = data.get("reports"); reports.isArray()) {
-    _reports.appendFromSlice(reports);
   }
 
   // track message counts to decide when to halt or add global barriers.
@@ -661,12 +655,6 @@ ErrorCode Conductor::_finalizeWorkers() {
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  {
-    auto reports = data.get(Utils::reportsKey);
-    if (reports.isArray()) {
-      _reports.appendFromSlice(reports);
-    }
-  }
 
   ServerID sender = data.get(Utils::senderKey).copyString();
   LOG_PREGEL("60f0c", WARN)
@@ -817,8 +805,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
-  result.add(VPackValue("reports"));
-  _reports.intoBuilder(result);
   if (_state != ExecutionState::RUNNING || ExecutionState::LOADING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
