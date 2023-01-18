@@ -60,7 +60,7 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
 
 const readAgencyValueAt = function (key) {
   const response = serverHelper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
