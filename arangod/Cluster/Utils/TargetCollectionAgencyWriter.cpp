@@ -137,7 +137,8 @@ TargetCollectionAgencyWriter::prepareCurrentWatcher(
         // should not matter too much.
         auto orderedSpec =
             entry.getReplicatedLogForTarget(shardId, servers, databaseName);
-        auto const statePath = baseStatePath->log(orderedSpec.id)->supervision();
+        auto const statePath
+            = baseStatePath->log(orderedSpec.id)->supervision();
         TRI_ASSERT(orderedSpec.version.has_value());
         auto callback = [report,
                          id = basics::StringUtils::itoa(orderedSpec.id.id()),
