@@ -9,8 +9,7 @@ add_compile_warnings_flags()
 if (MSVC)
   set(LIB_ARANGO_MSVC
     Basics/memory-map-win32.cpp
-    Basics/win-utils.cpp
-    Basics/Utf8Helper-Win32.cpp
+    Basics/win-utils-advanced.cpp
     Zip/iowin32.cpp
   )
 else ()
@@ -109,6 +108,7 @@ if (MSVC)
           Basics/locks-win32.cpp
           Basics/terminal-utils-win32.cpp
           Basics/threads-win32.cpp
+          Basics/win-utils.cpp
           )
 else ()
   target_sources(arango_lightweight PRIVATE
@@ -130,8 +130,16 @@ target_include_directories(arango_lightweight PUBLIC
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
 
-target_link_libraries(arango_lightweight PRIVATE velocypack date_interface fmt
-        arango_assertions arango_static_strings arango_futures boost_boost boost_system)
+target_link_libraries(arango_lightweight PRIVATE
+        velocypack
+        date_interface
+        fmt
+        arango_assertions
+        arango_static_strings
+        arango_futures
+        boost_boost
+        boost_system
+        ${MSVC_LIBS})
 
 # yes we need absl now everywhere
 target_link_libraries(arango_lightweight PUBLIC
