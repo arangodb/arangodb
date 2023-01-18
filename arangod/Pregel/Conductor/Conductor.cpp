@@ -1,3 +1,4 @@
+#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -368,33 +369,30 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
 
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator values
-VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
+void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
-  uint64_t gss = data.get(Utils::globalSuperstepKey).getUInt();
-  if (gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
-                                   _state == ExecutionState::CANCELED)) {
+  if (data.gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
+                                        _state == ExecutionState::CANCELED)) {
     LOG_PREGEL("dc904", WARN)
         << "Conductor did received a callback from the wrong superstep";
-    return VPackBuilder();
+    return;
   }
 
   // track message counts to decide when to halt or add global barriers.
   // this will wait for a response from each worker
-  _statistics.accumulateMessageStats(data);
-  _ensureUniqueResponse(data);
+  _statistics.accumulateMessageStats(data.sender, data.messageStats);
+  _ensureUniqueResponse(data.sender);
   LOG_PREGEL("faeb0", WARN)
-      << fmt::format("finishedWorkerStep, got response from {}.",
-                     data.get(Utils::senderKey).copyString());
+      << fmt::format("finishedWorkerStep, got response from {}.", data.sender);
   // wait for the last worker to respond
   if (_respondedServers.size() != _dbServers.size()) {
-    return VPackBuilder();
+    return;
   }
 
   _timing.gss.back().finish();
   LOG_PREGEL("39385", DEBUG)
       << "Finished gss " << _globalSuperstep << " in "
       << _timing.gss.back().elapsedSeconds().count() << "s";
-  //_statistics.debugOutput();
   _globalSuperstep++;
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
@@ -416,7 +414,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
           << "No further action taken after receiving all responses";
     }
   });
-  return VPackBuilder();
+  return;
 }
 
 void Conductor::cancel() {

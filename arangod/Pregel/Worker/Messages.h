@@ -64,22 +64,18 @@ auto inspect(Inspector& f, GlobalSuperStepPrepared& x) {
 }
 
 struct GlobalSuperStepFinished {
+  ExecutionNumber executionNumber;
+  std::string sender;
+  uint64_t gss;
   MessageStats messageStats;
-  std::unordered_map<ShardID, uint64_t> sendCountPerShard;
-  uint64_t activeCount;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
-  VPackBuilder aggregators;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
-  return f.object(x).fields(f.field("messageStats", x.messageStats),
-                            f.field("sentCounts", x.sendCountPerShard),
-                            f.field("activeCount", x.activeCount),
-                            f.field("vertexCount", x.vertexCount),
-                            f.field("edgeCount", x.edgeCount),
-                            f.field("aggregators", x.aggregators));
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("sender", x.sender), f.field("gss", x.gss),
+      f.field("messageStats", x.messageStats));
 }
 
 struct Stored {};
@@ -133,4 +129,7 @@ auto inspect(Inspector& f, PregelMessage& x) {
 
 template<>
 struct fmt::formatter<arangodb::pregel::StatusUpdated>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<arangodb::pregel::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};

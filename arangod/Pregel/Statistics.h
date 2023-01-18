@@ -75,6 +75,13 @@ struct MessageStats {
 
   bool allMessagesProcessed() { return sendCount == receivedCount; }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MessageStats& x) {
+  return f.object(x).fields(
+      f.field("sendCount", x.sendCount),
+      f.field("receivedCount", x.receivedCount),
+      f.field("superstepRuntimeInSeconds", x.superstepRuntimeSecs));
+}
 
 struct StatsManager {
   void accumulateActiveCounts(VPackSlice data) {
@@ -96,6 +103,11 @@ struct StatsManager {
     if (sender.isString()) {
       _serverStats[sender.copyString()].accumulate(data);
     }
+  }
+
+  void accumulateMessageStats(std::string const& sender,
+                              MessageStats const& stats) {
+    _serverStats[sender].accumulate(stats);
   }
 
   void serializeValues(VPackBuilder& b) const {

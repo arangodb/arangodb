@@ -463,49 +463,49 @@ void Worker<V, E, M>::_finishedProcessing() {
     }
   }
 
-  VPackBuilder package;
-  {  // only lock after there are no more processing threads
-    MUTEX_LOCKER(guard, _commandMutex);
-    _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
-    if (_state != WorkerState::COMPUTING) {
-      return;  // probably canceled
-    }
-
-    // count all received messages
-    _messageStats.receivedCount = _readCache->containedMessageCount();
-    _feature.metrics()->pregelMessagesReceived->count(
-        _readCache->containedMessageCount());
-
-    _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
-      obj.push(this->_currentGssObservables.observe());
-    });
-    _currentGssObservables.zero();
-    _makeStatusCallback()();
-
-    _readCache->clear();  // no need to keep old messages around
-    _expectedGSS = _config._globalSuperstep + 1;
-    _config._localSuperstep++;
-    // only set the state here, because _processVertices checks for it
-    _state = WorkerState::IDLE;
-
-    package.openObject();
-    package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    package.add(Utils::executionNumberKey,
-                VPackValue(_config.executionNumber().value));
-    package.add(Utils::globalSuperstepKey,
-                VPackValue(_config.globalSuperstep()));
-    _messageStats.serializeValues(package);
-    package.close();
-
-    uint64_t tn = _config.parallelism();
-    uint64_t s = _messageStats.sendCount / tn / 2UL;
-    _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-    _messageStats.resetTracking();
-    LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
+  // only lock after there are no more processing threads
+  MUTEX_LOCKER(guard, _commandMutex);
+  _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
+  if (_state != WorkerState::COMPUTING) {
+    return;  // probably canceled
   }
 
-  _callConductor(Utils::finishedWorkerStepPath, package);
-  LOG_PREGEL("2de5b", DEBUG) << "Finished GSS: " << package.toJson();
+  // count all received messages
+  _messageStats.receivedCount = _readCache->containedMessageCount();
+  _feature.metrics()->pregelMessagesReceived->count(
+      _readCache->containedMessageCount());
+
+  _allGssStatus.doUnderLock([this](AllGssStatus& obj) {
+    obj.push(this->_currentGssObservables.observe());
+  });
+  _currentGssObservables.zero();
+  _makeStatusCallback()();
+
+  _readCache->clear();  // no need to keep old messages around
+  _expectedGSS = _config._globalSuperstep + 1;
+  _config._localSuperstep++;
+  // only set the state here, because _processVertices checks for it
+  _state = WorkerState::IDLE;
+
+  auto gssFinished =
+      GlobalSuperStepFinished{.executionNumber = _config.executionNumber(),
+                              .sender = ServerState::instance()->getId(),
+                              .gss = _config.globalSuperstep(),
+                              .messageStats = _messageStats};
+  auto serialized = inspection::serializeWithErrorT(gssFinished);
+  if (!serialized.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Cannot serialize GlobalSuperStepFinished message");
+  }
+  _callConductor(Utils::finishedWorkerStepPath,
+                 VPackBuilder(serialized.get().slice()));
+  LOG_PREGEL("2de5b", DEBUG) << fmt::format("Finished GSS: {}", gssFinished);
+
+  uint64_t tn = _config.parallelism();
+  uint64_t s = _messageStats.sendCount / tn / 2UL;
+  _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
+  _messageStats.resetTracking();
+  LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 }
 
 template<typename V, typename E, typename M>

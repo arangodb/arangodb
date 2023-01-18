@@ -51,6 +51,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -774,7 +775,14 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     }
     co->finishedWorkerStartup(message.get());
   } else if (path == Utils::finishedWorkerStepPath) {
-    outBuilder = co->finishedWorkerStep(body);
+    auto message = inspection::deserializeWithErrorT<GlobalSuperStepFinished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot deserialize GlobalSuperStepFinished message");
+    }
+    co->finishedWorkerStep(message.get());
   } else if (path == Utils::finishedWorkerFinalizationPath) {
     co->finishedWorkerFinalize(body);
   }

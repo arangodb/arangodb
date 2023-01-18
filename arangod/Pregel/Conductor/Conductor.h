@@ -1,3 +1,4 @@
+#include "Pregel/Worker/Messages.h"
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -140,7 +141,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // === REST callbacks ===
   void workerStatusUpdate(StatusUpdated&& data);
   void finishedWorkerStartup(GraphLoaded const& data);
-  VPackBuilder finishedWorkerStep(VPackSlice const& data);
+  void finishedWorkerStep(GlobalSuperStepFinished const& data);
   void finishedWorkerFinalize(VPackSlice data);
 
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
