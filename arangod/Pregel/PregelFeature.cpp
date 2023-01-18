@@ -46,10 +46,12 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/SpawnActor.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
@@ -67,6 +69,13 @@ using namespace arangodb::options;
 using namespace arangodb::pregel;
 
 namespace {
+
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
 
 // locations for Pregel's temporary files
 std::unordered_set<std::string> const tempLocationTypes{
@@ -274,13 +283,36 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   }
 
   auto en = createExecutionNumber();
+
+  // TODO needs to be part of the conductor state
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
       options.algorithm, options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();
+
+  _actorRuntime->spawn<ConductorActor>(vocbase.name(), ConductorState{},
+                                       ConductorStart{});
+
   return en;
+}
+
+void PregelFeature::spawnActor(actor::ServerID server, actor::ActorPID sender,
+                               SpawnMessages msg) {
+  if (server == _actorRuntime->myServerID) {
+    std::visit(overloaded{[this, sender](auto&& arg) {
+                 _actorRuntime->spawn<SpawnActor>(sender.database, SpawnState{},
+                                                  arg);
+               }},
+               msg);
+  } else {
+    _actorRuntime->dispatch(
+        sender,
+        actor::ActorPID{
+            .server = server, .database = sender.database, .id = {0}},
+        msg);
+  }
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {
@@ -296,7 +328,8 @@ PregelFeature::PregelFeature(Server& server)
       _useMemoryMaps(true),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
-          server.getFeature<metrics::MetricsFeature>())) {
+          server.getFeature<metrics::MetricsFeature>())),
+      _actorRuntime(nullptr) {
   static_assert(
       Server::isCreatedAfter<PregelFeature, metrics::MetricsFeature>());
   setOptional(true);
@@ -564,6 +597,16 @@ void PregelFeature::start() {
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
   }
+
+  // TODO needs to go here for now because server feature has not startd in
+  // pregel feature constructor
+  _actorRuntime =
+      std::make_shared<actor::Runtime<MockScheduler, ArangoExternalDispatcher>>(
+          ServerState::instance()->getId(), "PregelFeature",
+          std::make_shared<MockScheduler>(),
+          std::make_shared<ArangoExternalDispatcher>(
+              "/_api/pregel/actor",
+              server().getFeature<NetworkFeature>().pool()));
 }
 
 void PregelFeature::beginShutdown() {

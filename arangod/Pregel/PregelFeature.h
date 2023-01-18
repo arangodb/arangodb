@@ -34,9 +34,12 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Pregel/ArangoExternalDispatcher.h"
+#include "Actor/Runtime.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
@@ -46,6 +49,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb::pregel {
+
+struct MockScheduler {
+  auto operator()(auto fn) { fn(); };
+};
 
 class Conductor;
 class IWorker;
@@ -107,6 +114,9 @@ class PregelFeature final : public ArangodFeature {
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
+  void spawnActor(actor::ServerID server, actor::ActorPID sender,
+                  SpawnMessages msg);
+
  private:
   void scheduleGarbageCollection();
 
@@ -148,6 +158,10 @@ class PregelFeature final : public ArangodFeature {
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+ public:
+  std::shared_ptr<actor::Runtime<MockScheduler, ArangoExternalDispatcher>>
+      _actorRuntime;
 };
 
 }  // namespace arangodb::pregel
