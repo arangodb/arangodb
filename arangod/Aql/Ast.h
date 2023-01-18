@@ -149,15 +149,13 @@ class Ast {
   bool containsUpsertNode() const noexcept;
   void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
-  bool willUseV8() const noexcept;
-  void setWillUseV8() noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
   }
 
   /// @brief convert the AST into VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
+  void toVelocyPack(velocypack::Builder& builder, bool verbose) const;
 
   /// @brief add an operation to the root node
   void addOperation(AstNode*);
@@ -166,7 +164,7 @@ class Ast {
   AstNode const* findExpansionSubNode(AstNode const*) const;
 
   /// @brief create a node from the velocypack data
-  AstNode* createNode(arangodb::velocypack::Slice slice);
+  AstNode* createNode(velocypack::Slice slice);
 
   /// @brief create an AST passthru node
   /// note: this type of node is only used during parsing and optimized away
@@ -260,14 +258,15 @@ class Ast {
   /// this function will return either an AST collection or an AST view node
   /// if failIfDoesNotExist is true, the function will throw if the specified
   /// data source does not exist
-  AstNode* createNodeDataSource(
-      arangodb::CollectionNameResolver const& resolver, std::string_view name,
-      AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist);
+  AstNode* createNodeDataSource(CollectionNameResolver const& resolver,
+                                std::string_view name,
+                                AccessMode::Type accessType, bool validateName,
+                                bool failIfDoesNotExist);
 
   /// @brief create an AST collection node
-  AstNode* createNodeCollection(
-      arangodb::CollectionNameResolver const& resolver, std::string_view name,
-      AccessMode::Type accessType);
+  AstNode* createNodeCollection(CollectionNameResolver const& resolver,
+                                std::string_view name,
+                                AccessMode::Type accessType);
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(std::string_view variableName);
@@ -384,12 +383,12 @@ class Ast {
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections(
-      AstNode const*, arangodb::CollectionNameResolver const& resolver);
+  AstNode* createNodeWithCollections(AstNode const*,
+                                     CollectionNameResolver const& resolver);
 
   /// @brief create an AST collection list node
-  AstNode* createNodeCollectionList(
-      AstNode const*, arangodb::CollectionNameResolver const& resolver);
+  AstNode* createNodeCollectionList(AstNode const*,
+                                    CollectionNameResolver const& resolver);
 
   /// @brief create an AST direction node
   AstNode* createNodeDirection(uint64_t, uint64_t);
@@ -412,8 +411,8 @@ class Ast {
   AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
-                                    AstNode const*, AstNode const*);
+  AstNode* createNodeEnumeratePaths(graph::PathType::Type type, AstNode const*,
+                                    AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(std::string_view functionName,
@@ -438,7 +437,7 @@ class Ast {
 
   /// @brief injects bind parameters into the AST
   void injectBindParameters(BindParameters& parameters,
-                            arangodb::CollectionNameResolver const& resolver);
+                            CollectionNameResolver const& resolver);
 
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it
@@ -474,7 +473,7 @@ class Ast {
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
       AstNode const*, Variable const*, std::string_view expectedAttribute,
-      containers::FlatHashSet<arangodb::aql::AttributeNamePath>&);
+      containers::FlatHashSet<aql::AttributeNamePath>&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(
@@ -508,7 +507,7 @@ class Ast {
   static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
-  AstNode* nodeFromVPack(arangodb::velocypack::Slice, bool copyStringValues);
+  AstNode* nodeFromVPack(velocypack::Slice, bool copyStringValues);
 
   /// @brief resolve an attribute access
   AstNode const* resolveConstAttributeAccess(AstNode const*);
@@ -605,10 +604,11 @@ class Ast {
   static void traverseReadOnly(AstNode const*,
                                std::function<void(AstNode const*)> const&);
 
- private:
   /// @brief normalize a function name
-  std::pair<std::string, bool> normalizeFunctionName(std::string_view name);
+  static std::pair<std::string, bool> normalizeFunctionName(
+      std::string_view name);
 
+ private:
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
 
