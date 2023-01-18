@@ -83,8 +83,8 @@ TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
                                        scheduler, dispatcher));
   auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor = ActorPID{
-      .server = sending_server, .id = sending_actor_id, .databaseName = ""};
+  auto sending_actor =
+      ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto recieving_server = ServerID{"B"};
@@ -94,8 +94,8 @@ TEST(ActorMultiRuntimeTest, sends_message_to_actor_in_another_runtime) {
                                     scheduler, dispatcher));
   auto recieving_actor_id = runtimes[recieving_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto recieving_actor = ActorPID{
-      .server = recieving_server, .id = recieving_actor_id, .databaseName = ""};
+  auto recieving_actor =
+      ActorPID{.server = recieving_server, .id = recieving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(
@@ -143,8 +143,8 @@ TEST(ActorMultiRuntimeTest,
                                        scheduler, dispatcher));
   auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor = ActorPID{
-      .server = sending_server, .id = sending_actor_id, .databaseName = ""};
+  auto sending_actor =
+      ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto recieving_server = ServerID{"B"};
@@ -154,8 +154,8 @@ TEST(ActorMultiRuntimeTest,
                                     scheduler, dispatcher));
   auto recieving_actor_id = runtimes[recieving_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto recieving_actor = ActorPID{
-      .server = recieving_server, .id = recieving_actor_id, .databaseName = ""};
+  auto recieving_actor =
+      ActorPID{.server = recieving_server, .id = recieving_actor_id};
 
   // send
   runtimes[sending_server]->dispatch(sending_actor, recieving_actor,
@@ -194,8 +194,8 @@ TEST(
                                        scheduler, dispatcher));
   auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor = ActorPID{
-      .server = sending_server, .id = sending_actor_id, .databaseName = ""};
+  auto sending_actor =
+      ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // Receiving Runtime
   auto recieving_server = ServerID{"B"};
@@ -205,8 +205,7 @@ TEST(
                                     scheduler, dispatcher));
 
   // send
-  auto unknown_actor =
-      ActorPID{.server = recieving_server, .id = {999}, .databaseName = ""};
+  auto unknown_actor = ActorPID{.server = recieving_server, .id = {999}};
   runtimes[sending_server]->dispatch(
       sending_actor, unknown_actor,
       TrivialActor::Message{TrivialMessage("baz")});
@@ -236,14 +235,13 @@ TEST(
                                        scheduler, dispatcher));
   auto sending_actor_id = runtimes[sending_server]->spawn<TrivialActor>(
       TrivialState{.state = "foo"}, TrivialStart{});
-  auto sending_actor = ActorPID{
-      .server = sending_server, .id = sending_actor_id, .databaseName = ""};
+  auto sending_actor =
+      ActorPID{.server = sending_server, .id = sending_actor_id};
 
   // send
   auto unknown_server = ServerID{"B"};
   runtimes[sending_server]->dispatch(
-      sending_actor,
-      ActorPID{.server = unknown_server, .id = {999}, .databaseName = ""},
+      sending_actor, ActorPID{.server = unknown_server, .id = {999}},
       TrivialActor::Message{TrivialMessage("baz")});
 
   // sending actor received a server not known message error after it messaged
@@ -278,9 +276,8 @@ TEST(ActorMultiRuntimeTest, ping_pong_game) {
                                                  scheduler, dispatcher));
   auto ping_actor = runtimes[ping_server]->spawn<ping_actor::Actor>(
       ping_actor::PingState{},
-      ping_actor::Start{.pongActor = ActorPID{.server = pong_server,
-                                              .id = pong_actor,
-                                              .databaseName = ""}});
+      ping_actor::Start{.pongActor =
+                            ActorPID{.server = pong_server, .id = pong_actor}});
 
   // pong actor was called twice
   auto pong_actor_state =

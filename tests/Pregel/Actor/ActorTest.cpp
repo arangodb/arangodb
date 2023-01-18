@@ -60,11 +60,11 @@ TEST(ActorTest, formats_actor) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}, .databaseName = ""}, runtime,
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(
       fmt::format("{}", actor),
-      R"({"pid":{"server":"A","id":1,"databaseName":""},"state":{"state":"","called":0},"batchsize":16})");
+      R"({"pid":{"server":"A","id":1},"state":{"state":"","called":0},"batchsize":16})");
 }
 
 TEST(ActorTest, changes_its_state_after_processing_a_message) {
@@ -73,7 +73,7 @@ TEST(ActorTest, changes_its_state_after_processing_a_message) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}, .databaseName = ""}, runtime,
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
 
@@ -89,7 +89,7 @@ TEST(ActorTest, changes_its_state_after_processing_a_velocypack_message) {
   auto runtime =
       std::make_shared<ActorTestRuntime>("A", "myID", scheduler, dispatcher);
   auto actor = Actor<ActorTestRuntime, TrivialActor>(
-      ActorPID{.server = "A", .id = {1}, .databaseName = ""}, runtime,
+      ActorPID{.server = "A", .id = {1}}, runtime,
       std::make_unique<TrivialState>());
   ASSERT_EQ(*actor.state, (TrivialState{.state = "", .called = 0}));
 

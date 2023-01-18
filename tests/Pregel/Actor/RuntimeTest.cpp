@@ -121,10 +121,9 @@ TEST(ActorRuntimeTest, sends_message_to_an_actor) {
   auto actor = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                             TrivialStart{});
 
-  runtime->dispatch(
-      ActorPID{.server = "PRMR-1234", .id = actor, .databaseName = ""},
-      ActorPID{.server = "PRMR-1234", .id = actor, .databaseName = ""},
-      TrivialActor::Message{TrivialMessage("baz")});
+  runtime->dispatch(ActorPID{.server = "PRMR-1234", .id = actor},
+                    ActorPID{.server = "PRMR-1234", .id = actor},
+                    TrivialActor::Message{TrivialMessage("baz")});
 
   auto state = runtime->getActorStateByID<TrivialActor>(actor);
   ASSERT_EQ(state, (TrivialState{.state = "foobaz", .called = 2}));
@@ -151,8 +150,7 @@ TEST(ActorRuntimeTest,
                                                scheduler, dispatcher);
   auto actor_id = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                                TrivialStart{});
-  auto actor =
-      ActorPID{.server = "PRMR-1234", .id = actor_id, .databaseName = ""};
+  auto actor = ActorPID{.server = "PRMR-1234", .id = actor_id};
 
   runtime->dispatch(actor, actor, SomeMessages{SomeMessage{}});
 
@@ -171,11 +169,9 @@ TEST(
                                                scheduler, dispatcher);
   auto actor_id = runtime->spawn<TrivialActor>(TrivialState{.state = "foo"},
                                                TrivialStart{});
-  auto actor =
-      ActorPID{.server = "PRMR-1234", .id = actor_id, .databaseName = ""};
+  auto actor = ActorPID{.server = "PRMR-1234", .id = actor_id};
 
-  auto unknown_actor =
-      ActorPID{.server = "PRMR-1234", .id = {999}, .databaseName = ""};
+  auto unknown_actor = ActorPID{.server = "PRMR-1234", .id = {999}};
   runtime->dispatch(actor, unknown_actor,
                     TrivialActor::Message{TrivialMessage{"baz"}});
 
@@ -196,9 +192,8 @@ TEST(ActorRuntimeTest, ping_pong_game) {
                                                       pong_actor::Start{});
   auto ping_actor = runtime->spawn<ping_actor::Actor>(
       ping_actor::PingState{},
-      ping_actor::Start{.pongActor = ActorPID{.server = serverID,
-                                              .id = pong_actor,
-                                              .databaseName = ""}});
+      ping_actor::Start{.pongActor =
+                            ActorPID{.server = serverID, .id = pong_actor}});
 
   auto ping_actor_state =
       runtime->getActorStateByID<ping_actor::Actor>(ping_actor);
@@ -219,10 +214,9 @@ TEST(ActorRuntimeTest, spawn_game) {
   auto spawn_actor =
       runtime->spawn<SpawnActor>(SpawnState{}, SpawnStartMessage{});
 
-  runtime->dispatch(
-      ActorPID{.server = serverID, .id = spawn_actor, .databaseName = ""},
-      ActorPID{.server = serverID, .id = spawn_actor, .databaseName = ""},
-      SpawnActor::Message{SpawnMessage{"baz"}});
+  runtime->dispatch(ActorPID{.server = serverID, .id = spawn_actor},
+                    ActorPID{.server = serverID, .id = spawn_actor},
+                    SpawnActor::Message{SpawnMessage{"baz"}});
 
   ASSERT_EQ(runtime->getActorIDs().size(), 2);
   ASSERT_EQ(runtime->getActorStateByID<SpawnActor>(spawn_actor),

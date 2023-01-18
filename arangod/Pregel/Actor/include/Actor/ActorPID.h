@@ -62,12 +62,10 @@ using DatabaseName = std::string;
 struct ActorPID {
   ServerID server;
   ActorID id;
-  DatabaseName databaseName;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ActorPID& x) {
-  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id),
-                            f.field("databaseName", x.databaseName));
+  return f.object(x).fields(f.field("server", x.server), f.embedFields(x.id));
 }
 
 }  // namespace arangodb::pregel::actor
