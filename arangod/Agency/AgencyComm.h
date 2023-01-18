@@ -214,6 +214,8 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  AgencyPrecondition(std::string const& key, Type,
+                     std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
       : key(AgencyCommHelper::path(key)),
@@ -228,6 +230,8 @@ class AgencyPrecondition {
                      Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type, velocypack::Slice const&);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type t, T const& v)
@@ -247,8 +251,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice value;
   std::shared_ptr<VPackBuilder> builder;
+  velocypack::Slice value;
 };
 
 // -----------------------------------------------------------------------------
@@ -323,6 +327,10 @@ class AgencyOperation {
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::string const& key() const { return _key; }
+#endif
 
  public:
   uint64_t _ttl = 0;

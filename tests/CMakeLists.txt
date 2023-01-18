@@ -207,8 +207,11 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterInfoTest.cpp
-  Cluster/RebootTrackerTest.cpp
+  Cluster/EvenDistributionTest.cpp
+  Cluster/PlanCollectionToAgencyWriterTest.cpp
+  Cluster/PlanCollectionEntryTest.cpp
   Cluster/QueryAnalyzerRevisionsTest.cpp
+  Cluster/RebootTrackerTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -275,7 +278,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
-  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
@@ -371,3 +373,4 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(sepp)
+add_subdirectory(VocBase/Properties)

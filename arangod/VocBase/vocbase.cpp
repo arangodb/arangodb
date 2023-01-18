@@ -62,7 +62,8 @@
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Containers/Helpers.h"
-#include "Cluster/FailureOracleFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -107,6 +108,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -1332,6 +1335,39 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   }
 }
 
+ResultT<std::vector<std::shared_ptr<arangodb::LogicalCollection>>>
+TRI_vocbase_t::createCollections(
+    std::vector<arangodb::CreateCollectionBody> const& collections,
+    bool allowEnterpriseCollectionsOnSingleServer) {
+  // TODO: Need to get rid of this collection. Distribute Shards like
+  // is now denoted inside the CreateCollectionBody
+  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
+  /// Code from here is copy pasted from original create and
+  /// has not been refacored yet.
+  VPackBuilder builder =
+      CreateCollectionBody::toCreateCollectionProperties(collections);
+  VPackSlice infoSlice = builder.slice();
+
+  TRI_ASSERT(infoSlice.isArray());
+  TRI_ASSERT(infoSlice.length() >= 1);
+  TRI_ASSERT(infoSlice.length() == collections.size());
+  try {
+    // Here we do have a single server setup, or we're either on a DBServer
+    // / Agency. In that case, we're not batching collection creating.
+    // Therefore, we need to iterate over the infoSlice and create each
+    // collection one by one.
+    return {
+        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer)};
+
+  } catch (basics::Exception const& ex) {
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+}
+
 std::vector<std::shared_ptr<arangodb::LogicalCollection>>
 TRI_vocbase_t::createCollections(
     arangodb::velocypack::Slice infoSlice,
@@ -2166,6 +2202,24 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
   return true;
 }
 
+/// @brief sanitize an object, given as slice, builder must contain an
+/// open object which will remain open
+/// the result is the object excluding _id, _key and _rev
+void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
+  TRI_ASSERT(slice.isObject());
+  VPackObjectIterator it(slice);
+  while (it.valid()) {
+    std::string_view key(it.key().stringView());
+    // _id, _key, _rev. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString)) {
+      builder.add(key, it.value());
+    }
+    it.next();
+  }
+}
+
 using namespace arangodb::replication2;
 
 auto TRI_vocbase_t::updateReplicatedState(
@@ -2240,22 +2294,62 @@ void TRI_vocbase_t::registerReplicatedState(
   _logManager->registerReplicatedState(id, std::move(methods));
 }
 
-/// @brief sanitize an object, given as slice, builder must contain an
-/// open object which will remain open
-/// the result is the object excluding _id, _key and _rev
-void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
-  TRI_ASSERT(slice.isObject());
-  VPackObjectIterator it(slice);
-  while (it.valid()) {
-    std::string_view key(it.key().stringView());
-    // _id, _key, _rev. minimum size here is 3
-    if (key.size() < 3 || key[0] != '_' ||
-        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
-         key != StaticStrings::RevString)) {
-      builder.add(key, it.value());
+[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
+    -> arangodb::DatabaseConfiguration {
+  auto& cl = server().getFeature<ClusterFeature>();
+  auto& db = server().getFeature<DatabaseFeature>();
+
+  auto config = std::invoke([&]() -> DatabaseConfiguration {
+    if (!ServerState::instance()->isCoordinator() &&
+        !ServerState::instance()->isDBServer()) {
+      return {[]() { return DataSourceId(TRI_NewTickServer()); },
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                return c->getCollectionProperties();
+              }};
+    } else {
+      auto& ci = cl.clusterInfo();
+      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                return c->getCollectionProperties();
+              }};
     }
-    it.next();
+  });
+
+  config.maxNumberOfShards = cl.maxNumberOfShards();
+  config.allowExtendedNames = db.extendedNamesForCollections();
+  config.shouldValidateClusterSettings = true;
+  config.minReplicationFactor = cl.minReplicationFactor();
+  config.maxReplicationFactor = cl.maxReplicationFactor();
+  config.enforceReplicationFactor = true;
+  config.defaultNumberOfShards = 1;
+  config.defaultReplicationFactor =
+      std::max(replicationFactor(), cl.systemReplicationFactor());
+  config.defaultWriteConcern = writeConcern();
+
+  config.isOneShardDB = cl.forceOneShard() || isOneShard();
+  if (config.isOneShardDB) {
+    config.defaultDistributeShardsLike = shardingPrototypeName();
+  } else {
+    config.defaultDistributeShardsLike = "";
   }
+
+  return config;
 }
 
 // -----------------------------------------------------------------------------

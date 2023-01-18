@@ -2260,6 +2260,33 @@ RebootTracker const& ClusterInfo::rebootTracker() const noexcept {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief Test if all names (Collection & Views) are available  in the given
+/// database and return the planVersion this can be guaranteed on.
+//////////////////////////////////////////////////////////////////////////////
+
+ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
+    std::string_view databaseName, std::vector<std::string> const& names) {
+  READ_LOCKER(readLocker, _planProt.lock);
+  // Load all collections of the Database
+  auto const& colList = _plannedCollections.find(databaseName);
+  if (colList == _plannedCollections.end()) {
+    // If there are no collections in the Database, it is not there.
+    return Result{TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto const& viewList = _plannedViews.find(databaseName);
+  for (auto const& name : names) {
+    if (colList->second->contains(name) ||
+        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
+      // Either a Collection or a view is known with this name. Disallow it.
+      return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                    std::string("duplicate collection name '") + name + "'");
+    }
+  }
+  return {_planVersion};
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a view
 /// If it is not found in the cache, the cache is reloaded once. The second
 /// argument can be a view ID or a view name (both cluster-wide).
@@ -3174,9 +3201,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       for (auto& cb : agencyCallbacks) {
         _agencyCallbackRegistry->unregisterCallback(cb);
       }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("cc911", ERR, Logger::CLUSTER)
-          << "Failed to unregister agency callback: " << ex.what();
+    } catch (std::exception const&) {
     }
   });
 
@@ -3535,9 +3560,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         std::this_thread::sleep_for(waitTime);
       }
 
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("57486", ERR, Logger::CLUSTER)
-          << "Failed to delete collection during rollback: " << ex.what();
+    } catch (std::exception const&) {
     }
   });
 
@@ -3624,9 +3647,6 @@ Result ClusterInfo::createCollectionsCoordinator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
-      << "createCollectionCoordinator, Plan changed, waiting for success...";
-
   auto replicatedStatesWait = std::invoke([&]() -> futures::Future<Result> {
     if (replicationVersion == replication::Version::TWO) {
       // TODO could the version of a replicated state change in the meantime?
@@ -3697,10 +3717,6 @@ Result ClusterInfo::createCollectionsCoordinator(
             databaseName, info.collectionID, info.isBuildingSlice()));
       }
 
-      LOG_TOPIC("98bcb", DEBUG, Logger::CLUSTER)
-          << "createCollectionCoordinator, collections ok, removing "
-             "isBuilding...";
-
       AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
@@ -3709,10 +3725,6 @@ Result ClusterInfo::createCollectionsCoordinator(
       // important so that the creation of all collections is atomic, and
       // the deleteCollectionGuard relies on it, too.
       auto res = ac.sendTransactionWithFailover(transaction);
-
-      LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
-          << "createCollectionCoordinator, isBuilding removed, waiting for new "
-             "Plan...";
 
       TRI_IF_FAILURE(
           "ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding") {
@@ -3732,12 +3744,6 @@ Result ClusterInfo::createCollectionsCoordinator(
           }
         }
       } else {
-        LOG_TOPIC("98675", WARN, Logger::CLUSTER)
-            << "Failed createCollectionsCoordinator for " << infos.size()
-            << " collections in database " << databaseName
-            << " isNewDatabase: " << isNewDatabase
-            << " first collection name: " << infos[0].name
-            << " result: " << res;
         return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
                       "A cluster backend which was required for the operation "
                       "could not be reached");
@@ -3749,13 +3755,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         TRI_ASSERT(info.state == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
-
-      LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)
-          << "Finished createCollectionsCoordinator for " << infos.size()
-          << " collections in database " << databaseName
-          << " isNewDatabase: " << isNewDatabase
-          << " first collection name: " << infos[0].name
-          << " result: " << res.errorCode();
       return res.asResult();
     }
     if (tmpRes.has_value() && tmpRes != TRI_ERROR_NO_ERROR) {
@@ -6984,6 +6983,11 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 }
 
 ArangodServer& ClusterInfo::server() const { return _server; }
+
+AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
+  TRI_ASSERT(_agencyCallbackRegistry != nullptr);
+  return *_agencyCallbackRegistry;
+}
 
 ClusterInfo::ServersKnown::ServersKnown(
     VPackSlice const serversKnownSlice,
