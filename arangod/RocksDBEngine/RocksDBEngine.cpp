@@ -2536,6 +2536,39 @@ void RocksDBEngine::pruneWalFiles() {
       << "current number of prunable WAL files: " << _prunableWalFiles.size();
 }
 
+Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
+  rocksdb::ReadOptions readOptions;
+  std::unique_ptr<rocksdb::Iterator> iter(_db->NewIterator(
+      readOptions, RocksDBColumnFamilyManager::get(
+                       RocksDBColumnFamilyManager::Family::Definitions)));
+  auto rSlice = rocksDBSlice(RocksDBEntryType::ReplicatedState);
+  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
+       iter->Next()) {
+    if (databaseId != RocksDBKey::databaseId(iter->key())) {
+      continue;
+    }
+
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    auto info = velocypack::deserialize<RocksDBReplicatedStateInfo>(slice);
+    auto methods = std::make_unique<RocksDBLogStorageMethods>(
+        info.objectId, databaseId, info.stateId, _logPersistor, _db,
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::Definitions),
+        RocksDBColumnFamilyManager::get(
+            RocksDBColumnFamilyManager::Family::ReplicatedLogs));
+    auto res = methods->drop();
+    if (res.fail()) {
+      return res;
+    }
+    // TODO Should we do this here and now, or defer it, or don't do it at all?
+    //      To answer that, check whether and how compaction is usually done
+    //      after dropping a collection or database.
+    std::ignore = methods->compact();
+  }
+}
+
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   using namespace rocksutils;
   arangodb::Result res;
@@ -2545,6 +2578,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
   // remove view definitions
   res = rocksutils::removeLargeRange(db, RocksDBKeyBounds::DatabaseViews(id),
                                      true, /*rangeDel*/ false);
+  if (res.fail()) {
+    return res;
+  }
+
+  // remove replicated states
+  res = dropReplicatedStates(id);
   if (res.fail()) {
     return res;
   }
@@ -2843,8 +2882,11 @@ void RocksDBEngine::loadReplicatedStates(TRI_vocbase_t& vocbase) {
 
     auto slice =
         VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+    // TODO Is this applicable? I think we can safely remove the following
+    //      lines.
     if (basics::VelocyPackHelper::getBooleanValue(
             slice, StaticStrings::DataSourceDeleted, false)) {
+      TRI_ASSERT(false) << "Please tell Team CINFRA if you see this happening.";
       continue;
     }
 
@@ -3616,7 +3658,10 @@ auto RocksDBEngine::createReplicatedState(
           RocksDBColumnFamilyManager::Family::Definitions),
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs));
-  methods->updateMetadata(info);
+  auto res = methods->updateMetadata(info);
+  if (res.fail()) {
+    return res;
+  }
   return {std::move(methods)};
 }
 }  // namespace arangodb
