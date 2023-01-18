@@ -21,12 +21,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Basics/voc-errors.h"
 #include "GeneralServer/RequestLane.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/CommonFormats.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelFeature.h"
