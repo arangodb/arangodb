@@ -32,7 +32,7 @@ const _ = require("lodash");
 const {testHelperFunctions, readAgencyValueAt} = require("@arangodb/testutils/replicated-logs-helper");
 const database = 'CollectionGroupsTest';
 
-const {setUpAll, tearDownAll, setUp, tearDown} = testHelperFunctions(database);
+const {setUpAll, tearDownAll, setUp, tearDown} = testHelperFunctions(database, {replicationVersion: "2"});
 
 const readAgencyCollectionGroups = (databaseName) => {
     return readAgencyValueAt(`Target/CollectionGroups/${databaseName}/`);
