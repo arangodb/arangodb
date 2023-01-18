@@ -27,6 +27,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/memory.h"
+#include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a unicode escape sequence

@@ -419,16 +419,13 @@ bool copyDirectoryRecursive(
   size_t const srcPrefixLength = src.size();
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  struct _wfinddata_t oneItem;
+  _finddata_t oneItem;
   intptr_t handle;
 
-  std::string rcs;
   std::string flt = source + "\\*";
 
-  icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(
-      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+  handle = _findfirst(flt.c_str(), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -436,11 +433,7 @@ bool copyDirectoryRecursive(
   }
 
   do {
-    rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name,
-                         static_cast<int32_t>(wcslen(oneItem.name)));
-    d.toUTF8String<std::string>(rcs);
-    char const* fn = (char*)rcs.c_str();
+    char const* fn = oneItem.name;
 #else
   DIR* filedir = opendir(source.c_str());
 
@@ -532,7 +525,7 @@ bool copyDirectoryRecursive(
       }  // switch
     }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
+  } while (_findnext(handle, &oneItem) != -1 && rc_bool);
 
   _findclose(handle);
 
@@ -550,14 +543,11 @@ std::vector<std::string> listFiles(std::string const& directory) {
 #ifdef TRI_HAVE_WIN32_LIST_FILES
   char* fn = nullptr;
 
-  struct _wfinddata_t oneItem;
+  struct _finddata_t oneItem;
   intptr_t handle;
-  std::string rcs;
 
   std::string filter = directory + "\\*";
-  icu::UnicodeString f(filter.c_str());
-  handle = _wfindfirst(
-      reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
+  handle = _findfirst(filter.c_str(), &oneItem);
 
   if (handle == -1) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -569,18 +559,14 @@ std::vector<std::string> listFiles(std::string const& directory) {
   }
 
   do {
-    rcs.clear();
-    icu::UnicodeString d((wchar_t*)oneItem.name,
-                         static_cast<int32_t>(wcslen(oneItem.name)));
-    d.toUTF8String<std::string>(rcs);
-    fn = (char*)rcs.c_str();
+    fn = oneItem.name;
 
     if (!strcmp(fn, ".") || !strcmp(fn, "..")) {
       continue;
     }
 
-    result.push_back(rcs);
-  } while (_wfindnext(handle, &oneItem) != -1);
+    result.emplace_back(fn);
+  } while (_findnext(handle, &oneItem) != -1);
 
   _findclose(handle);
 

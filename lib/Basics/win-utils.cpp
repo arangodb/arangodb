@@ -28,13 +28,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
+#include <direct.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unicode/locid.h>
-#include <unicode/uchar.h>
-#include <unicode/unistr.h>
-#include <wchar.h>
-#include <codecvt>
 #include <iomanip>
 #include <locale>
 
@@ -51,7 +47,6 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/directories.h"
@@ -133,29 +128,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
       return 0;
     }
 
-    case TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL: {
-      int errorCode;
-      WSADATA wsaData;
-      WORD wVersionRequested = MAKEWORD(2, 2);
-      errorCode = WSAStartup(wVersionRequested, &wsaData);
-
-      if (errorCode != 0) {
-        LOG_TOPIC("10456", ERR, arangodb::Logger::FIXME)
-            << "Could not find a usable Winsock DLL. WSAStartup returned "
-               "an error.";
-        return -1;
-      }
-
-      if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_TOPIC("dbaa4", ERR, arangodb::Logger::FIXME)
-            << "Could not find a usable Winsock DLL. WSAStartup did not "
-               "return version 2.2.";
-        WSACleanup();
-        return -1;
-      }
-      return 0;
-    }
-
     default: {
       LOG_TOPIC("90c63", ERR, arangodb::Logger::FIXME)
           << "Invalid windows initialization called";
@@ -169,10 +141,9 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
 int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
-  icu::UnicodeString fn(filename);
-
+  
   fileHandle =
-      CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+      CreateFileA(filename,
                   GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                   (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
@@ -218,10 +189,7 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
       break;
   }
 
-  icu::UnicodeString fn(filename);
-  fileHandle =
-      CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
-                  mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+  fileHandle = CreateFileA(filename, mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                   NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -281,31 +249,23 @@ bool TRI_WRITE_POINTER(HANDLE fd, void const* buffer, size_t length) {
 }
 
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
-  icu::UnicodeString fn(filename);
-  icu::UnicodeString umod(mode);
-  return _wfopen(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
-                 reinterpret_cast<const wchar_t*>(umod.getTerminatedBuffer()));
+  return ::fopen(filename, mode);
 }
 
-int TRI_CHDIR(char const* dirname) {
-  icu::UnicodeString dn(dirname);
-  return ::_wchdir(reinterpret_cast<const wchar_t*>(dn.getTerminatedBuffer()));
-}
+int TRI_CHDIR(char const* dirname) { return ::chdir(dirname); }
 
 int TRI_STAT(char const* path, TRI_stat_t* buffer) {
-  icu::UnicodeString p(path);
-  auto rc = ::_wstat64(
-      reinterpret_cast<const wchar_t*>(p.getTerminatedBuffer()), buffer);
+  auto rc = ::_stat64(path, buffer);
   return rc;
 }
 
 char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
   try {
-    auto wbuf = std::make_unique<wchar_t[]>(maxlen);
-    auto* rcw = ::_wgetcwd(wbuf.get(), maxlen);
+    auto buf = std::make_unique<char[]>(maxlen);
+    auto* rcw = ::_getcwd(buf.get(), maxlen);
     if (rcw != nullptr) {
-      std::string rcs = fromWString(rcw);
+      std::string rcs = rcw;
       if (rcs.length() + 1 < maxlen) {
         memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
@@ -322,19 +282,11 @@ char* TRI_GETCWD(char* buffer, int maxlen) {
   return rc;
 }
 
-int TRI_MKDIR_WIN32(char const* dirname) {
-  icu::UnicodeString dir(dirname);
-  return ::_wmkdir(reinterpret_cast<const wchar_t*>(dir.getTerminatedBuffer()));
-}
+int TRI_MKDIR_WIN32(char const* dirname) { return ::mkdir(dirname); }
 
-int TRI_RMDIR(char const* dirname) {
-  icu::UnicodeString dir(dirname);
-  return ::_wrmdir(reinterpret_cast<const wchar_t*>(dir.getTerminatedBuffer()));
-}
-int TRI_UNLINK(char const* filename) {
-  icu::UnicodeString fn(filename);
-  return ::_wunlink(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()));
-}
+int TRI_RMDIR(char const* dirname) { return ::rmdir(dirname); }
+
+int TRI_UNLINK(char const* filename) { return ::unlink(filename); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
@@ -347,16 +299,15 @@ arangodb::Result translateWindowsError(DWORD error) {
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
-  LPWSTR buffer = nullptr;
+  LPSTR buffer = nullptr;
   auto sg = arangodb::scopeGuard([&]() noexcept { ::LocalFree(buffer); });
-  size_t size = FormatMessageW(
+  size_t size = FormatMessageA(
       FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
           FORMAT_MESSAGE_IGNORE_INSERTS,
       nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-      (LPWSTR)&buffer, 0, nullptr);
+      (LPSTR)&buffer, 0, nullptr);
   if (size) {
-    std::wstring out(buffer, size);
-    return fromWString(out);
+    return std::string(buffer, size);
   }
   return "error translation failed";
 }
@@ -555,17 +506,9 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _snprintf(buf, sizeof(buf) - 1, "%s", message.c_str());
   buf[sizeof(buf) - 1] = '\0';
 
-  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len),
-                             icu::UnicodeString(file), icu::UnicodeString(func),
-                             icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {
-      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()),
-      nullptr};
+  LPCSTR buffers[] = {buf, file, func, linebuf, nullptr};
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+  if (!ReportEventA(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
     // well, fail then...
   }
@@ -583,17 +526,9 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
   buf[sizeof(buf) - 1] = '\0';
 
-  icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len),
-                             icu::UnicodeString(file), icu::UnicodeString(func),
-                             icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {
-      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()),
-      nullptr};
+  LPCSTR buffers[] = {buf, file, func, linebuf, nullptr};
   // Try to get messages through to windows syslog...
-  if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
+  if (!ReportEventA(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
     // well, fail then...
   }
@@ -623,12 +558,6 @@ void ADB_WindowsEntryFunction() {
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
                           (char const*)(&maxOpenFiles));
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
-
-  res = initializeWindows(TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     _exit(EXIT_FAILURE);
@@ -771,30 +700,4 @@ std::string getFileNameFromHandle(HANDLE fileHandle) {
     return std::string();
   }
   return std::string((LPCTSTR)CString(FileInformation->FileName));
-}
-
-static std::vector<std::string> argVec;
-
-void TRI_GET_ARGV_WIN(int& argc, char** argv) {
-  auto wargStr = GetCommandLineW();
-
-  // if you want your argc in unicode, all you gonna do
-  // is ask:
-  auto wargv = CommandLineToArgvW(wargStr, &argc);
-
-  argVec.reserve(argc);
-
-  icu::UnicodeString buf;
-  std::string uBuf;
-  for (int i = 0; i < argc; i++) {
-    uBuf.clear();
-    // convert one UTF16 argument to utf8:
-    buf = wargv[i];
-    buf.toUTF8String<std::string>(uBuf);
-    // memorize the utf8 value to keep the instance:
-    argVec.push_back(uBuf);
-
-    // Now overwrite our original argc entry with the utf8 one:
-    argv[i] = (char*)argVec[i].c_str();
-  }
 }

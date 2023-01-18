@@ -18,27 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
-#include <memory>
-#include <string>
 
-namespace arangodb::replication2 {
-struct LogIndex;
-using ParticipantId = std::string;
-namespace replicated_log {
-struct IReplicatedStateHandle;
-struct IReplicatedLogFollowerMethods;
-inline namespace comp {
-struct IStateHandleManager {
-  virtual ~IStateHandleManager() = default;
-  virtual void updateCommitIndex(LogIndex) noexcept = 0;
-  virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
-  virtual void becomeFollower(
-      std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
-  virtual void acquireSnapshot(ParticipantId const& leader) noexcept = 0;
-};
-}  // namespace comp
-}  // namespace replicated_log
-}  // namespace arangodb::replication2
+#include <string>
+#include <vector>
+
+#include <shellapi.h>
+#include <windows.h>
+
+#include <unicode/unistr.h>
+
+static std::vector<std::string> argVec;
+
+void TRI_GET_ARGV_WIN(int& argc, char** argv) {
+  auto wargStr = GetCommandLineW();
+
+  // if you want your argc in unicode, all you gonna do
+  // is ask:
+  auto wargv = CommandLineToArgvW(wargStr, &argc);
+
+  argVec.reserve(argc);
+
+  icu::UnicodeString buf;
+  std::string uBuf;
+  for (int i = 0; i < argc; i++) {
+    uBuf.clear();
+    // convert one UTF16 argument to utf8:
+    buf = wargv[i];
+    buf.toUTF8String<std::string>(uBuf);
+    // memorize the utf8 value to keep the instance:
+    argVec.push_back(uBuf);
+
+    // Now overwrite our original argc entry with the utf8 one:
+    argv[i] = (char*)argVec[i].c_str();
+  }
+}
