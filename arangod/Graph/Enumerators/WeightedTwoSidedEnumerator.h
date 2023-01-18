@@ -80,7 +80,6 @@ class WeightedTwoSidedEnumerator {
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
-    [[nodiscard]] auto shellSize() const -> size_t;
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
