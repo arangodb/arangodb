@@ -153,7 +153,7 @@ Result IResearchLink::toView(std::shared_ptr<LogicalView> const& logical,
 
 Result IResearchLink::initAndLink(bool& pathExists, InitCallback const& init,
                                   IResearchView* view) {
-  irs::index_reader_options readerOptions;
+  irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
   setupReaderEntepriseOptions(readerOptions,
                               index().collection().vocbase().server(), _meta);
