@@ -1927,7 +1927,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("canRunOnDBServerOneShard",
                       VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
             nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-            nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+            nodes.add("usesV8", VPackValue(node->willUseV8()));
             // deprecated
             nodes.add("canRunOnDBServer",
                       VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
