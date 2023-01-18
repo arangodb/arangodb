@@ -43,14 +43,14 @@ jobs:
       - run:
           name: Cleanup build directory
           command: |
-            find build/<< parameters.preset >> -iname *.a -delete
-            find build/<< parameters.preset >> -iname *.o -delete
-            ls -la build/<< parameters.preset >>/bin/
+            find build/ -iname *.a -delete
+            find build/ >> -iname *.o -delete
+            ls -la build/ >>/bin/
       - run:
           name: SCCache Statistics
           command: sccache -s
       - store_artifacts:
-          path: build/<< parameters.preset >>/bin/arango*
+          path: build/bin/arango*
       # - save_cache:
       #     when: always
       #     key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
@@ -61,7 +61,7 @@ jobs:
           root: .
           paths:
             - CMakePresets.json
-            - build/<< parameters.preset >>
+            - build/
             - scripts/
             - js/
             - etc/
