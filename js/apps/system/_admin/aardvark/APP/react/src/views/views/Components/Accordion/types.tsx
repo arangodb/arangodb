@@ -10,7 +10,7 @@ interface IAccordionItem {
 
 export interface IAccordionItemViewArgs extends IAccordionItem {
   content: ReactNode;
-  onClick?: (index: number) => void;
+  clickHandler?: (index: number) => void;
   allowMultipleOpen?: boolean;
 }
 
@@ -21,6 +21,6 @@ export interface IAccordionViewArgs {
 
 export interface IAccordionTitleViewArgs extends IAccordionItem {
   className?: string;
-  onClick?: (index: number) => void;
+  clickHandler?: (index: number) => void;
   allowMultipleOpen?: boolean;
 }

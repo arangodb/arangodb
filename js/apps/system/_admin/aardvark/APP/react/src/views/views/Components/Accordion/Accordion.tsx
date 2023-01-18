@@ -38,7 +38,7 @@ const AccordionView = ({
     }
   };
 
-  if (!accordionConfig.length || !accordionConfig) {
+  if (!accordionConfig || !accordionConfig.length) {
     return null;
   }
   return (
@@ -50,7 +50,7 @@ const AccordionView = ({
             allowMultipleOpen={allowMultipleOpen}
             key={config.index}
             active={activeIndices.includes(config.index)}
-            onClick={handleClick}
+            clickHandler={handleClick}
             testID={`accordion${config.index}`}
           />
         );

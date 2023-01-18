@@ -6,7 +6,7 @@ const AccordionTitleView = ({
   index,
   testID,
   label,
-  onClick
+  clickHandler
 }: IAccordionTitleViewArgs) => {
   //{active ? <b className='caret rotate-180' /> : <b className='caret' />}
   return (
@@ -14,7 +14,7 @@ const AccordionTitleView = ({
       <div
         className={`title custom-content ${active ? "active" : ""}`}
         onClick={() => {
-          onClick && onClick(index);
+          clickHandler && clickHandler(index);
         }}
       >
         <div className="accordion-flex" data-testid={`${testID}Flex`}>
