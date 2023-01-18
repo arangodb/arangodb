@@ -57,6 +57,10 @@ inline auto pathReplicatedLogInTarget(std::string_view databaseName) {
   return paths::target()->replicatedLogs()->database(std::string{databaseName});
 }
 
+inline auto pathCollectionGroupInTarget(std::string_view databaseName) {
+  return paths::target()->collectionGroups()->database(std::string{databaseName});
+}
+
 inline auto pathCollectionInCurrent(std::string_view databaseName) {
   return paths::current()->collections()->database(std::string{databaseName});
 }
@@ -187,6 +191,7 @@ TargetCollectionAgencyWriter::prepareStartBuildingTransaction(
 
   auto const baseCollectionPath = pathCollectionInPlan(databaseName);
   auto const baseReplicatedLogsPath = pathReplicatedLogInTarget(databaseName);
+  auto const baseGroupPath = pathCollectionGroupInTarget(databaseName);
 
   VPackBufferUInt8 data;
   VPackBuilder builder(data);
