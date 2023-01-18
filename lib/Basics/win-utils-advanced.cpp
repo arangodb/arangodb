@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#include <shellapi.h>
 #include <windows.h>
+#include <shellapi.h>
 
 #include <unicode/unistr.h>
 

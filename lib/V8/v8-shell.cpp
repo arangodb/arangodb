@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/csv.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -293,12 +292,7 @@ static void JS_ProcessJsonFile(
 
   // read and convert
   std::string line;
-#ifndef _MSC_VER
   std::ifstream file(*filename);
-#else
-  std::ifstream file;
-  file.open(arangodb::basics::toWString(*filename));
-#endif
 
   auto builder = std::make_shared<VPackBuilder>();
   VPackParser parser(builder);
