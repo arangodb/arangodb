@@ -323,7 +323,7 @@ void Conductor::workerStatusUpdate(StatusUpdated&& update) {
   // TODO: for these updates we do not care about uniqueness of responses
   // _ensureUniqueResponse(data);
 
-  LOG_PREGEL("76632", DEBUG) << fmt::format("Update received {}", update);
+  LOG_PREGEL("76632", TRACE) << fmt::format("Update received {}", update);
 
   _status.updateWorkerStatus(update.sender, std::move(update.status));
 }
