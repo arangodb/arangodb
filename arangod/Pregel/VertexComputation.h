@@ -31,7 +31,6 @@
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -121,7 +120,6 @@ template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
   OutCache<M>* _cache = nullptr;
-  ReportManager _reports;
 
  public:
   virtual ~VertexComputation() = default;
@@ -145,8 +143,6 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;
-
-  ReportManager& getReportManager() { return _reports; }
 };
 
 template<typename V, typename E, typename M>

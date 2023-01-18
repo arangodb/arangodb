@@ -731,7 +731,7 @@ void GraphStore<V, E>::storeVertices(
     V const& data = it->data();
     if (auto result = _graphFormat->buildVertexDocument(builder, &data);
         !result) {
-      _reports->report(ReportLevel::ERR) << "Failed to build vertex document";
+      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
     }
     builder.close();
     ++numDocs;
