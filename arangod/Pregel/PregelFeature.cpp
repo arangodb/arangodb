@@ -784,7 +784,13 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
     }
     co->finishedWorkerStep(message.get());
   } else if (path == Utils::finishedWorkerFinalizationPath) {
-    co->finishedWorkerFinalize(body);
+    auto message = inspection::deserializeWithErrorT<Finished>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot deserialize Finished message");
+    }
+    co->finishedWorkerFinalize(message.get());
   }
 }
 

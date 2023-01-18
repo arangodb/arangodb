@@ -621,14 +621,13 @@ ErrorCode Conductor::_finalizeWorkers() {
                              VPackBuilder(serialized.get().slice()));
 }
 
-void Conductor::finishedWorkerFinalize(VPackSlice data) {
+void Conductor::finishedWorkerFinalize(Finished const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  ServerID sender = data.get(Utils::senderKey).copyString();
-  LOG_PREGEL("60f0c", WARN)
-      << fmt::format("finishedWorkerFinalize, got response from {}.", sender);
+  LOG_PREGEL("60f0c", WARN) << fmt::format(
+      "finishedWorkerFinalize, got response from {}.", data.sender);
 
-  _ensureUniqueResponse(data);
+  _ensureUniqueResponse(data.sender);
 
   if (_respondedServers.size() != _dbServers.size()) {
     return;

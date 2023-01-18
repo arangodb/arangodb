@@ -525,13 +525,15 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
       _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
     }
 
-    VPackBuilder body;
-    body.openObject();
-    body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
-    body.add(Utils::executionNumberKey,
-             VPackValue(_config.executionNumber().value));
-    body.close();
-    _callConductor(Utils::finishedWorkerFinalizationPath, body);
+    auto finished = Finished{.executionNumber = _config.executionNumber(),
+                             .sender = ServerState::instance()->getId()};
+    auto serialized = inspection::serializeWithErrorT(finished);
+    if (!serialized.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot serialize Finished message");
+    }
+    _callConductor(Utils::finishedWorkerFinalizationPath,
+                   VPackBuilder(serialized.get().slice()));
     cb();
   };
 

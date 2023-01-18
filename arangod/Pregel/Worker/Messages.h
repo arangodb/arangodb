@@ -78,16 +78,15 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
       f.field("messageStats", x.messageStats));
 }
 
-struct Stored {};
+struct Finished {
+  ExecutionNumber executionNumber;
+  std::string sender;
+};
 template<typename Inspector>
-auto inspect(Inspector& f, Stored& x) {
-  return f.object(x).fields();
-}
-
-struct CleanupFinished {};
-template<typename Inspector>
-auto inspect(Inspector& f, CleanupFinished& x) {
-  return f.object(x).fields();
+auto inspect(Inspector& f, Finished& x) {
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field("sender", x.sender));
 }
 
 struct StatusUpdated {
