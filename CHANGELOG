@@ -4,6 +4,9 @@ devel
 * BTS-413: Added more explanatory messages for when the user cannot see the 
   statistics for a node in the UI when in cluster mode.
 
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
 * APM-592: In batched query results, when executing requests for `/_api/cursor`, 
   there might be a connection error and the user might not be able to retrieve
   the latest batch from the cursor. For that, a query option flag `allowRetry` was

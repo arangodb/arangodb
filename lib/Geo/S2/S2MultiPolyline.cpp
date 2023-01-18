@@ -81,4 +81,30 @@ bool S2MultiPolyline::Contains(S2Point const& /*p*/) const {
   return false;
 }
 
+void S2MultiPolyline::Encode(Encoder* const encoder,
+                             s2coding::CodingHint hint) const {
+  encoder->Ensure(sizeof(uint64_t));
+  encoder->put64(_impl.size());
+  for (auto const& polyline : _impl) {
+    if (hint == s2coding::CodingHint::FAST) {
+      polyline.EncodeUncompressed(encoder);
+    } else {
+      polyline.EncodeMostCompact(encoder);
+    }
+  }
+}
+
+bool S2MultiPolyline::Decode(Decoder* const decoder) {
+  if (decoder->avail() < sizeof(uint64_t)) {
+    return false;
+  }
+  _impl.resize(static_cast<size_t>(decoder->get64()));
+  for (auto& polyline : _impl) {
+    if (!polyline.Decode(decoder)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace arangodb::geo

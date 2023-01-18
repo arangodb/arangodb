@@ -43,7 +43,6 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -59,9 +58,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
@@ -70,7 +70,7 @@ struct RecursiveAttributeFinderContext {
   bool couldExtractAttributePath;
   std::string_view expectedAttribute;
   containers::SmallVector<AstNode const*, 128> seen;
-  containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes;
+  containers::FlatHashSet<aql::AttributeNamePath>& attributes;
 };
 
 struct ValidateAndOptimizeContext {
@@ -90,8 +90,7 @@ struct ValidateAndOptimizeContext {
 
 auto doNothingVisitor = [](AstNode const*) {};
 
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
-                                      ErrorCode code,
+[[noreturn]] void throwFormattedError(aql::QueryContext& query, ErrorCode code,
                                       std::string_view details) {
   // ensure that details is null-terminated
   // TODO: if we get rid of vsprintf in FillExceptionString, we don't
@@ -209,7 +208,7 @@ bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
  * to the translated name (cid => name if required).
  */
 LogicalDataSource::Category injectDataSourceInQuery(
-    Ast& ast, arangodb::CollectionNameResolver const& resolver,
+    Ast& ast, CollectionNameResolver const& resolver,
     AccessMode::Type accessType, bool failIfDoesNotExist,
     std::string_view& nameRef) {
   std::string const name = std::string(nameRef);
@@ -406,7 +405,7 @@ AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
 }
 
 /// @brief create a node from the velocypack slice
-AstNode* Ast::createNode(arangodb::velocypack::Slice slice) {
+AstNode* Ast::createNode(velocypack::Slice slice) {
   return _resources.registerNode(this, slice);
 }
 
@@ -877,9 +876,10 @@ AstNode* Ast::createNodeVariable(std::string_view name, bool isUserDefined) {
 
 /// @brief create an AST datasource
 /// this function will return either an AST collection or an AST view node
-AstNode* Ast::createNodeDataSource(
-    arangodb::CollectionNameResolver const& resolver, std::string_view name,
-    AccessMode::Type accessType, bool validateName, bool failIfDoesNotExist) {
+AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
+                                   std::string_view name,
+                                   AccessMode::Type accessType,
+                                   bool validateName, bool failIfDoesNotExist) {
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
@@ -902,9 +902,9 @@ AstNode* Ast::createNodeDataSource(
 }
 
 /// @brief create an AST collection node
-AstNode* Ast::createNodeCollection(
-    arangodb::CollectionNameResolver const& resolver, std::string_view name,
-    AccessMode::Type accessType) {
+AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
+                                   std::string_view name,
+                                   AccessMode::Type accessType) {
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
@@ -921,7 +921,7 @@ AstNode* Ast::createNodeCollection(
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-      std::string(name) + " is required to be a collection.");
+      absl::StrCat(name, " is required to be a collection"));
 }
 
 /// @brief create an AST reference node
@@ -1432,10 +1432,10 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
   }
 
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(nl, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   VPackBuilder temp;
 
@@ -1477,10 +1477,10 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
   auto node = createNodeArray(nl + nr);
 
   std::unordered_map<VPackSlice, AstNode const*,
-                     arangodb::basics::VelocyPackHelper::VPackHash,
-                     arangodb::basics::VelocyPackHelper::VPackEqual>
-      cache(nl + nr, arangodb::basics::VelocyPackHelper::VPackHash(),
-            arangodb::basics::VelocyPackHelper::VPackEqual());
+                     basics::VelocyPackHelper::VPackHash,
+                     basics::VelocyPackHelper::VPackEqual>
+      cache(nl + nr, basics::VelocyPackHelper::VPackHash(),
+            basics::VelocyPackHelper::VPackEqual());
 
   VPackBuilder temp;
 
@@ -1530,8 +1530,7 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
 
 /// @brief create an AST with collections node
 AstNode* Ast::createNodeWithCollections(
-    AstNode const* collections,
-    arangodb::CollectionNameResolver const& resolver) {
+    AstNode const* collections, CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
   TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
@@ -1621,7 +1620,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-          std::string(nameRef) + " is required to be a collection.");
+          absl::StrCat(nameRef, " is required to be a collection"));
     }
   };
 
@@ -1745,7 +1744,7 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
 }
 
 /// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
-AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
+AstNode* Ast::createNodeEnumeratePaths(graph::PathType::Type type,
                                        AstNode const* outVars,
                                        AstNode const* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
@@ -1756,9 +1755,9 @@ AstNode* Ast::createNodeEnumeratePaths(arangodb::graph::PathType::Type type,
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() == 1);
 
-  TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths ||
-             type == arangodb::graph::PathType::Type::AllShortestPaths);
+  TRI_ASSERT(type == graph::PathType::Type::KShortestPaths ||
+             type == graph::PathType::Type::KPaths ||
+             type == graph::PathType::Type::AllShortestPaths);
 
   // type: K_SHORTEST_PATH vs. K_PATHS
   TRI_ASSERT(node->numMembers() == 0);
@@ -1931,9 +1930,8 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(
-    BindParameters& parameters,
-    arangodb::CollectionNameResolver const& resolver) {
+void Ast::injectBindParameters(BindParameters& parameters,
+                               CollectionNameResolver const& resolver) {
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -2381,11 +2379,11 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
         ++ctx->stopOptimizationRequests;
       }
       if (node->willUseV8()) {
-        setWillUseV8();
+        _willUseV8 = true;
       }
     } else if (node->type == NODE_TYPE_FCALL_USER) {
       // user-defined function. will always use V8
-      setWillUseV8();
+      _willUseV8 = true;
     } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
       // a collection list is produced by WITH a, b, c
       // or by traversal declarations
@@ -2759,7 +2757,7 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
-    containers::FlatHashSet<arangodb::aql::AttributeNamePath>& attributes) {
+    containers::FlatHashSet<aql::AttributeNamePath>& attributes) {
   RecursiveAttributeFinderContext state{variable,
                                         /*couldExtractAttributePath*/ true,
                                         expectedAttribute,
@@ -3901,11 +3899,11 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        StringUtils::concatT("collection or ",
-                             TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
-                             " as operand to FOR loop; you specified type '",
-                             expression->getValueTypeString(),
-                             "' with content '", expression->toString(), "'"));
+        absl::StrCat("collection or ",
+                     TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                     " as operand to FOR loop; you specified type '",
+                     expression->getValueTypeString(), "' with content '",
+                     expression->toString(), "'"));
   }
 
   // no real optimizations will be done here
@@ -4387,7 +4385,3 @@ void Ast::setContainsParallelNode() noexcept {
   _containsParallelNode = true;
 #endif
 }
-
-bool Ast::willUseV8() const noexcept { return _willUseV8; }
-
-void Ast::setWillUseV8() noexcept { _willUseV8 = true; }

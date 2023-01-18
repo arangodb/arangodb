@@ -826,6 +826,14 @@ class PyWrapS2TestCase(unittest.TestCase):
     self.assertFalse(s2.UpdateMinDistance(pC, p1, p2, md))
     self.assertAlmostEqual(0.1478883, md.degrees())
 
+  def testS1AngleToString(self):
+    a = s2.S1Angle.Degrees(123)
+    self.assertEqual("123.0000000", str(a))
+
+  def testS2CellIdToString(self):
+    a = s2.S2CellId(12345)
+    self.assertEqual("0/000000000000000000000001200130", str(a))
+
 class RegionTermIndexerTest(unittest.TestCase):
   def _randomCaps(self, query_type, **indexer_options):
     # This function creates an index consisting either of points (if
