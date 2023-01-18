@@ -305,6 +305,20 @@ Result insertDocument(IResearchDataStore const& dataStore,
   return {};
 }
 
+std::string toString(irs::DirectoryReader const& reader, bool isNew, IndexId id,
+                     uint64_t tickLow, uint64_t tickHigh) {
+  auto const& meta = reader.Meta();
+  std::string_view const newOrExisting{isNew ? "new" : "existing"};
+
+  return absl::StrCat("Successfully opened data store reader for the ",
+                      newOrExisting, " ArangoSearchIndex '", id.id(),
+                      "', snapshot '", meta.filename, "', docs count '",
+                      reader.docs_count(), "', live docs count '",
+                      reader.live_docs_count(), "', number of segments '",
+                      meta.index_meta.segments.size(), "', recovery tick low '",
+                      tickLow, "' and recovery tick high '", tickHigh, "'");
+}
+
 static std::atomic_bool kHasClusterMetrics{false};
 
 }  // namespace
@@ -1223,82 +1237,11 @@ void IResearchDataStore::initAsyncSelf() {
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 }
 
-Result IResearchDataStore::initDataStore(
-    bool& pathExists, InitCallback const& initCallback, uint32_t version,
-    bool sorted, bool nested,
-    std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-    irs::type_info::type_id primarySortCompression,
-    irs::IndexReaderOptions const& readerOptions) {
-  std::atomic_store(&_flushSubscription, {});
-  // reset together with '_asyncSelf'
-  _asyncSelf->reset();
-  // the data-store is being deallocated, link use is no longer valid
-  // (wait for all the view users to finish)
-  _hasNestedFields = nested;
-  auto& server = index().collection().vocbase().server();
-  if (!server.hasFeature<DatabasePathFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failure to find feature 'DatabasePath' while "
-                         "initializing data store '",
-                         index().id().id(), "'")};
-  }
-  if (!server.hasFeature<FlushFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failure to find feature 'FlushFeature' while "
-                         "initializing data store '",
-                         index().id().id(), "'")};
-  }
-
-  auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
-  auto& flushFeature = server.getFeature<FlushFeature>();
-
-  auto const formatId = getFormat(LinkVersion{version});
-  _format = irs::formats::get(formatId);
-  if (!_format) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failed to get data store codec '", formatId,
-                         "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
-  }
-
-  _engine = &server.getFeature<EngineSelectorFeature>().engine();
-
-  _dataStore._path = getPersistedPath(dbPathFeature, *this);
-
-  // must manually ensure that the data store directory exists (since not
-  // using a lockfile)
-  if (!irs::file_utils::exists_directory(pathExists,
-                                         _dataStore._path.c_str()) ||
-      (!pathExists &&
-       !irs::file_utils::mkdir(_dataStore._path.c_str(), true))) {
-    return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
-            absl::StrCat("failed to create data store directory with path '",
-                         _dataStore._path.string(),
-                         "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
-  }
-
-  _dataStore._directory = std::make_unique<irs::MMapDirectory>(
-      _dataStore._path.u8string(),
-      initCallback ? initCallback() : irs::directory_attributes{});
-
-  switch (_engine->recoveryState()) {
-    case RecoveryState::BEFORE:  // link is being opened before recovery
-      [[fallthrough]];
-    case RecoveryState::DONE: {  // link is being created after recovery
-      // will be adjusted in post-recovery callback
-      _dataStore._inRecovery.store(true, std::memory_order_release);
-      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
-          _engine->recoveryTick();
-    } break;
-    case RecoveryState::IN_PROGRESS: {  // link is being created during recovery
-      _dataStore._inRecovery.store(false, std::memory_order_release);
-      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
-          _engine->releasedTick();
-    } break;
-  }
-  _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
-
+irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
+    irs::IndexReaderOptions const& readerOptions, uint32_t version, bool sorted,
+    bool nested,
+    std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
+    irs::type_info::type_id primarySortCompression) {
   irs::IndexWriterOptions options;
   options.reader_options = readerOptions;
   // Set 256MB limit during recovery. Actual "operational" limit will be set
@@ -1376,25 +1319,96 @@ Result IResearchDataStore::initDataStore(
             .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
             .track_prev_doc = kludge::needTrackPrevDoc(name, nested)};
   };
+  return options;
+}
 
-  auto openFlags = irs::OM_APPEND;
-  if (!pathExists) {
-    openFlags |= irs::OM_CREATE;
+Result IResearchDataStore::initDataStore(
+    bool& pathExists, InitCallback const& initCallback, uint32_t version,
+    bool sorted, bool nested,
+    std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
+    irs::type_info::type_id primarySortCompression,
+    irs::IndexReaderOptions const& readerOptions) {
+  // Reset together with '_asyncSelf'
+  std::atomic_store(&_flushSubscription, {});
+  // The data-store is being deallocated, link use is no longer valid
+  // (wait for all the view users to finish)
+  _asyncSelf->reset();
+  _hasNestedFields = nested;
+  auto& server = index().collection().vocbase().server();
+  if (!server.hasFeature<DatabasePathFeature>()) {
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("Failed to find feature 'DatabasePath' while "
+                         "initializing data store '",
+                         index().id().id(), "'")};
+  }
+  if (!server.hasFeature<FlushFeature>()) {
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat("Failed to find feature 'FlushFeature' while "
+                         "initializing data store '",
+                         index().id().id(), "'")};
   }
 
-  _dataStore._writer = irs::IndexWriter::Make(*(_dataStore._directory), _format,
-                                              openFlags, options);
+  auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
+  auto& flushFeature = server.getFeature<FlushFeature>();
 
-  if (!_dataStore._writer) {
+  auto const formatId = getFormat(LinkVersion{version});
+  auto format = irs::formats::get(formatId);
+  if (!format) {
     return {TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to instantiate data store writer with path '",
+            absl::StrCat("Failed to get data store codec '", formatId,
+                         "' while initializing ArangoSearch index '",
+                         index().id().id(), "'")};
+  }
+
+  _engine = &server.getFeature<EngineSelectorFeature>().engine();
+
+  _dataStore._path = getPersistedPath(dbPathFeature, *this);
+
+  // Must manually ensure that the data store directory exists (since not
+  // using a lockfile)
+  if (!irs::file_utils::exists_directory(pathExists,
+                                         _dataStore._path.c_str()) ||
+      (!pathExists &&
+       !irs::file_utils::mkdir(_dataStore._path.c_str(), true))) {
+    return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
+            absl::StrCat("Failed to create data store directory with path '",
                          _dataStore._path.string(),
                          "' while initializing ArangoSearch index '",
                          index().id().id(), "'")};
   }
 
+  _dataStore._directory = std::make_unique<irs::MMapDirectory>(
+      _dataStore._path.u8string(),
+      initCallback ? initCallback() : irs::directory_attributes{});
+
+  switch (_engine->recoveryState()) {
+    case RecoveryState::BEFORE:  // Link is being opened before recovery
+      [[fallthrough]];
+    case RecoveryState::DONE: {  // Link is being created after recovery
+      // Will be adjusted in post-recovery callback
+      _dataStore._inRecovery.store(true, std::memory_order_release);
+      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
+          _engine->recoveryTick();
+    } break;
+    case RecoveryState::IN_PROGRESS: {  // Link is being created during recovery
+      _dataStore._inRecovery.store(false, std::memory_order_release);
+      _dataStore._recoveryTickHigh = _dataStore._recoveryTickLow =
+          _engine->releasedTick();
+    } break;
+  }
+  _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
+
+  auto const openMode =
+      pathExists ? (irs::OM_CREATE | irs::OM_APPEND) : irs::OM_CREATE;
+  auto const options = getWriterOptions(readerOptions, version, sorted, nested,
+                                        storedColumns, primarySortCompression);
+  _dataStore._writer = irs::IndexWriter::Make(
+      *(_dataStore._directory), std::move(format), openMode, options);
+  IRS_ASSERT(_dataStore._writer);
+
   if (!pathExists) {
-    _dataStore._writer->Commit();  // Initialize 'store'
+    // Initialize empty store
+    _dataStore._writer->Commit();
   }
 
   _dataStore._reader = _dataStore._writer->GetSnapshot();
@@ -1413,17 +1427,13 @@ Result IResearchDataStore::initDataStore(
   }
 
   LOG_TOPIC("7e028", DEBUG, TOPIC)
-      << "Successfully opened existing data store reader for "
-      << "ArangoSearch index '" << index().id() << "', docs count '"
-      << _dataStore._reader->docs_count() << "', live docs count '"
-      << _dataStore._reader->live_docs_count() << "', recovery tick low '"
-      << _dataStore._recoveryTickLow << "' and recovery tick high '"
-      << _dataStore._recoveryTickHigh << "'";
+      << toString(_dataStore._reader, !pathExists, index().id(),
+                  _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh);
 
   _flushSubscription =
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
 
-  // reset data store meta, will be updated at runtime via properties(...)
+  // Reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0;        // 0 == disable
   _dataStore._meta._commitIntervalMsec = 0;         // 0 == disable
   _dataStore._meta._consolidationIntervalMsec = 0;  // 0 == disable
@@ -1433,16 +1443,16 @@ Result IResearchDataStore::initDataStore(
   _dataStore._meta._writebufferIdle = options.segment_pool_size;
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
 
-  // create a new 'self' (previous was reset during unload() above)
+  // Create a new 'self' (previous was reset during unload() above)
   TRI_ASSERT(_asyncSelf->empty());
   _asyncSelf = std::make_shared<AsyncLinkHandle>(this);
 
-  // register metrics before starting any background threads
+  // Register metrics before starting any background threads
   insertMetrics();
   updateStatsUnsafe();
 
   // ...........................................................................
-  // set up in-recovery insertion hooks
+  // Set up in-recovery insertion hooks
   // ...........................................................................
 
   if (!server.hasFeature<DatabaseFeature>()) {
@@ -1457,14 +1467,14 @@ Result IResearchDataStore::initDataStore(
         // ensure link does not get deallocated before callback finishes
 
         if (!linkLock) {
-          return {};  // link no longer in recovery state, i.e. during
-                      // recovery
+          // link no longer in recovery state, i.e. during recovery
           // it was created and later dropped
+          return {};
         }
 
         if (!linkLock->_flushSubscription) {
           return {TRI_ERROR_INTERNAL,
-                  absl::StrCat("failed to register flush subscription for "
+                  absl::StrCat("Failed to register flush subscription for "
                                "ArangoSearch index '",
                                linkLock->index().id().id(), "'")};
         }
@@ -1478,7 +1488,7 @@ Result IResearchDataStore::initDataStore(
         bool outOfSync = false;
         if (asyncFeature->linkSkippedDuringRecovery(linkLock->index().id())) {
           LOG_TOPIC("2721a", WARN, iresearch::TOPIC)
-              << "marking ArangoSearch index '" << linkLock->index().id().id()
+              << "Marking ArangoSearch index '" << linkLock->index().id().id()
               << "' as out of sync, consider to drop and re-create the index "
                  "in order to synchronize it";
 
@@ -1523,14 +1533,14 @@ Result IResearchDataStore::initDataStore(
             };
 
         LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
-            << "start sync for ArangoSearch index '" << linkLock->index().id()
+            << "Start sync for ArangoSearch index '" << linkLock->index().id()
             << "'";
 
         CommitResult code{CommitResult::UNDEFINED};
         auto [res, timeMs] = linkLock->commitUnsafe(true, progress, code);
 
         LOG_TOPIC("0e0ca", TRACE, iresearch::TOPIC)
-            << "finish sync for ArangoSearch index '" << linkLock->index().id()
+            << "Finish sync for ArangoSearch index '" << linkLock->index().id()
             << "'";
 
         // register flush subscription

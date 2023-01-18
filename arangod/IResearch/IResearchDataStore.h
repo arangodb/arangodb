@@ -367,7 +367,7 @@ class IResearchDataStore {
   Result initDataStore(
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
       bool sorted, bool nested,
-      std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
+      std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
       irs::type_info::type_id primarySortCompression,
       irs::IndexReaderOptions const& readerOptions);
 
@@ -423,6 +423,13 @@ class IResearchDataStore {
 
   void initClusterMetrics() const;
 
+  // Return index writer options given the specified arguments.
+  irs::IndexWriterOptions getWriterOptions(
+      irs::IndexReaderOptions const& options, uint32_t version, bool sorted,
+      bool nested,
+      std::span<const IResearchViewStoredValues::StoredColumn> storedColumns,
+      irs::type_info::type_id primarySortCompression);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
   //////////////////////////////////////////////////////////////////////////////
@@ -469,8 +476,6 @@ class IResearchDataStore {
   // for insert(...)/remove(...)
   TransactionState::BeforeCommitCallback _beforeCommitCallback;
   TransactionState::AfterCommitCallback _afterCommitCallback;
-
-  irs::format::ptr _format;
 
   metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
   metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
