@@ -134,7 +134,7 @@ bool supportsFilterNode(
 
 const irs::payload NoPayload;
 
-inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
+inline irs::doc_iterator::ptr pkColumn(irs::SubReader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
   return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
@@ -147,7 +147,7 @@ struct CoveringValue {
   explicit CoveringValue(std::string_view col) : column(col) {}
   CoveringValue(CoveringValue&& other) noexcept : column(other.column) {}
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     itr.reset();
     value = &NoPayload;
     // FIXME: this is cheap. Keep it here?
@@ -233,7 +233,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
     return res;
   }
 
-  void reset(irs::sub_reader const& rdr) {
+  void reset(irs::SubReader const& rdr) {
     std::for_each(
         _coverage.begin(), _coverage.end(),
         [&rdr](decltype(_coverage)::value_type& v) { v.second.reset(rdr); });
@@ -455,7 +455,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::index_reader const* _reader;
+  irs::IndexReader const* _reader;
   IResearchSnapshotState::ImmutablePartCache* _immutablePartCache;
   IResearchInvertedIndexMeta const* _indexMeta;
   aql::Variable const* _variable;
@@ -665,7 +665,7 @@ class IResearchInvertedIndexMergeIterator final
 
  private:
   struct Segment {
-    Segment(irs::doc_iterator::ptr&& docs, irs::sub_reader const& segment,
+    Segment(irs::doc_iterator::ptr&& docs, irs::SubReader const& segment,
             CoveringVector const& prototype)
         : itr(std::move(docs)), projections(prototype.clone()) {
       projections.reset(segment);
@@ -804,7 +804,7 @@ Result IResearchInvertedIndex::init(
   if (ServerState::instance()->isSingleServer() ||
       ServerState::instance()->isDBServer()) {
     TRI_ASSERT(_meta._sort.sortCompression());
-    irs::index_reader_options readerOptions;
+    irs::IndexReaderOptions readerOptions;
 #ifdef USE_ENTERPRISE
     setupReaderEntepriseOptions(readerOptions,
                                 index().collection().vocbase().server(), _meta);
