@@ -29,7 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 
 #include "Pregel/ExecutionNumber.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 struct TRI_vocbase_t;
 

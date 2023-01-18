@@ -28,13 +28,20 @@
 #include <numeric>
 #include <string>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackWithErrorT.h>
 #include <Inspection/Transformers.h>
-
-#include <Cluster/ClusterTypes.h>
 
 #include <Pregel/Common.h>
 #include <Pregel/Status/Status.h>
+
+// TODO: This is a hack to not have to include ClusterTypes.h
+//       which in turn pulls in Result.h which requires building
+//       of voc-errors.
+//       First step: split ClusterTypes.h into sensible bits
+//       Second step: only include the type aliases here
+namespace arangodb {
+typedef std::string ServerID;  // ID of a server
+}
 
 namespace arangodb::pregel {
 

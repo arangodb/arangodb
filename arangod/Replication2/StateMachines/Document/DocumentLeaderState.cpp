@@ -94,13 +94,12 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         self->_handlersFactory->createTransactionHandler(self->gid);
     if (transactionHandler == nullptr) {
       // TODO this is a temporary fix, see CINFRA-588
-      return Result{
-          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-          fmt::format("Transaction handler is missing from DocumentLeaderState "
-                      "during recoverEntries "
-                      "{}! This happens if the vocbase cannot be found during "
-                      "DocumentState construction.",
-                      to_string(self->gid))};
+      LOG_CTX("8cd17", ERR, self->loggerContext) << fmt::format(
+          "Transaction handler is missing from "
+          "DocumentLeaderState {}! This happens if the vocbase cannot be "
+          "found during DocumentState construction.",
+          self->shardId);
+      return Result{};
     }
 
     while (auto entry = ptr->next()) {
