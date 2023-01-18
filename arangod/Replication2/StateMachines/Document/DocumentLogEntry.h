@@ -36,7 +36,7 @@
 namespace arangodb::replication2::replicated_state {
 namespace document {
 
-enum OperationType {
+enum class OperationType {
   kInsert,
   kUpdate,
   kReplace,
@@ -44,19 +44,27 @@ enum OperationType {
   kTruncate,
   kCommit,
   kAbort,
+  kAbortAllOngoingTrx,
+  kIntermediateCommit,
 };
 
-auto to_string(OperationType) noexcept -> std::string_view;
+template<class Inspector>
+auto inspect(Inspector& f, OperationType& p) {
+  return f.enumeration(p).values(
+      OperationType::kInsert, "Insert",                          //
+      OperationType::kUpdate, "Update",                          //
+      OperationType::kReplace, "Replace",                        //
+      OperationType::kRemove, "Remove",                          //
+      OperationType::kTruncate, "Truncate",                      //
+      OperationType::kCommit, "Commit",                          //
+      OperationType::kAbort, "Abort",                            //
+      OperationType::kAbortAllOngoingTrx, "AbortAllOngoingTrx",  //
+      OperationType::kIntermediateCommit, "IntermediateCommit"   //
+  );
+}
+
 auto fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
     -> OperationType;
-
-struct OperationStringTransformer {
-  using SerializedType = std::string;
-  auto toSerialized(OperationType source, std::string& target) const
-      -> inspection::Status;
-  auto fromSerialized(std::string const& source, OperationType& target) const
-      -> inspection::Status;
-};
 
 struct DocumentLogEntry {
   std::string shardId;
@@ -67,9 +75,7 @@ struct DocumentLogEntry {
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
     return f.object(p).fields(
-        f.field("shardId", p.shardId),
-        f.field("operation", p.operation)
-            .transformWith(OperationStringTransformer{}),
+        f.field("shardId", p.shardId), f.field("operation", p.operation),
         f.field("data", p.data).fallback(velocypack::SharedSlice{}),
         f.field("tid", p.tid));
   }

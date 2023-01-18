@@ -25,8 +25,7 @@
 
 #include <memory>
 #include <string>
-
-#include "Basics/debugging.h"
+#include <cassert>
 
 namespace arangodb::inspection {
 struct Status {
@@ -46,12 +45,12 @@ struct Status {
   bool ok() const noexcept { return _error == nullptr; }
 
   std::string const& error() const noexcept {
-    TRI_ASSERT(!ok());
+    assert(!ok());
     return _error->message;
   }
 
   std::string const& path() const noexcept {
-    TRI_ASSERT(!ok());
+    assert(!ok());
     return _error->path;
   }
 
@@ -74,7 +73,7 @@ struct Status {
 
  private:
   void prependPath(std::string const& s) {
-    TRI_ASSERT(!ok());
+    assert(!ok());
     if (_error->path.empty()) {
       _error->path = s;
     } else {

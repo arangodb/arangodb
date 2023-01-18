@@ -24,40 +24,48 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgentConfiguration.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::velocypack {
+class Slice;
+}
+
+namespace arangodb::consensus {
+
 class AgentInterface {
  public:
+  // Suffice warnings
+  virtual ~AgentInterface() = default;
+
   /// @brief Possible outcome of write process
   enum raft_commit_t { OK, UNKNOWN, TIMEOUT };
 
   struct WriteMode {
     bool _discardStartup;
     bool _privileged;
-    WriteMode(bool d = false, bool p = false)
+    WriteMode(bool d = false, bool p = false) noexcept
         : _discardStartup(d), _privileged(p) {}
-    bool privileged() const { return _privileged; }
-    bool discardStartup() const { return _discardStartup; }
-    bool operator==(WriteMode const& other) const {
+    bool privileged() const noexcept { return _privileged; }
+    bool discardStartup() const noexcept { return _discardStartup; }
+    bool operator==(WriteMode const& other) const noexcept {
       return other._discardStartup == _discardStartup &&
              other._privileged == _privileged;
     }
-    bool operator!=(WriteMode const& other) const {
+    bool operator!=(WriteMode const& other) const noexcept {
       return other._discardStartup != _discardStartup ||
              other._privileged != _privileged;
     }
   };
 
   /// @brief Attempt write
-  virtual write_ret_t write(query_t const&,
+  virtual write_ret_t write(velocypack::Slice query,
                             WriteMode const& mode = WriteMode()) = 0;
 
   /// @brief Attempt write
-  virtual trans_ret_t transient(query_t const&) = 0;
+  virtual trans_ret_t transient(velocypack::Slice query) = 0;
 
   /// @brief Attempt write
-  virtual trans_ret_t transact(query_t const&) = 0;
+  virtual trans_ret_t transact(velocypack::Slice qs) = 0;
 
   /// @brief Wait for followers to confirm appended entries
   virtual raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) = 0;
@@ -65,8 +73,8 @@ class AgentInterface {
   /// @brief Wait for followers to confirm appended entries
   virtual bool isCommitted(index_t last_entry) const = 0;
 
-  // Suffice warnings
-  virtual ~AgentInterface() = default;
+  /// @brief Provide configuration
+  virtual config_t const& config() const = 0;
 };
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus

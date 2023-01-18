@@ -47,10 +47,10 @@
     },
     toDocuVersion: function (v) {
       var version;
-      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+      if (v.toLowerCase().indexOf('devel') !== -1 || v.toLowerCase().indexOf('rc') >= 0) {
         version = 'devel';
       } else {
-        version = v.substring(0, 3);
+        version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
     }
@@ -993,8 +993,8 @@
       // timezone can see that it is UTC time
     },
 
-    escapeHtml: function (val) {
-      if (typeof val !== 'string') {
+    escapeHtml: function (val, stringify = true) {
+      if (typeof val !== 'string' && stringify) {
         val = JSON.stringify(val, null, 2);
       }
 
@@ -1187,7 +1187,7 @@
 
     checkCollectionPermissions: function (collectionID, roCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
+        encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db) + '/' + encodeURIComponent(collectionID));
 
       // FETCH COMPLETE DB LIST
@@ -1209,7 +1209,7 @@
 
     checkDatabasePermissions: function (roCallback, rwCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
+        encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db));
 
       // FETCH COMPLETE DB LIST

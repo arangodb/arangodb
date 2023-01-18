@@ -31,6 +31,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace arangodb {
 class RestBatchHandler;
@@ -41,12 +42,10 @@ class HttpResponse : public GeneralResponse {
  public:
   static bool HIDE_PRODUCT_HEADER;
 
- public:
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> = nullptr);
   ~HttpResponse() = default;
 
- public:
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
@@ -65,6 +64,7 @@ class HttpResponse : public GeneralResponse {
     TRI_ASSERT(_body);
     return *_body;
   }
+
   size_t bodySize() const;
 
   void sealBody() { _bodySize = _body->length(); }
@@ -72,7 +72,6 @@ class HttpResponse : public GeneralResponse {
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
- public:
   void reset(ResponseCode code) override final;
 
   void addPayload(velocypack::Slice slice, velocypack::Options const* = nullptr,
@@ -105,7 +104,6 @@ class HttpResponse : public GeneralResponse {
                           velocypack::Options const* options,
                           bool resolveExternals);
 
- private:
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;

@@ -28,7 +28,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
 
 namespace {
 std::unordered_map<std::string, std::string> environment;

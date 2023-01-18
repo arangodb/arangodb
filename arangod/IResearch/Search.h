@@ -20,11 +20,14 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchFilterContext.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/ViewSnapshot.h"
 #include "Containers/FlatHashMap.h"
 
@@ -32,6 +35,7 @@
 #include <atomic>
 
 namespace arangodb {
+
 class CollectionNameResolver;
 struct ViewFactory;
 
@@ -41,12 +45,33 @@ namespace arangodb::iresearch {
 class SearchFactory;
 class IResearchInvertedIndex;
 
-struct SearchMeta final {
+struct MetaFst;
+
+class SearchMeta final {
+ public:
   IResearchInvertedIndexSort primarySort;
   IResearchViewStoredValues storedValues;
-  std::string rootAnalyzer;
-  containers::FlatHashMap<std::string, std::string> fieldToAnalyzer;
-  bool includeAllFields{false};
+  struct Field final {
+    std::string analyzer;
+    bool includeAllFields{false};
+    // intentionally not serialized as it is not
+    // used during query
+    bool isSearchField{false};
+  };
+  using Map = std::map<std::string, Field, std::less<>>;
+  Map fieldToAnalyzer;
+
+  [[nodiscard]] static std::shared_ptr<SearchMeta> make();
+
+  void createFst();
+
+  [[nodiscard]] MetaFst const* getFst() const;
+
+  [[nodiscard]] AnalyzerProvider createProvider(
+      std::function<FieldMeta::Analyzer(std::string_view)> getAnalyzer) const;
+
+ private:
+  std::unique_ptr<MetaFst const> _fst;
 };
 
 class Search final : public LogicalView {

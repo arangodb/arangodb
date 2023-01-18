@@ -23,17 +23,22 @@
 
 #pragma once
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
+#include "Aql/VarInfoMap.h"
 
 #include <cstdint>
 #include <memory>
 #include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 class Index;
+
+namespace transaction {
+class Methods;
+}
 
 namespace aql {
 
@@ -62,14 +67,15 @@ namespace utils {
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
-                     std::unordered_set<AttributeNamePath>& attributes);
+                     containers::FlatHashSet<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  root  may be modified by this function if
 /// an index is picked!!
 std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
-    aql::Collection const& coll, arangodb::aql::Ast* ast,
-    arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
+    transaction::Methods& trx, aql::Collection const& coll,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
+    arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
@@ -79,10 +85,10 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
 /// note: the contents of  node  may be modified by this function if
 /// an index is picked!!
 bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
-    bool onlyEdgeIndexes = false);
+    transaction::Methods& trx, aql::Collection const& collection,
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
+    size_t itemsInCollection, aql::IndexHint const& hint,
+    std::shared_ptr<Index>& usedIndex, bool onlyEdgeIndexes = false);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 bool getIndexForSortCondition(aql::Collection const& coll,
@@ -93,9 +99,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
-    Variable const* indexVariable);
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable);
 
 }  // namespace utils
 }  // namespace aql

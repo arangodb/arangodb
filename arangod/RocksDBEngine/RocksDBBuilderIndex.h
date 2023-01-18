@@ -38,8 +38,9 @@ struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
       std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
       arangodb::LogicalDataSource const& collection,
-      arangodb::AccessMode::Type type)
-      : arangodb::transaction::Methods(transactionContext),
+      arangodb::AccessMode::Type type,
+      transaction::Options options = transaction::Options())
+      : arangodb::transaction::Methods(transactionContext, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
@@ -129,8 +130,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice) override;
+                LocalDocumentId const& documentId, velocypack::Slice slice,
+                OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimatorType* estimator() override {

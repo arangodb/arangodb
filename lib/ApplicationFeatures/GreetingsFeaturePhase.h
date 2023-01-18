@@ -28,6 +28,7 @@
 namespace arangodb {
 
 class ConfigFeature;
+class FileSystemFeature;
 class LoggerFeature;
 class RandomFeature;
 class ShellColorsFeature;
@@ -47,6 +48,7 @@ class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
     setOptional(false);
 
     startsAfter<ConfigFeature, Server>();
+    startsAfter<FileSystemFeature, Server>();
     startsAfter<LoggerFeature, Server>();
     startsAfter<RandomFeature, Server>();
     startsAfter<ShellColorsFeature, Server>();

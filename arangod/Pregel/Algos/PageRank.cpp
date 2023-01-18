@@ -53,7 +53,7 @@ struct PRWorkerContext : public WorkerContext {
 
 PageRank::PageRank(application_features::ApplicationServer& server,
                    VPackSlice const& params)
-    : SimpleAlgorithm(server, "PageRank", params),
+    : SimpleAlgorithm(server, "pagerank", params),
       _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available

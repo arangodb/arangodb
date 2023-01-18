@@ -36,7 +36,7 @@ TEST(VelocyStream_11, ChunkHeader) {
   std::string const data("\x0a\x0b\x0c\x0d", 4);       // messageId 1
 
   std::string chunkData = length + chunkX + mid + mLength + data;
-  ASSERT_EQ(chunkData.size(), 28);
+  ASSERT_EQ(chunkData.size(), 28u);
 
   uint8_t const* ptr = reinterpret_cast<uint8_t const*>(chunkData.c_str());
 
@@ -46,16 +46,16 @@ TEST(VelocyStream_11, ChunkHeader) {
 
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
 
-  ASSERT_EQ(chunk.header._chunkLength, 28);
+  ASSERT_EQ(chunk.header._chunkLength, 28u);
 
   //  auto resultChunk = fu::vst::parser::readChunkHeaderVST1_1(ptr);
-  ASSERT_EQ(chunk.header.chunkLength(), 28);
-  ASSERT_EQ(chunk.header.messageID(), 1);
-  ASSERT_EQ(chunk.header.messageLength(), 4);
+  ASSERT_EQ(chunk.header.chunkLength(), 28u);
+  ASSERT_EQ(chunk.header.messageID(), 1u);
+  ASSERT_EQ(chunk.header.messageLength(), 4u);
   ASSERT_TRUE(chunk.header.isFirst());
-  ASSERT_EQ(chunk.header.index(), 0);
-  ASSERT_EQ(chunk.header.numberOfChunks(), 1);
-  ASSERT_EQ(chunk.body.size(), 4);
+  ASSERT_EQ(chunk.header.index(), 0u);
+  ASSERT_EQ(chunk.header.numberOfChunks(), 1u);
+  ASSERT_EQ(chunk.body.size(), 4u);
 
   ptr = reinterpret_cast<uint8_t const*>(chunk.body.data());
   uint32_t val = fu::basics::uintFromPersistentLE<uint32_t>(ptr);
@@ -83,9 +83,9 @@ TEST(VelocyStream_11, MultiChunk) {
   std::string chunk1 = length + chunkX_1 + mid + mLength + data;
   std::string chunk2 = length + chunkX_2 + mid + mLength + data;
 
-  ASSERT_EQ(chunk0.size(), 28);
-  ASSERT_EQ(chunk1.size(), 28);
-  ASSERT_EQ(chunk2.size(), 28);
+  ASSERT_EQ(chunk0.size(), 28u);
+  ASSERT_EQ(chunk1.size(), 28u);
+  ASSERT_EQ(chunk2.size(), 28u);
 
   fu::vst::Chunk resultChunk;
 
@@ -95,28 +95,28 @@ TEST(VelocyStream_11, MultiChunk) {
       fu::vst::parser::readChunkVST1_1(resultChunk, ptr, chunk0.size());
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
 
-  ASSERT_EQ(resultChunk.header.chunkLength(), 28);
+  ASSERT_EQ(resultChunk.header.chunkLength(), 28u);
   ASSERT_EQ(resultChunk.header.messageID(), (1ULL << 56ULL) + 1ULL);
-  ASSERT_EQ(resultChunk.header.messageLength(), 0x0C);
+  ASSERT_EQ(resultChunk.header.messageLength(), 0x0Cu);
   ASSERT_TRUE(resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 0);
-  ASSERT_EQ(resultChunk.header.numberOfChunks(), 3);
-  ASSERT_EQ(resultChunk.body.size(), 4);
+  ASSERT_EQ(resultChunk.header.index(), 0u);
+  ASSERT_EQ(resultChunk.header.numberOfChunks(), 3u);
+  ASSERT_EQ(resultChunk.body.size(), 4u);
   ptr = reinterpret_cast<uint8_t const*>(resultChunk.body.data());
   uint32_t val = fu::basics::uintFromPersistentLE<uint32_t>(ptr);
-  ASSERT_EQ(val, static_cast<uint32_t>(0x0d0c0b0a));
+  ASSERT_EQ(val, static_cast<uint32_t>(0x0d0c0b0au));
 
   // chunk 1
   ptr = reinterpret_cast<uint8_t const*>(chunk1.c_str());
   state = fu::vst::parser::readChunkVST1_1(resultChunk, ptr, chunk1.size());
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
 
-  ASSERT_EQ(resultChunk.header.chunkLength(), 28);
+  ASSERT_EQ(resultChunk.header.chunkLength(), 28u);
   ASSERT_EQ(resultChunk.header.messageID(), (1ULL << 56ULL) + 1ULL);
-  ASSERT_EQ(resultChunk.header.messageLength(), 0x0C);
+  ASSERT_EQ(resultChunk.header.messageLength(), 0x0Cu);
   ASSERT_TRUE(!resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 1);
-  ASSERT_EQ(resultChunk.body.size(), 4);
+  ASSERT_EQ(resultChunk.header.index(), 1u);
+  ASSERT_EQ(resultChunk.body.size(), 4u);
   ptr = reinterpret_cast<uint8_t const*>(resultChunk.body.data());
   val = fu::basics::uintFromPersistentLE<uint32_t>(ptr);
   ASSERT_EQ(val, static_cast<uint32_t>(0x0d0c0b0a));
@@ -125,12 +125,12 @@ TEST(VelocyStream_11, MultiChunk) {
   ptr = reinterpret_cast<uint8_t const*>(chunk2.c_str());
   state = fu::vst::parser::readChunkVST1_1(resultChunk, ptr, chunk2.size());
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
-  ASSERT_EQ(resultChunk.header.chunkLength(), 28);
+  ASSERT_EQ(resultChunk.header.chunkLength(), 28u);
   ASSERT_EQ(resultChunk.header.messageID(), (1ULL << 56ULL) + 1ULL);
-  ASSERT_EQ(resultChunk.header.messageLength(), 0x0C);
+  ASSERT_EQ(resultChunk.header.messageLength(), 0x0Cu);
   ASSERT_TRUE(!resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 2);
-  ASSERT_EQ(resultChunk.body.size(), 4);
+  ASSERT_EQ(resultChunk.header.index(), 2u);
+  ASSERT_EQ(resultChunk.body.size(), 4u);
   ptr = reinterpret_cast<uint8_t const*>(resultChunk.body.data());
   val = fu::basics::uintFromPersistentLE<uint32_t>(ptr);
   ASSERT_EQ(val, static_cast<uint32_t>(0x0d0c0b0a));
@@ -138,7 +138,7 @@ TEST(VelocyStream_11, MultiChunk) {
 
 TEST(VelocyStream_11, prepareForNetworkSingleChunk) {
   fu::vst::VSTVersion vstVersion = fu::vst::VSTVersion::VST1_1;
-  fu::vst::MessageID messageId(1234);
+  fu::vst::MessageID messageId(1234u);
 
   std::string prefix(16, 'a');
   VPackBuffer<uint8_t> buffer;
@@ -152,7 +152,7 @@ TEST(VelocyStream_11, prepareForNetworkSingleChunk) {
   fu::vst::message::prepareForNetwork(vstVersion, messageId, buffer, payload,
                                       result);
 
-  ASSERT_EQ(result.size(), 3);
+  ASSERT_EQ(result.size(), 3u);
 
   ASSERT_EQ(result[0].size(), fu::vst::maxChunkHeaderSize);
   uint8_t const* ptr = reinterpret_cast<uint8_t const*>(result[0].data());
@@ -165,10 +165,10 @@ TEST(VelocyStream_11, prepareForNetworkSingleChunk) {
 
   ASSERT_EQ(resultChunk.header.chunkLength(),
             fu::vst::maxChunkHeaderSize + prefix.size() + data.size());
-  ASSERT_EQ(resultChunk.header.messageID(), 1234);
+  ASSERT_EQ(resultChunk.header.messageID(), 1234u);
   ASSERT_EQ(resultChunk.header.messageLength(), prefix.size() + data.size());
   ASSERT_TRUE(resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 0);
+  ASSERT_EQ(resultChunk.header.index(), 0u);
   ASSERT_EQ(resultChunk.body.size(), prefix.size() + data.size());
 
   ASSERT_EQ(result[1].size(), prefix.size());
@@ -196,7 +196,7 @@ TEST(VelocyStream_11, prepareForNetworkMultipleChunks) {
   fu::vst::message::prepareForNetwork(vstVersion, messageId, buffer, payload,
                                       result);
 
-  ASSERT_EQ(result.size(), 7);
+  ASSERT_EQ(result.size(), 7u);
 
   ASSERT_EQ(result[0].size(), fu::vst::maxChunkHeaderSize);
   uint8_t const* ptr = reinterpret_cast<uint8_t const*>(result[0].data());
@@ -206,11 +206,11 @@ TEST(VelocyStream_11, prepareForNetworkMultipleChunks) {
                                                 fu::vst::defaultMaxChunkSize);
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
   ASSERT_EQ(resultChunk.header.chunkLength(), fu::vst::defaultMaxChunkSize);
-  ASSERT_EQ(resultChunk.header.messageID(), 12345);
+  ASSERT_EQ(resultChunk.header.messageID(), 12345u);
   ASSERT_EQ(resultChunk.header.messageLength(),
             prefix.size() + (2 * fu::vst::defaultMaxChunkSize));
   ASSERT_TRUE(resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 0);
+  ASSERT_EQ(resultChunk.header.index(), 0u);
   ASSERT_EQ(resultChunk.body.size(),
             fu::vst::defaultMaxChunkSize - fu::vst::maxChunkHeaderSize);
 
@@ -233,11 +233,11 @@ TEST(VelocyStream_11, prepareForNetworkMultipleChunks) {
   ASSERT_EQ(state, fu::vst::parser::ChunkState::Complete);
 
   ASSERT_EQ(resultChunk.header.chunkLength(), fu::vst::defaultMaxChunkSize);
-  ASSERT_EQ(resultChunk.header.messageID(), 12345);
+  ASSERT_EQ(resultChunk.header.messageID(), 12345u);
   ASSERT_EQ(resultChunk.header.messageLength(),
             prefix.size() + (2 * fu::vst::defaultMaxChunkSize));
   ASSERT_FALSE(resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 1);
+  ASSERT_EQ(resultChunk.header.index(), 1u);
   size_t expectedLength1 =
       fu::vst::defaultMaxChunkSize - fu::vst::maxChunkHeaderSize;
   ASSERT_EQ(resultChunk.body.size(), expectedLength1);
@@ -256,11 +256,11 @@ TEST(VelocyStream_11, prepareForNetworkMultipleChunks) {
 
   ASSERT_EQ(resultChunk.header.chunkLength(),
             3 * fu::vst::maxChunkHeaderSize + prefix.size());
-  ASSERT_EQ(resultChunk.header.messageID(), 12345);
+  ASSERT_EQ(resultChunk.header.messageID(), 12345u);
   ASSERT_EQ(resultChunk.header.messageLength(),
             prefix.size() + (2 * fu::vst::defaultMaxChunkSize));
   ASSERT_FALSE(resultChunk.header.isFirst());
-  ASSERT_EQ(resultChunk.header.index(), 2);
+  ASSERT_EQ(resultChunk.header.index(), 2u);
   ASSERT_EQ(resultChunk.body.size(),
             2 * fu::vst::maxChunkHeaderSize + prefix.size());
 

@@ -121,3 +121,16 @@ exports.cancel = function (executionID) {
   let db = internal.db;
   return db._pregelCancel(executionID);
 };
+// Test whether the pregel execution with executionID
+// is still busy.
+//
+// With the current API this the only sensible test
+// that can be offered: the executionID might have
+// disappeared or never existed, but then the execution
+// is not busy.
+exports.isBusy = function (executionID) {
+  let status = internal.db._pregelStatus();
+  return status.state === "loading" ||
+         status.state === "running" ||
+         status.state === "storing";
+};

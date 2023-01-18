@@ -29,6 +29,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/RestHandlerMock.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;

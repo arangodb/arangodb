@@ -26,6 +26,8 @@
 #include "Basics/Common.h"
 #include "Context.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 struct TRI_v8_global_t;
 
@@ -44,8 +46,7 @@ class V8Context final : public Context {
   ~V8Context() noexcept;
 
   /// @brief order a custom type handler
-  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler()
-      override final;
+  velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
@@ -82,7 +83,6 @@ class V8Context final : public Context {
  private:
   static TRI_v8_global_t* getV8State() noexcept;
 
- private:
   /// @brief the currently ongoing transaction
   std::shared_ptr<TransactionState> _currentTransaction;
 

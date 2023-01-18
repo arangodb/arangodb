@@ -38,6 +38,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
@@ -210,8 +211,7 @@ class ShardDistributionReporterTest
       f.first.prepare();
     }
 
-    vocbase = std::make_unique<TRI_vocbase_t>(
-        TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
+    vocbase = std::make_unique<TRI_vocbase_t>(testDBInfo(server));
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(),
                                                         true);
 

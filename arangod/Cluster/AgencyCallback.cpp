@@ -29,11 +29,13 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

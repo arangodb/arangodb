@@ -60,7 +60,7 @@ class TraverserEngineShardLists {
   std::vector<ShardID> getAllLocalShards(
       containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       ServerID const& server,
-      std::shared_ptr<std::vector<std::string>> shardIds,
+      std::shared_ptr<std::vector<std::string>> const& shardIds,
       bool allowReadFromFollower);
 
  private:

@@ -44,7 +44,6 @@
 #include "Aql/StandaloneCalculation.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/FunctionUtils.h"
 #include "IResearch/IResearchCommon.h"
@@ -58,6 +57,8 @@
 
 #include <Containers/HashSet.h>
 #include "VPackDeserializer/deserializer.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 using namespace arangodb::velocypack::deserializer;
@@ -80,44 +81,36 @@ using Options = arangodb::iresearch::AqlAnalyzer::Options;
 struct OptionsValidator {
   std::optional<deserialize_error> operator()(Options const& opts) const {
     if (opts.queryString.empty()) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(QUERY_STRING_PARAM_NAME)
-                                   .append("' should be non empty string")};
+      return deserialize_error{absl::StrCat("Value of '",
+                                            QUERY_STRING_PARAM_NAME,
+                                            "' should be non empty string")};
     }
     if (opts.batchSize == 0) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(BATCH_SIZE_PARAM_NAME)
-                                   .append("' should be greater than 0")};
+      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                            "' should be greater than 0")};
     }
     if (opts.batchSize > MAX_BATCH_SIZE) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(BATCH_SIZE_PARAM_NAME)
-                                   .append("' should be less or equal to ")
-                                   .append(std::to_string(MAX_BATCH_SIZE))};
+      return deserialize_error{absl::StrCat("Value of '", BATCH_SIZE_PARAM_NAME,
+                                            "' should be less or equal to ",
+                                            MAX_BATCH_SIZE)};
     }
     if (opts.memoryLimit == 0) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(MEMORY_LIMIT_PARAM_NAME)
-                                   .append("' should be greater than 0")};
+      return deserialize_error{absl::StrCat(
+          "Value of '", MEMORY_LIMIT_PARAM_NAME, "' should be greater than 0")};
     }
     if (opts.memoryLimit > MAX_MEMORY_LIMIT) {
-      return deserialize_error{std::string("Value of '")
-                                   .append(MEMORY_LIMIT_PARAM_NAME)
-                                   .append("' should be less or equal to ")
-                                   .append(std::to_string(MAX_MEMORY_LIMIT))};
+      return deserialize_error{
+          absl::StrCat("Value of '", MEMORY_LIMIT_PARAM_NAME,
+                       "' should be less or equal to ", MAX_MEMORY_LIMIT)};
     }
     if (opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
         opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
       return deserialize_error{
-          std::string("Value of '")
-              .append(RETURN_TYPE_PARAM_NAME)
-              .append("' should be ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
-              .append(" or ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
-              .append(" or ")
-              .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
+          absl::StrCat("Value of '", RETURN_TYPE_PARAM_NAME, "' should be ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING, " or ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER, " or ",
+                       arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
     }
     return {};
   }
@@ -240,8 +233,7 @@ ExecutionNode* getCalcNode(ExecutionNode* node) {
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool AqlAnalyzer::normalize_vpack(irs::string_ref args,
-                                             std::string& out) {
+bool AqlAnalyzer::normalize_vpack(std::string_view args, std::string& out) {
   auto const slice = arangodb::iresearch::slice(args);
   VPackBuilder builder;
   if (normalize_slice(slice, builder)) {
@@ -252,9 +244,8 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ bool AqlAnalyzer::normalize_json(irs::string_ref args,
-                                            std::string& out) {
-  auto src = VPackParser::fromJson(args.c_str(), args.size());
+bool AqlAnalyzer::normalize_json(std::string_view args, std::string& out) {
+  auto src = VPackParser::fromJson(args.data(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
     out = builder.toString();
@@ -263,15 +254,13 @@ namespace iresearch {
   return false;
 }
 
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(
-    irs::string_ref args) {
+irs::analysis::analyzer::ptr AqlAnalyzer::make_vpack(std::string_view args) {
   auto const slice = arangodb::iresearch::slice(args);
   return make_slice(slice);
 }
 
-/*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(
-    irs::string_ref args) {
-  auto builder = VPackParser::fromJson(args.c_str(), args.size());
+irs::analysis::analyzer::ptr AqlAnalyzer::make_json(std::string_view args) {
+  auto builder = VPackParser::fromJson(args.data(), args.size());
   return make_slice(builder->slice());
 }
 
@@ -365,7 +354,7 @@ bool AqlAnalyzer::next() {
                 _valueBuffer = aql::functions::ToString(
                     &ctx, *_query->ast()->root(), params);
                 TRI_ASSERT(_valueBuffer.isString());
-                std::get<2>(_attrs).value = irs::ref_cast<irs::byte_type>(
+                std::get<2>(_attrs).value = irs::ViewCast<irs::byte_type>(
                     _valueBuffer.slice().stringView());
               }
               break;
@@ -406,7 +395,7 @@ bool AqlAnalyzer::next() {
                   << "Unexpected AqlAnalyzer return type "
                   << static_cast<std::underlying_type_t<AnalyzerValueType>>(
                          _options.returnType);
-              std::get<2>(_attrs).value = irs::bytes_ref::EMPTY;
+              std::get<2>(_attrs).value = irs::kEmptyStringView<irs::byte_type>;
               _valueBuffer = AqlValue();
               std::get<3>(_attrs).value = _valueBuffer.slice();
           }
@@ -445,7 +434,7 @@ bool AqlAnalyzer::next() {
   return false;
 }
 
-bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
+bool AqlAnalyzer::reset(std::string_view field) noexcept {
   try {
     if (!_plan) {  // lazy initialization
       // important to hold a copy here as parser accepts reference!
@@ -463,8 +452,8 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
               TRI_ASSERT(node->getStringView() == CALCULATION_PARAMETER_NAME);
               // FIXME: move to computed value once here could be not only
               // strings
-              auto newNode = ast->createNodeValueMutableString(field.c_str(),
-                                                               field.size());
+              auto newNode =
+                  ast->createNodeValueMutableString(field.data(), field.size());
               // finally note that the node was created from a bind parameter
               newNode->setFlag(FLAG_BIND_PARAMETER);
               newNode->setFlag(
@@ -509,7 +498,7 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
     }
 
     for (auto node : _bindedNodes) {
-      node->setStringValue(field.c_str(), field.size());
+      node->setStringValue(field.data(), field.size());
     }
 
     _resultRowIdx = 0;

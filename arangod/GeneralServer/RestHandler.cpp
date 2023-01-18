@@ -31,6 +31,7 @@
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"

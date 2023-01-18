@@ -268,7 +268,9 @@ void InternalRestTraverserHandler::queryEngine() {
   generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
 
-// simon: this API will no longer be used in 3.7
+// simon: this API will no longer be used in 3.7 to regularly
+// shut down an AQL query, but it can be used during query setup if the
+// setup fails.
 void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {

@@ -32,6 +32,8 @@
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
 
@@ -61,9 +63,9 @@ Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
   } else {
     if (trx->isSingleOperation()) {
       _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, db);
+          std::make_unique<RocksDBSingleOperationTrxMethods>(trx, *this, db);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, db);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(trx, *this, db);
     }
   }
 
@@ -137,13 +139,23 @@ TRI_voc_tick_t ReplicatedRocksDBTransactionCollection::lastOperationTick()
   return _rocksMethods->lastOperationTick();
 }
 
-uint64_t ReplicatedRocksDBTransactionCollection::numCommits() const {
+uint64_t ReplicatedRocksDBTransactionCollection::numCommits() const noexcept {
   return _rocksMethods->numCommits();
+}
+
+uint64_t ReplicatedRocksDBTransactionCollection::numIntermediateCommits()
+    const noexcept {
+  return _rocksMethods->numIntermediateCommits();
 }
 
 uint64_t ReplicatedRocksDBTransactionCollection::numOperations()
     const noexcept {
   return _rocksMethods->numOperations();
+}
+
+uint64_t ReplicatedRocksDBTransactionCollection::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
 }
 
 bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
@@ -152,7 +164,36 @@ bool ReplicatedRocksDBTransactionCollection::ensureSnapshot() {
 
 auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
     replication2::replicated_state::document::DocumentLeaderState> {
+  // leaderState should only be requested in cases where we are expected to be
+  // leader, in which case _leaderState should always be initialized!
+  ADB_PROD_ASSERT(_leaderState != nullptr);
   return _leaderState;
+}
+
+rocksdb::SequenceNumber ReplicatedRocksDBTransactionCollection::prepare() {
+  auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
+  auto& engine = trx->vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  rocksdb::SequenceNumber seq = prepareTransaction(_transaction->id());
+  return std::max(seq, preSeq);
+}
+
+void ReplicatedRocksDBTransactionCollection::commit(
+    rocksdb::SequenceNumber lastWritten) {
+  TRI_ASSERT(lastWritten > 0);
+
+  // we need this in case of an intermediate commit. The number of
+  // initial documents is adjusted and numInserts / removes is set to 0
+  // index estimator updates are buffered
+  commitCounts(_transaction->id(), lastWritten);
+}
+
+void ReplicatedRocksDBTransactionCollection::cleanup() {
+  abortCommit(_transaction->id());
 }
 
 auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
@@ -162,7 +203,14 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
     return res;
   }
 
-  if (_leaderState == nullptr) {
+  // We only need to fetch the leaderState for non-read accesses. Note that this
+  // also covers the case that ReplicatedRocksDBTransactionState instances can
+  // be created on followers (but just for read-only access) in which case we
+  // obviously must not attempt to fetch the leaderState.
+  if (accessType() != AccessMode::Type::READ &&
+      // index creation is read-only, but might still use an exclusive lock
+      !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
+      _leaderState == nullptr) {
     // Note that doing this here is only correct as long as we're not supporting
     // distributeShardsLike.
     // Later, we must make sure to get the very same state for all collections
@@ -174,4 +222,29 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
   }
 
   return res;
+}
+
+futures::Future<Result>
+ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
+    auto leader = leaderState();
+    auto operation = replication2::replicated_state::document::OperationType::
+        kIntermediateCommit;
+    auto options = replication2::replicated_state::document::ReplicationOptions{
+        .waitForCommit = true};
+    try {
+      return leader
+          ->replicateOperation(velocypack::SharedSlice{}, operation,
+                               _transaction->id(), options)
+          .thenValue([state = _transaction->shared_from_this(),
+                      this](auto&& res) -> Result {
+            return _rocksMethods->triggerIntermediateCommit();
+          });
+    } catch (basics::Exception const& e) {
+      return Result{e.code(), e.what()};
+    } catch (std::exception const& e) {
+      return Result{TRI_ERROR_INTERNAL, e.what()};
+    }
+  }
+  return Result{};
 }

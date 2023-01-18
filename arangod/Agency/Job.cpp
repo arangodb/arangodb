@@ -21,29 +21,44 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <iterator>
 #include <numeric>
-#include <tuple>
 #include <unordered_map>
 #include <utility>
 
 #include "Job.h"
 
+#include "Agency/AgencyPaths.h"
+#include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
 #include "AgencyStrings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
+#include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
+#include "Helpers.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
-static std::string const DBServer = "DBServer";
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace consensus {
+namespace {
+std::vector<std::string> const jobStatus{"ToDo", "Pending", "Finished",
+                                         "Failed"};
+}
+
+namespace arangodb::consensus {
 
 std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
 std::string const pendingPrefix = "/Target/Pending/";
@@ -54,10 +69,8 @@ std::string const cleanedPrefix = "/Target/CleanedServers";
 std::string const toBeCleanedPrefix = "/Target/ToBeCleanedServers";
 std::string const failedServersPrefix = "/Target/FailedServers";
 std::string const planColPrefix = "/Plan/Collections/";
-std::string const planRepLogPrefix = "/Plan/ReplicatedLogs/";
-std::string const targetRepLogPrefix = "/Target/ReplicatedLogs/";
-std::string const targetRepStatePrefix = "/Target/ReplicatedStates/";
-std::string const planRepStatePrefix = "/Plan/ReplicatedStates/";
+std::string const targetRepStatePrefix = "/Target/ReplicatedLogs/";
+std::string const planRepStatePrefix = "/Plan/ReplicatedLogs/";
 std::string const planDBPrefix = "/Plan/Databases/";
 std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";
@@ -71,9 +84,133 @@ std::string const maintenancePrefix = "/Current/MaintenanceDBServers/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 std::string const planAnalyzersPrefix = "/Plan/Analyzers/";
+std::string const returnLeadershipPrefix = "/Target/ReturnLeadership/";
 
-}  // namespace consensus
-}  // namespace arangodb
+write_ret_t singleWriteTransaction(AgentInterface* _agent,
+                                   velocypack::Builder const& transaction,
+                                   bool waitForCommit) {
+  velocypack::Builder envelope;
+
+  velocypack::Slice trx = transaction.slice();
+  try {
+    {
+      VPackArrayBuilder listOfTrxs(&envelope);
+      VPackArrayBuilder onePair(&envelope);
+      {
+        VPackObjectBuilder mutationPart(&envelope);
+        for (auto pair : VPackObjectIterator(trx[0])) {
+          envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                       pair.value);
+        }
+      }
+      if (trx.length() > 1) {
+        VPackObjectBuilder preconditionPart(&envelope);
+        for (auto pair : VPackObjectIterator(trx[1])) {
+          envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                       pair.value);
+        }
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("5be90", ERR, Logger::SUPERVISION)
+        << "Supervision failed to build single-write transaction: " << e.what();
+  }
+
+  auto ret = _agent->write(envelope.slice());
+  if (waitForCommit && !ret.indices.empty()) {
+    auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
+    if (maximum > 0) {  // some baby has worked
+      _agent->waitFor(maximum);
+    }
+  }
+  return ret;
+}
+
+trans_ret_t generalTransaction(AgentInterface* _agent,
+                               velocypack::Builder const& transaction) {
+  velocypack::Builder envelope;
+  velocypack::Slice trx = transaction.slice();
+
+  try {
+    {
+      VPackArrayBuilder listOfTrxs(&envelope);
+      for (auto singleTrans : VPackArrayIterator(trx)) {
+        TRI_ASSERT(singleTrans.isArray() && singleTrans.length() > 0);
+        if (singleTrans[0].isObject()) {
+          VPackArrayBuilder onePair(&envelope);
+          {
+            VPackObjectBuilder mutationPart(&envelope);
+            for (auto pair : VPackObjectIterator(singleTrans[0])) {
+              envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                           pair.value);
+            }
+          }
+          if (singleTrans.length() > 1) {
+            VPackObjectBuilder preconditionPart(&envelope);
+            for (auto pair : VPackObjectIterator(singleTrans[1])) {
+              envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                           pair.value);
+            }
+          }
+        } else if (singleTrans[0].isString()) {
+          VPackArrayBuilder reads(&envelope);
+          for (auto path : VPackArrayIterator(singleTrans)) {
+            envelope.add(
+                VPackValue("/" + Job::agencyPrefix + path.copyString()));
+          }
+        }
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("aae99", ERR, Logger::SUPERVISION)
+        << "Supervision failed to build transaction: " << e.what();
+  }
+
+  auto ret = _agent->transact(envelope.slice());
+
+  // This is for now disabled to speed up things. We wait after a full
+  // Supervision run, which is good enough.
+  // if (ret.maxind > 0) {
+  //   _agent->waitFor(ret.maxind);
+  // }
+
+  return ret;
+}
+
+trans_ret_t transient(AgentInterface* _agent,
+                      velocypack::Builder const& transaction) {
+  velocypack::Builder envelope;
+
+  velocypack::Slice trx = transaction.slice();
+  try {
+    {
+      VPackArrayBuilder listOfTrxs(&envelope);
+      VPackArrayBuilder onePair(&envelope);
+      {
+        VPackObjectBuilder mutationPart(&envelope);
+        for (auto pair : VPackObjectIterator(trx[0])) {
+          envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                       pair.value);
+        }
+      }
+      if (trx.length() > 1) {
+        VPackObjectBuilder preconditionPart(&envelope);
+        for (auto pair : VPackObjectIterator(trx[1])) {
+          envelope.add("/" + Job::agencyPrefix + pair.key.copyString(),
+                       pair.value);
+        }
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("d03d5", ERR, Logger::SUPERVISION)
+        << "Supervision failed to build transaction for transient: "
+        << e.what();
+  }
+
+  return _agent->transient(envelope.slice());
+}
+
+}  // namespace arangodb::consensus
 
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
@@ -94,23 +231,52 @@ std::string Job::agencyPrefix = "arango";
 
 bool Job::considerCancellation() {
   // Allow for cancellation of shard moves
-  auto val = _snapshot.hasAsBool(std::string("/Target/") + jobStatus[_status] +
-                                 "/" + _jobId + "/abort");
+  auto val = _snapshot.hasAsBool(
+      std::string("/Target/") + ::jobStatus[_status] + "/" + _jobId + "/abort");
   auto cancelled = val && val.value();
   if (cancelled) {
     abort("Killed via API");
   }
   return cancelled;
-};
+}
+
+void Job::runHelper(std::string const& server, std::string const& shard,
+                    bool& aborts) {
+  if (_status == FAILED) {  // happens when the constructor did not work
+    return;
+  }
+  try {
+    status();  // This runs everything to to with state PENDING if needed!
+  } catch (std::exception const& e) {
+    LOG_TOPIC("e2d06", WARN, Logger::AGENCY)
+        << "Exception caught in status() method: " << e.what();
+    finish(server, shard, false, e.what());
+  }
+  try {
+    if (_status == TODO) {
+      start(aborts);
+    } else if (_status == NOTFOUND) {
+      if (create(nullptr)) {
+        start(aborts);
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("5ac04", WARN, Logger::AGENCY)
+        << "Exception caught in create() or "
+           "start() method: "
+        << e.what();
+    finish("", "", false, e.what());
+  }
+}
 
 bool Job::finish(std::string const& server, std::string const& shard,
                  bool success, std::string const& reason,
-                 query_t const payload) {
+                 query_t const& payload) {
   try {  // protect everything, just in case
-    Builder pending, finished;
 
     // Get todo entry
     bool started = false;
+    VPackBuilder pending;
     {
       VPackArrayBuilder guard(&pending);
       if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
@@ -157,6 +323,7 @@ bool Job::finish(std::string const& server, std::string const& shard,
     }
 
     // Prepare pending entry, block toserver
+    VPackBuilder finished;
     {
       VPackArrayBuilder guard(&finished);
 
@@ -170,8 +337,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
         addRemoveJobFromSomewhere(finished, "Pending", _jobId);
 
         if (operations.length() > 0) {
-          for (auto const& oper : VPackObjectIterator(operations)) {
-            finished.add(oper.key.copyString(), oper.value);
+          for (auto oper : VPackObjectIterator(operations)) {
+            finished.add(oper.key.stringView(), oper.value);
           }
         }
 
@@ -188,8 +355,8 @@ bool Job::finish(std::string const& server, std::string const& shard,
       if (preconditions.isObject() &&
           preconditions.length() > 0) {  // preconditions --
         VPackObjectBuilder precguard(&finished);
-        for (auto const& prec : VPackObjectIterator(preconditions)) {
-          finished.add(prec.key.copyString(), prec.value);
+        for (auto prec : VPackObjectIterator(preconditions)) {
+          finished.add(prec.key.stringView(), prec.value);
         }
       }  // -- preconditions
     }
@@ -262,7 +429,7 @@ std::string Job::randomIdleAvailableServer(
 // The following counts in a given server list how many of the servers are
 // in Status "GOOD" or "BAD".
 size_t Job::countGoodOrBadServersInList(Node const& snap,
-                                        VPackSlice const& serverList) {
+                                        VPackSlice serverList) {
   size_t count = 0;
   if (!serverList.isArray()) {
     // No array, strange, return 0
@@ -273,7 +440,7 @@ size_t Job::countGoodOrBadServersInList(Node const& snap,
   // Do we have a Health substructure?
   if (health) {
     Node::Children const& healthData = *health;  // List of servers in Health
-    for (VPackSlice const serverName : VPackArrayIterator(serverList)) {
+    for (VPackSlice serverName : VPackArrayIterator(serverList)) {
       if (serverName.isString()) {
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
@@ -423,13 +590,13 @@ std::vector<size_t> idxsort(const std::vector<T>& v) {
 std::vector<std::string> sortedShardList(Node const& shards) {
   std::vector<size_t> sids;
   auto const& shardMap = shards.children();
-  for (const auto& shard : shardMap) {
+  for (auto const& shard : shardMap) {
     sids.push_back(StringUtils::uint64(shard.first.substr(1)));
   }
 
   std::vector<size_t> idx(idxsort(sids));
   std::vector<std::string> sorted;
-  for (const auto& i : idx) {
+  for (auto const& i : idx) {
     auto x = shardMap.begin();
     std::advance(x, i);
     sorted.push_back(x->first);
@@ -453,7 +620,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
   auto steps = std::distance(
       myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
-  for (const auto& colptr :
+  for (auto const& colptr :
        snapshot.hasAsChildren(databasePath).value().get()) {  // collections
 
     auto const& col = *colptr.second;
@@ -462,7 +629,7 @@ std::vector<Job::shard_t> Job::clones(Node const& snapshot,
     if (otherCollection != collection &&
         col.has("distributeShardsLike") &&  // use .has() form to prevent
                                             // logging of missing
-        col.hasAsSlice("distributeShardsLike").value().copyString() ==
+        col.hasAsSlice("distributeShardsLike").value().stringView() ==
             collection) {
       auto const& theirshards =
           sortedShardList(col.hasAsNode("shards").value().get());
@@ -493,12 +660,12 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
   auto nclones = cs.size();               // #clones
   std::unordered_map<std::string, bool> good;
 
-  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+  for (auto const& i : snap.hasAsChildren(healthPrefix).value().get()) {
     good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
   }
 
   std::unordered_map<std::string, size_t> currentServers;
-  for (const auto& clone : cs) {
+  for (auto const& clone : cs) {
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentShardPath =
         curColPrefix + sharedPath + clone.shard + "/servers";
@@ -530,7 +697,7 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
     // Guaranteed by if above
     TRI_ASSERT(serverList->isArray());
 
-    for (const auto& server : VPackArrayIterator(*serverList)) {
+    for (auto server : VPackArrayIterator(*serverList)) {
       auto id = server.copyString();
       if (id == serverToAvoid) {
         // Skip current leader for which we are seeking a replacement
@@ -555,7 +722,7 @@ Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOOD" health
       // check if it is also part of the plan...because if not the soon-to-be
       // leader will drop the collection
       bool found = false;
-      for (const auto& plannedServer :
+      for (auto const& plannedServer :
            VPackArrayIterator(snap.hasAsArray(plannedShardPath).value())) {
         if (plannedServer.isEqualString(server.stringView())) {
           found = true;
@@ -588,14 +755,14 @@ std::vector<std::string> Job::findAllInSyncReplicas(
   std::vector<std::string> result;
 
   bool first = true;
-  for (const auto& clone : shardsLikeMe) {
+  for (auto const& clone : shardsLikeMe) {
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentPath = curColPrefix + sharedPath + clone.shard + "/servers";
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentPath);
     if (serverList) {
       std::unordered_set<std::string> setHere;
-      for (const auto& server : VPackArrayIterator(*serverList)) {
+      for (auto server : VPackArrayIterator(*serverList)) {
         auto id = server.copyString();
         if (first) {
           result.push_back(id);
@@ -628,16 +795,15 @@ std::unordered_set<std::string> Job::findAllFailoverCandidates(
     std::vector<Job::shard_t> const& shardsLikeMe) {
   std::unordered_set<std::string> result;
 
-  for (const auto& clone : shardsLikeMe) {
+  for (auto const& clone : shardsLikeMe) {
     auto sharedPath = db + "/" + clone.collection + "/";
     auto currentFailoverCandidatesPath =
         curColPrefix + sharedPath + clone.shard + "/failoverCandidates";
     // If we do have failover candidates, we should use them
     auto serverList = snap.hasAsArray(currentFailoverCandidatesPath);
     if (serverList) {
-      for (const auto& server : VPackArrayIterator(*serverList)) {
-        auto id = server.copyString();
-        result.insert(id);
+      for (auto server : VPackArrayIterator(*serverList)) {
+        result.insert(server.copyString());
       }
     }
   }
@@ -759,8 +925,8 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
       trx.add("timeFinished",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
-    for (auto const& obj : VPackObjectIterator(job)) {
-      trx.add(obj.key.copyString(), obj.value);
+    for (auto obj : VPackObjectIterator(job)) {
+      trx.add(obj.key.stringView(), obj.value);
     }
     if (!reason.empty()) {
       trx.add("reason", VPackValue(reason));
@@ -803,7 +969,7 @@ void Job::addPreconditionServerNotBlocked(Builder& pre,
 }
 
 void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
-                                      std::string const& health) {
+                                      std::string_view health) {
   pre.add(VPackValue(healthPrefix + server + "/Status"));
   {
     VPackObjectBuilder serverGood(&pre);
@@ -820,7 +986,7 @@ void Job::addPreconditionShardNotBlocked(Builder& pre,
   }
 }
 
-void Job::addPreconditionUnchanged(Builder& pre, std::string const& key,
+void Job::addPreconditionUnchanged(Builder& pre, std::string_view key,
                                    Slice value) {
   pre.add(VPackValue(key));
   {
@@ -830,12 +996,12 @@ void Job::addPreconditionUnchanged(Builder& pre, std::string const& key,
 }
 
 void Job::addBlockServer(Builder& trx, std::string const& server,
-                         std::string const& jobId) {
+                         std::string_view jobId) {
   trx.add(blockedServersPrefix + server, VPackValue(jobId));
 }
 
 void Job::addBlockShard(Builder& trx, std::string const& shard,
-                        std::string const& jobId) {
+                        std::string_view jobId) {
   trx.add(blockedShardsPrefix + shard, VPackValue(jobId));
 }
 
@@ -951,4 +1117,109 @@ void Job::addPreconditionServerWriteLocked(Builder& pre,
     VPackObjectBuilder shardLockEmpty(&pre);
     pre.add(PREC_IS_WRITE_LOCKED, VPackValue(jobId));
   }
+}
+
+auto Job::isReplication2Database(std::string_view database) -> bool {
+  auto dbs = _snapshot.hasAsChildren(PLAN_DATABASES);
+  if (!dbs) {
+    return false;
+  }
+  return isReplicationTwoDB(dbs->get(), std::string{database});
+}
+
+bool Job::isServerLeaderForState(const Node& snap, std::string const& db,
+                                 arangodb::replication2::LogId stateId,
+                                 const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return false;
+  }
+  if (target->leader == server) {
+    return true;
+  }
+  auto plan = readLogPlan(snap, db, stateId);
+  if (not plan) {
+    return false;
+  }
+  return plan->currentTerm.has_value() and plan->currentTerm->leader and
+         plan->currentTerm->leader->serverId == server;
+}
+
+bool Job::isServerParticipantForState(const Node& snap, std::string const& db,
+                                      arangodb::replication2::LogId stateId,
+                                      const std::string& server) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (target) {
+    return target->participants.contains(server);
+  }
+
+  return false;
+}
+
+std::optional<arangodb::replication2::agency::LogTarget> Job::readStateTarget(
+    Node const& snap, std::string const& db, replication2::LogId stateId) {
+  using namespace arangodb::cluster::paths::aliases;
+  auto targetPath = target()->replicatedLogs()->database(db)->log(stateId);
+  auto targetNode = snap.get(targetPath);
+  if (not targetNode.has_value()) {
+    return std::nullopt;
+  }
+  auto target =
+      velocypack::deserialize<arangodb::replication2::agency::LogTarget>(
+          targetNode->get().toBuilder().slice());
+  return target;
+}
+
+std::optional<arangodb::replication2::agency::LogPlanSpecification>
+Job::readLogPlan(Node const& snap, std::string const& db,
+                 replication2::LogId stateId) {
+  auto planPath = "/Plan/ReplicatedLogs/" + db + "/" + to_string(stateId);
+  auto planNode = snap.get(planPath);
+  if (not planNode.has_value()) {
+    return std::nullopt;
+  }
+  auto plan = velocypack::deserialize<
+      arangodb::replication2::agency::LogPlanSpecification>(
+      planNode->get().toBuilder().slice());
+  return plan;
+}
+
+std::string Job::findOtherHealthyParticipant(Node const& snap,
+                                             std::string const& db,
+                                             replication2::LogId stateId,
+                                             std::string const& serverToAvoid) {
+  auto target = readStateTarget(snap, db, stateId);
+  if (not target) {
+    return {};
+  }
+  std::unordered_map<std::string, bool> good;
+  for (const auto& i : snap.hasAsChildren(healthPrefix).value().get()) {
+    good[i.first] = ((*i.second).hasAsString("Status").value() == "GOOD");
+  }
+
+  for (const auto& [id, participantData] : target->participants) {
+    if (id == serverToAvoid) {
+      // Skip current leader for which we are seeking a replacement
+      continue;
+    }
+
+    if (not good[id]) {
+      // Skip unhealthy servers
+      continue;
+    }
+
+    if (snap.has(blockedServersPrefix + id)) {
+      // server is blocked
+      continue;
+    }
+
+    if (snap.has(maintenancePrefix + id)) {
+      // server is in maintenance mode
+      continue;
+    }
+
+    return id;
+  }
+
+  return {};
 }

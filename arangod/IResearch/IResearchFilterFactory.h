@@ -24,17 +24,19 @@
 
 #pragma once
 
-#include "IResearchFilterOptimization.h"
-#include "IResearchLinkMeta.h"
-#include "IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
 #include "search/filter.hpp"
 
+#include <function2.hpp>
+
 namespace iresearch {
 
-class boolean_filter;  // forward declaration
+class boolean_filter;
 
 }  // namespace iresearch
 
@@ -43,45 +45,29 @@ class Result;
 
 namespace aql {
 
-struct AstNode;  // forward declaration
+struct AstNode;
+class ExpressionContext;
 
 }  // namespace aql
 
 namespace iresearch {
 
 struct QueryContext;
-
-using AnalyzerProvider =
-    std::function<FieldMeta::Analyzer const&(std::string_view)>;
-
-struct FilterContext {
-  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name,
-                                           Result& r) const noexcept;
-
-  AnalyzerProvider const* fieldAnalyzerProvider{};
-  // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& contextAnalyzer;
-  std::span<const InvertedIndexField> fields{};
-  std::string_view namePrefix{};  // field name prefix
-  irs::score_t boost{irs::kNoBoost};
-};
+struct FilterContext;
 
 struct FilterFactory {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch filter
-  ///        if 'filter' != nullptr then also append the iresearch filter there
-  ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result filter(irs::boolean_filter* filter,
-                                 QueryContext const& ctx,
-                                 FilterContext const& filterCtx,
-                                 arangodb::aql::AstNode const& node);
-};  // FilterFactory
+  // Determine if the 'node' can be converted into an iresearch filter
+  // if 'filter' != nullptr then also append the iresearch filter there
+  static Result filter(irs::boolean_filter* filter,
+                       FilterContext const& filterCtx,
+                       aql::AstNode const& node);
+};
 
 struct FilterConstants {
   // Defaults
   static constexpr size_t DefaultScoringTermsLimit{128};
   static constexpr size_t DefaultLevenshteinTermsLimit{64};
-  static constexpr double_t DefaultNgramMatchThreshold{0.7};
+  static constexpr double DefaultNgramMatchThreshold{0.7};
   static constexpr int64_t DefaultStartsWithMinMatchCount{1};
 };
 

@@ -207,8 +207,9 @@ template<typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
-                  RocksDBGeoIndex const* index, geo::QueryParams&& params)
+  RDBNearIterator(ResourceMonitor& monitor, LogicalCollection* collection,
+                  transaction::Methods* trx, RocksDBGeoIndex const* index,
+                  geo::QueryParams&& params)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         // geo index never needs to observe own writes since it cannot be used
         // for an UPSERT subquery
@@ -272,9 +273,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -310,9 +311,9 @@ class RDBNearIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -427,8 +428,9 @@ class RDBNearIterator final : public IndexIterator {
 class RDBCoveringIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RDBCoveringIterator(LogicalCollection* collection, transaction::Methods* trx,
-                      RocksDBGeoIndex const* index, geo::QueryParams&& params)
+  RDBCoveringIterator(ResourceMonitor& monitor, LogicalCollection* collection,
+                      transaction::Methods* trx, RocksDBGeoIndex const* index,
+                      geo::QueryParams&& params)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         // geo index never needs to observe own writes since it cannot be used
         // for an UPSERT subquery
@@ -491,9 +493,9 @@ class RDBCoveringIterator final : public IndexIterator {
                          TRI_ASSERT(res.ok());  // this should never fail here
                          if (res.fail() ||
                              (ft == geo::FilterType::CONTAINS &&
-                              !filter.contains(&test)) ||
+                              !filter.contains(test)) ||
                              (ft == geo::FilterType::INTERSECTS &&
-                              !filter.intersects(&test))) {
+                              !filter.intersects(test))) {
                            result = false;
                            return false;
                          }
@@ -528,9 +530,9 @@ class RDBCoveringIterator final : public IndexIterator {
                            TRI_ASSERT(res.ok());  // this should never fail here
                            if (res.fail() ||
                                (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
+                                !filter.contains(test)) ||
                                (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
+                                !filter.intersects(test))) {
                              result = false;
                              return false;
                            }
@@ -736,7 +738,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, arangodb::aql::AstNode const* node,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
     ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -762,8 +765,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
       (params.minDistanceRad() < geo::kRadEps &&
        params.maxDistanceRad() >
            geo::kMaxRadiansBetweenPoints - geo::kRadEps)) {
-    return std::make_unique<RDBCoveringIterator>(&_collection, trx, this,
-                                                 std::move(params));
+    return std::make_unique<RDBCoveringIterator>(monitor, &_collection, trx,
+                                                 this, std::move(params));
   }
 
   params.sorted = true;  // RDBNearIterator always works sorted!
@@ -793,10 +796,10 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
-        &_collection, trx, this, std::move(params));
+        monitor, &_collection, trx, this, std::move(params));
   } else {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(
-        &_collection, trx, this, std::move(params));
+        monitor, &_collection, trx, this, std::move(params));
   }
 }
 
@@ -853,14 +856,13 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice doc) {
-  Result res;
-
+                               velocypack::Slice doc,
+                               OperationOptions const& /*options*/) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   S2Point centroid;
 
-  res = geo_index::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {  // might occur if insert is rolled back
     if (res.is(TRI_ERROR_BAD_PARAMETER)) {

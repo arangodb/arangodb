@@ -26,7 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -321,6 +321,9 @@ Variable const* TraversalNode::pathOutVariable() const {
 
 /// @brief set the path out variable
 void TraversalNode::setPathOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_pathOutVariable);
+  }
   _pathOutVariable = outVar;
 }
 
@@ -365,16 +368,18 @@ void TraversalNode::replaceVariables(
 /// @brief getVariablesUsedHere
 void TraversalNode::getVariablesUsedHere(VarSet& result) const {
   for (auto const& condVar : _conditionVariables) {
-    if (condVar != getTemporaryVariable()) {
+    if (condVar != pathOutVariable() && condVar != getTemporaryVariable()) {
       result.emplace(condVar);
     }
   }
+
   for (auto const& pruneVar : _pruneVariables) {
     if (pruneVar != vertexOutVariable() && pruneVar != edgeOutVariable() &&
         pruneVar != pathOutVariable()) {
       result.emplace(pruneVar);
     }
   }
+
   if (usesInVariable()) {
     result.emplace(_inVariable);
   }
@@ -508,7 +513,7 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       nodes.add(VPackValue("variables"));
       VPackArrayBuilder postFilterVariablesGuard(&nodes);
       for (auto const& var : _postFilterVariables) {
-        var->toVelocyPack(nodes);
+        var->toVelocyPack(nodes, Variable::WithConstantValue{});
       }
     }
   }
@@ -524,9 +529,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto calculateMemberToUpdate = [&](std::string const& memberString,
                                      std::optional<size_t>& memberToUpdate,
                                      aql::AstNode* indexCondition) {
-    std::pair<arangodb::aql::Variable const*,
-              std::vector<basics::AttributeName>>
-        pathCmp;
+    std::pair<aql::Variable const*, std::vector<basics::AttributeName>> pathCmp;
     for (size_t x = 0; x < indexCondition->numMembers(); ++x) {
       // We search through the nary-and and look for EQ - _from/_to
       auto eq = indexCondition->getMemberUnchecked(x);
@@ -556,7 +559,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   auto generateExpression =
       [&](aql::AstNode* remainderCondition,
           aql::AstNode* indexCondition) -> std::unique_ptr<aql::Expression> {
-    ::arangodb::containers::HashSet<size_t> toRemove;
+    containers::HashSet<size_t> toRemove;
     aql::Condition::collectOverlappingMembers(
         _plan, options()->tmpVar(), remainderCondition, indexCondition,
         toRemove, nullptr, false);
@@ -591,9 +594,10 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
 
+    auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
-        *_edgeColls[i], indexCondition, options()->tmpVar(), itemsInCollection,
-        aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
+        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -609,7 +613,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
         generateExpression(remainderCondition, indexCondition);
 
     auto container = aql::utils::extractNonConstPartsOfIndexCondition(
-        ast, getRegisterPlan()->varInfo, false, false, indexCondition,
+        ast, getRegisterPlan()->varInfo, false, nullptr, indexCondition,
         options()->tmpVar());
     indexAccessors.emplace_back(std::move(indexToUse), indexCondition,
                                 memberToUpdate, std::move(expression),
@@ -649,9 +653,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
         checkPruneAvailability,
     std::function<void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&
         checkPostFilterAvailability,
-    const std::unordered_map<
-        TraversalExecutorInfosHelper::OutputName, RegisterId,
-        TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
+    std::unordered_map<TraversalExecutorInfosHelper::OutputName, RegisterId,
+                       TraversalExecutorInfosHelper::OutputNameHash> const&
+        outputRegisterMapping,
     RegisterId inputRegister, RegisterInfos registerInfos,
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     bool isSmart) const {
@@ -674,7 +678,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 
   PathValidatorOptions validatorOptions{
       opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
-      isDisjointIsSat.second};
+      isDisjointIsSat.second, isClusterOneShardRuleEnabled()};
 
   // Prune Section
   if (pruneExpression() != nullptr) {
@@ -775,7 +779,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           filterConditionVariables,
           opts->collectionToShard(),
           opts->getVertexProjections(),
-          opts->getEdgeProjections()};
+          opts->getEdgeProjections(),
+          opts->produceVertices()};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1097,6 +1102,10 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                                     it.second->clone(_plan->getAst()));
   }
 
+  if (_condition) {
+    c.setCondition(_condition->clone());
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
 #endif
@@ -1220,7 +1229,8 @@ void TraversalNode::setCondition(
          oneVar->id != _vertexOutVariable->id) &&
         (_edgeOutVariable == nullptr || oneVar->id != _edgeOutVariable->id) &&
         (_pathOutVariable == nullptr || oneVar->id != _pathOutVariable->id) &&
-        (_inVariable == nullptr || oneVar->id != _inVariable->id)) {
+        (_inVariable == nullptr || oneVar->id != _inVariable->id) &&
+        (!_optimizedOutVariables.contains(oneVar->id))) {
       _conditionVariables.emplace(oneVar);
     }
   }
@@ -1272,6 +1282,10 @@ void TraversalNode::registerGlobalCondition(bool isConditionOnEdge,
 void TraversalNode::registerPostFilterCondition(AstNode const* condition) {
   // We cannot modify the postFilterExpression after it was build
   TRI_ASSERT(_postFilterExpression == nullptr);
+  TRI_ASSERT(condition != nullptr);
+  TRI_ASSERT(!condition->willUseV8());
+  TRI_ASSERT(!ServerState::instance()->isRunningInCluster() ||
+             condition->canRunOnDBServer(vocbase()->isOneShard()));
   _postFilterConditions.emplace_back(condition);
   Ast::getReferencedVariables(condition, _postFilterVariables);
 }

@@ -259,7 +259,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
-    case RocksDBEntryType::ReplicatedLog:
+    case RocksDBEntryType::ReplicatedState:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Definitions);
   }

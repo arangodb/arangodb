@@ -31,6 +31,7 @@
 
 #include "Aql/Projections.h"
 #include "Aql/types.h"
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
 namespace velocypack {

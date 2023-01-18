@@ -57,6 +57,7 @@ struct Transaction;
 }
 
 class LogicalCollection;
+class LogicalDataSource;
 class RocksDBTransactionMethods;
 
 /// @brief transaction type
@@ -82,7 +83,7 @@ class RocksDBTransactionState : public TransactionState {
 
   [[nodiscard]] virtual uint64_t numOperations() const noexcept = 0;
 
-  [[nodiscard]] bool hasFailedOperations() const override;
+  [[nodiscard]] bool hasFailedOperations() const noexcept override;
 
   [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
                                              ReadOwnWrites readOwnWrites) const;
@@ -95,29 +96,15 @@ class RocksDBTransactionState : public TransactionState {
                                     RevisionId revisionId,
                                     TRI_voc_document_operation_e opType);
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
-      DataSourceId collectionId) override;
-
   /// @brief return wrapper around rocksdb transaction
   [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const = 0;
-
-  /// @brief acquire a database snapshot if we do not yet have one.
-  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
-  /// already had a snapshot)
-  [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   [[nodiscard]] static RocksDBTransactionState* toState(
       transaction::Methods* trx);
 
   [[nodiscard]] static RocksDBTransactionMethods* toMethods(
       transaction::Methods* trx, DataSourceId collectionId);
-
-  /// @brief make some internal preparations for accessing this state in
-  /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads();
-  /// @brief in parallel mode. READ-ONLY transactions
-  [[nodiscard]] bool inParallelMode() const;
 
   [[nodiscard]] RocksDBTransactionCollection::TrackedOperations&
   trackedOperations(DataSourceId cid);
@@ -138,6 +125,9 @@ class RocksDBTransactionState : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
+  void trackIndexCacheRefill(DataSourceId cid, IndexId idxObjectId,
+                             std::string_view key);
+
   /// @brief whether or not a transaction only has exclusive or read accesses
   bool isOnlyExclusiveTransaction() const noexcept;
 
@@ -154,24 +144,17 @@ class RocksDBTransactionState : public TransactionState {
   virtual Result doAbort() = 0;
 
  private:
-  rocksdb::SequenceNumber prepareCollections();
-  void commitCollections(rocksdb::SequenceNumber lastWritten);
-  void cleanupCollections();
-
   void maybeDisableIndexing();
 
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
 
-  /// @brief cache transaction to unblock banished keys
-  cache::Transaction* _cacheTx;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::atomic<uint32_t> _users;
 #endif
 
-  /// @brief if true there key buffers will no longer be shared
-  bool _parallel;
+  /// @brief cache transaction to unblock banished keys
+  cache::Transaction* _cacheTx;
 };
 
 /// @brief a struct that makes sure that the same RocksDBTransactionState

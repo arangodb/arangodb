@@ -63,8 +63,8 @@
       'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'viewSettings',
-      'view/:name/info': 'viewInfo',
-      'view/:name/consolidation': 'viewConsolidation',
+      // 'view/:name/info': 'viewInfo',
+      // 'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
       'view/:name/links/*link': 'viewLinks',
       'view/:name/json': 'viewJSON',
@@ -119,7 +119,7 @@
         }
 
         $('#modal-dialog').on('hide', function () {
-          if (goBack) {
+          if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
         });
@@ -647,22 +647,38 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function () {
+    logger: function() {
       this.checkUser();
 
       this.init.then(() => {
-        if (this.loggerView) {
-          this.loggerView.remove();
-        }
+        const redirectCallback = function() {
+          this.navigate('#collections', {trigger: true});
+        }.bind(this);
 
-        const co = new window.ArangoLogs({
-          upto: true,
-          loglevel: 4
-        });
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
-        this.loggerView.render(true);
+
+        const loggerCallback = function() {
+          if (this.loggerView) {
+            this.loggerView.remove();
+          }
+          const co = new window.ArangoLogs({
+            upto: true,
+            loglevel: 4
+          });
+          this.loggerView = new window.LoggerView({
+            collection: co
+          });
+          this.loggerView.render(true);
+        }.bind(this);
+
+        if (!this.isCluster) {
+          if (this.currentDB.get('name') === '_system') {
+            arangoHelper.checkDatabasePermissions(redirectCallback, loggerCallback);
+          } else {
+            redirectCallback();
+          }
+        } else {
+          redirectCallback();
+        }
       });
     },
 
@@ -814,7 +830,7 @@
         });
       });
     },
-    
+
     cComputedValues: function (colname) {
       const self = this;
 

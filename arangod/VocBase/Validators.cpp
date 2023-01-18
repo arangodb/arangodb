@@ -31,7 +31,9 @@
 #include <tao/json/jaxn/to_string.hpp>
 #include <validation/validation.hpp>
 
+#include <array>
 #include <iostream>
+#include <string_view>
 #include <tao/json/to_string.hpp>
 
 namespace arangodb {
@@ -88,6 +90,55 @@ ValidatorBase::ValidatorBase(VPackSlice params) : ValidatorBase() {
               StaticStrings::ValidationLevelStrict);
     }
   }
+}
+
+bool ValidatorBase::isSame(VPackSlice validator1, VPackSlice validator2) {
+  if (validator1.isObject() && validator2.isObject()) {
+    // type "json" is default if no "type" attribute is specified
+    std::string_view type1{"json"};
+    std::string_view type2{"json"};
+
+    if (auto s = validator1.get(StaticStrings::ValidationParameterType);
+        s.isString()) {
+      type1 = s.stringView();
+    }
+    if (auto s = validator2.get(StaticStrings::ValidationParameterType);
+        s.isString()) {
+      type2 = s.stringView();
+    }
+
+    if (type1 != type2) {
+      // different types
+      return false;
+    }
+
+    // compare "message" and "level"
+    std::array<std::string_view, 3> fields = {
+        StaticStrings::ValidationParameterMessage,
+        StaticStrings::ValidationParameterLevel,
+        StaticStrings::ValidationParameterRule};
+    for (auto const& f : fields) {
+      if (!basics::VelocyPackHelper::equal(validator1.get(f), validator2.get(f),
+                                           false)) {
+        return false;
+      }
+    }
+
+    // all attributes equal
+    return true;
+  }
+
+  if (validator1.isObject() || validator2.isObject()) {
+    TRI_ASSERT(validator1.isObject() != validator2.isObject());
+    // validator1 is an object, but validator2 isn't (or vice versa),
+    // so they must be different
+    return false;
+  }
+
+  // both validators are non-objects
+  TRI_ASSERT(validator1.isNone() || validator1.isNull());
+  TRI_ASSERT(validator2.isNone() || validator2.isNull());
+  return true;
 }
 
 Result ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc,

@@ -7,6 +7,7 @@ const fs = require('fs');
 const internal = require('internal');
 const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
+let cu = require('@arangodb/testutils/crash-utils');
 
 const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
 
@@ -80,7 +81,11 @@ function main (argv) {
       
     let results;
     try {
+      cu.GDB_OUTPUT = "";
       results = JSON.parse(resultsDump);
+      if (results.hasOwnProperty('crashreport')) {
+        cu.GDB_OUTPUT = results['crashreport'];
+      }
     }
     catch (ex) {
       print(RED + "Failed to parse " + file + " - " + ex.message + RESET + "\n");

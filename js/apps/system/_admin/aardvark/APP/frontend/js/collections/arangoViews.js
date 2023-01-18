@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, arangoViewModel, arangoHelper */
+/* global Backbone, window, arangoViewModel, arangoHelper, _ */
 (function () {
   'use strict';
 
@@ -10,7 +10,7 @@
     model: arangoViewModel,
 
     parse: function (response) {
-      return response.result;
+      return _.filter(response.result, {type: 'arangosearch'});
     }
 
     /*

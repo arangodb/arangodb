@@ -32,50 +32,61 @@
 
 namespace arangodb {
 
-struct IndexTypeFactory;  // forward declaration
-}
+struct IndexTypeFactory;
 
-namespace arangodb {
 namespace iresearch {
 
-class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
+class IResearchLinkMock final : public Index, public IResearchLink {
+  Index& index() noexcept final { return *this; }
+  Index const& index() const noexcept final { return *this; }
+
  public:
-  IResearchLinkMock(IndexId iid, arangodb::LogicalCollection& collection);
+  IResearchLinkMock(IndexId iid, LogicalCollection& collection);
 
-  [[nodiscard]] static auto setCallbakForScope(
-      std::function<irs::directory_attributes()> callback) {
+  ~IResearchLinkMock() final { IResearchLink::unload(); }
+
+  [[nodiscard]] static auto setCallbackForScope(
+      std::function<irs::directory_attributes()> const& callback) {
     InitCallback = callback;
-    return irs::make_finally([]() noexcept { InitCallback = nullptr; });
+    return irs::Finally{[]() noexcept { InitCallback = nullptr; }};
   }
 
-  bool canBeDropped() const override { return IResearchLink::canBeDropped(); }
+  bool canBeDropped() const final { return IResearchLink::canBeDropped(); }
 
-  arangodb::Result drop() override { return IResearchLink::drop(); }
+  Result drop() final { return IResearchLink::drop(); }
 
-  bool hasSelectivityEstimate() const override {
-    return IResearchLink::hasSelectivityEstimate();
+  bool hasSelectivityEstimate() const final {
+    return IResearchDataStore::hasSelectivityEstimate();
   }
 
-  arangodb::Result insert(arangodb::transaction::Methods& trx,
-                          arangodb::LocalDocumentId const& documentId,
-                          arangodb::velocypack::Slice const doc) {
-    return IResearchLink::insert(trx, documentId, doc);
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const doc) {
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), nullptr);
   }
 
-  bool isSorted() const override { return IResearchLink::isSorted(); }
+  Result insertInRecovery(transaction::Methods& trx,
+                          LocalDocumentId const& documentId,
+                          velocypack::Slice doc, uint64_t tick) {
+    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
+                                      IResearchLinkMeta>(trx, documentId, doc,
+                                                         meta(), &tick);
+  }
 
-  bool isHidden() const override { return IResearchLink::isHidden(); }
+  bool isSorted() const final { return IResearchLink::isSorted(); }
 
-  bool needsReversal() const override { return true; }
+  bool isHidden() const final { return IResearchLink::isHidden(); }
 
-  void load() override { IResearchLink::load(); }
+  bool needsReversal() const final { return true; }
 
-  bool matchesDefinition(
-      arangodb::velocypack::Slice const& slice) const override {
+  void load() final {}
+
+  bool matchesDefinition(velocypack::Slice const& slice) const final {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const override {
+  size_t memory() const final {
     // FIXME return in memory size
     return stats().indexSize;
   }
@@ -86,19 +97,18 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack;  // for std::shared_ptr<Builder>
                               // Index::toVelocyPack(bool, Index::Serialize)
-  void toVelocyPack(
-      arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::Index::Serialize>::type) const override;
+  void toVelocyPack(velocypack::Builder& builder,
+                    std::underlying_type<Index::Serialize>::type) const final;
 
-  void toVelocyPackFigures(velocypack::Builder& builder) const override {
-    IResearchLink::toVelocyPackStats(builder);
+  void toVelocyPackFigures(velocypack::Builder& builder) const final {
+    IResearchDataStore::toVelocyPackStats(builder);
   }
 
-  IndexType type() const override { return IResearchLink::type(); }
+  IndexType type() const final { return Index::TRI_IDX_TYPE_IRESEARCH_LINK; }
 
-  char const* typeName() const override { return IResearchLink::typeName(); }
+  char const* typeName() const final { return oldtypeName(); }
 
-  void unload() override {
+  void unload() final {
     auto res = IResearchLink::unload();
 
     if (!res.ok()) {

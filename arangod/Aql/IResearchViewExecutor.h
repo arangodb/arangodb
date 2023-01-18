@@ -29,6 +29,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/VarInfoMap.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchExpressionContext.h"
@@ -44,17 +45,16 @@
 #include <utility>
 #include <variant>
 
-namespace iresearch {
+namespace irs {
 struct score;
-struct document;
-}  // namespace iresearch
+}  // namespace irs
 
 namespace arangodb {
 class LogicalCollection;
 
 namespace iresearch {
 struct SearchFunc;
-struct SearchMeta;
+class SearchMeta;
 }  // namespace iresearch
 
 namespace aql {
@@ -68,8 +68,6 @@ class QueryContext;
 
 class IResearchViewExecutorInfos {
  public:
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
-
   struct LateMaterializeRegister {
     RegisterId documentOutReg;
     RegisterId collectionOutReg;
@@ -159,17 +157,17 @@ class IResearchViewExecutorInfos {
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
-  bool const _volatileSort;
-  bool const _volatileFilter;
-  VarInfoMap const& _varInfoMap;
-  int const _depth;
+  aql::VarInfoMap const& _varInfoMap;
   iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
   iresearch::CountApproximate _countApproximate;
-  bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
   std::vector<std::pair<size_t, bool>> _scorersSort;
   size_t _scorersSortLimit;
   iresearch::SearchMeta const* _meta;
+  int const _depth;
+  bool _filterConditionIsEmpty;
+  bool const _volatileSort;
+  bool const _volatileFilter;
 };
 
 class IResearchViewStats {
@@ -346,19 +344,19 @@ class IndexReadBuffer {
     return std::vector<size_t>{_rows.begin() + start, _rows.end()};
   }
 
-  void setStoredValue(size_t idx, irs::bytes_ref value) {
+  void setStoredValue(size_t idx, irs::bytes_view value) {
     TRI_ASSERT(idx < _storedValuesBuffer.size());
     _storedValuesBuffer[idx] = value;
   }
 
-  void pushStoredValue(irs::bytes_ref value) {
+  void pushStoredValue(irs::bytes_view value) {
     TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
-    _storedValuesBuffer.emplace_back(value.c_str(), value.size());
+    _storedValuesBuffer.emplace_back(value.data(), value.size());
   }
 
   using StoredValuesContainer =
       typename std::conditional<copyStored, std::vector<irs::bstring>,
-                                std::vector<irs::bytes_ref>>::type;
+                                std::vector<irs::bytes_view>>::type;
 
   StoredValuesContainer const& getStoredValues() const noexcept;
 

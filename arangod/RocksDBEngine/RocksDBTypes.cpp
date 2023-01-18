@@ -136,10 +136,10 @@ static rocksdb::Slice LogEntry(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&logEntry),
     1);
 
-static RocksDBEntryType replicatedLog = RocksDBEntryType::ReplicatedLog;
-static rocksdb::Slice ReplicatedLog(
+static RocksDBEntryType replicatedState = RocksDBEntryType::ReplicatedState;
+static rocksdb::Slice ReplicatedState(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &replicatedLog),
+        &replicatedState),
     1);
 
 static RocksDBEntryType revisionTreeValue = RocksDBEntryType::RevisionTreeValue;
@@ -206,8 +206,8 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "UniqueZkdIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
-    case RocksDBEntryType::ReplicatedLog:
-      return "ReplicatedLog";
+    case RocksDBEntryType::ReplicatedState:
+      return "ReplicatedState";
   }
   return "Invalid";
 }
@@ -312,8 +312,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueZdkIndexValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
-    case RocksDBEntryType::ReplicatedLog:
-      return ReplicatedLog;
+    case RocksDBEntryType::ReplicatedState:
+      return ReplicatedState;
   }
 
   return Placeholder;  // avoids warning - errorslice instead ?!

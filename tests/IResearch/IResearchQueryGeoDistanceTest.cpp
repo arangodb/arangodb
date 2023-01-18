@@ -22,9 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-
 #include "IResearch/MakeViewSnapshot.h"
+#include "IResearchQueryCommon.h"
 
 namespace arangodb::tests {
 namespace {
@@ -33,28 +32,28 @@ std::vector<VPackSlice> const empty;
 
 class QueryGeoDistance : public QueryTest {
  protected:
-  void createAnalyzers() {
+  void createAnalyzers(std::string_view analyzer) {
     auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
     iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     {
       auto json = VPackParser::fromJson(R"({})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeojson",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
     {
       auto json = VPackParser::fromJson(R"({"type": "centroid"})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeocentroid",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
     {
       auto json = VPackParser::fromJson(R"({"type": "point"})");
       ASSERT_TRUE(analyzers
                       .emplace(result, _vocbase.name() + "::mygeopoint",
-                               "geojson", json->slice(), {})
+                               analyzer, json->slice(), {})
                       .ok());
     }
   }
@@ -147,31 +146,45 @@ class QueryGeoDistance : public QueryTest {
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_DISTANCE(d.geometry, origin) < 300
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        // TODO(MBkkt) Should be BAD_PARAMETER,
+        //  but now we fallback on filterExpression
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED)
+            << kQueryStr;
+      }
     }
     // test missing analyzer
     {
-      std::vector<VPackSlice> expected;
-      if (type() == ViewType::kSearchAlias) {
-        expected = {_insertedDocs[16].slice(), _insertedDocs[17].slice()};
-      }
-      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
         FOR d IN testView
         SEARCH GEO_DISTANCE(origin, d.geometry) < 300
-        RETURN d)",
-                           expected));
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        // TODO(MBkkt) Should be BAD_PARAMETER,
+        //  but now we fallback on filterExpression
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_NOT_IMPLEMENTED)
+            << kQueryStr;
+      }
     }
   }
 
-  void queryTestsGeoJson() {
+  void queryTestsGeoJson(bool isVPack) {
     // ensure presence of special a column for geo indices
     {
       auto collection = _vocbase.lookupCollection("testCollection0");
@@ -195,24 +208,26 @@ class QueryGeoDistance : public QueryTest {
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
                            links(), view.get(), view->name());
       ASSERT_NE(nullptr, snapshot);
-      ASSERT_EQ(1, snapshot->size());
+      ASSERT_EQ(1U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-      auto& segment = (*snapshot)[0];
+      if (isVPack) {
+        auto& segment = (*snapshot)[0];
 
-      auto const columnName = mangleString("geometry", "mygeojson");
-      auto* columnReader = segment.column(columnName);
-      ASSERT_NE(nullptr, columnReader);
-      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, it);
-      auto* payload = irs::get<irs::payload>(*it);
-      ASSERT_NE(nullptr, payload);
+        auto const columnName = mangleString("geometry", "mygeojson");
+        auto* columnReader = segment.column(columnName);
+        ASSERT_NE(nullptr, columnReader);
+        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, it);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
 
-      auto doc = _insertedDocs.begin();
-      for (; it->next(); ++doc) {
-        EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
-                            iresearch::slice(payload->value));
+        auto doc = _insertedDocs.begin();
+        for (; it->next(); ++doc) {
+          EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                              iresearch::slice(payload->value));
+        }
       }
 
       ASSERT_TRUE(trx.commit().ok());
@@ -532,27 +547,27 @@ class QueryGeoDistanceSearch : public QueryGeoDistance {
 };
 
 TEST_P(QueryGeoDistanceView, Test) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createView();
   queryTests();
-  queryTestsGeoJson();
+  queryTestsGeoJson(true);
   queryTestsGeoCentroid();
   queryTestsGeoPoint();
   queryTestsMulti();
 }
 
 TEST_P(QueryGeoDistanceSearch, TestGeoJson) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createIndexes("mygeojson");
   createSearch();
   queryTests();
-  queryTestsGeoJson();
+  queryTestsGeoJson(true);
 }
 
 TEST_P(QueryGeoDistanceSearch, TestGeoCentroid) {
-  createAnalyzers();
+  createAnalyzers("geojson");
   createCollections();
   createIndexes("mygeocentroid");
   createSearch();
@@ -561,7 +576,45 @@ TEST_P(QueryGeoDistanceSearch, TestGeoCentroid) {
 }
 
 TEST_P(QueryGeoDistanceSearch, TestGeoPoint) {
-  createAnalyzers();
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes("mygeopoint");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+TEST_P(QueryGeoDistanceView, TestS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createView();
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoJsonS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createIndexes("mygeojson");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoCentroidS2) {
+  createAnalyzers("geojson-s2");
+  createCollections();
+  createIndexes("mygeocentroid");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoDistanceSearch, TestGeoPointS2) {
+  createAnalyzers("geojson-s2");
   createCollections();
   createIndexes("mygeopoint");
   createSearch();

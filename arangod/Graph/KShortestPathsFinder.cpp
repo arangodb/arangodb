@@ -40,18 +40,24 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options),
+template<class ProviderType>
+KShortestPathsFinder<ProviderType>::KShortestPathsFinder(
+    ShortestPathOptions& options,
+    typename ProviderType::Options&& forwardProviderOptions,
+    typename ProviderType::Options&& backwardProviderOptions)
+    : KShortestPathsFinderInterface(options),
       _resourceMonitor(options.resourceMonitor()),
       _left(FORWARD),
-      _right(BACKWARD) {
-  // cppcheck-suppress *
-  _forwardCursor = options.buildCursor(false);
-  // cppcheck-suppress *
-  _backwardCursor = options.buildCursor(true);
-}
+      _right(BACKWARD),
+      _forwardProvider(std::make_unique<ProviderType>(
+          options.query(), std::move(forwardProviderOptions),
+          options.query().resourceMonitor())),
+      _backwardProvider(std::make_unique<ProviderType>(
+          options.query(), std::move(backwardProviderOptions),
+          options.query().resourceMonitor())) {}
 
-KShortestPathsFinder::~KShortestPathsFinder() {
+template<class ProviderType>
+KShortestPathsFinder<ProviderType>::~KShortestPathsFinder() {
   try {
     // necessary to revert memory usage trackers
     clear();
@@ -59,7 +65,8 @@ KShortestPathsFinder::~KShortestPathsFinder() {
   }
 }
 
-void KShortestPathsFinder::clear() {
+template<class ProviderType>
+void KShortestPathsFinder<ProviderType>::clear() {
   _shortestPaths.clear();
 
   while (!_candidatePaths.empty()) {
@@ -77,7 +84,8 @@ void KShortestPathsFinder::clear() {
 }
 
 // Sets up k-shortest-paths traversal from start to end
-bool KShortestPathsFinder::startKShortestPathsTraversal(
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::startKShortestPathsTraversal(
     arangodb::velocypack::Slice const& start,
     arangodb::velocypack::Slice const& end) {
   TRI_ASSERT(start.isString());
@@ -93,7 +101,8 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   return true;
 }
 
-bool KShortestPathsFinder::computeShortestPath(
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::computeShortestPath(
     VertexRef const& start, VertexRef const& end,
     VertexSet const& forbiddenVertices, EdgeSet const& forbiddenEdges,
     Path& result) {
@@ -128,7 +137,8 @@ bool KShortestPathsFinder::computeShortestPath(
   return false;
 }
 
-void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
+template<class ProviderType>
+void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertexCache(
     VertexRef vertex, Direction direction, std::vector<Step>*& res) {
   // track memory usage for one more item
   // if we can't insert the item into the cache, it means the item is
@@ -136,7 +146,8 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
   // usage.
   ResourceUsageScope guard(_resourceMonitor, vertexCacheEntryMemoryUsage());
 
-  auto result = _vertexCache.try_emplace(vertex, FoundVertex(vertex));
+  auto result =
+      _vertexCache.try_emplace(vertex, std::make_unique<FoundVertex>(vertex));
 
   if (result.second) {
     // successful insert - now _vertexCache has taken over responsibility
@@ -149,83 +160,61 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(
 
   switch (direction) {
     case BACKWARD:
-      if (!cache._hasCachedInNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
-        cache._hasCachedInNeighbours = true;
+      if (!cache->_hasCachedInNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache->_inNeighbours);
+        cache->_hasCachedInNeighbours = true;
       }
-      res = &cache._inNeighbours;
+      res = &cache->_inNeighbours;
       break;
     case FORWARD:
-      if (!cache._hasCachedOutNeighbours) {
-        computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours);
-        cache._hasCachedOutNeighbours = true;
+      if (!cache->_hasCachedOutNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache->_outNeighbours);
+        cache->_hasCachedOutNeighbours = true;
       }
-      res = &cache._outNeighbours;
+      res = &cache->_outNeighbours;
       break;
     default:
       TRI_ASSERT(false);
   }
 }
 
-void KShortestPathsFinder::computeNeighbourhoodOfVertex(
+template<class ProviderType>
+void KShortestPathsFinder<ProviderType>::computeNeighbourhoodOfVertex(
     VertexRef vertex, Direction direction, std::vector<Step>& steps) {
-  EdgeCursor* cursor =
-      direction == BACKWARD ? _backwardCursor.get() : _forwardCursor.get();
-  cursor->rearm(vertex, 0);
+  // Select proper provider (direction based)
+  ProviderType* provider =
+      direction == BACKWARD ? _backwardProvider.get() : _forwardProvider.get();
 
-  // TODO: This is a bit of a hack
-  if (_options.useWeight()) {
-    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge,
-                        size_t /*cursorIdx*/) -> void {
-      if (edge.isString()) {
-        VPackSlice doc = _options.cache()->lookupToken(eid);
-        double weight = _options.weightEdge(doc);
-        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-          VertexRef id = _options.cache()->persistString(edge.stringView());
-          steps.emplace_back(std::move(eid), id, weight);
-        }
-      } else {
-        VertexRef other(
-            transaction::helpers::extractFromFromDocument(edge).stringView());
-        if (other == vertex) {
-          other =
-              transaction::helpers::extractToFromDocument(edge).stringView();
-        }
-        if (other != vertex) {
-          VertexRef id = _options.cache()->persistString(other);
-          steps.emplace_back(std::move(eid), id, _options.weightEdge(edge));
-        }
-      }
-    });
-  } else {
-    cursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge,
-                        size_t /*cursorIdx*/) -> void {
-      if (edge.isString()) {
-        if (edge.compareString(vertex.data(), vertex.length()) != 0) {
-          VertexRef id = _options.cache()->persistString(edge.stringView());
-          steps.emplace_back(std::move(eid), id, 1);
-        }
-      } else {
-        VertexRef other(
-            transaction::helpers::extractFromFromDocument(edge).stringView());
-        if (other == vertex) {
-          other =
-              transaction::helpers::extractToFromDocument(edge).stringView();
-        }
-        if (other != vertex) {
-          VertexRef id = _options.cache()->persistString(other);
-          steps.emplace_back(std::move(eid), id, 1);
-        }
-      }
-    });
+  // Create step to use
+  arangodb::velocypack::HashedStringRef vertexRef{
+      vertex.data(), static_cast<uint32_t>(vertex.length())};
+  typename ProviderType::Step step{vertexRef, 0};
+  if constexpr (std::is_same_v<typename ProviderType::Step,
+                               ClusterProviderStep>) {
+    std::vector<typename ProviderType::Step*> stepToFetch{&step};
+    futures::Future<std::vector<typename ProviderType::Step*>> futureEnds =
+        provider->fetch(stepToFetch);
+    futureEnds.wait();
   }
+
+  // Expand the step
+  TRI_ASSERT(provider != nullptr);
+
+  // Variant using provider
+  size_t previous = 0;  // dummy value
+
+  provider->expand(step, previous, [&](auto n) -> void {
+    steps.emplace_back(provider->getEdgeDocumentToken(n.getEdge()),
+                       n.getVertex().getID().stringView(),
+                       (n.getWeight() - step.getWeight()));
+  });
 }
 
-void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
-                                           VertexSet const& forbiddenVertices,
-                                           EdgeSet const& forbiddenEdges,
-                                           VertexRef& join,
-                                           std::optional<double>& currentBest) {
+template<class ProviderType>
+void KShortestPathsFinder<ProviderType>::advanceFrontier(
+    Ball& source, Ball const& target, VertexSet const& forbiddenVertices,
+    EdgeSet const& forbiddenEdges, VertexRef& join,
+    std::optional<double>& currentBest) {
   VertexRef vr;
   DijkstraInfo *v, *w;
 
@@ -274,9 +263,11 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
   }
 }
 
-void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
-                                           VertexRef const& join,
-                                           Path& result) {
+template<class ProviderType>
+void KShortestPathsFinder<ProviderType>::reconstructPath(Ball const& left,
+                                                         Ball const& right,
+                                                         VertexRef const& join,
+                                                         Path& result) {
   // track memory used for reconstructing the path
   ResourceUsageScope guard(_resourceMonitor);
 
@@ -324,7 +315,8 @@ void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,
   // intentionally. we will do this later at the call site.
 }
 
-bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::computeNextShortestPath(Path& result) {
   VertexSet forbiddenVertices;
   EdgeSet forbiddenEdges;
   TRI_ASSERT(!_shortestPaths.empty());
@@ -409,7 +401,8 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
   return available;
 }
 
-bool KShortestPathsFinder::getNextPath(Path& result) {
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::getNextPath(Path& result) {
   result.clear();
 
   // This is for the first time that getNextPath is called
@@ -444,7 +437,8 @@ bool KShortestPathsFinder::getNextPath(Path& result) {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-bool KShortestPathsFinder::getNextPathShortestPathResult(
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::getNextPathShortestPathResult(
     ShortestPathResult& result) {
   _tempPath.clear();
 
@@ -459,7 +453,8 @@ bool KShortestPathsFinder::getNextPathShortestPathResult(
 }
 #endif
 
-bool KShortestPathsFinder::getNextPathAql(
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::getNextPathAql(
     arangodb::velocypack::Builder& result) {
   if (getNextPath(_tempPath)) {
     result.clear();
@@ -490,9 +485,23 @@ bool KShortestPathsFinder::getNextPathAql(
   return false;
 }
 
-bool KShortestPathsFinder::skipPath() { return getNextPath(_tempPath); }
+template<class ProviderType>
+bool KShortestPathsFinder<ProviderType>::skipPath() {
+  return getNextPath(_tempPath);
+}
 
-size_t KShortestPathsFinder::vertexCacheEntryMemoryUsage() const noexcept {
+template<class ProviderType>
+size_t KShortestPathsFinder<ProviderType>::vertexCacheEntryMemoryUsage()
+    const noexcept {
   return 16 /*arbitrary*/ + sizeof(typename decltype(_vertexCache)::key_type) +
          sizeof(typename decltype(_vertexCache)::value_type);
 }
+
+using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using ClusterProviderStep = ::arangodb::graph::ClusterProviderStep;
+
+template class ::arangodb::graph::KShortestPathsFinder<
+    SingleServerProvider<SingleServerProviderStep>>;
+
+template class ::arangodb::graph::KShortestPathsFinder<
+    ClusterProvider<ClusterProviderStep>>;

@@ -1874,6 +1874,46 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ "" ], getQueryResults(`RETURN SUBSTRING("yes", "yes", { })`));
     },
 
+    testSubstringBytes: function () {
+      assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 4)`));
+      assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0)`));
+      assertEqual([ '🤡f' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0, 5)`));
+      assertEqual([ 'fo'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 4, 2)`));
+      assertEqual([ ''  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 42, 2)`));
+      assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 0)`));
+      assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 1)`));
+
+      // negative offsets
+      assertEqual([ 'o' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -1, 1)`));
+      assertEqual([ 'vo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡fvo', -2, 2)`));
+      assertEqual([ '🤡foo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -42)`));
+      assertEqual([ '🤡foo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0)`));
+      assertEqual([ 'fo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -3, 2)`));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -42, 4)`));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', null, 4)`));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 'foobar', 4)`));
+
+      // negative length
+      assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -2, -2)`));
+      assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -2, "foobar")`));
+
+      // invalid utf8 offset
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, 2)`)); 
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 2)`));
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -4, 2)`));
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -42, 2)`));
+
+      // invalid argument types
+      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES(['🤡'], 1, 2)`)); 
+      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', [1], 2)`)); 
+      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, [2])`)); 
+
+      // invalid number of arguments
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING_BYTES()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING_BYTES("yes")`);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING_BYTES("yes", 0, 2, "yes")`);
+    },
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test hash function
 // //////////////////////////////////////////////////////////////////////////////
@@ -2184,6 +2224,32 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ 'f629ae44b7b3dcfed444d363e626edf411ec69a8' ], getQueryResults(`RETURN SHA1('[1]')`));
       assertEqual([ 'c1d44ff03aff1372856c281854f454e2e1d15b7c' ], getQueryResults(`RETURN SHA1('[object Object]')`));
       assertEqual([ '888227c44807b86059eb36f9fe0fc602a9b16fab' ], getQueryResults(`RETURN SHA1('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]')`));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sha256 function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testSha256: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SHA256()');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SHA256("foo", 2)');
+
+      assertEqual([ 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' ], getQueryResults(`RETURN SHA256('')`));
+      assertEqual([ '36a9e7f1c95b82ffb99743e0c5c4ce95d83c9a430aac59f84ef3cbfab6145068' ], getQueryResults(`RETURN SHA256(' ')`));
+      assertEqual([ '5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9' ], getQueryResults(`RETURN SHA256('0')`));
+      assertEqual([ '6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b' ], getQueryResults(`RETURN SHA256('1')`));
+      assertEqual([ '1bad6b8cf97131fceab8543e81f7757195fbb1d36b376ee994ad1cf17699c464' ], getQueryResults(`RETURN SHA256('-1')`));
+      assertEqual([ 'f00d9ca07f97df0310dc4cf04a2eb3a328a0e370b65a73ec10b58d91c2e870d4' ], getQueryResults(`RETURN SHA256(' 0')`));
+      assertEqual([ '7daed43814b633951fa277cd01695574df6e05a9cb10523f1763e842b06be0ff' ], getQueryResults(`RETURN SHA256('0 ')`));
+      assertEqual([ '2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae' ], getQueryResults(`RETURN SHA256('foo')`));
+      assertEqual([ '9520437ce8902eb379a7d8aaa98fc4c94eeb07b6684854868fa6f72bf34b0fd3' ], getQueryResults(`RETURN SHA256('FOO')`));
+      assertEqual([ '1cbec737f863e4922cee63cc2ebbfaafcd1cff8b790d8cfd2e6a5d550b648afa' ], getQueryResults(`RETURN SHA256('Foo')`));
+      assertEqual([ '0d749abe1377573493e0df74df8d1282e46967754a1ebc7cc6323923a788ad5c' ], getQueryResults(`RETURN SHA256('FooBar')`));
+      assertEqual([ '717ac506950da0ccb6404cdd5e7591f72018a20cbca27c8a423e9c9e5626ac61' ], getQueryResults(`RETURN SHA256('This is a test string')`));
+      assertEqual([ 'c5b04eef316ae860f267ba80df7c5d4ad2a3be81c4667b2bb93e3ae295ae68f1' ], getQueryResults(`RETURN SHA256('With\r\nLinebreaks\n')`));
+      assertEqual([ '74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b' ], getQueryResults(`RETURN SHA256('null')`));
+      assertEqual([ '080a9ed428559ef602668b4c00f114f1a11c3f6b02a435f0bdc154578e4d7f22' ], getQueryResults(`RETURN SHA256('[1]')`));
+      assertEqual([ '65e7dfd119aa5aec1125270d667fd9381365167473273c60f14f78039af6bf73' ], getQueryResults(`RETURN SHA256('[object Object')`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////

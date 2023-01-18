@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
@@ -43,6 +43,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -95,7 +96,11 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
   _options.useCache = basics::VelocyPackHelper::getBooleanValue(
       base, StaticStrings::UseCache, true);
+  _options.waitForSync = basics::VelocyPackHelper::getBooleanValue(
+      base, StaticStrings::WaitForSyncString, false);
   _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
+  _options.lookahead = basics::VelocyPackHelper::getNumericValue(
+      base, StaticStrings::IndexLookahead, IndexIteratorOptions{}.lookahead);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
@@ -232,7 +237,10 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   builder.add(StaticStrings::UseCache, VPackValue(_options.useCache));
+  builder.add(StaticStrings::WaitForSyncString,
+              VPackValue(_options.waitForSync));
   builder.add("limit", VPackValue(_options.limit));
+  builder.add(StaticStrings::IndexLookahead, VPackValue(_options.lookahead));
 
   if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
@@ -304,7 +312,7 @@ NonConstExpressionContainer IndexNode::buildNonConstExpressions() const {
 
     return utils::extractNonConstPartsOfIndexCondition(
         _plan->getAst(), getRegisterPlan()->varInfo, options().evaluateFCalls,
-        idx->sparse() || idx->isSorted(), _condition->root(), _outVariable);
+        idx.get(), _condition->root(), _outVariable);
   }
   return {};
 }
@@ -471,8 +479,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
-      costs = _indexes[i]->supportsFilterCondition({}, condition, _outVariable,
-                                                   itemsInCollection);
+      costs = _indexes[i]->supportsFilterCondition(
+          trx, {}, condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;
@@ -580,7 +588,7 @@ void IndexNode::prepareProjections() {
     // if we have a covering index and a post-filter condition,
     // extract which projections we will need just to execute
     // the filter condition
-    std::unordered_set<AttributeNamePath> attributes;
+    containers::FlatHashSet<AttributeNamePath> attributes;
 
     if (Ast::getReferencedAttributesRecursive(
             this->filter()->node(), this->outVariable(),

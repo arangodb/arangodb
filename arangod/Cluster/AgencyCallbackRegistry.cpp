@@ -33,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"

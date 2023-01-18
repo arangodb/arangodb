@@ -110,6 +110,24 @@ template<class T>
 struct IsTuple<T, std::void_t<typename std::tuple_size<T>::type>>
     : std::true_type {};
 
+template<class T>
+struct TupleSize;
+
+template<class T, std::size_t Size>
+struct TupleSize<std::array<T, Size>> {
+  static constexpr std::size_t value = Size;
+};
+
+template<class... Ts>
+struct TupleSize<std::tuple<Ts...>> {
+  static constexpr std::size_t value = sizeof...(Ts);
+};
+
+template<class T1, class T2>
+struct TupleSize<std::pair<T1, T2>> {
+  static constexpr std::size_t value = 2;
+};
+
 template<class T, std::size_t = sizeof(T)>
 std::true_type IsCompleteTypeImpl(T*);
 

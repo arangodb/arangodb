@@ -58,6 +58,16 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::velocypack;
 
+namespace {
+aql::AstNode* InitializeReference(aql::Ast& ast, aql::Variable& var) {
+  ast.scopes()->start(aql::ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  aql::AstNode* a = ast.createNodeReference(var.name);
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
 namespace arangodb {
 namespace tests {
 namespace graph {
@@ -70,7 +80,24 @@ class KShortestPathsFinderTest : public ::testing::Test {
   std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
-  KShortestPathsFinder* finder;
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  aql::Variable* _tmpVarForward{nullptr};
+  aql::Variable* _tmpVarBackward{nullptr};
+  aql::AstNode* _varNodeForward{nullptr};
+  aql::AstNode* _varNodeBackward{nullptr};
+  std::vector<IndexAccessor> forwardUsedIndexes{};
+  std::vector<IndexAccessor> backwardUsedIndexes{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextForward;
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextBackward;
+
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
+  aql::Projections _vertexProjections{};
+  aql::Projections _edgeProjections{};
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+
+  KShortestPathsFinder<SingleServerProvider<SingleServerProviderStep>>* finder;
 
   KShortestPathsFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
@@ -88,7 +115,58 @@ class KShortestPathsFinderTest : public ::testing::Test {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
     spo = gdb.getShortestPathOptions(query.get());
 
-    finder = new KShortestPathsFinder(*spo);
+    _trx = std::make_unique<arangodb::transaction::Methods>(
+        query->newTrxContext());
+
+    /* Forward Provider Options */
+    auto edgeIndexHandleForward = gdb.getEdgeIndexHandle("e");
+    _tmpVarForward = gdb.generateTempVar(query.get());
+    auto indexConditionForward =
+        gdb.buildOutboundCondition(query.get(), _tmpVarForward);
+    _varNodeForward = ::InitializeReference(*query->ast(), *_tmpVarForward);
+
+    forwardUsedIndexes.emplace_back(
+        IndexAccessor{edgeIndexHandleForward, indexConditionForward, 0, nullptr,
+                      std::nullopt, 0, TRI_EDGE_OUT});
+    _expressionContextForward =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+            *_trx, *query, _functionsCache);
+    /* END Forward Provider Options */
+
+    /* Backward Provider Options */
+    auto edgeIndexHandleBackward = gdb.getEdgeIndexHandle("e");
+    _tmpVarBackward = gdb.generateTempVar(query.get());
+    auto indexConditionBackward =
+        gdb.buildInboundCondition(query.get(), _tmpVarBackward);
+    _varNodeBackward = ::InitializeReference(*query->ast(), *_tmpVarBackward);
+
+    backwardUsedIndexes.emplace_back(
+        IndexAccessor{edgeIndexHandleBackward, indexConditionBackward, 0,
+                      nullptr, std::nullopt, 0, TRI_EDGE_IN});
+    _expressionContextBackward =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+            *_trx, *query, _functionsCache);
+    /* END Backward Provider Options */
+
+    SingleServerBaseProviderOptions forwardOpts(
+        _tmpVarForward,
+        std::make_pair(
+            std::move(forwardUsedIndexes),
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+        *_expressionContextForward.get(), {}, _emptyShardMap,
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
+
+    SingleServerBaseProviderOptions backwardOpts(
+        _tmpVarBackward,
+        std::make_pair(
+            std::move(backwardUsedIndexes),
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+        *_expressionContextBackward.get(), {}, _emptyShardMap,
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
+
+    finder = new KShortestPathsFinder<
+        SingleServerProvider<SingleServerProviderStep>>(
+        *spo, std::move(forwardOpts), std::move(backwardOpts));
   }
 
   ~KShortestPathsFinderTest() { delete finder; }
@@ -153,7 +231,7 @@ TEST_F(KShortestPathsFinderTest, path_of_length_5_with_loops_to_start_end) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  ASSERT_EQ(result.length(), 5);
+  ASSERT_EQ(result.length(), 5U);
 }
 
 TEST_F(KShortestPathsFinderTest, two_paths_of_length_5) {
@@ -219,7 +297,24 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
   std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
-  KShortestPathsFinder* finder;
+  arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
+  aql::Variable* _tmpVarForward{nullptr};
+  aql::Variable* _tmpVarBackward{nullptr};
+  aql::AstNode* _varNodeForward{nullptr};
+  aql::AstNode* _varNodeBackward{nullptr};
+  std::vector<IndexAccessor> forwardUsedIndexes{};
+  std::vector<IndexAccessor> backwardUsedIndexes{};
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextForward;
+  std::unique_ptr<arangodb::aql::FixedVarExpressionContext>
+      _expressionContextBackward;
+
+  std::unique_ptr<arangodb::transaction::Methods> _trx{};
+  aql::Projections _vertexProjections{};
+  aql::Projections _edgeProjections{};
+  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+
+  KShortestPathsFinder<SingleServerProvider<SingleServerProviderStep>>* finder;
 
   KShortestPathsFinderTestWeights() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 10);
@@ -236,9 +331,87 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
 
     spo = gdb.getShortestPathOptions(query.get());
-    spo->setWeightAttribute("cost");
+    std::string const usedWeightAttribute{"cost"};
+    double const usedDefaultWeight = spo->getDefaultWeight();
+    spo->setWeightAttribute(usedWeightAttribute);
 
-    finder = new KShortestPathsFinder(*spo);
+    _trx = std::make_unique<arangodb::transaction::Methods>(
+        query->newTrxContext());
+
+    /* Forward Provider Options */
+    auto edgeIndexHandleForward = gdb.getEdgeIndexHandle("e");
+    _tmpVarForward = gdb.generateTempVar(query.get());
+    auto indexConditionForward =
+        gdb.buildOutboundCondition(query.get(), _tmpVarForward);
+    _varNodeForward = ::InitializeReference(*query->ast(), *_tmpVarForward);
+
+    forwardUsedIndexes.emplace_back(
+        IndexAccessor{edgeIndexHandleForward, indexConditionForward, 0, nullptr,
+                      std::nullopt, 0, TRI_EDGE_OUT});
+    _expressionContextForward =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+            *_trx, *query, _functionsCache);
+    /* END Forward Provider Options */
+
+    /* Backward Provider Options */
+    auto edgeIndexHandleBackward = gdb.getEdgeIndexHandle("e");
+    _tmpVarBackward = gdb.generateTempVar(query.get());
+    auto indexConditionBackward =
+        gdb.buildInboundCondition(query.get(), _tmpVarBackward);
+    _varNodeBackward = ::InitializeReference(*query->ast(), *_tmpVarBackward);
+
+    backwardUsedIndexes.emplace_back(
+        IndexAccessor{edgeIndexHandleBackward, indexConditionBackward, 0,
+                      nullptr, std::nullopt, 0, TRI_EDGE_IN});
+    _expressionContextBackward =
+        std::make_unique<arangodb::aql::FixedVarExpressionContext>(
+            *_trx, *query, _functionsCache);
+    /* END Backward Provider Options */
+
+    SingleServerBaseProviderOptions forwardOpts(
+        _tmpVarForward,
+        std::make_pair(
+            std::move(forwardUsedIndexes),
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+        *_expressionContextForward.get(), {}, _emptyShardMap,
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
+
+    SingleServerBaseProviderOptions backwardOpts(
+        _tmpVarBackward,
+        std::make_pair(
+            std::move(backwardUsedIndexes),
+            std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
+        *_expressionContextBackward.get(), {}, _emptyShardMap,
+        _vertexProjections, _edgeProjections, /*produceVertices*/ true);
+
+    forwardOpts.setWeightEdgeCallback(
+        [weightAttribute = usedWeightAttribute, usedDefaultWeight](
+            double previousWeight, VPackSlice edge) -> double {
+          auto const weight =
+              arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                  edge, weightAttribute, usedDefaultWeight);
+          if (weight < 0.) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+          }
+
+          return previousWeight + weight;
+        });
+    backwardOpts.setWeightEdgeCallback(
+        [weightAttribute = usedWeightAttribute, usedDefaultWeight](
+            double previousWeight, VPackSlice edge) -> double {
+          auto const weight =
+              arangodb::basics::VelocyPackHelper::getNumericValue<double>(
+                  edge, weightAttribute, usedDefaultWeight);
+          if (weight < 0.) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+          }
+
+          return previousWeight + weight;
+        });
+
+    finder = new KShortestPathsFinder<
+        SingleServerProvider<SingleServerProviderStep>>(
+        *spo, std::move(forwardOpts), std::move(backwardOpts));
   }
 
   ~KShortestPathsFinderTestWeights() { delete finder; }

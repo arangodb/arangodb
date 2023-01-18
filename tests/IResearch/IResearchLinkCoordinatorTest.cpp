@@ -30,7 +30,7 @@
 #include "common.h"
 
 #include "utils/log.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
@@ -88,8 +88,6 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-              vocbase->type());
   }
 
   ~IResearchLinkCoordinatorTest() = default;
@@ -122,7 +120,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -242,6 +241,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -301,6 +303,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -392,6 +397,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -420,6 +428,9 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());

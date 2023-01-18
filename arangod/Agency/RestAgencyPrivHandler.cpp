@@ -33,7 +33,6 @@
 #include "Rest/Version.h"
 
 using namespace arangodb;
-
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
@@ -190,9 +189,9 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue(*_request, "prevLogTerm", prevLogTerm) &&
             readValue(*_request, "leaderCommit",
                       leaderCommit)) {  // found all values
-          auto ret = _agent->recvAppendEntriesRPC(
-              term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr());
+          auto ret =
+              _agent->recvAppendEntriesRPC(term, id, prevLogIndex, prevLogTerm,
+                                           leaderCommit, _request->payload());
           result.add("success", VPackValue(ret.success));
           result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
@@ -206,8 +205,8 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue(*_request, "candidateId", id) &&
             readValue(*_request, "prevLogIndex", prevLogIndex) &&
             readValue(*_request, "prevLogTerm", prevLogTerm)) {
-          priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, prevLogIndex, prevLogTerm, nullptr, timeoutMult);
+          priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex,
+                                                   prevLogTerm, timeoutMult);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         }
@@ -217,8 +216,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
         if (readValue(*_request, "term", term) &&
             readValue(*_request, "agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote(
-              term, id, 0, 0, _request->toVelocyPackBuilderPtr(), -1);
+          priv_rpc_ret_t ret = _agent->requestVote(term, id, 0, 0, -1);
           result.add("term", VPackValue(ret.term));
           result.add("voteGranted", VPackValue(ret.success));
         } else {
@@ -263,7 +261,7 @@ RestStatus RestAgencyPrivHandler::execute() {
                      _agent->config().activeAgentsToBuilder()->slice());
         }
       } else if (suffixes[0] == "inform") {
-        query_t query = _request->toVelocyPackBuilderPtr();
+        velocypack::Slice query = _request->payload();
         try {
           _agent->notify(query);
         } catch (std::exception const& e) {

@@ -38,6 +38,7 @@ ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
 ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 ERROR_STARTING_UP,38,"startup ongoing","Will be raised when a call cannot succeed because the server startup phase is still in progress."
+ERROR_DESERIALIZE,39,"error during deserialization","Will be raised when a data structure cannot be deserialized, e.g. because the input is invalid"
 
 ################################################################################
 ## HTTP error status codes
@@ -197,7 +198,7 @@ ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection"
 ERROR_CLUSTER_AQL_COMMUNICATION,1474,"error in cluster internal communication for AQL","Will be raised if the internal communication of the cluster for AQL produces an error."
 ERROR_CLUSTER_ONLY_ON_DBSERVER,1477,"this operation is only valid on a DBserver in a cluster","Will be raised if there is an attempt to run a DB-Server-only operation on a different type of node."
 ERROR_CLUSTER_BACKEND_UNAVAILABLE,1478,"A cluster backend which was required for the operation could not be reached","Will be raised if a required DB-Server can't be reached."
-ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection is out of sync","Will be raised if a collection needed during query execution is out of sync. This currently can only happen when using SatelliteCollections"
+ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,1481,"collection/view is out of sync","Will be raised if a collection/view needed during query execution is out of sync. This currently can happen when using SatelliteCollections, Arangosearch links or inverted indexes."
 ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,1482,"could not create index in plan","Will be raised when a Coordinator in a cluster cannot create an entry for a new index in the Plan hierarchy in the Agency."
 ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,1483,"could not drop index in plan","Will be raised when a Coordinator in a cluster cannot remove an index from the Plan hierarchy in the Agency."
 ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike references","Will be raised if one tries to create a collection with a distributeShardsLike attribute which points to another collection that also has one."
@@ -507,11 +508,6 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
-
-################################################################################
-## AIR errors
-################################################################################
-ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"
 
 ################################################################################
 ## Licensing

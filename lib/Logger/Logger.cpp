@@ -42,6 +42,7 @@
 #include "Basics/voc-errors.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/Escaper.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogContext.h"
@@ -107,7 +108,7 @@ void LogMessage::shrink(std::size_t maxLength) {
       // after shrinking
       _offset = static_cast<uint32_t>(_message.size());
     }
-    _message.append("...", 3);
+    _message.append("...\n", 4);
     _shrunk = true;
   }
 }
@@ -136,6 +137,8 @@ char Logger::_role('\0');
 std::atomic<TRI_pid_t> Logger::_cachedPid(0);
 std::string Logger::_outputPrefix;
 std::string Logger::_hostname;
+void (*Logger::_writerFn)(std::string_view, std::string&) =
+    &Escaper<ControlCharsEscaper, UnicodeCharsRetainer>::writeIntoOutputBuffer;
 
 std::atomic<std::size_t> Logger::_loggingThreadRefs(0);
 std::atomic<LogThread*> Logger::_loggingThread(nullptr);
@@ -230,7 +233,7 @@ void Logger::setLogStructuredParams(
     std::unordered_map<std::string, bool> const& paramsAndValues) {
   WRITE_LOCKER(guard, Logger::_structuredParamsLock);
   for (const auto& [paramName, value] : paramsAndValues) {
-    if (auto it = allowList.find({paramName.data(), paramName.size()});
+    if (auto it = allowList.find(std::string_view{paramName});
         it == allowList.end()) {
       continue;
     }
@@ -386,6 +389,32 @@ void Logger::setUseUnicodeEscaped(bool value) {
   _useUnicodeEscaped = value;
 }
 
+// alerts that startup parameters for escaping have already been assigned
+void Logger::setEscaping() {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  if (_useControlEscaped) {
+    if (_useUnicodeEscaped) {
+      _writerFn = &Escaper<ControlCharsEscaper,
+                           UnicodeCharsEscaper>::writeIntoOutputBuffer;
+    } else {
+      _writerFn = &Escaper<ControlCharsEscaper,
+                           UnicodeCharsRetainer>::writeIntoOutputBuffer;
+    }
+  } else {
+    if (_useUnicodeEscaped) {
+      _writerFn = &Escaper<ControlCharsSuppressor,
+                           UnicodeCharsEscaper>::writeIntoOutputBuffer;
+    } else {
+      _writerFn = &Escaper<ControlCharsSuppressor,
+                           UnicodeCharsRetainer>::writeIntoOutputBuffer;
+    }
+  }
+}
+
 // NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
   if (_active) {
@@ -482,7 +511,7 @@ std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
 
 void Logger::log(char const* logid, char const* function, char const* file,
                  int line, LogLevel level, size_t topicId,
-                 std::string const& message) try {
+                 std::string_view message) try {
   TRI_ASSERT(logid != nullptr);
   LogContext& logContext = LogContext::current();
 
@@ -504,7 +533,10 @@ void Logger::log(char const* logid, char const* function, char const* file,
   if (Logger::_useJson) {
     // construct JSON output
     arangodb::velocypack::StringSink sink(&out);
-    arangodb::velocypack::Dumper dumper(&sink);
+    arangodb::velocypack::Options options;
+    options.escapeControl = _useControlEscaped;
+    options.escapeUnicode = _useUnicodeEscaped;
+    arangodb::velocypack::Dumper dumper(&sink, &options);
 
     out.push_back('{');
 
@@ -570,11 +602,12 @@ void Logger::log(char const* logid, char const* function, char const* file,
     // file and line
     if (_showLineNumber && file != nullptr) {
       char const* filename = file;
-      char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-      if (shortened != nullptr) {
-        filename = shortened + 1;
+      if (_shortenFilenames) {
+        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
+        if (shortened != nullptr) {
+          filename = shortened + 1;
+        }
       }
-
       out.append(",\"file\":");
       dumper.appendString(filename, strlen(filename));
     }
@@ -651,7 +684,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
       if (maxMessageLength > message.size()) {
         maxMessageLength = message.size();
       }
-      dumper.appendString(message.c_str(), maxMessageLength);
+      dumper.appendString(message.data(), maxMessageLength);
 
       // this tells the logger to not shrink our (potentially already
       // shrunk) message once more - if it would shrink the message again,
@@ -761,39 +794,45 @@ void Logger::log(char const* logid, char const* function, char const* file,
     {
       READ_LOCKER(guard, _structuredParamsLock);
       //  meta data from log
-      LogContext::OverloadVisitor visitor([&out](std::string_view const& key,
-                                                 auto&& value) {
+      LogContext::OverloadVisitor visitor([&out, writerFn = _writerFn](
+                                              std::string_view const& key,
+                                              auto&& value) {
         if (!_structuredLogParams.contains({key.data(), key.size()})) {
           return;
         }
         out.push_back('[');
         out.append(key).append(": ", 2);
+
         if constexpr (std::is_same_v<std::string_view,
                                      std::remove_cv_t<std::remove_reference_t<
                                          decltype(value)>>>) {
-          out.append(value);
+          writerFn(value, out);
         } else {
-          out.append(std::to_string(value));
+          std::string number = std::to_string(value);
+          writerFn(number, out);
         }
+
         out.append("] ", 2);
       });
       logContext.visit(visitor);
     }
 
-    // generate the complete message
-    out.append(message);
+    _writerFn(message, out);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
+
+  // append final newline
+  out.push_back('\n');
 
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId,
                                           std::move(out), offset, shrunk);
 
   append(defaultLogGroup(), std::move(msg), false,
          [level, topicId](LogMessage const& msg) -> void {
-           LogAppenderStdStream::writeLogMessage(
-               STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, topicId,
-               msg._message.data(), msg._message.size(), true);
+           LogAppenderStdStream::writeLogMessage(STDERR_FILENO,
+                                                 (isatty(STDERR_FILENO) == 1),
+                                                 level, topicId, msg._message);
          });
 } catch (...) {
   // logging itself must never cause an exeption to escape
@@ -810,8 +849,8 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
   }
 
   // first log to all "global" appenders, which are the in-memory ring buffer
-  // logger plus some Windows-specifc appenders for the debug output window and
-  // the Windows event log. note that these loggers do not require any
+  // logger plus some Windows-specifc appenders for the debug output window
+  // and the Windows event log. note that these loggers do not require any
   // configuration so we can always and safely invoke them.
   LogAppender::logGlobal(group, *msg);
 
@@ -880,20 +919,22 @@ void Logger::shutdown() {
   }
   // logging is now inactive
 
-  // reset the instance variable in Logger, so that others won't see it anymore
+  // reset the instance variable in Logger, so that others won't see it
+  // anymore
   std::unique_ptr<LogThread> loggingThread(
       _loggingThread.exchange(nullptr, std::memory_order_relaxed));
 
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (loggingThread != nullptr) {
-    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add (1)
-    // Even though a fetch-add with 0 is essentially a noop, this is necessary
-    // to ensure that threads which try to get a reference to the _loggingThread
-    // actually see the new nullptr value.
+    // (5) - this release-fetch-add synchronizes with the acquire-fetch-add
+    // (1) Even though a fetch-add with 0 is essentially a noop, this is
+    // necessary to ensure that threads which try to get a reference to the
+    // _loggingThread actually see the new nullptr value.
     _loggingThreadRefs.fetch_add(0, std::memory_order_release);
 
-    // wait until all threads have dropped their reference to the logging thread
+    // wait until all threads have dropped their reference to the logging
+    // thread
     while (_loggingThreadRefs.load(std::memory_order_relaxed)) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
@@ -902,8 +943,8 @@ void Logger::shutdown() {
     std::string_view currentThreadName = nameFetcher.get();
     if (logThreadName == currentThreadName) {
       // oops, the LogThread itself crashed...
-      // so we need to flush the log messages here ourselves - if we waited for
-      // the LogThread to flush them, we would wait forever.
+      // so we need to flush the log messages here ourselves - if we waited
+      // for the LogThread to flush them, we would wait forever.
       loggingThread->processPendingMessages();
       loggingThread->beginShutdown();
     } else {

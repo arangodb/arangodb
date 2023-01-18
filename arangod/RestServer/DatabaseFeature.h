@@ -24,18 +24,23 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
 
 #include <condition_variable>
+#include <mutex>
+#include <memory>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -46,12 +51,10 @@ class ApplicationServer;
 class LogicalCollection;
 }  // namespace arangodb
 
-namespace arangodb {
-namespace velocypack {
-class Builder;  // forward declaration
-class Slice;    // forward declaration
-}  // namespace velocypack
-}  // namespace arangodb
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
 
 namespace arangodb {
 
@@ -109,7 +112,6 @@ class DatabaseFeature : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "Database"; }
 
   explicit DatabaseFeature(Server& server);
-  ~DatabaseFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -119,9 +121,9 @@ class DatabaseFeature : public ArangodFeature {
   void unprepare() override final;
   void prepare() override final;
 
-  // used by catch tests
+  // used by unit tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
+  ErrorCode loadDatabases(velocypack::Slice databases) {
     return iterateDatabases(databases);
   }
 #endif
@@ -159,29 +161,30 @@ class DatabaseFeature : public ArangodFeature {
 
   Result createDatabase(arangodb::CreateDatabaseInfo&&, TRI_vocbase_t*& result);
 
-  ErrorCode dropDatabase(std::string const& name, bool removeAppsDirectory);
+  ErrorCode dropDatabase(std::string_view name, bool removeAppsDirectory);
   ErrorCode dropDatabase(TRI_voc_tick_t id, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const&
                      nameFilter);
 
-  TRI_vocbase_t* useDatabase(std::string const& name) const;
-  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
+  VocbasePtr useDatabase(std::string_view name) const;
+  VocbasePtr useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name) const;
+  TRI_vocbase_t* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
       std::function<void(TRI_vocbase_t& vocbase)> const& func);
-  std::string translateCollectionName(std::string const& dbName,
-                                      std::string const& collectionName);
+  std::string translateCollectionName(std::string_view dbName,
+                                      std::string_view collectionName);
 
   bool ignoreDatafileErrors() const { return _ignoreDatafileErrors; }
   bool isInitiallyEmpty() const { return _isInitiallyEmpty; }
   bool checkVersion() const { return _checkVersion; }
   bool upgrade() const { return _upgrade; }
-  bool forceSyncProperties() const { return _forceSyncProperties; }
-  void forceSyncProperties(bool value) { _forceSyncProperties = value; }
   bool waitForSync() const { return _defaultWaitForSync; }
+  replication::Version defaultReplicationVersion() const {
+    return _defaultReplicationVersion;
+  }
 
   /// @brief whether or not extended names for databases can be used
   bool extendedNamesForDatabases() const { return _extendedNamesForDatabases; }
@@ -203,11 +206,6 @@ class DatabaseFeature : public ArangodFeature {
   void disableUpgrade() { _upgrade = false; }
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
-  struct DatabasesLists {
-    std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-    std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
-  };
-
   static TRI_vocbase_t& getCalculationVocbase();
 
  private:
@@ -225,7 +223,7 @@ class DatabaseFeature : public ArangodFeature {
                                        bool removeExisting);
 
   /// @brief iterate over all databases in the databases directory and open them
-  ErrorCode iterateDatabases(arangodb::velocypack::Slice const& databases);
+  ErrorCode iterateDatabases(velocypack::Slice const& databases);
 
   /// @brief close all opened databases
   void closeOpenDatabases();
@@ -238,31 +236,54 @@ class DatabaseFeature : public ArangodFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  bool _defaultWaitForSync;
-  bool _forceSyncProperties;
-  bool _ignoreDatafileErrors;
-  bool _isInitiallyEmpty;
-  bool _checkVersion;
-  bool _upgrade;
+  bool _defaultWaitForSync{false};
+  bool _ignoreDatafileErrors{false};
+  bool _isInitiallyEmpty{false};
+  bool _checkVersion{false};
+  bool _upgrade{false};
+  // allow extended database names or not
+  bool _extendedNamesForDatabases{false};
+  bool _performIOHeartbeat{true};
+  std::atomic<bool> _started{false};
 
-  /// @brief whether or not the allow extended database names
-  bool _extendedNamesForDatabases;
-
-  bool _performIOHeartbeat;
+  replication::Version _defaultReplicationVersion{replication::Version::ONE};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
-  std::atomic<DatabasesLists*> _databasesLists;
-  // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // arangodb::basics::DataProtector<64>
-  mutable arangodb::basics::DataProtector _databasesProtector;
-  mutable arangodb::Mutex _databasesMutex;
+  using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
+  class DatabasesListGuard {
+   public:
+    [[nodiscard]] static std::shared_ptr<DatabasesList> create() {
+      return std::make_shared<DatabasesList>();
+    }
 
-  std::atomic<bool> _started;
+    [[nodiscard]] auto load() const noexcept {
+      auto lists = std::atomic_load(&_impl);
+      TRI_ASSERT(lists != nullptr);
+      return lists;
+    }
+
+    [[nodiscard]] static auto make(
+        std::shared_ptr<DatabasesList const> const& lists) {
+      return std::make_shared<DatabasesList>(*lists);
+    }
+
+    void store(std::shared_ptr<DatabasesList const>&& lists) noexcept {
+      TRI_ASSERT(lists != nullptr);
+      std::atomic_store(&_impl, std::move(lists));
+    }
+
+   private:
+    // TODO(MBkkt) replace via std::atomic<std::shared_ptr>
+    //  when libc++ support it or we drop it support
+    std::shared_ptr<DatabasesList const> _impl = create();
+  } _databases;
+  mutable std::mutex _databasesMutex;
+  containers::FlatHashSet<TRI_vocbase_t*> _droppedDatabases;
 
   /// @brief lock for serializing the creation of databases
-  arangodb::Mutex _databaseCreateLock;
+  std::mutex _databaseCreateLock;
 
   std::vector<std::function<Result()>> _pendingRecoveryCallbacks;
 
@@ -270,11 +291,6 @@ class DatabaseFeature : public ArangodFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // i am here for debugging only.
-  static TRI_vocbase_t* CURRENT_VOCBASE;
-#endif
 };
 
 }  // namespace arangodb

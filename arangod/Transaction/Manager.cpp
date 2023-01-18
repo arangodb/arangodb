@@ -50,11 +50,13 @@
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
@@ -820,14 +822,22 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
             "not allowed to write lock an AQL transaction");
       }
       if (mtrx.rwlock.tryLockWrite()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
+        }
+        return managedContext;
       }
       // continue the loop after a small pause
     } else {
       TRI_ASSERT(mode == AccessMode::Type::READ);
       // even for side user leases, first try acquiring the read lock
       if (mtrx.rwlock.tryLockRead()) {
-        return buildManagedContextUnderLock(tid, mtrx);
+        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+        if (mtrx.state->isReadOnlyTransaction()) {
+          managedContext->setReadOnly();
+        }
+        return managedContext;
       }
       if (isSideUser) {
         // number of side users is atomically increased under the bucket's read
@@ -841,8 +851,12 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
         try {
           std::shared_ptr<TransactionState> state = mtrx.state;
           TRI_ASSERT(state != nullptr);
-          return std::make_shared<ManagedContext>(tid, std::move(state),
-                                                  TransactionContextSideUser{});
+          auto managedContext = std::make_shared<ManagedContext>(
+              tid, std::move(state), TransactionContextSideUser{});
+          if (mtrx.state->isReadOnlyTransaction()) {
+            managedContext->setReadOnly();
+          }
+          return managedContext;
         } catch (...) {
           // roll back our increase of the number of side users
           auto previous =
@@ -1066,9 +1080,20 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       canAccessTrx &= (mtrx.sideUsers.load(std::memory_order_relaxed) == 0);
     }
     if (!canAccessTrx) {
-      std::string msg("updating transaction status failed. transaction ");
-      msg.append(std::to_string(tid.id()));
-      msg.append(" is in use");
+      std::string_view hint = " ";
+      if (tid.isFollowerTransactionId()) {
+        hint = " follower ";
+      }
+
+      std::string_view operation;
+      if (status == transaction::Status::COMMITTED) {
+        operation = "commit";
+      } else {
+        operation = "abort";
+      }
+      std::string msg = absl::StrCat("updating", hint, "transaction status on ",
+                                     operation, " failed. transaction ",
+                                     std::to_string(tid.id()), " is in use");
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
       return res.reset(TRI_ERROR_LOCKED, std::move(msg));
     }

@@ -284,6 +284,10 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
 
+if [[ -d "$PWD/enterprise" ]]; then
+    "${BUILD}"/bin/arangosh --server.endpoint "$TRANSPORT://[::1]:$CO_BASE" --javascript.execute "enterprise/scripts/startLocalCluster.js"
+fi
+
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
   if [ -z "$JWT_SECRET" ];then

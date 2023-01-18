@@ -42,6 +42,8 @@ class ClusterTransactionState final : public TransactionState {
                           transaction::Options const& options);
   ~ClusterTransactionState() override = default;
 
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
@@ -52,19 +54,36 @@ class ClusterTransactionState final : public TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
-  /// @brief return number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override;
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  /// @brief return number of commits, including intermediate commits
+  [[nodiscard]] uint64_t numCommits() const noexcept override;
+
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override;
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
+
+  void addIntermediateCommits(uint64_t value) override {
+    _numIntermediateCommits += value;
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
 
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
+
+ private:
+  uint64_t _numIntermediateCommits;
 };
 
 }  // namespace arangodb

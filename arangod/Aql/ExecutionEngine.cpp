@@ -30,6 +30,7 @@
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"
@@ -815,6 +816,9 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
     bool const returnInheritedResults =
         ExecutionNode::castTo<ReturnNode const*>(root.getPlanNode())
             ->returnInheritedResults();
+
+    // Only spliced subqueries are supported anymore
+    // ADB_PROD_ASSERT(!returnInheritedResults);
     if (returnInheritedResults) {
       auto executor = dynamic_cast<ExecutionBlockImpl<
           IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(&root);

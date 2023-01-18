@@ -103,10 +103,6 @@ class StatisticsFeature final : public ArangodFeature {
   static arangodb::velocypack::Builder fillDistribution(
       statistics::Distribution const& dist);
 
-  static void appendHistogram(std::string& result,
-                              statistics::Distribution const& dist,
-                              std::string const& label,
-                              std::initializer_list<std::string> const& les);
   static void appendMetric(std::string& result, std::string const& val,
                            std::string const& label);
 
@@ -114,9 +110,14 @@ class StatisticsFeature final : public ArangodFeature {
       TRI_vocbase_t& vocbase, double start,
       arangodb::velocypack::Builder& result) const;
 
-  bool allDatabases() const { return _statisticsAllDatabases; }
+  bool allDatabases() const noexcept { return _statisticsAllDatabases; }
 
  private:
+  static void appendHistogram(std::string& result,
+                              statistics::Distribution const& dist,
+                              std::string const& label,
+                              std::initializer_list<std::string> const& les,
+                              bool isInteger);
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;

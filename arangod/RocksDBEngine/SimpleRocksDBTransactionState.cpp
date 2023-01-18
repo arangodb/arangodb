@@ -29,6 +29,8 @@
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
@@ -60,9 +62,9 @@ Result SimpleRocksDBTransactionState::beginTransaction(
   } else {
     if (isSingleOperation()) {
       _rocksMethods =
-          std::make_unique<RocksDBSingleOperationTrxMethods>(this, db);
+          std::make_unique<RocksDBSingleOperationTrxMethods>(this, *this, db);
     } else {
-      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, db);
+      _rocksMethods = std::make_unique<RocksDBTrxMethods>(this, *this, db);
     }
   }
 
@@ -146,8 +148,20 @@ TRI_voc_tick_t SimpleRocksDBTransactionState::lastOperationTick()
   return _rocksMethods->lastOperationTick();
 }
 
-uint64_t SimpleRocksDBTransactionState::numCommits() const {
+uint64_t SimpleRocksDBTransactionState::numCommits() const noexcept {
   return _rocksMethods->numCommits();
+}
+
+uint64_t SimpleRocksDBTransactionState::numIntermediateCommits()
+    const noexcept {
+  return _rocksMethods->numIntermediateCommits();
+}
+
+void SimpleRocksDBTransactionState::addIntermediateCommits(uint64_t value) {
+  // this is not supposed to be called, ever
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid call to addIntermediateCommits");
 }
 
 bool SimpleRocksDBTransactionState::hasOperations() const noexcept {
@@ -156,6 +170,11 @@ bool SimpleRocksDBTransactionState::hasOperations() const noexcept {
 
 uint64_t SimpleRocksDBTransactionState::numOperations() const noexcept {
   return _rocksMethods->numOperations();
+}
+
+uint64_t SimpleRocksDBTransactionState::numPrimitiveOperations()
+    const noexcept {
+  return _rocksMethods->numPrimitiveOperations();
 }
 
 bool SimpleRocksDBTransactionState::ensureSnapshot() {
@@ -171,4 +190,55 @@ SimpleRocksDBTransactionState::createTransactionCollection(
     DataSourceId cid, AccessMode::Type accessType) {
   return std::unique_ptr<TransactionCollection>(
       new RocksDBTransactionCollection(this, cid, accessType));
+}
+
+rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
+  auto& engine = vocbase()
+                     .server()
+                     .getFeature<EngineSelectorFeature>()
+                     .engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+
+    rocksdb::SequenceNumber seq = coll->prepareTransaction(id());
+    preSeq = std::max(seq, preSeq);
+  }
+
+  return preSeq;
+}
+
+void SimpleRocksDBTransactionState::commit(
+    rocksdb::SequenceNumber lastWritten) {
+  TRI_ASSERT(lastWritten > 0);
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    // we need this in case of an intermediate commit. The number of
+    // initial documents is adjusted and numInserts / removes is set to 0
+    // index estimator updates are buffered
+    coll->commitCounts(id(), lastWritten);
+  }
+}
+
+void SimpleRocksDBTransactionState::cleanup() {
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->abortCommit(id());
+  }
+}
+
+arangodb::Result SimpleRocksDBTransactionState::triggerIntermediateCommit() {
+  return _rocksMethods->triggerIntermediateCommit();
+}
+
+futures::Future<Result>
+SimpleRocksDBTransactionState::performIntermediateCommitIfRequired(
+    DataSourceId cid) {
+  if (_rocksMethods->isIntermediateCommitNeeded()) {
+    return triggerIntermediateCommit();
+  }
+  return Result{};
 }

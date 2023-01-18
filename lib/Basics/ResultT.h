@@ -26,11 +26,13 @@
 #include <type_traits>
 
 #include <optional>
+#include <variant>
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Inspection/Types.h"
 
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #pragma GCC diagnostic push
@@ -152,7 +154,11 @@ class ResultT {
   // cppcheck-suppress noExplicitConstructor
   /* implicit */ ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
-  ResultT() = delete;
+  // Default constructor calls default constructor of T
+  // If T is not default constructable, ResultT cannot be default constructable
+  ResultT() requires(std::is_nothrow_default_constructible<T>::value)
+      : _val{T{}} {}
+  ResultT() requires(!std::is_nothrow_default_constructible<T>::value) = delete;
 
   ResultT& operator=(T const& val_) {
     _val = val_;
@@ -281,6 +287,51 @@ class ResultT {
   ResultT(std::optional<T>&& val_, Result&& result)
       : _result(std::move(result)), _val(std::move(val_)) {}
 };
+
+namespace detail {
+template<typename T>
+struct ResultTSerializer
+    : std::variant<std::reference_wrapper<const arangodb::Result>,
+                   std::reference_wrapper<T>> {};
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, ResultTSerializer<T>& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<std::reference_wrapper<T>>("value"),
+      arangodb::inspection::type<
+          std::reference_wrapper<const arangodb::Result>>("error"));
+}
+template<typename T>
+struct ResultTDeserializer : std::variant<arangodb::Result, T> {};
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, ResultTDeserializer<T>& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<T>("value"),
+      arangodb::inspection::type<arangodb::Result>("error"));
+}
+}  // namespace detail
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, arangodb::ResultT<T>& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = detail::ResultTDeserializer<T>{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      if (std::holds_alternative<arangodb::Result>(v)) {
+        x = std::get<arangodb::Result>(std::move(v));
+      } else {
+        x = std::get<T>(std::move(v));
+      }
+    }
+    return res;
+  } else {
+    auto variant = [&]() -> detail::ResultTSerializer<T> {
+      if (x.fail()) {
+        return {std::ref(x.result())};
+      }
+      return {std::ref(x.get())};
+    }();
+    return f.apply(variant);
+  }
+}
 
 }  // namespace arangodb
 

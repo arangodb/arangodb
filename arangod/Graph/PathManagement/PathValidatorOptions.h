@@ -50,7 +50,7 @@ class PathValidatorOptions {
   PathValidatorOptions(
       aql::Variable const* tmpVar,
       arangodb::aql::FixedVarExpressionContext& expressionContext,
-      bool isDisjoint, bool isSatelliteLeader);
+      bool isDisjoint, bool isSatelliteLeader, bool enabledClusterOneShardRule);
   ~PathValidatorOptions() = default;
   PathValidatorOptions(PathValidatorOptions&&) = default;
   PathValidatorOptions(PathValidatorOptions const&) = default;
@@ -139,6 +139,9 @@ class PathValidatorOptions {
 
   bool isDisjoint() const { return _isDisjoint; }
   bool isSatelliteLeader() const { return _isSatelliteLeader; }
+  bool isClusterOneShardRuleEnabled() const {
+    return _enabledClusterOneShardRule;
+  }
 
  private:
   // Vertex expression section
@@ -157,6 +160,7 @@ class PathValidatorOptions {
 
   bool _isDisjoint;
   bool _isSatelliteLeader;
+  bool _enabledClusterOneShardRule;
 };
 }  // namespace graph
 }  // namespace arangodb

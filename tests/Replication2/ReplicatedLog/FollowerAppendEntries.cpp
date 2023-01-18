@@ -269,7 +269,7 @@ TEST_F(FollowerAppendEntriesTest, resigned_follower) {
   }
 
   // drop() resigns the follower, and removes it as the participant from log.
-  auto logCore = log->drop();
+  auto logCore = std::move(*log).resign();
   // we should have gotten the actual logcore, and do now destroy it
   ASSERT_NE(logCore, nullptr);
   logCore.reset();

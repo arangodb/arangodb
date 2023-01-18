@@ -50,8 +50,8 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
-cluster/
-cluster-init*/
+/cluster/**
+/cluster-init*/**
 p/
 
 /core
@@ -59,6 +59,7 @@ p/
 !core.h
 TAGS
 
+CMakeUserPresets.json
 CPackConfig.cmake
 CPackSourceConfig.cmake
 CTestTestfile.cmake
@@ -101,6 +102,8 @@ js/apps/system/_admin/aardvark/APP/react/node_modules/*
 !js/apps/system/_admin/aardvark/APP/react/build/**
 !js/apps/system/_admin/aardvark/APP/react/build/static
 !js/apps/system/_admin/aardvark/APP/react/build/static/**
+js/node/**/node_modules/.bin/
+js/node/node_modules/**/*.md
 
 .gdb-history
 npm-debug.log
@@ -121,3 +124,8 @@ callgrind*
 
 cmake-build*/
 .cache/
+
+js/node/**/*.map
+js/node/**/*.map.gz
+js/apps/**/*.map
+js/apps/**/*.map.gz

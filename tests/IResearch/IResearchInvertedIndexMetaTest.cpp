@@ -45,10 +45,9 @@ void serializationChecker(ArangodServer& server,
 
   arangodb::iresearch::IResearchInvertedIndexMeta metaLhs, metaRhs;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
   auto res = metaLhs.init(server, json->slice(), true, errorString,
-                          irs::string_ref(vocbase.name()));
+                          std::string_view(vocbase.name()));
   {
     SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
     ASSERT_TRUE(res);
@@ -62,7 +61,7 @@ void serializationChecker(ArangodServer& server,
   }
 
   res = metaRhs.init(server, serializedLhs.slice(), true, errorString,
-                     irs::string_ref(vocbase.name()));
+                     std::string_view(vocbase.name()));
   {
     SCOPED_TRACE(::testing::Message("Unexpected error:")
                  << errorString << " in: " << serializedLhs.toString());
@@ -79,9 +78,7 @@ void serializationChecker(ArangodServer& server,
                << serializedLhs.slice().toString()
                << " RHS:" << serializedRhs.slice().toString());
   ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
-  ASSERT_EQ(metaLhs, metaRhs);  // FIXME: PrimarySort, StoredValues and etc
-                                // should present in metaRhs. At this momemnt we
-                                // loose it since serialization works wrong
+  ASSERT_EQ(metaLhs, metaRhs);
 }
 }  // namespace
 
@@ -403,38 +400,77 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   constexpr std::string_view kWrongDefinition22 = R"("field_name")";
 
   // wrong locale in "primarySort"
-  constexpr std::string_view kWrongDefinition24 = R"(
+  // constexpr std::string_view kWrongDefinition24 = R"(
+  //{
+  //    "fields": [
+  //        {
+  //            "name": "foo"
+  //        }
+  //    ],
+  //    "primarySort": {
+  //       "fields": ["foo"],
+  //       "compression": "lz4",
+  //       "locale": "wrong_locale_name"
+  //    }
+  //})";
+
+  // wrong 'searchField' field with expansion
+  constexpr std::string_view kWrongDefinition25 = R"(
+  {
+      "fields": [
+        {"name":"foo",
+         "searchField":42
+        }
+      ]
+  })";
+
+  constexpr std::string_view kWrongDefinition26 = R"(
+  {
+      "fields": [
+        {"name":"foo[*]",
+         "searchField":true
+        }
+      ]
+  })";
+
+#ifndef USE_ENTERPRISE
+  // 'nested' attribute isn't supported in CE
+  constexpr std::string_view kWrongDefinitionCE = R"(
   {
       "fields": [
           {
-              "name": "foo"
+              "name": "foo",
+              "nested": [
+                  {
+                      "name": "bar"
+                  }
+              ]
           }
-      ],
-      "primarySort": {
-         "fields": ["foo"],
-         "compression": "lz4",
-         "locale": "wrong_locale_name"
-      }
+      ]
   })";
+#endif
 
   constexpr std::array badJsons{
+#ifndef USE_ENTERPRISE
+      kWrongDefinitionCE,
+#endif
       kWrongDefinition2,  kWrongDefinition3,  kWrongDefinition4,
       kWrongDefinition5,  kWrongDefinition6,  kWrongDefinition8,
       kWrongDefinition7,  kWrongDefinition11, kWrongDefinition12,
       kWrongDefinition13, kWrongDefinition14, kWrongDefinition15,
       kWrongDefinition16, kWrongDefinition17, kWrongDefinition18,
       kWrongDefinition20, kWrongDefinition21, kWrongDefinition22,
-      kWrongDefinition24};
+      kWrongDefinition25, kWrongDefinition26};
+  // kWrongDefinition24};
 
   for (auto jsonD : badJsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = meta.init(server.server(), json->slice(), true, errorString,
-                         irs::string_ref(vocbase.name()));
+                         std::string_view(vocbase.name()));
     {
       SCOPED_TRACE(::testing::Message("Definition is not failing: ") << jsonD);
       ASSERT_FALSE(res);
@@ -551,19 +587,43 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
     ]
    })";
 
+  // searchField:true
+  constexpr std::string_view kDefinition10 = R"(
+  {
+    "includeAllFields":true,
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      },
+      {
+        "name":"myAnalyzer",
+        "type":"delimiter",
+        "properties": {
+          "delimiter" : "."
+        },
+        "features": ["frequency"]
+      }
+    ],
+    "fields": [ {"name":"foo", "searchField":true} ]
+   })";
+
   constexpr std::array jsons{kDefinition1, kDefinition2, kDefinition3,
                              kDefinition6, kDefinition7, kDefinition8,
-                             kDefinition9};
+                             kDefinition9, kDefinition10};
 
   for (auto jsonD : jsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = meta.init(server.server(), json->slice(), true, errorString,
-                         irs::string_ref(vocbase.name()));
+                         std::string_view(vocbase.name()));
     {
       SCOPED_TRACE(::testing::Message("Definition is failing: ") << jsonD);
       ASSERT_TRUE(res);
@@ -600,10 +660,9 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
-                       irs::string_ref(vocbase.name()));
+                       std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
 }
 
@@ -634,10 +693,9 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
-                       irs::string_ref(vocbase.name()));
+                       std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
 }
 
@@ -678,16 +736,15 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = metaLhs.init(server.server(), json->slice(), false, errorString,
-                            irs::string_ref(vocbase.name()));
+                            std::string_view(vocbase.name()));
     {
       SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaLhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaLhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -706,16 +763,15 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithoutAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = metaRhs.init(server.server(), json->slice(), false, errorString,
-                            irs::string_ref(vocbase.name()));
+                            std::string_view(vocbase.name()));
     {
       SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, metaRhs._analyzerDefinitions.size());
+    ASSERT_EQ(1, metaRhs._analyzerDefinitions.size());
 
     VPackBuilder b;
     {
@@ -743,11 +799,13 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   ASSERT_EQ(meta._features, arangodb::iresearch::Features());
   ASSERT_FALSE(meta._trackListPositions);
   ASSERT_FALSE(meta._includeAllFields);
+  ASSERT_FALSE(meta._isSearchField);
 
   ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
   ASSERT_EQ(1000, meta._consolidationIntervalMsec);
@@ -816,46 +874,52 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
-                          irs::string_ref::NIL));
+                          std::string_view{}));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              arangodb::iresearch::Features(FieldFeatures::NORM,
+                                            irs::IndexFeatures::FREQ));
+    ASSERT_FALSE(meta._isSearchField);
   }
   // with active vocbase
   {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
-                          irs::string_ref(vocbase.name())));
+                          std::string_view(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_EQ(1, meta._fields.size());
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
               meta._sort.sortCompression());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              meta._version);
     ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_FALSE(meta._analyzers.empty());
     ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-    ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+    ASSERT_EQ(meta._features,
+              Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
+    ASSERT_FALSE(meta._isSearchField);
   }
 }
 
@@ -884,27 +948,28 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), true, errorString,
-                       irs::string_ref(vocbase.name()));
+                       std::string_view(vocbase.name()));
   {
     SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
-  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+  ASSERT_EQ(1, meta._analyzerDefinitions.size());
   ASSERT_EQ(1, meta._fields.size());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(),
             irs::type<irs::compression::lz4>::id());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(arangodb::iresearch::LinkVersion::MAX, meta._version);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+            meta._version);
   ASSERT_EQ(meta._consistency, Consistency::kEventual);
   ASSERT_FALSE(meta._analyzers.empty());
   ASSERT_EQ(meta._analyzers[0]._shortName, "identity");
-  ASSERT_EQ(meta._features, arangodb::iresearch::Features());
+  ASSERT_EQ(meta._features,
+            Features(FieldFeatures::NORM, irs::IndexFeatures::FREQ));
   ASSERT_EQ(meta._writebufferActive, 10);
   ASSERT_EQ(meta._writebufferIdle, 11);
   ASSERT_EQ(meta._writebufferSizeMax, 12);
@@ -912,6 +977,415 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
+  }
+}
+
+TEST_F(IResearchInvertedIndexMetaTest, testmatchesFieldsDefinition) {
+  auto json = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        "foo",
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d"
+      ]
+     })");
+
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errorString;
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+  auto res = meta.init(server.server(), json->slice(), true, errorString,
+                       std::string_view(vocbase.name()));
+  {
+    SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
+    ASSERT_TRUE(res);
+  }
+
+  // different field
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        "foo2",
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d"
+      ]
+     })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // same field  - different analyzer
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        "foo",
+        {"name":"bar", "analyzer":"identity",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d"
+      ]
+     })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // equal fields different order
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_TRUE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different track list positions
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":false},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different include all fields positions
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": false, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different root include all fields
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": true,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different root track list position
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "trackListPositions":true,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different root features
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "features":["position"],
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        "foo"
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // different field features
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        {"name":"foo", "features":["position"]}
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // same field but object
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "fields": [
+        {"name":"bar", "analyzer":"empty",
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        {"name":"foo"}
+      ]
+    })");
+    ASSERT_TRUE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+  // same field but object with searchField
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "fields": [
+        {"name":"bar", "analyzer":"empty", "searchField":false,
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        {"name":"foo"}
+      ]
+    })");
+    ASSERT_TRUE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
+  }
+
+  // same field but object with searchField = true
+  {
+    auto jsonAlt = VPackParser::fromJson(R"(
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "includeAllFields": false,
+      "fields": [
+        {"name":"bar", "analyzer":"empty", "searchField":true,
+         "includeAllFields": true, "trackListPositions":true},
+        "bas.c",
+        "bas.d",
+        {"name":"foo"}
+      ]
+    })");
+    ASSERT_FALSE(IResearchInvertedIndexMeta::matchesDefinition(
+        meta, jsonAlt->slice(), vocbase));
   }
 }
 

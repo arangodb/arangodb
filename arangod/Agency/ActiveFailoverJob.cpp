@@ -29,6 +29,7 @@
 #include "Agency/Store.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/voc-types.h"
 
 using namespace arangodb;
@@ -292,13 +293,13 @@ std::string ActiveFailoverJob::findBestFollower() {
   std::vector<ServerTick> ticks;
   try {
     // collect tick values from transient state
-    query_t trx = std::make_unique<VPackBuilder>();
+    velocypack::Builder trx;
     {
-      VPackArrayBuilder transactions(trx.get());
-      VPackArrayBuilder operations(trx.get());
-      trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
+      VPackArrayBuilder transactions(&trx);
+      VPackArrayBuilder operations(&trx);
+      trx.add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
     }
-    trans_ret_t res = _agent->transient(std::move(trx));
+    trans_ret_t res = _agent->transient(trx.slice());
     if (!res.accepted) {
       LOG_TOPIC("dbce2", ERR, Logger::SUPERVISION)
           << "could not read from transient while"

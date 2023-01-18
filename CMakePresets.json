@@ -1,0 +1,142 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "community",
+      "displayName": "Build ArangoDB Community Edition",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_ENTERPRISE": "Off",
+        "USE_JEMALLOC": "On",
+        "USE_IPO": "On"
+      }
+    },
+    {
+      "name": "enterprise",
+      "inherits": "community",
+      "displayName": "Build ArangoDB Enterprise Edition",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_ENTERPRISE": "On",
+        "USE_JEMALLOC": "On",
+        "USE_IPO": "On"
+      }
+    },
+    {
+      "name": "community-developer",
+      "inherits": "community",
+      "displayName": "Build ArangoDB Community Edition (Developer Build)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_IPO": "Off",
+        "USE_MAINTAINER_MODE": "On",
+        "USE_FAIL_ON_WARNINGS": "On",
+        "USE_GOOGLE_TESTS": "On",
+        "USE_FAILURE_TESTS": "On",
+        "USE_STRICT_OPENSSL_VERSION": "Off"
+      }
+    },
+    {
+      "name": "enterprise-developer",
+      "inherits": "enterprise",
+      "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_IPO": "Off",
+        "USE_MAINTAINER_MODE": "On",
+        "USE_FAIL_ON_WARNINGS": "On",
+        "USE_GOOGLE_TESTS": "On",
+        "USE_FAILURE_TESTS": "On",
+        "USE_STRICT_OPENSSL_VERSION": "Off"
+      }
+    },
+    {
+      "name": "community-developer-tsan",
+      "inherits": "community-developer",
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
+      "name": "enterprise-developer-tsan",
+      "inherits": "enterprise-developer",
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_C_FLAGS": "-fsanitize=thread"
+      }
+    },
+    {
+      "name": "community-developer-asan-ubsan",
+      "inherits": "community-developer",
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
+      }
+    },
+    {
+      "name": "enterprise-developer-asan-ubsan",
+      "inherits": "enterprise-developer",
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_JEMALLOC": "Off"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "community",
+      "configurePreset": "community"
+    },
+    {
+      "name": "enterprise",
+      "configurePreset": "enterprise"
+    },
+    {
+      "name": "community-developer",
+      "configurePreset": "community-developer"
+    },
+    {
+      "name": "enterprise-developer",
+      "configurePreset": "enterprise-developer"
+    },
+    {
+      "name": "community-developer-tsan",
+      "configurePreset": "community-developer-tsan"
+    },
+    {
+      "name": "enterprise-developer-tsan",
+      "configurePreset": "enterprise-developer-tsan"
+    },
+    {
+      "name": "community-developer-asan-ubsan",
+      "configurePreset": "community-developer-asan-ubsan"
+    },
+    {
+      "name": "enterprise-developer-asan-ubsan",
+      "configurePreset": "enterprise-developer-asan-ubsan"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "enterprise-developer",
+      "configurePreset": "enterprise-developer"
+    },
+    {
+      "name": "community-developer",
+      "configurePreset": "community-developer"
+    }
+  ]
+}

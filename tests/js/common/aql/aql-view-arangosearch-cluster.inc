@@ -170,7 +170,15 @@
           }
         };
         arrayV.properties(meta);
-        
+
+        db.UnitTestsCollection.ensureIndex({ 
+          type: "inverted",
+          name: "invertedIndex",
+          fields: [ { name: "text", analyzer: "text_en" } ] });
+        db._dropView("UnitTestsViewAlias");
+        db._createView("UnitTestsViewAlias", "search-alias", { 
+            indexes : [ { collection: "UnitTestsCollection", index: "invertedIndex" } ] });
+
         db._drop("TestsCollectionWithManyFields");
         let mfc = db._create("TestsCollectionWithManyFields");
         mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
@@ -184,7 +192,7 @@
           longData.push({field1:longValue + k, field2:longValue, field3: k});
         }
         lfc.save(longData);
-        
+
         try { analyzers.remove("customAnalyzer", true); } catch(err) {}
         analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                    "case": "lower",
@@ -222,7 +230,7 @@
                                 field3: {}}}}});
         let wpsl = db._createView("WithLongPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"}],
-                                storedValues: [["field2"], ["field3"]]});
+                                storedValues: ["field2", "field3"]});
         wpsl.properties({links:{TestsCollectionWithLongFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -253,6 +261,7 @@
         db._drop("UnitTestsWithArrayCollection");
         db._dropView("WithPrimarySort");
         db._drop("TestsCollectionWithManyFields");
+        db._dropView("UnitTestsViewAlias");
         db._dropView("WithStoredValues");
         db._dropView("WithLongPrimarySort");
         db._drop("TestsCollectionWithLongFields");
@@ -269,7 +278,7 @@
 
       testV8FunctionInSearch: function () {
         try {
-          db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && APPLY('LOWER', 'abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
+          db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' && V8('abc') == 'ABC' OPTIONS { waitForSync: true } RETURN doc");
           fail();
         } catch (e) {
           assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
@@ -649,6 +658,89 @@
           assertEqual("bar", result[0].a);
           assertEqual("baz", result[1].a);
         }
+      },
+
+      testPhraseFilterAlias : function () {
+        // inherit analyzer from field meta
+        var result0i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, 'quick brown fox jumps') RETURN doc").toArray();
+        assertEqual(result0i.length, 1);
+        assertEqual(result0i[0].name, 'full');
+  
+        // inherit analyzer from field meta
+        var result0 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, 'quick brown fox jumps') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result0.length, 1);
+        assertEqual(result0[0].name, 'full');
+  
+        var result1i = db._query("FOR doc IN UnitTestsCollection OPTIONS { indexHint: 'invertedIndex', waitForSync : true } FILTER PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') RETURN doc").toArray();
+        assertEqual(result1i.length, 1);
+        assertEqual(result1i[0].name, 'full');
+
+        // non-indexed field
+        {
+          let emptyResult = db._query("FOR doc IN UnitTestsViewAlias SEARCH doc.missingField == TOKENS('quick')[0] OPTIONS { waitForSync : true } RETURN doc");
+          assertEqual(emptyResult.toArray().length, 0);
+          let warnings = emptyResult.getExtra().warnings;
+          assertNotEqual(warnings.length, 0);
+          warnings.forEach(v => {
+            assertEqual(v.code, 10);
+            assertEqual(v.message, "Analyzer for field 'missingField' isn't set");
+          });
+        }
+
+        var result1 = db._query("FOR doc IN UnitTestsViewAlias SEARCH PHRASE(doc.text, [ 'quick brown fox jumps' ], 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result1.length, 1);
+        assertEqual(result1[0].name, 'full');
+  
+        var result2 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, 'quick brown fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result2.length, 1);
+        assertEqual(result2[0].name, 'full');
+  
+        var result3 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick brown fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result3.length, 1);
+        assertEqual(result3[0].name, 'full');
+        
+        var result4 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 1, ' fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result4.length, 1);
+        assertEqual(result4[0].name, 'full');
+        
+        var result5 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 1, ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result5.length, 1);
+        assertEqual(result5[0].name, 'full');
+        
+        var result6 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, [' fox',  ' jumps']), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result6.length, 1);
+        assertEqual(result6[0].name, 'full');
+        
+        var result6v = db._query("LET phraseStruct = NOOPT([' fox',  ' jumps']) "
+                                 + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result6v.length, 1);
+        assertEqual(result6v[0].name, 'full');
+        
+              
+        var result6v2 = db._query("LET phraseStruct = NOOPT(['quick ', 0, 'brown', 0, [' fox',  ' jumps']]) "
+                                 + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result6v2.length, 1);
+        assertEqual(result6v2[0].name, 'full');
+        
+        var result7 = db._query("FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 'brown', ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result7.length, 1);
+        assertEqual(result7[0].name, 'full');
+        
+        var result7v = db._query("LET phraseStruct = NOOPT([ 'quick ', 'brown', ' fox jumps' ]) "
+                                + "FOR doc IN UnitTestsViewAlias SEARCH ANALYZER(PHRASE(doc.text, phraseStruct), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+  
+        assertEqual(result7v.length, 1);
+        assertEqual(result7v[0].name, 'full');
       },
 
       testPhraseFilter : function () {

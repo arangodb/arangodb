@@ -194,7 +194,7 @@ function strongly_connected_components(graphName, resultField) {
 function exec_test_scc_on_graph(graphSpec, components = []) {
   let status = testhelpers.wait_for_pregel(
     "Air Strongly Connected Components",
-    strongly_connected_components(graphSpec.name, "SCC")
+    strongly_connected_components(graphSpec.name, "scc")
   );
 
   // TODO: Verify SSC result

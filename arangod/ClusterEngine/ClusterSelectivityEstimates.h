@@ -32,6 +32,7 @@
 
 namespace arangodb {
 class LogicalCollection;
+class TransactionId;
 
 ///@brief basic cache for selectivity estimates in the cluster
 class ClusterSelectivityEstimates {

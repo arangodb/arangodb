@@ -165,7 +165,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -187,7 +187,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[1]");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -203,7 +203,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(vocbase(),
@@ -234,7 +234,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -267,7 +267,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       filter.boost(0.5);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -307,7 +307,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -350,7 +350,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       filter.boost(0.5);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -379,7 +379,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+          irs::ViewCast<irs::byte_type>(std::string_view("42"));
     }
 
     assertFilterSuccess(
@@ -433,7 +433,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -526,7 +526,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -544,7 +544,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[1].b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -568,7 +568,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       filter.boost(2.5);
       *filter.mutable_field() = mangleBool("a[1].b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -588,7 +588,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -635,7 +635,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -698,7 +698,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -793,7 +793,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -827,7 +827,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a[1].b[2].c[3].bool");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -871,7 +871,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -930,7 +930,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -964,7 +964,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -1365,7 +1365,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     {
       auto& filter = expected.add<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -1461,10 +1461,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -1483,10 +1484,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("[4]");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -1499,10 +1501,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(vocbase(),
@@ -1537,10 +1540,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -1584,10 +1588,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+          irs::ViewCast<irs::byte_type>(std::string_view("42"));
     }
 
     assertFilterSuccess(
@@ -1632,11 +1637,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+          irs::ViewCast<irs::byte_type>(std::string_view("42"));
     }
 
     assertFilterSuccess(
@@ -1658,11 +1664,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+          irs::ViewCast<irs::byte_type>(std::string_view("42"));
     }
 
     assertFilterSuccess(
@@ -1688,11 +1695,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+          irs::ViewCast<irs::byte_type>(std::string_view("1"));
     }
 
     assertFilterSuccess(
@@ -1783,9 +1791,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -1808,9 +1817,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -1834,9 +1844,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a[12].b.c.bool");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -1863,10 +1874,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.bool");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -1889,10 +1901,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c[3].bool");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -1924,9 +1937,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -1972,10 +1986,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
     }
 
@@ -2002,9 +2017,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -2103,10 +2119,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2156,11 +2173,12 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(1.5);
       *filter.mutable_field() = mangleNull("a.b[23].c");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2186,10 +2204,11 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
     }
 
     assertFilterSuccess(
@@ -2285,7 +2304,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric");
       filter.mutable_options()->term = term->value;
     }
@@ -2321,7 +2341,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.numeric[1]");
       filter.mutable_options()->term = term->value;
     }
@@ -2368,7 +2389,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
     }
@@ -2424,7 +2446,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       filter.boost(42);
       *filter.mutable_field() = mangleNumeric("a.b[23].c");
       filter.mutable_options()->term = term->value;
@@ -2458,7 +2481,8 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
 
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleNumeric("a.b.c.e[4].f[5].g[3].g.a");
       filter.mutable_options()->term = term->value;
     }
@@ -2551,9 +2575,10 @@ TEST_F(IResearchFilterCompareTest, BinaryNotEq) {
   {
     irs::Or expected;
     {
-      auto& filter = expected.add<irs::Not>().filter<irs::by_term>();
+      auto& filter =
+          expected.add<irs::And>().add<irs::Not>().filter<irs::by_term>();
       *filter.mutable_field() = mangleBool("a.b.c");
-      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(
+      filter.mutable_options()->term = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
     }
 
@@ -2689,7 +2714,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2712,7 +2737,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("[23]");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2731,7 +2756,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2756,7 +2781,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2790,7 +2815,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2830,7 +2855,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2866,7 +2891,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -2961,7 +2986,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -2989,7 +3014,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[223]");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -3017,7 +3042,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -3052,7 +3077,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -3094,7 +3119,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       filter.boost(1.5);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -3125,7 +3150,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -3222,7 +3247,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3250,7 +3275,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() = mangleNull("a.b[23].c.nil");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3287,7 +3312,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3333,7 +3358,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3364,7 +3389,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -3718,7 +3743,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -3828,7 +3853,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -3851,7 +3876,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("[23]");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -3868,7 +3893,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -3893,7 +3918,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -3927,7 +3952,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -3968,7 +3993,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4004,7 +4029,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.min = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4099,7 +4124,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4126,7 +4151,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4154,7 +4179,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[223].bool");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4192,7 +4217,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4239,7 +4264,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4270,7 +4295,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
@@ -4367,7 +4392,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4400,7 +4425,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4446,7 +4471,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4477,7 +4502,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4573,7 +4598,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       *filter.mutable_field() = mangleNull("a.b[23].c.nil");
       auto* opts = filter.mutable_options();
       opts->range.min =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -4893,7 +4918,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -5000,7 +5025,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5023,7 +5048,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("[23]");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5042,7 +5067,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5068,7 +5093,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a[1].b.c[42]");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5102,7 +5127,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5142,7 +5167,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5178,7 +5203,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5273,7 +5298,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5300,7 +5325,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[42].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5328,7 +5353,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5363,7 +5388,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5409,7 +5434,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5440,7 +5465,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
@@ -5537,7 +5562,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5565,7 +5590,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() = mangleNull("a.b.c.nil[1]");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5600,7 +5625,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5646,7 +5671,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -5677,7 +5702,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::INCLUSIVE;
     }
 
@@ -6037,7 +6062,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::INCLUSIVE;
     }
@@ -6147,7 +6172,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6170,7 +6195,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("[42]");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6187,7 +6212,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6212,7 +6237,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[42].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("1"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6246,7 +6271,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleStringIdentity("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6286,7 +6311,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       filter.boost(42);
       *filter.mutable_field() = mangleString("a.b[23].c", "test_analyzer");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6322,7 +6347,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() =
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(irs::string_ref("42"));
+      opts->range.max = irs::ViewCast<irs::byte_type>(std::string_view("42"));
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6417,7 +6442,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_true());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6445,7 +6470,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.bool");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6473,7 +6498,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c[42].bool[42]");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6511,7 +6536,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6558,7 +6583,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       filter.boost(42);
       *filter.mutable_field() = mangleBool("a.b[23].c");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6589,7 +6614,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
-      opts->range.max = irs::ref_cast<irs::byte_type>(
+      opts->range.max = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
@@ -6686,7 +6711,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() = mangleNull("a.b.c.nil");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6713,7 +6738,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() = mangleNull("a.b[42].c.nil");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6748,7 +6773,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6794,7 +6819,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() = mangleNull("a.b[23].c");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -6825,7 +6850,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       *filter.mutable_field() = mangleNull("a.b.c.e[4].f[5].g[3].g.a");
       auto* opts = filter.mutable_options();
       opts->range.max =
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null());
       opts->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
@@ -7182,7 +7207,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
       auto& filter = expected.add<irs::by_range>();
       *filter.mutable_field() = mangleBool("a.b.c");
       auto* opts = filter.mutable_options();
-      opts->range.min = irs::ref_cast<irs::byte_type>(
+      opts->range.min = irs::ViewCast<irs::byte_type>(
           irs::boolean_token_stream::value_false());
       opts->range.min_type = irs::BoundType::EXCLUSIVE;
     }

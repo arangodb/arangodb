@@ -23,10 +23,12 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -558,7 +560,9 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.clear();
 
   // append method
-  GeneralRequest::appendMethod(method, &_writeBuffer);
+  std::string_view mth = GeneralRequest::translateMethod(method);
+  _writeBuffer.appendText(mth.data(), mth.size());
+  _writeBuffer.appendChar(' ');
 
   // append location
   std::string const* l = &location;
@@ -639,12 +643,13 @@ void SimpleHttpClient::setRequest(
   }
 
   if (method != rest::RequestType::GET) {
-    _writeBuffer.appendText(std::string_view("Content-Length: "));
-    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
-    _writeBuffer.appendText(std::string_view("\r\n\r\n"));
-  } else {
-    _writeBuffer.appendText(std::string_view("\r\n"));
+    if (_params._addContentLength) {
+      _writeBuffer.appendText(std::string_view("Content-Length: "));
+      _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
+      _writeBuffer.appendText(std::string_view("\r\n"));
+    }
   }
+  _writeBuffer.appendText(std::string_view("\r\n"));
 
   if (body != nullptr) {
     _writeBuffer.appendText(body, bodyLength);

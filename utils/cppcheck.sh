@@ -15,6 +15,7 @@ else
   files=( arangod/ client-tools/ lib/ enterprise/ )
 fi
 
+echo "cppcheck version: $(cppcheck --version)"
 cppcheck "$@" \
   -j $threads \
   --xml --xml-version=2 \
@@ -27,7 +28,7 @@ cppcheck "$@" \
   -I lib \
   -D USE_PLAN_CACHE \
   -D DEFINE_FACTORY_DEFAULT \
-  --std=c++17 \
+  --std=c++20 \
   --enable=warning,performance,portability,missingInclude \
   --force \
   --quiet \

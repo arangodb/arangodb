@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -54,6 +55,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.add("executionTime", VPackValue(executionTime));
 
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
+  builder.add("intermediateCommits", VPackValue(intermediateCommits));
 
   if (!_nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
@@ -88,6 +90,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
   count += summand.count;
   peakMemoryUsage = std::max(summand.peakMemoryUsage, peakMemoryUsage);
+  intermediateCommits += summand.intermediateCommits;
   // intentionally no modification of executionTime, as the overall
   // time is calculated in the end
 
@@ -146,7 +149,8 @@ ExecutionStats::ExecutionStats() noexcept
       fullCount(0),
       count(0),
       executionTime(0.0),
-      peakMemoryUsage(0) {}
+      peakMemoryUsage(0),
+      intermediateCommits(0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
   if (!slice.isObject()) {
@@ -173,6 +177,8 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "httpRequests", 0);
   peakMemoryUsage = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "peakMemoryUsage", 0);
+  intermediateCommits = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "intermediateCommits", 0);
 
   // cursorsCreated and cursorsRearmed are optional attributes.
   // the attributes are currently not shown in profile outputs,
@@ -226,6 +232,10 @@ void ExecutionStats::setPeakMemoryUsage(size_t value) {
   }
 }
 
+void ExecutionStats::setIntermediateCommits(uint64_t value) {
+  intermediateCommits = value;
+}
+
 void ExecutionStats::clear() noexcept {
   writesExecuted = 0;
   writesIgnored = 0;
@@ -241,5 +251,6 @@ void ExecutionStats::clear() noexcept {
   count = 0;
   executionTime = 0.0;
   peakMemoryUsage = 0;
+  intermediateCommits = 0;
   _nodes.clear();
 }

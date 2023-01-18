@@ -346,6 +346,9 @@ function arrayAccessTestSuite () {
       assertEqual([ false, false, false, false, false, true, false ], result);
      
       // ALL|ANY|NONE
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values: [] }).json;
+      assertEqual([ true ], result);
+
       result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values }).json;
       assertEqual([ false ], result);
       
@@ -358,6 +361,9 @@ function arrayAccessTestSuite () {
       result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT >= 2 && CURRENT <= 11]", { values }).json;
       assertEqual([ false ], result);
       
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT == 1]", { values: [] }).json;
+      assertEqual([ false ], result);
+      
       result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT == 1]", { values }).json;
       assertEqual([ true ], result);
       
@@ -368,6 +374,9 @@ function arrayAccessTestSuite () {
       assertEqual([ false ], result);
       
       result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT >= 5]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT == 1]", { values: [] }).json;
       assertEqual([ true ], result);
       
       result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT == 1]", { values }).json;

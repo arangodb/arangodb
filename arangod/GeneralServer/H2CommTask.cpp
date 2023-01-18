@@ -31,6 +31,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogContext.h"
@@ -42,8 +43,21 @@
 
 #include <cstring>
 
+// Work-around for nghttp2 non-standard definition ssize_t under windows
+// https://github.com/nghttp2/nghttp2/issues/616
+#if defined(_WIN32) && defined(_MSC_VER)
+#define ssize_t long
+#endif
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb::basics;
 using std::string_view;
+
+namespace {
+constexpr std::string_view switchingProtocols(
+    "HTTP/1.1 101 Switching Protocols\r\nConnection: "
+    "Upgrade\r\nUpgrade: h2c\r\n\r\n");
+}  // namespace
 
 namespace arangodb {
 namespace rest {
@@ -66,7 +80,7 @@ template<SocketType T>
     return 0;
   }
 
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
   me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid,
@@ -86,7 +100,7 @@ template<SocketType T>
                                         const uint8_t* value, size_t valuelen,
                                         uint8_t flags, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
 
   if (frame->hd.type != NGHTTP2_HEADERS ||
       frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
@@ -107,15 +121,15 @@ template<SocketType T>
 
   // handle pseudo headers
   // https://http2.github.io/http2-spec/#rfc.section.8.1.2.3
-  std::string_view field(reinterpret_cast<const char*>(name), namelen);
-  std::string_view val(reinterpret_cast<const char*>(value), valuelen);
+  std::string_view field(reinterpret_cast<char const*>(name), namelen);
+  std::string_view val(reinterpret_cast<char const*>(value), valuelen);
 
   if (std::string_view(":method") == field) {
     strm->request->setRequestType(GeneralRequest::translateMethod(val));
   } else if (std::string_view(":scheme") == field) {
     // simon: ignore, should contain 'http' or 'https'
   } else if (std::string_view(":path") == field) {
-    strm->request->parseUrl(reinterpret_cast<const char*>(value), valuelen);
+    strm->request->parseUrl(reinterpret_cast<char const*>(value), valuelen);
   } else if (std::string_view(":authority") == field) {
     // simon: ignore, could treat like "Host" header
   } else {  // fall through
@@ -135,7 +149,7 @@ template<SocketType T>
     case NGHTTP2_DATA:  // GET or HEAD do not use DATA frames
     case NGHTTP2_HEADERS: {
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        const int32_t sid = frame->hd.stream_id;
+        int32_t const sid = frame->hd.stream_id;
         LOG_TOPIC("c75b1", TRACE, Logger::REQUESTS)
             << "<http2> finalized request on stream " << sid << " with ptr "
             << me;
@@ -210,7 +224,7 @@ template<SocketType T>
     return 0;
   }
 
-  const int32_t sid = frame->hd.stream_id;
+  int32_t const sid = frame->hd.stream_id;
   LOG_TOPIC("d15e8", DEBUG, Logger::REQUESTS)
       << "sending RST on stream " << sid << " with error '"
       << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
@@ -344,7 +358,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   bool const wasHead = req->requestType() == RequestType::HEAD;
 
   std::string decoded = StringUtils::decodeBase64(settings);
-  uint8_t const* src = reinterpret_cast<const uint8_t*>(decoded.data());
+  uint8_t const* src = reinterpret_cast<uint8_t const*>(decoded.data());
   int rv =
       nghttp2_session_upgrade2(_session, src, decoded.size(), wasHead, nullptr);
 
@@ -358,40 +372,36 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   }
 
   // https://http2.github.io/http2-spec/#discover-http
-  auto str = std::make_shared<std::string>();
-  str->append(
-      "HTTP/1.1 101 Switching Protocols\r\nConnection: "
-      "Upgrade\r\nUpgrade: h2c\r\n\r\n");
-
-  auto buffer = asio_ns::buffer(str->data(), str->size());
+  auto buffer =
+      asio_ns::buffer(::switchingProtocols.data(), ::switchingProtocols.size());
   asio_ns::async_write(
       this->_protocol->socket, buffer,
-      withLogContext([self(this->shared_from_this()), str(std::move(str)),
-                      req(std::move(req))](const asio_ns::error_code& ec,
-                                           std::size_t) mutable {
-        auto& me = static_cast<H2CommTask<T>&>(*self);
-        if (ec) {
-          me.close(ec);
-          return;
-        }
+      withLogContext(
+          [self(this->shared_from_this()), req(std::move(req))](
+              asio_ns::error_code const& ec, std::size_t nwrite) mutable {
+            auto& me = static_cast<H2CommTask<T>&>(*self);
+            if (ec) {
+              me.close(ec);
+              return;
+            }
 
-        submitConnectionPreface(me._session);
+            submitConnectionPreface(me._session);
 
-        // The HTTP/1.1 request that is sent prior to upgrade is assigned
-        // a stream identifier of 1 (see Section 5.1.1).
-        // Stream 1 is implicitly "half-closed" from the client toward the
-        // server
+            // The HTTP/1.1 request that is sent prior to upgrade is assigned
+            // a stream identifier of 1 (see Section 5.1.1).
+            // Stream 1 is implicitly "half-closed" from the client toward the
+            // server
 
-        TRI_ASSERT(req->messageId() == 1);
-        auto* strm = me.createStream(1, std::move(req));
-        TRI_ASSERT(strm);
+            TRI_ASSERT(req->messageId() == 1);
+            auto* strm = me.createStream(1, std::move(req));
+            TRI_ASSERT(strm);
 
-        // will start writing later
-        me.processStream(*strm);
+            // will start writing later
+            me.processStream(*strm);
 
-        // start reading
-        me.asyncReadSome();
-      }));
+            // start reading
+            me.asyncReadSome();
+          }));
 }
 
 template<SocketType T>
@@ -423,7 +433,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   for (auto const& buffer : this->_protocol->buffer.data()) {
     const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+    auto rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
       LOG_TOPIC("43942", INFO, Logger::REQUESTS)
           << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv) << "\" ("
@@ -519,7 +529,13 @@ template<SocketType T>
 void H2CommTask<T>::processStream(Stream& stream) {
   DTraceH2CommTaskProcessStream((size_t)this);
 
+  if (!stream.request->header("x-omit-www-authenticate").empty()) {
+    stream.mustSendAuthHeader = false;
+  } else {
+    stream.mustSendAuthHeader = true;
+  }
   std::unique_ptr<HttpRequest> req = std::move(stream.request);
+
   auto msgId = req->messageId();
   auto respContentType = req->contentTypeResponse();
   try {
@@ -563,9 +579,25 @@ void H2CommTask<T>::processRequest(Stream& stream,
     this->_generalServerFeature.countHttp2Request(body.size());
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
+      std::string bodyForLogging;
+      try {
+        velocypack::Slice s = req->payload(false);
+        if (!s.isNone()) {
+          // "none" can happen if the content-type is neither JSON nor vpack
+          bodyForLogging = StringUtils::escapeUnicode(s.toJson());
+        }
+      } catch (...) {
+        // cannot stringify request body
+      }
+
+      if (bodyForLogging.empty() && !body.empty()) {
+        bodyForLogging = "potential binary data";
+      }
+
       LOG_TOPIC("b6dc3", TRACE, Logger::REQUESTS)
           << "\"h2-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+          << rest::contentTypeToString(req->contentType()) << "\",\""
+          << req->contentLength() << "\",\"" << bodyForLogging << "\"";
     }
   }
 
@@ -722,6 +754,16 @@ void H2CommTask<T>::queueHttp2Responses() {
     nva.push_back({(uint8_t*)":status", (uint8_t*)status.data(), 7,
                    status.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
+    // if we return HTTP 401, we need to send a www-authenticate header back
+    // with the response. in this case we need to check if the header was
+    // already set or if we need to set it ourselves. note that clients can
+    // suppress sending the www-authenticate header by sending us an
+    // x-omit-www-authenticate header.
+    bool needWwwAuthenticate =
+        (this->_auth->isActive() &&
+         res.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
+         strm->mustSendAuthHeader);
+
     bool seenServerHeader = false;
     for (auto const& it : res.headers()) {
       std::string const& key = it.first;
@@ -736,6 +778,8 @@ void H2CommTask<T>::queueHttp2Responses() {
 
       if (key == StaticStrings::Server) {
         seenServerHeader = true;
+      } else if (needWwwAuthenticate && key == StaticStrings::WwwAuthenticate) {
+        needWwwAuthenticate = false;
       }
 
       nva.push_back(
@@ -747,6 +791,19 @@ void H2CommTask<T>::queueHttp2Responses() {
     if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+    }
+
+    if (needWwwAuthenticate) {
+      TRI_ASSERT(res.responseCode() == rest::ResponseCode::UNAUTHORIZED);
+      nva.push_back(
+          {(uint8_t*)"www-authenticate", (uint8_t*)"Basic, realm=\"ArangoDB\"",
+           16, 23,
+           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+
+      nva.push_back(
+          {(uint8_t*)"www-authenticate",
+           (uint8_t*)"Bearer, token_type=\"JWT\", realm=\"ArangoDB\"", 16, 42,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
 
@@ -785,10 +842,9 @@ void H2CommTask<T>::queueHttp2Responses() {
 
         // TODO do not copy the body if it is > 16kb
         TRI_ASSERT(body.size() > strm->responseOffset);
-        size_t nread = std::min(length, body.size() - strm->responseOffset);
-        TRI_ASSERT(nread > 0);
+        auto nread = std::min(length, body.size() - strm->responseOffset);
 
-        const char* src = body.data() + strm->responseOffset;
+        char const* src = body.data() + strm->responseOffset;
         std::copy_n(src, nread, buf);
         strm->responseOffset += nread;
 
@@ -854,7 +910,7 @@ void H2CommTask<T>::doWrite() {
   std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
-    ssize_t rv = nghttp2_session_mem_send(_session, &data);
+    auto rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
       this->_writing = false;
       LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)

@@ -31,7 +31,7 @@
 #include <v8.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/EncodingUtils.h"
@@ -163,6 +163,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
     auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
+    if (_forceJson) {
+      req->header.acceptType(fu::ContentType::Json);
+    }
     req->header.database = _databaseName;
     req->timeout(std::chrono::seconds(30));
     retryCount -= 1;
@@ -416,6 +419,13 @@ void V8ClientConnection::reconnect() {
     throw errorMsg;
   }
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
+  _client.setPassword(password);
+  this->reconnect();
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
@@ -1921,6 +1931,44 @@ static void ClientConnection_setDatabaseName(
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+////////////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "reconnectWithNewPassword" for test
+/// environment only
+////////////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_reconnectWithNewPassword(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  // get the connection
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+
+  if (v8connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "reconnectWithNewPassword() must be invoked on an arango connection "
+        "object "
+        "instance.");
+  }
+
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("reconnectWithNewPassword(<password>)");
+  }
+
+  std::string const password = TRI_ObjectToString(isolate, args[0]);
+  v8connection->reconnectWithNewPassword(password);
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+#endif
+
 v8::Local<v8::Value> V8ClientConnection::getData(
     v8::Isolate* isolate, std::string_view location,
     std::unordered_map<std::string, std::string> const& headerFields,
@@ -2598,6 +2646,13 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
                             isolate, ClientConnection_connectedUser, v8client));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  connection_proto->Set(
+      isolate, "reconnectWithNewPassword",
+      v8::FunctionTemplate::New(
+          isolate, ClientConnection_reconnectWithNewPassword, v8client));
+#endif
 
   connection_proto->Set(
       isolate, "protocol",

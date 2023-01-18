@@ -42,11 +42,13 @@
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
 #include "V8/v8-globals.h"
 
@@ -175,9 +177,8 @@ IndexIterator::CoveringCallback getCallback(
 IndexExecutorInfos::IndexExecutorInfos(
     RegisterId outputRegister, QueryContext& query,
     Collection const* collection, Variable const* outVariable,
-    bool produceResult, Expression* filter,
-    arangodb::aql::Projections projections,
-    arangodb::aql::Projections filterProjections,
+    bool produceResult, Expression* filter, aql::Projections projections,
+    aql::Projections filterProjections,
     std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
     NonConstExpressionContainer&& nonConstExpressions, bool count,
     ReadOwnWrites readOwnWrites, AstNode const* condition,
@@ -352,7 +353,7 @@ std::uint64_t IndexExecutor::CursorStats::getAndResetCacheMisses() noexcept {
 }
 
 IndexExecutor::CursorReader::CursorReader(
-    transaction::Methods& trx, IndexExecutorInfos const& infos,
+    transaction::Methods& trx, IndexExecutorInfos& infos,
     AstNode const* condition, transaction::Methods::IndexHandle const& index,
     DocumentProducingFunctionContext& context, CursorStats& cursorStats,
     bool checkUniqueness)
@@ -361,8 +362,8 @@ IndexExecutor::CursorReader::CursorReader(
       _condition(condition),
       _index(index),
       _cursor(_trx.indexScanForCondition(
-          index, condition, infos.getOutVariable(), infos.getOptions(),
-          infos.canReadOwnWrites(),
+          _infos.query().resourceMonitor(), index, condition,
+          infos.getOutVariable(), infos.getOptions(), infos.canReadOwnWrites(),
           transaction::Methods::kNoMutableConditionIdx)),
       _context(context),
       _cursorStats(cursorStats),
@@ -527,22 +528,24 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
   uint64_t skipped = 0;
   if (_infos.getFilter() != nullptr || _checkUniqueness) {
-    switch (_type) {
-      case Type::Covering:
-      case Type::CoveringFilterOnly:
-      case Type::LateMaterialized:
-        TRI_ASSERT(_coveringSkipper != nullptr);
-        _cursor->nextCovering(_coveringSkipper, toSkip);
-        break;
-      case Type::NoResult:
-      case Type::Document:
-      case Type::Count:
-        TRI_ASSERT(_documentSkipper != nullptr);
-        _cursor->nextDocument(_documentSkipper, toSkip);
-        break;
+    while (hasMore() && (skipped < toSkip)) {
+      switch (_type) {
+        case Type::Covering:
+        case Type::CoveringFilterOnly:
+        case Type::LateMaterialized:
+          TRI_ASSERT(_coveringSkipper != nullptr);
+          _cursor->nextCovering(_coveringSkipper, toSkip - skipped);
+          break;
+        case Type::NoResult:
+        case Type::Document:
+        case Type::Count:
+          TRI_ASSERT(_documentSkipper != nullptr);
+          _cursor->nextDocument(_documentSkipper, toSkip - skipped);
+          break;
+      }
+      skipped +=
+          _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
     }
-    skipped =
-        _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
   } else {
     _cursor->skip(toSkip, skipped);
   }
@@ -585,8 +588,8 @@ void IndexExecutor::CursorReader::reset() {
     // We need to build a fresh search and cannot go the rearm shortcut
     _cursorStats.incrCursorsCreated();
     _cursor = _trx.indexScanForCondition(
-        _index, _condition, _infos.getOutVariable(), _infos.getOptions(),
-        _infos.canReadOwnWrites(),
+        _infos.query().resourceMonitor(), _index, _condition,
+        _infos.getOutVariable(), _infos.getOptions(), _infos.canReadOwnWrites(),
         transaction::Methods::kNoMutableConditionIdx);
   }
 }

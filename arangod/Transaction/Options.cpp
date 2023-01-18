@@ -23,8 +23,8 @@
 
 #include "Options.h"
 
-#include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -113,7 +113,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
     skipInaccessibleCollections = value.getBool();
   }
 #endif
-  value = slice.get("waitForSync");
+  value = slice.get(StaticStrings::WaitForSyncString);
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
@@ -169,7 +169,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("skipInaccessibleCollections",
               VPackValue(skipInaccessibleCollections));
 #endif
-  builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add("fillBlockCache", VPackValue(fillBlockCache));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication

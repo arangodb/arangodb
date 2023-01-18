@@ -29,12 +29,9 @@
 
 #include <unicode/regex.h>
 #include <memory>
+#include <string_view>
 
 namespace arangodb {
-
-namespace transaction {
-class Methods;
-}
 
 namespace aql {
 
@@ -52,9 +49,9 @@ class AqlFunctionsInternalCache final {
 
   void clear() noexcept;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive);
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive);
   icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
                                        velocypack::Options const* opts,
@@ -75,8 +72,7 @@ class AqlFunctionsInternalCache final {
   /// - second: true if the found wildcard is the last byte in the pattern,
   ///   false otherwise. can only be true if first is also true
   static std::pair<bool, bool> inspectLikePattern(std::string& out,
-                                                  char const* ptr,
-                                                  size_t length);
+                                                  std::string_view expr);
 
  private:
   /// @brief get matcher from cache, or insert a new matcher for the specified
@@ -86,9 +82,9 @@ class AqlFunctionsInternalCache final {
       std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>&
           cache);
 
-  static void buildRegexPattern(std::string& out, char const* ptr,
-                                size_t length, bool caseInsensitive);
-  static void buildLikePattern(std::string& out, char const* ptr, size_t length,
+  static void buildRegexPattern(std::string& out, std::string_view expr,
+                                bool caseInsensitive);
+  static void buildLikePattern(std::string& out, std::string_view expr,
                                bool caseInsensitive);
 
  private:

@@ -23,6 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+#include "utils/index_utils.hpp"
+#include "store/mmap_directory.hpp"
+#include "IResearch/IResearchVPackComparer.h"
+#include "IResearch/IResearchViewSort.h"
 
 namespace arangodb::tests {
 namespace {

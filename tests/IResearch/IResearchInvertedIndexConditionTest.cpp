@@ -73,7 +73,7 @@ class IResearchInvertedIndexConditionTest
         _collection);
   }
 
-  ~IResearchInvertedIndexConditionTest() { _collection.reset(); }
+  ~IResearchInvertedIndexConditionTest() override { _collection.reset(); }
 
   void assertProjectionsCoverageSuccess(
       std::vector<std::vector<std::string>> const& storedFields,
@@ -82,16 +82,18 @@ class IResearchInvertedIndexConditionTest
     Projections projections(attributes);
     arangodb::IndexId id(1);
     std::vector<std::string> fields = {"a"};
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    ASSERT_TRUE(
-        Index
-            .init(getInvertedIndexPropertiesSlice(id, fields, &storedFields)
-                      .slice(),
-                  tmp)
-            .ok());
+    auto builder = getInvertedIndexPropertiesSlice(id, fields, &storedFields,
+                                                   nullptr, "unique_name2");
+    bool created = false;
+    auto inverted = _collection->createIndex(builder.slice(), created);
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
-    ASSERT_TRUE(Index.covers(projections));
+    ASSERT_TRUE(index->covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
     for (size_t i = 0; i < expected.size(); ++i) {
       ASSERT_EQ(expected[i].path, projections[i].path);
@@ -113,13 +115,19 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    ASSERT_TRUE(
-        Index.init(getInvertedIndexPropertiesSlice(id, fields).slice(), tmp)
-            .ok());
+    auto builder = getInvertedIndexPropertiesSlice(id, fields, nullptr, nullptr,
+                                                   "unique_name3");
+    bool created = false;
+    auto inverted = _collection->createIndex(builder.slice(), created);
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
+
     auto indexFields =
-        arangodb::iresearch::IResearchInvertedIndex::fields(Index.meta());
+        arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
@@ -161,8 +169,12 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = Index.supportsFilterCondition(id, indexFields, {},
-                                                 filterNode, ref, 0);
+      // We use this noop transaction because query transaction is empty
+      // TODO(MBkkt) Needs ability to create empty transaction
+      //  with failed begin but correct in other
+      arangodb::transaction::Methods trx{ctx};
+      auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
+                                                  filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
@@ -183,12 +195,17 @@ class IResearchInvertedIndexConditionTest
     for (auto const& f : fields) {
       indexFields.push_back(f.first);
     }
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    Index.init(
-        getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields)
-            .slice(),
-        tmp);
+    auto builder = getInvertedIndexPropertiesSlice(id, indexFields, nullptr,
+                                                   &fields, "unique_name3");
+    bool created = false;
+    auto inverted = _collection->createIndex(builder.slice(), created);
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
+
     auto ctx =
         std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
@@ -244,7 +261,7 @@ class IResearchInvertedIndexConditionTest
     {
       SortCondition sortCondition(query->plan(), sorts, constAttributes,
                                   nonNullAttributes, variableDefinitions);
-      auto costs = Index.supportsSortCondition(&sortCondition, ref, 0);
+      auto costs = index->supportsSortCondition(&sortCondition, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
       ASSERT_EQ(expectedCosts.coveredAttributes, costs.coveredAttributes);
       ASSERT_EQ(expectedCosts.estimatedCosts, costs.estimatedCosts);
@@ -533,6 +550,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
       "FOR d IN test FILTER EXISTS(d.a, 'string') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 

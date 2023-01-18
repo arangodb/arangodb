@@ -61,42 +61,49 @@ const ViewJSONReactView = ({ name }) => {
     jsonRows = jsonFormState.split('\n').length;
   }
 
-  return <div className={'centralContent'} id={'content'}>
-    <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
-         aria-labelledby={'myModalLabel'} aria-hidden={'true'}>
-      <div className="modal-body" style={{ display: 'unset' }}>
-        <div className={'tab-content'} style={{ display: 'unset' }}>
-          <div className="tab-pane tab-pane-modal active" id="JSON">
-            <Grid>
-              {
-                isAdminUser && views.length
-                  ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
-                    <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
-                  </Cell>
-                  : null
-              }
+  return <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
+              aria-labelledby={'myModalLabel'} aria-hidden={'true'} style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
+    <div className="modal-body" style={{ display: 'unset' }} id={'view-json'}>
+      <div className={'tab-content'} style={{ display: 'unset' }}>
+        <div className="tab-pane tab-pane-modal active" id="JSON">
+          <Grid>
+            {
+              isAdminUser && views.length
+                ? <Cell size={'1'} style={{ paddingLeft: 10 }}>
+                  <CopyFromInput views={views} dispatch={dispatch} formState={formState}/>
+                </Cell>
+                : null
+            }
 
-              <Cell size={'1'}>
-                {
-                  isAdminUser
-                    ? <JsonForm formState={formState} dispatch={dispatch}
-                                renderKey={state.renderKey}/>
-                    : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
-                                rows={jsonRows}
-                                style={{ cursor: 'text' }}/>
-                }
-              </Cell>
-            </Grid>
-          </div>
+            <Cell size={'1'}>
+              {
+                isAdminUser
+                  ? <JsonForm formState={formState} dispatch={dispatch}
+                              renderKey={state.renderKey}/>
+                  : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                              rows={jsonRows}
+                              style={{ cursor: 'text' }}/>
+              }
+            </Cell>
+          </Grid>
         </div>
-        {
-          isAdminUser && changed
-            ? <div className="tab-content" id="Save">
-              <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-            </div>
-            : null
-        }
       </div>
+      {
+        isAdminUser && changed
+          ? <div className="tab-content" id="Save" style={{
+            marginTop: 25,
+            minHeight: 'unset',
+            borderTop: '1px solid rgba(64, 74, 83, 0.2)',
+            paddingLeft: 10
+          }}>
+            <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+          </div>
+          : null
+      }
     </div>
   </div>;
 };

@@ -26,7 +26,6 @@
 #include "Misc.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/StaticStrings.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -37,9 +36,9 @@ namespace iresearch {
 namespace {
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder,
-                            irs::basic_string_ref<T> value) {
+                            std::basic_string_view<T> value) {
   // store nulls verbatim
-  if (value.null()) {
+  if (irs::IsNull(value)) {
     builder.add(                                        // add value
         velocypack::Value(velocypack::ValueType::Null)  // value
     );
@@ -51,17 +50,17 @@ velocypack::Builder& addRef(velocypack::Builder& builder,
 }
 
 template<typename T>
-velocypack::Builder& addRef(velocypack::Builder& builder, irs::string_ref key,
-                            irs::basic_string_ref<T> value) {
+velocypack::Builder& addRef(velocypack::Builder& builder, std::string_view key,
+                            std::basic_string_view<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
-  TRI_ASSERT(!key.null());
+  TRI_ASSERT(!irs::IsNull(key));
 
   // store nulls verbatim
-  if (value.null()) {
-    builder.add(key.c_str(), key.size(),
+  if (irs::IsNull(value)) {
+    builder.add(key.data(), key.size(),
                 velocypack::Value(velocypack::ValueType::Null));
   } else {
-    builder.add(key.c_str(), key.size(), toValuePair(value));
+    builder.add(key.data(), key.size(), toValuePair(value));
   }
 
   return builder;
@@ -82,7 +81,7 @@ static_assert(adjacencyChecker<AttributeType>::checkAdjacency<
 
 }  // namespace
 
-bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
+bool keyFromSlice(VPackSlice keySlice, std::string_view& key) {
   // according to Helpers.cpp, see
   // `transaction::helpers::extractKeyFromDocument`
   // `transaction::helpers::extractRevFromDocument`
@@ -115,7 +114,7 @@ bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
       }
       return true;
     case VPackValueType::String:  // regular attribute
-      key = arangodb::iresearch::getStringRef(keySlice);
+      key = keySlice.stringView();
       return true;
     default:  // unsupported
       return false;
@@ -123,22 +122,23 @@ bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
 }
 
 velocypack::Builder& addBytesRef(velocypack::Builder& builder,
-                                 irs::bytes_ref value) {
+                                 irs::bytes_view value) {
   return addRef(builder, value);
 }
 
 velocypack::Builder& addBytesRef(velocypack::Builder& builder,
-                                 irs::string_ref key, irs::bytes_ref value) {
+                                 std::string_view key, irs::bytes_view value) {
   return addRef(builder, key, value);
 }
 
 velocypack::Builder& addStringRef(velocypack::Builder& builder,
-                                  irs::string_ref value) {
+                                  std::string_view value) {
   return addRef(builder, value);
 }
 
 velocypack::Builder& addStringRef(velocypack::Builder& builder,
-                                  irs::string_ref key, irs::string_ref value) {
+                                  std::string_view key,
+                                  std::string_view value) {
   return addRef(builder, key, value);
 }
 
@@ -164,7 +164,7 @@ bool mergeSlice(velocypack::Builder& builder, velocypack::Slice slice) {
 
 bool mergeSliceSkipKeys(
     velocypack::Builder& builder, velocypack::Slice slice,
-    std::function<bool(irs::string_ref key)> const& acceptor) {
+    std::function<bool(std::string_view key)> const& acceptor) {
   if (!builder.isOpenObject() || !slice.isObject()) {
     return mergeSlice(builder, slice);  // no keys to skip for non-objects
   }
@@ -177,10 +177,10 @@ bool mergeSliceSkipKeys(
       return false;
     }
 
-    auto attr = getStringRef(key);
+    auto attr = key.stringView();
 
     if (acceptor(attr)) {
-      builder.add(attr.c_str(), attr.size(), value);
+      builder.add(attr.data(), attr.size(), value);
     }
   }
 
@@ -217,8 +217,8 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = slice.copyString();
-    arangodb::basics::StringUtils::tolowerInPlace(value);
+    std::string value{slice.stringView()};
+    std::transform(value.begin(), value.end(), value.begin(), ::tolower);
 
     if (value == "asc") {
       direction = true;

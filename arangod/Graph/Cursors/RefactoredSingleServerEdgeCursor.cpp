@@ -100,7 +100,7 @@ uint16_t RefactoredSingleServerEdgeCursor<
 
 template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
-    VertexType vertex, transaction::Methods* trx,
+    VertexType vertex, ResourceMonitor& monitor, transaction::Methods* trx,
     arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats) {
   auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
@@ -159,7 +159,8 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     auto index = _accessor->indexHandle();
 
     _cursor = trx->indexScanForCondition(
-        index, node, tmpVar, ::defaultIndexIteratorOptions, ReadOwnWrites::no,
+        monitor, index, node, tmpVar, ::defaultIndexIteratorOptions,
+        ReadOwnWrites::no,
         static_cast<int>(_accessor->getMemberToUpdate().has_value()
                              ? _accessor->getMemberToUpdate().value()
                              : transaction::Methods::kNoMutableConditionIdx));
@@ -201,13 +202,15 @@ IndexIterator& RefactoredSingleServerEdgeCursor<Step>::LookupInfo::cursor() {
 
 template<class Step>
 RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
-    transaction::Methods* trx, arangodb::aql::Variable const* tmpVar,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor>& globalIndexConditions,
     std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
         depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
     bool requiresFullDocument)
     : _tmpVar(tmpVar),
+      _monitor(monitor),
       _trx(trx),
       _expressionCtx(expressionContext),
       _requiresFullDocument(requiresFullDocument) {
@@ -282,7 +285,7 @@ void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
                                                    uint64_t depth,
                                                    aql::TraversalStats& stats) {
   for (auto& info : getLookupInfos(depth)) {
-    info.rearmVertex(vertex, _trx, _tmpVar, stats);
+    info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats);
   }
 }
 

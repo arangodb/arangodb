@@ -24,11 +24,12 @@
 #include "SCC.h"
 #include <atomic>
 #include <climits>
+#include <utility>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -52,12 +53,12 @@ enum SCCPhase {
 
 struct SCCComputation
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
-  SCCComputation() {}
+  SCCComputation() = default;
 
   void compute(
       MessageIterator<SenderMessage<uint64_t>> const& messages) override {
-    if (isActive() == false) {
-      // color was already determinded or vertex was trimmed
+    if (not isActive()) {
+      // color was already determined or vertex was trimmed
       return;
     }
 
@@ -85,8 +86,8 @@ struct SCCComputation
         vertexState->color = vertexState->vertexID;
         // If this node doesn't have any parents or outgoing edges,
         // it can't be part of an SCC
-        if (vertexState->parents.size() == 0 || getEdgeCount() == 0) {
-          voteHalt();
+        if (vertexState->parents.empty() || getEdgeCount() == 0) {
+          voteHalt();  // this makes the vertex inactive
         } else {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           sendMessageToAllNeighbours(message);
@@ -98,13 +99,13 @@ struct SCCComputation
       /// value. If a new maximum value is found, propagate it until
       /// convergence.
       case SCCPhase::FORWARD_TRAVERSAL: {
-        uint64_t old = vertexState->color;
+        uint64_t oldColor = vertexState->color;
         for (SenderMessage<uint64_t> const* msg : messages) {
           if (vertexState->color < msg->value) {
             vertexState->color = msg->value;
           }
         }
-        if (old != vertexState->color) {
+        if (oldColor != vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           sendMessageToAllNeighbours(message);
           aggregate(kFoundNewMax, true);
@@ -114,12 +115,14 @@ struct SCCComputation
 
       /// Traverse the transposed graph and keep the maximum vertex value.
       case SCCPhase::BACKWARD_TRAVERSAL_START: {
-        // if I am the 'root' of a SCC start backwards traversal
+        // if my color was not overwritten, start backwards traversal
         if (vertexState->vertexID == vertexState->color) {
           SenderMessage<uint64_t> message(pregelId(), vertexState->color);
           // sendMessageToAllParents
           for (PregelID const& pid : vertexState->parents) {
-            sendMessage(pid, message);
+            sendMessage(pid, message);  // todo: if the parent was deactivated
+                                        //  this reactivates it in the
+                                        //  refactored Pregel. Change this.
           }
         }
         break;
@@ -156,10 +159,11 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   const std::string _resultField;
 
   explicit SCCGraphFormat(application_features::ApplicationServer& server,
-                          std::string const& result)
-      : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
+                          std::string result)
+      : GraphFormat<SCCValue, int8_t>(server),
+        _resultField(std::move(result)) {}
 
-  size_t estimatedEdgeSize() const override { return 0; }
+  [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
@@ -186,14 +190,14 @@ GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() {}  // TODO use _threshold
+  SCCMasterContext() = default;  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
       return;
     }
 
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
+    auto const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
         LOG_TOPIC("d9208", DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
@@ -208,7 +212,7 @@ struct SCCMasterContext : public MasterContext {
       case SCCPhase::FORWARD_TRAVERSAL: {
         LOG_TOPIC("4d39d", DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
-        if (*newMaxFound == false) {
+        if (not *newMaxFound) {
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
@@ -224,7 +228,7 @@ struct SCCMasterContext : public MasterContext {
             << "Phase: BACKWARD_TRAVERSAL_REST";
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
-        if (*converged == false) {
+        if (not *converged) {
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;

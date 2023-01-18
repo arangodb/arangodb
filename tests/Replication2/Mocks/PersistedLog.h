@@ -41,6 +41,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
       std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
 
   explicit MockLog(replication2::LogId id);
+  explicit MockLog(replication2::GlobalLogIdentifier gid);
   MockLog(replication2::LogId id, storeType storage);
 
   auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)

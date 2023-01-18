@@ -100,8 +100,6 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     vocbase = server.createDatabase("testDatabase");
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-              vocbase->type());
   }
 
   ~IResearchViewCoordinatorTest() = default;
@@ -122,8 +120,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", "
       "\"collections\": [1,2,3] }");
 
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                  testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()));
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
@@ -168,21 +165,24 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 
   ASSERT_TRUE(ci.createCollectionCoordinator(
                     vocbase->name(), collectionId0, 0, 1, 1, false,
-                    collectionJson0->slice(), 0.0, false, nullptr)
+                    collectionJson0->slice(), 0.0, false, nullptr,
+                    arangodb::replication::Version::ONE)
                   .ok());
 
   auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
   ASSERT_TRUE((false == !logicalCollection0));
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId1, 0, 1, 1, false,
-                     collectionJson1->slice(), 0.0, false, nullptr)
+                     collectionJson1->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
 
   auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
   ASSERT_TRUE((false == !logicalCollection1));
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId2, 0, 1, 1, false,
-                     collectionJson2->slice(), 0.0, false, nullptr)
+                     collectionJson2->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
 
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId2);
@@ -238,8 +238,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
         (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), false)
@@ -380,7 +379,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -413,7 +413,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -462,7 +463,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -669,7 +671,8 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
 
   ASSERT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId, 0, 1, 1, false,
-                     collectionJson->slice(), 0.0, false, nullptr)
+                     collectionJson->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_NE(nullptr, logicalCollection);
@@ -777,7 +780,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
 
   EXPECT_TRUE((ci.createCollectionCoordinator(
                      vocbase->name(), collectionId, 0, 1, 1, false,
-                     collectionJson->slice(), 0.0, false, nullptr)
+                     collectionJson->slice(), 0.0, false, nullptr,
+                     arangodb::replication::Version::ONE)
                    .ok()));
   auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
   ASSERT_TRUE((false == !logicalCollection));
@@ -1071,7 +1075,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -1439,7 +1444,8 @@ TEST_F(IResearchViewCoordinatorTest,
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -1807,7 +1813,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -2175,7 +2182,8 @@ TEST_F(IResearchViewCoordinatorTest,
 
     EXPECT_TRUE(ci.createCollectionCoordinator(
                       vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+                      collectionJson->slice(), 0.0, false, nullptr,
+                      arangodb::replication::Version::ONE)
                     .ok());
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -3008,7 +3016,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -3025,7 +3034,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -3042,7 +3052,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -3261,6 +3272,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -3324,6 +3338,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -3385,6 +3402,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -3548,6 +3568,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -3610,6 +3633,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -3689,7 +3715,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -3706,7 +3733,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -3723,7 +3751,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -3980,6 +4009,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -4159,6 +4191,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -4222,6 +4257,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -4284,6 +4322,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -4393,8 +4434,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_TRUE((
         TRI_ERROR_FORBIDDEN ==
@@ -4430,7 +4472,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -4447,7 +4490,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -4464,7 +4508,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -4721,6 +4766,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -4891,6 +4939,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5044,6 +5095,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5116,7 +5170,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection1 = ci.getCollection(vocbase->name(), collectionId);
@@ -5133,7 +5188,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -5150,7 +5206,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection3 = ci.getCollection(vocbase->name(), collectionId);
@@ -5370,6 +5427,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5433,6 +5493,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5494,6 +5557,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
     EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+    EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
     EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5641,7 +5707,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
 
     logicalCollection = ci.getCollection(vocbase->name(), collectionId);
@@ -5764,7 +5831,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       auto link = arangodb::iresearch::IResearchLinkHelper::find(
           *updatedCollection, *view);
       ASSERT_TRUE((link));
-      linkId = link->id();
+      linkId = link->index().id();
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       ASSERT_TRUE((false == !index));
@@ -5814,6 +5881,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
       EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numPrimaryDocs"));
+      EXPECT_TRUE(figuresSlice.get("numPrimaryDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numPrimaryDocs").getNumber<size_t>());
       EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
       EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
       EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
@@ -5945,8 +6015,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6036,7 +6107,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6103,7 +6175,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6265,7 +6338,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6301,8 +6375,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6333,7 +6408,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6491,7 +6567,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -6501,7 +6578,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -6674,7 +6752,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -6684,7 +6763,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -6924,7 +7004,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -6990,7 +7071,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7152,7 +7234,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7188,8 +7271,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    auto resetUserManager = irs::make_finally(
-        [userManager]() noexcept { userManager->removeAllUsers(); });
+    irs::Finally resetUserManager = [userManager]() noexcept {
+      userManager->removeAllUsers();
+    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, true)
@@ -7220,7 +7304,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId, 0, 1, 1, false,
-                       collectionJson->slice(), 0.0, false, nullptr)
+                       collectionJson->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection = ci.getCollection(vocbase->name(), collectionId);
     ASSERT_TRUE((false == !logicalCollection));
@@ -7375,7 +7460,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -7385,7 +7471,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));
@@ -7567,7 +7654,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId0, 0, 1, 1, false,
-                       collection0Json->slice(), 0.0, false, nullptr)
+                       collection0Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection0 = ci.getCollection(vocbase->name(), collectionId0);
     ASSERT_TRUE((false == !logicalCollection0));
@@ -7577,7 +7665,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         });
     EXPECT_TRUE((ci.createCollectionCoordinator(
                        vocbase->name(), collectionId1, 0, 1, 1, false,
-                       collection1Json->slice(), 0.0, false, nullptr)
+                       collection1Json->slice(), 0.0, false, nullptr,
+                       arangodb::replication::Version::ONE)
                      .ok()));
     auto logicalCollection1 = ci.getCollection(vocbase->name(), collectionId1);
     ASSERT_TRUE((false == !logicalCollection1));

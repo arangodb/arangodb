@@ -88,9 +88,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  ArangodServer& server() { return _server; }
+  ArangodServer& server() noexcept { return _server; }
+  ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() { return _statistics; }
+  RequestStatistics::Item const& statistics() const noexcept {
+    return _statistics;
+  }
   RequestStatistics::Item&& stealStatistics();
   void setStatistics(RequestStatistics::Item&& stat);
 

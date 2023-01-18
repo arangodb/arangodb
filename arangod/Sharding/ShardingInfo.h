@@ -113,7 +113,8 @@ class ShardingInfo {
                                 bool& usesDefaultShardKeys,
                                 std::string_view key);
 
-  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+  template<typename T>
+  static void sortShardNamesNumerically(T& list);
 
   static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
                                          size_t& replicationFactor);

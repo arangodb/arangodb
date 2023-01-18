@@ -41,10 +41,8 @@ class RevisionReplicationIterator;
 class RocksDBMetaCollection : public PhysicalCollection {
  public:
   explicit RocksDBMetaCollection(LogicalCollection& collection,
-                                 arangodb::velocypack::Slice const& info);
+                                 velocypack::Slice info);
   virtual ~RocksDBMetaCollection() = default;
-
-  std::string const& path() const override final;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection&)> const&) override final;
@@ -78,7 +76,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId) override;
+      rocksdb::SequenceNumber trxSeq) override;
   std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId) override;
 

@@ -453,21 +453,23 @@
       model = JSON.stringify(model);
 
       if (this.type === 'edge' || this.type._from) {
-        var callbackE = function (error, data, navigate) {
+        var callbackE = function (error, data) {
           if (error) {
             arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
-            // here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside - lol
-            if (data[0].error) {
-              arangoHelper.arangoError('Error', data[0].errorMessage);
+            // Here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside.
+            // Can contain error variable, but can contain errorNum and errorMessage as well (Babies API)
+            const entry = data[0];
+            if (entry.errorNum && entry.errorMessage) {
+              arangoHelper.arangoError('Error', `${entry.errorMessage} [${entry.errorNum}]`);
               return;
             }
 
             this.successConfirmation();
             var model = this.collection.first();
             // update local model
-            var newFrom = data[0].new._from;
-            var newTo = data[0].new._to;
+            var newFrom = entry.new._from;
+            var newTo = entry.new._to;
             model.set('_from', newFrom);
             model.set('_to', newTo);
             // remove unsaved classes

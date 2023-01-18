@@ -27,13 +27,11 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
+#include <velocypack/Sink.h>
 
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/VstRequest.h"
 
@@ -83,7 +81,7 @@ void VstResponse::addPayload(VPackSlice slice, VPackOptions const* options,
         VPackSlice finalSlice(tmpBuffer.data());
         _payload.reset();
         velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
-        VPackDumper dumper(&sink, options);
+        velocypack::Dumper dumper(&sink, options);
         dumper.dump(finalSlice);
       } else {
         _payload.reset();
@@ -100,7 +98,7 @@ void VstResponse::addPayload(VPackSlice slice, VPackOptions const* options,
     // simon: usually we escape unicode char sequences,
     // but JSON over VST is not consumed by node.js or browsers
     velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
-    VPackDumper dumper(&sink, options);
+    velocypack::Dumper dumper(&sink, options);
     dumper.dump(slice);
   } else {
     _payload.reset();
@@ -126,7 +124,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       // simon: usually we escape unicode char sequences,
       // but JSON over VST is not consumed by node.js or browsers
       velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
-      VPackDumper dumper(&sink, options);
+      velocypack::Dumper dumper(&sink, options);
       dumper.dump(VPackSlice(buff.data()));
     } else {
       if (_payload.empty()) {
@@ -180,13 +178,14 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
         // upper case
         it = StringUtils::toupper(it);
         capState = 0;
-      } else if (capState == 0) {
+      } else {
+        TRI_ASSERT(capState == 0);
         // normal case
         it = StringUtils::tolower(it);
         if (it == '-') {
           capState = 1;
         } else if (it == ':') {
-          capState = 2;
+          break;
         }
       }
     }
@@ -196,8 +195,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackObjectBuilder meta(&builder, /*unindexed*/ true);  // 4 == meta
   for (auto& item : _headers) {
     if (_contentType != ContentType::CUSTOM &&
-        item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
-                           StaticStrings::ContentTypeHeader) == 0) {
+        item.first.starts_with(StaticStrings::ContentTypeHeader)) {
       continue;
     }
     currentHeader.assign(item.first);

@@ -57,9 +57,11 @@ class GeneralClientConnection;
 struct SimpleHttpClientParams {
   friend class SimpleHttpClient;
 
-  SimpleHttpClientParams(double requestTimeout, bool warn)
+  SimpleHttpClientParams(double requestTimeout, bool warn,
+                         bool addContentLength = true)
       : _requestTimeout(requestTimeout),
         _warn(warn),
+        _addContentLength(addContentLength),
         _locationRewriter({nullptr, nullptr}) {}
 
   //////////////////////////////////////////////////////////////////////////////
@@ -145,6 +147,8 @@ struct SimpleHttpClientParams {
   bool _keepConnectionOnDestruction = false;
 
   bool _warn;
+
+  bool _addContentLength = true;
 
   bool _keepAlive = true;
 

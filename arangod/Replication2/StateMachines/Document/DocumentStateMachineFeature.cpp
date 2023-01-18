@@ -27,11 +27,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Network/NetworkFeature.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -43,6 +46,7 @@ void DocumentStateMachineFeature::prepare() {
 void DocumentStateMachineFeature::start() {
   ArangodServer& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
+  auto& networkFeature = s.getFeature<NetworkFeature>();
   auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
   auto& databaseFeature = s.getFeature<DatabaseFeature>();
@@ -50,14 +54,16 @@ void DocumentStateMachineFeature::start() {
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature.agencyCache(), maintenanceFeature,
-          databaseFeature));
+          s, clusterFeature.agencyCache(), networkFeature.pool(),
+          maintenanceFeature, databaseFeature),
+      *transaction::ManagerFeature::manager());
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<ClusterFeature>();
+  startsAfter<NetworkFeature>();
   startsAfter<MaintenanceFeature>();
   startsAfter<ReplicatedStateAppFeature>();
   onlyEnabledWith<ClusterFeature>();

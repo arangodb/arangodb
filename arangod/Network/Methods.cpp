@@ -30,6 +30,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +40,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/arangod.h"
+#include "VocBase/ticks.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
@@ -99,9 +101,17 @@ std::unique_ptr<arangodb::fuerte::Response> Response::stealResponse() noexcept {
 }
 
 // returns a slice of the payload if there was no error
-velocypack::Slice Response::slice() const {
+velocypack::Slice Response::slice() const noexcept {
   if (error == fuerte::Error::NoError && _response) {
-    return _response->slice();
+    try {
+      return _response->slice();
+    } catch (std::exception const& ex) {
+      // BTS-163: catch exceptions in slice() method so that
+      // NetworkFeature can be used in a safer way.
+      LOG_TOPIC("35b27", WARN, Logger::COMMUNICATION)
+          << "caught exception in Response::slice(): " << ex.what();
+    }
+    // fallthrough intentional
   }
   return velocypack::Slice();  // none slice
 }
@@ -113,7 +123,7 @@ std::size_t Response::payloadSize() const noexcept {
   return 0;
 }
 
-fuerte::StatusCode Response::statusCode() const {
+fuerte::StatusCode Response::statusCode() const noexcept {
   if (error == fuerte::Error::NoError && _response) {
     return _response->statusCode();
   }
@@ -210,7 +220,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(
   fuerte::ResponseHeader responseHeader;
   responseHeader.responseCode = statusCode;
   responseHeader.contentType(ContentType::VPack);
-  auto resp = std::make_unique<fuerte::Response>(responseHeader);
+  auto resp = std::make_unique<fuerte::Response>(std::move(responseHeader));
   resp->setPayload(std::move(buffer), 0);
   return resp;
 }
@@ -593,17 +603,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _workItem =
-        sch->queueDelayed(_options.continuationLane, tryAgainAfter,
-                          [self = shared_from_this()](bool canceled) {
-                            if (canceled) {
-                              self->_promise.setValue(Response{
-                                  std::move(self->_destination),
-                                  Error::ConnectionCanceled, nullptr, nullptr});
-                            } else {
-                              self->startRequest();
-                            }
-                          });
+    _workItem = sch->queueDelayed(
+        "request-retry", _options.continuationLane, tryAgainAfter,
+        [self = shared_from_this()](bool canceled) {
+          if (canceled) {
+            self->_promise.setValue(Response{std::move(self->_destination),
+                                             Error::ConnectionCanceled, nullptr,
+                                             nullptr});
+          } else {
+            self->startRequest();
+          }
+        });
   }
 };
 

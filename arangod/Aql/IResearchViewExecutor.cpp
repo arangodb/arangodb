@@ -36,6 +36,7 @@
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
+#include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -189,8 +190,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchSortBase const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
-    std::pair<bool, bool> volatility,
-    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+    std::pair<bool, bool> volatility, aql::VarInfoMap const& varInfoMap,
+    int depth,
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
@@ -207,18 +208,18 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _plan{plan},
       _outVariable{outVariable},
       _filterCondition{filterCondition},
-      _volatileSort{volatility.second},
-      // `_volatileSort` implies `_volatileFilter`
-      _volatileFilter{_volatileSort || volatility.first},
       _varInfoMap{varInfoMap},
-      _depth{depth},
       _outNonMaterializedViewRegs{std::move(outNonMaterializedViewRegs)},
       _countApproximate{countApproximate},
-      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
       _filterOptimization{filterOptimization},
       _scorersSort{std::move(scorersSort)},
       _scorersSortLimit{scorersSortLimit},
-      _meta{meta} {
+      _meta{meta},
+      _depth{depth},
+      _filterConditionIsEmpty{isFilterConditionEmpty(&_filterCondition)},
+      _volatileSort{volatility.second},
+      // `_volatileSort` implies `_volatileFilter`
+      _volatileFilter{_volatileSort || volatility.first} {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -272,8 +273,7 @@ aql::AstNode const& IResearchViewExecutorInfos::filterCondition()
   return _filterCondition;
 }
 
-const IResearchViewExecutorInfos::VarInfoMap&
-IResearchViewExecutorInfos::varInfoMap() const noexcept {
+aql::VarInfoMap const& IResearchViewExecutorInfos::varInfoMap() const noexcept {
   return _varInfoMap;
 }
 
@@ -553,33 +553,14 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::IResearchViewExecutorBase(
         vocbase.server().getFeature<IResearchAnalyzerFeature>();
     TRI_ASSERT(_trx.state());
     auto const& revision = _trx.state()->analyzersRevision();
-
-    auto getAnalyzer = [&](std::string_view shortName) {
+    auto getAnalyzer = [&](std::string_view shortName) -> FieldMeta::Analyzer {
       auto analyzer = analyzerFeature.get(shortName, vocbase, revision);
       if (!analyzer) {
-        return emptyAnalyzer();
+        return makeEmptyAnalyzer();
       }
-      return FieldMeta::Analyzer{std::move(analyzer), std::string{shortName}};
+      return {std::move(analyzer), std::string{shortName}};
     };
-
-    FieldMeta::Analyzer rootAnalyzer{emptyAnalyzer()};
-    containers::FlatHashMap<std::string_view, FieldMeta::Analyzer>
-        fieldToAnalyzer;
-
-    if (meta->includeAllFields) {
-      rootAnalyzer = getAnalyzer(meta->rootAnalyzer);
-    }
-    for (auto const& [field, analyzer] : meta->fieldToAnalyzer) {
-      fieldToAnalyzer.emplace(field, getAnalyzer(analyzer));
-    }
-    _provider = [rootAnalyzer = std::move(rootAnalyzer),
-                 fieldToAnalyzer = std::move(fieldToAnalyzer)](
-                    std::string_view field) -> FieldMeta::Analyzer const& {
-      if (auto it = fieldToAnalyzer.find(field); it != fieldToAnalyzer.end()) {
-        return it->second;
-      }
-      return rootAnalyzer;
-    };
+    _provider = meta->createProvider(getAnalyzer);
   }
 }
 
@@ -728,15 +709,6 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::next(
     }
     IndexReadBufferEntry const bufferEntry = _indexReadBuffer.pop_front();
 
-    if constexpr (ExecutionTraits::EmitSearchDoc) {
-      auto reg = this->infos().searchDocIdRegId();
-      TRI_ASSERT(reg.isValid());
-
-      this->writeSearchDoc(
-          ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()),
-          reg);
-    }
-
     if (ADB_LIKELY(impl.writeRow(ctx, bufferEntry))) {
       break;
     } else {
@@ -755,8 +727,6 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
 
   // `_volatileSort` implies `_volatileFilter`
   if (infos().volatileFilter() || !_isInitialized) {
-    irs::Or root;
-
     iresearch::QueryContext queryCtx{
         .trx = &_trx,
         .ast = infos().plan().getAst(),
@@ -764,24 +734,28 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
         .index = _reader.get(),
         .ref = &infos().outVariable(),
         .filterOptimization = infos().filterOptimization(),
+        .namePrefix = nestedRoot(_reader->hasNestedFields()),
         .isSearchQuery = true,
         .isOldMangling = infos().isOldMangling()};
 
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so can't be a temporary.
-    FieldMeta::Analyzer const identity{IResearchAnalyzerFeature::identity()};
-    AnalyzerProvider const* fieldAnalyzerProvider = nullptr;
-    auto const* contextAnalyzer = &identity;
+    auto const emptyAnalyzer = makeEmptyAnalyzer();
+    AnalyzerProvider* fieldAnalyzerProvider = nullptr;
+    auto const* contextAnalyzer = &FieldMeta::identity();
     if (!infos().isOldMangling()) {
       fieldAnalyzerProvider = &_provider;
-      contextAnalyzer = &emptyAnalyzer();
+      contextAnalyzer = &emptyAnalyzer;
     }
-    FilterContext const filterCtx{
-        .fieldAnalyzerProvider = fieldAnalyzerProvider,
-        .contextAnalyzer = *contextAnalyzer};
 
-    auto const rv = FilterFactory::filter(&root, queryCtx, filterCtx,
-                                          infos().filterCondition());
+    FilterContext const filterCtx{
+        .query = queryCtx,
+        .contextAnalyzer = *contextAnalyzer,
+        .fieldAnalyzerProvider = fieldAnalyzerProvider};
+
+    irs::Or root;
+    auto const rv =
+        FilterFactory::filter(&root, filterCtx, infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;
@@ -875,7 +849,7 @@ inline bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeStoredValue(
   auto const& storedValue = storedValues[index];
   TRI_ASSERT(!storedValue.empty());
   auto const totalSize = storedValue.size();
-  VPackSlice slice{storedValue.c_str()};
+  VPackSlice slice{storedValue.data()};
   size_t size = 0;
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
@@ -900,6 +874,14 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     ReadContext& ctx, IndexReadBufferEntry bufferEntry,
     LocalDocumentId const& documentId, LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
+
+  if constexpr (ExecutionTraits::EmitSearchDoc) {
+    auto reg = this->infos().searchDocIdRegId();
+    TRI_ASSERT(reg.isValid());
+
+    this->writeSearchDoc(
+        ctx, this->_indexReadBuffer.getSearchDoc(bufferEntry.getKeyIdx()), reg);
+  }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
     if (ADB_UNLIKELY(
@@ -933,7 +915,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     }
   } else if constexpr (Traits::MaterializeType ==
                            MaterializeType::NotMaterialize &&
-                       !Traits::Ordered) {
+                       !Traits::Ordered && !Traits::EmitSearchDoc) {
     ctx.outputRow.copyRow(ctx.inputRow);
   }
   // in the ordered case we have to write scores as well as a document
@@ -951,7 +933,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
     // we should have written exactly all score registers by now
     TRI_ASSERT(scoreRegIter == scoreRegisters.end());
   } else {
-    UNUSED(bufferEntry);
+    IRS_IGNORE(bufferEntry);
   }
   return true;
 }
@@ -1359,6 +1341,12 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       this->_infos.getOutNonMaterializedViewRegs().size());
   size_t const count = this->_reader->size();
 
+  auto reset = [&] {
+    ++_readerOffset;
+    _currentSegmentPos = 0;
+    _itr.reset();
+    _doc = nullptr;
+  };
   for (; _readerOffset < count;) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {
@@ -1369,6 +1357,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       }
 
       if (!resetIterator()) {
+        reset();
         continue;
       }
 
@@ -1388,10 +1377,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
                                          msg.str());
 
         // We don't have a collection, skip the current reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
         continue;
       }
 
@@ -1413,10 +1399,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next
         // reader.
-        ++_readerOffset;
-        _currentSegmentPos = 0;
-        _itr.reset();
-        _doc = nullptr;
+        reset();
       }
       continue;
     }
@@ -1449,10 +1432,7 @@ void IResearchViewExecutor<ExecutionTraits>::fillBuffer(
 
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
-      ++_readerOffset;
-      _currentSegmentPos = 0;
-      _itr.reset();
-      _doc = nullptr;
+      reset();
 
       // Here we have at least one document in _indexReadBuffer, so we may not
       // add documents from a new reader.
@@ -1697,8 +1677,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
     size_t const lhs, size_t const rhs) const {
   assert(lhs < _segments->size());
   assert(rhs < _segments->size());
-  return _less((*_segments)[rhs].sortValue->value,
-               (*_segments)[lhs].sortValue->value);
+  return _less.Compare((*_segments)[rhs].sortValue->value,
+                       (*_segments)[lhs].sortValue->value) < 0;
 }
 
 template<typename ExecutionTraits>

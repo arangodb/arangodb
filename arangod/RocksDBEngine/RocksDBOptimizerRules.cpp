@@ -41,7 +41,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -85,7 +85,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
   bool modified = false;
   VarSet vars;
-  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  containers::FlatHashSet<arangodb::aql::AttributeNamePath> attributes;
 
   for (auto n : nodes) {
     // isDeterministic is false for EnumerateCollectionNodes when the "random"
@@ -108,7 +108,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     if (foundProjections && !attributes.empty() &&
         attributes.size() <= e->maxProjections()) {
-      Projections projections(attributes);
+      Projections projections(std::move(attributes));
 
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
           !isRandomOrder) {
@@ -179,6 +179,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (!picked && !forced) {
             for (auto const& idx : indexes) {
               if (selectIndexIfPossible(idx)) {
+                TRI_ASSERT(picked != nullptr);
                 break;
               }
             }
@@ -284,6 +285,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (!picked && !forced) {
           for (auto const& idx : indexes) {
             if (selectIndexIfPossible(idx)) {
+              TRI_ASSERT(picked != nullptr);
               break;
             }
           }
@@ -310,19 +312,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           modified = true;
         }
       }  // index selection
-    }
-
-    if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-      // the node is still an EnumerateCollection... now check if we need
-      // to force an index hint
-      EnumerateCollectionNode const* en =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
-      auto const& hint = en->hint();
-      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-            "could not use index hint to serve query; " + hint.toString());
-      }
     }
   }
 

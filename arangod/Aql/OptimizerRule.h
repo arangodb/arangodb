@@ -202,6 +202,10 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // optimize K_PATHS
+    optimizePathsRule,
+
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
@@ -252,10 +256,6 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule,
-
 #ifdef USE_ENTERPRISE
     // move traversal on SatelliteGraph to db server and add scatter / gather /
     // remote
@@ -271,6 +271,13 @@ struct OptimizerRule {
     // remove multiple remote <-> distribute snippets if we are able
     // to combine multiple in only one
     removeDistributeNodesRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
@@ -341,17 +348,15 @@ struct OptimizerRule {
     // for arango search view
     lateDocumentMaterializationArangoSearchRule,
 
-#ifdef USE_ENTERPRISE
-    // FIXME(gnusi): when to execute?
-    // handle OFFSET_INFO functions calls
-    hanldeOffsetInfoFunc,
-#endif
-
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
+
+#ifdef USE_ENTERPRISE
+    lateMaterialiationOffsetInfoRule,
+#endif
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode

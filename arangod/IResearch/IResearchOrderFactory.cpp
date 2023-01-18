@@ -41,7 +41,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/fasthash.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/SearchFuncReplace.h"
 #include "IResearch/VelocyPackHelper.h"
 
 #include <search/scorers.hpp>
@@ -50,7 +49,7 @@ namespace {
 
 using namespace arangodb;
 
-bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
+bool makeScorer(irs::sort::ptr& scorer, std::string_view name,
                 aql::AstNode const& args,
                 arangodb::iresearch::QueryContext const& ctx) {
   TRI_ASSERT(!args.numMembers() ||
@@ -63,7 +62,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
       // ArangoDB, for API consistency, only supports scorers configurable via
       // jSON
       scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(),
-                                 irs::string_ref::NIL, false);
+                                 std::string_view{}, false);
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via
@@ -107,7 +106,7 @@ bool makeScorer(irs::sort::ptr& scorer, irs::string_ref name,
   return bool(scorer);
 }
 
-bool fromFCall(irs::sort::ptr* scorer, irs::string_ref scorerName,
+bool fromFCall(irs::sort::ptr* scorer, std::string_view scorerName,
                aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
   auto const* ref = arangodb::iresearch::getSearchFuncRef(args);
@@ -159,7 +158,7 @@ bool fromFCall(irs::sort::ptr* scorer, aql::AstNode const& node,
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
-bool nameFromFCallUser(irs::string_ref& scorerName, aql::AstNode const& node) {
+bool nameFromFCallUser(std::string_view& scorerName, aql::AstNode const& node) {
   TRI_ASSERT(aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (aql::VALUE_TYPE_STRING != node.value.type || 1 != node.numMembers()) {
@@ -171,7 +170,7 @@ bool nameFromFCallUser(irs::string_ref& scorerName, aql::AstNode const& node) {
 
 bool fromFCallUser(irs::sort::ptr* scorer, aql::AstNode const& node,
                    arangodb::iresearch::QueryContext const& ctx) {
-  irs::string_ref scorerName;
+  std::string_view scorerName;
 
   if (!nameFromFCallUser(scorerName, node)) {
     return false;
@@ -223,7 +222,7 @@ bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
 
 bool comparer(irs::sort::ptr* comparer, aql::AstNode const& node) {
   std::string buf;
-  irs::string_ref scorerName;
+  std::string_view scorerName;
 
   switch (node.type) {
     case aql::NODE_TYPE_FCALL: {  // function call
@@ -255,8 +254,8 @@ bool comparer(irs::sort::ptr* comparer, aql::AstNode const& node) {
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
   *comparer = irs::scorers::get(  // get scorer
-      scorerName, irs::type<irs::text_format::json>::get(),
-      irs::string_ref::NIL, false  // args
+      scorerName, irs::type<irs::text_format::json>::get(), std::string_view{},
+      false  // args
   );
 
   return bool(*comparer);

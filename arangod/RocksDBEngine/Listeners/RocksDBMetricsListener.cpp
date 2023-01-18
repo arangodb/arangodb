@@ -24,6 +24,7 @@
 #include "RocksDBMetricsListener.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -43,8 +44,28 @@ RocksDBMetricsListener::RocksDBMetricsListener(ArangodServer& server)
       _writeStops(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_rocksdb_write_stops_total{})) {}
 
+void RocksDBMetricsListener::OnFlushBegin(rocksdb::DB*,
+                                          rocksdb::FlushJobInfo const& info) {
+  handleFlush("begin", info);
+}
+
+void RocksDBMetricsListener::OnFlushCompleted(
+    rocksdb::DB*, rocksdb::FlushJobInfo const& info) {
+  handleFlush("completed", info);
+}
+
+void RocksDBMetricsListener::OnCompactionBegin(
+    rocksdb::DB*, rocksdb::CompactionJobInfo const& info) {
+  handleCompaction("begin", info);
+}
+
+void RocksDBMetricsListener::OnCompactionCompleted(
+    rocksdb::DB*, rocksdb::CompactionJobInfo const& info) {
+  handleCompaction("completed", info);
+}
+
 void RocksDBMetricsListener::OnStallConditionsChanged(
-    const rocksdb::WriteStallInfo& info) {
+    rocksdb::WriteStallInfo const& info) {
   // we should only get here if there's an actual change
   TRI_ASSERT(info.condition.cur != info.condition.prev);
 
@@ -74,6 +95,139 @@ void RocksDBMetricsListener::OnStallConditionsChanged(
           << info.cf_name << "'";
     }
   }
+}
+
+void RocksDBMetricsListener::handleFlush(
+    std::string_view phase, rocksdb::FlushJobInfo const& info) const {
+  auto buildReason = [](auto const& info) noexcept {
+    std::string_view reason = "unknown";
+
+    switch (info.flush_reason) {
+      case rocksdb::FlushReason::kOthers:
+        reason = "others";
+        break;
+      case rocksdb::FlushReason::kGetLiveFiles:
+        reason = "GetLiveFiles";
+        break;
+      case rocksdb::FlushReason::kShutDown:
+        reason = "shutdown";
+        break;
+      case rocksdb::FlushReason::kExternalFileIngestion:
+        reason = "external file ingestion";
+        break;
+      case rocksdb::FlushReason::kManualCompaction:
+        reason = "manual compaction";
+        break;
+      case rocksdb::FlushReason::kWriteBufferManager:
+        reason = "WriteBufferManager";
+        break;
+      case rocksdb::FlushReason::kWriteBufferFull:
+        reason = "WriteBuffer full";
+        break;
+      case rocksdb::FlushReason::kDeleteFiles:
+        reason = "DeleteFiles";
+        break;
+      case rocksdb::FlushReason::kAutoCompaction:
+        reason = "auto compaction";
+        break;
+      case rocksdb::FlushReason::kManualFlush:
+        reason = "manual flush";
+        break;
+      case rocksdb::FlushReason::kErrorRecovery:
+      case rocksdb::FlushReason::kErrorRecoveryRetryFlush:
+        reason = "error recovery";
+        break;
+      case rocksdb::FlushReason::kWalFull:
+        reason = "WAL full";
+        break;
+      default:
+        break;
+    }
+
+    TRI_ASSERT(!reason.empty());
+
+    return reason;
+  };
+
+  LOG_TOPIC("33d1f", DEBUG, Logger::ENGINES)
+      << "rocksdb flush " << phase << " in column family " << info.cf_name
+      << ", reason: " << buildReason(info);
+}
+
+void RocksDBMetricsListener::handleCompaction(
+    std::string_view phase, rocksdb::CompactionJobInfo const& info) const {
+  auto buildReason = [](auto const& info) noexcept {
+    std::string_view reason = "unknown";
+
+    switch (info.compaction_reason) {
+      case rocksdb::CompactionReason::kUnknown:
+        break;
+      case rocksdb::CompactionReason::kLevelL0FilesNum:
+        // [Level] number of L0 files > level0_file_num_compaction_trigger
+        reason = "number of L0 files > level0_file_num_compaction_trigger";
+        break;
+      case rocksdb::CompactionReason::kLevelMaxLevelSize:
+        // [Level] total size of level > MaxBytesForLevel()
+        reason = "total size of level > MaxBytesForLevel()";
+        break;
+      case rocksdb::CompactionReason::kManualCompaction:
+        // Manual compaction
+        reason = "manual compaction";
+        break;
+      case rocksdb::CompactionReason::kFilesMarkedForCompaction:
+        // DB::SuggestCompactRange() marked files for compaction
+        reason = "DB::SuggestCompactRange() marked files for compaction";
+        break;
+      case rocksdb::CompactionReason::kBottommostFiles:
+        // [Level] Automatic compaction within bottommost level to cleanup
+        // duplicate versions of same user key, usually due to a released
+        // snapshot.
+        reason =
+            "automatic compaction within bottommost level to cleanup duplicate "
+            "versions of same user key";
+        break;
+      case rocksdb::CompactionReason::kTtl:
+        // Compaction based on TTL
+        reason = "compaction based on TTL";
+        break;
+      case rocksdb::CompactionReason::kFlush:
+        // According to the comments in flush_job.cc, RocksDB treats flush as
+        // a level 0 compaction in internal stats.
+        reason = "flush";
+        break;
+      case rocksdb::CompactionReason::kExternalSstIngestion:
+        // Compaction caused by external sst file ingestion
+        reason = "external sst file ingestion";
+        break;
+      case rocksdb::CompactionReason::kPeriodicCompaction:
+        // Compaction due to SST file being too old
+        reason = "compaction due to SST file being too old";
+        break;
+      case rocksdb::CompactionReason::kChangeTemperature:
+        // Compaction in order to move files to temperature
+        reason = "compaction in order to move files to temperature";
+        break;
+      case rocksdb::CompactionReason::kForcedBlobGC:
+        // Compaction scheduled to force garbage collection of blob files
+        reason =
+            "compaction scheduled to force garbage collection of blob files";
+        break;
+      default:
+        break;
+    }
+
+    TRI_ASSERT(!reason.empty());
+
+    return reason;
+  };
+
+  LOG_TOPIC("1367c", DEBUG, Logger::ENGINES)
+      << "rocksdb compaction " << phase << " in column family " << info.cf_name
+      << " from base input level " << info.base_input_level
+      << " to output level " << info.output_level
+      << ", input files: " << info.input_files.size()
+      << ", output files: " << info.output_files.size()
+      << ", reason: " << buildReason(info);
 }
 
 }  // namespace arangodb

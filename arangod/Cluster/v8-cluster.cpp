@@ -28,12 +28,13 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/NetworkFeature.h"
@@ -50,6 +51,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

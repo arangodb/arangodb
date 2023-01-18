@@ -246,7 +246,7 @@ function randomTestSuite() {
       assertTrue(stats.hasOwnProperty('id'));
       assertEqual(stats.id, key);
       assertEqual("_system", stats.database);
-      assertEqual("HITS", stats.algorithm);
+      assertEqual("hits", stats.algorithm);
       assertTrue(stats.hasOwnProperty('created'));
       assertTrue(stats.hasOwnProperty('ttl'));
       assertEqual(15, stats.ttl);
@@ -299,7 +299,7 @@ function randomTestSuite() {
           if (initialIds.indexOf(job.id) === -1) {
             assertEqual(5, job.ttl);
             assertEqual("_system", job.database);
-            assertEqual("HITS", job.algorithm);
+            assertEqual("hits", job.algorithm);
             found.push(job.id);
           }
         });

@@ -594,8 +594,7 @@ Result GraphManager::ensureCollections(
                                                   createdInitialName, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        Result dropResult =
-            arangodb::methods::Collections::drop(*coll, false, -1.0);
+        Result dropResult = arangodb::methods::Collections::drop(*coll, false);
         if (dropResult.fail()) {
           LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
               << "While cleaning up graph `" << graph.name() << "`: "
@@ -969,7 +968,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
           methods::Collections::lookup(ctx()->vocbase(), cname, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
+        dropResult = arangodb::methods::Collections::drop(*coll, false);
       }
 
       if (dropResult.fail()) {
@@ -1174,6 +1173,11 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
         }
 
         if (options.isObject()) {
+          if (options.hasKey(StaticStrings::GraphSatellites) &&
+              !options.get(StaticStrings::GraphSatellites).isArray()) {
+            return Result{TRI_ERROR_BAD_PARAMETER,
+                          "Missing array for field 'satellites'"};
+          }
           VPackSlice replicationFactor =
               options.get(StaticStrings::ReplicationFactor);
           if ((replicationFactor.isNumber() &&

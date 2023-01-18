@@ -27,10 +27,13 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/RegisterInfos.h"
+#include "Basics/Result.h"
 
 #include <fuerte/message.h>
 
+#include <memory>
 #include <mutex>
+#include <string>
 
 namespace arangodb::fuerte {
 inline namespace v1 {
@@ -68,22 +71,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> execute(
       AqlCallStack const& stack) override;
 
-  std::string const& distributeId() const { return _distributeId; }
+  std::string const& distributeId() const noexcept { return _distributeId; }
 
-  std::string const& server() const { return _server; }
+  std::string const& server() const noexcept { return _server; }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
- public:
-  std::string const& queryId() const { return _queryId; }
+  std::string const& queryId() const noexcept { return _queryId; }
 #endif
 
  private:
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(
-      size_t atMost);
-
-  std::pair<ExecutionState, size_t> skipSomeWithoutTrace(size_t atMost);
-
   auto executeWithoutTrace(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
@@ -107,8 +104,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   void traceExecuteRequest(velocypack::Slice slice,
                            AqlCallStack const& callStack);
-  void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
-  void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);
   void traceRequest(char const* rpc, velocypack::Slice slice,
                     std::string const& args);
@@ -135,7 +130,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::unique_ptr<fuerte::Response> _lastResponse;
 
   /// @brief the last remote response Result object, may contain an error.
-  arangodb::Result _lastError;
+  Result _lastError;
 
   /// @brief whether or not this block will forward initialize,
   /// initializeCursor requests

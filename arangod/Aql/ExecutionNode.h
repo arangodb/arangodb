@@ -374,13 +374,13 @@ class ExecutionNode {
   static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
   /// @brief serialize this ExecutionNode to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+  void toVelocyPack(velocypack::Builder&, unsigned flags) const;
 
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
   /// This function implicitly creates an array and serializes all nodes
   /// top-down, i.e., the upmost dependency will be the first, and this node
   /// will be the last in the array.
-  void allToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+  void allToVelocyPack(velocypack::Builder&, unsigned flags) const;
 
   /** Variables used and set are disjunct!
    *   Variables that are read from must be returned by the
@@ -465,7 +465,7 @@ class ExecutionNode {
   RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const;
+  bool isVarUsedLater(Variable const* variable) const noexcept;
 
   /// @brief whether or not the node is in an inner loop
   bool isInInnerLoop() const;
@@ -502,8 +502,7 @@ class ExecutionNode {
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
   /// order to serialize type specific information.
-  virtual void doToVelocyPack(arangodb::velocypack::Builder&,
-                              unsigned flags) const = 0;
+  virtual void doToVelocyPack(velocypack::Builder&, unsigned flags) const = 0;
 
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.

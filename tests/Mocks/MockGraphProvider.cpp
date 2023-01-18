@@ -28,6 +28,8 @@
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Graph/EdgeDocumentToken.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -171,6 +173,16 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.add(StaticStrings::ToString, VPackValue(toId));
   builder.add("weight", VPackValue(edge.getEdge()._weight));
   builder.close();
+}
+
+auto MockGraphProvider::getEdgeDocumentToken(const Step::Edge& edge)
+    -> arangodb::graph::EdgeDocumentToken {
+  VPackBuilder builder;
+  addEdgeToBuilder(edge, builder);
+
+  // Might require datalake as well, as soon as we really use this method in our
+  // cpp tests.
+  return arangodb::graph::EdgeDocumentToken{builder.slice()};
 }
 
 auto MockGraphProvider::addEdgeIDToBuilder(

@@ -25,23 +25,21 @@
 #include <cstdint>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
+#include "Basics/system-functions.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
 
 #include "V8/v8-deadline.h"
-#include "Basics/system-functions.h"
-#include "v8-utils.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a point in time after which we will abort certain operations
@@ -118,11 +116,12 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
   milliseconds durationWhen(static_cast<int64_t>(epochDoubleWhen * 1000));
   time_point<system_clock> timepointWhen(durationWhen);
 
-  milliseconds delta = duration_cast<milliseconds>(now - timepointWhen);
-  if (delta > timeout) {
-    return timeout;
+  if (timepointWhen < now) {
+    return std::chrono::milliseconds(0);
   }
-  return delta;
+
+  milliseconds delta = duration_cast<milliseconds>(timepointWhen - now);
+  return std::min(delta, timeout);
 }
 
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {

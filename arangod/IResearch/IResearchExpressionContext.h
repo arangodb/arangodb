@@ -63,19 +63,20 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
         _query(query),
         _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override final;
-  void registerError(ErrorCode errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode,
+                       std::string_view msg) override final;
+  void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
                                        bool caseInsensitive) override final;
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
                                        velocypack::Options const* opts,
                                        bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const&) override final;
+      arangodb::velocypack::Slice) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   /// may be inaccessible on some platforms
@@ -94,13 +95,11 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
 /// @struct ViewExpressionContext
 ///////////////////////////////////////////////////////////////////////////////
 struct ViewExpressionContext final : public ViewExpressionContextBase {
-  using VarInfoMap = std::unordered_map<aql::VariableId, aql::VarInfo>;
-
   ViewExpressionContext(arangodb::transaction::Methods& trx,
                         aql::QueryContext& query,
                         aql::AqlFunctionsInternalCache& cache,
                         aql::Variable const& outVar,
-                        VarInfoMap const& varInfoMap, int nodeDepth)
+                        aql::VarInfoMap const& varInfoMap, int nodeDepth)
       : ViewExpressionContextBase(&trx, &query, &cache),
         _outVar(outVar),
         _varInfoMap(varInfoMap),
@@ -119,13 +118,13 @@ struct ViewExpressionContext final : public ViewExpressionContextBase {
   aql::AqlValue getVariableValue(aql::Variable const* variable, bool doCopy,
                                  bool& mustDestroy) const override;
 
-  inline aql::Variable const& outVariable() const noexcept { return _outVar; }
-  inline VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
+  inline auto const& outVariable() const noexcept { return _outVar; }
+  inline auto const& varInfoMap() const noexcept { return _varInfoMap; }
   inline int nodeDepth() const noexcept { return _nodeDepth; }
 
   aql::InputAqlItemRow _inputRow{aql::CreateInvalidInputRowHint{}};
   aql::Variable const& _outVar;
-  VarInfoMap const& _varInfoMap;
+  aql::VarInfoMap const& _varInfoMap;
   int const _nodeDepth;
 
   // variables only temporarily valid during execution

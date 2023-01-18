@@ -26,11 +26,10 @@
 #include <memory>
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Options.h>
 
 struct TRI_vocbase_t;
 
@@ -50,11 +49,10 @@ class Methods;
 struct Options;
 
 class Context {
- public:
+ protected:
   Context(Context const&) = delete;
   Context& operator=(Context const&) = delete;
 
- protected:
   /// @brief create the context
   explicit Context(TRI_vocbase_t& vocbase);
 
@@ -91,7 +89,7 @@ class Context {
   TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options* getVPackOptions();
 
   /// @brief unregister the transaction
   /// this will save the transaction's id and status locally
@@ -99,13 +97,42 @@ class Context {
                               bool isReadOnlyTransaction,
                               bool isFollowerTranaction) noexcept;
 
- public:
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) = 0;
+
+  /// @brief whether or not is from a streaming transaction (used to know
+  /// whether or not can read from query cache)
+  bool isStreaming() const noexcept {
+    return _transaction.isStreamingTransaction;
+  }
+
+  /// @brief whether or not transaction is JS (used to know
+  /// whether or not can read from query cache)
+  bool isTransactionJS() const noexcept { return _transaction.isJStransaction; }
+
+  bool isReadOnlyTransaction() const noexcept {
+    return _transaction.isReadOnlyTransaction;
+  }
+
+  void setReadOnly() noexcept { _transaction.isReadOnlyTransaction = true; }
+
+  /// @brief sets the transaction to be streaming (used to know whether or not
+  /// can read from query cache)
+  void setStreaming() noexcept {
+    TRI_ASSERT(_transaction.isJStransaction == false);
+    _transaction.isStreamingTransaction = true;
+  }
+
+  /// @brief sets the transaction to be JS (used to know whether or not
+  /// can read from query cache)
+  void setJStransaction() noexcept {
+    TRI_ASSERT(_transaction.isStreamingTransaction == false);
+    _transaction.isJStransaction = true;
+  }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
@@ -130,22 +157,23 @@ class Context {
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
 
- protected:
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
   containers::SmallVector<std::string*, 4> _strings;
 
-  arangodb::velocypack::Options _options;
+  velocypack::Options _options;
 
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;
 
   struct {
     TransactionId id;
-    bool isReadOnlyTransaction;
+    bool isReadOnlyTransaction = false;
     bool isFollowerTransaction;
+    bool isStreamingTransaction = false;
+    bool isJStransaction = false;
   } _transaction;
 };
 

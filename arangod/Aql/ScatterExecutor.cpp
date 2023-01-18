@@ -24,10 +24,9 @@
 #include "ScatterExecutor.h"
 
 #include "Aql/AqlCallStack.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
-#include "Basics/Exceptions.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;

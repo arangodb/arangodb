@@ -68,7 +68,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _options(arangodb::velocypack::Options::Defaults),
+      _options(velocypack::Options::Defaults),
       _transaction{TransactionId::none(), false, false} {}
 
 /// @brief destroy the context

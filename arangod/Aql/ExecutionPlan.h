@@ -32,6 +32,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
@@ -94,9 +95,6 @@ class ExecutionPlan {
                                           bool explainRegisters) noexcept;
 
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
-      Ast* ast, unsigned flags) const;
-
   void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
                     unsigned flags) const;
 
@@ -111,6 +109,8 @@ class ExecutionPlan {
 
   /// @brief check if a specific rule is disabled
   bool isDisabledRule(int rule) const;
+
+  bool hasForcedIndexHints() const noexcept { return _hasForcedIndexHints; }
 
   /// @brief enable a specific rule
   void enableRule(int rule);
@@ -298,7 +298,7 @@ class ExecutionPlan {
   bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
-  void increaseCounter(ExecutionNode::NodeType type) noexcept;
+  void increaseCounter(ExecutionNode const& node) noexcept;
 
   bool fullCount() const noexcept;
 
@@ -434,6 +434,9 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the postprocessing step to enable async
   /// prefetching on the node level should be executed.
   bool _isAsyncPrefetchEnabled{false};
+
+  // Flag there are collection nodes with forceIndexHint:true
+  bool _hasForcedIndexHints{false};
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;

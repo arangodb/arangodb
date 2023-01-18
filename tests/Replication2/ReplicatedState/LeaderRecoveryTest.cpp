@@ -51,6 +51,7 @@ struct MyHelperState {
   using FollowerType = EmptyFollowerType<MyHelperState>;
   using CoreType = MyCoreType;
   using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
@@ -98,6 +99,7 @@ struct MyHelperFactory {
 }  // namespace arangodb::replication2::test
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   ReplicatedStateRecoveryTest() {
@@ -107,6 +109,8 @@ struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   std::shared_ptr<MyHelperLeaderState> leaderState;
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
 };
 
 auto MyHelperFactory::constructLeader(std::unique_ptr<MyCoreType> core)
@@ -133,7 +137,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", dbName, leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
@@ -211,7 +216,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", dbName, leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 

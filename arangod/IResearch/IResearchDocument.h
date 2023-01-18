@@ -62,21 +62,15 @@ class analyzer;
 namespace arangodb {
 namespace aql {
 
-struct AstNode;       // forward declaration
-class SortCondition;  // forward declaration
+struct AstNode;
+class SortCondition;
 
 }  // namespace aql
-}  // namespace arangodb
-
-namespace arangodb {
 namespace transaction {
 
 class Methods;  // forward declaration
 
 }  // namespace transaction
-}  // namespace arangodb
-
-namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,8 +79,8 @@ namespace iresearch {
 struct Field {
   static void setPkValue(Field& field, LocalDocumentId::BaseType const& pk);
 
-  irs::string_ref const& name() const noexcept {
-    TRI_ASSERT(!_name.null());
+  std::string_view const& name() const noexcept {
+    TRI_ASSERT(!irs::IsNull(_name));
     return _name;
   }
 
@@ -100,33 +94,32 @@ struct Field {
   }
 
   bool write(irs::data_output& out) const {
-    if (!_value.null()) {
-      out.write_bytes(_value.c_str(), _value.size());
+    if (!irs::IsNull(_value)) {
+      out.write_bytes(_value.data(), _value.size());
     }
 
     return true;
   }
 
   AnalyzerPool::CacheType::ptr _analyzer;
-  irs::string_ref _name;
-  irs::bytes_ref _value;
+  std::string_view _name;
+  irs::bytes_view _value;
   ValueStorage _storeValues;
   irs::features_t _fieldFeatures;
   irs::IndexFeatures _indexFeatures;
 #ifdef USE_ENTERPRISE
   bool _root{false};
 #endif
-};  // Field
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows to iterate over the provided VPack accoring the specified
+/// @brief allows to iterate over the provided VPack according the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
 template<typename IndexMetaStruct>
 class FieldIterator {
  public:
-  explicit FieldIterator(arangodb::transaction::Methods& trx,
-                         irs::string_ref collection, IndexId linkId);
+  FieldIterator(std::string_view collection, IndexId indexId);
 
   Field const& operator*() const noexcept { return _value; }
 
@@ -165,10 +158,14 @@ class FieldIterator {
                                          VPackSlice slice);
 
   enum class LevelType {
+    // emits regular fields
     kNormal = 0,
+    // emits nested parents
     kNestedRoot,
+    // enumerates "arrays" of nested documents
     kNestedFields,
-    kNestedObjects
+    // enumerates nested documents in the array
+    kNestedObjects,
   };
 
   struct Level {
@@ -202,7 +199,6 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
-  using MetaTraits = IndexMetaTraits<IndexMetaStruct>;
   void setRoot();
 
   enum class NestedNullsResult { kNone, kContinue, kReturn };
@@ -219,7 +215,8 @@ class FieldIterator {
 
   void next();
   bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
+                FieldMeta::Analyzer const& valueAnalyzer,
+                IndexMetaStruct const& context);
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
@@ -236,18 +233,16 @@ class FieldIterator {
   std::string _valueBuffer;
   // buffer for stored values
   VPackBuffer<uint8_t> _buffer;
-  arangodb::transaction::Methods* _trx;
-  irs::string_ref _collection;
+  std::string_view _collection;
   Field _value;  // iterator's value
-  IndexId _linkId;
+  IndexId _indexId;
 
   // Support for outputting primitive type from analyzer
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
 
-  bool _isDBServer;
-  bool _disableFlush;
+  bool _disableFlush{false};
 #ifdef USE_ENTERPRISE
   bool _needDoc{false};
   bool _hasNested{false};
@@ -262,7 +257,7 @@ class FieldIterator {
 /// @brief represents stored primary key of the ArangoDB document
 ////////////////////////////////////////////////////////////////////////////////
 struct DocumentPrimaryKey {
-  static irs::string_ref const& PK() noexcept;  // stored primary key column
+  static std::string_view const& PK() noexcept;  // stored primary key column
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief encodes a specified PK value
@@ -276,29 +271,39 @@ struct DocumentPrimaryKey {
   /// @note PLEASE NOTE that 'in.c_str()' MUST HAVE alignment >=
   /// alignof(uint64_t)
   ////////////////////////////////////////////////////////////////////////////////
-  static bool read(LocalDocumentId& value, irs::bytes_ref const& in) noexcept;
+  static bool read(LocalDocumentId& value, irs::bytes_view const& in) noexcept;
 
   DocumentPrimaryKey() = delete;
-};  // DocumentPrimaryKey
+};
 
-struct StoredValue {
-  StoredValue(transaction::Methods const& t, irs::string_ref cn,
-              VPackSlice const doc, IndexId lid);
+struct Value {
+  Value(std::string_view c, IndexId i, velocypack::Slice d);
 
-  bool write(irs::data_output& out) const;
-
-  irs::string_ref const& name() const noexcept { return fieldName; }
+ protected:
+  bool writeSlice(irs::data_output& out, VPackSlice slice) const;
 
   mutable VPackBuffer<uint8_t> buffer;
-  transaction::Methods const& trx;
+  std::string_view collection;
+  IndexId indexId;
   velocypack::Slice const document;
-  irs::string_ref fieldName;
-  irs::string_ref collection;
+};
+
+struct SortedValue : Value {
+  using Value::Value;
+  bool write(irs::data_output& out) const { return writeSlice(out, slice); }
+
+  velocypack::Slice slice;
+};
+
+struct StoredValue : Value {
+  using Value::Value;
+  bool write(irs::data_output& out) const;
+  std::string_view const& name() const noexcept { return fieldName; }
+
+  std::string_view fieldName;
   std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const*
       fields;
-  IndexId linkId;
-  bool isDBServer;
-};  // StoredValue
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

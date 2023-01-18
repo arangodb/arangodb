@@ -50,12 +50,6 @@ class LoggerStreamBase {
 
   LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
-
   LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 
   LoggerStreamBase& operator<<(Logger::LINE const& line) noexcept;

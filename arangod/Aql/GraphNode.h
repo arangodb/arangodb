@@ -122,6 +122,10 @@ class GraphNode : public ExecutionNode {
   /// only!)
   bool isDisjoint() const;
 
+  /// @brief flag, if the graph is a Hybrid Disjoint SmartGraph
+  /// (Enterprise Edition only!)
+  bool isHybridDisjoint() const;
+
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
 
@@ -130,6 +134,8 @@ class GraphNode : public ExecutionNode {
 
   /// @brief checks if the vertex out variable is used
   bool isVertexOutVariableUsedLater() const;
+
+  void markUnusedConditionVariable(Variable const* var);
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -212,6 +218,10 @@ class GraphNode : public ExecutionNode {
 
   void setIsDisjoint(bool target) { _isDisjoint = target; }
 #endif
+
+  void enableClusterOneShardRule(bool enable);
+  bool isClusterOneShardRuleEnabled() const;
+
  protected:
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
@@ -243,6 +253,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief vertex output variable
   Variable const* _edgeOutVariable;
+
+  /// @brief variables that got optimized out
+  VarIdSet _optimizedOutVariables;
 
   /// @brief our graph...
   graph::Graph const* _graphObj;
@@ -278,6 +291,10 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
   bool _isDisjoint;
+
+  /// @brief flag, if the graph being used inside the clusterOneShardRule
+  /// optimization (Enterprise Edition only!)
+  bool _enabledClusterOneShardRule;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;

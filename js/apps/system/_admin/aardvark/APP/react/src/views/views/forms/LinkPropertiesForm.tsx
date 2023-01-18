@@ -4,7 +4,6 @@ import LinkView from "../Components/LinkView";
 import FieldView from "../Components/FieldView";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { FormState, ViewContext, ViewProps } from "../constants";
-import NewField from "../Components/NewField";
 
 const LinkPropertiesForm = ({ name }: ViewProps) => {
   const { formState: fs, isAdminUser } = useContext(ViewContext);
@@ -21,15 +20,17 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
     role={'dialog'}
     aria-labelledby={'myModalLabel'}
     aria-hidden={'true'}
+    style={{
+      width: 1024,
+      marginLeft: 'auto',
+      marginRight: 'auto'
+    }}
   >
     <div className="modal-body" style={{ overflowY: 'visible' }}>
       <div className={'tab-content'}>
         <div className="tab-pane tab-pane-modal active" id="Links">
           <main>
             <Switch>
-              <Route path={`${match.path}/:field*/_add`}>
-                {isAdminUser ? <NewField/> : null}
-              </Route>
               <Route path={`${match.path}/:field+`}>
                 <FieldView disabled={disabled} name={name}/>
               </Route>

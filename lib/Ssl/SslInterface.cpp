@@ -65,128 +65,55 @@ namespace arangodb::rest::SslInterface {
 // -----------------------------------------------------------------------------
 
 std::string sslMD5(std::string_view input) {
-  char hash[17];
-  char* p = &hash[0];
-  size_t length;
+  char hash[16];
+  sslMD5(input.data(), input.size(), &hash[0]);
 
-  sslMD5(input.data(), input.size(), p, length);
-
-  char hex[33];
-  p = &hex[0];
-
-  SslInterface::sslHEX(hash, 16, p, length);
+  char hex[32];
+  SslInterface::sslHEX(hash, 16, &hex[0]);
 
   return std::string(hex, 32);
 }
 
-void sslMD5(char const* inputStr, size_t length, char*& outputStr,
-            size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[MD5_DIGEST_LENGTH];
-    outputLen = MD5_DIGEST_LENGTH;
-  }
-
+void sslMD5(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
   MD5((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslMD5(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslMD5(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslMD5(char const* input1, size_t length1, char const* input2,
-            size_t length2, char*& outputStr, size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[MD5_DIGEST_LENGTH];
-    outputLen = MD5_DIGEST_LENGTH;
-  }
-
-  MD5_CTX ctx;
-
-  MD5_Init(&ctx);
-  MD5_Update(&ctx, input1, length1);
-  MD5_Update(&ctx, input2, length2);
-  MD5_Final((unsigned char*)outputStr, &ctx);
-}
-
-void sslSHA1(char const* inputStr, size_t length, char*& outputStr,
-             size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[SHA_DIGEST_LENGTH];
-    outputLen = SHA_DIGEST_LENGTH;
-  }
-
+void sslSHA1(char const* inputStr, size_t length, char* outputStr) noexcept {
   SHA1((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslSHA1(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslSHA1(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslSHA224(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[SHA224_DIGEST_LENGTH];
-    outputLen = SHA224_DIGEST_LENGTH;
-  }
-
+void sslSHA224(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
   SHA224((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslSHA224(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslSHA224(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslSHA256(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[SHA256_DIGEST_LENGTH];
-    outputLen = SHA256_DIGEST_LENGTH;
-  }
-
+void sslSHA256(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
   SHA256((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslSHA256(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslSHA256(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslSHA384(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[SHA384_DIGEST_LENGTH];
-    outputLen = SHA384_DIGEST_LENGTH;
-  }
-
+void sslSHA384(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
   SHA384((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslSHA384(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslSHA384(inputStr, strlen(inputStr), outputStr, outputLen);
-}
-
-void sslSHA512(char const* inputStr, size_t length, char*& outputStr,
-               size_t& outputLen) {
-  if (outputStr == nullptr) {
-    outputStr = new char[SHA512_DIGEST_LENGTH];
-    outputLen = SHA512_DIGEST_LENGTH;
-  }
-
+void sslSHA512(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
   SHA512((const unsigned char*)inputStr, length, (unsigned char*)outputStr);
 }
 
-void sslSHA512(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslSHA512(inputStr, strlen(inputStr), outputStr, outputLen);
-}
+void sslHEX(char const* inputStr, size_t length, char* outputStr) noexcept {
+  TRI_ASSERT(inputStr != nullptr);
+  TRI_ASSERT(outputStr != nullptr);
 
-void sslHEX(char const* inputStr, size_t length, char*& outputStr,
-            size_t& outputLen) {
-  static char const hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                  '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-  if (outputStr == nullptr) {
-    outputStr = new char[length * 2 + 1];
-    outputLen = length * 2;
-  }
+  constexpr char hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                               '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
   char const* e = inputStr + length;
   char* p = outputStr;
@@ -195,12 +122,7 @@ void sslHEX(char const* inputStr, size_t length, char*& outputStr,
     *p++ = hexval[(*q >> 4) & 0xF];
     *p++ = hexval[*q & 0x0F];
   }
-
-  *p = '\0';
-}
-
-void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen) {
-  sslHEX(inputStr, strlen(inputStr), outputStr, outputLen);
+  TRI_ASSERT(static_cast<size_t>(p - outputStr) == 2 * length);
 }
 
 std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
@@ -358,8 +280,13 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY* pkey, std::string const& msg,
 int rsaPrivSign(std::string const& pem, std::string const& msg,
                 std::string& sign, std::string& error) {
   BIO* keybio = BIO_new_mem_buf(pem.c_str(), -1);
-  RSA* rsa;
-  rsa = RSA_new();
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  RSA* rsa = RSA_new();
   if (rsa == nullptr) {
     error.append("Failed to initialize RSA algorithm.");
     return 1;
@@ -371,10 +298,7 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
     return 1;
   }
   EVP_PKEY_assign_RSA(pKey, rsa);
-  auto cleanupKeys = scopeGuard([&]() noexcept {
-    EVP_PKEY_free(pKey);
-    BIO_free_all(keybio);
-  });
+  auto cleanupKeys = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
   auto* ctx = EVP_MD_CTX_new();
   auto cleanupContext = scopeGuard([&]() noexcept { EVP_MD_CTX_free(ctx); });

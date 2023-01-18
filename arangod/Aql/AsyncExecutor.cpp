@@ -33,6 +33,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
+#include "Basics/ScopeGuard.h"
 
 #include "Logger/LogMacros.h"
 

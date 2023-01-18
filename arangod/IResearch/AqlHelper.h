@@ -36,6 +36,8 @@
 #include "utils/string.hpp"
 #include "Cluster/ClusterInfo.h"
 
+#include <absl/strings/numbers.h>
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #if (__GNUC__ >= 7)
@@ -62,6 +64,7 @@ class Methods;  // forward declaration
 namespace iresearch {
 
 struct IResearchInvertedIndexMeta;
+struct QueryContext;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns true if both nodes are equal, false otherwise
@@ -78,17 +81,17 @@ size_t hash(aql::AstNode const* node, size_t hash = 0) noexcept;
 ///        must be an arangodb::aql::VALUE_TYPE_STRING
 /// @return extracted string_ref
 //////////////////////////////////////////////////////////////////////////////
-inline irs::string_ref getStringRef(aql::AstNode const& node) {
+inline std::string_view getStringRef(aql::AstNode const& node) {
   TRI_ASSERT(aql::VALUE_TYPE_STRING == node.value.type);
 
-  return irs::string_ref(node.getStringValue(), node.getStringLength());
+  return std::string_view(node.getStringValue(), node.getStringLength());
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @returns name of function denoted by a specified AstNode
 /// @note applicable for nodes of type NODE_TYPE_FCALL, NODE_TYPE_FCALL_USER
 //////////////////////////////////////////////////////////////////////////////
-irs::string_ref getFuncName(aql::AstNode const& node);
+std::string_view getFuncName(aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
@@ -111,13 +114,13 @@ inline bool parseValue(size_t& value, aql::AstNode const& node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to extract 'irs::basic_string_ref<Char>' value from the
+/// @brief tries to extract 'std::basic_string_view<Char>' value from the
 ///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 template<typename String>
 inline bool parseValue(String& value, aql::AstNode const& node) {
-  typedef typename String::traits_type traits_t;
+  using traits_t = typename String::traits_type;
 
   switch (node.value.type) {
     case aql::VALUE_TYPE_NULL:
@@ -199,7 +202,7 @@ enum ScopedValueType {
 ////////////////////////////////////////////////////////////////////////////////
 struct AqlValueTraits {
   static ScopedValueType type(aql::AqlValue const& value) noexcept {
-    typedef typename std::underlying_type<ScopedValueType>::type underlying_t;
+    using underlying_t = std::underlying_type_t<ScopedValueType>;
 
     underlying_t const typeIndex =
         value.isNull(false) + 2 * value.isBoolean() + 3 * value.isNumber() +
@@ -237,28 +240,23 @@ struct AqlValueTraits {
   }
 };
 
-struct QueryContext {
-  transaction::Methods* trx{};
-  aql::Ast* ast{};
-  aql::ExpressionContext* ctx{};
-  irs::index_reader const* index{};
-  aql::Variable const* ref{};
-  // Allow optimize away/modify some conditions during filter building
-  FilterOptimization filterOptimization{FilterOptimization::MAX};
-  // The flag is set when a query is dedicated to a search view
-  bool isSearchQuery{true};
-  bool isOldMangling{true};
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ScopedAqlValue
 /// @brief convenient wrapper around `AqlValue` and `AstNode`
 ////////////////////////////////////////////////////////////////////////////////
 class ScopedAqlValue : private irs::util::noncopyable {
+  static constexpr std::string_view kTypeNames[] = {
+      "invalid", "null",  "boolean", "double",
+      "string",  "array", "range",   "object"};
+
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref typeString(ScopedValueType type) noexcept;
+  static constexpr std::string_view typeString(ScopedValueType type) noexcept {
+    auto const index = static_cast<size_t>(type);
+    TRI_ASSERT(index < std::size(kTypeNames));
+    return kTypeNames[index];
+  }
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -308,7 +306,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? _node->getBoolValue() : _value.toBoolean();
   }
 
-  bool getDouble(double_t& value) const {
+  bool getDouble(double& value) const {
     bool failed = false;
     value =
         _node->isConstant() ? _node->getDoubleValue() : _value.toDouble(failed);
@@ -320,17 +318,17 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return _node->isConstant() ? _node->getIntValue() : _value.toInt64();
   }
 
-  bool getString(irs::string_ref& value) const {
+  bool getString(std::string_view& value) const {
     if (_node->isConstant()) {
       return parseValue(value, *_node);
     } else {
       auto const valueSlice = _value.slice();
 
-      if (VPackValueType::String != valueSlice.type()) {
+      if (!valueSlice.isString()) {
         return false;
       }
 
-      value = getStringRef(valueSlice);
+      value = valueSlice.stringView();
     }
 
     return true;
@@ -365,7 +363,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
     _type = AqlValueTraits::type(_value);
   }
 
-  FORCE_INLINE void destroy() noexcept {
+  IRS_FORCE_INLINE void destroy() noexcept {
     if (_destroy) {
       _value.destroy();
     }
@@ -466,20 +464,6 @@ struct NormalizedCmpNode {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @returns pointer to type name for the specified value if it's present in
-///          TypeMap, nullptr otherwise
-////////////////////////////////////////////////////////////////////////////////
-inline std::string const* getNodeTypeName(aql::AstNodeType type) noexcept {
-  auto const it = aql::AstNode::TypeNames.find(type);
-
-  if (aql::AstNode::TypeNames.end() == it) {
-    return nullptr;
-  }
-
-  return &it->second;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @returns pointer to 'idx'th member of type 'expectedType', or nullptr
 ////////////////////////////////////////////////////////////////////////////////
 inline aql::AstNode const* getNode(aql::AstNode const& node, size_t idx,
@@ -539,8 +523,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 ////////////////////////////////////////////////////////////////////////////////
 bool nameFromAttributeAccess(
     std::string& name, aql::AstNode const& node, QueryContext const& ctx,
-    bool filter, std::span<InvertedIndexField const> fields,
-    std::span<InvertedIndexField const>* subFields = nullptr);
+    bool filter, std::span<InvertedIndexField const>* subFields = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visit name produced by nameFromAttributeAccess
@@ -587,6 +570,10 @@ bool visitName(std::string_view name, Visitor&& visitor) {
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                                          aql::Variable const& ref,
                                          bool allowExpansion) noexcept;
+
+// checks a specified args to be deterministic
+// and retuns reference to a loop variable
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb

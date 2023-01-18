@@ -31,7 +31,7 @@ namespace arangodb {
 class RocksDBZkdIndexBase : public RocksDBIndex {
  public:
   RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
-                      arangodb::velocypack::Slice info);
+                      velocypack::Slice info);
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type type) const override;
@@ -41,34 +41,34 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   bool isSorted() const override { return false; }
   bool hasSelectivityEstimate() const override { return false; /* TODO */ }
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  coveredFields() const override {
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override {
     // index does not cover the index attributes!
     return Index::emptyCoveredFields;
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   FilterCosts supportsFilterCondition(
-      const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
-      const arangodb::aql::AstNode* node,
-      const arangodb::aql::Variable* reference,
+      transaction::Methods& /*trx*/,
+      const std::vector<std::shared_ptr<Index>>& allIndexes,
+      const aql::AstNode* node, const aql::Variable* reference,
       size_t itemsInIndex) const override;
 
   aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* condition,
-      const arangodb::aql::Variable* reference) const override;
+      transaction::Methods& trx, aql::AstNode* condition,
+      const aql::Variable* reference) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, const aql::AstNode* node,
-      const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      const aql::AstNode* node, const aql::Variable* reference,
+      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
@@ -79,17 +79,17 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
   using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                arangodb::velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, const aql::AstNode* node,
-      const aql::Variable* reference, const IndexIteratorOptions& opts,
-      ReadOwnWrites readOwnWrites, int) override;
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      const aql::AstNode* node, const aql::Variable* reference,
+      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 };
 
 namespace zkd {
@@ -107,22 +107,18 @@ struct ExpressionBounds {
 };
 
 void extractBoundsFromCondition(
-    arangodb::Index const* index, const arangodb::aql::AstNode* condition,
-    const arangodb::aql::Variable* reference,
+    Index const* index, const aql::AstNode* condition,
+    const aql::Variable* reference,
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions);
 
 auto supportsFilterCondition(
-    arangodb::Index const* index,
-    const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
-    const arangodb::aql::AstNode* node,
-    const arangodb::aql::Variable* reference, size_t itemsInIndex)
-    -> Index::FilterCosts;
+    Index const* index, const std::vector<std::shared_ptr<Index>>& allIndexes,
+    const aql::AstNode* node, const aql::Variable* reference,
+    size_t itemsInIndex) -> Index::FilterCosts;
 
-auto specializeCondition(arangodb::Index const* index,
-                         arangodb::aql::AstNode* condition,
-                         const arangodb::aql::Variable* reference)
-    -> aql::AstNode*;
+auto specializeCondition(Index const* index, aql::AstNode* condition,
+                         const aql::Variable* reference) -> aql::AstNode*;
 }  // namespace zkd
 
 }  // namespace arangodb

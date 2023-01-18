@@ -298,7 +298,7 @@ function printWarnings(warnings) {
 }
 
 /* print stats */
-function printStats(stats) {
+function printStats(stats, isCoord) {
   'use strict';
   if (!stats) {
     return;
@@ -311,11 +311,12 @@ function printStats(stats) {
   var maxSILen = String('Scan Index').length;
   var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
+  var maxRLen = String('Requests').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -324,6 +325,7 @@ function printStats(stats) {
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
     pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + '   ' : '') +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -389,7 +391,11 @@ function printIndexes(indexes) {
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
-      l = (index.storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = index.storedValues || [];
+      if (index.type === 'inverted') {
+        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+      }
+      l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxStoredValuesLen) {
         maxStoredValuesLen = l;
       }
@@ -418,8 +424,12 @@ function printIndexes(indexes) {
       var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var storedValues = '[ ' + (indexes[i].storedValues || []).map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var storedValuesLen = (indexes[i].storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = indexes[i].storedValues || [];
+      if (indexes[i].type === 'inverted') {
+        storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
+      }
+      var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -632,10 +642,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -909,6 +919,37 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
+  var buildRaw = function (node) {
+    if (Array.isArray(node)) {
+      // array
+      if (node.length > maxMembersToPrint) {
+        // print only the first few values from the array
+        return '[ ' + node.slice(0, maxMembersToPrint).map(buildRaw).join(', ') + ', ... ]';
+      }
+      return '[ ' + node.map(buildRaw).join(', ') + ' ]';
+    } else if (typeof node === 'object' && node !== null) {
+      // object
+      let keys = Object.keys(node);
+      let r = '{';
+      keys.slice(0, maxMembersToPrint).forEach((k, i) => {
+        if (i === 0) {
+          r += ' ';
+        } else {
+          r += ', ';
+        }
+        r += value(JSON.stringify(k)) + ' : ' + buildRaw(node[k]);
+      });
+      if (keys.length > maxMembersToPrint) {
+        r += ', ...';
+      }
+      r += ' }';
+      return r;
+    }
+
+    // anything else
+    return value(JSON.stringify(node));
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
@@ -960,6 +1001,9 @@ function processQuery(query, explain, planIndex) {
       case 'value':
         return value(JSON.stringify(node.value));
       case 'object':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the object
@@ -973,6 +1017,9 @@ function processQuery(query, explain, planIndex) {
       case 'calculated object element':
         return '[ ' + buildExpression(node.subNodes[0]) + ' ] : ' + buildExpression(node.subNodes[1]);
       case 'array':
+        if (node.hasOwnProperty('raw')) {
+          return buildRaw(node.raw);
+        }
         if (node.hasOwnProperty('subNodes')) {
           if (node.subNodes.length > maxMembersToPrint) {
             // print only the first few values from the array
@@ -1177,7 +1224,9 @@ function processQuery(query, explain, planIndex) {
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
         what += ', index only';
-      } 
+      } else {
+        what += ', index scan + document lookup';
+      }
     } else {
       what += ', scan only';
     }
@@ -2010,7 +2059,7 @@ function processQuery(query, explain, planIndex) {
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
-               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', [ ' + Object.keys(node.options.fields).map(v => value("'" + v + "'")) + ' ])';
+               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
       case 'MutexNode':
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
@@ -2024,7 +2073,12 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
+              if (node.inVariable !== undefined) {
+                aggregateString += variableName(node.inVariable);
+              }
+              aggregateString += ')';
+              return aggregateString;
             }).join(', ');
         }
         return window;
@@ -2061,7 +2115,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',
@@ -2199,7 +2252,7 @@ function processQuery(query, explain, planIndex) {
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
   if (profileMode) {
-    printStats(explain.stats);
+    printStats(explain.stats, isCoord);
     printProfile(explain.profile);
   }
   printWarnings(explain.warnings);
@@ -2609,8 +2662,8 @@ function explainQuerysRegisters(plan) {
    *     type: string,
    *     unusedRegsStack: Array<number[]>,
    *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
-   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
-   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsSetHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
    *   }
    * }
    */

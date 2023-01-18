@@ -42,7 +42,7 @@ struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
   explicit LabelPropagation(application_features::ApplicationServer& server,
                             VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "LabelPropagation",
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "labelpropagation",
                                                    userParams) {}
 
   GraphFormat<LPValue, int8_t>* inputFormat() const override;

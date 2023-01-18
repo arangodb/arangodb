@@ -32,6 +32,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 

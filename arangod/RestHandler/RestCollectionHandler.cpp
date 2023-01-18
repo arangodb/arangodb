@@ -29,6 +29,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
+#include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -43,6 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/PlanCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -264,7 +266,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
               RevisionId rid = RevisionId::fromSlice(res.slice());
               {
                 VPackObjectBuilder obj(&_builder, true);
-                obj->add("revision", VPackValue(StringUtils::itoa(rid.id())));
+                obj->add("revision", VPackValue(rid.toString()));
 
                 // no need to use async variant
                 collectionRepresentation(*_ctxt, /*showProperties*/ true,
@@ -341,16 +343,6 @@ void RestCollectionHandler::handleCommandPost() {
     events::CreateCollection(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
-
-  VPackSlice nameSlice;
-  if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
-      nameSlice.getStringLength() == 0) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    events::CreateCollection(_vocbase.name(), "",
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return;
-  }
-
   auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
   bool waitForSyncReplication = _request->parsedValue(
       "waitForSyncReplication", cluster.createWaitsForSyncReplication());
@@ -358,47 +350,36 @@ void RestCollectionHandler::handleCommandPost() {
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
 
-  TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
-  VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString()) {
-    if (typeSlice.compareString("edge") == 0 ||
-        typeSlice.compareString("3") == 0) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
-  } else if (typeSlice.isNumber()) {
-    uint32_t t = typeSlice.getNumber<uint32_t>();
-    if (t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
-    }
+  auto planCollection =
+      PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
+  if (planCollection.fail()) {
+    // error message generated in inspect
+    generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
+                  planCollection.errorMessage());
+    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    return;
   }
+  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+  auto parameters = planCollection->toCollectionsCreate();
 
-  bool isDC2DCContext = ExecContext::current().isSuperuser();
-
-  // for some "security" a list of allowed parameters (i.e. all
-  // others are disallowed!)
-  VPackBuilder filtered =
-      methods::Collections::filterInput(body, isDC2DCContext);
-  VPackSlice const parameters = filtered.slice();
-
-  bool allowSystem = VelocyPackHelper::getBooleanValue(
-      parameters, StaticStrings::DataSourceSystem, false);
-
-  // now we can create the collection
-  std::string const& name = nameSlice.copyString();
-  _builder.clear();
-  std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(_context);
-
-  Result res = methods::Collections::create(
+  std::shared_ptr<LogicalCollection> coll;
+  auto result = methods::Collections::create(
       _vocbase,  // collection vocbase
-      options,
-      name,                      // colection name
-      type,                      // collection type
-      parameters,                // collection properties
+      options, collections,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false,   // here always false
-      coll, allowSystem);
+      /*isNewDatabase*/ false    // here always false
+  );
+
+  // backwards compatibility transformation:
+  Result res{TRI_ERROR_NO_ERROR};
+  if (result.fail()) {
+    res = result.result();
+  } else {
+    TRI_ASSERT(result.get().size() == 1);
+    coll = result.get().at(0);
+  }
 
   if (res.ok()) {
     TRI_ASSERT(coll);
@@ -459,8 +440,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
-    if (flush &&
-        TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
+    if (flush && !coll->deleted()) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
                                                                      false);
     }
@@ -697,7 +677,7 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
+    res = methods::Collections::drop(*coll, allowDropSystem);
   }
 
   if (res.fail()) {
@@ -765,7 +745,12 @@ RestCollectionHandler::collectionRepresentationAsync(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  _builder.add("status", VPackValue(coll->status()));
+  // only here for API-compatibility...
+  if (coll->deleted()) {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  } else {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

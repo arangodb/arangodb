@@ -1,0 +1,106 @@
+add_library(arango_iresearch STATIC
+  ApplicationServerHelper.cpp
+  ApplicationServerHelper.h
+  AqlHelper.cpp
+  AqlHelper.h
+  ExpressionFilter.cpp
+  ExpressionFilter.h
+  GeoAnalyzer.cpp
+  GeoAnalyzer.h
+  Geo.cpp
+  Geo.h
+  GeoFilter.cpp
+  GeoFilter.h
+  IResearchAnalyzerFeature.cpp
+  IResearchAnalyzerFeature.h
+  IResearchAqlAnalyzer.cpp
+  IResearchAqlAnalyzer.h
+  IResearchCommon.cpp
+  IResearchCommon.h
+  IResearchCompression.cpp
+  IResearchCompression.h
+  IResearchDataStore.cpp
+  IResearchDataStore.h
+  IResearchDataStoreMeta.cpp
+  IResearchDataStoreMeta.h
+  IResearchDocument.cpp
+  IResearchDocument.h
+  IResearchExpressionContext.cpp
+  IResearchExpressionContext.h
+  IResearchFeature.cpp
+  IResearchFeature.h
+  IResearchFilterFactory.cpp
+  IResearchFilterFactory.h
+  IResearchFilterOptimization.cpp
+  IResearchFilterOptimization.h
+  IResearchIdentityAnalyzer.cpp
+  IResearchIdentityAnalyzer.h
+  IResearchInvertedClusterIndex.cpp
+  IResearchInvertedClusterIndex.h
+  IResearchInvertedIndex.cpp
+  IResearchInvertedIndex.h
+  IResearchInvertedIndexMeta.cpp
+  IResearchInvertedIndexMeta.h
+  IResearchKludge.cpp
+  IResearchKludge.h
+  IResearchLinkCoordinator.cpp
+  IResearchLinkCoordinator.h
+  IResearchLink.cpp
+  IResearchLink.h
+  IResearchLinkHelper.cpp
+  IResearchLinkHelper.h
+  IResearchLinkMeta.cpp
+  IResearchLinkMeta.h
+  IResearchOrderFactory.cpp
+  IResearchOrderFactory.h
+  IResearchPDP.cpp
+  IResearchPDP.h
+  IResearchPrimaryKeyFilter.cpp
+  IResearchPrimaryKeyFilter.h
+  IResearchRocksDBEncryption.cpp
+  IResearchRocksDBEncryption.h
+  IResearchRocksDBInvertedIndex.cpp
+  IResearchRocksDBInvertedIndex.h
+  IResearchRocksDBLink.cpp
+  IResearchRocksDBLink.h
+  IResearchRocksDBRecoveryHelper.cpp
+  IResearchRocksDBRecoveryHelper.h
+  IResearchViewCoordinator.cpp
+  IResearchViewCoordinator.h
+  IResearchView.cpp
+  IResearchView.h
+  IResearchViewMeta.cpp
+  IResearchViewMeta.h
+  IResearchViewSort.cpp
+  IResearchViewSort.h
+  IResearchViewStoredValues.cpp
+  IResearchViewStoredValues.h
+  IResearchVPackComparer.cpp
+  IResearchVPackComparer.h
+  Search.cpp
+  Search.h
+  VelocyPackHelper.cpp
+  VelocyPackHelper.h
+  ViewSnapshot.cpp
+  ViewSnapshot.h
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.cpp
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestAnalyzerHandler.h)
+
+add_dependencies(arango_iresearch
+  v8_build # for ICU required by iResearch
+)
+
+target_link_libraries(arango_iresearch
+  arango_cluster_engine
+  arango_indexes
+  arango_vocbase
+  boost_thread # required by IResearchView upgrade_mutex
+  iresearch-static
+  s2 # needed for some includes
+)
+
+target_include_directories(arango_iresearch SYSTEM PUBLIC
+  ${IRESEARCH_INCLUDE})
+target_include_directories(arango_iresearch PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

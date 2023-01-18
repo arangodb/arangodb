@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse */
+/* global getOptions, assertEqual, assertFalse, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -28,6 +28,10 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+let db = require('internal').db;
+const protocols = ["tcp", "h2"];
+const user = "root";
+
 if (getOptions === true) {
   return {
     'server.authentication': 'false'
@@ -36,12 +40,26 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const request = require('@arangodb/request').request;
 
+let connectWith = function(protocol, user, password) {
+  let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
+  arango.reconnect(endpoint, db._name(), user, password);
+};
+
 function testSuite() {
+
   return {
-    testHeader : function() {
-      let result = request({ url: "/_api/version", method: "get" });
-      assertEqual(200, result.status);
-      assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+
+    tearDown: function() {
+      connectWith(protocols[0], user, "");
+    },
+
+    testHeader: function() {
+      protocols.forEach((protocol) => {
+        connectWith(protocol, user, "");
+        let result = arango.GET_RAW("/_api/version");
+        assertEqual(200, result.code);
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+      });
     },
   };
 }

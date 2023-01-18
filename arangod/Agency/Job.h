@@ -23,34 +23,44 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgentInterface.h"
 #include "Basics/Result.h"
-#include "Basics/debugging.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 namespace arangodb {
-namespace consensus {
+namespace velocypack {
+class Slice;
+}
+namespace replication2 {
+class LogId;
+namespace replicated_state::agency {
+struct Target;
+struct Plan;
+}  // namespace replicated_state::agency
+namespace agency {
+struct LogPlanSpecification;
+struct LogTarget;
+}  // namespace agency
+}  // namespace replication2
+}  // namespace arangodb
+
+namespace arangodb::consensus {
+class AgentInterface;
 class Node;
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
-const std::vector<std::string> jobStatus{"ToDo", "Pending", "Finished",
-                                         "Failed"};
-const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
+
+std::vector<std::string> const pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
+
 extern std::string const mapUniqueToShortID;
 extern std::string const pendingPrefix;
 extern std::string const failedPrefix;
@@ -60,8 +70,6 @@ extern std::string const cleanedPrefix;
 extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
-extern std::string const planRepLogPrefix;
-extern std::string const targetRepLogPrefix;
 extern std::string const targetRepStatePrefix;
 extern std::string const planRepStatePrefix;
 extern std::string const curColPrefix;
@@ -76,6 +84,7 @@ extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
 extern std::string const asyncReplTransientPrefix;
 extern std::string const planAnalyzersPrefix;
+extern std::string const returnLeadershipPrefix;
 
 struct Job {
   struct shard_t {
@@ -93,42 +102,17 @@ struct Job {
   virtual void run(bool& aborts) = 0;
 
   bool considerCancellation();
+  auto isReplication2Database(std::string_view database) -> bool;
 
   void runHelper(std::string const& server, std::string const& shard,
-                 bool& aborts) {
-    if (_status == FAILED) {  // happens when the constructor did not work
-      return;
-    }
-    try {
-      status();  // This runs everything to to with state PENDING if needed!
-    } catch (std::exception const& e) {
-      LOG_TOPIC("e2d06", WARN, Logger::AGENCY)
-          << "Exception caught in status() method: " << e.what();
-      finish(server, shard, false, e.what());
-    }
-    try {
-      if (_status == TODO) {
-        start(aborts);
-      } else if (_status == NOTFOUND) {
-        if (create(nullptr)) {
-          start(aborts);
-        }
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC("5ac04", WARN, Logger::AGENCY)
-          << "Exception caught in create() or "
-             "start() method: "
-          << e.what();
-      finish("", "", false, e.what());
-    }
-  }
+                 bool& aborts);
 
   virtual Result abort(std::string const& reason) = 0;
 
   virtual bool finish(std::string const& server, std::string const& shard,
                       bool success = true,
                       std::string const& reason = std::string(),
-                      query_t const payload = nullptr);
+                      query_t const& payload = nullptr);
 
   virtual JOB_STATUS status() = 0;
 
@@ -147,8 +131,8 @@ struct Job {
   static std::string randomIdleAvailableServer(
       Node const& snap, std::vector<std::string> const& exclude);
 
-  static size_t countGoodOrBadServersInList(
-      Node const& snap, velocypack::Slice const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap,
+                                            velocypack::Slice serverList);
   static size_t countGoodOrBadServersInList(
       Node const& snap, std::vector<std::string> const& serverList);
 
@@ -156,12 +140,10 @@ struct Job {
                              std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
-  static std::vector<std::string> availableServers(
-      const arangodb::consensus::Node&);
+  static std::vector<std::string> availableServers(Node const&);
 
   /// @brief Get servers from Supervision with health status GOOD
-  static std::vector<std::string> healthyServers(
-      arangodb::consensus::Node const&);
+  static std::vector<std::string> healthyServers(Node const&);
 
   static std::vector<shard_t> clones(Node const& snap, std::string const& db,
                                      std::string const& col,
@@ -170,6 +152,24 @@ struct Job {
   static std::string findNonblockedCommonHealthyInSyncFollower(
       Node const& snap, std::string const& db, std::string const& col,
       std::string const& shrd, std::string const& serverToAvoid);
+
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, std::string const& db, replication2::LogId stateId,
+      std::string const& serverToAvoid);
+
+  static bool isServerLeaderForState(Node const& snap, std::string const& db,
+                                     replication2::LogId stateId,
+                                     std::string const& server);
+  static bool isServerParticipantForState(Node const& snap,
+                                          std::string const& db,
+                                          replication2::LogId stateId,
+                                          std::string const& server);
+
+  static std::optional<arangodb::replication2::agency::LogTarget>
+  readStateTarget(Node const& snap, std::string const& db,
+                  replication2::LogId stateId);
+  static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
+      Node const& snap, std::string const& db, replication2::LogId logId);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
@@ -221,10 +221,9 @@ struct Job {
       velocypack::Builder& pre, std::string const& database,
       std::string const& collection);
   static void addBlockServer(velocypack::Builder& trx,
-                             std::string const& server,
-                             std::string const& jobId);
+                             std::string const& server, std::string_view jobId);
   static void addBlockShard(velocypack::Builder& trx, std::string const& shard,
-                            std::string const& jobId);
+                            std::string_view jobId);
   static void addReadLockServer(velocypack::Builder& trx,
                                 std::string const& server,
                                 std::string const& jobId);
@@ -244,11 +243,11 @@ struct Job {
   static void addPreconditionServerNotBlocked(velocypack::Builder& pre,
                                               std::string const& server);
   static void addPreconditionCurrentReplicaShardGroup(
-      VPackBuilder& pre, std::string const& database,
+      velocypack::Builder& pre, std::string const& database,
       std::vector<shard_t> const&, std::string const& server);
   static void addPreconditionServerHealth(velocypack::Builder& pre,
                                           std::string const& server,
-                                          std::string const& health);
+                                          std::string_view health);
   static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
                                              std::string const& shard);
   static void addPreconditionServerReadLockable(velocypack::Builder& pre,
@@ -264,7 +263,7 @@ struct Job {
                                                std::string const& server,
                                                std::string const& jobId);
   static void addPreconditionUnchanged(velocypack::Builder& pre,
-                                       std::string const& key,
+                                       std::string_view key,
                                        velocypack::Slice value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
                                                std::string const& jobId);
@@ -272,129 +271,14 @@ struct Job {
                                        std::string const& server);
 };
 
-inline arangodb::consensus::write_ret_t singleWriteTransaction(
-    AgentInterface* _agent, velocypack::Builder const& transaction,
-    bool waitForCommit = true) {
-  query_t envelope = std::make_shared<velocypack::Builder>();
+write_ret_t singleWriteTransaction(AgentInterface* _agent,
+                                   velocypack::Builder const& transaction,
+                                   bool waitForCommit = true);
 
-  velocypack::Slice trx = transaction.slice();
-  try {
-    {
-      VPackArrayBuilder listOfTrxs(envelope.get());
-      VPackArrayBuilder onePair(envelope.get());
-      {
-        VPackObjectBuilder mutationPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                        pair.value);
-        }
-      }
-      if (trx.length() > 1) {
-        VPackObjectBuilder preconditionPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                        pair.value);
-        }
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC("5be90", ERR, Logger::SUPERVISION)
-        << "Supervision failed to build single-write transaction: " << e.what();
-  }
+trans_ret_t generalTransaction(AgentInterface* _agent,
+                               velocypack::Builder const& transaction);
 
-  auto ret = _agent->write(envelope);
-  if (waitForCommit && !ret.indices.empty()) {
-    auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
-    if (maximum > 0) {  // some baby has worked
-      _agent->waitFor(maximum);
-    }
-  }
-  return ret;
-}
+trans_ret_t transient(AgentInterface* _agent,
+                      velocypack::Builder const& transaction);
 
-inline arangodb::consensus::trans_ret_t generalTransaction(
-    AgentInterface* _agent, velocypack::Builder const& transaction) {
-  query_t envelope = std::make_shared<velocypack::Builder>();
-  velocypack::Slice trx = transaction.slice();
-
-  try {
-    {
-      VPackArrayBuilder listOfTrxs(envelope.get());
-      for (auto const& singleTrans : VPackArrayIterator(trx)) {
-        TRI_ASSERT(singleTrans.isArray() && singleTrans.length() > 0);
-        if (singleTrans[0].isObject()) {
-          VPackArrayBuilder onePair(envelope.get());
-          {
-            VPackObjectBuilder mutationPart(envelope.get());
-            for (auto const& pair : VPackObjectIterator(singleTrans[0])) {
-              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                            pair.value);
-            }
-          }
-          if (singleTrans.length() > 1) {
-            VPackObjectBuilder preconditionPart(envelope.get());
-            for (auto const& pair : VPackObjectIterator(singleTrans[1])) {
-              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                            pair.value);
-            }
-          }
-        } else if (singleTrans[0].isString()) {
-          VPackArrayBuilder reads(envelope.get());
-          for (auto const& path : VPackArrayIterator(singleTrans)) {
-            envelope->add(
-                VPackValue("/" + Job::agencyPrefix + path.copyString()));
-          }
-        }
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC("aae99", ERR, Logger::SUPERVISION)
-        << "Supervision failed to build transaction: " << e.what();
-  }
-
-  auto ret = _agent->transact(envelope);
-
-  // This is for now disabled to speed up things. We wait after a full
-  // Supervision run, which is good enough.
-  // if (ret.maxind > 0) {
-  // _agent->waitFor(ret.maxind);
-  //
-
-  return ret;
-}
-
-inline arangodb::consensus::trans_ret_t transient(
-    AgentInterface* _agent, velocypack::Builder const& transaction) {
-  query_t envelope = std::make_shared<velocypack::Builder>();
-
-  velocypack::Slice trx = transaction.slice();
-  try {
-    {
-      VPackArrayBuilder listOfTrxs(envelope.get());
-      VPackArrayBuilder onePair(envelope.get());
-      {
-        VPackObjectBuilder mutationPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                        pair.value);
-        }
-      }
-      if (trx.length() > 1) {
-        VPackObjectBuilder preconditionPart(envelope.get());
-        for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(),
-                        pair.value);
-        }
-      }
-    }
-  } catch (std::exception const& e) {
-    LOG_TOPIC("d03d5", ERR, Logger::SUPERVISION)
-        << "Supervision failed to build transaction for transient: "
-        << e.what();
-  }
-
-  return _agent->transient(envelope);
-}
-
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

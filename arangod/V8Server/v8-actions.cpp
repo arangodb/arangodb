@@ -25,7 +25,7 @@
 #include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -577,7 +577,10 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload(true);
-      std::string jsonString = slice.toJson();
+      std::string jsonString;
+      if (!slice.isNone()) {
+        jsonString = slice.toJson();
+      }
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
           << "json handed into v8 request:\n"

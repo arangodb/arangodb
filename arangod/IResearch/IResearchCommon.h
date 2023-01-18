@@ -29,8 +29,7 @@
 #include "Basics/system-compiler.h"
 #include "Logger/LogTopic.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the delimiter used to separate jSON nesting levels when
@@ -92,6 +91,8 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
 }
 
+inline constexpr std::string_view PK_COLUMN{"@_PK"};
+
 struct StaticStrings {
   static constexpr std::string_view ViewArangoSearchType = "arangosearch";
   static constexpr std::string_view ViewSearchAliasType = "search-alias";
@@ -113,6 +114,13 @@ struct StaticStrings {
   ///        corresponding IResearch View
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view ViewIdField{"view"};
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attribute name for storing link/inverted index errors
+  ////////////////////////////////////////////////////////////////////////////////
+  static constexpr std::string_view LinkError{"error"};
+  static constexpr std::string_view LinkErrorOutOfSync{"outOfSync"};
+  static constexpr std::string_view LinkErrorFailed{"failed"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
@@ -158,6 +166,9 @@ struct StaticStrings {
   static constexpr std::string_view PrimarySortCompressionField{
       "primarySortCompression"};
 
+  // enables caching for primary sort column
+  static constexpr std::string_view kPrimarySortCacheField{"primarySortCache"};
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch Link definition denoting the
   ///        stored values
@@ -169,6 +180,12 @@ struct StaticStrings {
   ///        corresponding collection name in cluster (not shard name!)
   ////////////////////////////////////////////////////////////////////////////////
   static constexpr std::string_view CollectionNameField{"collectionName"};
+
+  // enables caching for field
+  static constexpr std::string_view kCacheField{"cache"};
+
+  // enables caching for primary key column
+  static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
@@ -217,5 +234,4 @@ struct StaticStrings {
   static constexpr std::string_view WritebufferSizeMax{"writebufferSizeMax"};
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

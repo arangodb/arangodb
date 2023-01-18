@@ -29,6 +29,9 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/PathManagement/PathStore.h"
 
 #include <list>
 #include <memory>
@@ -50,19 +53,14 @@ struct ShortestPathOptions;
 // again.
 // TODO: Traverser.h has destroyEngines as well (the code for the two functions
 //       is identical), refactor?
-class KShortestPathsFinder : public ShortestPathFinder {
- private:
-  // Mainly for readability
+
+class KShortestPathsFinderInterface : public ShortestPathFinder {
+ public:
+  using ShortestPathFinder::ShortestPathFinder;
+
+ protected:
   typedef std::string_view VertexRef;
   typedef arangodb::graph::EdgeDocumentToken Edge;
-
-  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                        std::equal_to<VertexRef>>
-      VertexSet;
-  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>,
-                                        std::equal_to<Edge>>
-      EdgeSet;
-  enum Direction { FORWARD, BACKWARD };
 
   // TODO: This could be merged with ShortestPathResult
   //       or become a class to pass around paths
@@ -146,6 +144,40 @@ class KShortestPathsFinder : public ShortestPathFinder {
     }
   };
 
+ public:
+  // initialize k Shortest Paths
+  virtual bool startKShortestPathsTraversal(
+      arangodb::velocypack::Slice const& start,
+      arangodb::velocypack::Slice const& end) = 0;
+
+  // get the next available path as AQL value.
+  virtual bool getNextPathAql(arangodb::velocypack::Builder& builder) = 0;
+  // get the next available path as a ShortestPathResult
+  // TODO: this is only here to not break catch-tests and needs a cleaner
+  // solution.
+  //       probably by making ShortestPathResult versatile enough and using that
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  virtual bool getNextPathShortestPathResult(ShortestPathResult& path) = 0;
+#endif
+  // get the next available path as a Path
+  virtual bool getNextPath(Path& path) = 0;
+  virtual bool skipPath() = 0;
+  virtual bool isDone() const = 0;
+};
+
+template<class ProviderType>
+class KShortestPathsFinder : public KShortestPathsFinderInterface {
+ private:
+  // Mainly for readability
+
+  typedef arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                        std::equal_to<VertexRef>>
+      VertexSet;
+  typedef arangodb::containers::HashSet<Edge, std::hash<Edge>,
+                                        std::equal_to<Edge>>
+      EdgeSet;
+  enum Direction { FORWARD, BACKWARD };
+
   //
   // Datastructures required for Dijkstra
   //
@@ -165,10 +197,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef getKey() const { return _vertex; }
     void setWeight(double weight) { _weight = weight; }
 
-    DijkstraInfo(VertexRef const& vertex, Edge const&& edge,
+    DijkstraInfo(VertexRef const& vertex, Edge const& edge,
                  VertexRef const& pred, double weight)
         : _vertex(vertex),
-          _edge(std::move(edge)),
+          _edge(edge),
           _pred(pred),
           _weight(weight),
           _done(false) {}
@@ -232,7 +264,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::vector<Step> _outNeighbours;
     std::vector<Step> _inNeighbours;
 
-    explicit FoundVertex(VertexRef const& vertex)
+    explicit FoundVertex(VertexRef vertex)
         : _vertex(vertex),
           _hasCachedOutNeighbours(false),
           _hasCachedInNeighbours(false) {}
@@ -241,10 +273,15 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // for a shortest path between start and end together with
   // the number of paths leading to that vertex and information
   // how to trace paths from the vertex from start/to end.
-  typedef containers::FlatHashMap<VertexRef, FoundVertex> FoundVertexCache;
+  typedef containers::FlatHashMap<VertexRef, std::unique_ptr<FoundVertex>>
+      FoundVertexCache;
 
  public:
-  explicit KShortestPathsFinder(ShortestPathOptions& options);
+  KShortestPathsFinder(
+      ShortestPathOptions& options,
+      typename ProviderType::Options&& forwardProviderOptions,
+      typename ProviderType::Options&& backwardProviderOptions);
+
   ~KShortestPathsFinder();
 
   // reset the traverser; this is mainly needed because the traverser is
@@ -265,21 +302,22 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // initialize k Shortest Paths
   TEST_VIRTUAL bool startKShortestPathsTraversal(
       arangodb::velocypack::Slice const& start,
-      arangodb::velocypack::Slice const& end);
+      arangodb::velocypack::Slice const& end) override;
 
   // get the next available path as AQL value.
-  TEST_VIRTUAL bool getNextPathAql(arangodb::velocypack::Builder& builder);
+  TEST_VIRTUAL bool getNextPathAql(
+      arangodb::velocypack::Builder& builder) override;
   // get the next available path as a ShortestPathResult
   // TODO: this is only here to not break catch-tests and needs a cleaner
   // solution.
   //       probably by making ShortestPathResult versatile enough and using that
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  bool getNextPathShortestPathResult(ShortestPathResult& path);
+  bool getNextPathShortestPathResult(ShortestPathResult& path) override;
 #endif
   // get the next available path as a Path
-  bool getNextPath(Path& path);
-  TEST_VIRTUAL bool skipPath();
-  TEST_VIRTUAL bool isDone() const { return _traversalDone; }
+  bool getNextPath(Path& path) override;
+  TEST_VIRTUAL bool skipPath() override;
+  TEST_VIRTUAL bool isDone() const override { return _traversalDone; }
 
  private:
   // Compute the first shortest path
@@ -324,8 +362,8 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   std::list<Path> _candidatePaths;
 
-  std::unique_ptr<EdgeCursor> _forwardCursor;
-  std::unique_ptr<EdgeCursor> _backwardCursor;
+  std::unique_ptr<ProviderType> _forwardProvider;
+  std::unique_ptr<ProviderType> _backwardProvider;
 
   // a temporary object that is reused for building results
   Path _tempPath;

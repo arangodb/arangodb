@@ -29,6 +29,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
+#include "Mocks/MockQuery.h"
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -135,7 +136,7 @@ class GraphProviderTest : public ::testing::Test {
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-          _edgeProjections);
+          _edgeProjections, /*produceVertices*/ true);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
@@ -153,8 +154,7 @@ class GraphProviderTest : public ::testing::Test {
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
             server.getSystemDatabase());
-        auto fakeQuery =
-            arangodb::aql::Query::create(ctx, queryString, nullptr);
+        auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
@@ -275,20 +275,20 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
     result.emplace_back(std::move(n));
   });
 
-  EXPECT_EQ(result.size(), 0);
+  EXPECT_EQ(result.size(), 0U);
   TraversalStats stats = testee.stealStats();
-  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0U);
 
   if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
-    EXPECT_EQ(stats.getHttpRequests(), 0);
+    EXPECT_EQ(stats.getHttpRequests(), 0U);
   } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
-    EXPECT_EQ(stats.getHttpRequests(), 2);
+    EXPECT_EQ(stats.getHttpRequests(), 2U);
   }
 
   // We have no edges, so nothing scanned in the Index.
-  EXPECT_EQ(stats.getScannedIndex(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 0U);
 }
 
 TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
@@ -319,40 +319,40 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
     result.emplace_back(std::move(n));
   });
 
-  ASSERT_EQ(result.size(), 1);
+  ASSERT_EQ(result.size(), 1U);
   auto const& f = result.at(0);
   EXPECT_EQ(f.getVertex().getID().toString(), "v/1");
-  EXPECT_EQ(f.getPrevious(), 0);
+  EXPECT_EQ(f.getPrevious(), 0U);
 
   {
     TraversalStats stats = testee.stealStats();
-    EXPECT_EQ(stats.getFiltered(), 0);
+    EXPECT_EQ(stats.getFiltered(), 0U);
     if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
-      EXPECT_EQ(stats.getHttpRequests(), 0);
+      EXPECT_EQ(stats.getHttpRequests(), 0U);
     } else if (std::is_same_v<TypeParam,
                               ClusterProvider<ClusterProviderStep>>) {
-      EXPECT_EQ(stats.getHttpRequests(), 2);
+      EXPECT_EQ(stats.getHttpRequests(), 2U);
     }
 
     if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       // We have 1 edge, this shall be counted
-      EXPECT_EQ(stats.getScannedIndex(), 1);
+      EXPECT_EQ(stats.getScannedIndex(), 1U);
     } else if (std::is_same_v<TypeParam,
                               ClusterProvider<ClusterProviderStep>>) {
-      EXPECT_EQ(stats.getScannedIndex(), 2);  // we count edge + start vertex
+      EXPECT_EQ(stats.getScannedIndex(), 2U);  // we count edge + start vertex
     }
   }
   {
     // Make sure stats are reset after we stole them
     // So steal again works, but on empty statistics
     TraversalStats stats = testee.stealStats();
-    EXPECT_EQ(stats.getFiltered(), 0);
-    EXPECT_EQ(stats.getHttpRequests(), 0);
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getFiltered(), 0U);
+    EXPECT_EQ(stats.getHttpRequests(), 0U);
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
   }
 }
 
@@ -387,10 +387,10 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
     result.emplace_back(std::move(n));
   });
 
-  ASSERT_EQ(result.size(), 3);
+  ASSERT_EQ(result.size(), 3U);
   for (auto const& f : result) {
     // All expand of the same previous
-    EXPECT_EQ(f.getPrevious(), 0);
+    EXPECT_EQ(f.getPrevious(), 0U);
     auto const& v = f.getVertex().getID().toString();
     // We can only range from 1 to 3
     EXPECT_GE(v, "v/1");
@@ -402,23 +402,23 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
 
   {
     TraversalStats stats = testee.stealStats();
-    EXPECT_EQ(stats.getFiltered(), 0);
+    EXPECT_EQ(stats.getFiltered(), 0U);
     if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
-      EXPECT_EQ(stats.getHttpRequests(), 0);
+      EXPECT_EQ(stats.getHttpRequests(), 0U);
     } else if (std::is_same_v<TypeParam,
                               ClusterProvider<ClusterProviderStep>>) {
-      EXPECT_EQ(stats.getHttpRequests(), 2);
+      EXPECT_EQ(stats.getHttpRequests(), 2U);
     }
     if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                                 SingleServerProviderStep>> ||
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       // We have 3 edges, this shall be counted
-      EXPECT_EQ(stats.getScannedIndex(), 3);
+      EXPECT_EQ(stats.getScannedIndex(), 3U);
     } else if (std::is_same_v<TypeParam,
                               ClusterProvider<ClusterProviderStep>>) {
-      EXPECT_EQ(stats.getScannedIndex(), 4);  // we count edge + start vertex
+      EXPECT_EQ(stats.getScannedIndex(), 4U);  // we count edge + start vertex
     }
   }
 }
@@ -441,7 +441,7 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
   if constexpr (std::is_same_v<TypeParam, SingleServerProvider<
                                               SingleServerProviderStep>> ||
                 std::is_same_v<TypeParam, MockGraphProvider>) {
-    EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0);
+    EXPECT_EQ(statsAfterSteal.getHttpRequests(), 0U);
   } else if (std::is_same_v<TypeParam, ClusterProvider<ClusterProviderStep>>) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(),
               this->clusterEngines.get()->size());

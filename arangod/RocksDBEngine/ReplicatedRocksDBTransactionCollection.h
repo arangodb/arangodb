@@ -23,9 +23,14 @@
 
 #pragma once
 
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
+namespace futures {
+template<class T>
+class Future;
+}
 namespace replication2::replicated_state::document {
 struct DocumentLeaderState;
 }
@@ -33,7 +38,8 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
 class ReplicatedRocksDBTransactionCollection final
-    : public RocksDBTransactionCollection {
+    : public RocksDBTransactionCollection,
+      public IRocksDBTransactionCallback {
  public:
   ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
                                          DataSourceId cid,
@@ -57,9 +63,16 @@ class ReplicatedRocksDBTransactionCollection final
   TRI_voc_tick_t lastOperationTick() const noexcept;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const;
+  uint64_t numCommits() const noexcept;
+
+  /// @brief number intermediate commits
+  uint64_t numIntermediateCommits() const noexcept;
+
+  futures::Future<Result> performIntermediateCommitIfRequired();
 
   uint64_t numOperations() const noexcept;
+
+  uint64_t numPrimitiveOperations() const noexcept;
 
   bool ensureSnapshot();
 
@@ -68,6 +81,11 @@ class ReplicatedRocksDBTransactionCollection final
 
  protected:
   auto ensureCollection() -> Result override;
+
+  // IRocksDBTransactionCallback methods
+  rocksdb::SequenceNumber prepare() override;
+  void cleanup() override;
+  void commit(rocksdb::SequenceNumber lastWritten) override;
 
  private:
   void maybeDisableIndexing();

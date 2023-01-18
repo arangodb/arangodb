@@ -24,7 +24,7 @@
 #include "ModificationNodes.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"

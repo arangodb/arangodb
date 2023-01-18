@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/Utils.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
@@ -35,6 +34,7 @@
 #include "Futures/Utilities.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -119,7 +119,7 @@ void ArrayOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber().value));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -206,9 +206,6 @@ void CombiningOutCache<M>::flushMessages() {
   }
 
   uint64_t gss = this->_config->globalSuperstep();
-  if (this->_sendToNextGSS && this->_config->asynchronousMode()) {
-    gss += 1;
-  }
   VPackOptions options = VPackOptions::Defaults;
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -230,7 +227,7 @@ void CombiningOutCache<M>::flushMessages() {
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey,
-             VPackValue(this->_config->executionNumber()));
+             VPackValue(this->_config->executionNumber().value));
     data.add(Utils::globalSuperstepKey, VPackValue(gss));
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
@@ -297,7 +294,7 @@ template class arangodb::pregel::OutCache<HLLCounter>;
 template class arangodb::pregel::ArrayOutCache<HLLCounter>;
 template class arangodb::pregel::CombiningOutCache<HLLCounter>;
 
-using namespace arangodb::pregel::algos::accumulators;
-template class arangodb::pregel::OutCache<MessageData>;
-template class arangodb::pregel::ArrayOutCache<MessageData>;
-template class arangodb::pregel::CombiningOutCache<MessageData>;
+template class arangodb::pregel::OutCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::ArrayOutCache<ColorPropagationMessageValue>;
+template class arangodb::pregel::CombiningOutCache<
+    ColorPropagationMessageValue>;

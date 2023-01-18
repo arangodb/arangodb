@@ -32,6 +32,7 @@
 #include "Agency/MoveShard.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 

@@ -42,8 +42,9 @@ std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
   std::vector<std::string> todelete;
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
@@ -55,8 +56,9 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
   std::vector<std::string> todelete{servers[0]};
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);
@@ -76,8 +78,9 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
   std::vector<std::string> todelete = servers;
-  auto const& transaction = removeTransactionBuilder(todelete);
-  auto const& slice = transaction->slice();
+  velocypack::Builder builder;
+  Supervision::removeTransactionBuilder(builder, todelete);
+  auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
   ASSERT_EQ(slice.length(), 1);

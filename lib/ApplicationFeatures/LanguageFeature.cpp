@@ -105,23 +105,43 @@ void LanguageFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--default-language",
-                  "An ISO-639 language code. This option can only be set once, "
-                  "when initializing the database.",
+                  "An ISO-639 language code. You can only set this option "
+                  "once, when initializing the database.",
                   new StringParameter(&_defaultLanguage),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(31000);
+      .setDeprecatedIn(31000)
+      .setLongDescription(R"(The default language is used for sorting and
+comparing strings. The language value is a two-letter language code (ISO-639) or
+it is composed by a two-letter language code followed by a two letter country
+code (ISO-3166). For example: `de`, `en`, `en_US`, `en_UK`.
+
+The default is the system locale of the platform.)");
 
   options
       ->addOption(
           "--icu-language",
           "An ICU locale ID to set a language and optionally additional "
-          "properties that affect string comparisons and sorting. This option "
-          "can only be set once, when initializing the database.",
+          "properties that affect string comparisons and sorting. You can only "
+          "set this option once, when initializing the database.",
           new StringParameter(&_icuLanguage),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30901);
+      .setIntroducedIn(30901)
+      .setLongDescription(R"(With this option, you can get the sorting and
+comparing order exactly as it is defined in the ICU standard. The language value
+can be a two-letter language code (ISO-639), a two-letter language code followed
+by a two letter country code (ISO-3166), or any other valid ICU locale
+definition. For example: `de`, `en`, `en_US`, `en_UK`,
+`de_AT@collation=phonebook`.
+
+For the Swedish language (`sv`), for instance, the correct ICU-based sorting
+order for letters is `'a','A','b','B','z','Z','å','Ä','ö','Ö'`. To get this
+order, use `--icu-language sv`. If you use `--default-language sv` instead, the
+sorting order will be `"A", "a", "B", "b", "Z", "z", "å", "Ä", "Ö", "ö"`.
+
+**Note**: You can use only one of the language options, either `--icu-language`
+or `--default-language`. Setting both of them results in an error.)");
 
   options
       ->addOption(

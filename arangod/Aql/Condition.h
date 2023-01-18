@@ -74,8 +74,7 @@ struct ConditionPart {
   ConditionPart(Variable const*, std::string const&, AstNode const*,
                 AttributeSideType, void*);
 
-  ConditionPart(Variable const*,
-                std::vector<arangodb::basics::AttributeName> const&,
+  ConditionPart(Variable const*, std::vector<basics::AttributeName> const&,
                 AstNode const*, AttributeSideType, void*);
 
   ~ConditionPart();
@@ -95,15 +94,15 @@ struct ConditionPart {
   bool isUpperInclusive() const;
 
   /// @brief true if the condition is completely covered by the other condition
-  bool isCoveredBy(ConditionPart const&, bool) const;
+  bool isCoveredBy(ConditionPart const& other, bool isReversed) const;
 
   Variable const* variable;
   std::string attributeName;
   AstNodeType operatorType;
+  bool isExpanded;
   AstNode const* operatorNode;
   AstNode const* valueNode;
   void* data;
-  bool isExpanded;
 };
 
 class Condition {
@@ -126,11 +125,13 @@ class Condition {
 
  public:
   /// @brief: note: index may be a nullptr
-  static void collectOverlappingMembers(
-      ExecutionPlan const* plan, Variable const* variable,
-      AstNode const* andNode, AstNode const* otherAndNode,
-      ::arangodb::containers::HashSet<size_t>& toRemove, Index const* index,
-      bool isFromTraverser);
+  static void collectOverlappingMembers(ExecutionPlan const* plan,
+                                        Variable const* variable,
+                                        AstNode const* andNode,
+                                        AstNode const* otherAndNode,
+                                        containers::HashSet<size_t>& toRemove,
+                                        Index const* index,
+                                        bool isFromTraverser);
 
   /// @brief return the condition root
   AstNode* root() const;
@@ -143,11 +144,11 @@ class Condition {
   bool isSorted() const;
 
   /// @brief export the condition as VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, bool) const;
+  void toVelocyPack(velocypack::Builder&, bool verbose) const;
 
   /// @brief create a condition from VPack
-  static std::unique_ptr<Condition> fromVPack(
-      ExecutionPlan*, arangodb::velocypack::Slice const&);
+  static std::unique_ptr<Condition> fromVPack(ExecutionPlan*,
+                                              velocypack::Slice slice);
 
   /// @brief clone the condition
   std::unique_ptr<Condition> clone() const;
@@ -178,7 +179,7 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*,
-                                    AstNode*);
+                                    AstNode*, bool isPathCondition);
 
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(VarSet const&);
@@ -193,14 +194,20 @@ class Condition {
 
   /// @brief get the attributes for a sub-condition that are const
   /// (i.e. compared with equality)
-  std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
+  std::vector<std::vector<basics::AttributeName>> getConstAttributes(
       Variable const*, bool includeNull) const;
 
   /// @brief get the attributes for a sub-condition that are not-null
-  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>
-  getNonNullAttributes(Variable const*) const;
+  containers::HashSet<std::vector<basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
+  /// @brief internal worker function for removeIndexCondition and
+  /// removeTraversalCondition
+  AstNode* removeCondition(ExecutionPlan const* plan, Variable const* variable,
+                           AstNode const* condition, Index const* index,
+                           bool isFromTraverser);
+
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
@@ -218,13 +225,13 @@ class Condition {
   /// @brief registers an attribute access for a particular (collection)
   /// variable
   void storeAttributeAccess(
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
-          varAccess,
-      VariableUsageType&, AstNode const*, size_t, AttributeSideType);
+      std::pair<Variable const*, std::vector<basics::AttributeName>>& varAccess,
+      VariableUsageType& variableUsage, AstNode const*, size_t position,
+      AttributeSideType side);
 
 /// @brief validate the condition's AST
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void validateAst(AstNode const*, int);
+  void validateAst(AstNode const* node, int level);
 #endif
 
   /// @brief checks if the current condition covers the other

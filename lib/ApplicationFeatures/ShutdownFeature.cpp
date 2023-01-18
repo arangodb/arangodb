@@ -22,13 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ShutdownFeature.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
-using namespace arangodb::options;
 
 namespace arangodb {
 

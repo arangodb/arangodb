@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 
 #include <memory>
 
@@ -203,10 +202,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   auto isSatelliteLeader() const -> bool;
 
-  void initializeIndexConditions(
-      aql::Ast* ast,
-      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-      aql::Variable const* indexVariable) override;
+  void initializeIndexConditions(aql::Ast* ast, aql::VarInfoMap const& varInfo,
+                                 aql::Variable const* indexVariable) override;
 
   void calculateIndexExpressions(aql::Ast* ast) override;
 

@@ -414,12 +414,6 @@ function ahuacatlFailureSuite () {
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
     },
 
-    testIndexNodeSkiplist1 : function () {
-      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
-      internal.debugSetFailAt("SkiplistIndex::noSortIterator");
-      assertFailingQuery("FOR i IN " + c.name() + " SORT i.value RETURN i");
-    },
-
     testIndexNodeSkiplist2 : function () {
       idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("SkiplistIndex::noIterator");

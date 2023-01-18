@@ -170,6 +170,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"LOWER", ".", flags, &functions::Lower});
   add({"UPPER", ".", flags, &functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
+  add({"SUBSTRING_BYTES", ".,.|.", flags, &functions::SubstringBytes});
   add({"CONTAINS", ".,.|.", flags, &functions::Contains});
   add({"LIKE", ".,.|.", flags, &functions::Like});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
@@ -189,6 +190,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"IPV4_FROM_NUMBER", ".", flags, &functions::IpV4FromNumber});
   add({"MD5", ".", flags, &functions::Md5});
   add({"SHA1", ".", flags, &functions::Sha1});
+  add({"SHA256", ".", flags, &functions::Sha256});
   add({"SHA512", ".", flags, &functions::Sha512});
   add({"CRC32", ".", flags, &functions::Crc32});
   add({"FNV64", ".", flags, &functions::Fnv64});
@@ -450,6 +452,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_MILLISECOND", ".", flags, &functions::DateMillisecond});
   add({"DATE_DAYOFYEAR", ".", flags, &functions::DateDayOfYear});
   add({"DATE_ISOWEEK", ".", flags, &functions::DateIsoWeek});
+  add({"DATE_ISOWEEKYEAR", ".", flags, &functions::DateIsoWeekYear});
   add({"DATE_LEAPYEAR", ".", flags, &functions::DateLeapYear});
   add({"DATE_QUARTER", ".", flags, &functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", flags, &functions::DateDaysInMonth});
@@ -502,12 +505,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &functions::SchemaValidate});
-
-  // Call AIR. not usable in analyzers
-  add({"CALL_GREENSPUN", ".|+",
-       Function::makeFlags(FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::CallGreenspun});
 
   // special flags:
   // deterministic, not cacheable. only on coordinator. not in analyzers

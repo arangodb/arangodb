@@ -28,6 +28,8 @@
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {

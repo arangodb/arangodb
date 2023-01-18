@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -32,6 +33,7 @@
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/types.h>
+#include <unordered_map>
 
 namespace arangodb {
 struct RocksDBDocumentOperation;
@@ -120,6 +122,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(IndexId iid, uint64_t hash);
 
+  void trackIndexCacheRefill(IndexId iid, std::string_view key);
+
   /// @brief tracked index operations
   struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
@@ -134,6 +138,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
     _trackedIndexOperations.swap(empty);
     return empty;
   }
+
+  void handleIndexCacheRefills();
 
  protected:
   virtual Result ensureCollection();
@@ -162,6 +168,9 @@ class RocksDBTransactionCollection : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
+
+  containers::FlatHashMap<IndexId, std::vector<std::string>>
+      _trackedCacheRefills;
 
   bool _usageLocked;
   bool _exclusiveWrites;

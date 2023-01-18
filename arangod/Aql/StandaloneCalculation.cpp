@@ -68,6 +68,9 @@ class CalculationTransactionState final : public arangodb::TransactionState {
                                                     // make ASSERTS happy
     }
   }
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
   [[nodiscard]] arangodb::Result beginTransaction(
       arangodb::transaction::Hints) override {
@@ -77,9 +80,11 @@ class CalculationTransactionState final : public arangodb::TransactionState {
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
+    applyBeforeCommitCallbacks();
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
+    applyAfterCommitCallbacks();
     return Result{};
   }
 
@@ -92,16 +97,38 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
-      arangodb::DataSourceId collectionId) override {
-    // Analyzers do not write. so do nothing
-    return {};
+  Result triggerIntermediateCommit() override {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "CalculationTransactionState";
+    return Result{TRI_ERROR_INTERNAL};
   }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      arangodb::DataSourceId collectionId) override {
+    // Analyzers do not write. so do nothing
+    return Result{};
+  }
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
 
   /// @brief number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override { return 0; }
+  [[nodiscard]] uint64_t numCommits() const noexcept override { return 0; }
+
+  /// @brief number of intermediate commits
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override {
+    return 0;
+  }
+
+  void addIntermediateCommits(uint64_t /*value*/) override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
     return 0;
@@ -252,7 +279,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
 
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
-    if (ast->willUseV8()) {
+    if (astRoot->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("V8 usage is forbidden", errorContext)};
     }

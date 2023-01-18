@@ -24,8 +24,6 @@
 
 #include "GeneralRequest.h"
 
-#include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
@@ -36,6 +34,11 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+namespace {
+// intentionally empty
+std::string const empty{};
+}  // namespace
 
 std::string_view GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
@@ -99,13 +102,6 @@ rest::RequestType GeneralRequest::translateMethod(std::string_view method) {
     return ::translateMethodHelper(std::string_view(methodString));
   }
   return ret;
-}
-
-void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
-  // append RequestType as string value to given String buffer
-  auto meth = translateMethod(method);
-  buffer->appendText(meth.data(), meth.size());
-  buffer->appendChar(' ');
 }
 
 rest::RequestType GeneralRequest::findRequestType(char const* ptr,
@@ -198,7 +194,7 @@ std::string const& GeneralRequest::header(std::string const& key,
   auto it = _headers.find(key);
   if (it == _headers.end()) {
     found = false;
-    return StaticStrings::Empty;
+    return ::empty;
   }
 
   found = true;
@@ -222,7 +218,7 @@ std::string const& GeneralRequest::value(std::string const& key,
   }
 
   found = false;
-  return StaticStrings::Empty;
+  return ::empty;
 }
 
 std::string const& GeneralRequest::value(std::string const& key) const {
@@ -304,11 +300,6 @@ template auto GeneralRequest::parsedValue<uint64_t>(std::string const&,
                                                     uint64_t) -> uint64_t;
 template auto GeneralRequest::parsedValue<double>(std::string const&, double)
     -> double;
-
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(
-    bool strictValidation) {
-  return std::make_shared<VPackBuilder>(payload(strictValidation));
-}
 
 /// @brief get VelocyPack options for validation. effectively turns off
 /// validation if strictValidation is false. This optimization can be used for

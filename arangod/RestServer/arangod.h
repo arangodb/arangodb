@@ -74,6 +74,7 @@ class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
 class FileDescriptorsFeature;
+class FileSystemFeature;
 class FlushFeature;
 class FortuneFeature;
 class FoxxFeature;
@@ -91,6 +92,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
 class RandomFeature;
@@ -122,7 +124,6 @@ class V8SecurityFeature;
 class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
-class RocksDBEngine;
 class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
@@ -133,6 +134,8 @@ class RCloneFeature;
 class HotBackupFeature;
 class EncryptionFeature;
 class SslServerFeature;
+class RocksDBEngine;
+class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 
@@ -180,7 +183,7 @@ struct DocumentStateMachineFeature;
 using namespace application_features;
 
 // clang-format off
-using ArangodFeatures = TypeList<
+using ArangodFeaturesList = TypeList<
     // Adding the Phases
     AgencyFeaturePhase,
     CommunicationFeaturePhase,
@@ -214,6 +217,7 @@ using ArangodFeatures = TypeList<
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
+    FileSystemFeature,
     FlushFeature,
     FortuneFeature,
     FoxxFeature,
@@ -231,6 +235,7 @@ using ArangodFeatures = TypeList<
     MaxMapCountFeature,
     NetworkFeature,
     NonceFeature,
+    OptionsCheckFeature,
     PrivilegeFeature,
     QueryRegistryFeature,
     RandomFeature,
@@ -264,6 +269,7 @@ using ArangodFeatures = TypeList<
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
     pregel::PregelFeature,
+    RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
 #ifdef _WIN32
@@ -295,7 +301,7 @@ using ArangodFeatures = TypeList<
     replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
-
+struct ArangodFeatures : ArangodFeaturesList {};
 using ArangodServer = application_features::ApplicationServerT<ArangodFeatures>;
 using ArangodFeature = application_features::ApplicationFeatureT<ArangodServer>;
 

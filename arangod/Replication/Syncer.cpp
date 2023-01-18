@@ -532,7 +532,7 @@ void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
 
 bool Syncer::isAborted() const { return _state.connection.isAborted(); }
 
-TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
+TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
   std::string name;
   if (slice.isObject()) {
     VPackSlice tmp;
@@ -575,7 +575,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   VPackSlice uuid;
 
   if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -608,7 +608,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
                                          LogicalCollection* coll,
                                          TRI_replication_operation_e type,
-                                         VPackSlice const& slice,
+                                         velocypack::Slice slice,
                                          std::string& conflictingDocumentKey) {
   if (_state.applier._lockTimeoutRetries > 0) {
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
@@ -640,8 +640,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
-Result Syncer::createCollection(TRI_vocbase_t& vocbase,
-                                arangodb::velocypack::Slice const& slice,
+Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
                                 LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -697,7 +696,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase.dropCollection(col->id(), false, -1.0);
+      vocbase.dropCollection(col->id(), false);
     }
   }
 
@@ -747,7 +746,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 }
 
 /// @brief drops a collection, based on the VelocyPack provided
-Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
+Result Syncer::dropCollection(velocypack::Slice slice, bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
   if (vocbase == nullptr) {
@@ -764,11 +763,11 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result();
   }
 
-  return vocbase->dropCollection(col->id(), true, -1.0);
+  return vocbase->dropCollection(col->id(), true);
 }
 
 /// @brief creates an index, based on the VelocyPack provided
-Result Syncer::createIndex(VPackSlice const& slice) {
+Result Syncer::createIndex(velocypack::Slice slice) {
   VPackSlice indexSlice = slice.get("index");
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
@@ -817,7 +816,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   return Result();
 }
 
-void Syncer::createIndexInternal(VPackSlice const& idxDef,
+void Syncer::createIndexInternal(velocypack::Slice idxDef,
                                  LogicalCollection& col) {
   std::shared_ptr<arangodb::Index> idx;
   auto physical = col.getPhysical();
@@ -875,8 +874,8 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef,
   TRI_ASSERT(idx != nullptr);
 }
 
-Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  auto cb = [&](VPackSlice const& slice) {
+Result Syncer::dropIndex(velocypack::Slice slice) {
+  auto cb = [&](velocypack::Slice slice) {
     std::string id;
 
     if (slice.hasKey("data")) {
@@ -906,13 +905,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     try {
       CollectionGuard guard(vocbase, col->id());
-      bool result = guard.collection()->dropIndex(iid);
-
-      if (!result) {
-        return Result();  // TODO: why do we ignore failures here?
-      }
-
-      return Result();
+      return guard.collection()->dropIndex(iid);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -928,15 +921,14 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
                    r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
     // if dropping an index for a non-existing database or collection fails,
     // this is not a real problem
-    return Result();
+    r.reset();
   }
 
   return r;
 }
 
 /// @brief creates a view, based on the VelocyPack provided
-Result Syncer::createView(TRI_vocbase_t& vocbase,
-                          arangodb::velocypack::Slice const& slice) {
+Result Syncer::createView(TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
@@ -1010,8 +1002,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
-                        bool /*reportError*/) {
+Result Syncer::dropView(velocypack::Slice slice, bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

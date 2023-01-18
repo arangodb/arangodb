@@ -48,6 +48,9 @@ class ErrorCode {
     return _value;
   }
 
+  /// @brief return the document id
+  [[nodiscard]] ValueType value() const noexcept;
+
   // This could also be constexpr, but we'd have to include
   // <velocypack/Value.h>, and I'm unsure whether that's worth it, and rather
   // rely on IPO here.
@@ -65,6 +68,9 @@ class ErrorCode {
 
   friend auto to_string(::ErrorCode value) -> std::string;
 
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, ErrorCode& x);
+
  private:
   ValueType _value;
 };
@@ -79,3 +85,17 @@ struct hash<ErrorCode> {
 }  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, ErrorCode& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = 0;
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = ErrorCode{v};
+    }
+    return res;
+  } else {
+    return f.apply(x._value);
+  }
+}

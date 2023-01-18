@@ -47,7 +47,7 @@ class RocksDBTransactionMethods : public RocksDBMethods {
  public:
   explicit RocksDBTransactionMethods(RocksDBTransactionState* state)
       : _state(state) {}
-  virtual ~RocksDBTransactionMethods() = default;
+  ~RocksDBTransactionMethods() override = default;
 
   virtual Result beginTransaction() = 0;
 
@@ -56,7 +56,12 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual Result abortTransaction() = 0;
 
   // Only relevant for RocksDBTrxMethods
-  virtual Result checkIntermediateCommit() { return {}; }
+  virtual bool isIntermediateCommitNeeded() { return false; }
+  virtual Result triggerIntermediateCommit() {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "RocksDBTransactionMethods";
+    return Result{TRI_ERROR_INTERNAL};
+  };
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -64,6 +69,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual TRI_voc_tick_t lastOperationTick() const noexcept = 0;
 
   virtual uint64_t numCommits() const noexcept = 0;
+
+  virtual uint64_t numIntermediateCommits() const noexcept = 0;
 
   virtual rocksdb::ReadOptions iteratorReadOptions()
       const = 0;  // TODO - remove later
@@ -77,6 +84,8 @@ class RocksDBTransactionMethods : public RocksDBMethods {
   virtual bool hasOperations() const noexcept = 0;
 
   virtual uint64_t numOperations() const noexcept = 0;
+
+  virtual uint64_t numPrimitiveOperations() const noexcept = 0;
 
   virtual void prepareOperation(DataSourceId cid, RevisionId rid,
                                 TRI_voc_document_operation_e operationType) = 0;

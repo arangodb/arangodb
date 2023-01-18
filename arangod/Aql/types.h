@@ -35,7 +35,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace boost {
@@ -59,7 +58,7 @@ namespace aql {
 struct Collection;
 
 /// @brief type for variable ids
-typedef uint32_t VariableId;
+using VariableId = uint32_t;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
@@ -90,6 +89,7 @@ using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 struct Variable;
 // Note: #include <Containers/HashSet.h> to use the following types
 using VarSet = containers::HashSet<Variable const*>;
+using VarIdSet = containers::HashSet<VariableId>;
 using VarSetStack = std::vector<VarSet>;
 using RegIdSet = containers::HashSet<RegisterId>;
 using RegIdSetStack = std::vector<RegIdSet>;

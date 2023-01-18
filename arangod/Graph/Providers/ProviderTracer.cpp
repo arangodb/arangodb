@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
+#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 
 #include "Graph/Providers/ClusterProvider.h"
@@ -132,6 +133,16 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(
     _stats["addEdgeToBuilder"].addTiming(TRI_microtime() - start);
   });
   return _impl.addEdgeToBuilder(edge, builder);
+}
+
+template<class ProviderImpl>
+EdgeDocumentToken ProviderTracer<ProviderImpl>::getEdgeDocumentToken(
+    typename Step::Edge const& edge) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getEdgeDocumentToken"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getEdgeDocumentToken(edge);
 }
 
 template<class ProviderImpl>

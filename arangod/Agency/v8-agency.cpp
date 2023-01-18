@@ -26,7 +26,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Logger/LogMacros.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -145,10 +145,10 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("couldn't access agency feature: ") + e.what());
   }
 
-  query_t query = std::make_shared<Builder>();
-  TRI_V8ToVPack(isolate, *query, args[0], false);
+  velocypack::Builder query;
+  TRI_V8ToVPack(isolate, query, args[0], false);
 
-  read_ret_t ret = agent->read(query);
+  read_ret_t ret = agent->read(query.slice());
 
   if (ret.accepted) {  // Leading
     TRI_V8_RETURN(TRI_VPackToV8(isolate, ret.result->slice()));
@@ -182,10 +182,10 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string("couldn't access agency feature: ") + e.what());
   }
 
-  query_t query = std::make_shared<Builder>();
-  TRI_V8ToVPack(isolate, *query, args[0], false);
+  velocypack::Builder query;
+  TRI_V8ToVPack(isolate, query, args[0], false);
 
-  write_ret_t ret = agent->write(query);
+  write_ret_t ret = agent->write(query.slice());
 
   if (ret.accepted) {  // Leading
     Builder body;

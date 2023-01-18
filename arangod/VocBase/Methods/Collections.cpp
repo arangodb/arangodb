@@ -26,8 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
-#include "Basics/LocalTaskQueue.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -47,6 +47,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
@@ -59,6 +60,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
+#include "VocBase/Properties/PlanCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -595,6 +597,43 @@ void Collections::enumerate(
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
+[[nodiscard]] arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>
+Collections::create(         // create collection
+    TRI_vocbase_t& vocbase,  // collection vocbase
+    OperationOptions const& options,
+    std::vector<PlanCollection> collections,  // Collections to create
+    bool createWaitsForSyncReplication,       // replication wait flag
+    bool enforceReplicationFactor,            // replication factor flag
+    bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
+    bool isRestore) {
+  std::vector<std::shared_ptr<LogicalCollection>> results;
+  results.reserve(collections.size());
+  // This block is to be replaced by proper implementation
+  {
+    // In this rudimentary forward we only support single collection, as this is
+    // the only way it is used right now.
+    TRI_ASSERT(collections.size() == 1);
+    // Just plainly forward
+    auto& planCollection = collections.at(0);
+    auto parameters = planCollection.toCollectionsCreate();
+    std::shared_ptr<LogicalCollection> coll;
+    auto res = methods::Collections::create(
+        vocbase, options,
+        planCollection.name,            // collection name
+        planCollection.getType(),       // collection type
+        parameters.slice(),             // collection properties
+        createWaitsForSyncReplication,  // replication wait flag
+        enforceReplicationFactor,       // replication factor flag
+        /*isNewDatabase*/ false,        // here always false
+        coll, planCollection.isSystem);
+    if (res.fail()) {
+      return res;
+    }
+    results.emplace_back(coll);
+    return results;
+  }
+}
+
 /*static*/ arangodb::Result Collections::create(  // create collection
     TRI_vocbase_t& vocbase,                       // collection vocbase
     OperationOptions const& options,
@@ -899,7 +938,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props,
+                                     velocypack::Slice props,
                                      OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
@@ -917,10 +956,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
                                  std::to_string(collection.id().id()));
 
     // replication checks
-    int64_t replFactor = Helper::getNumericValue<int64_t>(
-        props, StaticStrings::ReplicationFactor, 0);
-    if (replFactor > 0) {
-      if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
+    if (auto s = props.get(StaticStrings::ReplicationFactor); s.isNumber()) {
+      int64_t replFactor = Helper::getNumericValue<int64_t>(
+          props, StaticStrings::ReplicationFactor, 0);
+      if (replFactor > 0 &&
+          static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
@@ -1055,7 +1095,7 @@ Result Collections::rename(LogicalCollection& collection,
 /// @brief drops a collection, case of a coordinator in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
+static Result DropVocbaseColCoordinator(LogicalCollection* collection,
                                         bool allowDropSystem) {
   if (collection->system() && !allowDropSystem) {
     return TRI_ERROR_FORBIDDEN;
@@ -1067,20 +1107,17 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
       collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
   auto res = ci.dropCollectionCoordinator(databaseName, cid, 300.0);
 
-  if (!res.ok()) {
-    return res;
+  if (res.ok()) {
+    collection->setDeleted();
   }
 
-  collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
-
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 #endif
 
-/*static*/ arangodb::Result Collections::drop(  // drop collection
-    arangodb::LogicalCollection& coll,          // collection to drop
-    bool allowDropSystem,  // allow dropping system collection
-    double timeout,        // single-server drop timeout
+/*static*/ Result Collections::drop(  // drop collection
+    LogicalCollection& coll,          // collection to drop
+    bool allowDropSystem,             // allow dropping system collection
     bool keepUserRights) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(),
@@ -1102,12 +1139,12 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
 
-  res = DropColEnterprise(&coll, allowDropSystem, timeout);
+  res = DropColEnterprise(&coll, allowDropSystem);
 #else
   if (ServerState::instance()->isCoordinator()) {
     res = DropVocbaseColCoordinator(&coll, allowDropSystem);
   } else {
-    res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
+    res = coll.vocbase().dropCollection(coll.id(), allowDropSystem);
   }
 #endif
 
@@ -1136,7 +1173,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  ExecContext const& exec = ExecContext::current();
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
@@ -1148,35 +1185,16 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return futures::makeFuture(res);
-  }
-
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
-  };
-
-  auto queue =
-      std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
+  StorageEngine& engine =
+      vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
   auto idxs = coll.getIndexes();
-  for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
+  for (auto const& idx : idxs) {
+    if (idx->canWarmup()) {
+      engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
+    }
   }
-
-  queue->dispatchAndWait();
-
-  if (queue->status().ok()) {
-    res = trx.commit();
-  } else {
-    return futures::makeFuture(Result(queue->status()));
-  }
-
-  return futures::makeFuture(res);
+  return futures::makeFuture(Result());
 }
 
 futures::Future<OperationResult> Collections::revisionId(
@@ -1199,53 +1217,6 @@ futures::Future<OperationResult> Collections::revisionId(
       OperationResult(Result(), builder.steal(), options));
 }
 
-/// @brief Helper implementation similar to ArangoCollection.all() in v8
-/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase,
-                                             std::string const& cname,
-                                             DocCallback const& cb) {
-  // Implement it like this to stay close to the original
-  if (ServerState::instance()->isCoordinator()) {
-    auto empty = std::make_shared<VPackBuilder>();
-    std::string q = "FOR r IN @@coll RETURN r";
-    auto binds = std::make_shared<VPackBuilder>();
-    binds->openObject();
-    binds->add("@coll", VPackValue(cname));
-    binds->close();
-    auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(vocbase), aql::QueryString(q),
-        std::move(binds));
-    aql::QueryResult queryResult = query->executeSync();
-
-    Result res = queryResult.result;
-    if (queryResult.result.ok()) {
-      VPackSlice array = queryResult.data->slice();
-      for (VPackSlice doc : VPackArrayIterator(array)) {
-        cb(doc.resolveExternal());
-      }
-    }
-    return res;
-  } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
-    Result res = trx.begin();
-
-    if (res.fail()) {
-      return res;
-    }
-
-    // We directly read the entire cursor. so batchsize == limit
-    auto iterator = trx.indexScan(cname, transaction::Methods::CursorType::ALL,
-                                  ReadOwnWrites::no);
-
-    iterator->allDocuments([&](LocalDocumentId const&, VPackSlice doc) {
-      cb(doc);
-      return true;
-    });
-
-    return trx.finish(res);
-  }
-}
-
 arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
                                        uint64_t& checksum, RevisionId& revId) {
@@ -1263,6 +1234,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     return res.result;
   }
 
+  ResourceMonitor monitor(GlobalResourceMonitor::instance());
+
   auto ctx =
       transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
@@ -1277,8 +1250,8 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
-      trx.indexScan(collection.name(), transaction::Methods::CursorType::ALL,
-                    ReadOwnWrites::no);
+      trx.indexScan(monitor, collection.name(),
+                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId const& /*token*/,
                              VPackSlice slice) {

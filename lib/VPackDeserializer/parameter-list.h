@@ -373,7 +373,8 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H, FullList> {
 
     // expect_value does not have a value
     if constexpr (executor::has_value) {
-      auto result = executor::unpack(s, hints, std::forward<C>(ctx));
+      auto result = executor::unpack(
+          s, hints, std::as_const<std::remove_reference_t<C>>(ctx));
       if (result) {
         auto& [value, read_value] = result.get();
         std::get<I>(t) = value;
@@ -393,7 +394,8 @@ struct parameter_list_executor<I, K, parameter_list<P, Ps...>, H, FullList> {
           "during read of "s + std::to_string(I) + "th parameters value (" +
           P::name + ")")};
     } else {
-      auto result = executor::unpack(s, hints, std::forward<C>(ctx));
+      auto result = executor::unpack(
+          s, hints, std::as_const<std::remove_reference_t<C>>(ctx));
       if (result) {
         return parameter_list_executor<I, K + 1, parameter_list<Ps...>, H,
                                        FullList>::unpack(t, s, hints,

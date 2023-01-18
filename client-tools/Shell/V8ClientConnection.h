@@ -79,6 +79,9 @@ class V8ClientConnection {
   void connect();
   void reconnect();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void reconnectWithNewPassword(std::string const& password);
+#endif
   double timeout() const;
 
   void timeout(double value);

@@ -24,42 +24,46 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class DatabaseFeature;
 
+struct IDatabaseGuard {
+  virtual ~IDatabaseGuard() = default;
+  [[nodiscard]] virtual TRI_vocbase_t& database() const noexcept = 0;
+};
+
+struct VocbaseReleaser {
+  void operator()(TRI_vocbase_t* vocbase) const noexcept;
+};
+
+using VocbasePtr = std::unique_ptr<TRI_vocbase_t, VocbaseReleaser>;
+
 /// @brief Scope guard for a database, ensures that it is not
 ///        dropped while still using it.
-class DatabaseGuard {
+class DatabaseGuard final : public IDatabaseGuard {
  public:
-  DatabaseGuard(DatabaseGuard&&) = delete;
-  DatabaseGuard(DatabaseGuard const&) = delete;
-  DatabaseGuard& operator=(DatabaseGuard const&) = delete;
-
   /// @brief create guard on existing db
   explicit DatabaseGuard(TRI_vocbase_t& vocbase);
 
   /// @brief create the guard, using a database id
-  explicit DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
+  DatabaseGuard(DatabaseFeature& feature, TRI_voc_tick_t id);
 
   /// @brief create the guard, using a database name
-  explicit DatabaseGuard(DatabaseFeature& feature, std::string const& name);
-
-  /// @brief destroy the guard
-  ~DatabaseGuard() {
-    TRI_ASSERT(!_vocbase.isDangling());
-    _vocbase.release();
-  }
+  DatabaseGuard(DatabaseFeature& feature, std::string_view name);
 
   /// @brief return the database pointer
-  inline TRI_vocbase_t& database() const { return _vocbase; }
-  auto operator->() const noexcept -> TRI_vocbase_t const* { return &_vocbase; }
-  auto operator->() noexcept -> TRI_vocbase_t* { return &_vocbase; }
+  TRI_vocbase_t& database() const noexcept final { return *_vocbase; }
+  TRI_vocbase_t const* operator->() const noexcept { return _vocbase.get(); }
+  TRI_vocbase_t* operator->() noexcept { return _vocbase.get(); }
 
  private:
-  /// @brief pointer to database
-  TRI_vocbase_t& _vocbase;
+  explicit DatabaseGuard(VocbasePtr vocbase);
+
+  VocbasePtr _vocbase;
 };
 
 }  // namespace arangodb

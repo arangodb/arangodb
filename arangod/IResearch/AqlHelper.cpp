@@ -31,35 +31,31 @@
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "Basics/fasthash.h"
-#include "IResearchCommon.h"
-#include "IResearchDocument.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDocument.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 
-#define __STDC_FORMAT_MACROS
-#include <inttypes.h>
+#include <absl/strings/str_cat.h>
 
+namespace arangodb {
+namespace iresearch {
 namespace {
 
-arangodb::aql::AstNodeType const CmpMap[]{
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
-                                       // 3 == a <==> a == 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
-                                       // 3 != a <==> a != 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
-                                       // 3 < a  <==> a > 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
-                                       // 3 <= a <==> a >= 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
-                                       // 3 > a  <==> a < 3
-    arangodb::aql::
-        NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE:
-                                      // 3 >= a <==> a <= 3
+aql::AstNodeType constexpr kCmpMap[]{
+    aql::NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
+                                        // 3 == a <==> a == 3
+    aql::NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
+                                        // 3 != a <==> a != 3
+    aql::NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
+                                        // 3 < a  <==> a > 3
+    aql::NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
+                                        // 3 <= a <==> a >= 3
+    aql::NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
+                                        // 3 > a  <==> a < 3
+    aql::NODE_TYPE_OPERATOR_BINARY_LE   // NODE_TYPE_OPERATOR_BINARY_GE:
+                                        // 3 >= a <==> a <= 3
 };
 
 auto getNested(
@@ -74,9 +70,6 @@ auto getNested(
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
   if (lhs == rhs) {
@@ -152,11 +145,11 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_VALUE: {
-      return 0 == aql::CompareAstNodes(lhs, rhs, true);
+      return 0 == aql::compareAstNodes(lhs, rhs, true);
     }
 
     case aql::NODE_TYPE_OBJECT_ELEMENT: {
-      irs::string_ref lhsValue, rhsValue;
+      std::string_view lhsValue, rhsValue;
       iresearch::parseValue(lhsValue, *lhs);
       iresearch::parseValue(rhsValue, *rhs);
 
@@ -172,7 +165,7 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     }
 
     case aql::NODE_TYPE_FCALL_USER: {
-      irs::string_ref lhsName, rhsName;
+      std::string_view lhsName, rhsName;
       iresearch::parseValue(lhsName, *lhs);
       iresearch::parseValue(rhsName, *rhs);
 
@@ -197,7 +190,7 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(static_cast<const void*>(typeString.c_str()),
+  hash = fasthash64(static_cast<const void*>(typeString.data()),
                     typeString.size(), hash);
 
   // hash node members
@@ -309,8 +302,8 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   }
 }
 
-irs::string_ref getFuncName(aql::AstNode const& node) {
-  irs::string_ref fname;
+std::string_view getFuncName(aql::AstNode const& node) {
+  std::string_view fname;
 
   switch (node.type) {
     case aql::NODE_TYPE_FCALL:
@@ -358,26 +351,7 @@ void visitReferencedVariables(
   aql::Ast::traverseReadOnly(&root, preVisitor, postVisitor);
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                    AqlValueTraits implementation
-// ----------------------------------------------------------------------------
-
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
-
-/*static*/ irs::string_ref ScopedAqlValue::typeString(
-    ScopedValueType type) noexcept {
-  static irs::string_ref constexpr kTypeNames[] = {
-      "invalid", "null",  "boolean", "double",
-      "string",  "array", "range",   "object"};
-
-  TRI_ASSERT(size_t(type) < std::size(kTypeNames));
-
-  return kTypeNames[size_t(type)];
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                    ScopedAqlValue implementation
-// ----------------------------------------------------------------------------
 
 bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   if (_executed && _node->isDeterministic()) {
@@ -464,7 +438,7 @@ bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
     }
 
     std::swap(fcall, value);
-    cmp = CmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+    cmp = kCmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
   }
 
   if (iresearch::findReference(*value, ref)) {
@@ -514,7 +488,7 @@ bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
     }
 
     std::swap(attribute, value);
-    cmp = CmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
+    cmp = kCmpMap[cmp - aql::NODE_TYPE_OPERATOR_BINARY_EQ];
   }
 
   if (iresearch::findReference(*value, ref)) {
@@ -540,7 +514,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     };
 
     bool read(aql::AstNode const* node, QueryContext const* ctx) noexcept {
-      this->strVal = irs::string_ref::NIL;
+      this->strVal = std::string_view{};
       this->iVal = 0;
       this->type = Type::INVALID;
       this->root = nullptr;
@@ -644,7 +618,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
     }
 
     iresearch::ScopedAqlValue aqlValue;
-    irs::string_ref strVal;
+    std::string_view strVal;
     int64_t iVal;
     Type type{Type::INVALID};
     aql::AstNode const* root = nullptr;
@@ -668,8 +642,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
 
 bool nameFromAttributeAccess(
     std::string& name, aql::AstNode const& node, QueryContext const& ctx,
-    bool filter, std::span<InvertedIndexField const> fields,
-    std::span<InvertedIndexField const>* subFields /*= nullptr*/) {
+    bool filter, std::span<InvertedIndexField const>* subFields /*= nullptr*/) {
   class AttributeChecker {
    public:
     AttributeChecker(std::string& str, QueryContext const& ctx,
@@ -680,7 +653,7 @@ bool nameFromAttributeAccess(
           _filter{filter} {}
 
     bool attributeAccess(aql::AstNode const& node) {
-      irs::string_ref strValue;
+      std::string_view strValue;
 
       if (!parseValue(strValue, node)) {
         // wrong type
@@ -718,7 +691,7 @@ bool nameFromAttributeAccess(
           append(_value.getInt64());
           return true;
         case iresearch::SCOPED_VALUE_TYPE_STRING: {
-          irs::string_ref strValue;
+          std::string_view strValue;
 
           if (!_value.getString(strValue)) {
             // unable to parse value as string
@@ -733,18 +706,19 @@ bool nameFromAttributeAccess(
       }
     }
 
-    void append(irs::string_ref const& value) {
+    void append(std::string_view value) {
       if (!_str.empty()) {
-        _str += NESTING_LEVEL_DELIMITER;
+        _str.push_back(NESTING_LEVEL_DELIMITER);
       }
-      _str.append(value.c_str(), value.size());
+      _str.append(value);
     }
 
     void append(int64_t value) {
-      _str += NESTING_LIST_OFFSET_PREFIX;
-      auto const written = sprintf(_buf, "%" PRIu64, value);
-      _str.append(_buf, written);
-      _str += NESTING_LIST_OFFSET_SUFFIX;
+      _str.push_back(NESTING_LIST_OFFSET_PREFIX);
+      auto const len = static_cast<size_t>(
+          absl::numbers_internal::FastIntToBuffer(value, _buf) - &_buf[0]);
+      _str.append(_buf, len);
+      _str.push_back(NESTING_LIST_OFFSET_SUFFIX);
     }
 
    private:
@@ -761,8 +735,10 @@ bool nameFromAttributeAccess(
                   aql::NODE_TYPE_REFERENCE == head->type;
 
   if (visitRes && !ctx.isSearchQuery) {
-    auto it = getNested(name, fields);
-    visitRes = it != std::end(fields);
+    auto const fields = ctx.fields;
+    auto const it = getNested(name, fields);
+    visitRes = it != std::end(fields) && !it->_isSearchField &&
+               !it->_trackListPositions;
     if (visitRes && subFields) {
       *subFields = it->_fields;
     }
@@ -796,6 +772,36 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
                      head->getData()  // same variable
              ? node
              : nullptr;
+}
+
+aql::Variable const* getSearchFuncRef(aql::AstNode const* args) noexcept {
+  if (!args || aql::NODE_TYPE_ARRAY != args->type) {
+    return nullptr;
+  }
+
+  size_t const size = args->numMembers();
+
+  if (size < 1) {
+    return nullptr;  // invalid args
+  }
+
+  // 1st argument has to be reference to `ref`
+  auto const* arg0 = args->getMemberUnchecked(0);
+
+  if (!arg0 || aql::NODE_TYPE_REFERENCE != arg0->type) {
+    return nullptr;
+  }
+
+  for (size_t i = 1, size = args->numMembers(); i < size; ++i) {
+    auto const* arg = args->getMemberUnchecked(i);
+
+    if (!arg || !arg->isDeterministic()) {
+      // we don't support non-deterministic arguments for scorers
+      return nullptr;
+    }
+  }
+
+  return reinterpret_cast<aql::Variable const*>(arg0->getData());
 }
 
 }  // namespace iresearch

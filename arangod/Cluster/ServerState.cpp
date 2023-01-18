@@ -560,9 +560,13 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
           // duplicate entry!
           LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
               << "found duplicate server entry for endpoint '"
-              << endpointSlice.copyString()
-              << "', already used by other server " << idIter->second
-              << ". it looks like this is a (mis)configuration issue";
+              << endpointSlice.stringView()
+              << "' when processing endpoints configuration "
+              << "for server " << serverId << ": already used by other server "
+              << idIter->second
+              << ". it looks like this is a (mis)configuration issue. "
+              << "full servers registered configuration: "
+              << valueSlice.toJson();
           // anyway, continue with startup
         }
       }
@@ -1072,13 +1076,14 @@ void ServerState::setShortId(uint32_t id) {
 }
 
 RebootId ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId.initialized());
-  return _rebootId;
+  auto const rebootId = RebootId(_rebootId.load(std::memory_order_relaxed));
+  TRI_ASSERT(rebootId.initialized());
+  return rebootId;
 }
 
 void ServerState::setRebootId(RebootId const rebootId) {
   TRI_ASSERT(rebootId.initialized());
-  _rebootId = rebootId;
+  _rebootId.store(rebootId.value(), std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

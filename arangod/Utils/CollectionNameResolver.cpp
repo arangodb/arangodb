@@ -24,10 +24,12 @@
 #include "CollectionNameResolver.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogMacros.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"

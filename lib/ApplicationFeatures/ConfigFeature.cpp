@@ -67,7 +67,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--check-configuration", "check the configuration and exit",
+      "--check-configuration", "Check the configuration and exit.",
       new BooleanParameter(&_checkConfiguration),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
@@ -146,7 +146,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::string basename = progname;
   bool checkArangoImp = (progname == "arangoimport");
 
-  if (!StringUtils::isSuffix(basename, ".conf")) {
+  if (!basename.ends_with(".conf")) {
     basename += ".conf";
   }
 

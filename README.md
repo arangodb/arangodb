@@ -1,4 +1,4 @@
-![ArangoDB-Logo](https://www.arangodb.com/docs/assets/arangodb_logo_2016_inverted.png)
+![ArangoDB-Logo](https://www.arangodb.com/wp-content/uploads/2022/06/ArangoDB-dark-logo-2022.png)
 
 ArangoDB
 ========
@@ -15,6 +15,7 @@ Oasis is the simplest way to run ArangoDB. Users can make deployments on all maj
 Getting Started
 ------------------------
 
+- [ArangoDB University](https://university.arangodb.com/)
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
 - [Training Center](https://www.arangodb.com/learn/)
 - [Documentation](https://www.arangodb.com/docs/stable/)
@@ -39,10 +40,6 @@ Key Features in ArangoDB
   querying, less data redundancy.
 - **Transactions**: Easy application development keeping your data consistent
   and safe. No hassle in your client.
-
-Here is an AQL query that makes use of all those features:
-
-![AQL Query Example](https://www.arangodb.com/docs/assets/aql_query_with_traversal.png)
 
 Joins and transactions are key features for flexible, secure data designs,
 widely used in relational databases but lacking in many NoSQL products. However,
@@ -119,3 +116,11 @@ StackOverflow is great for questions about AQL, usage scenarios etc.
 To chat with the community and the developers we offer a Slack chat:
 
 [https://slack.arangodb.com/](https://slack.arangodb.com/)
+
+Learn more about ArangoDB with our YouTube channel: 
+
+[https://www.youtube.com/@ArangoDB](https://www.youtube.com/@ArangoDB)
+
+Follow us on Twitter to stay up to date: 
+
+[https://twitter.com/arangodb](https://twitter.com/arangodb)

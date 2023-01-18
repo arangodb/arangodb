@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Transaction/MethodsApi.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -35,8 +35,12 @@
 namespace arangodb {
 
 struct OperationOptions;
+class Result;
 class TransactionState;
 
+namespace transaction {
+class Methods;
+}
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 

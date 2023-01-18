@@ -83,7 +83,7 @@ auto hasCurrentTermWithLeader(Log const& log) -> bool {
 
 // Leader has failed if it is marked as failed or its rebootId is
 // different from what is expected
-auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+auto isLeaderFailed(ServerInstanceReference const& leader,
                     ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
   // TODO: write test first
@@ -138,6 +138,8 @@ auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
     return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
   } else if (!maybeStatus or term != maybeStatus->term) {
     return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
+  } else if (not maybeStatus->snapshotAvailable) {
+    return LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING;
   } else {
     return LogCurrentSupervisionElection::ErrorCode::OK;
   }
@@ -197,6 +199,7 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //  * allowedAsLeader
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
+//  * snapshot available
 //
 auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
@@ -264,10 +267,16 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
+    auto effectiveWriteConcern = computeEffectiveWriteConcern(
+        log.target.config, plan.participantsConfig.participants, health);
+
     if (newLeaderRebootId.has_value()) {
       ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
       ctx.createAction<LeaderElectionAction>(
-          LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          ServerInstanceReference(newLeader, *newLeaderRebootId),
+          effectiveWriteConcern,
+          std::min(current.supervision->assumedWriteConcern,
+                   effectiveWriteConcern),
           election);
       return;
     } else {
@@ -292,7 +301,7 @@ auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
     return;
   }
   TRI_ASSERT(log.plan.has_value());
-  auto const plan = *log.plan;
+  auto const& plan = *log.plan;
 
   if (!log.current.has_value()) {
     return;
@@ -381,7 +390,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(
-              LogPlanTermSpecification::Leader{participant, *rebootId});
+              ServerInstanceReference{participant, *rebootId});
+
           return;
         } else {
           // TODO: this should get the participant
@@ -463,7 +473,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       auto const& rebootId = health.getRebootId(*target.leader);
       if (rebootId.has_value()) {
         ctx.createAction<SwitchLeaderAction>(
-            LogPlanTermSpecification::Leader{*target.leader, *rebootId});
+            ServerInstanceReference{*target.leader, *rebootId});
       } else {
         ctx.reportStatus<LogCurrentSupervision::TargetLeaderInvalid>();
       }
@@ -499,8 +509,8 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
 auto pickLeader(std::optional<ParticipantId> targetLeader,
                 ParticipantsFlagsMap const& participants,
                 ParticipantsHealth const& health, uint64_t logId)
-    -> std::optional<LogPlanTermSpecification::Leader> {
-  auto leaderId = targetLeader;
+    -> std::optional<ServerInstanceReference> {
+  auto& leaderId = targetLeader;
 
   if (!leaderId) {
     leaderId = pickRandomParticipantToBeLeader(participants, health, logId);
@@ -509,7 +519,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   if (leaderId.has_value()) {
     auto const& rebootId = health.getRebootId(*leaderId);
     if (rebootId.has_value()) {
-      return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
+      return ServerInstanceReference{*leaderId, *rebootId};
     }
   };
 
@@ -533,7 +543,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
-                                           config, leader);
+                                           config, target.properties, leader);
     }
   }
 }

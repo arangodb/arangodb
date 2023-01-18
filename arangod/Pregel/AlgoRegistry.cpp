@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "VocBase/vocbase.h"
 #include "Pregel/AlgoRegistry.h"
-#include "Pregel/Algos/AIR/AIR.h"
-#include "Pregel/Algos/AsyncSCC.h"
 #include "Pregel/Algos/ConnectedComponents.h"
 #include "Pregel/Algos/DMID/DMID.h"
 #include "Pregel/Algos/EffectiveCloseness/EffectiveCloseness.h"
 #include "Pregel/Algos/HITS.h"
+#include "Pregel/Algos/HITSKleinberg.h"
 #include "Pregel/Algos/LabelPropagation.h"
 #include "Pregel/Algos/LineRank.h"
 #include "Pregel/Algos/PageRank.h"
@@ -39,6 +39,10 @@
 #include "Pregel/Algos/ShortestPath.h"
 #include "Pregel/Algos/WCC.h"
 #include "Pregel/Utils.h"
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+#include "Pregel/Algos/ReadWrite.h"
+#endif
+#include "Pregel/Algos/ColorPropagation.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -62,10 +66,10 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::ConnectedComponents(server, userParams);
   } else if (algorithm == "scc") {
     return new algos::SCC(server, userParams);
-  } else if (algorithm == "asyncscc") {
-    return new algos::AsyncSCC(server, userParams);
   } else if (algorithm == "hits") {
     return new algos::HITS(server, userParams);
+  } else if (algorithm == "hitskleinberg") {
+    return new algos::HITSKleinberg(server, userParams);
   } else if (algorithm == "labelpropagation") {
     return new algos::LabelPropagation(server, userParams);
   } else if (algorithm == "slpa") {
@@ -74,10 +78,15 @@ IAlgorithm* AlgoRegistry::createAlgorithm(
     return new algos::DMID(server, userParams);
   } else if (algorithm == "wcc") {
     return new algos::WCC(server, userParams);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
-    return new algos::accumulators::ProgrammablePregelAlgorithm(server,
-                                                                userParams);
-  } else {
+  } else if (algorithm == "colorpropagation") {
+    return new algos::ColorPropagation(server, userParams);
+  }
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return new algos::ReadWrite(server, userParams);
+  }
+#endif
+  else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
@@ -134,12 +143,12 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "scc") {
     return createWorker(vocbase, new algos::SCC(server, userParams), body,
                         feature);
-  } else if (algorithm == "asyncscc") {
-    return createWorker(vocbase, new algos::AsyncSCC(server, userParams), body,
-                        feature);
   } else if (algorithm == "hits") {
     return createWorker(vocbase, new algos::HITS(server, userParams), body,
                         feature);
+  } else if (algorithm == "hitskleinberg") {
+    return createWorker(vocbase, new algos::HITSKleinberg(server, userParams),
+                        body, feature);
   } else if (algorithm == "labelpropagation") {
     return createWorker(vocbase,
                         new algos::LabelPropagation(server, userParams), body,
@@ -153,13 +162,17 @@ template<typename V, typename E, typename M>
   } else if (algorithm == "wcc") {
     return createWorker(vocbase, new algos::WCC(server, userParams), body,
                         feature);
-  } else if (algorithm == algos::accumulators::pregel_algorithm_name) {
+  } else if (algorithm == "colorpropagation") {
     return createWorker(vocbase,
-                        new algos::accumulators::ProgrammablePregelAlgorithm(
-                            server, userParams),
-                        body, feature);
+                        new algos::ColorPropagation(server, userParams), body,
+                        feature);
   }
-
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE)
+  else if (algorithm == "readwrite") {
+    return createWorker(vocbase, new algos::ReadWrite(server, userParams), body,
+                        feature);
+  }
+#endif
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "Unsupported algorithm");
 }

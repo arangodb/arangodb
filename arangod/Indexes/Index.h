@@ -39,13 +39,10 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace basics {
-class LocalTaskQueue;
-}
-
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
+struct ResourceMonitor;
 
 namespace velocypack {
 class Builder;
@@ -80,15 +77,14 @@ class Index {
   Index& operator=(Index const&) = delete;
 
   Index(IndexId iid, LogicalCollection& collection, std::string const& name,
-        std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+        std::vector<std::vector<basics::AttributeName>> const& fields,
         bool unique, bool sparse);
 
-  Index(IndexId iid, LogicalCollection& collection,
-        arangodb::velocypack::Slice slice);
+  Index(IndexId iid, LogicalCollection& collection, velocypack::Slice slice);
 
   virtual ~Index();
 
-  static std::vector<std::vector<arangodb::basics::AttributeName>> const
+  static std::vector<std::vector<basics::AttributeName>> const
       emptyCoveredFields;
 
   /// @brief index types
@@ -163,16 +159,15 @@ class Index {
   void name(std::string const&);
 
   /// @brief return the index fields
-  std::vector<std::vector<arangodb::basics::AttributeName>> const& fields()
-      const {
+  std::vector<std::vector<basics::AttributeName>> const& fields() const {
     return _fields;
   }
 
   /// @brief return the fields covered by this index.
   ///        Typically just the fields, but e.g. EdgeIndex on _from also covers
   ///        _to
-  virtual std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  coveredFields() const {
+  virtual std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const {
     return _fields;
   }
 
@@ -202,9 +197,9 @@ class Index {
 
   /// @brief whether or not any attribute is expanded
   inline bool isAttributeExpanded(
-      std::vector<arangodb::basics::AttributeName> const& attribute) const {
+      std::vector<basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
-      if (!arangodb::basics::AttributeName::namesMatch(attribute, it)) {
+      if (!basics::AttributeName::namesMatch(attribute, it)) {
         continue;
       }
       return TRI_AttributeNamesHaveExpansion(it);
@@ -214,18 +209,17 @@ class Index {
 
   /// @brief whether or not any attribute is expanded
   inline bool attributeMatches(
-      std::vector<arangodb::basics::AttributeName> const& attribute,
+      std::vector<basics::AttributeName> const& attribute,
       bool isPrimary = false) const {
     for (auto const& it : _fields) {
-      if (arangodb::basics::AttributeName::isIdentical(attribute, it, true)) {
+      if (basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
       }
     }
     if (isPrimary) {
-      static std::vector<arangodb::basics::AttributeName> const vec_id{
+      static std::vector<basics::AttributeName> const vec_id{
           {StaticStrings::IdString, false}};
-      return arangodb::basics::AttributeName::isIdentical(attribute, vec_id,
-                                                          true);
+      return basics::AttributeName::isIdentical(attribute, vec_id, true);
     }
     return false;
   }
@@ -240,7 +234,7 @@ class Index {
   /// @brief whether or not the index covers all the attributes passed in.
   /// the function may modify the projections by setting the
   /// coveringIndexPosition value in it.
-  virtual bool covers(arangodb::aql::Projections& projections) const;
+  virtual bool covers(aql::Projections& projections) const;
 
   virtual size_t numFieldsToConsiderInIndexSelection() const noexcept {
     return _fields.size();
@@ -278,7 +272,8 @@ class Index {
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-            type == TRI_IDX_TYPE_PERSISTENT_INDEX);
+            type == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+            type == TRI_IDX_TYPE_INVERTED_INDEX);
   }
 
   virtual IndexType type() const = 0;
@@ -310,14 +305,14 @@ class Index {
   static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs, std::string const& dbname);
 
-  static void normalizeFilterCosts(arangodb::Index::FilterCosts& costs,
-                                   arangodb::Index const* index,
-                                   size_t itemsInIndex, size_t invocations);
+  static void normalizeFilterCosts(Index::FilterCosts& costs,
+                                   Index const* index, size_t itemsInIndex,
+                                   size_t invocations);
 
   virtual bool canBeDropped() const = 0;
 
   /// @brief Checks if this index is identical to the given definition
-  virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
+  virtual bool matchesDefinition(velocypack::Slice const&) const;
 
   /// @brief whether or not the index is sorted
   virtual bool isSorted() const = 0;
@@ -354,14 +349,16 @@ class Index {
   /// @brief serialization flags for indexes.
   /// note that these must be mutually exclusive when bit-ORed
   enum class Serialize : uint8_t {
-    /// @brief serialize figures for index
+    /// @brief serialize index
     Basics = 0,
-    /// @brief serialize figures for index
+    /// @brief serialize figures
     Figures = 2,
     /// @brief serialize selectivity estimates
     Estimates = 4,
-    /// @brief serialize object ids for persistence
-    Internals = 8
+    /// @brief serialize for persistence
+    Internals = 8,
+    /// @brief serialize for inventory
+    Inventory = 16,
   };
 
   /// @brief helper for building flags
@@ -385,12 +382,12 @@ class Index {
 
   /// serialize an index to velocypack, using the serialization flags above
   virtual void toVelocyPack(
-      arangodb::velocypack::Builder&,
+      velocypack::Builder&,
       std::underlying_type<Index::Serialize>::type flags) const;
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+  std::shared_ptr<velocypack::Builder> toVelocyPack(
       std::underlying_type<Serialize>::type flags) const;
 
-  virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
+  virtual void toVelocyPackFigures(velocypack::Builder&) const;
 
   virtual void load() = 0;
   virtual void unload() = 0;
@@ -406,16 +403,17 @@ class Index {
   /// returns detailed information about the costs associated with using this
   /// index
   virtual FilterCosts supportsFilterCondition(
-      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-      arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference, size_t itemsInIndex) const;
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const;
 
   /// @brief whether or not the sort condition is supported by the index
   /// returns detailed information about the costs associated with using this
   /// index
   virtual SortCosts supportsSortCondition(
-      arangodb::aql::SortCondition const* sortCondition,
-      arangodb::aql::Variable const* reference, size_t itemsInIndex) const;
+      aql::SortCondition const* sortCondition, aql::Variable const* reference,
+      size_t itemsInIndex) const;
 
   /// @brief specialize the condition for use with this index. this will remove
   /// all elements from the condition that are not supported by the index. for
@@ -424,52 +422,32 @@ class Index {
   /// to just the condition `doc.value1 == 38`. must only be called if
   /// supportsFilterCondition has indicated that the index supports at least a
   /// part of the filter condition
-  virtual arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
-      arangodb::aql::Variable const* reference) const;
+  virtual aql::AstNode* specializeCondition(
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const;
 
   /// @brief create a new index iterator for the (specialized) condition
   virtual std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx);
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int mutableConditionIdx);
 
   bool canUseConditionPart(
-      arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-      arangodb::aql::AstNode const* op,
-      arangodb::aql::Variable const* reference,
-      arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
-      bool) const;
+      aql::AstNode const* access, aql::AstNode const* other,
+      aql::AstNode const* op, aql::Variable const* reference,
+      containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  /// @brief Transform the list of search slices to search values.
-  ///        This will multiply all IN entries and simply return all other
-  ///        entries.
-  void expandInSearchValues(arangodb::velocypack::Slice const,
-                            arangodb::velocypack::Builder&) const;
+  virtual bool canWarmup() const noexcept;
+  virtual Result warmup();
 
-  virtual void warmup(arangodb::transaction::Methods* trx,
-                      std::shared_ptr<basics::LocalTaskQueue> queue);
-
-  static size_t sortWeight(arangodb::aql::AstNode const* node);
-
- protected:
-  static std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(
-      arangodb::velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
-
-  static std::vector<std::vector<arangodb::basics::AttributeName>> mergeFields(
-      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields1,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields2);
-
-  /// @brief return the name of the (sole) index attribute
-  /// it is only allowed to call this method if the index contains a
-  /// single attribute
-  std::string const& getAttribute() const;
+  static size_t sortWeight(aql::AstNode const* node);
 
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, ErrorCode code,
-                                std::string const& key = "") const {
+  Result& addErrorMsg(Result& r, ErrorCode code,
+                      std::string_view key = {}) const {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);
       return addErrorMsg(r, key);
@@ -479,20 +457,34 @@ class Index {
 
   /// @brief generate error result
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "") const;
-  void addErrorMsg(result::Error& err, std::string const& key) const;
+  Result& addErrorMsg(Result& r, std::string_view key = {}) const;
+
+ protected:
+  static std::vector<std::vector<basics::AttributeName>> parseFields(
+      velocypack::Slice fields, bool allowEmpty, bool allowExpansion);
+
+  static std::vector<std::vector<basics::AttributeName>> mergeFields(
+      std::vector<std::vector<basics::AttributeName>> const& fields1,
+      std::vector<std::vector<basics::AttributeName>> const& fields2);
+
+  /// @brief return the name of the (sole) index attribute
+  /// it is only allowed to call this method if the index contains a
+  /// single attribute
+  std::string const& getAttribute() const;
+
+  void addErrorMsg(result::Error& err, std::string_view key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
   /// attribute, or the attribute does not contain a valid timestamp or date
   /// string
-  double getTimestamp(arangodb::velocypack::Slice const& doc,
+  double getTimestamp(velocypack::Slice const& doc,
                       std::string const& attributeName) const;
 
   IndexId const _iid;
   LogicalCollection& _collection;
   std::string _name;
-  std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
+  std::vector<std::vector<basics::AttributeName>> const _fields;
   bool const _useExpansion;
 
   mutable bool _unique;
@@ -505,20 +497,20 @@ class Index {
 /// only works for conditions such as  a.b == 2   or   45 < a.xx.c
 /// the collection variable (a in the above examples) is passed in "variable"
 struct AttributeAccessParts {
-  AttributeAccessParts(arangodb::aql::AstNode const* comparison,
-                       arangodb::aql::Variable const* variable);
+  AttributeAccessParts(aql::AstNode const* comparison,
+                       aql::Variable const* variable);
 
   /// @brief comparison operation, e.g. NODE_TYPE_OPERATOR_BINARY_EQ
-  arangodb::aql::AstNode const* comparison;
+  aql::AstNode const* comparison;
 
   /// @brief attribute access node
-  arangodb::aql::AstNode const* attribute;
+  aql::AstNode const* attribute;
 
   /// @brief lookup value
-  arangodb::aql::AstNode const* value;
+  aql::AstNode const* value;
 
   /// @brief operation type
-  arangodb::aql::AstNodeType opType;
+  aql::AstNodeType opType;
 };
 
 }  // namespace arangodb

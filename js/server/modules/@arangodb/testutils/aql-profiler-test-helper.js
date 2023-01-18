@@ -267,6 +267,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'filtered',
     'httpRequests',
     'peakMemoryUsage',
+    'intermediateCommits',
     'executionTime',
   ];
 
@@ -318,6 +319,7 @@ function assertIsProfileProfileObject (profile) {
     'loading collections',
     'instantiating plan',
     'optimizing plan',
+    'instantiating executors',
     'executing',
     'finalizing',
   ]);
@@ -387,7 +389,7 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.include.all.keys([
       'id',
       'name',
-      'isDataFromCollection',
+      'isFullDocumentFromCollection',
     ]);
 
     expect(variable.id).to.be.a('number');

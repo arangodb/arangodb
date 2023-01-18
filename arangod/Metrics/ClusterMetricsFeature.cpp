@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
@@ -52,7 +53,7 @@ void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout in seconds",
+                  "Cluster metrics polling timeout (in seconds).",
                   new options::UInt32Parameter(&_timeout),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -73,7 +74,7 @@ void ClusterMetricsFeature::start() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsState();
   if (_timeout != 0) {
-    rescheduleTimer();
+    rescheduleTimer(0);
   }
 }
 
@@ -122,24 +123,32 @@ std::optional<std::string> ClusterMetricsFeature::update(
   return std::nullopt;
 }
 
-void ClusterMetricsFeature::rescheduleTimer() noexcept {
+void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
   TRI_ASSERT(_timeout > 0);
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::DELAYED_FUTURE, std::chrono::seconds{_timeout},
-      [this](bool canceled) noexcept {
+      "metrics-reschedule-timer", RequestLane::DELAYED_FUTURE,
+      std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
         }
         update(CollectMode::TriggerGlobal);
-        rescheduleTimer();
+        rescheduleTimer(_timeout * 1000);
       });
   std::atomic_store_explicit(&_timer, std::move(h), std::memory_order_relaxed);
 }
 
-void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
+void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
+  if (server().isStopping()) {
+    return;
+  }
+
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_INTERNAL, std::chrono::seconds{timeout},
-      [this](bool canceled) noexcept {
+      "metrics-reschedule-update", RequestLane::CLUSTER_INTERNAL,
+      std::chrono::milliseconds{timeoutMs}, [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
         }
@@ -154,7 +163,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
         try {
           update();
         } catch (...) {
-          repeatUpdate(true);
+          repeatUpdate(std::max(_timeout, 1U) * 1000);
         }
       });
   std::atomic_store_explicit(&_update, std::move(h), std::memory_order_relaxed);
@@ -179,17 +188,18 @@ void ClusterMetricsFeature::update() {
           if (wasStop()) {
             return;
           }
-          bool force = false;
+          uint32_t timeoutMs = std::max(_timeout, 1U) * 1000;
           try {
-            force = !writeData(version, std::move(raw));
+            if (writeData(version, std::move(raw))) {
+              timeoutMs = 0;  // success
+            }
           } catch (...) {
-            force = true;
           }
-          repeatUpdate(force);
+          repeatUpdate(timeoutMs);
         });
   }
   if (leader->empty()) {
-    return rescheduleUpdate(std::max(_timeout, 1U));
+    return repeatUpdate(1);  // invalid leader, immediately retry
   }
   auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
   // We use `"0"` instead of `""` because we cannot parse empty string parameter
@@ -200,27 +210,27 @@ void ClusterMetricsFeature::update() {
         if (wasStop()) {
           return;
         }
-        bool force = false;
+        uint32_t timeoutMs = 1;  // invalid leader, immediately retry
         try {
-          force = !readData(std::move(raw));
+          if (readData(std::move(raw))) {
+            timeoutMs = 0;  // success
+          }
         } catch (...) {
-          force = true;
         }
-        repeatUpdate(force);
+        repeatUpdate(timeoutMs);
       });
 }
 
-void ClusterMetricsFeature::repeatUpdate(bool force) noexcept {
-  if (force) {
-    if (!wasStop()) {
-      rescheduleUpdate(std::max(_timeout, 1U));
-    }
-  } else {
+void ClusterMetricsFeature::repeatUpdate(uint32_t timeoutMs) noexcept {
+  if (timeoutMs == 0) {
     auto const count = _count.fetch_sub(kUpdate);
-    if (count % 2 != kStop && count > kUpdate) {
-      rescheduleUpdate(0);
+    if (count % 2 == kStop || count <= kUpdate) {
+      return;
     }
+  } else if (wasStop()) {
+    return;
   }
+  rescheduleUpdate(timeoutMs);
 }
 
 bool ClusterMetricsFeature::writeData(uint64_t version,

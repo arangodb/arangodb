@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -135,15 +136,15 @@ Result LogicalView::drop() {
     return {};  // view already dropped
   }
   // mark as deleted to avoid double-delete (including recursive calls)
-  deleted(true);
+  setDeleted();
   try {
     auto r = dropImpl();
     if (!r.ok()) {
-      deleted(false);
+      setUndeleted();
     }
     return r;
   } catch (...) {
-    deleted(false);
+    setUndeleted();
     throw;
   }
 }

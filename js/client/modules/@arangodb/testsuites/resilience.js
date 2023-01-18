@@ -139,7 +139,7 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience',  Object.assign({}, {
+  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -148,7 +148,7 @@ function activeFailover (options) {
   return rc;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['resilience_move'] = resilienceMove;
   testFns['resilience_move_view'] = resilienceMoveView;

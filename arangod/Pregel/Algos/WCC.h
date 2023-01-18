@@ -39,10 +39,7 @@ struct WCC
  public:
   explicit WCC(application_features::ApplicationServer& server,
                VPackSlice userParams)
-      : SimpleAlgorithm(server, "WCC", userParams) {}
-
-  bool supportsAsyncMode() const override { return false; }
-  bool supportsCompensation() const override { return false; }
+      : SimpleAlgorithm(server, "wcc", userParams) {}
 
   GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
 

@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Agency/AgencyComm.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Cluster/ClusterFeature.h"
+#include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Parse.h"
@@ -35,12 +34,18 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
 #include <map>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 
@@ -54,13 +59,15 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
+class NetworkFeature;
 struct OperationOptions;
+class LogicalCollection;
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
 /// multiple shards or for a smart edge collection)
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
-                             arangodb::velocypack::Slice value,
-                             arangodb::velocypack::Builder& builder);
+                             velocypack::Slice value,
+                             velocypack::Builder& builder);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -221,12 +228,13 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
-////////////////////////////////////////////////////////////////////////////////
+Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
+                              bool flushColumnFamilies);
 
-ErrorCode flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                                 bool waitForCollector);
+/// @brief recalculate collection count on all DBServers
+Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,
+                                       std::string_view collname);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel,

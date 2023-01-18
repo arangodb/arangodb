@@ -65,12 +65,26 @@ void OptimizerRulesFeature::collectOptions(
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setLongDescription(R"(You can use this option to selectively enable or
+disable AQL query optimizer rules by default. You can specify the option
+multiple times.
+
+For example, to turn off the rules `use-indexes-for-sort` and
+`reduce-extraction-to-projection` by default, use the following:
+
+```
+--query.optimizer-rules "-use-indexes-for-sort" --query.optimizer-rules "-reduce-extraction-to-projection"
+```
+
+The purpose of this startup option is to be able to enable potential future
+experimental optimizer rules, which may be shipped in a disabled-by-default
+state.)");
 
   options
       ->addOption(
           "--query.parallelize-gather-writes",
-          "enable write parallelization for gather nodes",
+          "Whether to enable write parallelization for gather nodes.",
           new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
       .setIntroducedIn(30600);
 }
@@ -307,6 +321,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // optimize K_PATHS
+  registerRule("optimize-paths", optimizePathsRule,
+               OptimizerRule::optimizePathsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal",
                removeFiltersCoveredByTraversal,
@@ -391,7 +410,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
-  // distribute operations in cluster
+#ifdef USE_ENTERPRISE
+  registerRule("distribute-offset-info-to-cluster",
+               distributeOffsetInfoToClusterRule,
+               OptimizerRule::distributeOffsetInfoToClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
+
   registerRule("distribute-filtercalc-to-cluster",
                distributeFilterCalcToClusterRule,
                OptimizerRule::distributeFilterCalcToClusterRule,
@@ -479,23 +505,25 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
+  // apply late materialization for view queries
+  registerRule("late-document-materialization-arangosearch",
+               iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
 #ifdef USE_ENTERPRISE
-  // apply late materialization for view queries
-  registerRule("handle-offset-info", arangodb::iresearch::handleOffsetInfo,
-               OptimizerRule::hanldeOffsetInfoFunc,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::EnterpriseOnly));
+  // apply late materialization for offset infos
+  registerRule("late-materialization-offset-info",
+               lateMaterialiationOffsetInfoRule,
+               OptimizerRule::lateMaterialiationOffsetInfoRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::EnterpriseOnly));
 #endif
-
-  // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch",
-               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // add the storage-engine specific rules
   addStorageEngineRules();

@@ -34,6 +34,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 

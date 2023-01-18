@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryOptions.h"
@@ -65,7 +64,7 @@ class SortExecutorInfos {
                     AqlItemBlockManager& manager,
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor,
+                    ResourceMonitor& resourceMonitor,
                     size_t spillOverThresholdNumRows,
                     size_t spillOverThresholdMemoryUsage, bool stable);
 
@@ -84,7 +83,7 @@ class SortExecutorInfos {
 
   [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
-  [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const;
+  [[nodiscard]] ResourceMonitor& getResourceMonitor() const;
 
   [[nodiscard]] bool stable() const;
 
@@ -106,7 +105,7 @@ class SortExecutorInfos {
   AqlItemBlockManager& _manager;
   TemporaryStorageFeature& _tempStorage;
   velocypack::Options const* _vpackOptions;
-  arangodb::ResourceMonitor& _resourceMonitor;
+  ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   size_t _spillOverThresholdNumRows;
   size_t _spillOverThresholdMemoryUsage;

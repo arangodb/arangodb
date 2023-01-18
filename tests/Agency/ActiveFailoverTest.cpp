@@ -50,12 +50,7 @@ namespace active_failover_test {
 
 const std::string PREFIX = "arango";
 const std::string LEADER = "SNGL-leader";
-const std::string FOLLOWER1 = "SNGL-follower1";   // tick 10, STATE GOOD
-const std::string FOLLOWER2 = "SNGL-follower2";   // tick 1, STATE GOOD
-const std::string FOLLOWER3 = "SNGL-follower23";  // tick 9, STATE GOOD
-const std::string FOLLOWER4 = "SNGL-follower4";   // tick 100, STATE BAD
-const std::string FOLLOWER5 =
-    "SNGL-follower5";  // tick 1000, STATE GOOD wrong leader
+const std::string FOLLOWER1 = "SNGL-follower1";  // tick 10, STATE GOOD
 
 bool aborts = false;
 
@@ -120,20 +115,20 @@ TEST_F(ActiveFailover, creating_a_job_should_create_a_job_in_todo) {
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // operations + preconditions
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(q->slice()[0][0].length(),
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(q[0][0].length(),
                   2);  // should do an entry in todo and failedservers
-        EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
+        EXPECT_EQ(typeName(q[0][0].get(expectedJobKey)), "object");
 
-        auto job = q->slice()[0][0].get(expectedJobKey);
+        auto job = q[0][0].get(expectedJobKey);
         EXPECT_EQ(typeName(job.get("creator")), "string");
         EXPECT_EQ(typeName(job.get("type")), "string");
         EXPECT_EQ(job.get("type").copyString(), "activeFailover");
@@ -167,23 +162,23 @@ TEST_F(ActiveFailover,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // operations + preconditions
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_EQ(
             writes.get("/arango/Target/ToDo/1").get("server").copyString(),
             LEADER);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");
@@ -219,23 +214,23 @@ TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // operations + preconditions
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_EQ(
             writes.get("/arango/Target/ToDo/1").get("server").copyString(),
             LEADER);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");
@@ -261,10 +256,10 @@ TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
   Verify(Method(mockAgent, write)).Exactly(1);
 
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // check that the job finishes now, without changing leader
-        VPackSlice writes = q->slice()[0][0];
+        VPackSlice writes = q[0][0];
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
         EXPECT_EQ(typeName(writes.get("/arango/Target/Finished/1")), "object");
@@ -287,23 +282,23 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // operations + preconditions
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_EQ(
             writes.get("/arango/Target/ToDo/1").get("server").copyString(),
             LEADER);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");
@@ -330,10 +325,10 @@ TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
   Verify(Method(mockAgent, write)).Exactly(1);
 
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // check that the job finishes now, without changing leader
-        VPackSlice writes = q->slice()[0][0];
+        VPackSlice writes = q[0][0];
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
         EXPECT_EQ(typeName(writes.get("/arango/Target/Finished/1")), "object");
@@ -357,23 +352,23 @@ TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // operations + preconditions
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_EQ(
             writes.get("/arango/Target/ToDo/1").get("server").copyString(),
             LEADER);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");
@@ -400,10 +395,10 @@ TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
 
   When(Method(mockAgent, transient)).Return(fakeTransient);
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // check that the job fails now
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(
                 writes.get("/arango/Target/ToDo/1").get("op").typeName()) ==
@@ -428,23 +423,23 @@ TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // we always simply override! no preconditions...
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
         EXPECT_EQ(
             writes.get("/arango/Target/ToDo/1").get("server").copyString(),
             LEADER);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");
@@ -471,18 +466,18 @@ TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
 
   When(Method(mockAgent, transient)).Return(fakeTransient);
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(typeName(q->slice()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(typeName(q->slice()[0]), "array");
+        EXPECT_EQ(typeName(q), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(typeName(q[0]), "array");
         // we always simply override! no preconditions...
-        EXPECT_EQ(q->slice()[0].length(), 2);
-        EXPECT_EQ(typeName(q->slice()[0][0]), "object");
-        EXPECT_EQ(typeName(q->slice()[0][1]), "object");
+        EXPECT_EQ(q[0].length(), 2);
+        EXPECT_EQ(typeName(q[0][0]), "object");
+        EXPECT_EQ(typeName(q[0][1]), "object");
 
         // check that the job succeeds now
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                     "string");
         EXPECT_EQ(typeName(writes.get("/arango/Target/Finished/1")), "object");
@@ -492,7 +487,7 @@ TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
             writes.get("/arango/Plan/AsyncReplication/Leader").copyString(),
             FOLLOWER1);
 
-        auto precond = q->slice()[0][1];
+        auto precond = q[0][1];
         EXPECT_TRUE(typeName(precond.get(
                         "/arango/Supervision/Health/SNGL-leader/Status")) ==
                     "object");

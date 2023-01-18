@@ -32,6 +32,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -311,7 +312,8 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
 
   std::lock_guard guard{_bufferLock};
-  TRI_ASSERT(seq > _count._committedSeq);
+  TRI_ASSERT(seq > _count._committedSeq)
+      << "seq: " << seq << ", count seq: " << _count._committedSeq;
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "

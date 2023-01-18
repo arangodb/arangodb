@@ -21,9 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/debugging.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/SourceLocation.h"
+#include "Basics/ThreadGuard.h"
+#include "Basics/debugging.h"
 #include "Random/RandomGenerator.h"
 
 #include <chrono>
@@ -583,8 +584,9 @@ struct RandomEnumerator {
     auto const numThreads = std::min<decltype(NumberOfCores::getValue() +
                                               randomParameters.iterations)>(
         NumberOfCores::getValue(), randomParameters.iterations);
-    auto threads = std::vector<std::thread>();
-    threads.reserve(numThreads);
+
+    auto threads = ThreadGuard(numThreads);
+
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
     auto iterationsLeftToDistribute = randomParameters.iterations;
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
@@ -593,8 +595,8 @@ struct RandomEnumerator {
       // threadSeed) given here are deterministic.
       auto const iters = iterationsLeftToDistribute / (numThreads - thrIdx);
       iterationsLeftToDistribute -= iters;
-      threads.emplace_back([&driver, initialObserver, initialState, iters,
-                            threadSeed = gen(), result = &results[thrIdx]] {
+      threads.emplace([&driver, initialObserver, initialState, iters,
+                       threadSeed = gen(), result = &results[thrIdx]] {
         // use an additional PRNG, so we can report the seed that can be
         // used to create the failed path
         auto gen = std::mt19937(threadSeed);
@@ -620,9 +622,7 @@ struct RandomEnumerator {
 
     TRI_ASSERT(iterationsLeftToDistribute == 0);
 
-    for (auto& thr : threads) {
-      thr.join();
-    }
+    threads.joinAll();
 
     for (auto const& result : results) {
       TRI_ASSERT(result.has_value());

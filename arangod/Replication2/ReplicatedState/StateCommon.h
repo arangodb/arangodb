@@ -87,6 +87,7 @@ enum class SnapshotStatus {
   kInProgress,
   kCompleted,
   kFailed,
+  kInvalidated,
 };
 
 struct SnapshotInfo {

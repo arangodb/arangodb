@@ -34,7 +34,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/GraphNode.h"

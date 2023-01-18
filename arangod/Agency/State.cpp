@@ -805,7 +805,7 @@ void State::dropCollection(std::string const& colName) {
     if (col == nullptr) {
       return;
     }
-    auto res = _vocbase->dropCollection(col->id(), false, -1.0);
+    auto res = _vocbase->dropCollection(col->id(), false);
     if (res.fail()) {
       LOG_TOPIC("ba841", FATAL, Logger::AGENCY)
           << "unable to drop collection '" << colName
@@ -1047,7 +1047,15 @@ bool State::loadOrPersistConfiguration() {
       LOG_TOPIC("504da", DEBUG, Logger::AGENCY)
           << "Merging configuration " << conf.toJson();
       _agent->mergeConfiguration(conf);
-
+      auto pool = _agent->config().pool();
+      auto it = pool.find(_agent->config().id());
+      if (it == pool.end()) {
+        LOG_TOPIC("6acd3", FATAL, Logger::AGENCY)
+            << "Ended up with a pool of agents which does not include "
+               "ourselves, configuration: "
+            << _agent->config().toBuilder()->slice().toJson();
+        FATAL_ERROR_EXIT();
+      }
     } catch (std::exception const& e) {
       LOG_TOPIC("6acd2", FATAL, Logger::AGENCY)
           << "Failed to merge persisted configuration into runtime "
@@ -1625,20 +1633,20 @@ query_t State::allLogs() const {
   return everything;
 }
 
-std::vector<index_t> State::inquire(query_t const& query) const {
-  if (!query->slice().isArray()) {
+std::vector<index_t> State::inquire(velocypack::Slice query) const {
+  if (!query.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,
         std::string(
             "Inquiry handles a list of string clientIds: [<clientId>] ") +
-            ". We got " + query->toJson());
+            ". We got " + query.toJson());
   }
 
   std::vector<index_t> result;
   size_t pos = 0;
 
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-  for (auto const& i : VPackArrayIterator(query->slice())) {
+  for (auto i : VPackArrayIterator(query)) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,

@@ -37,6 +37,39 @@ namespace algos {
 /// graph L(G).
 /// Implementation based on
 /// github.com/JananiC/NetworkCentralities/blob/master/src/main/java/linerank/LineRank.java
+
+/**
+ * Following the paper "Centralities in Large Networks: Algorithms and
+ * Observations", linerank should be the following.
+ *
+ * Given a directed graph G = (V, E), compute the directed graph L(G) = (V_L,
+ * E_L) as V_L = E (the new vertices are the old edges) and E_L = {((a,b),
+ * (b,c)) : (a,b), (b,c) in E}, i.e. there is an edge from vertex (a,b) in V_L
+ * to vertex (b,c) in V_L if there are edges (a,b) and (b,c) in the given graph.
+ *
+ * Now in L(G), we compute almost the pagerank, the only exception being that
+ * when normalizing outgoing messages from a vertex, we divide by the total
+ * number of edges in the graph (in G, not in L(G)) rather than by the number of
+ * edges leaving the vertex (i.e., by the out-degree).
+ *
+ * After the values on each vertex converge, each vertex in L(G) and thus each
+ * edge in G has a value, a rank. The final value of a vertex in G is the sum
+ * of the values of all its in- and outgoing edges.
+ *
+ * In our implementation, we compute the normal pagerank except for the
+ * following.
+ *
+ * (1) We initialize every vertex with 1/|E| (rather than with 1/|V|).
+ * (2) We normalize outgoing messages from a vertex as for linerank (divide by
+ *     the total number of edges in the graph, not by the out-degree of the
+ *     vertex).
+ * (3) In the last iteration, the value of a vertex is updated in another way:
+ *     the new value is: (old value) * |E| + (sum of the incoming values).
+ *
+ * It seems that the values computed by both algorithms have not much to do with
+ * each other.
+ */
+
 struct LineRank : public SimpleAlgorithm<float, float, float> {
  public:
   explicit LineRank(application_features::ApplicationServer& server,

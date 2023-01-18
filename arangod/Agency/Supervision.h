@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -32,6 +31,13 @@
 #include "Cluster/ClusterTypes.h"
 
 #include "Metrics/Fwd.h"
+
+#include <chrono>
+#include <functional>
+#include <string>
+#include <string_view>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -41,6 +47,7 @@ class Slice;
 namespace consensus {
 
 class Agent;
+class AgentInterface;
 
 struct check_t {
   bool good;
@@ -52,7 +59,8 @@ struct check_t {
 // called by the private method Supervision::enforceReplication and the
 // unit tests:
 void enforceReplicationFunctional(Node const& snapshot, uint64_t& jobId,
-                                  std::shared_ptr<VPackBuilder> envelope);
+                                  std::shared_ptr<VPackBuilder> envelope,
+                                  uint64_t delayAddFollower = 0);
 
 // This is the functional version which actually does the work, it is
 // called by the private method Supervision::cleanupHotbackupTransferJobs
@@ -101,9 +109,19 @@ class Supervision : public arangodb::Thread {
   /// @brief remove hotbackup lock in agency, if expired
   void unlockHotBackup();
 
-  static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
-  static constexpr char const* HEALTH_STATUS_BAD = "BAD";
-  static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
+  /**
+   * @brief Helper function to build transaction removing no longer
+   *        present servers from health monitoring
+   *
+   * @param  del       Agency transaction builder
+   * @param  todelete  List of servers to be removed
+   */
+  static void removeTransactionBuilder(
+      velocypack::Builder& del, std::vector<std::string> const& todelete);
+
+  static constexpr std::string_view HEALTH_STATUS_GOOD = "GOOD";
+  static constexpr std::string_view HEALTH_STATUS_BAD = "BAD";
+  static constexpr std::string_view HEALTH_STATUS_FAILED = "FAILED";
 
   static std::string agencyPrefix() { return _agencyPrefix; }
 
@@ -117,6 +135,43 @@ class Supervision : public arangodb::Thread {
   static bool verifyServerRebootID(Node const& snapshot,
                                    std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
+
+  // public only for unit testing:
+  static void cleanupLostCollections(Node const& snapshot,
+                                     AgentInterface* agent, uint64_t& jobId);
+
+  // public only for unit testing:
+  static void deleteBrokenDatabase(AgentInterface* agent,
+                                   std::string const& database,
+                                   std::string const& coordinatorID,
+                                   uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenCollection(AgentInterface* agent,
+                                     std::string const& database,
+                                     std::string const& collection,
+                                     std::string const& coordinatorID,
+                                     uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenIndex(AgentInterface* agent,
+                                std::string const& database,
+                                std::string const& collection,
+                                arangodb::velocypack::Slice index,
+                                std::string const& coordinatorID,
+                                uint64_t rebootID, bool coordinatorFound);
+
+  void setOkThreshold(double d) noexcept { _okThreshold = d; }
+
+  void setGracePeriod(double d) noexcept { _gracePeriod = d; }
+
+  void setDelayAddFollower(uint64_t d) noexcept { _delayAddFollower = d; }
+
+  void setDelayFailedFollower(uint64_t d) noexcept { _delayFailedFollower = d; }
+
+  void setFailedLeaderAddsFollower(bool b) noexcept {
+    _failedLeaderAddsFollower = b;
+  }
 
   /// @brief notifies the supervision and triggers a new run
   void notify() noexcept;
@@ -146,6 +201,9 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
+  /// @brief Check undo-leader-change-actions
+  void checkUndoLeaderChangeActions();
+
   /// @brief Check for orphaned index creations, which have been successfully
   /// built
   void readyOrphanedIndexCreations();
@@ -162,9 +220,6 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Check replicated logs
   void checkReplicatedLogs();
-
-  /// @brief Check replicated logs
-  void checkReplicatedStates();
 
   /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
@@ -193,21 +248,8 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
- private:
-  /// @brief Move shard from one db server to other db server
-  bool moveShard(std::string const& from, std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool replicateShard(std::string const& to);
-
-  /// @brief Move shard from one db server to other db server
-  bool removeShard(std::string const& from);
-
   /// @brief Check machines in agency
   std::vector<check_t> check(std::string const&);
-
-  // @brief Check shards in agency
-  std::vector<check_t> checkShards();
 
   /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
@@ -235,17 +277,6 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
- public:  // only for unit tests:
-  void setSnapshotForUnitTest(Node* snapshot) { _snapshot = snapshot; }
-
-  static void cleanupLostCollections(Node const& snapshot,
-                                     AgentInterface* agent, uint64_t& jobId);
-
-  void setOkThreshold(double d) { _okThreshold = d; }
-
-  void setGracePeriod(double d) { _gracePeriod = d; }
-
- private:
   /**
    * @brief Report status of supervision in agency
    * @param  status  Status, which will show in Supervision/State
@@ -254,14 +285,7 @@ class Supervision : public arangodb::Thread {
 
   void updateDBServerMaintenance();
 
-  bool handleJobs();
-  void deleteBrokenDatabase(std::string const& database,
-                            std::string const& coordinatorID, uint64_t rebootID,
-                            bool coordinatorFound);
-  void deleteBrokenCollection(std::string const& database,
-                              std::string const& collection,
-                              std::string const& coordinatorID,
-                              uint64_t rebootID, bool coordinatorFound);
+  void handleJobs();
 
   void restoreBrokenAnalyzersRevision(
       std::string const& database, AnalyzersRevision::Revision revision,
@@ -284,6 +308,9 @@ class Supervision : public arangodb::Thread {
   double _frequency;
   double _gracePeriod;
   double _okThreshold;
+  uint64_t _delayAddFollower;
+  uint64_t _delayFailedFollower;
+  bool _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
@@ -307,15 +334,6 @@ class Supervision : public arangodb::Thread {
       _supervision_runtime_wait_for_sync_msec;
   metrics::Counter& _supervision_failed_server_counter;
 };
-
-/**
- * @brief Helper function to build transaction removing no longer
- *        present servers from health monitoring
- *
- * @param  todelete  List of servers to be removed
- * @return           Agency transaction
- */
-query_t removeTransactionBuilder(std::vector<std::string> const&);
 
 }  // namespace consensus
 }  // namespace arangodb

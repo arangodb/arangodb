@@ -28,12 +28,10 @@
 #include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                            std::shared_ptr<TransactionState> state)
@@ -44,7 +42,7 @@ SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
 SmartContext::~SmartContext() = default;
 
 /// @brief order a custom type handler for the collection
-arangodb::velocypack::CustomTypeHandler*
+velocypack::CustomTypeHandler*
 transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler =
@@ -95,5 +93,4 @@ std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
   return clone;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

@@ -72,16 +72,16 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
   return server.getFeature<arangodb::SystemDatabaseFeature>().use();
 }
 
+bool isRole(std::string const& name) noexcept {
+  return name.starts_with(":role:");
+}
+
 }  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
-
-static bool inline IsRole(std::string const& name) {
-  return StringUtils::isPrefix(name, ":role:");
-}
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(ArangodServer& server)
@@ -270,7 +270,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
-  if (!IsRole(entry.username()) && entry.username() != "root") {
+  if (!::isRole(entry.username()) && entry.username() != "root") {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     TRI_ASSERT(af != nullptr);
     if (af != nullptr && !af->localAuthentication()) {
@@ -336,7 +336,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
                                auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
-      if (IsRole(entry.username())) {
+      if (::isRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
           if (pair.second.source() != auth::Source::Local &&
               pair.second.roles().find(entry.username()) !=
@@ -737,7 +737,7 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  if (username.empty() || IsRole(username)) {
+  if (username.empty() || ::isRole(username)) {
     return false;  // we cannot authenticate during bootstrap
   }
 

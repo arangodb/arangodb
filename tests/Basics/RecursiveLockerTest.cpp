@@ -22,17 +22,19 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/RecursiveLocker.h"
 
+#include "Basics/ThreadGuard.h"
 #include "gtest/gtest.h"
 
 #include <atomic>
 #include <thread>
 #include <vector>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 // RecursiveMutexLocker
@@ -120,10 +122,10 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
   constexpr int n = 4;
   constexpr int iterations = 100000;
 
-  std::vector<std::thread> threads;
+  auto threads = ThreadGuard(n);
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       ++started;
       while (started < n) { /*spin*/
       }
@@ -145,9 +147,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
@@ -238,10 +238,10 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
   constexpr int n = 4;
   constexpr int iterations = 100000;
 
-  std::vector<std::thread> threads;
+  auto threads = ThreadGuard(n);
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       ++started;
       while (started < n) { /*spin*/
       }
@@ -263,9 +263,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreaded) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations * 2, x);
@@ -301,10 +299,10 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
   constexpr int n = 4;
   constexpr int iterations = 100000;
 
-  std::vector<std::thread> threads;
+  auto threads = ThreadGuard(n);
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       ++started;
       while (started < n) { /*spin*/
       }
@@ -326,9 +324,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteRead) {
     });
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(n * iterations, total);
   ASSERT_EQ(n * iterations, x);
@@ -348,10 +344,10 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
   constexpr int n = 4;
   constexpr int iterations = 100000;
 
-  std::vector<std::thread> threads;
+  auto threads = ThreadGuard(n);
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back(
+    threads.emplace(
         [&](int id) {
           ++started;
           while (started < n) { /*spin*/
@@ -378,9 +374,7 @@ TEST(RecursiveLockerTest, testRecursiveWriteLockMultiThreadedWriteAndReadMix) {
         i);
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ((n / 2) * iterations, total);
   ASSERT_EQ((n / 2) * iterations, x);
@@ -400,10 +394,10 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
   constexpr int n = 4;
   constexpr int iterations = 100000;
 
-  std::vector<std::thread> threads;
+  auto threads = ThreadGuard(n);
 
   for (int i = 0; i < n; ++i) {
-    threads.emplace_back(
+    threads.emplace(
         [&](int id) {
           ++started;
           while (started < n) { /*spin*/
@@ -454,9 +448,7 @@ TEST(RecursiveLockerTest, testRecursiveReadLockMultiThreadedWriteAndReadMix) {
         i);
   }
 
-  for (int i = 0; i < n; ++i) {
-    threads[i].join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(iterations, total);
   ASSERT_EQ(iterations, x);

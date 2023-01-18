@@ -26,7 +26,8 @@
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
@@ -34,15 +35,17 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
-auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
+auto DocumentCoreParameters::toSharedSlice() const -> velocypack::SharedSlice {
   VPackBuilder builder;
   velocypack::serialize(builder, *this);
   return builder.sharedSlice();
 }
 
 DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
-    : _handlersFactory(std::move(handlersFactory)){};
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+    transaction::IManager& transactionManager)
+    : _handlersFactory(std::move(handlersFactory)),
+      _transactionManager(transactionManager){};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
@@ -52,7 +55,8 @@ auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentLeaderState> {
-  return std::make_shared<DocumentLeaderState>(std::move(core));
+  return std::make_shared<DocumentLeaderState>(
+      std::move(core), _handlersFactory, _transactionManager);
 }
 
 auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
@@ -69,7 +73,17 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
       std::move(logContext));
 }
 
+auto DocumentFactory::constructCleanupHandler()
+    -> std::shared_ptr<DocumentCleanupHandler> {
+  return std::make_shared<DocumentCleanupHandler>();
+}
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
 template struct arangodb::replication2::replicated_state::ReplicatedState<
     DocumentState>;
+
+void DocumentCleanupHandler::drop(std::unique_ptr<DocumentCore> core) {
+  core->drop();
+  core.reset();
+}

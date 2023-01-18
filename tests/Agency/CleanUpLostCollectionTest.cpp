@@ -91,7 +91,7 @@ TEST_F(CleanUpLostCollectionTest,
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice trxs,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // What do we expect here:
         // We expect two transactions:
@@ -110,7 +110,6 @@ TEST_F(CleanUpLostCollectionTest,
         //        empty: /arango/Plan/Collections/database/collection/shards/s99
         //        old: /arango/Supervision/Health/leader/Status == "FAILED"
 
-        auto const& trxs = q->slice();
         EXPECT_EQ(trxs.length(), 1);
 
         auto const& trx1 = trxs[0];

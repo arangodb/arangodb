@@ -38,7 +38,7 @@ class ClusterIndex : public Index {
  public:
   ClusterIndex(IndexId id, LogicalCollection& collection,
                ClusterEngineType engineType, Index::IndexType type,
-               arangodb::velocypack::Slice info);
+               velocypack::Slice info);
 
   ClusterIndex(ClusterIndex const&) = delete;
   ClusterIndex& operator=(ClusterIndex const&) = delete;
@@ -85,28 +85,27 @@ class ClusterIndex : public Index {
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
   /// @brief Checks if this index is identical to the given definition
-  bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
+  bool matchesDefinition(velocypack::Slice const&) const override;
 
   Index::FilterCosts supportsFilterCondition(
-      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-      arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
   Index::SortCosts supportsSortCondition(
-      arangodb::aql::SortCondition const* sortCondition,
-      arangodb::aql::Variable const* reference,
+      aql::SortCondition const* sortCondition, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
   /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode* node,
-      arangodb::aql::Variable const* reference) const override;
+  aql::AstNode* specializeCondition(
+      transaction::Methods& trx, aql::AstNode* node,
+      aql::Variable const* reference) const override;
 
-  void updateProperties(velocypack::Slice const&);
+  void updateProperties(velocypack::Slice slice);
 
-  std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  coveredFields() const override;
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const override;
 
  protected:
   ClusterEngineType _engineType;
@@ -116,6 +115,6 @@ class ClusterIndex : public Index {
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.
-  std::vector<std::vector<arangodb::basics::AttributeName>> _coveredFields;
+  std::vector<std::vector<basics::AttributeName>> _coveredFields;
 };
 }  // namespace arangodb

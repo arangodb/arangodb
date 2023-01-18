@@ -26,21 +26,15 @@
 #include "Job.h"
 #include "Supervision.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 struct MoveShard : public Job {
   MoveShard(Node const& snapshot, AgentInterface* agent,
             std::string const& jobId, std::string const& creator,
             std::string const& database, std::string const& collection,
             std::string const& shard, std::string const& from,
-            std::string const& to, bool isLeader, bool remainsFollower);
-
-  MoveShard(Node const& snapshot, AgentInterface* agent,
-            std::string const& jobId, std::string const& creator,
-            std::string const& database, std::string const& collection,
-            std::string const& shard, std::string const& from,
-            std::string const& to, bool isLeader);
+            std::string const& to, bool isLeader, bool remainsFollower = false,
+            bool tryUndo = false);
 
   MoveShard(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
             std::string const& jobId);
@@ -55,6 +49,9 @@ struct MoveShard : public Job {
   virtual Result abort(std::string const& reason) override;
   JOB_STATUS pendingLeader();
   JOB_STATUS pendingFollower();
+  JOB_STATUS pendingReplication2();
+  bool startReplication2();
+  std::optional<std::uint64_t> getShardSupervisionVersion();
 
   std::string _database;
   std::string _collection;
@@ -65,6 +62,8 @@ struct MoveShard : public Job {
   bool _isLeader;
   bool _remainsFollower;
   bool _toServerIsFollower;
+  bool _tryUndo{false};
+  uint64_t _expectedTargetVersion{0};
 
   MoveShard& withParent(std::string parentId) {
     _parentJobId = std::move(parentId);
@@ -83,8 +82,10 @@ struct MoveShard : public Job {
   void addMoveShardFromServerUnLock(Builder& ops) const;
   void addMoveShardToServerCanUnLock(Builder& ops) const;
   void addMoveShardFromServerCanUnLock(Builder& ops) const;
+  void addUndoMoveShard(Builder& ops, Builder const& job) const;
 
   bool moveShardFinish(bool unlock, bool success, std::string const& msg);
+  bool checkLeaderFollowerCurrent(
+      std::vector<Job::shard_t> const& shardsLikeMe);
 };
-}  // namespace consensus
-}  // namespace arangodb
+}  // namespace arangodb::consensus

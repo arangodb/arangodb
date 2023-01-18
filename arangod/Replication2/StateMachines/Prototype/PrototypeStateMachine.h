@@ -59,6 +59,7 @@ struct PrototypeState {
   using FactoryType = PrototypeFactory;
   using CoreType = PrototypeCore;
   using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct IPrototypeLeaderInterface {

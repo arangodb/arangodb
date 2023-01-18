@@ -1,107 +1,125 @@
-# -*- mode: CMAKE; -*-
+add_library(arango_rocksdb STATIC
+  RocksDBBackgroundThread.cpp
+  RocksDBBuilderIndex.cpp
+  RocksDBChecksumEnv.cpp
+  RocksDBCollection.cpp
+  RocksDBColumnFamilyManager.cpp
+  RocksDBCommon.cpp
+  RocksDBComparator.cpp
+  RocksDBCuckooIndexEstimator.cpp
+  RocksDBEdgeIndex.cpp
+  RocksDBEngine.cpp
+  RocksDBFormat.cpp
+  RocksDBFulltextIndex.cpp
+  RocksDBGeoIndex.cpp
+  RocksDBIncrementalSync.cpp
+  RocksDBIndex.cpp
+  RocksDBIndexCacheRefillFeature.cpp
+  RocksDBIndexCacheRefillThread.cpp
+  RocksDBIndexFactory.cpp
+  RocksDBIterators.cpp
+  RocksDBKey.cpp
+  RocksDBKeyBounds.cpp
+  RocksDBLogValue.cpp
+  RocksDBMetaCollection.cpp
+  RocksDBMetadata.cpp
+  RocksDBOptimizerRules.cpp
+  RocksDBOptionFeature.cpp
+  RocksDBOptionsProvider.cpp
+  RocksDBPersistedLog.cpp
+  RocksDBPrimaryIndex.cpp
+  RocksDBRecoveryManager.cpp
+  RocksDBReplicationCommon.cpp
+  RocksDBReplicationContext.cpp
+  RocksDBReplicationIterator.cpp
+  RocksDBReplicationManager.cpp
+  RocksDBReplicationTailing.cpp
+  RocksDBRestCollectionHandler.cpp
+  RocksDBRestHandlers.cpp
+  RocksDBRestReplicationHandler.cpp
+  RocksDBRestWalHandler.cpp
+  RocksDBSavePoint.cpp
+  RocksDBSettingsManager.cpp
+  RocksDBSyncThread.cpp
+  RocksDBSortedRowsStorageContext.cpp
+  RocksDBTempStorage.cpp
+  RocksDBTransactionCollection.cpp
+  RocksDBTransactionMethods.cpp
+  RocksDBTransactionState.cpp
+  RocksDBTtlIndex.cpp
+  RocksDBTypes.cpp
+  RocksDBUpgrade.cpp
+  RocksDBV8Functions.cpp
+  RocksDBVPackIndex.cpp
+  RocksDBValue.cpp
+  RocksDBWalAccess.cpp
+  RocksDBZkdIndex.cpp
+  ReplicatedRocksDBTransactionCollection.cpp
+  ReplicatedRocksDBTransactionState.cpp
+  SimpleRocksDBTransactionState.cpp
+  SortedRowsStorageBackendRocksDB.cpp)
 
-##
+target_link_libraries(arango_rocksdb
+  arango_cache
+  arango_common_rest_handler
+  arango_geo
+  arango_health
+  arango_indexes
+  arango_restart_action
+  arango_storage_engine_common
+  arango::validation
+  arango_zkd
+  boost_boost
+  rocksdb
+  rocksdb_interface
+  snappy)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
+
+if (USE_ENTERPRISE)
+  # this is required for hotbackup. Views need to be flushed.
+  target_include_directories(arango_rocksdb PUBLIC
+    ${IRESEARCH_INCLUDE})
+  target_link_libraries(arango_rocksdb
+    arango_rclone)
+endif()
+
+if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND NOT BUILDING_FOR_ARM64)
+  target_compile_options(arango_rocksdb PUBLIC "-maes")
+endif ()
+
 ## these defines are copied from rocksdb's CMakeLists.txt
 ##  because we are currently using some of their internal headers
 ##  in our build
-# add definitions for various operating systems
 if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
-  add_definitions(-fno-builtin-memcmp -DCYGWIN)
+  target_compile_options(arango_rocksdb PRIVATE -fno-builtin-memcmp -DCYGWIN)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-  add_definitions(-DOS_MACOSX)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_MACOSX)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-  add_definitions(-DOS_LINUX)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_LINUX)
 elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
-  add_definitions(-DOS_SOLARIS)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_SOLARIS)
 elseif(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-  add_definitions(-DOS_FREEBSD)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_FREEBSD)
 elseif(CMAKE_SYSTEM_NAME MATCHES "NetBSD")
-  add_definitions(-DOS_NETBSD)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_NETBSD)
 elseif(CMAKE_SYSTEM_NAME MATCHES "OpenBSD")
-  add_definitions(-DOS_OPENBSD)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_OPENBSD)
 elseif(CMAKE_SYSTEM_NAME MATCHES "DragonFly")
-  add_definitions(-DOS_DRAGONFLYBSD)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_DRAGONFLYBSD)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
-  add_definitions(-DOS_ANDROID)
+  target_compile_options(arango_rocksdb PRIVATE -DOS_ANDROID)
 elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
-  add_definitions(-DWIN32 -DOS_WIN -D_MBCS -DWIN64 -DNOMINMAX)
+  target_compile_options(arango_rocksdb PRIVATE -DWIN32 -DOS_WIN -D_MBCS -DWIN64 -DNOMINMAX)
   if(MINGW)
-    add_definitions(-D_WIN32_WINNT=_WIN32_WINNT_VISTA)
+    target_compile_options(arango_rocksdb PRIVATE -D_WIN32_WINNT=_WIN32_WINNT_VISTA)
   endif()
 endif()
 
+target_include_directories(arango_rocksdb PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-
-# add sources for rocksdb engine
-set(ROCKSDB_SOURCES
-  RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.cpp
-  RocksDBEngine/Listeners/RocksDBMetricsListener.cpp
-  RocksDBEngine/Listeners/RocksDBThrottle.cpp
-  RocksDBEngine/Methods/RocksDBBatchedMethods.cpp
-  RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.cpp
-  RocksDBEngine/Methods/RocksDBReadOnlyBaseMethods.cpp
-  RocksDBEngine/Methods/RocksDBReadOnlyMethods.cpp
-  RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.cpp
-  RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.cpp
-  RocksDBEngine/Methods/RocksDBSstFileMethods.cpp
-  RocksDBEngine/Methods/RocksDBTrxBaseMethods.cpp
-  RocksDBEngine/Methods/RocksDBTrxMethods.cpp
-  RocksDBEngine/RocksDBBackgroundThread.cpp
-  RocksDBEngine/RocksDBBuilderIndex.cpp
-  RocksDBEngine/RocksDBChecksumEnv.cpp
-  RocksDBEngine/RocksDBCollection.cpp
-  RocksDBEngine/RocksDBColumnFamilyManager.cpp
-  RocksDBEngine/RocksDBCommon.cpp
-  RocksDBEngine/RocksDBComparator.cpp
-  RocksDBEngine/RocksDBCuckooIndexEstimator.cpp
-  RocksDBEngine/RocksDBEdgeIndex.cpp
-  RocksDBEngine/RocksDBEngine.cpp
-  RocksDBEngine/RocksDBFormat.cpp
-  RocksDBEngine/RocksDBFulltextIndex.cpp
-  RocksDBEngine/RocksDBGeoIndex.cpp
-  RocksDBEngine/RocksDBIncrementalSync.cpp
-  RocksDBEngine/RocksDBIndex.cpp
-  RocksDBEngine/RocksDBIndexFactory.cpp
-  RocksDBEngine/RocksDBIterators.cpp
-  RocksDBEngine/RocksDBKey.cpp
-  RocksDBEngine/RocksDBKeyBounds.cpp
-  RocksDBEngine/RocksDBLogValue.cpp
-  RocksDBEngine/RocksDBMetaCollection.cpp
-  RocksDBEngine/RocksDBMetadata.cpp
-  RocksDBEngine/RocksDBOptimizerRules.cpp
-  RocksDBEngine/RocksDBOptionFeature.cpp
-  RocksDBEngine/RocksDBOptionsProvider.cpp
-  RocksDBEngine/RocksDBPersistedLog.cpp
-  RocksDBEngine/RocksDBPrimaryIndex.cpp
-  RocksDBEngine/RocksDBRecoveryManager.cpp
-  RocksDBEngine/RocksDBReplicationCommon.cpp
-  RocksDBEngine/RocksDBReplicationContext.cpp
-  RocksDBEngine/RocksDBReplicationIterator.cpp
-  RocksDBEngine/RocksDBReplicationManager.cpp
-  RocksDBEngine/RocksDBReplicationTailing.cpp
-  RocksDBEngine/RocksDBRestCollectionHandler.cpp
-  RocksDBEngine/RocksDBRestHandlers.cpp
-  RocksDBEngine/RocksDBRestReplicationHandler.cpp
-  RocksDBEngine/RocksDBRestWalHandler.cpp
-  RocksDBEngine/RocksDBSavePoint.cpp
-  RocksDBEngine/RocksDBSettingsManager.cpp
-  RocksDBEngine/RocksDBSyncThread.cpp
-  RocksDBEngine/RocksDBSortedRowsStorageContext.cpp
-  RocksDBEngine/RocksDBTempStorage.cpp
-  RocksDBEngine/RocksDBTransactionCollection.cpp
-  RocksDBEngine/RocksDBTransactionMethods.cpp
-  RocksDBEngine/RocksDBTransactionState.cpp
-  RocksDBEngine/RocksDBTtlIndex.cpp
-  RocksDBEngine/RocksDBTypes.cpp
-  RocksDBEngine/RocksDBUpgrade.cpp
-  RocksDBEngine/RocksDBV8Functions.cpp
-  RocksDBEngine/RocksDBVPackIndex.cpp
-  RocksDBEngine/RocksDBValue.cpp
-  RocksDBEngine/RocksDBWalAccess.cpp
-  RocksDBEngine/RocksDBZkdIndex.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionCollection.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionState.cpp
-  RocksDBEngine/SimpleRocksDBTransactionState.cpp
-  RocksDBEngine/SortedRowsStorageBackendRocksDB.cpp
-)
-set(ROCKSDB_SOURCES ${ROCKSDB_SOURCES} PARENT_SCOPE)
+add_subdirectory(Listeners)
+add_subdirectory(Methods)

@@ -504,7 +504,7 @@
               'new-collection-type',
               'Type',
               '',
-              'The type of the collection to create.',
+              'Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. <br> Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph.',
               [{value: 2, label: 'Document'}, {value: 3, label: 'Edge'}]
             )
           );
@@ -608,7 +608,7 @@
                   'is-satellite-collection',
                   'SatelliteCollection',
                   '',
-                  'Create SatelliteCollection? This will disable replication factor.',
+                  'Use this option for smaller data sets that will be synchronously replicated to each DB-Server, facilitating local join operations. Selecting it will disable the replication factor above.',
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
                 )
               );
@@ -696,6 +696,11 @@
               _.each(handleSatelliteIds, function(id) {
                 $(id).val('').focus().focusout();
               });
+            });
+
+            $('#distribute-shards-like').on('input', function (element) {
+              $('#new-collection-shards').prop('disabled', element.target.value !== '');
+              $('#new-replication-factor').prop('disabled', element.target.value !== '');
             });
           }
         }

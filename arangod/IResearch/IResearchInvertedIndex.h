@@ -27,63 +27,66 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexFactory.h"
-#include "IResearchCommon.h"
-#include "IResearchDataStore.h"
-#include "IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDataStore.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
+
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/score.hpp"
 #include "search/conjunction.hpp"
 #include "search/cost.hpp"
-#include <search/proxy_filter.hpp>
+#include "search/proxy_filter.hpp"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
+
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
-
-  virtual ~IResearchInvertedIndex() = default;
+  using IResearchDataStore::IResearchDataStore;
 
   void toVelocyPack(ArangodServer& server, TRI_vocbase_t const* defaultVocbase,
-                    velocypack::Builder& builder, bool forPersistence) const;
+                    velocypack::Builder& builder,
+                    bool writeAnalyzerDefinition) const;
+
+  decltype(auto) getDbName() const noexcept {
+    return index().collection().vocbase().name();
+  }
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
   Result init(VPackSlice definition, bool& pathExists,
               InitCallback const& initCallback = {});
 
-  static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
+  static std::vector<std::vector<basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);
-  static std::vector<std::vector<arangodb::basics::AttributeName>> sortedFields(
+  static std::vector<std::vector<basics::AttributeName>> sortedFields(
       IResearchInvertedIndexMeta const& meta);
 
-  bool matchesFieldsDefinition(VPackSlice other,
-                               LogicalCollection const& collection) const;
+  bool matchesDefinition(VPackSlice other, TRI_vocbase_t const& vocbase) const;
 
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const override;
 
-  bool inProgress() const { return false; }
-
-  bool covers(arangodb::aql::Projections& projections) const;
+  bool covers(aql::Projections& projections) const;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      LogicalCollection* collection, transaction::Methods* trx,
-      aql::AstNode const* node, aql::Variable const* reference,
-      IndexIteratorOptions const& opts, int mutableConditionIdx);
+      ResourceMonitor& monitor, LogicalCollection* collection,
+      transaction::Methods* trx, aql::AstNode const* node,
+      aql::Variable const* reference, IndexIteratorOptions const& opts,
+      int mutableConditionIdx);
 
   Index::SortCosts supportsSortCondition(
       aql::SortCondition const* sortCondition, aql::Variable const* reference,
       size_t itemsInIndex) const;
 
   Index::FilterCosts supportsFilterCondition(
-      IndexId id,
-      std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
+      transaction::Methods& trx, IndexId id,
+      std::vector<std::vector<basics::AttributeName>> const& fields,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const;
 
-  aql::AstNode* specializeCondition(aql::AstNode* node,
+  aql::AstNode* specializeCondition(transaction::Methods& trx,
+                                    aql::AstNode* node,
                                     aql::Variable const* reference) const;
 
   IResearchInvertedIndexMeta const& meta() const noexcept { return _meta; }
@@ -91,7 +94,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const* getComparator() const noexcept override {
+  irs::Comparer const* getComparator() const noexcept final {
     return &_comparer;
   }
 
@@ -100,91 +103,4 @@ class IResearchInvertedIndex : public IResearchDataStore {
   VPackComparer<IResearchInvertedIndexSort> _comparer;
 };
 
-class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
-                                      public Index {
- public:
-  Index::IndexType type() const override {
-    return Index::TRI_IDX_TYPE_INVERTED_INDEX;
-  }
-
-  void toVelocyPack(
-      VPackBuilder& builder,
-      std::underlying_type<Index::Serialize>::type flags) const override;
-
-  size_t memory() const override {
-    // FIXME return in memory size
-    // return stats().indexSize;
-    return 0;
-  }
-
-  bool isHidden() const override { return false; }
-
-  char const* typeName() const override { return oldtypeName(); }
-
-  bool canBeDropped() const override { return true; }
-
-  bool isSorted() const override { return IResearchInvertedIndex::isSorted(); }
-
-  bool hasSelectivityEstimate() const override { return false; }
-
-  bool inProgress() const override {
-    return IResearchInvertedIndex::inProgress();
-  }
-
-  bool covers(arangodb::aql::Projections& projections) const override {
-    return IResearchInvertedIndex::covers(projections);
-  }
-
-  Result drop() override { return {}; }
-  void load() override {}
-  void unload() override {}
-
-  bool matchesDefinition(
-      arangodb::velocypack::Slice const& other) const override;
-
-  std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, aql::AstNode const* node,
-      aql::Variable const* reference, IndexIteratorOptions const& opts,
-      ReadOwnWrites readOwnWrites, int mutableConditionIdx) override {
-    TRI_ASSERT(readOwnWrites ==
-               ReadOwnWrites::no);  // FIXME: check - should we ever care?
-    return IResearchInvertedIndex::iteratorForCondition(
-        &IResearchDataStore::collection(), trx, node, reference, opts,
-        mutableConditionIdx);
-  }
-
-  Index::SortCosts supportsSortCondition(
-      aql::SortCondition const* sortCondition, aql::Variable const* reference,
-      size_t itemsInIndex) const override {
-    return IResearchInvertedIndex::supportsSortCondition(
-        sortCondition, reference, itemsInIndex);
-  }
-
-  Index::FilterCosts supportsFilterCondition(
-      std::vector<std::shared_ptr<Index>> const& allIndexes,
-      aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override {
-    return IResearchInvertedIndex::supportsFilterCondition(
-        IResearchDataStore::id(), Index::fields(), allIndexes, node, reference,
-        itemsInIndex);
-  }
-
-  aql::AstNode* specializeCondition(
-      aql::AstNode* node, aql::Variable const* reference) const override {
-    return IResearchInvertedIndex::specializeCondition(node, reference);
-  }
-
-  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
-                                LogicalCollection& collection,
-                                std::string const& name)
-      : IResearchInvertedIndex(iid, collection),
-        Index(iid, collection, name, {}, false, true) {}
-
-  void initFields() {
-    TRI_ASSERT(_fields.empty());
-    *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
-        &_fields) = IResearchInvertedIndex::fields(meta());
-  }
-};
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

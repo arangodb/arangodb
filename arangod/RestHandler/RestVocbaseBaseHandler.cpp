@@ -30,6 +30,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
@@ -527,10 +528,7 @@ RevisionId RestVocbaseBaseHandler::extractRevision(char const* header,
       --e;
     }
 
-    RevisionId rid = RevisionId::none();
-
-    bool isOld;
-    rid = RevisionId::fromString(s, e - s, isOld, false);
+    RevisionId rid = RevisionId::fromString({s, static_cast<size_t>(e - s)});
     isValid = (rid.isSet() && rid != RevisionId::max());
 
     return rid;
@@ -555,18 +553,17 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
-    OperationOptions const& opOptions) const {
+    OperationOptions const& opOptions, transaction::Options&& trxOpts) const {
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
-    auto opts = transaction::Options();
     if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
-      opts.allowDirtyReads = true;
+      trxOpts.allowDirtyReads = true;
     }
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type,
-        opts);
+        std::move(trxOpts));
     if (!opOptions.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
@@ -685,7 +682,10 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
           "illegal to start a managed transaction here");
     }
     if (value.compare(pos, std::string::npos, " aql") == 0) {
-      return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+      auto aqlStandaloneContext =
+          std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+      aqlStandaloneContext->setStreaming();
+      return aqlStandaloneContext;
     } else if (value.compare(pos, std::string::npos, " begin") == 0) {
       // this means we lazily start a transaction
       std::string const& trxDef =
@@ -710,5 +710,6 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
                                        std::to_string(tid.id()) +
                                        "' not found");
   }
+  ctx->setStreaming();
   return ctx;
 }

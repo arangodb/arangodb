@@ -36,6 +36,7 @@
 #include "VocBase/LogicalView.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>

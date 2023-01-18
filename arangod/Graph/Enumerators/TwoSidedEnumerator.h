@@ -30,7 +30,6 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Transaction/Methods.h"
 
 #include <set>
 

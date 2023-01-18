@@ -25,7 +25,6 @@
 #include "VstCommTask.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -498,15 +497,14 @@ void VstCommTask<T>::doWrite() {
   asio_ns::async_write(
       this->_protocol->socket, buffers,
       withLogContext([self(CommTask::shared_from_this()), rsp(std::move(item))](
-                         asio_ns::error_code const& ec, size_t) {
+                         asio_ns::error_code const& ec, size_t nwrite) {
         DTraceVstCommTaskAfterAsyncWrite((size_t)self.get());
 
         auto& me = static_cast<VstCommTask<T>&>(*self);
         me._writing = false;
 
         rsp->stat.SET_WRITE_END();
-        rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() +
-                                 rsp->buffers[1].size());
+        rsp->stat.ADD_SENT_BYTES(nwrite);
         if (ec) {
           me.close(ec);
         } else {

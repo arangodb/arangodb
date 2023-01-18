@@ -72,6 +72,9 @@ class RocksDBOptionFeature final : public ArangodFeature,
   }
   uint32_t numThreadsHigh() const noexcept override { return _numThreadsHigh; }
   uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
+  uint64_t periodicCompactionTtl() const noexcept override {
+    return _periodicCompactionTtl;
+  }
 
  protected:
   rocksdb::Options doGetOptions() const override;
@@ -81,7 +84,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
-  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -102,6 +104,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -109,13 +112,17 @@ class RocksDBOptionFeature final : public ArangodFeature,
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  uint64_t _periodicCompactionTtl;
+  std::string _compressionType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
+  bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
+  bool _reserveFileMetadataMemory;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -135,7 +142,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
   bool _exclusiveWrites;
-
   bool _minWriteBufferNumberToMergeTouched;
 
   /// per column family write buffer limits

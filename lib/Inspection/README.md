@@ -112,7 +112,7 @@ completely transparent to inspectors. This can be achieved by writing the
 
 ```cpp
   template <class Inspector>
-  bool inspect(Inspector& f, Identifier& x) {
+  auto inspect(Inspector& f, Identifier& x) {
     return f.apply(x.id);
   }
 ```
@@ -122,11 +122,11 @@ completely transparent to inspectors. This can be achieved by writing the
 This is currently not implemented. Please let me know in case you need support
 for this.
 
-### Fallbacks and Invariants
+### Fallbacks, Invariants and custom Context
 
-For each field, we may provide a fallback value for optional fields or a
-predicate that checks invariants on the data (or both). For example, consider
-the following class and its implementation for `inspect`:
+For each field, we may provide a fallback value or fallback factory for optional
+fields, as well a predicate that checks invariants on the data. For example,
+consider the following class and its implementation for `inspect`:
 ```cpp
 struct LogTargetConfig {
   std::size_t writeConcern = 1;
@@ -148,19 +148,19 @@ auto inspect(Inspector& f, LogTargetConfig& x) {
 ```
 
 By default all attributes specified in the description have to be present when
-loading. If an attribute is not present but has a fallback value defined, then
-the field is instead set to the fallback value. Fallback values are taken by
-value, but as the example shows we can use `std::ref` to capture references.
-The attributes are processed in the same order they are specified.
-`writeConcern` is a mandatory attribute while `softWriteConcern` is optional,
-but if `softWriteConcern` is not specified explicitly, we want it to default
-to the exact same value as `writeConcern`. Since `writeConcern` is specified
-first, it is also processed first. For `softWriteConcern` we capture a reference
-to `writeConcern` as fallback, so when we process `softWriteConcern` and cannot
-find it, we take the fallback value from the already processed `writeConcern`.
-Alternatively one can use `Inspector::keep()` to indicate that we simply want to
-keep the current value of that field (see the fallback call for "waitForSync" in
-the example).
+loading. If an attribute is not present but has a fallback value (or factory)
+defined, then the field is instead initialized with the fallback. Fallback
+values are taken by value, but as the example shows we can use `std::ref` to
+capture references. The attributes are processed in the same order they are
+specified. `writeConcern` is a mandatory attribute while `softWriteConcern` is
+optional, but if `softWriteConcern` is not specified explicitly, we want it to
+default to the exact same value as `writeConcern`. Since `writeConcern` is
+specified first, it is also processed first. For `softWriteConcern` we capture
+a reference to `writeConcern` as fallback, so when we process `softWriteConcern`
+and cannot find it, we take the fallback value from the already processed
+`writeConcern`. Alternatively one can use `Inspector::keep()` to indicate that
+we simply want to keep the current value of that field (see the fallback call
+for "waitForSync" in the example).
 
 `writeConcern` and `softWriteConcern` must both be greater zero, which is
 verified by the provided invariant function. `invariant` takes some callable
@@ -177,6 +177,80 @@ object.
 
 Invariants are only checked when `isLoading` is true (see "Splitting Save and
 Load").
+
+If all you want to do is check the invariants for a manually filled struct
+there is the `ValidateInspector` that does just that. Since invariant are only
+checked when `isLoading` is true, this is also set for the `ValidateInspector`,
+even though it does _not_ modify the given object.
+
+Being able to define fallback values and invariants is fine, but sometimes those
+depend on some configuration that are not available in the `inspect` function.
+This is were custom contexts come in. Suppose we want `writeConcern` to default
+to some value that can be configured, e.g., via the command line. Then you can
+pass an object that contains your `defaultWriteConcern` to the constructor of
+the respective Inspector, which will store a reference to it. This reference is
+then available via `getContext` as shown in the following example which uses a
+`fallbackFactor` to initialize `writeConcern` (this is just so we also have an
+example of how to use `fallbackFactory`; `fallback` would work just as well):
+```cpp
+template<class Inspector>
+auto inspect(Inspector& f, LogTargetConfig& x) {
+  auto& context = f.getContext();
+  return f.object(x)
+      .fields(f.field("writeConcern", x.writeConcern).invariant(greaterZero)
+                  .fallbackFactory([&]() { return context.defaultWriteConcern; }),
+              f.field("softWriteConcern", x.softWriteConcern)
+                  .fallback(std::ref(x.writeConcern)).invariant(greaterZero),
+              f.field("waitForSync", x.waitForSync).fallback(f.keep()))
+      .invariant([](LogTargetConfig& c) { return c.writeConcern >= c.softWriteConcern});
+}
+```
+
+### Embedded fields
+
+In some cases we may want to "reuse" the inspect function of some type, e.g.,
+in case of inheritance. This can be achieved using "field embedding":
+```cpp
+struct Inner {
+  string s;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Inner& v) {
+  return f.object(v).fields(f.field("s", v.s));
+}
+
+struct Base {
+  int x;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Base& v) {
+  return f.object(v).fields(f.field("x", v.x));
+}
+
+struct Derived : Base {
+  int y;
+  Inner i;
+};
+template<class Inspector>
+auto inspect(Inspector& f, Derived& v) {
+  return f.object(v).fields(
+    f.embedFields(static_cast<Base&>(*this)),
+    f.field("y", v.y),
+    f.embedFields(v.i));
+}
+```
+Here the `inspect` function for `Derived` embeds the fields for `Base` and
+`Inner`, so we end up with an object description that looks like this:
+```
+  object(type: "Derived") {
+    field(name: "x")
+    field(name: "y")
+    field(name: "s")
+  }
+```
+A type that is used in `embedFields` must be inspected as an object, i.e., its
+inspect function must use `object(..).fields(...)`. If this requirement is not
+met the compiler should fail with a static_assert that points that out.
 
 ### Specializing `Access`
 
@@ -231,14 +305,18 @@ We previously saw how we can use `fallback` values for attributes that are not
 mandatory. As an alternative to fallback values one can use optional values.
 `std::optional`, `std::unique_ptr` and `std::shared_ptr` all qualify as optional
 values. That is, if no matching attribute is found, then the field is set to
-`std::monostate`/`nullptr`. Otherwise, a default constructed instance of the
+`std::nullopt`/`nullptr`. Otherwise, a default constructed instance of the
 wrapped type is created and inspected recursively.
 
 ### Variants
 
 Even though support for variants is built-in, the inspection library needs some
 additional information about the variant type. There is an API to describe
-variants - very similar to what we previously saw for objects.
+variants - very similar to what we previously saw for objects. There are
+different ways how a variant value can be encoded. There are inline types and
+non-inline types. The latter have a dedicated type indicator field while the
+first ones do not. Non-inline types can come in three different forms -
+"qualified", "unqualified" and "embedded".
 
 Consider the following example:
 ```cpp
@@ -248,24 +326,51 @@ template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).qualified("type", "value").alternatives(
-      insp::type<std::string>("string"),
+      insp::inlineType<std::string>(),
       insp::type<int>("int"),
       insp::type<Struct1>("Struct1"));
 }
 ```
-This serializes/deserializes the variant in "qualified form". At the moment
-there are two supported forms - "qualified" and "unqualified". In qualified
-form the variant is serialized as an object with two attributes as specified
-in the `qualified` call. For example:
+This serializes/deserializes the variant in "qualified form", where `string` is
+defined as an inline type, while `int` and `Struct1` are non-inline types.
+
+As already mentioned, inline types do not have a type indicator, but instead
+the values are just directly stored as-is. So writing inline types is very
+straightforward, but for parsing we somehow have to determine the type based
+on the data. Basically how this is done is that we simply try to parse each of
+the inline types (in the order in which they are specified). If the parse was
+successful, then that is the type and value that we use, otherwise we continue
+with the next type. So if you have two types `A` and `B` where `A` is a
+supertype of `B` (i.e., every possible value for `B` would also be a possible
+value for `A` - for example double/int), then `B` must be listed before `A`.
+
+Note: _any_ errors (including failed invariants) that occur while trying to
+parse inline types are _ignored_ and the type is dismissed!
+
+Inline types are primarily useful for scalar types like `string`, `int` or
+`bool`, but you can actually use it for arbitrary types. We try to be smart and
+rule out some cases that we know will fail to parse based on the velocypack
+type, e.g., if our target type is `string` and the velocypack type is something
+else. But if none of these checks fail, we simply have to try to parse into an
+instance of the current target type, so we have to create a default constructed
+instance.
+
+Inline types are always checked first (and therefore also _must_ be listed
+before the non-inline types, otherwise you will get a compiler error pointing
+this out). Only if none of those could be parsed we move on to the non-inline
+types.
+
+In "qualified" form the variant is serialized as an object with two attributes
+as specified in the `qualified` call. For example:
 ```
 {
-  "type": "string",
-  "value: "foobar"
+  "type": "int",
+  "value: 42
 }
 ```
-In unqualified form the variant is also serialized as an object but only uses
-a single attribute with the type name. Suppose we would write the `inspect`
-function as follows:
+In "unqualified" form the variant is also serialized as an object, but only
+uses a single attribute with the type name. Suppose we would write the
+`inspect` function as follows:
 ```cpp
 template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
@@ -282,6 +387,73 @@ Then the generated result would instead look like this:
   "string": "foobar"
 }
 ```
+The "embedded" form can only be used if all types (except for the inline types)
+in the variant are inspected as objects. In this form the type indicator field
+is then serialized on the same level as the object fields:
+```cpp
+struct Struct1 { int a; }:
+struct Struct2 { int b; }:
+using MyEmbeddedVariant = std::variant<Struct1, Struct2> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyEmbeddedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).embedded("type").alternatives(
+      insp::type<Struct1>("Struct1"),
+      insp::type<Struct2>("Struct2"));
+}
+```
+If we were to serialize a `Struct2{.a = 42}` this would generate the following
+result:
+```
+{
+  "type": "Struct1",
+  "a": 42
+}
+```
+
+### Enums
+
+There is a separate inspect API to define value mappings for enum types.
+```cpp
+
+enum class MyStringEnum {
+  kValue1,
+  kValue2,
+  kValue3 = kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyStringEnum& x) {
+  return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
+                                 MyStringEnum::kValue2, "value2");
+}
+```
+The call to values takes an arbitrary number of arguments, but is consumed
+pairwise where the first value is the enum value, and the second one that value
+that it is mapped to.
+
+Enum values can be mapped to strings or integers. It is also possible to map one
+enum value to multiple different strings and/or ints (i.e., you can mix the
+target types). For example:
+```cpp
+enum class MyMixedEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyMixedEnum& x) {
+  return f.enumeration(x).values(MyMixedEnum::kValue1, "value1",  //
+                                 MyMixedEnum::kValue1, 1,         //
+                                 MyMixedEnum::kValue2, "value2",  //
+                                 MyMixedEnum::kValue2, 2);
+}
+```
+In this case both enum values are mapped to both, a string and an integer value.
+This means we can load both, string and int values and map them do our enum.
+When saving, the _first_ mapping will be used, so in this example both values
+would be saved as a string.
 
 ### Transformers
 
@@ -335,7 +507,7 @@ custom functions:
 
 ```cpp
 template <class Inspector>
-bool inspect(Inspector& f, my_class& x) {
+auto inspect(Inspector& f, my_class& x) {
   if constexpr (Inspector::isLoading) {
     return load(f, x);
   } else {

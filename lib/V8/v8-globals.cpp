@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <tuple>
-
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"
@@ -41,108 +39,7 @@ TRI_v8_global_t::TRI_v8_global_t(
     arangodb::EncryptionFeature& encryption,
 #endif
     v8::Isolate* isolate, size_t id)
-    : AgencyTempl(),
-      AgentTempl(),
-      ClusterInfoTempl(),
-      ServerStateTempl(),
-      ClusterCommTempl(),
-      ArangoErrorTempl(),
-      VocbaseColTempl(),
-      VocbaseViewTempl(),
-      VocbaseReplicatedLogTempl(),
-      VocbaseTempl(),
-      EnvTempl(),
-      UsersTempl(),
-      GeneralGraphModuleTempl(),
-      GeneralGraphTempl(),
-#ifdef USE_ENTERPRISE
-      SmartGraphTempl(),
-#endif
-      BufferTempl(),
-      StreamQueryCursorTempl(),
-
-      BufferConstant(),
-      DeleteConstant(),
-      GetConstant(),
-      HeadConstant(),
-      OptionsConstant(),
-      PatchConstant(),
-      PostConstant(),
-      PutConstant(),
-
-      AddressKey(),
-      AllowDirtyReadsKey(),
-      AllowUseDatabaseKey(),
-      AuthorizedKey(),
-      BodyFromFileKey(),
-      BodyKey(),
-      ClientKey(),
-      CodeKey(),
-      ContentTypeKey(),
-      CoordTransactionIDKey(),
-      DatabaseKey(),
-      DomainKey(),
-      EndpointKey(),
-      ErrorKey(),
-      ErrorMessageKey(),
-      ErrorNumKey(),
-      HeadersKey(),
-      HttpOnlyKey(),
-      IdKey(),
-      IsAdminUser(),
-      InitTimeoutKey(),
-      IsRestoreKey(),
-      IsSystemKey(),
-      KeepNullKey(),
-      KeyOptionsKey(),
-      LengthKey(),
-      LifeTimeKey(),
-      MergeObjectsKey(),
-      NameKey(),
-      OperationIDKey(),
-      OverwriteKey(),
-      OverwriteModeKey(),
-      SkipDocumentValidationKey(),
-      ParametersKey(),
-      PathKey(),
-      PrefixKey(),
-      PortKey(),
-      PortTypeKey(),
-      ProtocolKey(),
-      RawSuffixKey(),
-      RequestBodyKey(),
-      RawRequestBodyKey(),
-      RequestTypeKey(),
-      ResponseCodeKey(),
-      ReturnNewKey(),
-      ReturnOldKey(),
-      SecureKey(),
-      ServerKey(),
-      ShardIDKey(),
-      SilentKey(),
-      SingleRequestKey(),
-      StatusKey(),
-      SuffixKey(),
-      TimeoutKey(),
-      ToJsonKey(),
-      TransformationsKey(),
-      UrlKey(),
-      UserKey(),
-      ValueKey(),
-      VersionKeyHidden(),
-      WaitForSyncKey(),
-
-      _DbCacheKey(),
-      _DbNameKey(),
-      _IdKey(),
-      _KeyKey(),
-      _RevKey(),
-      _FromKey(),
-      _ToKey(),
-
-      _currentRequest(),
-      _currentResponse(),
-      _transactionContext(nullptr),
+    : _transactionContext(nullptr),
       _expressionContext(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
@@ -193,6 +90,7 @@ TRI_v8_global_t::TRI_v8_global_t(
   ErrorKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "error"));
   ErrorMessageKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "errorMessage"));
   ErrorNumKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "errorNum"));
+  OriginalKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "original"));
   HeadersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "headers"));
   HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "httpOnly"));
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "id"));
@@ -222,10 +120,13 @@ TRI_v8_global_t::TRI_v8_global_t(
   PortKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "port"));
   PortTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "portType"));
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
-  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
-  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RawRequestBodyKey.Reset(isolate,
                           TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
+  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
+  RefillIndexCachesKey.Reset(
+      isolate, TRI_V8_ASCII_STD_STRING(
+                   isolate, arangodb::StaticStrings::RefillIndexCachesString));
+  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));
@@ -312,6 +213,84 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;
 
+v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
+                                    v8::Handle<v8::Value> val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
+
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, std::string_view key) {
+  return obj
+      ->Has(context, TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(false);
+}
+
+bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, v8::Local<v8::String> key) {
+  return obj->Has(context, key).FromMaybe(false);
+}
+
+bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+                              v8::Isolate* isolate, v8::Local<v8::Object> obj,
+                              v8::Local<v8::String> key) {
+  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
+}
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     std::string_view key) {
+  return obj
+      ->Get(context, TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(v8::Local<v8::Value>());
+}
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     v8::Local<v8::String> key) {
+  return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
+}
+
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, std::string_view key) {
+  return obj
+      ->Delete(context,
+               TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
+      .FromMaybe(false);
+}
+
+bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, v8::Local<v8::Value> key) {
+  return obj->Delete(context, key).FromMaybe(false);
+}
+
+v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
+                                   v8::Handle<v8::Value> val) {
+  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
+}
+
+v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context>& context,
+                                         v8::Handle<v8::Value> val) {
+  return val->ToString(context).FromMaybe(v8::Local<v8::String>());
+}
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate,
+                               v8::MaybeLocal<v8::Value> val) {
+  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())
+                                       ->ToString(context)
+                                       .FromMaybe(v8::Local<v8::String>()));
+  return std::string(*x, x.length());
+}
+
+std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+                               v8::Isolate* isolate,
+                               v8::Local<v8::String> val) {
+  v8::String::Utf8Value x(isolate, val);
+  return std::string(*x, x.length());
+}
+
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
@@ -321,7 +300,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
 }
 
 /// @brief adds a method to an object
-bool TRI_AddMethodVocbase(
+void TRI_AddMethodVocbase(
     v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&), bool isHidden) {
@@ -332,7 +311,6 @@ bool TRI_AddMethodVocbase(
     // normal method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
-  return true;
 }
 
 /// @brief adds a global function to the given context

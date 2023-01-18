@@ -23,14 +23,15 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "Basics/Common.h"
 
+#include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Network/NetworkFeature.h"
 #include "Metrics/Fwd.h"
 
 namespace arangodb {
@@ -41,9 +42,14 @@ class DatabaseFeaturePhase;
 namespace metrics {
 class MetricsFeature;
 }
+namespace network {
+class ConnectionPool;
+}
 
 class AgencyCache;
+class AgencyCallback;
 class AgencyCallbackRegistry;
+class ClusterInfo;
 class DatabaseFeature;
 class HeartbeatThread;
 
@@ -164,9 +170,7 @@ class ClusterFeature : public ArangodFeature {
   bool isDirty(std::string const& database) const;
 
   /// @brief hand out async agency comm connection pool pruning:
-  void pruneAsyncAgencyConnectionPool() {
-    _asyncAgencyCommPool->pruneConnections();
-  }
+  void pruneAsyncAgencyConnectionPool();
 
   /// the following methods may also be called from tests
 

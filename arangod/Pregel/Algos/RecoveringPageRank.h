@@ -34,9 +34,8 @@ namespace algos {
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
   explicit RecoveringPageRank(application_features::ApplicationServer& server,
                               arangodb::velocypack::Slice params)
-      : SimpleAlgorithm(server, "PageRank", params) {}
+      : SimpleAlgorithm(server, "pagerank", params) {}
 
-  bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   GraphFormat<float, float>* inputFormat() const override {

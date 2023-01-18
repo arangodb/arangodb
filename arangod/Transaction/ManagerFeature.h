@@ -23,15 +23,13 @@
 
 #pragma once
 
-#include "Basics/debugging.h"
 #include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 #include "RestServer/arangod.h"
 
 #include <mutex>
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 class Manager;
 
@@ -52,14 +50,14 @@ class ManagerFeature final : public ArangodFeature {
   void beginShutdown() override;
   void unprepare() override;
 
-  double streamingLockTimeout() const { return _streamingLockTimeout; }
+  double streamingLockTimeout() const noexcept { return _streamingLockTimeout; }
 
-  double streamingIdleTimeout() const { return _streamingIdleTimeout; }
+  double streamingIdleTimeout() const noexcept { return _streamingIdleTimeout; }
 
   static transaction::Manager* manager() noexcept { return MANAGER.get(); }
 
-  /// @brief track number of aborted managed transaction
-  void trackExpired(uint64_t numExpired);
+  /// @brief track number of aborted managed transactions
+  void trackExpired(uint64_t numExpired) noexcept;
 
  private:
   void queueGarbageCollection();
@@ -86,5 +84,4 @@ class ManagerFeature final : public ArangodFeature {
   metrics::Counter& _numExpiredTransactions;
 };
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

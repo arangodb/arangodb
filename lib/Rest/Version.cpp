@@ -139,12 +139,11 @@ void Version::initialize() {
 
   Values["architecture"] =
       (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   Values["arm"] = "true";
 #else
   Values["arm"] = "false";
 #endif
-  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();

@@ -31,6 +31,7 @@
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 
 #include <algorithm>

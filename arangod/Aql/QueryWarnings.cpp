@@ -23,6 +23,7 @@
 
 #include "QueryWarnings.h"
 
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
@@ -36,19 +37,18 @@ QueryWarnings::QueryWarnings()
     : _maxWarningCount(std::numeric_limits<size_t>::max()),
       _failOnWarning(false) {}
 
-/// @brief register an error
-/// this also makes the query abort
+// register an error
+// this also makes the query abort
 void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (details.data() == nullptr) {
+  if (details.empty()) {
     THROW_ARANGO_EXCEPTION(code);
   }
-
   THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
-/// @brief register a warning
+// register a warning
 void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
@@ -56,9 +56,6 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
 
   if (_failOnWarning) {
     // make an error from each warning if requested
-    if (details.data() == nullptr) {
-      THROW_ARANGO_EXCEPTION(code);
-    }
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
@@ -66,7 +63,7 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
     return;
   }
 
-  if (details.data() == nullptr) {
+  if (details.empty()) {
     _list.emplace_back(code, TRI_errno_string(code));
   } else {
     _list.emplace_back(code, details);
@@ -102,11 +99,4 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
 std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   std::lock_guard<std::mutex> guard(_mutex);
   return _list;
-}
-
-std::string QueryWarnings::buildFormattedString(ErrorCode code,
-                                                std::string_view details) {
-  // std::string_view is not necessarily NUL-terminated
-  std::string temp(details);
-  return arangodb::basics::Exception::FillExceptionString(code, temp.c_str());
 }

@@ -160,6 +160,17 @@ auto Result::errorMessage() && noexcept -> std::string {
   }
 }
 
+bool Result::operator==(const Result& other) const {
+  if (ok() && other.ok()) {
+    return true;
+  }
+  if (errorMessage() == other.errorMessage() &&
+      errorNumber() == other.errorNumber()) {
+    return true;
+  }
+  return false;
+}
+
 auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result)
     -> std::ostream& {
   VPackBuilder dump;

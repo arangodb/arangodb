@@ -35,12 +35,14 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -123,7 +125,10 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature,
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
       _followingTermId(0),
-      _tailingUpperBoundTick(0) {
+      _tailingUpperBoundTick(0),
+      _initialDocCountOnLeader(0),
+      _initialDocCountOnFollower(0),
+      _docCountAtEnd(0) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -231,7 +236,8 @@ static arangodb::Result addShardFollower(
     network::ConnectionPool* pool, std::string const& endpoint,
     std::string const& database, std::string const& shard, uint64_t lockJobId,
     std::string const& clientId, SyncerId const syncerId,
-    std::string const& clientInfoString, double timeout = 120.0) {
+    std::string const& clientInfoString, double timeout,
+    uint64_t& docCountAtEnd) {
   if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
@@ -262,6 +268,8 @@ static arangodb::Result addShardFollower(
     if (res.fail()) {
       return res;
     }
+
+    docCountAtEnd = docCount;
 
     VPackBuilder body;
     {
@@ -693,6 +701,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
+  TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
@@ -707,39 +717,6 @@ bool SynchronizeShard::first() {
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;
 
-  if (failuresInRow >= MaintenanceFeature::maxReplicationErrorsPerShard) {
-    auto& df = _feature.server().getFeature<DatabaseFeature>();
-    DatabaseGuard guard(df, database);
-    auto vocbase = &guard.database();
-
-    auto collection = vocbase->lookupCollection(shard);
-    if (collection != nullptr) {
-      LOG_TOPIC("7a2cf", WARN, Logger::MAINTENANCE)
-          << "SynchronizeShard: synchronizing shard '" << database << "/"
-          << shard << "' for central '" << database << "/" << planId
-          << "' encountered " << failuresInRow
-          << " failures in a row. now dropping follower shard for "
-          << "a full rebuild";
-
-      // remove these failure points for testing
-      TRI_RemoveFailurePointDebugging("SynchronizeShard::wrongChecksum");
-      TRI_RemoveFailurePointDebugging("disableCountAdjustment");
-
-      // remove all recorded failures, so in next run we can start with a clean
-      // state
-      _feature.removeReplicationError(getDatabase(), getShard());
-
-      ++_feature.server()
-            .getFeature<ClusterFeature>()
-            .followersTotalRebuildCounter();
-
-      // drop shard (💥)
-      methods::Collections::drop(*collection, false, 3.0);
-      result(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
-      return false;
-    }
-  }
-
   if (failuresInRow >= delayThreshold) {
     // shard synchronization has failed several times in a row.
     // now step on the brake a bit. this blocks our maintenance thread, but
@@ -747,6 +724,7 @@ bool SynchronizeShard::first() {
     // maintenance tasks.
     double sleepTime = 2.0 + 0.1 * (failuresInRow * (failuresInRow + 1) / 2);
 
+    // cap sleep time to 15 seconds
     sleepTime = std::min<double>(sleepTime, 15.0);
 
     LOG_TOPIC("40376", INFO, Logger::MAINTENANCE)
@@ -904,6 +882,8 @@ bool SynchronizeShard::first() {
       return false;
     }
 
+    _initialDocCountOnLeader = docCountOnLeader;
+
     uint64_t docCount = 0;
     if (Result res = collectionCount(*collection, docCount); res.fail()) {
       std::stringstream error;
@@ -914,6 +894,8 @@ bool SynchronizeShard::first() {
       result(res.errorNumber(), error.str());
       return false;
     }
+
+    _initialDocCountOnFollower = docCount;
 
     if (_priority != maintenance::SLOW_OP_PRIORITY &&
         docCount != docCountOnLeader &&
@@ -1369,8 +1351,9 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  res = addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId,
-                         clientId, syncerId, _clientInfoString, 60.0);
+  res =
+      addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
+                       syncerId, _clientInfoString, 60.0, _docCountAtEnd);
 
   TRI_IF_FAILURE("SynchronizeShard::wrongChecksum") {
     res.reset(TRI_ERROR_REPLICATION_WRONG_CHECKSUM);
@@ -1504,7 +1487,11 @@ void SynchronizeShard::setState(ActionState state) {
     if (COMPLETE == state) {
       LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
           << "SynchronizeShard: synchronization completed for shard "
-          << getDatabase() << "/" << getShard();
+          << getDatabase() << "/" << getShard()
+          << ", initial document count on leader: " << _initialDocCountOnLeader
+          << ", initial document count on follower: "
+          << _initialDocCountOnFollower
+          << ", document count at end: " << _docCountAtEnd;
 
       // because we succeeded now, we can wipe out all past failures
       _feature.removeReplicationError(getDatabase(), getShard());

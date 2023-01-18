@@ -31,7 +31,7 @@
 
 /// @brief condition variable
 struct TRI_condition_t {
-  CRITICAL_SECTION _lockWaiters;
+  SRWLOCK _lockWaiters;
   CONDITION_VARIABLE _conditionVariable;
 };
 

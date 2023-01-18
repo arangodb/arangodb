@@ -732,27 +732,6 @@ std::string toupper(std::string_view str) {
 
 void toupperInPlace(std::string& str) { StringUtils::toupper(str, str); }
 
-bool isPrefix(std::string_view str, std::string_view prefix) {
-  if (prefix.length() > str.length()) {
-    return false;
-  } else if (prefix.length() == str.length()) {
-    return str == prefix;
-  } else {
-    return str.compare(0, prefix.length(), prefix) == 0;
-  }
-}
-
-bool isSuffix(std::string_view str, std::string_view postfix) {
-  if (postfix.length() > str.length()) {
-    return false;
-  } else if (postfix.length() == str.length()) {
-    return str == postfix;
-  } else {
-    return str.compare(str.size() - postfix.length(), postfix.length(),
-                       postfix) == 0;
-  }
-}
-
 std::string urlDecodePath(std::string_view str) {
   std::string result;
   // reserve enough room so we do not need to re-alloc
@@ -1504,6 +1483,23 @@ uint64_t uint64(char const* value, size_t size) noexcept {
 
 uint64_t uint64(std::string_view value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
+}
+
+ResultT<uint64_t> try_uint64(char const* value, size_t size) noexcept {
+  uint64_t result = 0;
+  auto [ptr, ec] = std::from_chars(value, value + size, result, 10);
+  if (ec == std::errc()) {
+    if (ptr != value + size) {
+      return ResultT<uint64_t>::error(TRI_ERROR_ILLEGAL_NUMBER);
+    }
+    return ResultT<uint64_t>::success(result);
+  }
+  return ResultT<uint64_t>::error(TRI_ERROR_ILLEGAL_NUMBER,
+                                  make_error_condition(ec).message());
+}
+
+ResultT<uint64_t> try_uint64(std::string_view value) noexcept {
+  return StringUtils::try_uint64(value.data(), value.size());
 }
 
 uint64_t uint64_trusted(char const* value, size_t length) noexcept {

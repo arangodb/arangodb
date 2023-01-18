@@ -101,6 +101,8 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   connectToLeader();
   leaderFunc2(state);
 
+  internal.wal.flush(true, false);
+
   // use lastLogTick as of now
   state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
@@ -783,6 +785,74 @@ function BaseTestConfig () {
         }
       );
     },
+    
+    testSearchAliasWithLinks: function () {
+      connectToLeader();
+      const idxName = "inverted_idx";
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {
+            indexes: [
+              {
+                collection: cn,
+                index: idxName,
+              }
+            ]
+          });
+          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+        },
+        function () { },
+        function () { },
+        function (state) {
+          let view = db._view('UnitTestsSyncSearchAlias');
+          assertNotNull(view);
+          assertEqual("search-alias", view.type());
+          let props = view.properties();
+          assertEqual(1, props.indexes.length);
+          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+        },
+        {}
+      );
+    },
+    
+    testSearchAliasWithLinksAddedLater: function () {
+      connectToLeader();
+      const idxName = "inverted_idx";
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
+          assertEqual([], view.properties().indexes);
+        },
+        function () { 
+          let view = db._view('UnitTestsSyncSearchAlias');
+          view.properties({
+            indexes: [
+              {
+                collection: cn,
+                index: idxName,
+              }
+            ]
+          });
+          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+        },
+        function () { },
+        function (state) {
+          let view = db._view('UnitTestsSyncSearchAlias');
+          assertNotNull(view);
+          assertEqual("search-alias", view.type());
+          let props = view.properties();
+          assertEqual(1, props.indexes.length);
+          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+        },
+        {}
+      );
+    },
 
     testViewBasic: function () {
       connectToLeader();
@@ -790,28 +860,21 @@ function BaseTestConfig () {
       compare(
         function () {},
         function (state) {
-          try {
-            db._create(cn);
-            let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
-            let links = {};
-            links[cn] = {
-              includeAllFields: true,
-              fields: {
-                text: { analyzers: [ 'text_en' ] }
-              }
-            };
-            view.properties({
-              'links': links
-            });
-            state.arangoSearchEnabled = true;
-          } catch (err) { }
+          db._create(cn);
+          let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+              text: { analyzers: [ 'text_en' ] }
+            }
+          };
+          view.properties({
+            'links': links
+          });
         },
         function () {},
         function (state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-
           let view = db._view('UnitTestsSyncView');
           assertTrue(view !== null);
           let props = view.properties();
@@ -822,33 +885,85 @@ function BaseTestConfig () {
         {}
       );
     },
+    
+    testViewCreateWithLinks: function () {
+      connectToLeader();
+
+      compare(
+        function () { },
+        function (state) {
+          db._create(cn);
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+              text: { analyzers: ['text_en'] }
+            }
+          };
+          db._createView('UnitTestsSyncView', 'arangosearch', { 'links': links });
+        },
+        function () { },
+        function (state) {
+          let view = db._view('UnitTestsSyncView');
+          assertNotNull(view);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty('links'));
+          assertTrue(props.links.hasOwnProperty(cn));
+        },
+        {}
+      );
+    },
+    
+    testViewWithUpdateLater: function () {
+      connectToLeader();
+
+      compare(
+        function () {
+          db._create(cn);
+          let view = db._createView("UnitTestsSyncView", "arangosearch", {});
+          assertNotNull(view);
+        },
+        function (state) {
+          let view = db._view('UnitTestsSyncView');
+          assertNotNull(view);
+          view.properties({
+            "consolidationIntervalMsec": 42
+          });
+          assertEqual(42, view.properties().consolidationIntervalMsec);
+        },
+        function () { },
+        function (state) {
+          let view = db._view("UnitTestsSyncView");
+          assertNotNull(view);
+          assertEqual("arangosearch", view.type());
+          let props = view.properties();
+          assertEqual(props.consolidationIntervalMsec, 42);
+        },
+        {}
+      );
+    },
 
     testViewRename: function () {
       connectToLeader();
 
       compare(
         function (state) {
-          try {
-            db._create(cn);
-            let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
-            let links = {};
-            links[cn] = {
-              includeAllFields: true,
-              fields: {
-                text: {
-                  analyzers: [ 'text_en' ] }
-              }
-            };
-            view.properties({
-              'links': links
-            });
-            state.arangoSearchEnabled = true;
-          } catch (err) { }
+          db._create(cn);
+          let view = db._createView('UnitTestsSyncView', 'arangosearch', {});
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+              text: {
+                analyzers: [ 'text_en' ] }
+            }
+          };
+          view.properties({
+            'links': links
+          });
         },
         function (state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
           // rename view on leader
           let view = db._view('UnitTestsSyncView');
           view.rename('UnitTestsSyncViewRenamed');
@@ -861,10 +976,6 @@ function BaseTestConfig () {
         },
         function (state) {},
         function (state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-
           let view = db._view('UnitTestsSyncViewRenamed');
           assertTrue(view !== null);
           let props = view.properties();
@@ -881,25 +992,15 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
-          try {
-            db._createView('UnitTestsSyncView', 'arangosearch', {});
-            state.arangoSearchEnabled = true;
-          } catch (err) { }
+          db._createView('UnitTestsSyncView', 'arangosearch', {});
         },
         function (state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
           // drop view on leader
           let view = db._view('UnitTestsSyncView');
           view.drop();
         },
         function (state) {},
         function (state) {
-          if (!state.arangoSearchEnabled) {
-            return;
-          }
-
           let view = db._view('UnitTestsSyncView');
           let x = 10;
           while (view && x-- > 0) {
@@ -950,6 +1051,7 @@ function ReplicationSuite () {
       connectToLeader();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._drop(cn);
       db._drop(cn2);
@@ -959,6 +1061,7 @@ function ReplicationSuite () {
       replication.globalApplier.forget();
 
       db._dropView('UnitTestsSyncView');
+      db._dropView('UnitTestsSyncSearchAlias');
       db._dropView('UnitTestsSyncViewRenamed');
       db._drop(cn);
       db._drop(cn2);

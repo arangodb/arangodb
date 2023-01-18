@@ -24,26 +24,23 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var analyzers = require("@arangodb/analyzers");
-var ERRORS = require("@arangodb").errors;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const analyzers = require("@arangodb/analyzers");
+const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-const {getRawMetric, getEndpointsByType} = require("@arangodb/test-helper");
+const {checkIndexMetrics} = require("@arangodb/test-helper-common");
+const {
+  triggerMetrics,
+  debugSetFailAt,
+  debugRemoveFailAt,
+  getEndpointById,
+  getCoordinators,
+} = require('@arangodb/test-helper');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
-
-let triggerMetrics = function () {
-  let coordinators = getEndpointsByType("coordinator");
-  getRawMetric(coordinators[0], '?mode=write_global');
-  for (let i = 1; i < coordinators.length; i++) {
-    let c = coordinators[i];
-    getRawMetric(c, '?mode=trigger_global');
-  }
-  require('internal').sleep(1);
-};
 
 function IResearchFeatureDDLTestSuite() {
   return {
@@ -60,14 +57,17 @@ function IResearchFeatureDDLTestSuite() {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
-      db._dropDatabase("TestDB");
+      try {
+        db._dropDatabase("TestDB");
+      } catch (_) {
+      }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchFeatureDDLTestSuite tests
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief IResearchFeatureDDLTestSuite tests
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testStressAddRemoveView : function() {
+    testStressAddRemoveView: function () {
       db._dropView("TestView");
       for (let i = 0; i < 100; ++i) {
         db._createView("TestView", "arangosearch", {});
@@ -77,14 +77,48 @@ function IResearchFeatureDDLTestSuite() {
       }
     },
 
-    testStressAddRemoveViewWithDirectLinks : function() {
+    testViewIsBuilding: function () {
+      if (isServer) {
+        debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
+      }
+      db._drop("TestCollection0");
+      db._drop("TestCollection1");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      db._create("TestCollection1");
+
+      db._createView("TestView", "arangosearch", {
+        links: {
+          "TestCollection0": {includeAllFields: true},
+          "TestCollection1": {includeAllFields: true},
+        }
+      });
+      let r = db._query("FOR d IN TestView SEARCH 1 == 1 RETURN d");
+      assertEqual(r.getExtra().warnings, [{
+        "code": 1240,
+        "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
+      }]);
+      if (isServer) {
+        debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
+      } else {
+        for (const server of getCoordinators()) {
+          debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
+        }
+      }
+    },
+
+    testStressAddRemoveViewWithDirectLinks: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db._createView("TestView", "arangosearch", {links:{"TestCollection0":{ includeAllFields:true}}});
+        db.TestCollection0.save({name: i.toString()});
+        db._createView("TestView", "arangosearch", {links: {"TestCollection0": {includeAllFields: true}}});
         var view = db._view("TestView");
         assertTrue(null != view);
         assertEqual(Object.keys(view.properties().links).length, 1);
@@ -93,15 +127,15 @@ function IResearchFeatureDDLTestSuite() {
       }
     },
 
-    testStressAddRemoveViewWithLink : function() {
+    testStressAddRemoveViewWithLink: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
 
-      var addLink = { links: { "TestCollection0": { includeAllFields:true} } };
+      var addLink = { links: { "TestCollection0": { includeAllFields: true } } };
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
+        db.TestCollection0.save({ name: i.toString() });
         var view = db._createView("TestView", "arangosearch", {});
         view.properties(addLink, true); // partial update
         let properties = view.properties();
@@ -122,17 +156,17 @@ function IResearchFeatureDDLTestSuite() {
       }
     },
 
-    testStressAddRemoveLink : function() {
+    testStressAddRemoveLink: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
       db._create("TestCollection0");
       var view = db._createView("TestView", "arangosearch", {});
 
-      var addLink = { links: { "TestCollection0": { includeAllFields:true} } };
+      var addLink = { links: { "TestCollection0": { includeAllFields: true } } };
       var removeLink = { links: { "TestCollection0": null } };
 
       for (let i = 0; i < 100; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
+        db.TestCollection0.save({ name: i.toString() });
         view.properties(addLink, true); // partial update
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
@@ -151,13 +185,13 @@ function IResearchFeatureDDLTestSuite() {
       }
     },
 
-    testRemoveLinkViaCollection : function() {
+    testRemoveLinkViaCollection: function () {
       db._drop("TestCollection0");
       db._dropView("TestView");
 
       var view = db._createView("TestView", "arangosearch", {});
       db._create("TestCollection0");
-      db.TestCollection0.save({ name : 'foo' });
+      db.TestCollection0.save({ name: 'foo' });
       var addLink = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(addLink, true); // partial update
       let properties = view.properties();
@@ -169,7 +203,7 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(0, Object.keys(properties.links).length);
     },
 
-    testAddDuplicateAnalyzers : function() {
+    testAddDuplicateAnalyzers: function () {
       db._useDatabase("_system");
       try {
         db._dropDatabase("TestDuplicateDB");
@@ -189,16 +223,16 @@ function IResearchFeatureDDLTestSuite() {
       var view = db._createView("TestView", "arangosearch",
         {
           links:
+          {
+            "TestCollection0":
             {
-              "TestCollection0":
-                {
-                  includeAllFields: true, analyzers:
-                    ["identity", "identity",
-                      "TestDuplicateDB::myIdentity", "myIdentity",
-                      "::myIdentity", "_system::myIdentity"
-                    ]
-                }
+              includeAllFields: true, analyzers:
+                ["identity", "identity",
+                  "TestDuplicateDB::myIdentity", "myIdentity",
+                  "::myIdentity", "_system::myIdentity"
+                ]
             }
+          }
         }
       );
       var properties = view.properties();
@@ -223,7 +257,7 @@ function IResearchFeatureDDLTestSuite() {
       analyzers.remove("myIdentity", true);
     },
 
-    testViewDDL: function() {
+    testViewDDL: function () {
       // collections
       db._drop("TestCollection0");
       db._drop("TestCollection1");
@@ -235,28 +269,28 @@ function IResearchFeatureDDLTestSuite() {
       var view = db._createView("TestView", "arangosearch", {});
 
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        db.TestCollection0.save({ name: i.toString() });
+        db.TestCollection1.save({ name: i.toString() });
+        db.TestCollection2.save({ name: i.toString() });
       }
 
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
 
-      var meta = { links: { "TestCollection0": { includeAllFields:true } } };
+      var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(1, Object.keys(properties.links).length);
 
-      meta = { links: { "TestCollection1": { includeAllFields:true } } };
+      meta = { links: { "TestCollection1": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(2, Object.keys(properties.links).length);
 
-      meta = { links: { "TestCollection2": { includeAllFields:true } } };
+      meta = { links: { "TestCollection2": { includeAllFields: true } } };
       view.properties(meta, false); // full update
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -283,8 +317,8 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {
@@ -319,7 +353,7 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual((0.75).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
     },
 
-    testLinkDDL: function() {
+    testLinkDDL: function () {
       db._drop("TestCollection0");
       db._drop("TestCollection1");
       db._drop("TestCollection2");
@@ -330,21 +364,30 @@ function IResearchFeatureDDLTestSuite() {
       var view = db._createView("TestView", "arangosearch", {});
 
       for (var i = 0; i < 1000; ++i) {
-        db.TestCollection0.save({ name : i.toString() });
-        db.TestCollection1.save({ name : i.toString() });
-        db.TestCollection2.save({ name : i.toString() });
+        db.TestCollection0.save({ name: i.toString() });
+        db.TestCollection1.save({ name: i.toString() });
+        db.TestCollection2.save({ name: i.toString() });
       }
 
-      var meta = { links: {
-        "TestCollection0": { },
-        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
-        "TestCollection2": { fields: {
-          "b": { fields: { "b1": {} } },
-          "c": { includeAllFields: true },
-          "d": { trackListPositions: true, storeValues: "id" },
-          "e": { analyzers: [ "text_de"] }
-        } }
-      } };
+      var meta = {
+        links: {
+          "TestCollection0": {},
+          "TestCollection1": {
+            analyzers: ["text_en"],
+            includeAllFields: true,
+            trackListPositions: true,
+            storeValues: "value"
+          },
+          "TestCollection2": {
+            fields: {
+              "b": { fields: { "b1": {} } },
+              "c": { includeAllFields: true },
+              "d": { trackListPositions: true, storeValues: "id" },
+              "e": { analyzers: ["text_de"] }
+            }
+          }
+        }
+      };
       view.properties(meta, true); // partial update
       var properties = view.properties();
       assertTrue(Object === properties.links.constructor);
@@ -483,7 +526,7 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("identity", properties.links.TestCollection1.analyzers[0]);
     },
 
-    testViewCreate: function() {
+    testViewCreate: function () {
       // 1 empty collection
       db._dropView("TestView");
       db._drop("TestCollection0");
@@ -535,10 +578,12 @@ function IResearchFeatureDDLTestSuite() {
       col1.save({ name: "other half", text: "the brown jumps the dog" });
       col1.save({ name: "quarter", text: "quick over" });
 
-      meta = { links: {
-        "TestCollection0": { includeAllFields: true },
-        "TestCollection1": { includeAllFields: true }
-      } };
+      meta = {
+        links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true }
+        }
+      };
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -563,11 +608,13 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name: "other half", text: "the brown jumps the dog" });
       col0.save({ name: "quarter", text: "quick over" });
 
-      meta = { links: {
-        "TestCollection0": { includeAllFields: true },
-        "TestCollection1": { includeAllFields: true },
-        "TestCollection2": { includeAllFields: true }
-      } };
+      meta = {
+        links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
+          "TestCollection2": { includeAllFields: true }
+        }
+      };
       view.properties(meta, true); // partial update
 
       result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
@@ -578,19 +625,19 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("quarter", result[3].name);
     },
 
-    testViewCreateDuplicate: function() {
+    testViewCreateDuplicate: function () {
       db._dropView("TestView");
       var view = db._createView("TestView", "arangosearch", {});
 
       try {
         db._createView("TestView", "arangosearch", {});
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, e.errorNum);
       }
     },
 
-    testViewModify: function() {
+    testViewModify: function () {
       // 1 empty collection
       db._dropView("TestView");
       db._drop("TestCollection0");
@@ -673,10 +720,12 @@ function IResearchFeatureDDLTestSuite() {
       col1.save({ name: "other half", text: "the brown jumps the dog" });
       col1.save({ name: "quarter", text: "quick over" });
 
-      meta = { links: {
-        "TestCollection0": { includeAllFields: true },
-        "TestCollection1": { includeAllFields: true }
-      } };
+      meta = {
+        links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true }
+        }
+      };
       view.properties(meta, true); // partial update
 
       meta = {
@@ -716,11 +765,13 @@ function IResearchFeatureDDLTestSuite() {
       col0.save({ name: "other half", text: "the brown jumps the dog" });
       col0.save({ name: "quarter", text: "quick over" });
 
-      meta = { links: {
-        "TestCollection0": { includeAllFields: true },
-        "TestCollection1": { includeAllFields: true },
-        "TestCollection2": { includeAllFields: true }
-      } };
+      meta = {
+        links: {
+          "TestCollection0": { includeAllFields: true },
+          "TestCollection1": { includeAllFields: true },
+          "TestCollection2": { includeAllFields: true }
+        }
+      };
       view.properties(meta, true); // partial update
 
       meta = {
@@ -759,14 +810,14 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },
 
-    testViewModifyImmutableProperties: function() {
+    testViewModifyImmutableProperties: function () {
       db._dropView("TestView");
 
       var view = db._createView("TestView", "arangosearch", {
@@ -777,8 +828,8 @@ function IResearchFeatureDDLTestSuite() {
         version: 1,
         primarySortCompression: "none",
         primarySort: [
-          {field: "my.Nested.field", direction: "asc"},
-          {field: "another.field", asc: false}
+          { field: "my.Nested.field", direction: "asc" },
+          { field: "another.field", asc: false }
         ],
         "cleanupIntervalStep": 42,
         "commitIntervalMsec": 12345
@@ -806,8 +857,8 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       view.properties({
@@ -816,7 +867,7 @@ function IResearchFeatureDDLTestSuite() {
         writebufferSizeMax: 414040192,
         locale: "en_EN.UTF-8",
         version: 2,
-        primarySort: [{field: "field", asc: false}],
+        primarySort: [{ field: "field", asc: false }],
         primarySortCompression: "lz4",
         "cleanupIntervalStep": 442
       }, false); // full update
@@ -844,12 +895,12 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
       assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
     },
 
-    testLinkModify: function() {
+    testLinkModify: function () {
       db._dropView("TestView");
       db._drop("TestCollection0");
       var col0 = db._create("TestCollection0");
@@ -889,7 +940,7 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(2, result[1].z);
     },
 
-    testLinkSharingBetweenViews: function() {
+    testLinkSharingBetweenViews: function () {
       db._dropView("TestView1");
       db._dropView("TestView2");
       db._drop("TestCollection0");
@@ -922,7 +973,7 @@ function IResearchFeatureDDLTestSuite() {
       result = (db._query("RETURN APPEND(FOR doc IN TestView1 SEARCH doc.z < 2 OPTIONS { waitForSync: true } SORT doc.z RETURN doc, FOR doc IN TestView2 SEARCH doc.z > 1 OPTIONS { waitForSync: true } SORT doc.z RETURN doc)").toArray())[0];
 
       assertEqual(4, result.length);
-      result.forEach(function(r, i) {
+      result.forEach(function (r, i) {
         assertEqual(i, r.z);
       });
     },
@@ -930,10 +981,7 @@ function IResearchFeatureDDLTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test link on analyzers collection
     ////////////////////////////////////////////////////////////////////////////////
-    testIndexStats : function() {
-      if (isServer) {
-        return;
-      }
+    testIndexStats: function () {
       const arango = require("@arangodb").arango;
       const colName = 'TestCollection';
       const viewName = 'TestView';
@@ -949,66 +997,90 @@ function IResearchFeatureDDLTestSuite() {
       });
       view.properties({ links: { [colName]: { includeAllFields: true } } });
 
+      const idx = col.ensureIndex({
+        name: "TestIndex",
+        type: "inverted",
+        includeAllFields: true,
+        commitIntervalMsec: 1,
+        consolidationIntervalMsec: 0, // disable consolidation
+        cleanupIntervalStep: 0        // disable cleanup
+      });
+
+      const types = ["arangosearch", "inverted"];
+
       triggerMetrics();
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(1, figures.numFiles);
-        assertEqual(0, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(6, Object.keys(figures).length);
+          assertEqual(0, figures.indexSize);
+          assertEqual(0, figures.numDocs);
+          assertEqual(0, figures.numLiveDocs);
+          assertEqual(0, figures.numPrimaryDocs);
+          assertEqual(1, figures.numFiles);
+          assertEqual(0, figures.numSegments);
+        }
+      });
 
       // insert documents
-      col.save({ foo: 'bar' });
-      col.save({ foo: 'baz' });
+      col.save([{ foo: 'bar' }, { foo: 'baz' }]);
 
       triggerMetrics();
 
       // check link stats
-      {
+      checkIndexMetrics(function () {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
+          .find(e => e.type === "arangosearch")
+          .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
-      }
+      });
 
+      let syncIndex = function (expected) {
+        const syncQuery = `FOR d IN TestCollection OPTIONS {indexHint: "TestIndex", waitForSync:true}
+                            FILTER d.foo != "unknown" COLLECT WITH COUNT INTO c RETURN c`;
+        let count = db._query(syncQuery).toArray()[0];
+        assertEqual(expected, count);
+      };
       // ensure data is synchronized
       var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(2, res.length);
       assertEqual('bar', res[0].foo);
       assertEqual('baz', res[1].foo);
+      syncIndex(2);
 
       triggerMetrics();
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertTrue(1000 < figures.indexSize);
-        assertEqual(2, figures.numDocs);
-        assertEqual(2, figures.numLiveDocs);
-        assertEqual(6, figures.numFiles);
-        assertEqual(1, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(6, Object.keys(figures).length);
+          assertTrue(1000 < figures.indexSize);
+          assertEqual(2, figures.numDocs);
+          assertEqual(2, figures.numLiveDocs);
+          assertEqual(2, figures.numPrimaryDocs);
+          assertEqual(6, figures.numFiles);
+          assertEqual(1, figures.numSegments);
+        }
+      });
 
       // remove document
       col.remove(res[0]._key);
@@ -1017,23 +1089,27 @@ function IResearchFeatureDDLTestSuite() {
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(1, res.length);
       assertEqual('baz', res[0].foo);
+      syncIndex(1);
 
       triggerMetrics();
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertTrue(1000 < figures.indexSize);
-        assertEqual(2, figures.numDocs);
-        assertEqual(1, figures.numLiveDocs);
-        assertEqual(7, figures.numFiles);
-        assertEqual(1, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(6, Object.keys(figures).length);
+          assertTrue(1000 < figures.indexSize);
+          assertEqual(2, figures.numDocs);
+          assertEqual(1, figures.numLiveDocs);
+          assertEqual(2, figures.numPrimaryDocs);
+          assertEqual(7, figures.numFiles);
+          assertEqual(1, figures.numSegments);
+        }
+      });
 
       // truncate collection
       col.truncate({ compact: false });
@@ -1041,23 +1117,27 @@ function IResearchFeatureDDLTestSuite() {
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
       assertEqual(0, res.length);
+      syncIndex(0);
 
       triggerMetrics();
 
       // check link stats
-      {
-        let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type === 'arangosearch')
-                                    .figures;
-        assertNotEqual(null, figures);
-        assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
-        assertEqual(0, figures.indexSize);
-        assertEqual(0, figures.numDocs);
-        assertEqual(0, figures.numLiveDocs);
-        assertEqual(1, figures.numFiles);
-        assertEqual(0, figures.numSegments);
-      }
+      checkIndexMetrics(function () {
+        for (const type of types) {
+          let figures = db.TestCollection.getIndexes(true, true)
+            .find(e => e.type === type)
+            .figures;
+          assertNotEqual(null, figures);
+          assertTrue(Object === figures.constructor);
+          assertEqual(6, Object.keys(figures).length);
+          assertEqual(0, figures.indexSize);
+          assertEqual(0, figures.numDocs);
+          assertEqual(0, figures.numLiveDocs);
+          assertEqual(0, figures.numPrimaryDocs);
+          assertEqual(1, figures.numFiles);
+          assertEqual(0, figures.numSegments);
+        }
+      });
     },
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1083,14 +1163,20 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(db[viewName], undefined);
     },
 
-    testLinkWithAnalyzerFromOtherDb: function() {
+    testLinkWithAnalyzerFromOtherDb: function () {
       let databaseNameAnalyzer = "testDatabaseAnalyzer";
       let databaseNameView = "testDatabaseView";
       let tmpAnalyzerName = "TmpIdentity";
       let systemAnalyzerName = "SystemIdentity";
       db._useDatabase("_system");
-      try { db._dropDatabase(databaseNameAnalyzer);} catch(e) {}
-      try { db._dropDatabase(databaseNameView);} catch(e) {}
+      try {
+        db._dropDatabase(databaseNameAnalyzer);
+      } catch (e) {
+      }
+      try {
+        db._dropDatabase(databaseNameView);
+      } catch (e) {
+      }
       analyzers.save(systemAnalyzerName, "identity");
       db._createDatabase(databaseNameAnalyzer);
       db._createDatabase(databaseNameView);
@@ -1101,15 +1187,15 @@ function IResearchFeatureDDLTestSuite() {
       db._useDatabase(databaseNameView);
       db._create("FOO");
       try {
-        db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:[databaseNameAnalyzer + "::" + tmpAnalyzerName]}}});
+        db._createView("FOO_view", "arangosearch", { links: { "FOO": { analyzers: [databaseNameAnalyzer + "::" + tmpAnalyzerName] } } });
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
-                    e.errorNum);
+          e.errorNum);
       }
       // but cross-db usage of system analyzers is ok
-      db._createView("FOO_view", "arangosearch", {links:{"FOO":{analyzers:["::" + systemAnalyzerName]}}});
-      db._createView("FOO_view2", "arangosearch", {links:{"FOO":{analyzers:["_system::" + systemAnalyzerName]}}});
+      db._createView("FOO_view", "arangosearch", { links: { "FOO": { analyzers: ["::" + systemAnalyzerName] } } });
+      db._createView("FOO_view2", "arangosearch", { links: { "FOO": { analyzers: ["_system::" + systemAnalyzerName] } } });
 
       db._useDatabase("_system");
       db._dropDatabase(databaseNameAnalyzer);
@@ -1158,7 +1244,10 @@ function IResearchFeatureDDLTestSuite() {
       const dbName = 'TestDB';
       const viewName = 'TestView';
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -1173,8 +1262,8 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(db[viewName], undefined);
     },
 
- // test for public issue #9652
-    testAnalyzerWithStopwordsNameConflict : function() {
+    // test for public issue #9652
+    testAnalyzerWithStopwordsNameConflict: function () {
       const dbName = "TestNameConflictDB";
       db._useDatabase("_system");
       try {
@@ -1202,19 +1291,20 @@ function IResearchFeatureDDLTestSuite() {
         "links": {
           "col1": {
             "analyzers": ["identity"],
-            "fields": {"name": {"analyzers": ["custom_analyzer"]}},
+            "fields": { "name": { "analyzers": ["custom_analyzer"] } },
             "includeAllFields": false,
             "storeValues": "none",
             "trackListPositions": false
           },
           "col2": {
             "analyzers": ["identity"],
-            "fields": { "name": { "analyzers": ["custom_analyzer"]}},
+            "fields": { "name": { "analyzers": ["custom_analyzer"] } },
             "includeAllFields": false,
             "storeValues": "none",
             "trackListPositions": false
           }
-        }});
+        }
+      });
       let properties = v.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(2, Object.keys(properties.links).length);
@@ -1265,7 +1355,10 @@ function IResearchFeatureDDLTestSuite() {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
       db._createDatabase(dbName);
       db._useDatabase(dbName);
       analyzers.save(analyzerName, "identity");
@@ -1277,19 +1370,25 @@ function IResearchFeatureDDLTestSuite() {
 
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
-      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+      analyzers.save(analyzerName, "text", { "stopwords": [], "locale": "en" });
 
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
 
-    testIndexAnalyzerCollection : function() {
+    testIndexAnalyzerCollection: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
-      try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove(analyzerName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
+      try {
+        analyzers.remove(analyzerName);
+      } catch (e) {
+      }
       db._createDatabase(dbName);
       db._useDatabase(dbName);
       assertEqual(0, db._analyzers.count());
@@ -1302,14 +1401,14 @@ function IResearchFeatureDDLTestSuite() {
       assertEqual(0, db._analyzers.count());
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
-      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+      analyzers.save(analyzerName, "text", { "stopwords": [], "locale": "en" });
       assertEqual(1, db._analyzers.count());
 
       var view = db._createView("analyzersView", "arangosearch", {
         links: {
-          _analyzers : {
-            includeAllFields:true,
-            analyzers: [ analyzerName ]
+          _analyzers: {
+            includeAllFields: true,
+            analyzers: [analyzerName]
           }
         }
       });
@@ -1321,21 +1420,24 @@ function IResearchFeatureDDLTestSuite() {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
-    testAutoLoadAnalyzerOnViewCreation : function() {
+    testAutoLoadAnalyzerOnViewCreation: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
       try {
         db._createDatabase(dbName);
         db._useDatabase(dbName);
-        db._analyzers.save({type:"identity", name: analyzerName});
+        db._analyzers.save({ type: "identity", name: analyzerName });
         var view = db._createView("analyzersView", "arangosearch", {
           links: {
-            _analyzers : {
-              includeAllFields:true,
-              analyzers: [ analyzerName] // test only new database access. Load from _system is checked in gtest
+            _analyzers: {
+              includeAllFields: true,
+              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
             }
           }
         });
@@ -1346,22 +1448,25 @@ function IResearchFeatureDDLTestSuite() {
         db._dropDatabase(dbName);
       }
     },
-    testAutoLoadAnalyzerOnViewUpdate : function() {
+    testAutoLoadAnalyzerOnViewUpdate: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._dropDatabase(dbName);
+      } catch (e) {
+      }
       try {
         db._createDatabase(dbName);
         db._useDatabase(dbName);
-        db._analyzers.save({type:"identity", name: analyzerName});
+        db._analyzers.save({ type: "identity", name: analyzerName });
         var view = db._createView("analyzersView", "arangosearch", {});
         var links = {
           links: {
-            _analyzers : {
-              includeAllFields:true,
-              analyzers: [ analyzerName] // test only new database access. Load from _system is checked in gtest
+            _analyzers: {
+              includeAllFields: true,
+              analyzers: [analyzerName] // test only new database access. Load from _system is checked in gtest
             }
           }
         };

@@ -147,7 +147,7 @@ function exec_test_shortest_path_impl(graphSpec) {
     "Air SSSP",
     single_source_shortest_paths(
       graphSpec.name,
-      "SSSP",
+      "sssp",
       from_vertex,
     ));
 

@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <velocypack/Builder.h>
@@ -57,6 +58,7 @@ struct Shard {
   double weight = 1.0;  // for leadership optimization
   bool blocked;         // flag, if shard is blocked by config
   bool ignored;         // flag, if shard is ignored by config
+  bool isSystem;        // flag, if shard is from a system collection
 };
 
 struct Collection {
@@ -84,10 +86,17 @@ struct ShardImbalance {
   std::vector<uint64_t> numberShards;  // number of shards per DBServer
   double totalUsed;                    // sum of all sizes
   uint64_t totalShards;  // total number of all shards (leader or follower)
-  double imbalance;      // total imbalance according to formula
-                         // in design document
+  uint64_t totalShardsFromSystemCollections;  // number of shards on leader that
+                                              // come from system collections,
+                                              // because they might be excluded
+                                              // with request option
+  double imbalance;  // total imbalance according to formula
+                     // in design document
   ShardImbalance(size_t numberDBServers)
-      : totalUsed(0.0), totalShards(0), imbalance(0) {
+      : totalUsed(0.0),
+        totalShards(0),
+        totalShardsFromSystemCollections(0),
+        imbalance(0) {
     sizeUsed.resize(numberDBServers, 0);
     targetSize.resize(numberDBServers, 0);
     numberShards.resize(numberDBServers, 0);
@@ -100,6 +109,8 @@ auto inspect(Inspector& f, ShardImbalance& x) {
       f.field("sizeUsed", x.sizeUsed), f.field("targetSize", x.targetSize),
       f.field("numberShards", x.numberShards),
       f.field("totalUsed", x.totalUsed), f.field("totalShards", x.totalShards),
+      f.field("totalShardsFromSystemCollections",
+              x.totalShardsFromSystemCollections),
       f.field("imbalance", x.imbalance));
 }
 
@@ -164,6 +175,7 @@ struct AutoRebalanceProblem {
   std::vector<Database> databases;
   std::unordered_map<std::string, uint64_t> dbCollByName;
   std::unordered_map<std::string, uint64_t> dbByName;
+  std::unordered_set<std::string> serversHealthInfo;
 
  private:
   double _piFactor = 256e6;
@@ -175,10 +187,12 @@ struct AutoRebalanceProblem {
   uint64_t createCollection(std::string const& name, std::string const& dbName,
                             uint32_t numberOfShards, uint32_t replicationFactor,
                             double weight = 1.0);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   void createCluster(uint32_t nrDBserver, bool withZones = false);
   void createRandomDatabasesAndCollections(uint32_t nrDBs, uint32_t nrColls,
                                            uint32_t minReplFactor,
                                            uint32_t maxReplFactor);
+#endif
   void setPiFactor(double p) { _piFactor = p; }
   void distributeShardsRandomly(std::vector<double> const& probabilities);
   void moveToBuilder(MoveShardJob const& m, VPackBuilder& mb) const;
@@ -197,5 +211,9 @@ struct AutoRebalanceProblem {
   std::vector<std::vector<MoveShardJob>> findAllMoveShardJobs(
       bool considerLeaderChanges, bool considerFollowerMoves,
       bool considerLeaderMoves) const;
+
+  void setServersHealthInfo(std::unordered_set<std::string> serversInfo) {
+    serversHealthInfo = std::move(serversInfo);
+  }
 };
 }  // namespace arangodb::cluster::rebalance

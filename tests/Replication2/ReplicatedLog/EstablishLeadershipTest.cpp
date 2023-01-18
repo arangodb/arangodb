@@ -174,7 +174,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
     EXPECT_TRUE(f.isReady());
     EXPECT_TRUE(leader->isLeadershipEstablished());
     auto [active, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(active, 2);
+    EXPECT_EQ(active, 2U);
     // The first entry was not committed by generation 1, because during this
     // generation the follower was excluded.
     // Because the active generation is currently 2, 1 can no longer be the
@@ -190,7 +190,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   {
     auto [active, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(active, 2);
+    EXPECT_EQ(active, 2U);
     EXPECT_EQ(committed, 2);
   }
 }

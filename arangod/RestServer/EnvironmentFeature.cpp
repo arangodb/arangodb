@@ -35,6 +35,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
@@ -73,6 +74,8 @@ std::string_view trimProcName(std::string_view content) {
 using namespace arangodb::basics;
 
 namespace arangodb {
+class OptionsCheckFeature;
+class SharedPRNGFeature;
 
 EnvironmentFeature::EnvironmentFeature(Server& server)
     : ArangodFeature{server, *this} {
@@ -81,6 +84,7 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
 
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
+  startsAfter<OptionsCheckFeature>();
   startsAfter<SharedPRNGFeature>();
 }
 
@@ -135,7 +139,8 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
-#ifdef __arm__
+#ifdef __linux__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
     LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)
@@ -177,10 +182,11 @@ void EnvironmentFeature::prepare() {
           }
         }
         while (end < cpuAlignment.size()) {
-          ++end;
           if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            ++end;
             break;
           }
+          ++end;
         }
 
         int64_t alignment =
@@ -231,10 +237,11 @@ void EnvironmentFeature::prepare() {
     }
   }
 #endif
+#endif
 
 #ifdef __linux__
-  {
 #ifdef ARANGODB_HAVE_JEMALLOC
+  {
     char const* v = getenv("LD_PRELOAD");
     if (v != nullptr && (strstr(v, "/valgrind/") != nullptr ||
                          strstr(v, "/vgpreload") != nullptr)) {
@@ -245,8 +252,9 @@ void EnvironmentFeature::prepare() {
           << "this is unsupported in combination with jemalloc and may cause "
              "undefined behavior at least with memcheck!";
     }
-#endif
   }
+#endif
+#endif
 
   {
     char const* v = getenv("MALLOC_CONF");
@@ -258,6 +266,7 @@ void EnvironmentFeature::prepare() {
     }
   }
 
+#ifdef __linux__
   // check overcommit_memory & overcommit_ratio
   try {
     std::string content =
@@ -319,6 +328,7 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+#endif
 
   // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
@@ -329,6 +339,7 @@ void EnvironmentFeature::prepare() {
       << (NumberOfCores::overridden() ? " (overriden by environment variable)"
                                       : "");
 
+#ifdef __linux__
   // test local ipv6 support
   try {
     if (!basics::FileUtils::exists("/proc/net/if_inet6")) {
@@ -383,23 +394,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
-
-#ifdef __GLIBC__
-  {
-    // test presence of environment variable GLIBCXX_FORCE_NEW
-    char const* v = getenv("GLIBCXX_FORCE_NEW");
-
-    if (v == nullptr) {
-      // environment variable not set
-      LOG_TOPIC("3909f", WARN, arangodb::Logger::MEMORY)
-          << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-          << "it is recommended to set it to some value to avoid unnecessary "
-             "memory pooling in glibc++";
-      LOG_TOPIC("56d59", WARN, arangodb::Logger::MEMORY)
-          << "execute 'export GLIBCXX_FORCE_NEW=1'";
-    }
-  }
-#endif
 
   // test max_map_count
   if (MaxMapCountFeature::needsChecking()) {
@@ -480,7 +474,7 @@ void EnvironmentFeature::prepare() {
         auto where = first.find(' ');
 
         if (where != std::string::npos &&
-            !StringUtils::isPrefix(first.substr(where), " interleave")) {
+            !first.substr(where).starts_with(" interleave")) {
           LOG_TOPIC("3e451", WARN, Logger::MEMORY)
               << "It is recommended to set NUMA to interleaved.";
           LOG_TOPIC("b25a4", WARN, Logger::MEMORY)
