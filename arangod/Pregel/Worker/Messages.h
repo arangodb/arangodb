@@ -110,7 +110,7 @@ auto inspect(Inspector& f, PregelResults& x) {
 }
 
 struct PregelMessage {
-  std::string senderId;
+  ExecutionNumber executionNumber;
   uint64_t gss;
   PregelShard shard;
   VPackBuilder messages;
@@ -118,10 +118,10 @@ struct PregelMessage {
 
 template<typename Inspector>
 auto inspect(Inspector& f, PregelMessage& x) {
-  return f.object(x).fields(f.field(Utils::senderKey, x.senderId),
-                            f.field(Utils::globalSuperstepKey, x.gss),
-                            f.field("shard", x.shard),
-                            f.field("messages", x.messages));
+  return f.object(x).fields(
+      f.field(Utils::executionNumberKey, x.executionNumber),
+      f.field(Utils::globalSuperstepKey, x.gss), f.field("shard", x.shard),
+      f.field("messages", x.messages));
 }
 
 }  // namespace arangodb::pregel

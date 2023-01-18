@@ -872,7 +872,13 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     }
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
-    w->receivedMessages(body);
+    auto message = inspection::deserializeWithErrorT<PregelMessage>(
+        velocypack::SharedSlice({}, body));
+    if (!message.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "Cannot deserialize PregelMessage message");
+    }
+    w->receivedMessages(message.get());
   } else if (path == Utils::finalizeExecutionPath) {
     auto message = inspection::deserializeWithErrorT<FinalizeExecution>(
         velocypack::SharedSlice({}, body));

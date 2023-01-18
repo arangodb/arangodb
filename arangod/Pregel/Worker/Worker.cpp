@@ -256,10 +256,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
-  VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
-  uint64_t gss = gssSlice.getUInt();
-  if (gss == _config._globalSuperstep) {
+void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
+  if (data.gss == _config._globalSuperstep) {
     {  // make sure the pointer is not changed while
       // parsing messages
       MY_READ_LOCKER(guard, _cacheRWLock);
@@ -269,8 +267,8 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
 
   } else {
     // Trigger the processing of vertices
-    LOG_PREGEL("ecd34", ERR)
-        << "Expected: " << _config._globalSuperstep << "Got: " << gss;
+    LOG_PREGEL("ecd34", ERR) << fmt::format("Expected: {}, Got: {}",
+                                            _config._globalSuperstep, data.gss);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
   }
