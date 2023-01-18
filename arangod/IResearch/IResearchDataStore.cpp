@@ -1065,7 +1065,7 @@ Result IResearchDataStore::commitUnsafeImpl(
 
     // update reader
     TRI_ASSERT(_dataStore._reader != reader);
-    _dataStore._reader = std::move(reader);
+    _dataStore._reader = reader;
 
     // update stats
     updateStatsUnsafe();
