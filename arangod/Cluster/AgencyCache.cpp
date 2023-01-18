@@ -163,6 +163,12 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
       ->second.getFuture();
 }
 
+futures::Future<Result> AgencyCache::waitForLatestCommitIndex() {
+  AsyncAgencyComm ac;
+  return ac.getCurrentCommitIndex().thenValue(
+      [this](consensus::index_t idx) { return this->waitFor(idx); });
+}
+
 index_t AgencyCache::index() const {
   std::shared_lock g(_storeLock);
   return _commitIndex;

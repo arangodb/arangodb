@@ -1,6 +1,60 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.15.6-preview-2.
+
+* Fix coordinator segfault in AQL queries in which the query is invoked from
+  within a JavaScript context (e.g. from Foxx or from the server's console
+  mode) **and** the query has multiple coordinator snippets of which except
+  the outermost one invokes a JavaScript function.
+  Instead of crashing, coordinators will now respond with the exception 
+  "no v8 context available to enter for current transaction context".
+  For AQL queries that called one of the AQL functions `CALL` or `APPLY` with
+  a fixed function name, e.g. `APPLY('CONCAT', ...)`, it is now also assumed
+  correctly that no JavaScript is needed, except if the fixed function name
+  is the name of a user-defined function.
+  This fixes an issue described in OASIS-24962.
+
+* Prevent agency configuration confusion by an agent which comes back without
+  its data directory and thus without its UUID.
+
+* APM-592: In batched query results, when executing requests for `/_api/cursor`, 
+  there might be a connection error and the user might not be able to retrieve
+  the latest batch from the cursor. For that, a query option flag `allowRetry` was
+  added. When set to `true`, if the latest batch response object wasn't
+  successfully received, the user can send a retry request to receive it with 
+  a POST request to `/_api/cursor/<cursorId>/<batchId>`. Only the latest batch
+  is cached, meaning former batches cannot be retrieved again later.
+
+* Change the request lane for replication catchup requests that leaders in
+  active failover receive from their followers from medium to high. This
+  will give catchup requests from followers highest priority, so that the
+  leader will preferrably execute them compared to regular requests.
+
+* Web UI [FE-48]: Additional fix to the previously introduced license
+  information usability improvement. In case the server is being started with
+  the additional parameter `--server.harden`, the previous fix did not handle
+  that specific edge case.
+
+* Use more compact and efficient representation for arrays and objects during
+  AQL AST serialization and deserialization. This can help to reduce the size
+  of messages exchanged between coordinator and database servers during query
+  setup, and also reduce the time needed for parsing these messages. This 
+  especially helps when there are large bind parameter values that are arrays
+  or objects.
+  The more efficient format is used also inside an AQL query's "explain" and 
+  "profile" methods, and thus any callers that process the return values of
+  explain and profile operations may now receive the new format. All callers
+  inside the ArangoDB code have been adjusted, but any external callers that
+  process the JSON response values of AQL query explain or profile operations
+  may need to be adjusted to handle the new format.
+
+* Allow cluster database servers to start even when there are existing databases
+  that would violate the settings `--cluster.min-replication-factor` or
+  `--cluster.max-replication-factor`.
+  This allows upgrading from older versions in which the replication factor
+  validation for databases was not yet present.
+
 * Added new stage "instantiating executors" to the query profiling output.
   The time spent in "instantiating executors" is the time needed to create
   the query executors from the final query execution time. In cluster mode,
@@ -10,7 +64,7 @@ devel
   distribution was contained in the "optimizing plan" stage, which was
   misleading.
 
-* Remove constant values for query variables from query plan serialization 
+* Removed constant values for query variables from query plan serialization 
   in cases they were not needed. Previously, constant values of query variables
   were always serialized for all occurrences of a variable in a query plan.
   If the constant values were large, this contributed to higher serialization

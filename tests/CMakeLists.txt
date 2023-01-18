@@ -18,6 +18,7 @@ add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
+add_subdirectory(Pregel)
 
 # ----------------------------------------
 # Link directories
@@ -32,7 +33,6 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -86,6 +86,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
@@ -233,9 +234,7 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/DurationTest.cpp
   Pregel/typedbuffer.cpp
-  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -279,8 +278,6 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
-  Zkd/Conversion.cpp
-  Zkd/Library.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)
@@ -313,6 +310,8 @@ target_link_libraries(arangodbtests
   arango_tests_replication2
   arango_tests_graph
   arango_tests_futures
+  arango_tests_zkd
+  arango_tests_pregel
   arango_agency
   arango_cluster_engine
   arango_rocksdb

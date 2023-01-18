@@ -160,8 +160,7 @@ inline bool getNumber(T& buf, velocypack::Slice const& slice) noexcept {
     return false;
   }
 
-  typedef typename std::conditional<std::is_floating_point<T>::value, T,
-                                    double>::type NumType;
+  using NumType = std::conditional_t<std::is_floating_point_v<T>, T, double>;
 
   try {
     auto value = slice.getNumber<NumType>();

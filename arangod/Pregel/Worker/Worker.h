@@ -32,9 +32,9 @@
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
-#include "Pregel/WorkerConfig.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-#include "Reports.h"
+#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;

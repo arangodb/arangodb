@@ -1045,10 +1045,11 @@ function IResearchFeatureDDLTestSuite() {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1064,10 +1065,11 @@ function IResearchFeatureDDLTestSuite() {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }
@@ -1085,10 +1087,11 @@ function IResearchFeatureDDLTestSuite() {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(2, figures.numLiveDocs);
+        assertEqual(2, figures.numPrimaryDocs);
         assertEqual(6, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1108,10 +1111,11 @@ function IResearchFeatureDDLTestSuite() {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertTrue(0 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(1, figures.numLiveDocs);
+        assertEqual(2, figures.numPrimaryDocs);
         assertEqual(7, figures.numFiles);
         assertEqual(1, figures.numSegments);
       }
@@ -1130,10 +1134,11 @@ function IResearchFeatureDDLTestSuite() {
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
-        assertEqual(5, Object.keys(figures).length);
+        assertEqual(6, Object.keys(figures).length);
         assertEqual(0, figures.indexSize);
         assertEqual(0, figures.numDocs);
         assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numPrimaryDocs);
         assertEqual(1, figures.numFiles);
         assertEqual(0, figures.numSegments);
       }

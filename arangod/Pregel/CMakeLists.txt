@@ -1,9 +1,7 @@
 add_library(arango_pregel STATIC
   AggregatorHandler.cpp
   AlgoRegistry.cpp
-  Conductor.cpp
   ExecutionNumber.cpp
-  GraphStore.cpp
   IncomingCache.cpp
   IndexHelpers.cpp
   OutgoingCache.cpp
@@ -11,9 +9,7 @@ add_library(arango_pregel STATIC
   PregelMetrics.cpp
   Reports.cpp
   Reports.h
-  Utils.cpp
-  Worker.cpp
-  WorkerConfig.cpp)
+  Utils.cpp)
 
 target_link_libraries(arango_pregel
   arango
@@ -26,4 +22,6 @@ target_include_directories(arango_pregel PRIVATE
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_subdirectory(Algos)
+add_subdirectory(Conductor)
 add_subdirectory(REST)
+add_subdirectory(Worker)
