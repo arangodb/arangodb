@@ -24,8 +24,8 @@
 #pragma once
 
 #include <string>
-#include "Algorithm.h"
-#include "Worker.h"
+#include "Pregel/Algorithm.h"
+#include "Pregel/Worker/Worker.h"
 
 struct TRI_vocbase_t;
 
