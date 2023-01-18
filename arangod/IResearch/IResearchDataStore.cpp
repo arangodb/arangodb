@@ -1297,6 +1297,7 @@ Result IResearchDataStore::initDataStore(
           _engine->releasedTick();
     } break;
   }
+  _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
 
   irs::IndexWriterOptions options;
   options.reader_options = readerOptions;
@@ -1319,7 +1320,7 @@ Result IResearchDataStore::initDataStore(
         static_cast<std::underlying_type_t<SegmentPayloadVersion>>(
             SegmentPayloadVersion::TwoStageTick));
 
-    // call from commit under lock _commitMutex (_dataStore._writer->commit())
+    // call from commit under lock _commitMutex (_dataStore._writer->Commit())
     // update current stage commit tick
     auto lastCommittedTick =
         _commitStageOne ? &_lastCommittedTickOne : &_lastCommittedTickTwo;
@@ -1397,34 +1398,28 @@ Result IResearchDataStore::initDataStore(
   }
 
   _dataStore._reader = _dataStore._writer->GetSnapshot();
+  TRI_ASSERT(_dataStore._reader);
 
-  if (!_dataStore._reader) {
-    _dataStore._writer.reset();
-
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to instantiate data store reader with path '",
-                         _dataStore._path.string(),
-                         "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
+  if (pathExists) {  // Read payload from the existing ArangoSearch index
+    if (!readTick(irs::GetPayload(_dataStore._reader.Meta().index_meta),
+                  _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh)) {
+      return {
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("Failed to get last committed tick while initializing "
+                       "ArangoSearch index '",
+                       index().id().id(), "'")};
+    }
+    _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
   }
 
-  if (!readTick(irs::GetPayload(_dataStore._reader.Meta().index_meta),
-                _dataStore._recoveryTickLow, _dataStore._recoveryTickHigh)) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("Failed to get last committed tick while initializing "
-                         "ArangoSearch index '",
-                         index().id().id(), "'")};
-  }
-
-  LOG_TOPIC("7e028", TRACE, TOPIC)
-      << "Successfully opened existing data store data store reader for "
+  LOG_TOPIC("7e028", DEBUG, TOPIC)
+      << "Successfully opened existing data store reader for "
       << "ArangoSearch index '" << index().id() << "', docs count '"
       << _dataStore._reader->docs_count() << "', live docs count '"
       << _dataStore._reader->live_docs_count() << "', recovery tick low '"
       << _dataStore._recoveryTickLow << "' and recovery tick high '"
       << _dataStore._recoveryTickHigh << "'";
 
-  _lastCommittedTickTwo = _lastCommittedTickOne = _dataStore._recoveryTickLow;
   _flushSubscription =
       std::make_shared<IResearchFlushSubscription>(_dataStore._recoveryTickLow);
 
@@ -1916,7 +1911,7 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     }
 
     // update reader
-    _dataStore._reader = std::move(reader);
+    _dataStore._reader = reader;
 
     updateStatsUnsafe();
 
