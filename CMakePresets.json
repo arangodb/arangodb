@@ -9,7 +9,7 @@
     {
       "name": "community",
       "displayName": "Build ArangoDB Community Edition",
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "USE_ENTERPRISE": "Off",
@@ -20,6 +20,7 @@
     {
       "hidden": true,
       "name": "pr-base",
+      "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_FLAGS": "-fno-stack-protector",
