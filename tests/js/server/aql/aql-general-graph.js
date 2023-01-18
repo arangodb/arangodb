@@ -1931,7 +1931,7 @@ function ahuacatlQueryShortestPathTestSuite() {
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
       } else {
         query = `
-        WITH ${v1}
+        WITH ${v1}, ${v2}, ${v3}
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target ${e1} RETURN {v, e}`;
