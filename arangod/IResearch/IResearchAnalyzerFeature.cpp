@@ -505,8 +505,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     if (!coords.empty() &&
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
-        (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-         vocbase.isOneShard())) {
+        (vocbase.isOneShard())) {
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
@@ -563,6 +562,15 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         return resultVisitor(visitor, vocbase, slice);
       }
     }
+    /*
+    else if
+    (vocbase.server().getFeature<arangodb::ClusterFeature>().forceOneShard()){
+      TRI_IF_FAILURE("CheckNotForceShardOnDBCreation") {
+        return {TRI_ERROR_INTERNAL, "Optimization will not be made for
+    previously created DB without forceOneShard set"}
+      }
+    }
+     */
 
     network::RequestOptions reqOpts;
     reqOpts.database = vocbase.name();
