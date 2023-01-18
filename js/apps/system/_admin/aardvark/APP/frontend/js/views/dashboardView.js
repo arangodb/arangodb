@@ -1171,7 +1171,7 @@
       } else if (!frontendConfig.statisticsEnabled) {
         $(this.el).html('');
         $(this.el).append(
-          '<div style="color: red">Server statistics are currently disabled.</div>'
+          '<div style="color: red">Server statistics are currently disabled. They can be enabled with startup flag "--server.statistics".</div>'
         );
       } else {
         return true;
