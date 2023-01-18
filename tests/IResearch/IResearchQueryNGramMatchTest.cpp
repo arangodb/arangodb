@@ -21,6 +21,8 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"

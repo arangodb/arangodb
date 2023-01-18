@@ -21,6 +21,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "IResearch/IResearchVPackComparer.h"
