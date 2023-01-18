@@ -210,10 +210,7 @@ struct TestShortestPathOptions : public ShortestPathOptions {
   }
 };
 
-using Vertex = ShortestPathExecutorInfos::InputVertex;
-using RegisterMapping =
-    std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId,
-                       ShortestPathExecutorInfos::OutputNameHash>;
+using Vertex = GraphNode::InputVertex;
 using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 
@@ -300,18 +297,19 @@ struct ShortestPathTestParameters {
     }
     return RegIdSet{};
   }
-  static RegisterMapping _makeRegisterMapping(ShortestPathOutput in) {
+  static ShortestPathExecutorInfos<FakePathFinder>::RegisterMapping
+  _makeRegisterMapping(ShortestPathOutput in) {
     switch (in) {
       case ShortestPathOutput::VERTEX_ONLY:
-        return RegisterMapping{
-            {ShortestPathExecutorInfos::OutputName::VERTEX, 2}};
+        return ShortestPathExecutorInfos<FakePathFinder>::RegisterMapping{
+            {ShortestPathExecutorInfos<FakePathFinder>::OutputName::VERTEX, 2}};
         break;
       case ShortestPathOutput::VERTEX_AND_EDGE:
-        return RegisterMapping{
-            {ShortestPathExecutorInfos::OutputName::VERTEX, 2},
-            {ShortestPathExecutorInfos::OutputName::EDGE, 3}};
+        return ShortestPathExecutorInfos<FakePathFinder>::RegisterMapping{
+            {ShortestPathExecutorInfos<FakePathFinder>::OutputName::VERTEX, 2},
+            {ShortestPathExecutorInfos<FakePathFinder>::OutputName::EDGE, 3}};
     }
-    return RegisterMapping{};
+    return ShortestPathExecutorInfos<FakePathFinder>::RegisterMapping{};
   }
 
   ShortestPathTestParameters(
@@ -342,7 +340,7 @@ struct ShortestPathTestParameters {
   Vertex _target;
   RegIdSet _inputRegisters;
   RegIdSet _outputRegisters;
-  RegisterMapping _registerMapping;
+  ShortestPathExecutorInfos<FakePathFinder>::RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
   MatrixBuilder<2> _inputMatrixCopy;
   PathSequence _paths;
@@ -366,7 +364,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   RegisterInfos registerInfos;
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
-  ShortestPathExecutorInfos executorInfos;
+  ShortestPathExecutorInfos<FakePathFinder> executorInfos;
 
   FakePathFinder& finder;
 
@@ -376,7 +374,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   std::shared_ptr<arangodb::velocypack::Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  ShortestPathExecutor testee;
+  ShortestPathExecutor<FakePathFinder> testee;
 
   ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
       : parameters(std::move(parameters_)),
@@ -387,7 +385,8 @@ class ShortestPathExecutorTest : public ::testing::Test {
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 4, {}, {RegIdSet{0, 1}}),
-        executorInfos(std::make_unique<FakePathFinder>(options, translator),
+        executorInfos(*fakedQuery.get(),
+                      std::make_unique<FakePathFinder>(options, translator),
                       std::move(parameters._registerMapping),
                       std::move(parameters._source),
                       std::move(parameters._target)),
@@ -483,10 +482,12 @@ class ShortestPathExecutorTest : public ::testing::Test {
         for (size_t blockIndex = 0; blockIndex < block->numRows();
              ++blockIndex, ++expectedRowsIndex) {
           if (executorInfos.usesOutputRegister(
-                  ShortestPathExecutorInfos::VERTEX)) {
+                  ShortestPathExecutorInfos<
+                      FakePathFinder>::OutputName::VERTEX)) {
             AqlValue value = block->getValue(
                 blockIndex, executorInfos.getOutputRegister(
-                                ShortestPathExecutorInfos::VERTEX));
+                                ShortestPathExecutorInfos<
+                                    FakePathFinder>::OutputName::VERTEX));
             EXPECT_TRUE(value.isObject());
             EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
                             value.slice(),
@@ -495,10 +496,12 @@ class ShortestPathExecutorTest : public ::testing::Test {
                             false) == 0);
           }
           if (executorInfos.usesOutputRegister(
-                  ShortestPathExecutorInfos::EDGE)) {
+                  ShortestPathExecutorInfos<
+                      FakePathFinder>::OutputName::EDGE)) {
             AqlValue value = block->getValue(
                 blockIndex, executorInfos.getOutputRegister(
-                                ShortestPathExecutorInfos::EDGE));
+                                ShortestPathExecutorInfos<
+                                    FakePathFinder>::OutputName::EDGE));
 
             if (expectedPathStarts.find(expectedRowsIndex) !=
                 expectedPathStarts.end()) {
@@ -642,3 +645,9 @@ INSTANTIATE_TEST_CASE_P(ShortestPathExecutorPathsTestInstance,
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
+
+template class ::arangodb::aql::ShortestPathExecutorInfos<
+    arangodb::tests::aql::FakePathFinder>;
+
+template class ::arangodb::aql::ShortestPathExecutor<
+    arangodb::tests::aql::FakePathFinder>;
