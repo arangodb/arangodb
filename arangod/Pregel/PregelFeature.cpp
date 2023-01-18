@@ -38,6 +38,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/GraphManager.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
@@ -45,6 +46,7 @@
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/PregelOptions.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -96,15 +98,59 @@ network::Headers buildHeaders() {
 
 }  // namespace
 
-ResultT<ExecutionNumber> PregelFeature::startExecution(
-    TRI_vocbase_t& vocbase, std::string algorithm,
-    std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        edgeCollectionRestrictions,
-    VPackSlice const& params) {
+ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
+                                                       PregelOptions options) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {
     return Result{TRI_ERROR_SHUTTING_DOWN, "pregel system not available"};
+  }
+
+  // // extract the collections
+  std::vector<std::string> vertexCollections;
+  std::vector<std::string> edgeCollections;
+  std::unordered_map<std::string, std::vector<std::string>>
+      edgeCollectionRestrictions;
+
+  if (std::holds_alternative<GraphCollectionNames>(
+          options.graphSource.graphOrCollections)) {
+    auto collectionNames =
+        std::get<GraphCollectionNames>(options.graphSource.graphOrCollections);
+    vertexCollections = collectionNames.vertexCollections;
+    edgeCollections = collectionNames.edgeCollections;
+    edgeCollectionRestrictions =
+        options.graphSource.edgeCollectionRestrictions.items;
+  } else {
+    auto graphName =
+        std::get<GraphName>(options.graphSource.graphOrCollections);
+    if (graphName.graph == "") {
+      return Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"};
+    }
+
+    graph::GraphManager gmngr{vocbase};
+    auto graphRes = gmngr.lookupGraphByName(graphName.graph);
+    if (graphRes.fail()) {
+      return std::move(graphRes).result();
+    }
+    std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
+
+    auto const& gv = graph->vertexCollections();
+    for (auto const& v : gv) {
+      vertexCollections.push_back(v);
+    }
+
+    auto const& ge = graph->edgeCollections();
+    for (auto const& e : ge) {
+      edgeCollections.push_back(e);
+    }
+
+    auto const& ed = graph->edgeDefinitions();
+    for (auto const& e : ed) {
+      auto const& from = e.second.getFrom();
+      // intentionally create map entry
+      for (auto const& f : from) {
+        auto& restrictions = edgeCollectionRestrictions[f];
+        restrictions.push_back(e.second.getName());
+      }
+    }
   }
 
   ServerState* ss = ServerState::instance();
@@ -112,9 +158,11 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
   // check the access rights to collections
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
-    TRI_ASSERT(params.isObject());
-    VPackSlice storeSlice = params.get("store");
+    // TODO get rid of that when we have a pregel parameter struct
+    TRI_ASSERT(options.userParameters.slice().isObject());
+    VPackSlice storeSlice = options.userParameters.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
+
     for (std::string const& vc : vertexCollections) {
       bool canWrite = exec.canUseCollection(vc, auth::Level::RW);
       bool canRead = exec.canUseCollection(vc, auth::Level::RO);
@@ -142,7 +190,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
                         "Cannot use pregel on system collection"};
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll->deleted()) {
           return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
       } catch (...) {
@@ -151,8 +199,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase.lookupCollection(name);
 
-      if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED ||
-          coll->deleted()) {
+      if (coll == nullptr || coll->deleted()) {
         return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
       }
     } else {
@@ -177,10 +224,13 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
 
-          std::string shardKeyAttribute = "vertex";
-          if (params.hasKey("shardKeyAttribute")) {
-            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
-          }
+          // TODO get rid of that when we have a pregel parameter struct
+          std::string shardKeyAttribute =
+              options.userParameters.slice().hasKey("shardKeyAttribute")
+                  ? options.userParameters.slice()
+                        .get("shardKeyAttribute")
+                        .copyString()
+                  : "vertex";
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return Result{
@@ -195,7 +245,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
           }
         }
 
-        if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
+        if (coll->deleted()) {
           return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name};
         }
 
@@ -222,7 +272,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(
   auto en = createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(
       en, vocbase, vertexCollections, edgeColls, edgeCollectionRestrictions,
-      algorithm, params, *this);
+      options.algorithm, options.userParameters.slice(), *this);
   addConductor(std::move(c), en);
   TRI_ASSERT(conductor(en));
   conductor(en)->start();

@@ -194,7 +194,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
   }
 
-  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true).ok());
   EXPECT_TRUE(view->drop().ok());
   EXPECT_TRUE(collection->deleted());
   EXPECT_TRUE(view->deleted());
