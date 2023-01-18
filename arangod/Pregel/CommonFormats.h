@@ -34,6 +34,8 @@
 #include "Pregel/MessageFormat.h"
 #include "Pregel/VertexComputation.h"
 
+#include "Inspection/VPack.h"
+
 namespace arangodb::pregel {
 
 // Speaker-listerner Label propagation
