@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { FormState, ViewContext, ViewProps } from "../constants";
+import { FormState, ViewContext } from "../constants";
 import { chain, difference, isNull, map, without } from "lodash";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
@@ -7,7 +7,8 @@ import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompl
 import { Cell, Grid } from "../../../components/pure-css/grid";
 import { Link } from "react-router-dom";
 
-const LinkList = ({ name }: ViewProps) => {
+//const LinkList = ({ name }: ViewProps) => {
+const LinkList = () => {
   const { dispatch, formState: fs, isAdminUser } = useContext(ViewContext);
   const formState = fs as FormState;
   const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) =>

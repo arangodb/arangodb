@@ -260,7 +260,6 @@ const ViewSettingsReactView = ({ name }) => {
     });
   }, [view, name]);
 
-  const [linkName, setLinkName] = useState('')
   const updateName = (event) => {
     dispatch({
       type: 'setField',

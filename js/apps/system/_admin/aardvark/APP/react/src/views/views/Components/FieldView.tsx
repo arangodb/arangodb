@@ -1,7 +1,7 @@
 import React, { useContext } from "react";
 import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-import { FormState, ViewContext } from "../constants";
+import { ViewContext } from "../constants";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { useRouteMatch } from "react-router-dom";
 import { get, last } from "lodash";
@@ -11,8 +11,8 @@ type FieldViewProps = {
   name: string;
 };
 
-const FieldView = ({ disabled, name }: FieldViewProps) => {
-  const { formState, dispatch, isAdminUser, changed, setChanged } = useContext(ViewContext);
+const FieldView = ({ disabled }: FieldViewProps) => {
+  const { formState, dispatch } = useContext(ViewContext);
   const match = useRouteMatch();
 
   const fragments = match.url.slice(1).split('/');

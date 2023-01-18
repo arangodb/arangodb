@@ -14,10 +14,9 @@ interface LinkViewProps {
 const LinkView = ({
                     links,
                     disabled,
-                    link,
-                    name
+                    link
                   }: LinkViewProps) => {
-  const { formState, dispatch, isAdminUser, changed, setChanged } = useContext(ViewContext);
+  const { dispatch } = useContext(ViewContext);
 
   return links && links[link]
     ? <ViewLinkLayout fragments={[link]}>
