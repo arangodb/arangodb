@@ -272,7 +272,7 @@ class IndexReadBuffer {
   template<typename... Args>
   void pushValue(Args&&... args);
 
-  void pushSearchDoc(irs::sub_reader const& segment, irs::doc_id_t docId) {
+  void pushSearchDoc(irs::SubReader const& segment, irs::doc_id_t docId) {
     _searchDocs.emplace_back(segment, docId);
   }
 
@@ -541,7 +541,7 @@ class IResearchViewExecutorBase {
 
   void pushStoredValues(irs::document const& doc, size_t storedValuesIndex = 0);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader,
+  bool getStoredValuesReaders(irs::SubReader const& segmentReader,
                               size_t storedValuesIndex = 0);
 
  private:

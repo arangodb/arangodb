@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <s2/s2latlng.h>
 #include <s2/s2region.h>
 
