@@ -1,6 +1,14 @@
 devel
 -----
 
+* BTS-266: When starting up a cluster without `--cluster.force-one-shard`, 
+  creating a database and then restarting the cluster with the startup option
+  `--cluster.force-one-shard` set to true, when the formerly created database
+  has more than one shard, but the flag is set to true, this could lead to 
+  arangosearch's analyzers to use optimizations that should not be used if not 
+  in a single shard mode. For this not to happen, the verification of the 
+  parameter being true as a condition to run optimizations was removed. 
+
 * Updated arangosync to v2.14.0-preview-6.
 
 * Updated ArangoDB Starter to 0.15.6-preview-2.
