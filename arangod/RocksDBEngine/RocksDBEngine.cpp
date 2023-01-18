@@ -2567,6 +2567,8 @@ Result RocksDBEngine::dropReplicatedStates(TRI_voc_tick_t databaseId) {
     //      after dropping a collection or database.
     std::ignore = methods->compact();
   }
+
+  return Result();
 }
 
 Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
