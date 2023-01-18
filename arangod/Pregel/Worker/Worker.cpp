@@ -551,14 +551,13 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
+auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   MUTEX_LOCKER(guard, _commandMutex);
-  TRI_ASSERT(b.isEmpty());
 
-  //  std::vector<ShardID> const& shards = _config.globalShardIDs();
   std::string tmp;
 
-  b.openArray(/*unindexed*/ true);
+  VPackBuilder results;
+  results.openArray(/*unindexed*/ true);
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
     Vertex<V, E> const* vertexEntry = *it;
@@ -566,7 +565,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
 
-    b.openObject(/*unindexed*/ true);
+    results.openObject(/*unindexed*/ true);
 
     if (withId) {
       std::string const& cname = _config.shardIDToCollectionName(shardId);
@@ -575,24 +574,27 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         tmp.append(cname);
         tmp.push_back('/');
         tmp.append(vertexEntry->key().data(), vertexEntry->key().size());
-        b.add(StaticStrings::IdString, VPackValue(tmp));
+        results.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
 
-    b.add(StaticStrings::KeyString,
-          VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
-                         VPackValueType::String));
+    results.add(
+        StaticStrings::KeyString,
+        VPackValuePair(vertexEntry->key().data(), vertexEntry->key().size(),
+                       VPackValueType::String));
 
     V const& data = vertexEntry->data();
-    if (auto res = _graphStore->graphFormat()->buildVertexDocument(b, &data);
+    if (auto res =
+            _graphStore->graphFormat()->buildVertexDocument(results, &data);
         !res) {
       LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "Failed to build vertex document");
     }
-    b.close();
+    results.close();
   }
-  b.close();
+  results.close();
+  return PregelResults{results};
 }
 
 template<typename V, typename E, typename M>

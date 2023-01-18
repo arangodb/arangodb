@@ -61,7 +61,7 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
   virtual void receivedMessages(VPackSlice const& data) = 0;
   virtual void finalizeExecution(FinalizeExecution const& data,
                                  std::function<void()> cb) = 0;
-  virtual void aqlResult(VPackBuilder&, bool withId) const = 0;
+  virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
 
 template<typename V, typename E>
@@ -158,7 +158,7 @@ class Worker : public IWorker {
   void finalizeExecution(FinalizeExecution const& data,
                          std::function<void()> cb) override;
 
-  void aqlResult(VPackBuilder&, bool withId) const override;
+  auto aqlResult(bool withId) const -> PregelResults override;
 };
 
 }  // namespace arangodb::pregel

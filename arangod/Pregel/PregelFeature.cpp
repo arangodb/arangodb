@@ -890,7 +890,13 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Cannot deserialize CollectPregelResults message");
     }
-    w->aqlResult(outBuilder, message.get().withId);
+    auto results = w->aqlResult(message.get().withId);
+    auto response = inspection::serializeWithErrorT(results);
+    if (!response.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Cannot serialize PregelResults message");
+    }
+    outBuilder.add(response.get().slice());
   }
 }
 

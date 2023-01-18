@@ -8810,7 +8810,13 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    worker->aqlResult(builder, withId);
+    auto results = worker->aqlResult(withId);
+    auto response = inspection::serializeWithErrorT(results);
+    if (!response.ok()) {
+      registerWarning(expressionContext, AFN, TRI_ERROR_INTERNAL);
+      return AqlValue(AqlValueHintEmptyArray());
+    }
+    builder.add(response.get().slice());
   }
 
   if (builder.isEmpty()) {
