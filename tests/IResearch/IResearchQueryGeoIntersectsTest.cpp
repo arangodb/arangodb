@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
 
