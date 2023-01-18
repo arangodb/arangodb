@@ -197,19 +197,19 @@ def filter_tests(args, tests):
     return list(tests)
 
 
-def create_test_job(test):
+def create_test_job(test, cluster):
     params = test["params"]
-    isCluster = "cluster" in test["flags"]
     suiteName = test["name"]
     suffix = params.get("suffix", "")
     if suffix:
         suiteName += f"-{suffix}"
 
     result = {
-        "name": f"test-ce-{'cluster' if isCluster else 'single'}-{suiteName}",
+        "name": f"test-ce-{'cluster' if cluster else 'single'}-{suiteName}",
+        "testDefinitionLine": test["lineNumber"],
         "suiteName": suiteName,
         "suites": test["suites"],
-        "cluster": isCluster,
+        "cluster": cluster,
         "requires": ["build-community-pr"]
     }
 
@@ -243,7 +243,13 @@ def generate_output(args, tests):
             config = yaml.safe_load(instream)
             jobs = config["workflows"]["devel-pr"]["jobs"]
             for test in tests:
-                jobs.append({ "run-js-tests": create_test_job(test) })
+                if "cluster" in test["flags"]:
+                    jobs.append({ "run-js-tests": create_test_job(test, True) })
+                elif "single" in test["flags"]:
+                    jobs.append({ "run-js-tests": create_test_job(test, False) })
+                else:
+                    jobs.append({ "run-js-tests": create_test_job(test, True) })
+                    jobs.append({ "run-js-tests": create_test_job(test, False) })
             yaml.dump(config, outstream)
     
 def main():
