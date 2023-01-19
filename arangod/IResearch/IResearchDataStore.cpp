@@ -1350,8 +1350,6 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
   return options;
 }
 
-
-
 Result IResearchDataStore::initDataStore(
     bool& pathExists, InitCallback const& initCallback, uint32_t version,
     bool sorted, bool nested,
