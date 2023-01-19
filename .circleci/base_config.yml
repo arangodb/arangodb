@@ -23,14 +23,6 @@ jobs:
       - run:
           name: Print SCCache Settings
           command: sccache -s
-      # - restore_cache:
-      #     keys:
-      #       - sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
-      #       - sccache-v1-<< parameters.edition >>-{{ .Branch }}
-      #       - sccache-v1-<< parameters.edition >>
-      # - run:
-      #     name: Zero CCache Statistics
-      #     command: ccache -z
       - run:
           name: Configure
           command: |
@@ -51,12 +43,6 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: build/bin/arango*
-      # - save_cache:
-      #     when: always
-      #     key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ .Revision }}
-      #     #key: sccache-v1-<< parameters.edition >>-{{ .Branch }}-{{ checksum "build/<< parameters.preset >>/bin/arangod" }}
-      #     paths:
-      #       - /root/.cache/sccache
       - persist_to_workspace:
           root: .
           paths:
@@ -129,9 +115,6 @@ jobs:
           name: Run << parameters.suiteName >> tests
           command: |
             scripts/unittest << parameters.suites >> --cleanup false --writeXmlReport true --dumpAgencyOnError true --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX --cluster << parameters.cluster >> << parameters.extraArgs >>
-      # - run:
-      #     command: |
-      #       mkdir test-results && cp ./out/*.xml test-results
       - run:
           command: |
             mkdir -p /tmp/core_dumps
