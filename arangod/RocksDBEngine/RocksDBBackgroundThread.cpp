@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/debugging.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -70,8 +71,11 @@ void RocksDBBackgroundThread::run() {
           // try..catch of its own, because we still want the following
           // garbage collection operations to be carried out even if
           // the sync fails.
+          bool forceSync = false;
+          TRI_IF_FAILURE("BuilderIndex::purgeWal") { forceSync = true; }
+
           double start = TRI_microtime();
-          Result res = _engine.settingsManager()->sync(false);
+          Result res = _engine.settingsManager()->sync(forceSync);
           if (res.fail()) {
             LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
                 << "background settings sync failed: " << res.errorMessage();
@@ -123,12 +127,16 @@ void RocksDBBackgroundThread::run() {
             });
       }
 
+      bool canPrune =
+          TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
+      TRI_IF_FAILURE("BuilderIndex::purgeWal") { canPrune = true; }
+
       // only start pruning of obsolete WAL files a few minutes after
       // server start. if we start pruning too early, replication followers
       // will not have a chance to reconnect to a restarted leader in
       // time, so the leader may purge WAL files that replication followers
       // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial()) {
+      if (canPrune) {
         // determine which WAL files can be pruned
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired

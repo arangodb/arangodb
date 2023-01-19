@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -645,6 +646,13 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   lowerBoundTracker.track(snap->GetSequenceNumber());
 
   locker.unlock();
+  
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  while (TRI_ShouldFailDebugging("BuilderIndex::purgeWal")) {
+    engine.pruneWalFiles();
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+#endif
   
   auto reportProgress = [this](uint64_t docsProcessed) {
     _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
